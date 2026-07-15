@@ -39,12 +39,14 @@ tools-api/        Contract spec for Advanced Tools (internal v1, external proces
 
 ## Current status
 
-**Phase 0 — Foundation (M0), in progress.**
+**Phase 0 — Foundation (M0): complete.**
 
 - 0.1 Toolchain installed and verified (Node, Rust, MSVC Build Tools, Git) — done.
 - 0.2 Tauri 2 + React + TypeScript + Vite scaffold created (`npm create tauri-app@latest`), `npm run tauri dev` confirmed working — done.
-- 0.3 Repo/license/context files (this file, LICENSE, README.md, CONTRIBUTING.md, CI workflow) — in progress. Still needed: `git init` + first commit + push to GitHub (not yet done — no `.git` directory as of this writing).
+- 0.3 Repo/license/context files (this file, LICENSE, README.md, CONTRIBUTING.md, ESLint/Prettier/Vitest config, CI workflow) — done. `git init`, first commit, and push to GitHub — done, repo is live.
+- Ran `npm approve-scripts esbuild` to approve esbuild's postinstall (npm 11's new install-script allowlist; expect to hit this again for other native-binary deps).
+- Ran `npm audit fix --force`, which bumped vitest 2 → 4 (breaking change, accepted now while only the placeholder smoke test exists — cheapest possible time to take it). Re-verify `npm test`/`npm run typecheck` still pass after this and note here if vitest 4 required config changes.
 
-**Not yet started**: Phase 1 (editor core: app shell, file open/save, Monaco integration, RMS syntax highlighting, reference DB, hover docs).
+**Not yet started**: Phase 1 (editor core: app shell, file open/save, Monaco integration, RMS syntax highlighting, reference DB, hover docs). Start with 1.1 (app shell UI) next session.
 
 Update this section at the end of every session so the next session (possibly a different model) knows where things stand.
