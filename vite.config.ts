@@ -8,6 +8,14 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // Monaco's editor.worker is imported with Vite's `?worker` suffix (see
+  // src/editor/monacoSetup.ts) so the editor is fully self-hosted — no
+  // CDN fetch at runtime, which matters for a desktop app that should
+  // work offline. That worker needs to build as an ES module.
+  worker: {
+    format: "es",
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

@@ -1,3 +1,4 @@
+import Editor from "@monaco-editor/react";
 import { PlaceholderPane } from "./PlaceholderPane";
 import styles from "./CodePane.module.css";
 
@@ -7,24 +8,32 @@ interface CodePaneProps {
   hasFile: boolean;
 }
 
-// Temporary stand-in for Monaco (arrives in Phase 1.3): a plain textarea
-// bound to the exact same content/onChange contract the real editor will
-// use, so Open/Save/dirty-tracking are already fully testable now instead
-// of waiting on the editor integration.
+// RMS syntax highlighting (a custom Monarch tokenizer, language id
+// "aoe2-rms") arrives in Phase 1.4 — plaintext for now, per the phase
+// plan. The find widget (Ctrl+F) and minimap are both on by default;
+// nothing special is needed to enable them.
 export function CodePane({ content, onChange, hasFile }: CodePaneProps) {
   if (!hasFile) {
     return (
-      <PlaceholderPane description="Open an .rms file (File > Open) to see its code here. Full Monaco editor arrives in Phase 1.3." />
+      <PlaceholderPane description="Open an .rms file (File > Open) to see its code here." />
     );
   }
 
   return (
     <div className={styles.codePane}>
-      <textarea
-        className={styles.textarea}
+      <Editor
+        height="100%"
+        width="100%"
+        language="plaintext"
         value={content}
-        onChange={(event) => onChange(event.target.value)}
-        spellCheck={false}
+        onChange={(value) => onChange(value ?? "")}
+        options={{
+          minimap: { enabled: true },
+          fontSize: 13,
+          fontFamily: '"Cascadia Code", Consolas, monospace',
+          wordWrap: "off",
+          scrollBeyondLastLine: false,
+        }}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ask, open, save } from "@tauri-apps/plugin-dialog";
+import { confirm, open, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -91,19 +91,26 @@ export function useDocument() {
         if (!isDirtyRef.current) return;
         event.preventDefault();
 
-        const shouldSave = await ask(
-          "This map has unsaved changes. Save before closing?",
+        // Deliberately a 2-way choice, not Save/Discard/Cancel: Tauri's
+        // dialog plugin doesn't cleanly expose a 3-button dialog from JS,
+        // and there's no reliable way to tell "explicit Discard click"
+        // apart from "dismissed the dialog" via the boolean it returns —
+        // that ambiguity was the bug (Cancel and dismiss both fell
+        // through to close-without-saving). Collapsing to "save & close"
+        // vs. "stay open" removes any path that can silently drop work.
+        const shouldSaveAndClose = await confirm(
+          "This map has unsaved changes. Save and close?",
           { title: "Unsaved changes", kind: "warning" },
         );
 
-        if (shouldSave) {
-          if (!filePathRef.current) {
-            const target = await save({ filters: RMS_FILTERS });
-            if (!target) return; // user cancelled Save As — leave the window open
-            await writeToPath(target);
-          } else {
-            await writeToPath(filePathRef.current);
-          }
+        if (!shouldSaveAndClose) return; // Cancel, or dismissed — stay open.
+
+        if (!filePathRef.current) {
+          const target = await save({ filters: RMS_FILTERS });
+          if (!target) return; // user cancelled Save As — stay open
+          await writeToPath(target);
+        } else {
+          await writeToPath(filePathRef.current);
         }
 
         // destroy() closes without re-emitting closeRequested — calling
