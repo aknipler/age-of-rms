@@ -1,0 +1,27 @@
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid #000;
+  background: #fff;
+}
+
+.tab {
+  border: 1px solid #000;
+  border-top: none;
+  border-left: none;
+  background: #fff;
+  padding: 0.35rem 1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: #f0f0f0;
+}
+
+.tabActive {
+  background: #b3b3b3;
+}
+
+.tabActive:hover {
+  background: #b3b3b3;
+}

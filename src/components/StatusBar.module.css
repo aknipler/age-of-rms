@@ -1,0 +1,9 @@
+.statusBar {
+  display: flex;
+  gap: 1.5rem;
+  border-top: 1px solid #000;
+  padding: 0.35rem 1.25rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow-x: auto;
+}

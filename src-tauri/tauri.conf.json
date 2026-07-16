@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "age-of-rms",
+        "title": "Age of RMS",
         "width": 800,
         "height": 600
       }

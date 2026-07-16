@@ -1,0 +1,47 @@
+.titleBar {
+  display: flex;
+  border-bottom: 1px solid #000;
+}
+
+.menuWrapper {
+  position: relative;
+}
+
+.menuItem {
+  border: 1px solid #000;
+  border-top: none;
+  border-left: none;
+  background: #fff;
+  padding: 0.4rem 1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: #f0f0f0;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid #000;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownItem {
+  border: none;
+  background: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdownItem:hover {
+  background: #f0f0f0;
+}
