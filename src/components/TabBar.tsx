@@ -1,4 +1,5 @@
 import type { TabId } from "../types";
+import { HelpTip } from "./HelpTip";
 import styles from "./TabBar.module.css";
 
 const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
@@ -21,16 +22,17 @@ export function TabBar({ activeTab, onSelect }: TabBarProps) {
   return (
     <div className={styles.tabBar} role="tablist">
       {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === tab.id}
-          className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ""}`}
-          onClick={() => onSelect(tab.id)}
-        >
-          {tab.label}
-        </button>
+        <HelpTip key={tab.id} id={`tabBar.${tab.id === "advanced-tools" ? "advancedTools" : tab.id}`}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ""}`}
+            onClick={() => onSelect(tab.id)}
+          >
+            {tab.label}
+          </button>
+        </HelpTip>
       ))}
     </div>
   );

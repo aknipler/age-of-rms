@@ -1,0 +1,51 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: #fff;
+  border: 1px solid #000;
+  min-width: 320px;
+  padding: 1rem 1.25rem;
+}
+
+.title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  border-bottom: 1px solid #000;
+  padding-bottom: 0.5rem;
+}
+
+.optionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+}
+
+.optionRow label {
+  cursor: pointer;
+}
+
+.actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.closeButton {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: #f0f0f0;
+}

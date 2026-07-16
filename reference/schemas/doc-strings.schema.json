@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ageofrms.dev/schemas/doc-strings.schema.json",
+  "title": "Doc Strings",
+  "description": "Human-written prose keyed by command/attribute/constant/directive/control-keyword name (or a ui.* key for interface chrome). Powers Monaco hover docs (Phase 1.6) and the ALT-hover popup system (Phase 3.5) — CREATION_PLAN.md 3.5 says to reuse the same hover content for both, which is why this is one shared file rather than two. Community-maintained by PR; the Definitive RMS Scripting Guide (Zetnus) is the seed source pending permission to adapt its prose — see PLAN.md open questions. Write original summaries here, don't copy the guide's text verbatim.",
+  "type": "object",
+  "required": ["entries"],
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["key", "kind", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Matches a name in language.json (a command/attribute/directive/controlKeyword) or game-constants.json (an rmsConstant), or a \"ui.\" prefixed key for ALT-hover on non-code interface elements (Phase 3.5), e.g. \"ui.mapPreview.currentFinalToggle\"."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["command", "attribute", "directive", "controlKeyword", "constant", "ui"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "One sentence. Shown in the Monaco hover tooltip and as the ALT-hover popup's headline."
+        },
+        "details": {
+          "type": "string",
+          "description": "Optional longer prose for the ALT-hover popup — examples, gotchas, defaults worth calling out."
+        },
+        "seeAlso": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Other entry keys worth cross-referencing, e.g. land_percent's entry might list number_of_tiles."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "entries": [
+        {
+          "key": "create_land",
+          "kind": "command",
+          "summary": "Creates one land mass, sized and positioned by its attributes.",
+          "details": "The most common way to place non-player territory (islands, center land, etc). For player starting areas, use create_player_lands instead, which takes the same attributes but distributes evenly across all players.",
+          "seeAlso": ["create_player_lands", "land_percent", "zone"]
+        },
+        {
+          "key": "land_percent",
+          "kind": "attribute",
+          "summary": "Sets this land's size as a percentage of the total map area.",
+          "details": "Mutually exclusive with number_of_tiles — use whichever is more natural for the effect you want; percent scales with map size, an absolute tile count doesn't.",
+          "seeAlso": ["number_of_tiles"]
+        }
+      ]
+    }
+  ]
+}

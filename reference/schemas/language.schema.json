@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ageofrms.dev/schemas/language.schema.json",
+  "title": "RMS Language Definition",
+  "description": "Every RMS command, its attributes, preprocessor directives, and runtime control keywords, for DE — section membership, argument shapes, mutual exclusivity. Powers the Phase 2 parser, Monaco autocomplete/highlighting (src/editor/aoe2RmsLanguage.ts's COMMANDS/ATTRIBUTES lists should eventually be generated from this file instead of hand-duplicated), and Breakdown's command/attribute dropdowns. Attributes are defined once in the top-level attributes[] array and referenced by name from each command that accepts them, rather than duplicated per command — a command's own attributes[] field is just a list of names pointing into that array.",
+  "type": "object",
+  "required": ["sections", "commands", "attributes", "directives", "controlKeywords"],
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "type": "array",
+      "description": "The section headers a script is divided into (e.g. <PLAYER_SETUP>), in generation order. Written without the angle brackets here.",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z_]*$" }
+    },
+    "commands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/command" }
+    },
+    "attributes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/attribute" }
+    },
+    "directives": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/directive" }
+    },
+    "controlKeywords": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/controlKeyword" }
+    }
+  },
+  "$defs": {
+    "argument": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "integer",
+            "percent",
+            "terrainConstant",
+            "objectConstant",
+            "otherConstant",
+            "string",
+            "flag"
+          ]
+        },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "default": {},
+        "description": { "type": "string" }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["name", "section", "kind", "description", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "section": {
+          "type": "string",
+          "description": "One of the top-level sections[] entries, e.g. \"LAND_GENERATION\"."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["block", "standalone"],
+          "description": "block = opens a { } body (e.g. create_land { ... }). standalone = a single statement with inline arguments and no body (e.g. base_terrain GRASS)."
+        },
+        "description": { "type": "string" },
+        "arguments": {
+          "type": "array",
+          "description": "Inline arguments taken by this command itself (both kinds can have these — a block command's MaxHeight-style argument, or a standalone command's whole argument list).",
+          "items": { "$ref": "#/$defs/argument" }
+        },
+        "attributes": {
+          "type": "array",
+          "description": "Names of entries in the top-level attributes[] array valid inside this command's { } block. Only meaningful when kind is \"block\"; omit or leave empty for standalone commands.",
+          "items": { "type": "string" }
+        },
+        "verified": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "required": ["name", "description", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "arguments": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
+        "mutexWith": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of other attributes that cannot be used together with this one in the same block, e.g. land_percent vs. number_of_tiles."
+        },
+        "description": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "directive": {
+      "type": "object",
+      "required": ["name", "description", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^#\\w+$" },
+        "arguments": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
+        "description": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "controlKeyword": {
+      "type": "object",
+      "required": ["name", "description", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "verified": { "type": "boolean" }
+      }
+    }
+  },
+  "examples": [
+    {
+      "sections": ["LAND_GENERATION"],
+      "commands": [
+        {
+          "name": "create_land",
+          "section": "LAND_GENERATION",
+          "kind": "block",
+          "description": "Creates a land mass on the map.",
+          "attributes": ["terrain_type", "land_percent", "base_size"],
+          "verified": true
+        }
+      ],
+      "attributes": [
+        {
+          "name": "land_percent",
+          "arguments": [
+            {
+              "name": "percent",
+              "type": "percent",
+              "min": 0,
+              "max": 100,
+              "default": 100,
+              "description": "Share of the map this land should occupy."
+            }
+          ],
+          "mutexWith": ["number_of_tiles"],
+          "description": "Sets land size as a percentage of total map area, instead of an absolute tile count.",
+          "verified": true
+        }
+      ],
+      "directives": [
+        {
+          "name": "#const",
+          "arguments": [
+            { "name": "name", "type": "string" },
+            { "name": "value", "type": "integer" }
+          ],
+          "description": "Defines a named integer constant usable anywhere a number is expected.",
+          "verified": true
+        }
+      ],
+      "controlKeywords": [
+        {
+          "name": "start_random",
+          "description": "Begins a block of percent_chance-weighted alternatives, closed by end_random.",
+          "verified": true
+        }
+      ]
+    }
+  ]
+}

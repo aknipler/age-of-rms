@@ -1,0 +1,86 @@
+{
+  "entries": [
+    {
+      "key": "create_land",
+      "kind": "command",
+      "summary": "Creates one land mass, sized and positioned by its attributes.",
+      "details": "The most common way to place non-player territory — islands, a center land, resource-only landmasses, etc. For player starting areas, use create_player_lands instead, which takes the same attributes but distributes evenly across all players.",
+      "seeAlso": ["create_player_lands", "land_percent", "zone"]
+    },
+    {
+      "key": "create_player_lands",
+      "kind": "command",
+      "summary": "Creates one land per player, using the same attributes as create_land.",
+      "details": "Use this for player starting territory; use create_land for everything else (islands, neutral land, resource zones).",
+      "seeAlso": ["create_land", "assign_to_player", "assign_to"]
+    },
+    {
+      "key": "land_percent",
+      "kind": "attribute",
+      "summary": "Sets this land's size as a percentage of the total map area.",
+      "details": "Mutually exclusive with number_of_tiles — use whichever is more natural for the effect you want. Percent scales with map size; an absolute tile count doesn't.",
+      "seeAlso": ["number_of_tiles"]
+    },
+    {
+      "key": "number_of_tiles",
+      "kind": "attribute",
+      "summary": "Sets this land's size as an absolute tile count, instead of a percentage.",
+      "details": "Mutually exclusive with land_percent. Useful when you want a land's absolute size to stay the same regardless of overall map size.",
+      "seeAlso": ["land_percent"]
+    },
+    {
+      "key": "zone",
+      "kind": "attribute",
+      "summary": "Assigns this land to a numbered zone, used later to scope terrain/object placement.",
+      "details": "Zones are how you keep, say, an island's terrain generation from bleeding onto the mainland — later create_terrain/create_object blocks can target or avoid specific zone numbers.",
+      "seeAlso": ["set_zone_by_team", "set_zone_randomly", "other_zone_avoidance_distance"]
+    },
+    {
+      "key": "create_object",
+      "kind": "command",
+      "summary": "Places objects — resources, units, or buildings — on the map.",
+      "details": "Works bare (create_object GOLD places gold with default rules) or with a block of attributes constraining count, placement terrain, distance from players, grouping, and more.",
+      "seeAlso": ["number_of_objects", "terrain_to_place_on", "place_on_specific_land_id"]
+    },
+    {
+      "key": "place_on_specific_land_id",
+      "kind": "attribute",
+      "summary": "Restricts object placement to a land tagged with a matching land_id.",
+      "details": "Tag a land with land_id inside its create_land/create_player_lands block, then reference that same number here to guarantee objects land only on that specific piece of terrain.",
+      "seeAlso": ["land_id", "set_place_for_every_player"]
+    },
+    {
+      "key": "terrain_to_place_on",
+      "kind": "attribute",
+      "summary": "Restricts object placement to a specific terrain type.",
+      "details": "Common for making sure, e.g., gold only spawns on GRASS and not in water or on cliffs.",
+      "seeAlso": ["create_object"]
+    },
+    {
+      "key": "start_random",
+      "kind": "controlKeyword",
+      "summary": "Begins a block of percent_chance-weighted random alternatives.",
+      "details": "Each percent_chance line inside gives one alternative's odds — they should sum to 100 across the block. Closed by end_random.",
+      "seeAlso": ["percent_chance", "end_random"]
+    },
+    {
+      "key": "if",
+      "kind": "controlKeyword",
+      "summary": "Begins a runtime conditional, evaluated during map generation.",
+      "details": "Distinct from the #ifdef preprocessor directive — if/elseif/else/endif are evaluated while the map generates (e.g. checking map size constants like HUGE_MAP), not before parsing.",
+      "seeAlso": ["elseif", "else", "endif"]
+    },
+    {
+      "key": "GRASS",
+      "kind": "constant",
+      "summary": "The default land terrain — plain grass.",
+      "seeAlso": ["base_terrain", "terrain_type"]
+    },
+    {
+      "key": "GOLD",
+      "kind": "constant",
+      "summary": "A gold resource node, mined by villagers.",
+      "seeAlso": ["create_object", "terrain_to_place_on"]
+    }
+  ]
+}

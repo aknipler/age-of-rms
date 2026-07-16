@@ -1,3 +1,4 @@
+import { HelpTip } from "./HelpTip";
 import styles from "./MapHeader.module.css";
 
 interface MapHeaderProps {
@@ -10,10 +11,14 @@ interface MapHeaderProps {
 export function MapHeader({ mapName, lastSavedAt }: MapHeaderProps) {
   return (
     <div className={styles.mapHeader}>
-      <h1 className={styles.mapName}>{mapName}</h1>
-      <span className={styles.lastSaved}>
-        Last Saved: {lastSavedAt ? formatTimestamp(lastSavedAt) : "—"}
-      </span>
+      <HelpTip id="mapHeader.mapName">
+        <h1 className={styles.mapName}>{mapName}</h1>
+      </HelpTip>
+      <HelpTip id="mapHeader.lastSaved">
+        <span className={styles.lastSaved}>
+          Last Saved: {lastSavedAt ? formatTimestamp(lastSavedAt) : "—"}
+        </span>
+      </HelpTip>
     </div>
   );
 }

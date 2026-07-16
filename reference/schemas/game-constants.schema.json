@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ageofrms.dev/schemas/game-constants.schema.json",
+  "title": "Game Constants",
+  "description": "Terrain and object constants used by AoE2:DE RMS scripts. Fields mirror the Breakdown reference-table columns from PLAN.md's UI section (constant ID, RMS constant, descriptive name, DE texture file), plus per-object resource amounts used for the Phase 2.5 status-bar resource totals. Machine-extracted from the game's data files by tools/extract-constants once that exists (Phase 4.0); hand-maintained subset until then — see PLAN.md 'Reference DB approach'.",
+  "type": "object",
+  "required": ["constants"],
+  "additionalProperties": false,
+  "properties": {
+    "constants": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/constant" }
+    }
+  },
+  "$defs": {
+    "constant": {
+      "type": "object",
+      "required": ["rmsConstant", "descriptiveName", "category", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "constId": {
+          "type": ["integer", "null"],
+          "description": "The internal DE numeric ID for this terrain/object. Null until confirmed — do not guess this value; it must come from the game's data files or a trusted community dump, not general knowledge."
+        },
+        "rmsConstant": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "The exact identifier used in RMS scripts, e.g. GRASS, GOLD."
+        },
+        "descriptiveName": {
+          "type": "string",
+          "description": "Human-readable name for the reference table UI, e.g. \"Grass 1\", \"Gold Mine\"."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["terrain", "object"]
+        },
+        "deTextureFile": {
+          "type": ["string", "null"],
+          "description": "DE texture filename shown in the reference table (e.g. g_grs). Null until confirmed."
+        },
+        "resourceAmounts": {
+          "type": "object",
+          "description": "Per-object resource yield. Only meaningful for category: object resource nodes. Used by the Phase 2.5 status-bar totals.",
+          "additionalProperties": false,
+          "properties": {
+            "food": { "type": "number" },
+            "wood": { "type": "number" },
+            "gold": { "type": "number" },
+            "stone": { "type": "number" }
+          }
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "False means this entry (or some field on it — see notes) hasn't been checked against the game's actual data files yet. Treat unverified numeric fields (constId, resourceAmounts) as placeholders, not facts."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free text: what's unverified and why, sourcing, ambiguities."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "constants": [
+        {
+          "constId": null,
+          "rmsConstant": "GRASS",
+          "descriptiveName": "Grass 1",
+          "category": "terrain",
+          "deTextureFile": null,
+          "verified": false,
+          "notes": "Name/usage confirmed against the Definitive RMS Scripting Guide (Zetnus). constId and deTextureFile still need the real extraction script (Phase 4.0) or a trusted community dat-dump — do not treat null as 0."
+        },
+        {
+          "constId": null,
+          "rmsConstant": "GOLD",
+          "descriptiveName": "Gold Mine",
+          "category": "object",
+          "deTextureFile": null,
+          "resourceAmounts": { "gold": 800 },
+          "verified": false,
+          "notes": "resourceAmounts.gold is an illustrative placeholder, not sourced from verified game data — replace once confirmed."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ageofrms.dev/schemas/ui-help.schema.json",
+  "title": "UI Help",
+  "description": "Explanation text for non-RMS-language interface chrome (menu items, tabs, status bar fields, Breakdown controls, tool panes) shown by the <HelpTip> component (Phase 1.7) and later the global ALT-hover system (Phase 3.5). Distinct from doc-strings.json, which covers RMS commands/attributes/constants and is shared with the Monaco hover provider (Phase 1.6) — see CREATION_PLAN.md 1.7 and 3.5.",
+  "type": "object",
+  "required": ["entries"],
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["id", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z][a-zA-Z0-9]*)*$",
+          "description": "Dot-separated path matching the HelpTip id used in the component tree, e.g. \"titleBar.file\", \"statusBar.total\"."
+        },
+        "text": {
+          "type": "string",
+          "description": "Short explanation shown in the popup. One or two sentences — this isn't a full doc page."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "entries": [
+        {
+          "id": "tabBar.breakdown",
+          "text": "The Breakdown tab shows your script as editable command blocks instead of raw code — good for building without memorizing syntax."
+        },
+        {
+          "id": "statusBar.total",
+          "text": "Total resources across the whole map, summed from every create_object placement the parser can see."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "entries": [
+    { "id": "titleBar.file", "text": "Open, Save, and Save As for .rms files." },
+    { "id": "titleBar.edit", "text": "Not implemented yet." },
+    { "id": "titleBar.preferences", "text": "App settings, including how these help popups behave." },
+    { "id": "titleBar.help", "text": "Not implemented yet." },
+    { "id": "mapHeader.mapName", "text": "The name of the currently open map, taken from its filename. Shows \"Untitled Map\" until you open or save a file." },
+    { "id": "mapHeader.lastSaved", "text": "When this map was last saved during this session. Shows a dash until you save at least once." },
+    { "id": "tabBar.breakdown", "text": "Shows your script as editable command blocks instead of raw code — good for building without memorizing syntax. Arrives in Phase 3." },
+    { "id": "tabBar.code", "text": "The full code editor, with RMS syntax highlighting and hover docs." },
+    { "id": "tabBar.advancedTools", "text": "A pane for built-in and (later) community-made tools that operate on your script. Arrives in Phase 5." },
+    { "id": "statusBar.total", "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Arrives in Phase 2.5 — currently a placeholder." },
+    { "id": "statusBar.player", "text": "Resources placed specifically in player-assigned territory. Arrives in Phase 2.5 — currently a placeholder." },
+    { "id": "statusBar.neutral", "text": "Resources placed outside player territory (neutral/shared land). Arrives in Phase 2.5 — currently a placeholder." },
+    { "id": "preferences.helpMode", "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely." }
+  ]
+}
