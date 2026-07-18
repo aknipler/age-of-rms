@@ -51,7 +51,15 @@
         "min": { "type": "number" },
         "max": { "type": "number" },
         "default": {},
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "cautionBelow": {
+          "type": "number",
+          "description": "If set, values below this threshold are still valid RMS (unlike min, which is a hard documented floor) but carry a real risk worth flagging live — e.g. a negative border value that can crash the game if it pushes the land origin off-map. Requires cautionMessage."
+        },
+        "cautionMessage": {
+          "type": "string",
+          "description": "User-facing warning shown (live diagnostic RMS0217, and in hover) when a value trips cautionBelow. Should explicitly say the value is valid RMS, not an error, then explain the risk and the recommended mitigation."
+        }
       }
     },
     "command": {

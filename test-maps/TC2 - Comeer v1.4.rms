@@ -1,0 +1,1031 @@
+/* Created by Captain Kniples the Fourth */
+/* 3 Villager version made for Thalassocracy 2 */
+/* First created 2025 July, last update 22 Aug 2025 */
+/* 
+Changelog:
+21-08-2025
+- made the 3 villager version
+22-08-2025 (For Thalassocracy Cup)
+- increased player land percent from 24->25
+- increased player total forest tiles from 100->110
+- increased external forest tiles from 460->470 
+24-8-2025
+- there are 2 create shore_fish statements, one that is player driven to get shore fish on both sides of the center strait. 
+  However this leads to instances where you have two shorefish right next to each other. Attempted to reduce the likelihood of this
+  by giving the player driven shore_fish min_dist_placement of 1 and also reducing the number of them from 22->18.
+- made the herdables have a random chance of being goat, sheep or pig
+- fixed an issue where the lands would sometimes be connected. It was due to the base size being too big, so when they are directly
+  above or side-by-side the corners would overlap. Base size 11->10
+- seemed to be a bias for player resources to generate in a south westerly direction. Addressed this by increasing the actor areas
+  for each resource, making them more spaced. 
+** Addressing the issue of a transport ship easily stealing an opponents sheep **
+- used placeholders to make the transport ships spawn closer to the back of the islands
+- made the scouts always spawn closest to the center of the map
+*/
+
+
+#define 3_VILL_START
+/* #define 9_VILL_START */
+
+#const ONGRID_PLACEHOLDER 1613
+#const ONGRID_PLACEHOLDER2 278 /* dead fish trap */
+/* #const ONGRID_PLACEHOLDER_ALL 1543 */
+/* #const ONGRID_PLACEHOLDER_LAND 1544 */
+#const ONGRID_PLACEHOLDER_AMPHIBIOUS 1545
+
+
+/* math constants */
+#const INSIDE_RING_ORIGIN_DIST 16
+#const ISLAND_BORDERS 3
+#const PLAYER_FOREST_CLUMPS 3
+#const PLAYER_TOTAL_FOREST_TILES 110
+#const PL_BORDERS 12
+
+/* terrains */
+#const TEMP_TERRAIN 68 
+#const TEMP_TERRAIN2 19
+#const PLAYER_TEMP_TERR 74
+#const MUD 76
+#const PL_TERRAIN 34 /* snow grass */
+#const NEUTRAL_TERRAIN 32 /* snow */
+#const NEUTRAL_TERRAIN_MASK 0
+#const TERRAIN_MASK 32
+#const BASE_TERRAIN 1
+
+/* objects */
+#const MAKE_UNDERBRUSH_SNOW_TERRAIN 1639
+#const MAKE_SNOW_TERRAIN 1640
+
+
+start_random
+percent_chance 33 #const HERDABLE DLC_GOAT
+percent_chance 34 #const HERDABLE SHEEP 
+percent_chance 33 #const HERDABLE DLC_PIG 
+end_random
+
+/* change DLC_ZEBRA to penguins */
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_NAME_ID 5734
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_ICON_ID 157
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_STANDING_GRAPHIC 8259 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_DYING_GRAPHIC 8258 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_UNDEAD_GRAPHIC 8258 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_WALKING_GRAPHIC 8261 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_RUNNING_GRAPHIC 8261 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_STANDING_GRAPHIC 8259 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_ATTACK_GRAPHIC 8257
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_UPGRADE_GRAPHIC 8257
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_DEAD_ID 641 
+effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_STORAGE_VALUE 1
+
+/* Make it so that the forests can't be quickly removed by players using building foundations */
+effect_percent SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_FOUNDATION_TERRAIN 72 /* underbrush snow */
+effect_amount SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_FOG_FLAG 0 /* underbrush snow */
+/* effect_amount SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_STANDING_GRAPHIC 11202 So that if seen in a start of game revealer, the artifact it leaves is much harder to see */  
+
+effect_percent SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_FOUNDATION_TERRAIN 32 /* snow */
+effect_amount SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_STANDING_GRAPHIC 12263  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
+effect_amount SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_FOG_FLAG 0  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
+
+
+
+/* Make it so that the flags disappear at the start of the game */
+effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER2 ATTR_HITPOINTS 0
+
+
+#const HERDABLE_A 1245 /* Pig */
+#const HERDABLE_B 594 /* Sheep */
+
+if 9_VILL_START
+  /* make the herdable under the TC die and only have 70 food */
+  /* note that you should NOT place this herdable type for gaia anywhere else */
+  effect_amount GAIA_ADD_ATTRIBUTE HERDABLE_A ATTR_STORAGE_VALUE -30	
+  effect_amount GAIA_SET_ATTRIBUTE HERDABLE_A ATTR_HITPOINTS 0
+
+  effect_amount MOD_RESOURCE AMOUNT_STARTING_WOOD ATTR_ADD -30
+  effect_amount MOD_RESOURCE AMOUNT_STARTING_FOOD ATTR_ADD -90
+
+  #const LAZY_MALE 1285 /* FE Flag */
+  effect_amount SET_ATTRIBUTE LAZY_MALE ATTR_DEAD_ID 83
+  effect_amount SET_ATTRIBUTE LAZY_MALE ATTR_HITPOINTS 0
+
+  #const LAZY_FEMALE 851 /* ES Flag */
+  effect_amount SET_ATTRIBUTE LAZY_FEMALE ATTR_DEAD_ID 293
+  effect_amount SET_ATTRIBUTE LAZY_FEMALE ATTR_HITPOINTS 0
+endif
+
+<PLAYER_SETUP>
+random_placement
+behavior_version 1
+
+
+if TINY_MAP
+    #const INSIDE_RING_BOUNDS 24
+elseif HUGE_MAP
+    #const INSIDE_RING_BOUNDS 36
+    #const OUTSIDE_RING_BOUNDS 15
+endif
+
+
+
+
+
+
+<LAND_GENERATION>
+
+base_terrain BASE_TERRAIN
+
+create_player_lands { terrain_type PLAYER_TEMP_TERR land_percent 25 circle_radius 16 1 base_size 10 clumping_factor 20 other_zone_avoidance_distance 3 left_border PL_BORDERS right_border PL_BORDERS top_border PL_BORDERS bottom_border PL_BORDERS }
+
+/* neutral islands */
+create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 1 land_id 100 land_position 9 9 }
+create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 2 land_id 100 land_position 9 91 }
+create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 3 land_id 100 land_position 91 9 }
+create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 4 land_id 100 land_position 91 91 }
+
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 1
+{
+  base_terrain          PLAYER_TEMP_TERR 
+  number_of_tiles       40      
+  number_of_clumps      3
+  spacing               0         
+  enable_balanced_elevation   
+  set_scale_by_groups  
+}
+
+
+create_elevation 1
+{
+  base_terrain          NEUTRAL_TERRAIN 
+  number_of_tiles       250      
+  number_of_clumps      15         
+  enable_balanced_elevation    
+  set_scale_by_groups        
+}
+
+
+
+
+<TERRAIN_GENERATION>
+
+/* fix small patches */
+create_terrain TEMP_TERRAIN { base_terrain BASE_TERRAIN land_percent 5 number_of_clumps 6 set_scale_by_groups spacing_to_other_terrain_types 3 }
+create_terrain NEUTRAL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 }
+
+/* player forests */
+/* 1 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain SNOW_FOREST { base_terrain TEMP_TERRAIN number_of_tiles PLAYER_TOTAL_FOREST_TILES number_of_clumps PLAYER_FOREST_CLUMPS spacing_to_other_terrain_types 3 set_avoid_player_start_areas 13 } 
+create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+
+/* 2 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain SNOW_FOREST { base_terrain TEMP_TERRAIN number_of_tiles PLAYER_TOTAL_FOREST_TILES number_of_clumps PLAYER_FOREST_CLUMPS spacing_to_other_terrain_types 3 set_avoid_player_start_areas 13 } 
+create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps beach_terrain ICYSHORE 4056 } 
+create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps beach_terrain ICYSHORE 4056 } 
+create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps beach_terrain ICYSHORE 4056 } 
+
+
+
+/* masking */
+create_terrain NEUTRAL_TERRAIN_MASK { base_terrain NEUTRAL_TERRAIN land_percent 31 number_of_clumps 4056 terrain_mask 1 } 
+create_terrain TERRAIN_MASK { base_terrain PL_TERRAIN land_percent 2 number_of_clumps 6 terrain_mask 1 } 
+
+
+
+/* neutral forests */
+create_terrain SNOW_FOREST { base_terrain NEUTRAL_TERRAIN number_of_tiles 470 number_of_clumps 30 spacing_to_other_terrain_types 2 set_scale_by_groups } 
+
+
+/* 
+<CONNECTION_GENERATION>
+create_connect_to_nonplayer_land
+{
+  replace_terrain LOWER_HILLTOPS ICE 
+  replace_terrain BASE_TERRAIN ICE 
+  terrain_cost MUD 0
+  terrain_cost BROWN_WATER 0
+  terrain_cost INSIDE_GOLD_AREA_TERRAIN 0
+  terrain_cost BEACH 0
+  terrain_cost LEAVES 0
+  terrain_cost INSIDE_PL_TERRAIN 0
+  terrain_cost EXTERNAL_TERRAIN 0
+  terrain_cost LOWER_HILLTOPS 11
+  terrain_cost OUTSIDE_PL_TERRAIN 2
+  terrain_cost BASE_TERRAIN 15
+  terrain_size LOWER_HILLTOPS 2 0
+} */
+
+
+
+<OBJECTS_GENERATION>
+
+/* Object groups */
+create_object_group HUT_VARS {
+  add_object DLC_AFRICANHUT_A 14
+  add_object DLC_AFRICANHUT_B 14
+  add_object DLC_AFRICANHUT_C 15
+  add_object DLC_AFRICANHUT_D 15
+  add_object DLC_AFRICANHUT_E 14
+  add_object DLC_AFRICANHUT_F 14 
+  add_object DLC_AFRICANHUT_G 14
+}
+
+
+create_object_group GROUP_HERDABLES {
+  add_object DLC_GOAT 33
+  add_object SHEEP 34
+  add_object DLC_PIG 33
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Generation */
+
+create_object ONGRID_PLACEHOLDER {
+  set_place_for_every_player
+  ignore_terrain_restrictions
+  terrain_to_place_on BASE_TERRAIN
+  set_gaia_object_only
+  find_closest_to_map_center
+  number_of_groups      22
+  temp_min_distance_group_placement 4
+  /* second_object FLAG_A */
+  actor_area 3030
+  actor_area_radius 4
+}
+
+/* stop ships from spawning too close to center */
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+if 3_VILL_START
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player ignore_terrain_restrictions terrain_to_place_on BASE_TERRAIN set_gaia_object_only number_of_groups 4056 temp_min_distance_group_placement 2 /* second_object FLAG_A */ actor_area_to_place_in 3030 actor_area 3030 actor_area_radius 4 }
+endif
+
+
+/* 
+create_object FLAG_A {
+  set_place_for_every_player
+  ignore_terrain_restrictions
+  set_gaia_object_only
+  find_closest_to_map_center
+  number_of_groups      4056
+  actor_area_to_place_in 3030
+} */
+
+if 9_VILL_START
+  #const ESCALATION_REVEALER 1874
+  effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_DEAD_ID -1
+  effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_TERRAIN_ID 0
+  effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_LINE_OF_SIGHT 20
+  effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_HITPOINTS 0
+
+  create_object ESCALATION_REVEALER
+  {
+      set_place_for_every_player
+      min_distance_to_players 0
+      max_distance_to_players 0
+  }
+endif
+
+
+/* stop TERRAIN aesthetics from replacing beach / icyshore terrain. Would prefer if the radius didnt have to be 2 but otherwise elements of a group often OFTEN slide over the beach */
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on ICYSHORE set_gaia_object_only actor_area 12 actor_area_radius 3 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on ICYSHORE set_gaia_object_only actor_area 12 actor_area_radius 3 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on ICYSHORE set_gaia_object_only actor_area 12 actor_area_radius 3 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on BEACH set_gaia_object_only actor_area 12 actor_area_radius 3 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on BEACH set_gaia_object_only actor_area 12 actor_area_radius 3 /* second_object FLAG_D */ }
+
+/* stop ships from spawning too close to shore */
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on ICYSHORE set_gaia_object_only actor_area 7011 actor_area_radius 1 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on ICYSHORE set_gaia_object_only actor_area 7011 actor_area_radius 1 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on ICYSHORE set_gaia_object_only actor_area 7011 actor_area_radius 1 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on BEACH set_gaia_object_only actor_area 7011 actor_area_radius 1 /* second_object FLAG_D */ }
+create_object  ONGRID_PLACEHOLDER_AMPHIBIOUS { number_of_groups 4056 terrain_to_place_on BEACH set_gaia_object_only actor_area 7011 actor_area_radius 1 /* second_object FLAG_D */ }
+
+/* Player resources */ 
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players           0
+  actor_area 9000
+  actor_area_radius 0
+}
+
+
+
+#const PH_NEUTRAL_OFF 346 /* Off-Grid Object - only used for gaia objects */
+#const PH_PLAYER_OFF 647 /* Off-Grid Object - only used for player objects */
+effect_amount SET_ATTRIBUTE PH_GENERIC_OFF ATTR_DEAD_ID -1
+effect_amount SET_ATTRIBUTE PH_GENERIC_OFF ATTR_TERRAIN_ID 0
+effect_amount SET_ATTRIBUTE PH_GENERIC_OFF ATTR_LINE_OF_SIGHT 0
+effect_amount SET_ATTRIBUTE PH_GENERIC_OFF ATTR_HITPOINTS 0
+effect_amount SET_ATTRIBUTE PH_GENERIC_OFF ATTR_STORAGE_VALUE 0
+
+if 3_VILL_START
+
+
+create_object ONGRID_PLACEHOLDER
+{
+    set_place_for_every_player
+    number_of_objects 2
+    min_distance_to_players 7
+    max_distance_to_players 9
+    temp_min_distance_group_placement 6
+    avoid_forest_zone 3
+    /* second_object FLAG_A */
+
+    set_gaia_object_only
+    /* find_closest */
+    set_circular_placement
+
+    actor_area 1500
+    actor_area_radius 1
+}
+create_object VILLAGER
+{
+    set_place_for_every_player
+    number_of_objects 3
+    min_distance_to_players     7
+    temp_min_distance_group_placement 1
+
+    find_closest
+    set_circular_placement
+
+    actor_area_to_place_in 1500
+
+    actor_area 1510
+    actor_area_radius 2
+} 
+
+  /* the starting sheep */
+  create_object HERDABLE
+  {
+    set_place_for_every_player
+    number_of_objects 4
+    set_loose_grouping
+    group_placement_radius 2
+    min_distance_to_players 5
+    max_distance_to_players 6
+    set_circular_placement
+    actor_area 1113
+    actor_area_radius 3
+  }
+
+
+elseif 9_VILL_START
+
+
+  /* these actor areas are used to help position the villagers under the TC */
+  create_object PH_NEUTRAL_OFF /* Near Positioner */
+  {
+    set_place_for_every_player
+    set_gaia_object_only
+    number_of_objects 5
+    min_distance_to_players 1
+    max_distance_to_players 1
+    find_closest
+    actor_area 5100
+    actor_area_radius 0
+  }
+  create_object PH_NEUTRAL_OFF /* Villager Avoider */
+  {
+    set_place_for_every_player
+    set_gaia_object_only
+    min_distance_to_players 1
+    max_distance_to_players 1
+    find_closest
+    actor_area 5101
+    actor_area_radius 0
+    avoid_actor_area 5100 /* Near Positioner */
+  }
+  create_object PH_NEUTRAL_OFF /* Far Positioner */
+  {
+    set_place_for_every_player
+    set_gaia_object_only
+    number_of_objects 5
+    min_distance_to_players 2
+    max_distance_to_players 2
+    temp_min_distance_group_placement 1
+    find_closest
+    actor_area 5103
+    actor_area_radius 1
+  }
+  create_object PH_NEUTRAL_OFF /* Blocking Seventh Villager */
+  {
+    set_place_for_every_player
+    set_gaia_object_only
+    min_distance_to_players 2
+    max_distance_to_players 2
+    find_closest
+    actor_area 5104
+    actor_area_radius 0
+    avoid_actor_area 5103 /* Far Positioner */
+  }
+
+
+  /* this is the sheep under the TC */
+  create_object PH_NEUTRAL_OFF
+  {
+    set_place_for_every_player
+    second_object HERDABLE_A
+    set_gaia_object_only
+    min_distance_to_players 1
+    max_distance_to_players 1
+    actor_area_radius 1
+    avoid_actor_area 5100 /* Herdable Positioner */
+    find_closest
+    actor_area 20
+  }
+
+  /* the other 3 starting sheep */
+  create_object HERDABLE_A
+  {
+    set_place_for_every_player
+    number_of_objects 3
+    set_loose_grouping
+    group_placement_radius 2
+    min_distance_to_players 5
+    max_distance_to_players 6
+    set_circular_placement
+    actor_area 1113
+    actor_area_radius 3
+  }
+
+
+  /* this code is used to place 6 villagers under the TC in exactly optimal positions around the sheep */
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+  create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+    actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+endif
+
+create_object SCOUT
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  min_distance_to_players           6
+  max_distance_to_players           8
+  min_distance_group_placement      1
+  find_closest_to_map_center
+}
+
+
+create_object TRANSPORT_SHIP
+{
+  set_place_for_every_player
+  terrain_to_place_on BASE_TERRAIN
+  number_of_objects                 1
+  max_distance_to_other_zones       1
+  min_distance_to_players           16
+  max_distance_to_players           26
+  find_closest_to_map_edge
+  ignore_terrain_restrictions
+  avoid_actor_area 7011
+  avoid_actor_area 3030
+  actor_area 1001
+  actor_area_radius 14
+}
+
+if 9_VILL_START
+
+create_object FISHING_SHIP
+{
+  set_place_for_every_player
+  terrain_to_place_on BASE_TERRAIN
+  number_of_objects                 1
+  max_distance_to_other_zones       1
+  max_distance_to_players           26
+  find_closest_to_map_edge
+  ignore_terrain_restrictions
+  avoid_actor_area 7011
+  avoid_actor_area 3030
+  avoid_actor_area 1001
+}
+endif
+
+
+/* this straggler will have 3 villagers near it */
+create_object SNOW_PINE_TREE
+{
+	set_place_for_every_player
+	set_gaia_object_only
+	find_closest
+	actor_area 11 
+	actor_area_radius 1 
+	min_distance_to_players 5
+  max_distance_to_players 6
+	avoid_actor_area 1113
+}
+if 3_VILL_START
+
+/* starting hut */
+create_object HUT_VARS
+{
+	set_place_for_every_player
+	find_closest
+	max_distance_to_other_zones 4
+	avoid_forest_zone 2
+	min_distance_to_players 8
+	avoid_actor_area 1113
+	min_distance_group_placement 2
+}
+
+elseif 9_VILL_START
+/* 3 villagers */
+create_object VILLAGER
+{
+	number_of_objects 3
+	set_place_for_every_player
+	actor_area_to_place_in 11 /* Straggler */
+	place_on_forest_zone
+}
+
+/* 2 starting houses */
+create_object HOUSE
+{
+	set_place_for_every_player
+	number_of_objects 2
+	find_closest
+	max_distance_to_other_zones 4
+	avoid_forest_zone 2
+	min_distance_to_players 8
+	avoid_actor_area 1113
+	min_distance_group_placement 3
+}
+endif
+
+create_object FORAGE 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 rnd(5,7)
+  min_distance_to_players           10
+  max_distance_to_players           14
+  min_distance_group_placement      3
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  group_placement_radius            2
+  actor_area                        9995
+  actor_area_radius                 5
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+/* Large gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 7
+  min_distance_to_players           12
+  max_distance_to_players           15
+  min_distance_group_placement      4
+  max_distance_to_other_zones       5
+  avoid_forest_zone                 4
+  avoid_actor_area                  9995
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest_to_map_edge
+  actor_area                        9999
+  actor_area_radius                 9
+}
+
+create_object STONE
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 5
+  min_distance_to_players           11
+  max_distance_to_players           18
+  min_distance_group_placement      3
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  avoid_actor_area                  9999
+  avoid_actor_area                  9995
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  actor_area                        9998
+  actor_area_radius                 10
+}
+/* Small gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 4
+  min_distance_to_players           13
+  max_distance_to_players           22
+  min_distance_group_placement      4
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  avoid_actor_area                  9999
+  avoid_actor_area                  9998
+  avoid_actor_area                  9995
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  actor_area                        9997
+  actor_area_radius                 9
+}
+
+create_object STONE
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 3
+  min_distance_to_players           13
+  max_distance_to_players           22
+  min_distance_group_placement      3
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  avoid_actor_area                  9999
+  avoid_actor_area                  9998
+  avoid_actor_area                  9997
+  avoid_actor_area                  9995
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  actor_area                        9996
+  actor_area_radius                 6
+}
+
+create_object HERDABLE
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+    number_of_objects                 2
+  if 3_VILL_START
+    number_of_groups                  2
+    temp_min_distance_group_placement 7
+  elseif 9_VILL_START
+    number_of_groups                  1
+  endif
+  min_distance_to_players           14
+  max_distance_to_players           22
+  min_distance_group_placement      3
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object BOAR 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           13
+  max_distance_to_players           21
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 7
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object DEER 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 rnd(3,4)
+  min_distance_to_players           14
+  max_distance_to_players           20
+  min_distance_group_placement      2
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object SNOW_PINE_TREE 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           4
+  max_distance_to_players           5
+  min_distance_group_placement      3
+  set_gaia_object_only
+}
+create_object SNOW_PINE_TREE 
+{
+  set_place_for_every_player
+  terrain_to_place_on               PL_TERRAIN
+  number_of_objects                 1
+  number_of_groups                  3
+  min_distance_to_players           6
+  max_distance_to_players           8
+  temp_min_distance_group_placement 3
+  set_gaia_object_only
+}
+
+
+/* ***** Water Res ***** */
+/* create_object FLAG_A
+{
+  set_place_for_every_player
+  /* set_gaia_object_only */
+    terrain_to_place_on               WATER
+    number_of_objects                 22
+    temp_min_distance_group_placement 6
+    find_closest
+    ignore_terrain_restrictions
+    actor_area_to_place_in 7011
+
+    actor_area 6465
+    actor_area_radius 4
+} */
+create_object SHORE_FISH
+{
+  set_place_for_every_player
+  set_gaia_object_only
+    terrain_to_place_on               WATER
+    number_of_objects                 18
+    temp_min_distance_group_placement 6
+    min_distance_group_placement 1
+    find_closest
+    ignore_terrain_restrictions
+    actor_area_to_place_in 7011
+
+    actor_area 6465
+    actor_area_radius 4
+} 
+create_object SHORE_FISH 
+{
+    terrain_to_place_on               WATER
+    number_of_objects                 200000
+    temp_min_distance_group_placement 4
+    set_gaia_object_only
+    /* find_closest_to_map_center */
+    ignore_terrain_restrictions
+    set_gaia_object_only
+    set_circular_placement
+
+    avoid_actor_area 6465
+}
+/* Tuna everywhere */
+create_object TUNA 
+{
+  terrain_to_place_on               WATER
+  number_of_objects                 200000
+  temp_min_distance_group_placement 8
+  max_distance_to_other_zones       3
+  set_gaia_object_only
+}
+/* some oysters */
+create_object OYSTERS 
+{
+  terrain_to_place_on               WATER
+  number_of_groups                  4056
+  number_of_objects                 3
+  group_variance                    1
+  group_placement_radius            2
+  temp_min_distance_group_placement 13
+  max_distance_to_other_zones       4
+  min_distance_to_map_edge          1
+  set_gaia_object_only
+}
+
+
+
+
+
+
+/*  RANDOM MAP RESOURCES   */
+create_object FORAGE 
+{
+  place_on_specific_land_id 100
+
+  terrain_to_place_on               NEUTRAL_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  1
+  temp_min_distance_group_placement 12
+  min_distance_group_placement      2
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       2
+  min_distance_to_map_edge          1
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  actor_area                        2001
+  actor_area_radius                 3
+}
+
+create_object GOLD 
+{
+  place_on_specific_land_id 100
+  
+  terrain_to_place_on               NEUTRAL_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  2
+  temp_min_distance_group_placement 12
+  min_distance_group_placement      2
+  avoid_forest_zone                 1
+  max_distance_to_other_zones       2
+  min_distance_to_map_edge          1
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  actor_area                        2002
+  actor_area_radius                 5
+}
+
+create_object STONE 
+{
+  place_on_specific_land_id 100
+  
+  terrain_to_place_on               NEUTRAL_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  1
+  temp_min_distance_group_placement 12
+  min_distance_group_placement      2
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       2
+  min_distance_to_map_edge          1
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  avoid_actor_area                  2002
+  actor_area                        2003
+  actor_area_radius                 3
+}
+
+create_object DEER 
+{
+  place_on_specific_land_id 100
+  
+  terrain_to_place_on               NEUTRAL_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  2
+  temp_min_distance_group_placement 12
+  avoid_forest_zone                 1
+  max_distance_to_other_zones       2
+  min_distance_to_map_edge          1
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  avoid_actor_area                  2003
+  actor_area                        2004
+  actor_area_radius                 3
+}
+
+create_object BOAR 
+{
+  place_on_specific_land_id 100
+  
+  terrain_to_place_on               NEUTRAL_TERRAIN
+  number_of_objects                 1
+  number_of_groups                  1
+  temp_min_distance_group_placement 12
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       1
+  min_distance_to_map_edge          1
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  avoid_actor_area                  2003
+  avoid_actor_area                  2004
+}
+
+create_object RELIC 
+{
+  place_on_specific_land_id 100
+  
+  terrain_to_place_on               NEUTRAL_TERRAIN
+  number_of_objects                 1
+  number_of_groups                  1
+  temp_min_distance_group_placement 12
+  avoid_forest_zone                 1
+  max_distance_to_other_zones       6
+  min_distance_to_map_edge          1
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  avoid_actor_area                  2003
+  avoid_actor_area                  2004
+}
+
+create_object RELIC 
+{
+  set_place_for_every_player  
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       6
+  min_distance_to_players           13
+  set_tight_grouping
+  set_gaia_object_only
+}
+
+create_object SNOW_PINE_TREE 
+{ 
+  min_distance_to_players           12
+  number_of_objects                 rnd(60,80)
+  set_gaia_object_only
+}
+
+
+
+/* ************* COSMETICS ************* */
+
+
+create_object BIRD_A {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+create_object BIRD_B {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+
+
+create_object  MAKE_UNDERBRUSH_SNOW_TERRAIN { number_of_groups 33 /* second_object FLAG_B */ number_of_objects 6 group_variance 2 set_tight_grouping terrain_to_place_on NEUTRAL_TERRAIN other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
+create_object  MAKE_UNDERBRUSH_SNOW_TERRAIN { set_place_for_every_player number_of_groups 22 /* second_object FLAG_B */ number_of_objects 6 group_variance 2 set_tight_grouping terrain_to_place_on PL_TERRAIN other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
+create_object  MAKE_SNOW_TERRAIN { set_place_for_every_player number_of_groups 22 second_object RELIC number_of_objects 7 group_variance 2 set_tight_grouping terrain_to_place_on PL_TERRAIN other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }

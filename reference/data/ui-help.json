@@ -9,9 +9,13 @@
     { "id": "tabBar.breakdown", "text": "Shows your script as editable command blocks instead of raw code — good for building without memorizing syntax. Arrives in Phase 3." },
     { "id": "tabBar.code", "text": "The full code editor, with RMS syntax highlighting and hover docs." },
     { "id": "tabBar.advancedTools", "text": "A pane for built-in and (later) community-made tools that operate on your script. Arrives in Phase 5." },
-    { "id": "statusBar.total", "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Arrives in Phase 2.5 — currently a placeholder." },
-    { "id": "statusBar.player", "text": "Resources placed specifically in player-assigned territory. Arrives in Phase 2.5 — currently a placeholder." },
-    { "id": "statusBar.neutral", "text": "Resources placed outside player territory (neutral/shared land). Arrives in Phase 2.5 — currently a placeholder." },
+    { "id": "statusBar.total", "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Shown as a min-max range when if/start_random blocks make the exact count generation-dependent." },
+    { "id": "statusBar.player", "text": "Resources a single player gets from set_place_for_every_player placements — per player, not multiplied by player count (see Total for the map-wide sum across every player). v1 doesn't yet correlate placement with a specific player's land." },
+    { "id": "statusBar.neutral", "text": "Resources placed without set_place_for_every_player — everything not counted as Player. v1 doesn't yet check whether these sit inside or outside player territory." },
+    { "id": "statusBar.problems", "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. Click a squiggle in the editor to see the full message." },
+    { "id": "statusBar.generationSettings", "text": "Opens Generation Settings — map size and player count, used to compute the resource totals shown here." },
+    { "id": "generationSettings.playerCount", "text": "How many players this map is generated for. Scales resources placed with set_place_for_every_player in the totals above." },
+    { "id": "generationSettings.mapSize", "text": "The map size this script targets. Not yet used by the resource totals — will feed the approximate preview and consistency checker in a later phase." },
     { "id": "preferences.helpMode", "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely." }
   ]
 }

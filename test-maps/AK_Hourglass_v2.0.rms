@@ -1,0 +1,1843 @@
+/* Created by Captain Kniples the Fourth */
+/* For funsies */
+/* Created 2024 05 05 */
+/* This is a 4v4 map only */
+
+
+
+/* To DO */
+/*  - Check that 3v3, 2v2, 1v1 are not bugged */
+
+
+
+#const ONGRID_PLACEHOLDER 1613
+
+
+<PLAYER_SETUP>
+direct_placement
+behavior_version 1
+
+
+
+
+
+
+<LAND_GENERATION>
+
+base_terrain WATER
+
+
+  
+
+
+/* ***** LAND GEN ORDER MATTERS ***** */
+if 2_PLAYER_GAME					
+	#define AT_LEAST_2	
+
+
+    /* Team 1 */
+    create_land
+    {
+        terrain_type                    ICE 
+        base_size                       3
+        number_of_tiles                 0
+        land_position                   rnd(21,29) rnd(46,54) 
+        assign_to_player                1
+    }
+
+    /* Team 2 */
+    create_land
+    {
+        terrain_type                    SNOW 
+        base_size                       3
+        number_of_tiles                 0
+        land_position                   rnd(71,79)  rnd(46,54)
+        assign_to_player                2
+    }
+
+
+elseif 3_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3				
+	if TEAM1_SIZE2 #define 2V1 endif				
+elseif 4_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4				
+	if TEAM1_SIZE2 if TEAM2_SIZE2 
+  
+    #define 2V2 
+    
+    
+
+
+    if TEAM_POSITIONS     
+    
+
+      /* Team 1 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   21 33
+          assign_to                       AT_COLOR 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   21 67
+          assign_to                       AT_COLOR 3 0 0
+      }
+      /* Team 2 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   79 33
+          assign_to                       AT_COLOR 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   79 67
+          assign_to                       AT_COLOR 4 0 0
+      }
+
+
+    else 
+
+  
+      /* Team 1 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   21 33
+          assign_to                       AT_TEAM 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   21 67
+          assign_to                       AT_TEAM 1 0 0
+      }
+      /* Team 2 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   79 33
+          assign_to                       AT_TEAM 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   79 67
+          assign_to                       AT_TEAM 2 0 0
+      }
+
+    endif
+    
+  
+  
+  
+  
+  
+  endif endif			
+
+elseif 5_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5				
+	if TEAM1_SIZE3 if TEAM2_SIZE2 #define 3V2 endif elseif TEAM2_SIZE3 if TEAM1_SIZE2 #define 3V2 endif endif				
+elseif 6_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6				
+	if TEAM1_SIZE3 if TEAM2_SIZE3 
+  #define 3V3 
+  
+
+    if TEAM_POSITIONS     
+    
+
+      /* Team 1 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(22,24)
+          assign_to                       AT_COLOR 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(26,28) rnd(49,51)
+          assign_to                       AT_COLOR 3 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(76,78)
+          assign_to                       AT_COLOR 5 0 0
+      }
+      /* Team 2 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(22,24)
+          assign_to                       AT_COLOR 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(72,74) rnd(49,51)
+          assign_to                       AT_COLOR 4 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(76,78)
+          assign_to                       AT_COLOR 6 0 0
+      }
+
+
+    else 
+
+  
+      /* Team 1 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(22,24)
+          assign_to                       AT_TEAM 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(26,28) rnd(49,51)
+          assign_to                       AT_TEAM 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(76,78)
+          assign_to                       AT_TEAM 1 0 0
+      }
+      /* Team 2 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(22,24)
+          assign_to                       AT_TEAM 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(72,74) rnd(49,51)
+          assign_to                       AT_TEAM 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(76,78)
+          assign_to                       AT_TEAM 2 0 0
+      }
+
+    endif
+  
+  endif endif				
+elseif 7_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6 #define AT_LEAST_7				
+	if TEAM1_SIZE4 if TEAM2_SIZE3 #define 4V3 endif elseif TEAM2_SIZE4 if TEAM1_SIZE3 #define 4V3 endif endif				
+elseif 8_PLAYER_GAME					
+	#define AT_LEAST_2 #define AT_LEAST_3 #define AT_LEAST_4 #define AT_LEAST_5 #define AT_LEAST_6 #define AT_LEAST_7 #define AT_LEAST_8				
+	if TEAM1_SIZE4 if TEAM2_SIZE4 
+  #define 4V4 
+  
+    if TEAM_POSITIONS     
+    
+
+      /* Team 1 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(22,24)
+          assign_to                       AT_COLOR 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(27,29) rnd(40,42) 
+          assign_to                       AT_COLOR 3 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(27,29) rnd(58,60) 
+          assign_to                       AT_COLOR 5 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(76,78)
+          assign_to                       AT_COLOR 7 0 0
+      }
+      /* Team 2 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(22,24)
+          assign_to                       AT_COLOR 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(71,73) rnd(40,42)
+          assign_to                       AT_COLOR 4 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(71,73) rnd(58,60)
+          assign_to                       AT_COLOR 6 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(76,78)
+          assign_to                       AT_COLOR 8 0 0
+      }
+
+
+    else 
+
+  
+      /* Team 1 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(22,24)
+          assign_to                       AT_TEAM 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(27,29) rnd(40,42) 
+          assign_to                       AT_TEAM 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(27,29) rnd(58,60) 
+          assign_to                       AT_TEAM 1 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(18,20) rnd(76,78)
+          assign_to                       AT_TEAM 1 0 0
+      }
+      /* Team 2 */
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(22,24)
+          assign_to                       AT_TEAM 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(71,73) rnd(40,42)
+          assign_to                       AT_TEAM 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(71,73) rnd(58,60)
+          assign_to                       AT_TEAM 2 0 0
+      }
+      create_land
+      {
+          terrain_type                    SNOW 
+          base_size                       3
+          number_of_tiles                 0
+          land_position                   rnd(80,82) rnd(76,78)
+          assign_to                       AT_TEAM 2 0 0
+      }
+
+    
+    endif
+  endif endif				
+endif					
+
+
+
+
+
+
+
+/* Top bay */ 
+/* Generated with MadLands for ForeDaut.xlsm: I: 1.51 R: 30 XO: 0 YO: -41 OA: 180 XS: 0.7 YS: 1.05 A: 0 F: 0 SF: 0 */
+create_land { base_size 2 land_position 30 92 number_of_tiles 0 terrain_type ICE  }
+
+create_land { base_size 2 land_position 29 91 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 90 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 89 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 89 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 88 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 87 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 86 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 85 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 84 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 84 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 83 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 82 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 81 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 80 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 80 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 79 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 78 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 77 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 77 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 76 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 75 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 74 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 74 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 33 73 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 33 72 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 33 72 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 34 71 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 34 70 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 34 70 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 35 69 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 35 69 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 36 68 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 36 67 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 36 67 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 37 66 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 37 66 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 38 65 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 38 65 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 39 64 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 39 64 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 40 64 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 40 63 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 41 63 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 41 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 42 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 42 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 43 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 43 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 44 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 44 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 45 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 45 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 46 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 46 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 47 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 47 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 48 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 49 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 49 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 50 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 50 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 51 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 51 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 52 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 52 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 53 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 54 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 54 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 55 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 55 60 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 56 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 56 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 57 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 57 61 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 58 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 58 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 59 62 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 59 63 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 60 63 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 60 64 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 61 64 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 61 64 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 62 65 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 62 65 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 63 66 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 63 66 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 63 67 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 64 67 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 64 68 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 65 68 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 65 69 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 65 70 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 66 70 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 66 71 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 67 72 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 67 72 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 67 73 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 74 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 74 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 75 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 76 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 76 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 77 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 78 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 79 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 79 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 80 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 81 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 82 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 83 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 83 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 84 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 85 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 86 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 87 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 88 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 88 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 89 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 90 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 91 number_of_tiles 0 terrain_type ICE  }
+
+create_land { base_size 2 land_position 70 92 number_of_tiles 0 terrain_type ICE  }
+
+
+
+
+/* Bottom bay */ 
+/* Generated with MadLands for ForeDaut.xlsm: I: 1.51 R: 30 XO: 0 YO: -41 OA: 0 XS: 0.7 YS: 1.05 A: 0 F: 0 SF: 0 */
+create_land { base_size 2 land_position 70 8 number_of_tiles 0 terrain_type ICE  }
+
+create_land { base_size 2 land_position 71 9 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 10 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 11 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 11 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 12 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 13 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 14 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 15 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 71 16 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 16 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 17 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 18 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 19 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 20 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 70 20 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 21 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 22 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 23 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 69 23 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 24 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 25 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 26 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 68 26 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 67 27 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 67 28 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 67 28 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 66 29 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 66 30 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 66 30 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 65 31 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 65 31 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 64 32 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 64 33 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 64 33 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 63 34 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 63 34 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 62 35 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 62 35 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 61 36 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 61 36 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 60 36 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 60 37 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 59 37 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 59 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 58 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 58 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 57 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 57 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 56 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 56 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 55 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 55 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 54 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 54 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 53 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 53 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 52 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 51 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 51 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 50 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 50 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 49 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 49 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 48 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 48 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 47 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 46 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 46 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 45 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 45 40 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 44 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 44 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 43 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 43 39 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 42 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 42 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 41 38 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 41 37 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 40 37 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 40 36 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 39 36 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 39 36 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 38 35 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 38 35 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 37 34 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 37 34 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 37 33 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 36 33 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 36 32 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 35 32 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 35 31 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 35 30 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 34 30 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 34 29 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 33 28 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 33 28 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 33 27 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 26 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 26 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 25 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 32 24 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 24 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 23 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 22 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 31 21 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 21 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 20 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 19 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 18 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 17 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 30 17 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 16 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 15 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 14 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 13 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 12 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 12 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 11 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 10 number_of_tiles 0 terrain_type ICE  }
+create_land { base_size 2 land_position 29 9 number_of_tiles 0 terrain_type ICE  }
+
+create_land { base_size 2 land_position 30 8 number_of_tiles 0 terrain_type ICE  }
+
+
+
+
+/* Fill in the land */
+create_land { base_size 1 land_position 50 50 land_percent 100 top_border 8 bottom_border 8 left_border 7 right_border 7 terrain_type SNOW border_fuzziness 15  } 
+
+
+
+
+/* Small Islands */
+create_land { base_size 5 land_position 50 9  if TINY_MAP number_of_tiles 205 elseif MEDIUM_MAP number_of_tiles 250 elseif LARGE_MAP number_of_tiles 295 else number_of_tiles 330 endif terrain_type DIRT border_fuzziness 15 clumping_factor 25 land_id 1 } 
+create_land { base_size 5 land_position 50 91 if TINY_MAP number_of_tiles 205 elseif MEDIUM_MAP number_of_tiles 250 elseif LARGE_MAP number_of_tiles 295 else number_of_tiles 330 endif terrain_type DIRT border_fuzziness 15 clumping_factor 25 land_id 2 } 
+
+
+
+/* SHALLOW connections */ 
+/* Top */
+create_land { base_size 2 land_position 38 9 land_percent 100 top_border 7 bottom_border 88  left_border 29 right_border 29 terrain_type SHALLOW border_fuzziness 15 clumping_factor 20 } 
+create_land { base_size 2 land_position 62 9 land_percent 100 top_border 7 bottom_border 88  left_border 29 right_border 29 terrain_type SHALLOW border_fuzziness 15 clumping_factor 20  } 
+
+/* Bottom */ 
+create_land { base_size 2 land_position 38 91 land_percent 100 top_border 88 bottom_border 7  left_border 29 right_border 29 terrain_type SHALLOW border_fuzziness 15 clumping_factor 20 } 
+create_land { base_size 2 land_position 62 91 land_percent 100 top_border 88 bottom_border 7  left_border 29 right_border 29 terrain_type SHALLOW border_fuzziness 15 clumping_factor 20  } 
+
+
+
+
+
+
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 2
+{
+  base_terrain          SNOW 
+  number_of_tiles       365      
+  number_of_clumps      3   
+  spacing               0         
+  enable_balanced_elevation   
+  set_scale_by_groups  
+}
+
+
+create_elevation 2
+{
+  base_terrain          SNOW 
+  number_of_tiles       870      
+  number_of_clumps      27         
+  spacing               0         
+  enable_balanced_elevation    
+  set_scale_by_groups        
+}
+
+
+
+
+/* 
+
+<CLIFF_GENERATION>
+if TINY_MAP
+  min_number_of_cliffs  12
+  max_number_of_cliffs  14     /* These do not scale by map size. Instead you have to do an if structure, included as an example */
+elseif SMALL_MAP
+  min_number_of_cliffs  16
+  max_number_of_cliffs  18     /* These do not scale by map size. Instead you have to do an if structure, included as an example */
+else 
+  min_number_of_cliffs  21
+  max_number_of_cliffs  23 
+endif
+min_length_of_cliff     5
+max_length_of_cliff     7
+cliff_curliness         20       /* higher values are meant to make the cliffs more curly */
+min_distance_cliffs     6      minimum distance between two different cliffs
+
+ */
+
+
+
+
+
+
+
+
+
+<TERRAIN_GENERATION>
+
+/* Make ice around outside of land */
+create_terrain GRASS2 
+{
+  base_terrain                    SNOW 
+  land_percent                    100
+  number_of_clumps                10
+  spacing_to_other_terrain_types  2
+}
+create_terrain ICE 
+{
+  base_terrain                    SNOW 
+  land_percent                    100
+  number_of_clumps                100
+}
+create_terrain ICE 
+{
+  base_terrain                    SNOW 
+  land_percent                    100
+  number_of_clumps                100
+}
+create_terrain  SNOW
+{
+  base_terrain                    GRASS2 
+  land_percent                    100
+  number_of_clumps                100
+}
+create_terrain  SNOW
+{
+  base_terrain                    ICE 
+  land_percent                    100
+  number_of_clumps                100
+  spacing_to_other_terrain_types  4
+}
+create_terrain  SNOW
+{
+  base_terrain                    ICE 
+  land_percent                    100
+  number_of_clumps                100
+  spacing_to_other_terrain_types  4
+}
+create_terrain  SNOW
+{
+  base_terrain                    ICE 
+  land_percent                    100
+  number_of_clumps                100
+  spacing_to_other_terrain_types  4
+}
+create_terrain  SNOW
+{
+  base_terrain                    ICE 
+  number_of_tiles                 130
+  number_of_clumps                100
+  spacing_to_other_terrain_types  3
+}
+
+
+
+
+
+/* Make the shallows thin enough (also creates the branching of the shallows) */
+create_terrain MED_WATER 
+{
+  base_terrain                    SHALLOW 
+  land_percent                    100
+  number_of_clumps                10
+  spacing_to_other_terrain_types  5
+}
+create_terrain MED_WATER 
+{
+  base_terrain                    SHALLOW 
+  land_percent                    100
+  number_of_clumps                10
+  spacing_to_other_terrain_types  5
+}
+create_terrain MED_WATER 
+{
+  base_terrain                    SHALLOW 
+  land_percent                    100
+  number_of_clumps                10
+  spacing_to_other_terrain_types  5
+}
+
+/* Turn med water to normal water */
+create_terrain WATER 
+{
+  base_terrain                    MED_WATER 
+  land_percent                    100
+  number_of_clumps                10
+}
+create_terrain WATER 
+{
+  base_terrain                    MED_WATER 
+  land_percent                    100
+  number_of_clumps                10
+}
+create_terrain WATER 
+{
+  base_terrain                    MED_WATER 
+  land_percent                    100
+  number_of_clumps                10
+}
+
+
+
+/*  Make the shallows less uniform/static */
+create_terrain MED_WATER 
+{
+  base_terrain                    SHALLOW
+  land_percent                    1 
+  spacing_to_other_terrain_types  4
+  number_of_clumps                30
+}
+
+
+/* Make forests */
+create_terrain SNOW_FOREST
+{
+  base_terrain                    SNOW 
+  land_percent                    6
+  number_of_clumps                8
+  spacing_to_other_terrain_types  3
+  set_avoid_player_start_areas    14
+  set_scale_by_groups
+}
+create_terrain SNOW_FOREST
+{
+  base_terrain                    SNOW 
+  number_of_tiles                 20
+  number_of_clumps                2
+  set_avoid_player_start_areas    34
+  set_scale_by_groups
+} 
+create_terrain SNOW_FOREST
+{
+  base_terrain                    SNOW 
+  number_of_tiles                 21
+  number_of_clumps                7
+  set_avoid_player_start_areas    15
+  set_scale_by_groups
+} 
+create_terrain SNOW_FOREST
+{
+  base_terrain                    SNOW 
+  number_of_tiles                 16
+  number_of_clumps                8
+  set_avoid_player_start_areas    13
+  set_scale_by_groups
+} 
+create_terrain SNOW_FOREST
+{
+  base_terrain                    SNOW 
+  number_of_tiles                 12
+  number_of_clumps                12
+  set_avoid_player_start_areas    11
+  set_scale_by_groups
+}
+/* Layers to make water look nice */
+create_terrain MED_WATER 
+{
+  base_terrain                    WATER 
+  land_percent                    100
+  number_of_clumps                10000
+  spacing_to_other_terrain_types  5
+  terrain_mask 1
+} 
+
+
+
+
+/* Make unwallable terrain on the small islands */
+create_terrain PALM_DESERT 
+{
+  base_terrain                    DIRT 
+  land_percent                    100
+  number_of_clumps                10000
+  spacing_to_other_terrain_types  1
+}  
+create_terrain ICE 
+{
+  base_terrain                    DIRT 
+  beach_terrain                   ICE 
+  land_percent                    100
+  number_of_clumps                10000
+}  
+create_terrain DIRT_SNOW 
+{
+  base_terrain                    PALM_DESERT 
+  land_percent                    100
+  number_of_clumps                10000
+}   
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<OBJECTS_GENERATION>
+
+
+/* Player resources */ 
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players     0
+}
+
+
+create_object VILLAGER
+{
+  set_place_for_every_player
+  min_distance_to_players           5
+  max_distance_to_players           6
+}
+create_object SCOUT
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_players           9
+}
+
+
+/* Large gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 7
+  min_distance_to_players           11
+  max_distance_to_players           14
+  min_distance_group_placement      4
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 3
+  actor_area                        9999
+  actor_area_radius                 8
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+}
+/* Small gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 4
+  min_distance_to_players           16
+  max_distance_to_players           19
+  min_distance_group_placement      4
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  avoid_actor_area                  9999
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+}
+
+create_object STONE
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 5
+  min_distance_to_players           12
+  max_distance_to_players           14
+  min_distance_group_placement      6
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+}
+
+create_object SHEEP 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 3
+  min_distance_to_players           7
+  max_distance_to_players           8
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  actor_area                        6103
+  actor_area_radius                 1
+}
+create_object SHEEP 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW 
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  find_closest
+  actor_area_to_place_in            6103
+}
+create_object SHEEP 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 2
+  number_of_groups                  2
+  min_distance_to_players           14
+  max_distance_to_players           22
+  min_distance_group_placement      3
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object BOAR 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           16
+  max_distance_to_players           21
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 7
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+/* create_object BOAR 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 1
+  min_distance_to_players           16
+  max_distance_to_players           21
+  min_distance_group_placement      2
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+} */
+create_object DEER 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 rnd(3,4)
+  min_distance_to_players           14
+  max_distance_to_players           20
+  min_distance_group_placement      2
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object FORAGE 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 rnd(5,7)
+  min_distance_to_players           10
+  max_distance_to_players           14
+  min_distance_group_placement      3
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  group_placement_radius            2
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object WOLF 
+{
+  if 8_PLAYER_GAME
+    number_of_groups                 8
+  elseif 6_PLAYER_GAME
+    number_of_groups                 6
+  else
+    number_of_groups                 4
+  endif
+
+  if LARGE_MAP
+    temp_min_distance_group_placement      9
+  elseif HUGE_MAP
+    temp_min_distance_group_placement      13
+  else
+    temp_min_distance_group_placement      7
+  endif
+
+  
+  if TINY_MAP 
+    min_distance_to_map_edge          45
+  elseif MEDIUM_MAP 
+    min_distance_to_map_edge          67
+  elseif LARGE_MAP 
+    min_distance_to_map_edge          87
+  else 
+    min_distance_to_map_edge          89
+  endif
+
+  set_gaia_object_only
+}
+create_object PALMTREE 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           4
+  max_distance_to_players           5
+  min_distance_group_placement      3
+  set_gaia_object_only
+}
+create_object PALMTREE 
+{
+  set_place_for_every_player
+  terrain_to_place_on               SNOW
+  number_of_objects                 1
+  number_of_groups                  3
+  min_distance_to_players           6
+  max_distance_to_players           8
+  temp_min_distance_group_placement 3
+  set_gaia_object_only
+}
+
+
+if TINY_MAP
+  /* To place things in the middle of the map */
+  create_actor_area 90 60 1234 15 
+  create_actor_area 30 60 1235 15  
+  /* Quarters of the map */
+  create_actor_area 30 30 2000 30 
+  create_actor_area 90 30 2001 30 
+  create_actor_area 90 90 2002 30 
+  create_actor_area 30 90 2003 30 
+  /* Center of the map */
+  create_actor_area 60 60 2100 16 
+elseif MEDIUM_MAP 
+  /* To place things in the middle of the map */
+  create_actor_area 126 84 1234 33 
+  create_actor_area 42  84 1235 33  
+  /* Place for shared team res gold */  
+  create_actor_area 25   84  3000 26  
+  create_actor_area 133  84  3001 26  
+  /* Quarters of the map */
+  create_actor_area 42  42  2000 42 
+  create_actor_area 126 42  2001 42 
+  create_actor_area 126 126 2002 42 
+  create_actor_area 42  126 2003 42 
+  /* Center of the map */
+  create_actor_area 84 84 2100 28 
+elseif LARGE_MAP 
+  /* To place things in the middle of the map */
+  create_actor_area 150 100 1234 46 
+  create_actor_area 50  100 1235 46  
+  /* Place for shared team res gold */  
+  create_actor_area 50  25  3000 40 
+  create_actor_area 150 25  3001 40 
+  create_actor_area 150 175 3002 40 
+  create_actor_area 50  175 3003 40 
+  /* Quarters of the map */
+  create_actor_area 50  50  2000 50 
+  create_actor_area 150 50  2001 50 
+  create_actor_area 150 150 2002 50 
+  create_actor_area 50  150 2003 50 
+  /* Center of the map */
+  create_actor_area 100 100 2100 30 
+elseif HUGE_MAP  
+  /* To place things in the middle of the map */
+  create_actor_area 165 110 1234 51
+  create_actor_area 55  110 1235 51
+  /* Quarters of the map */
+  create_actor_area 55  55  2000 55
+  create_actor_area 165 55  2001 55
+  create_actor_area 165 165 2002 55
+  create_actor_area 55  165 2003 55
+  /* Center of the map */
+  create_actor_area 110 110 2100 32
+endif 
+
+/* For testing actor areas */
+/* create_object FLAG_A 
+{
+  terrain_to_place_on               SNOW
+  number_of_objects                 1
+  number_of_groups                 5000000
+  set_gaia_object_only
+  min_distance_to_players           19
+  set_circular_placement
+    avoid_actor_area                  2001
+    avoid_actor_area                  2002
+    avoid_actor_area                  3000
+    avoid_actor_area                  3003
+    avoid_actor_area                  2100
+} */
+
+/* TEAM SHARED RES */ 
+if 2_PLAYER_GAME
+else
+  create_object GOLD 
+  {
+    terrain_to_place_on               SNOW
+    number_of_objects                 6
+    min_distance_to_players           22
+    min_distance_group_placement      4 
+    max_distance_to_other_zones       5
+    avoid_forest_zone                 3
+    set_circular_placement
+    set_tight_grouping
+    set_gaia_object_only
+    if LARGE_MAP
+      avoid_actor_area                  2001
+      avoid_actor_area                  2002
+      avoid_actor_area                  3000
+      avoid_actor_area                  3003
+      avoid_actor_area                  2100
+    elseif HUGE_MAP
+      avoid_actor_area                  2001
+      avoid_actor_area                  2002
+      avoid_actor_area                  2003
+      avoid_actor_area                  2100
+    endif
+  }
+  if HUGE_MAP
+    create_object GOLD 
+    {
+      terrain_to_place_on               SNOW
+      number_of_objects                 5
+      min_distance_to_players           17
+      min_distance_group_placement      4
+      max_distance_to_other_zones       5
+      avoid_forest_zone                 3
+      set_circular_placement
+      set_tight_grouping
+      set_gaia_object_only
+      avoid_actor_area                  2000
+      avoid_actor_area                  2002
+      avoid_actor_area                  2003
+      avoid_actor_area                  2100
+    }
+  endif
+  create_object GOLD 
+  {
+    terrain_to_place_on               SNOW
+    number_of_objects                 6
+    /* number_of_groups                 5000000 */
+    if LARGE_MAP
+      min_distance_to_players           21
+    elseif HUGE_MAP
+      min_distance_to_players           17
+    else
+      min_distance_to_players           15
+    endif
+    min_distance_group_placement      4
+    max_distance_to_other_zones       5
+    avoid_forest_zone                 3
+    set_circular_placement
+    set_tight_grouping
+    set_gaia_object_only
+    if LARGE_MAP
+      avoid_actor_area                  2000
+      avoid_actor_area                  2003
+      avoid_actor_area                  3001
+      avoid_actor_area                  3002
+      avoid_actor_area                  2100
+    elseif HUGE_MAP
+      avoid_actor_area                  2000
+      avoid_actor_area                  2001
+      avoid_actor_area                  2003
+      avoid_actor_area                  2100
+    endif
+  }
+  if HUGE_MAP
+    create_object GOLD 
+    {
+      terrain_to_place_on               SNOW
+      number_of_objects                 5
+      min_distance_to_players           17
+      min_distance_group_placement      4
+      max_distance_to_other_zones       5
+      avoid_forest_zone                 3
+      set_circular_placement
+      set_tight_grouping
+      set_gaia_object_only
+      avoid_actor_area                  2000
+      avoid_actor_area                  2001
+      avoid_actor_area                  2002
+      avoid_actor_area                  2100
+    }
+  endif
+endif
+
+
+
+
+
+
+/* Map Resources */ 
+/* Mainland Res */
+/* CENTER WILDLIFE */
+create_object DEER 
+{
+    terrain_to_place_on               SNOW
+    number_of_objects                 5
+    if TINY_MAP
+      number_of_groups                  rnd(2,3)
+    else
+      number_of_groups                  rnd(3,5)
+    endif
+
+    min_distance_group_placement      3
+
+    if TINY_MAP
+      temp_min_distance_group_placement 8
+    elseif MEDIUM_MAP
+      temp_min_distance_group_placement 12
+    else
+      temp_min_distance_group_placement 15
+    endif
+
+    max_distance_to_other_zones       3
+    avoid_forest_zone                 1
+    if TINY_MAP 
+        min_distance_to_map_edge          47
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          68
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          80
+    elseif HUGE_MAP
+        min_distance_to_map_edge          90
+    endif
+    set_tight_grouping
+    set_gaia_object_only
+}
+create_object BOAR 
+{
+    terrain_to_place_on               SNOW
+    number_of_objects                 1
+    if HUGE_MAP 
+      number_of_groups                  rnd(4,5)
+    else 
+      number_of_groups                  rnd(3,4)
+    endif
+
+    min_distance_group_placement      2
+
+    if TINY_MAP
+      temp_min_distance_group_placement 6
+    else
+      temp_min_distance_group_placement 8
+    endif
+
+    max_distance_to_other_zones       3
+    avoid_forest_zone                 1
+
+    if TINY_MAP 
+        min_distance_to_map_edge          50
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          69
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          81
+    elseif HUGE_MAP
+        min_distance_to_map_edge          91
+    endif
+
+    set_tight_grouping
+    set_gaia_object_only
+}
+create_object RELIC {
+    number_of_objects                 3
+    if TINY_MAP
+      temp_min_distance_group_placement 8
+    else
+      temp_min_distance_group_placement 10
+    endif
+
+    min_distance_group_placement      3
+    avoid_forest_zone                 2
+    max_distance_to_other_zones       2
+    set_gaia_object_only
+
+    if TINY_MAP 
+        min_distance_to_map_edge          52
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          68
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          77
+    elseif HUGE_MAP
+        min_distance_to_map_edge          81
+    endif
+
+    avoid_actor_area                  1234
+    avoid_actor_area                  1235
+} 
+create_object GOLD 
+{
+    terrain_to_place_on               SNOW
+    number_of_objects                 6
+    
+    if LARGE_MAP
+      number_of_groups                  3
+    elseif HUGE_MAP
+      number_of_groups                  4
+    else 
+      number_of_groups                  2
+    endif
+
+    
+    if TINY_MAP
+      temp_min_distance_group_placement 12
+    elseif MEDIUM_MAP
+      temp_min_distance_group_placement 15
+    elseif LARGE_MAP
+      temp_min_distance_group_placement 17
+    elseif HUGE_MAP
+      temp_min_distance_group_placement 19
+    else 
+      temp_min_distance_group_placement 21
+    endif
+
+    min_distance_group_placement      7
+
+    
+    if TINY_MAP 
+        min_distance_to_map_edge          51
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          69
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          81
+    elseif HUGE_MAP
+        min_distance_to_map_edge          89
+    else 
+        min_distance_to_map_edge          91
+    endif
+    if TINY_MAP
+    elseif MEDIUM_MAP
+    else
+      find_closest_to_map_center
+    endif
+    max_distance_to_other_zones       3
+    avoid_forest_zone                 2
+    set_tight_grouping
+    set_gaia_object_only
+}
+create_object STONE 
+{
+    terrain_to_place_on               SNOW
+    number_of_objects                 5
+    if LARGE_MAP
+      number_of_groups                  2
+    elseif HUGE_MAP
+      number_of_groups                  3
+    else 
+      number_of_groups                  1
+    endif
+    temp_min_distance_group_placement 18
+    min_distance_group_placement      8
+    
+    if TINY_MAP 
+        min_distance_to_map_edge          49
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          69
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          81
+    elseif HUGE_MAP
+        min_distance_to_map_edge          90
+    endif
+    max_distance_to_other_zones       3
+    avoid_forest_zone                 2
+    find_closest_to_map_center
+    set_tight_grouping
+    set_gaia_object_only
+}
+
+
+/* Small Island Res */
+create_object RELIC 
+{
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 1
+  number_of_groups                  2
+  temp_min_distance_group_placement 16
+  min_distance_group_placement      2
+  max_distance_to_other_zones       3
+  set_gaia_object_only
+}
+create_object RELIC 
+{
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 1
+  number_of_groups                  2
+  temp_min_distance_group_placement 16
+  max_distance_to_other_zones       3
+  min_distance_group_placement      2
+  set_gaia_object_only
+}
+create_object GOLD 
+{
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 4
+  if LARGE_MAP
+    number_of_groups                  2
+  elseif HUGE_MAP
+    number_of_groups                  3
+  else 
+    number_of_groups                  1
+  endif
+  place_on_specific_land_id         1
+  min_distance_group_placement      4
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object STONE 
+{
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 5
+  place_on_specific_land_id         1
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object GOLD 
+{
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 4
+  if LARGE_MAP
+    number_of_groups                  2
+  elseif HUGE_MAP
+    number_of_groups                  3
+  else 
+    number_of_groups                  1
+  endif
+  place_on_specific_land_id         2
+  min_distance_group_placement      4
+  set_tight_grouping
+  set_gaia_object_only
+}
+create_object STONE 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 5
+  set_tight_grouping
+  set_gaia_object_only
+  place_on_specific_land_id         2
+}
+
+/* ***** Water Res ***** */
+create_object SHORE_FISH 
+{
+  terrain_to_place_on               WATER
+  number_of_objects                 200000
+  temp_min_distance_group_placement 4
+  set_gaia_object_only
+}
+/* For some reason, standard res puts 6 random fish throughout the map? */
+/* create_object FISH 
+{
+  terrain_to_place_on               WATER
+  number_of_objects                 6
+  temp_min_distance_group_placement 7
+  min_distance_to_map_edge          24
+  max_distance_to_other_zones       6
+  set_gaia_object_only
+  set_scaling_to_map_size
+} */
+/* Pond fish */
+create_object MARLIN1 
+{
+  terrain_to_place_on               WATER
+  number_of_objects                 200000
+  min_distance_group_placement      7
+  if TINY_MAP
+    min_distance_to_map_edge          20
+  else
+    min_distance_to_map_edge          26
+  endif
+  max_distance_to_other_zones       6
+  set_gaia_object_only
+}
+/* Tuna everywhere */
+create_object TUNA 
+{
+  terrain_to_place_on               WATER
+  number_of_objects                 200000
+  temp_min_distance_group_placement 10
+  max_distance_to_other_zones       6
+  set_gaia_object_only
+}
+
+
+
+
+
+
+
+/*  RANDOM MAP RESOURCES   */
+create_object FORAGE 
+{
+  terrain_to_place_on               SNOW
+  number_of_objects                 4
+  number_of_groups                  1
+  temp_min_distance_group_placement 35
+  min_distance_to_players           28
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       3
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2000
+  avoid_actor_area                  2003
+}
+create_object FORAGE 
+{
+  terrain_to_place_on               SNOW
+  number_of_objects                 4
+  number_of_groups                  1
+  temp_min_distance_group_placement 35
+  min_distance_to_players           28
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       3
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  avoid_actor_area                  2002
+}
+
+
+
+
+
+/* ************* COSMETICS ************* */
+
+create_object SKELETON 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 rnd(7,13)
+  set_gaia_object_only
+  place_on_specific_land_id         2
+}
+create_object SKELETON 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 rnd(7,13)
+  set_gaia_object_only
+  place_on_specific_land_id         1
+}
+
+
+create_object DLC_ANIMALSKELETON 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 rnd(0,6)
+  set_gaia_object_only
+  place_on_specific_land_id         2
+}
+create_object DLC_ANIMALSKELETON 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  number_of_objects                 rnd(0,6)
+  set_gaia_object_only
+  place_on_specific_land_id         1
+}
+
+
+
+start_random
+  percent_chance  33  #const WOLVES_3 1 
+  percent_chance  34  #const WOLVES_4 1 
+  percent_chance  33  #const WOLVES_5 1 
+end_random
+
+
+create_object DLC_SNOWLEOPARD
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  min_distance_group_placement   3
+  if WOLVES_3
+    number_of_objects                 2
+  elseif WOLVES_4
+    number_of_objects                 2
+  elseif WOLVES_5
+    number_of_objects                 3
+  endif
+  set_gaia_object_only
+  place_on_specific_land_id         2
+}
+create_object DLC_SNOWLEOPARD 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  min_distance_group_placement   3
+  if WOLVES_3
+    number_of_objects                 2
+  elseif WOLVES_4
+    number_of_objects                 2
+  elseif WOLVES_5
+    number_of_objects                 3
+  endif
+  set_gaia_object_only
+  place_on_specific_land_id         1
+}
+
+create_object DLC_KOMODO
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  min_distance_group_placement   3
+  if WOLVES_3
+    number_of_objects                 1
+  elseif WOLVES_4
+    number_of_objects                 2
+  elseif WOLVES_5
+    number_of_objects                 2
+  endif
+  set_gaia_object_only
+  place_on_specific_land_id         2
+}
+create_object DLC_KOMODO 
+{ 
+  terrain_to_place_on               DIRT_SNOW
+  min_distance_group_placement   3
+  if WOLVES_3
+    number_of_objects                 1
+  elseif WOLVES_4
+    number_of_objects                 2
+  elseif WOLVES_5
+    number_of_objects                 2
+  endif
+  set_gaia_object_only
+  place_on_specific_land_id         1
+}
+
+
+
+
+create_object BIRD_A {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+create_object BIRD_B {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 

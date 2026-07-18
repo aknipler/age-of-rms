@@ -1,0 +1,1513 @@
+/* Created by Captain Kniples the Fourth */
+/* For AUS/NZ TG tournament 2nd half of 2025 */
+/* Created 2025 July */
+/* This is a 4v4 map only */
+
+
+
+
+#const ONGRID_PLACEHOLDER 1613
+
+
+/* math constants */
+#const INSIDE_RING_ORIGIN_DIST 16
+#const OUTSIDE_RING_ORIGIN_DIST 22
+#const OUTSIDE_RING_POCK_ORIGIN_DIST 26
+#const OUTSIDE_PLAYER_LAND_TILES 1400
+#const OUTSIDE_PL_LAND_BORDER 9
+#const INSIDE_NEUTRAL_LAND_TILES 950
+#const INSIDE_NEUTRAL_LAND_BASE_SIZE 8
+#const INSIDE_PL_BASE_SIZE 8
+#const PL_LANDS_CLUMPING_FAC 15
+#const OUTSIDE_ROCKS_PLACEMENT_FROM_PLAYER_TCS 9056
+#const OUTSIDE_ROCKS_PLACEMENT_FROM_PLAYER_TCS_DIST 75
+#const O_PL_ZONE_AVOID_DIST 9
+#const NEUTRAL_LANDS_ID 12
+#const O_PLAYER_TOTAL_FOREST_TILES 140
+#const O_PLAYER_FOREST_CLUMPS 6
+#const POND_SIZE rnd(20,40)
+#const EXT_WOOD_AMOUNT_TILES 830
+#const EXT_WOOD_CLUMPS 21
+
+start_random
+percent_chance 9 #const POND_CLUMPS 0
+percent_chance 18 #const POND_CLUMPS 1
+percent_chance 23 #const POND_CLUMPS 2
+percent_chance 23 #const POND_CLUMPS 3
+percent_chance 18 #const POND_CLUMPS 4
+percent_chance 9 #const POND_CLUMPS 5
+end_random
+
+/* terrains */
+#const TEMP_TERRAIN 68 
+#const TEMP_TERRAIN2 19
+#const PLAYER_TEMP_TERR 16
+#const MUD 76
+#const INSIDE_PL_TERRAIN 3
+#const OUTSIDE_PL_TERRAIN 11
+#const EXTERNAL_TERRAIN 14
+#const BASE_TERRAIN 6
+#const INSIDE_NEUTRAL_LAND_TERRAIN 42
+#const OUTSIDE_NEUTRAL_LAND_TERRAIN 14
+#const OUTSIDE_NEUTRAL_LAND_TERRAIN_MASK 6
+#const LOWER_HILLTOPS 41 /* dlc svannah */
+#const BROWN_WATER 96
+#const INSIDE_GOLD_AREA_TERRAIN 45
+#const INSIDE_GOLD_AREA_TERRAIN_MASK 6
+#const INSIDE_GOLD_AREA_TERRAIN_MASK2 14
+#const INSIDE_FOREST_AREA_TERRAIN 5
+#const INSIDE_FOREST_AREA_TERRAIN_MASK 6
+#const FOREST_TERRAIN 13
+#const EXT_POND_TERRAIN 96
+
+/* objects */
+#const MAKE_FOREST_TERRAIN 1639
+#const BUSH_A 302
+#const BUSH_B 1053
+#const FOREST_STRAGGLERS 351
+
+
+/* Make it so that the forests can't be quickly removed by players using building foundations */
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_FOUNDATION_TERRAIN 13 /* palm_desert */
+
+
+/* outside neutral land options */
+start_random 
+  percent_chance 33 #define OWAT 
+  percent_chance 34 #define OWOOD 
+  percent_chance 33 #define OFOOD 
+end_random
+
+if OWAT 
+  start_random 
+    percent_chance 50 #define OWOOD 
+    percent_chance 50 #define OFOOD 
+  end_random
+elseif OWOOD 
+  start_random 
+    percent_chance 50 #define OWAT 
+    percent_chance 50 #define OFOOD
+  end_random
+elseif OFOOD 
+  start_random 
+    percent_chance 50 #define OWAT 
+    percent_chance 50 #define OWOOD
+  end_random
+endif 
+
+
+/* put ponds in the inside forests  */
+/* #define INSIDE_FOREST_PONDS */
+
+/* Make it so that the flags disappear at the start of the game */
+effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER2 ATTR_HITPOINTS 0
+
+
+
+<PLAYER_SETUP>
+direct_placement
+behavior_version 1
+
+
+if TINY_MAP
+    #const INSIDE_RING_BOUNDS 24
+elseif HUGE_MAP
+    #const INSIDE_RING_BOUNDS 36
+    #const OUTSIDE_RING_BOUNDS 15
+endif
+
+
+
+
+
+
+<LAND_GENERATION>
+
+base_terrain BASE_TERRAIN
+
+
+/* fill out center */
+/* create_land { terrain_type BASE_TERRAIN land_percent 100 clumping_factor PL_LANDS_CLUMPING_FAC land_position 90 10 top_border 5 bottom_border 5 right_border 5 left_border 5 }
+create_land { terrain_type BASE_TERRAIN land_percent 100 clumping_factor PL_LANDS_CLUMPING_FAC land_position 10 90 top_border 5 bottom_border 5 right_border 5 left_border 5 } */
+create_land { terrain_type BASE_TERRAIN land_percent 0  land_position 50 50 base_size 2 land_id 18 }
+
+
+/* outside ring */
+start_random
+  percent_chance 50 #define CONFIG_O_FIFTY_A
+  percent_chance 50 #define CONFIG_O_FIFTY_B
+end_random
+if CONFIG_O_FIFTY_A
+  start_random
+    percent_chance 25 #define CONFIG_O1
+    percent_chance 25 #define CONFIG_O2
+    percent_chance 25 #define CONFIG_O3
+    percent_chance 25 #define CONFIG_O4
+  end_random
+elseif CONFIG_O_FIFTY_B
+  start_random
+    percent_chance 25 #define CONFIG_O5
+    percent_chance 25 #define CONFIG_O6
+    percent_chance 25 #define CONFIG_O7
+    percent_chance 25 #define CONFIG_O8
+  end_random
+endif
+
+start_random
+  percent_chance 11 #define ANGLE_O1
+  percent_chance 11 #define ANGLE_O2
+  percent_chance 11 #define ANGLE_O3
+  percent_chance 11 #define ANGLE_O4
+  percent_chance 12 #define ANGLE_O5
+  percent_chance 11 #define ANGLE_O6
+  percent_chance 11 #define ANGLE_O7
+  percent_chance 11 #define ANGLE_O8
+  percent_chance 11 #define ANGLE_O9
+end_random
+
+
+/* inside ring */
+start_random
+  percent_chance 25 #define CONFIG_I1
+  percent_chance 25 #define CONFIG_I2
+  percent_chance 25 #define CONFIG_I3
+  percent_chance 25 #define CONFIG_I4
+end_random
+
+start_random
+  percent_chance 11 #define ANGLE_I1
+  percent_chance 11 #define ANGLE_I2
+  percent_chance 11 #define ANGLE_I3
+  percent_chance 11 #define ANGLE_I4
+  percent_chance 12 #define ANGLE_I5
+  percent_chance 11 #define ANGLE_I6
+  percent_chance 11 #define ANGLE_I7
+  percent_chance 11 #define ANGLE_I8
+  percent_chance 11 #define ANGLE_I9
+end_random
+
+start_random
+  percent_chance 50 #define FLIP_POCKETS
+end_random
+
+/* player lands */
+if ANGLE_O1
+  /* create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position   if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif terrain_type SNOW number_of_tiles 0 base_size 11 min_placement_distance (INSIDE_RING_ORIGIN_DIST * 2 - 12) top_border INSIDE_RING_BOUNDS bottom_border INSIDE_RING_BOUNDS right_border INSIDE_RING_BOUNDS left_border INSIDE_RING_BOUNDS } */
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 74 26 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 84 50 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 74 74 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 50 84 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  /* create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position   if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif terrain_type SNOW number_of_tiles 0 base_size 11 min_placement_distance (INSIDE_RING_ORIGIN_DIST * 2 - 12) top_border INSIDE_RING_BOUNDS bottom_border INSIDE_RING_BOUNDS right_border INSIDE_RING_BOUNDS left_border INSIDE_RING_BOUNDS } */
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 26 74 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 16 50 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 26 26 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 50 16 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O2
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 78 30 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 83 56 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 70 78 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 44 83 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 22 70 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 17 44 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 30 22 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 56 17 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O3
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 81 36 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 82 62 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 64 81 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 38 82 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 19 64 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 18 38 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 36 19 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 62 18 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O4
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 83 41 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 79 67 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 59 83 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 33 79 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 17 59 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 21 33 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 41 17 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 67 21 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O5
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 84 47 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 76 72 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 53 84 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 28 76 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 16 53 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 24 28 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 47 16 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 72 24 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O6
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 84 53 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 72 76 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 47 84 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 24 72 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 16 47 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 28 24 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 53 16 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 76 28 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O7
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 83 59 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 67 79 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 41 83 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 21 67 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 17 41 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 33 21 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 59 17 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 79 33 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O8
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 81 64 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 62 82 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 36 81 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 18 62 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 19 36 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 38 18 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 64 19 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 82 38 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+elseif ANGLE_O9
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 78 70 if CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 1 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 56 83 if CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 2 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 30 78 if CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 3 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 17 56 if CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 4 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 22 30 if CONFIG_O5 elseif CONFIG_O6 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O5 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O1 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 5 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 44 17 if CONFIG_O6 elseif CONFIG_O7 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O8 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 elseif CONFIG_O3 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O6 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O2 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 6 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 70 22 if CONFIG_O7 elseif CONFIG_O8 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O1 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 elseif CONFIG_O4 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O7 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O3 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 7 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 83 44 if CONFIG_O8 elseif CONFIG_O1 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 3 0 0 else assign_to AT_COLOR 7 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O2 if TEAM_POSITIONS assign_to AT_COLOR 5 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O3 if TEAM_POSITIONS if FLIP_POCKETS assign_to AT_COLOR 7 0 0 else assign_to AT_COLOR 3 0 0 endif else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_O4 elseif CONFIG_O5 if TEAM_POSITIONS assign_to AT_COLOR 4 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O6 if TEAM_POSITIONS assign_to AT_COLOR 6 0 0 else assign_to AT_TEAM 2 0 0 endif elseif CONFIG_O7 if TEAM_POSITIONS assign_to AT_COLOR 8 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_O8 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 elseif CONFIG_O4 terrain_type OUTSIDE_NEUTRAL_LAND_TERRAIN land_id 1 zone 12 else terrain_type PLAYER_TEMP_TERR zone 8 endif number_of_tiles OUTSIDE_PLAYER_LAND_TILES base_size 11 other_zone_avoidance_distance O_PL_ZONE_AVOID_DIST top_border OUTSIDE_PL_LAND_BORDER bottom_border OUTSIDE_PL_LAND_BORDER left_border OUTSIDE_PL_LAND_BORDER right_border OUTSIDE_PL_LAND_BORDER base_elevation 3 }
+endif 
+
+if ANGLE_I1
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 56 44 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 56 56 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 44 56 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 44 44 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I2
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 57 45 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 55 57 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 43 55 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 45 43 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I3
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 58 46 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 54 58 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 42 54 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 46 42 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I4
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 59 48 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 52 59 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 41 52 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 48 41 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I5
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 59 49 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 51 59 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 41 51 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 49 41 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I6
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 59 51 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 49 59 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 41 49 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 51 41 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I7
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 59 52 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 48 59 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 41 48 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 52 41 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I8
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 58 54 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 46 58 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 42 46 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 54 42 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+elseif ANGLE_I9
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 57 55 zone 4 if CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 45 57 zone 1 if CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 43 45 zone 4 if CONFIG_I3 elseif CONFIG_I4 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I1 elseif CONFIG_I2 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I3 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I1 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+  create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 55 43 zone 1 if CONFIG_I4 elseif CONFIG_I1 if TEAM_POSITIONS assign_to AT_COLOR 1 0 0 else assign_to AT_TEAM 1 0 0 endif elseif CONFIG_I2 elseif CONFIG_I3 if TEAM_POSITIONS assign_to AT_COLOR 2 0 0 else assign_to AT_TEAM 2 0 0 endif endif if CONFIG_I4 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 elseif CONFIG_I2 terrain_type INSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles INSIDE_NEUTRAL_LAND_TILES base_size INSIDE_NEUTRAL_LAND_BASE_SIZE land_id NEUTRAL_LANDS_ID zone 22 else terrain_type INSIDE_PL_TERRAIN number_of_tiles 0 base_size INSIDE_PL_BASE_SIZE endif  other_zone_avoidance_distance 2 }
+endif
+
+
+
+<ELEVATION_GENERATION>
+
+create_elevation 4
+{
+  base_terrain          PLAYER_TEMP_TERR 
+  number_of_tiles       365      
+  number_of_clumps      4   
+  spacing               0         
+  enable_balanced_elevation   
+  set_scale_by_groups  
+}
+
+
+create_elevation 3
+{
+  base_terrain          BASE_TERRAIN 
+  number_of_tiles       870      
+  number_of_clumps      27         
+  enable_balanced_elevation    
+  set_scale_by_groups        
+}
+
+
+
+/* 
+
+<CLIFF_GENERATION>
+if TINY_MAP
+  min_number_of_cliffs  12
+  max_number_of_cliffs  14     /* These do not scale by map size. Instead you have to do an if structure, included as an example */
+elseif SMALL_MAP
+  min_number_of_cliffs  16
+  max_number_of_cliffs  18     /* These do not scale by map size. Instead you have to do an if structure, included as an example */
+else 
+  min_number_of_cliffs  21
+  max_number_of_cliffs  23 
+endif
+min_length_of_cliff     5
+max_length_of_cliff     7
+cliff_curliness         20       /* higher values are meant to make the cliffs more curly */
+min_distance_cliffs     6      minimum distance between two different cliffs
+
+ */
+
+
+
+
+
+
+
+
+<TERRAIN_GENERATION>
+
+/* fix small patches */
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 2 3 }
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 2 3 }
+create_terrain PLAYER_TEMP_TERR { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 2 3 }
+create_terrain PLAYER_TEMP_TERR { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 2 3 }
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 2 height_limits 2 3 }
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 2 height_limits 2 3 }
+create_terrain PLAYER_TEMP_TERR { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 2 height_limits 2 3 }
+create_terrain PLAYER_TEMP_TERR { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 2 height_limits 2 3 }
+create_terrain BASE_TERRAIN { base_terrain LOWER_HILLTOPS land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN { base_terrain LOWER_HILLTOPS land_percent 100 number_of_clumps 4056 }
+create_terrain BASE_TERRAIN { base_terrain LOWER_HILLTOPS land_percent 100 number_of_clumps 4056 }
+
+create_terrain TEMP_TERRAIN2 { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 1 3 }
+create_terrain TEMP_TERRAIN2 { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 1 3 }
+create_terrain TEMP_TERRAIN2 { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 3 height_limits 1 3 }
+
+
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 5 height_limits 2 3 }
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 5 height_limits 2 3 }
+create_terrain PLAYER_TEMP_TERR { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 height_limits 2 3 }
+create_terrain PLAYER_TEMP_TERR { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 height_limits 2 3 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 }
+create_terrain LOWER_HILLTOPS { base_terrain BASE_TERRAIN land_percent 100 number_of_clumps 4056 height_limits 1 1 } 
+create_terrain EXTERNAL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 }
+
+create_terrain LOWER_HILLTOPS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 }
+create_terrain LOWER_HILLTOPS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 }
+create_terrain LOWER_HILLTOPS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 }
+create_terrain LOWER_HILLTOPS { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 }
+
+
+
+/* player forests */
+/* 1 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain FOREST_TERRAIN { base_terrain TEMP_TERRAIN2 number_of_tiles O_PLAYER_TOTAL_FOREST_TILES number_of_clumps O_PLAYER_FOREST_CLUMPS } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+/* 2 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain FOREST_TERRAIN { base_terrain TEMP_TERRAIN2 number_of_tiles O_PLAYER_TOTAL_FOREST_TILES number_of_clumps O_PLAYER_FOREST_CLUMPS } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+/* 3 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain FOREST_TERRAIN { base_terrain TEMP_TERRAIN2 number_of_tiles O_PLAYER_TOTAL_FOREST_TILES number_of_clumps O_PLAYER_FOREST_CLUMPS } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+/* 4 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain FOREST_TERRAIN { base_terrain TEMP_TERRAIN2 number_of_tiles O_PLAYER_TOTAL_FOREST_TILES number_of_clumps O_PLAYER_FOREST_CLUMPS } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+/* 5 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain FOREST_TERRAIN { base_terrain TEMP_TERRAIN2 number_of_tiles O_PLAYER_TOTAL_FOREST_TILES number_of_clumps O_PLAYER_FOREST_CLUMPS } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+/* 6 */
+create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 18 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain TEMP_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 1 set_avoid_player_start_areas 22 } 
+create_terrain FOREST_TERRAIN { base_terrain TEMP_TERRAIN2 number_of_tiles O_PLAYER_TOTAL_FOREST_TILES number_of_clumps O_PLAYER_FOREST_CLUMPS } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+
+
+
+create_terrain FOREST_TERRAIN 
+{
+  base_terrain                    OUTSIDE_PL_TERRAIN 
+  number_of_tiles                 280
+  number_of_clumps                14
+  spacing_to_other_terrain_types  1
+  set_avoid_player_start_areas 16
+}
+
+
+create_terrain BASE_TERRAIN { base_terrain INSIDE_PL_TERRAIN land_percent 100 number_of_clumps 4056 set_avoid_player_start_areas 10 }
+
+/* inside neutral lands */
+/* water */
+if INSIDE_FOREST_PONDS
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain INSIDE_NEUTRAL_LAND_TERRAIN land_percent 100 number_of_clumps 4056 }
+    create_terrain INSIDE_FOREST_AREA_TERRAIN_MASK { base_terrain INSIDE_FOREST_AREA_TERRAIN land_percent 100 number_of_clumps 4056 terrain_mask 1 }
+    create_terrain TEMP_TERRAIN { base_terrain INSIDE_FOREST_AREA_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+    create_terrain TEMP_TERRAIN { base_terrain INSIDE_FOREST_AREA_TERRAIN land_percent 100 number_of_clumps 1 spacing_to_other_terrain_types 4 } 
+
+    create_terrain TEMP_TERRAIN2 { base_terrain TEMP_TERRAIN number_of_tiles 280 number_of_clumps 1 set_avoid_player_start_areas 20 }
+    create_terrain MUD { base_terrain INSIDE_FOREST_AREA_TERRAIN number_of_tiles 280 number_of_clumps 1 spacing_to_other_terrain_types 3 set_avoid_player_start_areas 20 } 
+
+    create_terrain MUDDY_SHALLOW { base_terrain TEMP_TERRAIN2 number_of_tiles 104 number_of_clumps 1 spacing_to_other_terrain_types 2 }
+    create_terrain MUDDY_SHALLOW { base_terrain MUD number_of_tiles 104 number_of_clumps 1 spacing_to_other_terrain_types 2 }
+
+    create_terrain MUD { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+    create_terrain MUD { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+    create_terrain MUD { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+
+    create_terrain MUDDY_SHALLOW { base_terrain MUD number_of_tiles 32 number_of_clumps 32 spacing_to_other_terrain_types 1 terrain_mask 1 }
+
+    create_terrain BROWN_WATER { base_terrain MUDDY_SHALLOW number_of_tiles 66 number_of_clumps 44 terrain_mask 1 }
+    create_terrain BROWN_WATER { base_terrain MUD number_of_tiles 26 number_of_clumps 16 terrain_mask 1 } 
+
+
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+else 
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain INSIDE_NEUTRAL_LAND_TERRAIN land_percent 100 number_of_clumps 4056 }
+    create_terrain INSIDE_FOREST_AREA_TERRAIN_MASK { base_terrain INSIDE_FOREST_AREA_TERRAIN land_percent 100 number_of_clumps 4056 terrain_mask 1 }
+    create_terrain TEMP_TERRAIN { base_terrain INSIDE_FOREST_AREA_TERRAIN land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+    create_terrain INSIDE_FOREST_AREA_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+endif
+
+create_terrain INSIDE_FOREST_AREA_TERRAIN_MASK { base_terrain INSIDE_FOREST_AREA_TERRAIN number_of_tiles 102 number_of_clumps 58 terrain_mask 1 }
+
+/* outside neutral lands */
+if OWAT
+  create_terrain TEMP_TERRAIN { base_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN land_percent 100 number_of_clumps 1 } 
+  create_terrain MUD { base_terrain TEMP_TERRAIN number_of_tiles 680 number_of_clumps 1 spacing_to_other_terrain_types 3 set_avoid_player_start_areas 20 clumping_factor 20 }
+  create_terrain MUDDY_SHALLOW { base_terrain MUD number_of_tiles 144 number_of_clumps 1 spacing_to_other_terrain_types 2 }
+  create_terrain MUDDY_SHALLOW { base_terrain MUD number_of_tiles 16 number_of_clumps 16 spacing_to_other_terrain_types 1 terrain_mask 1 }
+  create_terrain BROWN_WATER { base_terrain MUDDY_SHALLOW number_of_tiles 33 number_of_clumps 22 terrain_mask 1 }
+  create_terrain BROWN_WATER { base_terrain MUD number_of_tiles 300 number_of_clumps 8 terrain_mask 1 }
+endif
+  if OWOOD
+  create_terrain TEMP_TERRAIN2 { base_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN land_percent 100 number_of_clumps 1 } 
+  create_terrain PALM_DESERT { base_terrain TEMP_TERRAIN2 number_of_tiles 675 number_of_clumps 122 } 
+  /* ext wood */
+  create_terrain PALM_DESERT { base_terrain BASE_TERRAIN set_avoid_player_start_areas 33 number_of_tiles (5 / 4 * EXT_WOOD_AMOUNT_TILES) number_of_clumps (EXT_WOOD_CLUMPS * 2) } 
+else
+  create_terrain PALM_DESERT { base_terrain BASE_TERRAIN set_avoid_player_start_areas 33 number_of_tiles (2 * EXT_WOOD_AMOUNT_TILES) number_of_clumps (EXT_WOOD_CLUMPS * 3) } 
+endif
+
+
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 } 
+
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN { base_terrain TEMP_TERRAIN2 land_percent 100 number_of_clumps 4056 } 
+
+create_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN_MASK { base_terrain OUTSIDE_NEUTRAL_LAND_TERRAIN number_of_tiles 3333 number_of_clumps 4056 terrain_mask 1 }
+
+
+create_terrain EXT_POND_TERRAIN { base_terrain BASE_TERRAIN spacing_to_other_terrain_types 3 number_of_tiles (POND_SIZE * POND_CLUMPS) number_of_clumps POND_CLUMPS set_avoid_player_start_areas 40 }
+
+
+
+
+
+/* 
+<CONNECTION_GENERATION>
+create_connect_to_nonplayer_land
+{
+  replace_terrain LOWER_HILLTOPS ICE 
+  replace_terrain BASE_TERRAIN ICE 
+  terrain_cost MUD 0
+  terrain_cost BROWN_WATER 0
+  terrain_cost INSIDE_GOLD_AREA_TERRAIN 0
+  terrain_cost BEACH 0
+  terrain_cost LEAVES 0
+  terrain_cost INSIDE_PL_TERRAIN 0
+  terrain_cost EXTERNAL_TERRAIN 0
+  terrain_cost LOWER_HILLTOPS 11
+  terrain_cost OUTSIDE_PL_TERRAIN 2
+  terrain_cost BASE_TERRAIN 15
+  terrain_size LOWER_HILLTOPS 2 0
+} */
+
+
+
+
+<OBJECTS_GENERATION>
+
+
+/* Player resources */ 
+create_object TOWN_CENTER
+{
+  set_place_for_every_player
+  max_distance_to_players           0
+  actor_area 9000
+  actor_area_radius 0
+}
+
+create_object ONGRID_PLACEHOLDER
+{
+  set_place_for_every_player
+  actor_area_to_place_in 9000
+  actor_area 9056
+  actor_area_radius 45
+}
+
+
+create_object VILLAGER
+{
+  set_place_for_every_player
+  min_distance_to_players           5
+  max_distance_to_players           6
+}
+create_object SCOUT
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_players           9
+}
+
+/* setup for rock making */
+create_object ONGRID_PLACEHOLDER { number_of_groups 2 number_of_objects 1 min_distance_to_map_edge 53 max_distance_to_players 40 terrain_to_place_on OUTSIDE_NEUTRAL_LAND_TERRAIN temp_min_distance_group_placement 45 place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area 2100 actor_area_radius 5 }
+
+
+/* make rocks */
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 2 number_of_objects 1 terrain_to_place_on LOWER_HILLTOPS temp_min_distance_group_placement 40 place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2100 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 2 number_of_objects 1 terrain_to_place_on LOWER_HILLTOPS temp_min_distance_group_placement 40 place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2100 actor_area 2101 actor_area_radius 1 }
+
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { second_object ROCK number_of_groups 4 number_of_objects 1 temp_min_distance_group_placement 8 terrain_to_place_on LOWER_HILLTOPS place_on_specific_land_id 1 find_closest_to_map_center set_gaia_object_only actor_area_to_place_in 2101 actor_area 2101 actor_area_radius 1 }
+
+/* outside rocks */
+/* create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object FLAG_B number_of_groups 2000 number_of_objects 1 terrain_to_place_on OUTSIDE_NEUTRAL_LAND_TERRAIN temp_min_distance_group_placement 1 place_on_specific_land_id 1 find_closest_to_map_edge set_circular_placement min_distance_to_players 8 max_distance_to_players 45 avoid_actor_area 9056 set_gaia_object_only actor_area 2102 actor_area_radius 5 } */
+
+create_object ONGRID_PLACEHOLDER { number_of_groups 2 number_of_objects 1 temp_min_distance_group_placement 60 terrain_to_place_on OUTSIDE_NEUTRAL_LAND_TERRAIN find_closest_to_map_edge set_place_for_every_player set_circular_placement avoid_actor_area 9056 set_gaia_object_only avoid_actor_area 2102 actor_area 2102 actor_area_radius 3 }
+create_object ONGRID_PLACEHOLDER { number_of_groups 2 number_of_objects 1 temp_min_distance_group_placement 60 terrain_to_place_on OUTSIDE_NEUTRAL_LAND_TERRAIN find_closest_to_map_edge set_place_for_every_player set_circular_placement avoid_actor_area 9056 set_gaia_object_only avoid_actor_area 2102 actor_area 2102 actor_area_radius 3 }
+
+/* make rocks */
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 2 number_of_objects 1 terrain_to_place_on LOWER_HILLTOPS temp_min_distance_group_placement 40 find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2102 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 2 number_of_objects 1 terrain_to_place_on LOWER_HILLTOPS temp_min_distance_group_placement 40 find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2102 actor_area 2103 actor_area_radius 1 }
+
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+create_object ONGRID_PLACEHOLDER { set_place_for_every_player second_object ROCK number_of_groups 3 number_of_objects 1 temp_min_distance_group_placement 20 terrain_to_place_on LOWER_HILLTOPS find_closest_to_map_edge set_gaia_object_only avoid_actor_area 2101 actor_area_to_place_in 2103 actor_area 2103 actor_area_radius 1 }
+
+
+/* INSIDE FOREST */
+/* create_object GOLD { number_of_groups 2 number_of_objects 2 temp_min_distance_group_placement 6 avoid_forest_zone 1 min_distance_to_players 19 set_tight_grouping set_circular_placement terrain_to_place_on INSIDE_FOREST_AREA_TERRAIN set_gaia_object_only } */
+
+/* INSIDE POND  */
+create_object MARLIN1 { number_of_groups 30 number_of_objects 1 temp_min_distance_group_placement 3 min_distance_group_placement 2 max_distance_to_other_zones 4 set_circular_placement set_gaia_object_only actor_area 8080 actor_area_radius 19 }
+create_object ONGRID_PLACEHOLDER { second_object SHORE_FISH terrain_to_place_on MUDDY_SHALLOW number_of_groups 30 number_of_objects 1 temp_min_distance_group_placement 3 set_circular_placement set_gaia_object_only }
+
+
+
+
+/* INSIDE GOLD MINE  */
+create_object STONE { place_on_specific_land_id NEUTRAL_LANDS_ID min_distance_group_placement 1 number_of_groups 2 number_of_objects 2 max_distance_to_players 7 find_closest_to_map_edge set_circular_placement avoid_forest_zone 2 set_tight_grouping terrain_to_place_on INSIDE_FOREST_AREA_TERRAIN set_gaia_object_only avoid_actor_area 8080 temp_min_distance_group_placement 6 actor_area 8070 actor_area_radius 6 }
+create_object GOLD { place_on_specific_land_id NEUTRAL_LANDS_ID min_distance_group_placement 1 number_of_groups 1 number_of_objects 2 max_distance_to_players 7 find_closest_to_map_edge set_circular_placement avoid_forest_zone 2 set_tight_grouping terrain_to_place_on INSIDE_FOREST_AREA_TERRAIN set_gaia_object_only avoid_actor_area 8080 avoid_actor_area 8070 }
+
+
+
+/* INSIDE trees */
+create_object MAKE_FOREST_TERRAIN { set_place_for_every_player second_object FOREST_STRAGGLERS number_of_groups 75 number_of_objects 1 terrain_to_place_on INSIDE_FOREST_AREA_TERRAIN layer_to_place_on INSIDE_FOREST_AREA_TERRAIN_MASK find_closest_to_map_center set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions }
+
+
+/* chickens in center of map */
+create_object WILD_CHICKEN_A
+{
+  place_on_specific_land_id         18
+  avoid_forest_zone                 1
+  number_of_objects                 1
+  number_of_groups                  16
+  temp_min_distance_group_placement 1
+  max_distance_to_players           6
+  set_circular_placement
+  set_gaia_object_only
+  actor_area                        6200
+  actor_area_radius                 5
+}
+/* gold inbetween rings */
+create_object ONGRID_PLACEHOLDER 
+{
+  set_place_for_every_player
+  number_of_groups                  5
+  temp_min_distance_group_placement 4
+  set_circular_placement
+  set_gaia_object_only
+  terrain_to_place_on               BASE_TERRAIN
+  min_distance_to_players           14
+  max_distance_to_players           16
+  min_distance_to_map_edge          53
+  avoid_forest_zone                 11
+  find_closest_to_map_edge
+  actor_area                        8900
+  actor_area_radius                 5
+} 
+
+create_object GOLD 
+{
+  set_place_for_every_player
+  number_of_objects                 5
+  number_of_groups                  5
+  temp_min_distance_group_placement 5
+  set_circular_placement
+  set_gaia_object_only
+  terrain_to_place_on               BASE_TERRAIN
+  min_distance_to_players           16
+  max_distance_to_players           20
+  min_distance_to_map_edge          49
+  set_tight_grouping
+  actor_area_to_place_in            8900
+  /* actor_area                        8901
+  actor_area_radius                 4 */
+} 
+/* player resources ALL */
+
+create_object DLC_GOAT 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  number_of_objects                 3
+  min_distance_to_players           7
+  max_distance_to_players           8
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  actor_area                        6103
+  actor_area_radius                 1
+}
+create_object DLC_GOAT 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 1
+  min_distance_to_players           7
+  max_distance_to_other_zones       1
+  set_circular_placement
+  set_tight_grouping
+  find_closest
+  avoid_actor_area                  6200
+  actor_area_to_place_in            6103
+}
+create_object DLC_GOAT 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 2
+  number_of_groups                  2
+  min_distance_to_players           14
+  max_distance_to_players           22
+  min_distance_group_placement      3
+  max_distance_to_other_zones       1
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6200
+}
+create_object DLC_ELEPHANT 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           16
+  max_distance_to_players           21
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 7
+  max_distance_to_other_zones       1
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6200
+}
+create_object DLC_ZEBRA 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 3
+  min_distance_to_players           14
+  max_distance_to_players           20
+  min_distance_group_placement      2
+  max_distance_to_other_zones       1
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6200
+}
+create_object DLC_ZEBRA 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 3
+  min_distance_to_players           29
+  max_distance_to_players           36
+  min_distance_group_placement      2
+  max_distance_to_other_zones       1
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6200
+}
+create_object FORAGE 
+{
+  set_place_for_every_player
+  avoid_forest_zone                 3
+  
+  number_of_objects                 rnd(5,7)
+  min_distance_to_players           10
+  max_distance_to_players           14
+  min_distance_group_placement      2
+  max_distance_to_other_zones       2
+  group_placement_radius            2
+  find_closest
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  actor_area                        9997
+  actor_area_radius                 5
+} 
+
+/* player resources OUTSIDE */
+/* Large gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               OUTSIDE_PL_TERRAIN
+  number_of_objects                 7
+  min_distance_to_players           11
+  max_distance_to_players           14
+  min_distance_group_placement      4
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 3
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  avoid_actor_area                  9997
+  actor_area                        9999
+  actor_area_radius                 8
+}
+/* Small gold */
+create_object GOLD 
+{
+  set_place_for_every_player
+  terrain_to_place_on               OUTSIDE_PL_TERRAIN
+  number_of_objects                 4
+  min_distance_to_players           16
+  max_distance_to_players           19
+  min_distance_group_placement      4
+  max_distance_to_other_zones       1
+  avoid_forest_zone                 2
+  avoid_actor_area                  9997
+  avoid_actor_area                  9999
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  actor_area                        9998
+  actor_area_radius                 6
+}
+
+create_object STONE
+{
+  set_place_for_every_player
+  terrain_to_place_on               OUTSIDE_PL_TERRAIN
+  number_of_objects                 5
+  min_distance_to_players           12
+  max_distance_to_players           14
+  min_distance_group_placement      6
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  avoid_actor_area                  9997
+  avoid_actor_area                  9998
+  avoid_actor_area                  9999
+  actor_area                        9996
+  actor_area_radius                 6
+}
+create_object STONE
+{
+  set_place_for_every_player
+  terrain_to_place_on               OUTSIDE_PL_TERRAIN
+  number_of_objects                 3
+  min_distance_to_players           14
+  max_distance_to_players           17
+  min_distance_group_placement      6
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  set_circular_placement
+  set_tight_grouping
+  set_gaia_object_only
+  find_closest
+  avoid_actor_area                  9996
+  avoid_actor_area                  9997
+  avoid_actor_area                  9998
+  avoid_actor_area                  9999
+}
+
+
+
+/* Map Resources */ 
+/* extra WILDLIFE */
+create_object DLC_ZEBRA 
+{
+    terrain_to_place_on               BASE_TERRAIN
+    number_of_objects                 5
+    if TINY_MAP
+      number_of_groups                  rnd(5,8)
+    else
+      number_of_groups                  rnd(9,12)
+    endif
+
+    min_distance_group_placement      3
+
+    if TINY_MAP
+      temp_min_distance_group_placement 20
+    elseif MEDIUM_MAP
+      temp_min_distance_group_placement 24
+    else
+      temp_min_distance_group_placement 34
+    endif
+
+    max_distance_to_other_zones       3
+    avoid_forest_zone                 2
+    if TINY_MAP 
+        min_distance_to_map_edge          47
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          68
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          80
+    elseif HUGE_MAP
+        min_distance_to_map_edge          2
+    endif
+    min_distance_to_players           35
+    set_tight_grouping
+    set_gaia_object_only
+}
+create_object DLC_ELEPHANT 
+{
+    terrain_to_place_on               BASE_TERRAIN
+    number_of_objects                 1
+    if HUGE_MAP 
+      number_of_groups                  rnd(7,9)
+    else 
+      number_of_groups                  rnd(3,4)
+    endif
+
+    min_distance_group_placement      2
+
+    if TINY_MAP
+      temp_min_distance_group_placement 6
+    else
+      temp_min_distance_group_placement 32
+    endif
+
+    max_distance_to_other_zones       3
+    avoid_forest_zone                 1
+
+    if TINY_MAP 
+        min_distance_to_map_edge          1
+    elseif MEDIUM_MAP 
+        min_distance_to_map_edge          1
+    elseif LARGE_MAP 
+        min_distance_to_map_edge          1
+    elseif HUGE_MAP
+        min_distance_to_map_edge          1
+    endif
+
+    set_gaia_object_only
+}
+create_object RELIC 
+{
+    number_of_objects                 1
+    min_distance_group_placement      1
+    avoid_forest_zone                 2
+    set_gaia_object_only
+    if INSIDE_FOREST_PONDS
+        terrain_to_place_on               BEACH
+    else
+        terrain_to_place_on               INSIDE_FOREST_AREA_TERRAIN
+    endif
+    actor_area                        904
+    actor_area_radius                 32
+    min_distance_to_map_edge          77
+} 
+
+create_object RELIC 
+{
+    number_of_objects                 1
+    min_distance_group_placement      1
+    avoid_forest_zone                 2
+    set_gaia_object_only
+    terrain_to_place_on               INSIDE_FOREST_AREA_TERRAIN
+    avoid_actor_area                  904
+} 
+create_object RELIC 
+{
+    number_of_groups                  2
+    temp_min_distance_group_placement 55
+    min_distance_group_placement      4
+    avoid_forest_zone                 2
+    set_gaia_object_only
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    actor_area                        903
+    actor_area_radius                 15
+} 
+create_object RELIC 
+{
+    number_of_groups                  2
+    temp_min_distance_group_placement 55
+    min_distance_group_placement      4
+    avoid_forest_zone                 2
+    set_gaia_object_only
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    avoid_actor_area                  903
+    actor_area                        903
+    actor_area_radius                 15
+} 
+create_object RELIC 
+{
+    number_of_groups                  2
+    temp_min_distance_group_placement 55
+    min_distance_group_placement      4
+    avoid_forest_zone                 2
+    set_gaia_object_only
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    avoid_actor_area                  903
+    actor_area                        903
+    actor_area_radius                 15
+} 
+
+
+/* create_object GOLD 
+{
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    number_of_objects                 6
+    
+    number_of_groups                  2
+
+    temp_min_distance_group_placement 55
+
+    min_distance_group_placement      2
+    set_circular_placement
+
+    set_tight_grouping
+    set_gaia_object_only
+    avoid_actor_area                  2101
+    avoid_actor_area                  2103
+    avoid_actor_area                  9899
+    actor_area                        9899
+    actor_area_radius                 6
+}
+
+create_object GOLD 
+{
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    number_of_objects                 6
+    
+    number_of_groups                  2
+
+    temp_min_distance_group_placement 55
+
+    min_distance_group_placement      2
+    set_circular_placement
+
+    set_tight_grouping
+    set_gaia_object_only
+    avoid_actor_area                  2101
+    avoid_actor_area                  2103
+    avoid_actor_area                  9899
+    actor_area                        9899
+    actor_area_radius                 6
+}
+create_object GOLD 
+{
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    number_of_objects                 6
+    
+    number_of_groups                  2
+
+    temp_min_distance_group_placement 55
+
+    min_distance_group_placement      2
+    set_circular_placement
+
+    set_tight_grouping
+    set_gaia_object_only
+    avoid_actor_area                  2101
+    avoid_actor_area                  2103
+    avoid_actor_area                  9899
+    actor_area                        9899
+    actor_area_radius                 6
+}
+create_object STONE 
+{
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    number_of_objects                 5
+    
+    number_of_groups                  2
+    
+    temp_min_distance_group_placement 55
+    min_distance_group_placement      3
+    set_circular_placement
+    
+    avoid_forest_zone                 2
+    find_closest_to_map_center
+    set_tight_grouping
+    set_gaia_object_only
+    avoid_actor_area                  9898
+    avoid_actor_area                  9899
+    actor_area                        9898
+    actor_area_radius                 6
+}
+create_object STONE 
+{
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    number_of_objects                 5
+    
+    number_of_groups                  2
+    
+    temp_min_distance_group_placement 55
+    min_distance_group_placement      3
+    set_circular_placement
+    
+    avoid_forest_zone                 2
+    find_closest_to_map_center
+    set_tight_grouping
+    set_gaia_object_only
+    avoid_actor_area                  9898
+    avoid_actor_area                  9899
+    actor_area                        9898
+    actor_area_radius                 6
+}
+create_object STONE 
+{
+    terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+    number_of_objects                 5
+    
+    number_of_groups                  2
+    
+    temp_min_distance_group_placement 55
+    min_distance_group_placement      3
+    set_circular_placement
+    
+    avoid_forest_zone                 2
+    find_closest_to_map_center
+    set_tight_grouping
+    set_gaia_object_only
+    avoid_actor_area                  9898
+    avoid_actor_area                  9899
+    actor_area                        9898
+    actor_area_radius                 6
+} */
+
+
+
+
+
+
+/*  RANDOM MAP RESOURCES   */
+/* create_object FORAGE 
+{
+  terrain_to_place_on               BASE_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  1
+  temp_min_distance_group_placement 35
+  min_distance_to_players           28
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       3
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2000
+  avoid_actor_area                  2003
+}
+create_object FORAGE 
+{
+  terrain_to_place_on               BASE_TERRAIN
+  number_of_objects                 4
+  number_of_groups                  1
+  temp_min_distance_group_placement 35
+  min_distance_to_players           28
+  avoid_forest_zone                 3
+  max_distance_to_other_zones       3
+  set_tight_grouping
+  set_gaia_object_only
+  set_scale_by_groups
+  avoid_actor_area                  2001
+  avoid_actor_area                  2002
+}
+ */
+
+
+create_object FOREST_STRAGGLERS 
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_to_players           4
+  max_distance_to_players           5
+  min_distance_group_placement      3
+  set_gaia_object_only
+}
+create_object FOREST_STRAGGLERS 
+{
+  set_place_for_every_player
+  number_of_objects                 1
+  number_of_groups                  3
+  min_distance_to_players           6
+  max_distance_to_players           8
+  temp_min_distance_group_placement 3
+  set_gaia_object_only
+}
+
+
+if OFOOD
+create_object WILD_CHICKEN_A
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 8
+  number_of_groups                  4
+  temp_min_distance_group_placement 8
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  avoid_actor_area                  8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object DLC_ZEBRA
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 rnd(3,4)
+  number_of_groups                  3
+  temp_min_distance_group_placement 8
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  avoid_actor_area                  8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object DLC_ELEPHANT
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 rnd(1,3)
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  avoid_actor_area                  8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object DLC_ELEPHANT
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 rnd(1,3)
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  avoid_actor_area                  8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object DLC_ELEPHANT
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 rnd(1,3)
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  avoid_actor_area                  8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object FOREST_STRAGGLERS 
+{
+  number_of_objects                 15
+  number_of_groups                  5
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  temp_min_distance_group_placement 10
+  avoid_forest_zone                 6
+  avoid_actor_area                  8080
+  set_gaia_object_only
+  set_circular_placement
+}
+endif
+if OWAT
+create_object DLC_ZEBRA
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 rnd(3,4)
+  number_of_groups                  1
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  actor_area_to_place_in            8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object DLC_ELEPHANT
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 rnd(1,2)
+  number_of_groups                  1
+  set_tight_grouping
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  actor_area_to_place_in            8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object DLC_ELEPHANT
+{
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  min_distance_group_placement      1
+  avoid_forest_zone                 6
+  number_of_objects                 1
+  set_circular_placement
+  set_gaia_object_only
+  avoid_actor_area                  6200
+  actor_area_to_place_in            8080
+  actor_area                        6200
+  actor_area_radius                 3
+}
+create_object FOREST_STRAGGLERS 
+{
+  number_of_objects                 15
+  number_of_groups                  4
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  temp_min_distance_group_placement 8
+  /* avoid_forest_zone                 6 */
+  avoid_forest_zone                 12
+  set_gaia_object_only
+  set_circular_placement
+}
+endif
+
+create_object FOREST_STRAGGLERS 
+{
+  number_of_groups                  13
+  terrain_to_place_on               OUTSIDE_NEUTRAL_LAND_TERRAIN
+  temp_min_distance_group_placement 15
+  avoid_forest_zone                 6
+  set_gaia_object_only
+}
+
+create_actor_area 110 110 5050 70
+create_object MAKE_FOREST_TERRAIN { second_object FOREST_STRAGGLERS number_of_groups 4 number_of_objects 45 set_loose_grouping temp_min_distance_group_placement 76 terrain_to_place_on BASE_TERRAIN  min_distance_to_map_edge 2 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 30 avoid_forest_zone 20 }
+
+
+create_object FOREST_STRAGGLERS 
+{
+  number_of_objects                 340
+  min_distance_to_players           11
+  set_gaia_object_only
+}
+
+create_object BUSH_A 
+{
+  number_of_objects                 100
+  min_distance_to_players           11
+  set_gaia_object_only
+}
+create_object BUSH_B 
+{
+  number_of_objects                 100
+  min_distance_to_players           11
+  set_gaia_object_only
+}
+
+/* ************* COSMETICS ************* */
+
+create_object SKELETON 
+{ 
+  terrain_to_place_on               BASE_TERRAIN
+  number_of_objects                 rnd(23,33)
+  min_distance_to_players           35
+  set_gaia_object_only
+}
+
+
+create_object DLC_ANIMALSKELETON 
+{ 
+  terrain_to_place_on               BASE_TERRAIN
+  number_of_objects                 rnd(0,6)
+  min_distance_to_players           35
+  set_gaia_object_only
+}
+
+
+create_object BIRD_A {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+create_object BIRD_B {
+  number_of_objects                 rnd(3,5)
+  set_scaling_to_map_size
+} 
+

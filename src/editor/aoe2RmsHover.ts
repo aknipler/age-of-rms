@@ -20,6 +20,8 @@ interface Argument {
   max?: number;
   default?: unknown;
   description?: string;
+  cautionBelow?: number;
+  cautionMessage?: string;
 }
 interface Command {
   name: string;
@@ -114,20 +116,36 @@ function formatAttributeSignature(entry: { name: string; arguments?: Argument[] 
   return args ? `${entry.name} ${args}` : entry.name;
 }
 
+// Arguments carry cautionBelow/cautionMessage (RMS0217, added 2.4 bug-fix
+// session) for values that are valid RMS but risky — e.g. a negative
+// border value that can crash the game. The live parser diagnostic only
+// fires once you've actually typed such a value; hover is what surfaces
+// the same warning *before* you type it, so it needs to render
+// cautionMessage explicitly rather than relying on the (often internal,
+// maintainer-facing) "notes" field, which is deliberately NOT shown here.
+function collectCautions(args: Argument[] | undefined): string[] {
+  return (args ?? []).filter((a) => a.cautionMessage !== undefined).map((a) => a.cautionMessage as string);
+}
+
 // Builds the hover popup body: a code-block signature, then the doc
 // string (falling back to language.json's own description if
-// reference/data/doc-strings.json doesn't have an entry yet), then an
-// unverified-data caveat when relevant so users know to double check
-// against the real docs rather than trust it blindly.
+// reference/data/doc-strings.json doesn't have an entry yet), then any
+// argument-level cautions, then an unverified-data caveat when relevant
+// so users know to double check against the real docs rather than trust
+// it blindly.
 function buildHoverContents(
   signature: string,
   summary: string | undefined,
   details: string | undefined,
   verified: boolean,
+  cautions: string[] = [],
 ): monaco.IMarkdownString[] {
   const parts = ["```aoe2-rms\n" + signature + "\n```"];
   if (summary) parts.push(summary);
   if (details) parts.push(details);
+  for (const caution of cautions) {
+    parts.push(`⚠️ **Caution:** ${caution}`);
+  }
   if (!verified) {
     parts.push("_Not yet verified against the official docs — see `reference/data/language.json`._");
   }
@@ -180,6 +198,7 @@ export function registerAoe2RmsHoverProvider() {
               doc?.summary ?? directive.description,
               doc?.details,
               directive.verified,
+              collectCautions(directive.arguments),
             ),
           };
         }
@@ -197,6 +216,7 @@ export function registerAoe2RmsHoverProvider() {
             doc?.summary ?? command.description,
             doc?.details,
             command.verified,
+            collectCautions(command.arguments),
           ),
         };
       }
@@ -211,6 +231,7 @@ export function registerAoe2RmsHoverProvider() {
             doc?.summary ?? attribute.description,
             doc?.details,
             attribute.verified,
+            collectCautions(attribute.arguments),
           ),
         };
       }

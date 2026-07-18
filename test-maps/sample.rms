@@ -65,7 +65,7 @@ end_random
 
 <CONNECTION_GENERATION>
 
-create_connect_all_players_lands
+create_connect_all_players_land
 {
     terrain_type DIRT3
 }

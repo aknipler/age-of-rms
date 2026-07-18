@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+test-maps/local
+test-maps/*
+!test-maps/sample.rms
+!test-maps/13_Rings_v1.2.rms
+!test-maps/AK_*.rms
+!test-maps/AD4 - Pag - v1.2.rms
+!test-maps/AD4 - Ra.rms
+!test-maps/BCC2-Rekawa.rms
+!test-maps/Chaotic_straitv0.99.rms
+!test-maps/Menindee_AUS_v2.3.rms
+!test-maps/TC2 - Comeer v1.4.rms
