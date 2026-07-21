@@ -218,7 +218,11 @@ export function sharedBlock(openToken: Token): Diagnostic {
 
 export function unknownName(token: Token, context: "command" | "attribute", suggestion?: string): Diagnostic {
   const base = `Unknown ${context} "${token.text}" — the engine will silently ignore it.`;
-  return makeDiagnostic("RMS0200", suggestion ? `${base} Did you mean "${suggestion}"?` : base, toSpan(token));
+  const diagnostic = makeDiagnostic("RMS0200", suggestion ? `${base} Did you mean "${suggestion}"?` : base, toSpan(token));
+  if (suggestion) {
+    diagnostic.suggestion = suggestion;
+  }
+  return diagnostic;
 }
 
 export function tooFewArguments(nameToken: Token, expected: number, got: number, unverified: boolean): Diagnostic {
@@ -241,6 +245,39 @@ export function argTypeMismatch(token: Token, argDef: { name: string; type: stri
     ),
     unverified,
   );
+}
+
+/**
+ * A bare word sits in a numeric slot and is NOT a symbol this file defines
+ * above the use (`#const`/`#define`). Still RMS0202, but the message names
+ * the real problem — the name is undefined, not "the wrong type" — and the
+ * severity depends on how much of the picture we can actually see.
+ *
+ * Why this exists (docs/parser-design.md §6, amended): using a `#const` as an
+ * attribute value is standard RMS idiom —
+ *
+ *     #const PL_LANDS_CLUMPING_FAC 15
+ *     create_land { clumping_factor PL_LANDS_CLUMPING_FAC }
+ *
+ * — and the original rule ("numeric slots accept number/rnd/expression/inf")
+ * warned on every one of them. That is a goal-#5 violation (no false warnings
+ * on legal maps), so a word that resolves to a known symbol now draws nothing
+ * at all, and only genuinely-unresolvable names reach this builder.
+ *
+ * `includesPresent` softens to info, mirroring §7's rule for unknown symbols:
+ * an `#include_drs` can define constants we cannot see, so we must not claim
+ * the name is undefined — Pa_Site pulls 43 includes and would otherwise drown.
+ */
+export function unresolvedConstantInNumericSlot(
+  token: Token,
+  argDef: { name: string; type: string },
+  includesPresent: boolean,
+): Diagnostic {
+  const base = includesPresent
+    ? `"${token.text}" isn't defined in this file, so "${argDef.name}" may not get a valid ${argDef.type}. It may come from an include file — Age of RMS can't see inside those yet.`
+    : `"${token.text}" isn't defined in this file, so "${argDef.name}" won't get a valid ${argDef.type}. Define it first with #const, e.g. "#const ${token.text} 10".`;
+  const diagnostic = makeDiagnostic("RMS0202", base, toSpan(token));
+  return includesPresent ? { ...diagnostic, severity: "info" } : diagnostic;
 }
 
 export function argOutOfRange(token: Token, argDef: { name: string; min?: number; max?: number }, unverified: boolean): Diagnostic {

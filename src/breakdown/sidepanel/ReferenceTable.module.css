@@ -1,0 +1,48 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.radioRow {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ccc;
+  padding: 0.2rem 0.35rem;
+  text-align: left;
+}
+
+.table th {
+  background: #f0f0f0;
+  position: sticky;
+  top: 0;
+}
+
+.unverifiedChip {
+  margin-left: 0.3rem;
+  font-size: 0.65rem;
+  border: 1px solid #999;
+  border-radius: 999px;
+  padding: 0 0.35rem;
+  color: #777;
+}
+
+.note {
+  font-size: 0.7rem;
+  color: #777;
+}

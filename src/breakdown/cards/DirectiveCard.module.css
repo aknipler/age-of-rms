@@ -1,0 +1,23 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.name {
+  flex: 1;
+  font-family: "Cascadia Code", Consolas, monospace;
+}
+
+.argValue {
+  font-family: "Cascadia Code", Consolas, monospace;
+}
+
+.nonFunctionalBadge {
+  border: 1px solid #000;
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.75rem;
+  background: #d1ecf1;
+}

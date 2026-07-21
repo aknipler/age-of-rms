@@ -264,11 +264,31 @@ v1.x follow-up, in priority order (do not implement in 2.3): (1) the guide-endor
 
 Rules:
 
-1. **Known + verified def:** consume up to `def.arguments.length` non-stop-set tokens (honoring `optional`/`variadic` flags once the schema supports them, §6.5). Type checks: `integer`/`percent`/`flag` accept `number` (including floats — **no diagnostic for float-into-integer**, the engine rounds), `rnd`, expressions, and `inf`/`-inf` words; `terrainConstant`/`objectConstant`/`otherConstant`/`string` accept `word` **or `number`** (bare numeric IDs are legitimate per §2.1). Mismatches → warning `RMS0202`/`RMS0203` on that ArgNode; token still consumed.
+1. **Known + verified def:** consume up to `def.arguments.length` non-stop-set tokens (honoring `optional`/`variadic` flags once the schema supports them, §6.5). Type checks: `integer`/`percent`/`flag` accept `number` (including floats — **no diagnostic for float-into-integer**, the engine rounds), `rnd`, expressions, `inf`/`-inf` words, **and any word naming a symbol already defined above the use (amendment, below)**; `terrainConstant`/`objectConstant`/`otherConstant`/`string` accept `word` **or `number`** (bare numeric IDs are legitimate per §2.1). Mismatches → warning `RMS0202`/`RMS0203` on that ArgNode; token still consumed.
 2. **Known + unverified def:** same mechanics; arity/type/range diagnostics capped at *info*, worded "…according to unverified reference data". (This category shrinks substantially once the §6.5 language.json cleanup lands — the full guide is now archived locally.)
 3. **Unknown name:** consume zero arguments; `RMS0200`; following tokens → unknown-run / §5.4.
 
 **Digit-prefixed word lint (`RMS0212`, warning):** a `word` token starting with digits, **only in an argument slot whose declared type is numeric (`integer`/`percent`/`flag`)** — exactly and only where the engine's leading-digits truncation applies (e.g. `50%`, `1,5` → "the engine reads this as 50 and ignores the rest"). **Never in name slots, constant slots, or condition positions**: digit-leading user labels are legal, working, and common — 8 of 11 corpus maps `#define` names like `2V1` (`if TEAM1_SIZE2 #define 2V1 endif`, ForeDaut; also Hourglass, Six_Points, BCC2, Menindee, OWWC `2_CROSSINGS`, QS_Three_Bays `7_RELICS`, TC2 `3_VILL_START` — rev 5 corrected the count from an earlier "5 of 11"). Rev 3 scoped this lint by exemption lists (predefined labels, if-conditions); that was the wrong shape — it missed `#define`'s name slot and would have false-warned on the spec's own corpus. Scoping by declared argument type needs no exemption list at all.
+
+**Amendment (post-3.4, live-testing feedback from Ash) — user constants satisfy numeric slots.** The rule above originally admitted only numbers/rnd/expressions/`inf` into `integer`/`percent`/`flag` slots. That warned on the single most common RMS idiom there is:
+
+```
+#const PL_LANDS_CLUMPING_FAC 15
+create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 74 26 }
+```
+
+— a goal-#5 violation (false warnings on legal maps). Resolution is **symbol-table-aware, not type-aware**: at the point of consumption, if the word names a `#const`/`#define` **already seen in this parse**, no diagnostic is emitted at all.
+
+- **"Already seen" is the engine's rule, not a single-pass limitation.** The guide (line 148) states a definition "will only be true if [it is] defined higher up in the file … regardless of the section header", so a constant used *above* its `#const` genuinely does not resolve in-engine, and warning there is correct. A symbol-collecting pre-pass would make us *less* accurate.
+- **Permissive about kind:** `#define` (a bare flag) counts as well as `#const`. Flagging a flag-in-a-numeric-slot risks a false warning, and §2.1 pins that our type diagnostics are style warnings, never correctness claims. If it is worth reporting, it belongs in `validate()` (§8), which sees the whole symbol table at once.
+- **Unresolvable names** keep `RMS0202`, but with a message naming the real problem (the name is undefined, suggest `#const`) rather than "wrong type" — and **softened to info when the file has any `#include_drs`** (§7's rule: the name may be defined in an include we cannot read; Pa_Site's 40 such warnings all become info).
+- Implementation: `Parser.isDefinedSymbol()`, consulted in `consumeOneArg`. Once `predefinedLabels` lands (§13 item 3), engine-provided names must count as defined here too.
+
+**Related data fix — `#const`'s value slot is `otherConstant`, not `integer`.** Guide L3295/L3353/L3306: everything in the game *is* a number internally, constants are read as numbers "where numeric inputs are expected", and one item may carry several constants — so `#const PREDATOR_A WOLF` is exactly `#const PREDATOR_A 3`. Typing the slot `integer` rejected that idiom (155 false warnings in `Rage Forest 2026.rms` alone). `otherConstant` accepts word or number, and expression/`rnd`/number handling is ungated by argument type (`consumeOneArg` dispatches expressions on a leading `(` before any type check), so `#const X (A * B)` and `#const X rnd(1,5)` are unaffected — asserted by fixtures.
+
+**Known remaining RMS0202 noise** (corpus-measured: **61 warnings + 45 info across 52 files**, in only 3 files; tracked in `docs/known-issues.md` BUG-002): undefined words used deliberately as opaque identifiers (`actor_area ACT_AREA_TEAM_RES_TERRAIN` ×26 in a shipped map — legal via §2.1's token-ID model, and evidence that `integer` wrongly conflates "a magnitude" with "an identifier"); and unmodeled `$`-prefixed names (×35, in both a DE-official and a community map, so it is supported syntax we don't yet model).
+
+**The fuller rule, not yet implemented.** L3353 licenses *any* known constant — user-defined **or predefined** — to satisfy *any* numeric slot. The amendment above covers user-defined symbols only, because the parser cannot currently see `game-constants.json` (`parseRms(source, lang)` takes language data alone). Closing that gap means either passing constants into the parser or landing `predefinedLabels` (§13 item 3); until then, a *predefined* constant in a numeric slot outside `#const` would still warn. The corpus shows no such case today.
 
 **ID-resolution message gating (RMS0204/RMS0205):** resolved-ID wording ("32 = SNOW…", "SNOW in an object slot = Monastery. Intended?") only when the game-constants entry carries verified provenance (`idSource: "extracted"` or patch-note-sourced); generic wording otherwise. Current constants are all placeholders.
 

@@ -9,7 +9,7 @@ import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { parseRms } from "../parser/parser";
 import { computeResourceTotals, type GameConstantsForTotals, type ResourceTotals } from "../parser/resourceTotals";
 import type { LanguageData } from "../parser/language";
-import type { Diagnostic } from "../parser/types";
+import type { Diagnostic, ParseResult } from "../parser/types";
 
 // Double-cast rather than a direct `as LanguageData`: the JSON's
 // TS-inferred literal type (from resolveJsonModule) doesn't necessarily
@@ -38,6 +38,18 @@ export interface ParseResponseMessage {
   tokenCount: number;
   parseTimeMs: number;
   resourceTotals: ResourceTotals;
+  /**
+   * Full ParseResult (docs/breakdown-design.md §6.2: "one parse, in the
+   * worker" — Breakdown needs the whole AST, not just diagnostics, and
+   * rev 2 pinned this as the resolution rather than a second main-thread
+   * parse). Plain data (token indices/numbers/strings, no class instances
+   * or cycles), so it structured-clones without special handling.
+   *
+   * §6.2's `wantAst` payload-size flag is a measured optimization
+   * trigger, not built preemptively — profile against AK_Vanguard_v1.2.rms
+   * (~49.7k tokens) before adding it.
+   */
+  parseResult: ParseResult;
 }
 
 self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
@@ -53,6 +65,7 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
     tokenCount: result.tokens.length,
     parseTimeMs,
     resourceTotals,
+    parseResult: result,
   };
   self.postMessage(response);
 };

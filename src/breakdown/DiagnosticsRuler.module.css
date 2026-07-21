@@ -1,0 +1,62 @@
+.ruler {
+  position: relative;
+  flex: 0 0 10px;
+  width: 10px;
+  height: 100%;
+  background: #f5f5f5;
+  border-left: 1px solid #ddd;
+  /* Belt-and-suspenders alongside the topFraction clamp in
+     DiagnosticsRuler.tsx: a tick's `top` is meant to always land inside
+     [0%, 100%], but nothing should be able to render outside this track
+     regardless — this is a fixed-bounds visual element, not a scroll
+     container, so clipping here is correct, not just defensive. */
+  overflow: hidden;
+}
+
+.viewport {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: rgba(42, 109, 244, 0.15);
+  border-top: 1px solid rgba(42, 109, 244, 0.5);
+  border-bottom: 1px solid rgba(42, 109, 244, 0.5);
+  pointer-events: none;
+}
+
+/*
+ * This wrapper — not .tick — is the element positioned against .ruler.
+ * HelpTip wraps .tick in its own `position: relative` span (see
+ * HelpTip.module.css), which would silently become the containing block
+ * for an absolutely-positioned .tick nested directly inside it. Putting
+ * the positioning here, one level ABOVE the HelpTip wrapper, keeps the
+ * containing block as .ruler regardless of what HelpTip does internally.
+ */
+.tickWrapper {
+  position: absolute;
+  left: 1px;
+  width: 8px;
+  height: 0;
+  transform: translateY(-2px);
+}
+
+.tick {
+  display: block;
+  width: 8px;
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.severity-error {
+  background: #dc3545;
+}
+
+.severity-warning {
+  background: #e0a300;
+}
+
+.severity-info {
+  background: #17a2b8;
+}

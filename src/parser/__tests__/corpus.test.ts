@@ -35,7 +35,7 @@ const ZERO_ERROR_ALLOWLIST = [
   "Pa_Site_v1.1.rms",
   "OWWC1Tewaipounamu-edited-v1.2.rms",
   "AK_Hourglass_v2.0.rms",
-  "Vanguard_v1.2.rms",
+  "AK_Vanguard_v1.2.rms", // renamed from Vanguard_v1.2.rms — the old name silently dropped it from this gate
 ];
 
 function listRms(dir: string): string[] {
@@ -86,7 +86,7 @@ describe("corpus: zero-error gate (triaged allowlist)", () => {
 
 describe("corpus: benchmark sanity (Vanguard, ~50k tokens)", () => {
   it("parses the benchmark file in a sane time", () => {
-    const path = join(MAPS_DIR, "Vanguard_v1.2.rms");
+    const path = join(MAPS_DIR, "AK_Vanguard_v1.2.rms");
     if (!existsSync(path)) return;
     const source = readFileSync(path, "utf8");
     const t0 = performance.now();

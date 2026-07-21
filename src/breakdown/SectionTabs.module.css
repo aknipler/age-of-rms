@@ -1,0 +1,44 @@
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #000;
+  background: #fff;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid #000;
+  border-top: none;
+  border-left: none;
+  background: #fff;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: #f0f0f0;
+}
+
+.tabActive {
+  background: #b3b3b3;
+}
+
+.tabActive:hover {
+  background: #b3b3b3;
+}
+
+.countBadge {
+  border-radius: 999px;
+  background: #eee;
+  border: 1px solid #999;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+}
+
+.warnBadge {
+  color: #a00;
+  font-weight: 700;
+}

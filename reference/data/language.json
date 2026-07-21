@@ -51,7 +51,13 @@
       "kind": "standalone",
       "description": "Selects generation-behavior version for backward compatibility. DE only.",
       "arguments": [
-        { "name": "version", "type": "integer", "min": 0, "max": 2, "default": 0 }
+        {
+          "name": "version",
+          "type": "integer",
+          "min": 0,
+          "max": 2,
+          "default": 0
+        }
       ],
       "verified": true
     },
@@ -61,7 +67,13 @@
       "kind": "standalone",
       "description": "Overrides the lobby-selected map size with an explicit tile dimension.",
       "arguments": [
-        { "name": "size", "type": "integer", "min": 36, "max": 480, "description": "Values outside this range are clamped." }
+        {
+          "name": "size",
+          "type": "integer",
+          "min": 36,
+          "max": 480,
+          "description": "Values outside this range are clamped."
+        }
       ],
       "verified": true
     },
@@ -71,7 +83,13 @@
       "kind": "standalone",
       "description": "Sets the civilization used for Gaia (neutral) units/buildings on this map. DE only.",
       "arguments": [
-        { "name": "civId", "type": "integer", "min": 0, "max": 53, "default": 0 }
+        {
+          "name": "civId",
+          "type": "integer",
+          "min": 0,
+          "max": 53,
+          "default": 0
+        }
       ],
       "verified": true
     },
@@ -81,10 +99,25 @@
       "kind": "standalone",
       "description": "Tells the AI what kind of map this is, affecting its strategy choices.",
       "arguments": [
-        { "name": "mapType", "type": "otherConstant" },
-        { "name": "isNomad", "type": "flag", "description": "0 or 1." },
-        { "name": "isMichi", "type": "flag", "description": "0 or 1." },
-        { "name": "showType", "type": "flag", "description": "0 or 1." }
+        {
+          "name": "mapType",
+          "type": "otherConstant"
+        },
+        {
+          "name": "isNomad",
+          "type": "flag",
+          "description": "0 or 1."
+        },
+        {
+          "name": "isMichi",
+          "type": "flag",
+          "description": "0 or 1."
+        },
+        {
+          "name": "showType",
+          "type": "flag",
+          "description": "0 or 1."
+        }
       ],
       "verified": true,
       "notes": "Exact behavior differs slightly per game version per the source guide."
@@ -95,10 +128,23 @@
       "kind": "standalone",
       "description": "Applies a flat-amount gameplay effect (resource/attribute/tech modification) at map start.",
       "arguments": [
-        { "name": "effectType", "type": "otherConstant" },
-        { "name": "target", "type": "otherConstant" },
-        { "name": "attribute", "type": "otherConstant" },
-        { "name": "amount", "type": "integer", "description": "DE treats this as a float." }
+        {
+          "name": "effectType",
+          "type": "otherConstant"
+        },
+        {
+          "name": "target",
+          "type": "otherConstant"
+        },
+        {
+          "name": "attribute",
+          "type": "otherConstant"
+        },
+        {
+          "name": "amount",
+          "type": "integer",
+          "description": "DE treats this as a float."
+        }
       ],
       "verified": true
     },
@@ -108,10 +154,22 @@
       "kind": "standalone",
       "description": "Same shape as effect_amount, but the value is treated as a percentage (divided by 100).",
       "arguments": [
-        { "name": "effectType", "type": "otherConstant" },
-        { "name": "target", "type": "otherConstant" },
-        { "name": "attribute", "type": "otherConstant" },
-        { "name": "amount", "type": "integer" }
+        {
+          "name": "effectType",
+          "type": "otherConstant"
+        },
+        {
+          "name": "target",
+          "type": "otherConstant"
+        },
+        {
+          "name": "attribute",
+          "type": "otherConstant"
+        },
+        {
+          "name": "amount",
+          "type": "integer"
+        }
       ],
       "verified": true
     },
@@ -121,10 +179,27 @@
       "kind": "standalone",
       "description": "Sets a guard-resource state; only one guard_state is allowed per script.",
       "arguments": [
-        { "name": "objectType", "type": "otherConstant" },
-        { "name": "resourceType", "type": "otherConstant" },
-        { "name": "resourceDelta", "type": "integer", "default": 0, "description": "DE treats this as a float." },
-        { "name": "flags", "type": "integer", "min": 0, "max": 7, "default": 0 }
+        {
+          "name": "objectType",
+          "type": "otherConstant"
+        },
+        {
+          "name": "resourceType",
+          "type": "otherConstant"
+        },
+        {
+          "name": "resourceDelta",
+          "type": "integer",
+          "default": 0,
+          "description": "DE treats this as a float."
+        },
+        {
+          "name": "flags",
+          "type": "integer",
+          "min": 0,
+          "max": 7,
+          "default": 0
+        }
       ],
       "verified": true
     },
@@ -134,10 +209,28 @@
       "kind": "standalone",
       "description": "Legacy terrain-state configuration.",
       "arguments": [
-        { "name": "mode", "type": "integer", "default": 0 },
-        { "name": "param1", "type": "integer", "default": 0 },
-        { "name": "param2", "type": "integer", "default": 0 },
-        { "name": "flags", "type": "integer", "min": 0, "max": 7, "default": 0 }
+        {
+          "name": "mode",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "param1",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "param2",
+          "type": "integer",
+          "default": 0
+        },
+        {
+          "name": "flags",
+          "type": "integer",
+          "min": 0,
+          "max": 7,
+          "default": 0
+        }
       ],
       "verified": false,
       "notes": "Marked UP-only (pre-DE) in the source guide; behavior in DE unconfirmed."
@@ -148,10 +241,30 @@
       "kind": "standalone",
       "description": "Sets visual weather/lighting parameters.",
       "arguments": [
-        { "name": "precipitationStyle", "type": "integer", "min": -4, "max": 4 },
-        { "name": "liveColor", "type": "integer", "min": 0, "max": 255 },
-        { "name": "fogColor", "type": "integer", "min": 0, "max": 255 },
-        { "name": "waterDirection", "type": "integer", "min": -1, "max": 1 }
+        {
+          "name": "precipitationStyle",
+          "type": "integer",
+          "min": -4,
+          "max": 4
+        },
+        {
+          "name": "liveColor",
+          "type": "integer",
+          "min": 0,
+          "max": 255
+        },
+        {
+          "name": "fogColor",
+          "type": "integer",
+          "min": 0,
+          "max": 255
+        },
+        {
+          "name": "waterDirection",
+          "type": "integer",
+          "min": -1,
+          "max": 1
+        }
       ],
       "verified": false,
       "notes": "Marked UP-only (pre-DE) in the source guide; DE support unconfirmed."
@@ -161,7 +274,13 @@
       "section": "PLAYER_SETUP",
       "kind": "standalone",
       "description": "Selects a named water-type definition (must be #const-defined). DE only.",
-      "arguments": [{ "name": "waterType", "type": "otherConstant", "default": 0 }],
+      "arguments": [
+        {
+          "name": "waterType",
+          "type": "otherConstant",
+          "default": 0
+        }
+      ],
       "verified": true
     },
     {
@@ -169,7 +288,13 @@
       "section": "LAND_GENERATION",
       "kind": "standalone",
       "description": "Sets the default terrain the whole map starts as, before any lands/terrains are placed.",
-      "arguments": [{ "name": "terrain", "type": "terrainConstant", "default": "GRASS" }],
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant",
+          "default": "GRASS"
+        }
+      ],
       "verified": true,
       "notes": "The same word \"base_terrain\" is also a valid attribute inside create_elevation/create_terrain blocks — see the attributes[] entry."
     },
@@ -178,7 +303,12 @@
       "section": "LAND_GENERATION",
       "kind": "standalone",
       "description": "Sets a secondary base terrain layer. DE only.",
-      "arguments": [{ "name": "terrain", "type": "terrainConstant" }],
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
       "verified": true
     },
     {
@@ -186,7 +316,13 @@
       "section": "LAND_GENERATION",
       "kind": "standalone",
       "description": "Toggles shoreline wave visuals. DE only.",
-      "arguments": [{ "name": "enabled", "type": "flag", "default": 1 }],
+      "arguments": [
+        {
+          "name": "enabled",
+          "type": "flag",
+          "default": 1
+        }
+      ],
       "verified": true
     },
     {
@@ -261,7 +397,13 @@
       "kind": "block",
       "description": "Raises or lowers terrain elevation in clumps.",
       "arguments": [
-        { "name": "maxHeight", "type": "integer", "min": 1, "max": 16, "default": 0 }
+        {
+          "name": "maxHeight",
+          "type": "integer",
+          "min": 1,
+          "max": 16,
+          "default": 0
+        }
       ],
       "attributes": [
         "base_terrain",
@@ -295,7 +437,13 @@
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum number of cliff formations to generate.",
-      "arguments": [{ "name": "count", "type": "integer", "default": 3 }],
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer",
+          "default": 3
+        }
+      ],
       "verified": true
     },
     {
@@ -303,7 +451,13 @@
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Maximum number of cliff formations to generate.",
-      "arguments": [{ "name": "count", "type": "integer", "default": 8 }],
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer",
+          "default": 8
+        }
+      ],
       "verified": true
     },
     {
@@ -311,7 +465,14 @@
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum length of each cliff formation.",
-      "arguments": [{ "name": "length", "type": "integer", "min": 3, "default": 5 }],
+      "arguments": [
+        {
+          "name": "length",
+          "type": "integer",
+          "min": 3,
+          "default": 5
+        }
+      ],
       "verified": true
     },
     {
@@ -319,7 +480,14 @@
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Maximum length of each cliff formation.",
-      "arguments": [{ "name": "length", "type": "integer", "min": 3, "default": 9 }],
+      "arguments": [
+        {
+          "name": "length",
+          "type": "integer",
+          "min": 3,
+          "default": 9
+        }
+      ],
       "verified": true
     },
     {
@@ -328,7 +496,13 @@
       "kind": "standalone",
       "description": "How often a cliff changes direction along its length — low values for straight cliffs, high for winding ones.",
       "arguments": [
-        { "name": "percent", "type": "percent", "min": 0, "max": 100, "default": 36 }
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": 0,
+          "max": 100,
+          "default": 36
+        }
       ],
       "verified": true,
       "notes": "Range/default confirmed; the source guide's fuller description was cut off mid-sentence in the fetch used to populate this file."
@@ -338,7 +512,12 @@
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum distance between separate cliff formations.",
-      "arguments": [{ "name": "distance", "type": "integer" }],
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
       "verified": false,
       "notes": "Name confirmed via the guide's syntax skeleton only — argument shape and default not reached before the source fetch was cut off. Re-verify before relying on the argument type."
     },
@@ -347,7 +526,12 @@
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
       "description": "Minimum distance a cliff must keep from certain terrain.",
-      "arguments": [{ "name": "distance", "type": "integer" }],
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
       "verified": false,
       "notes": "Name confirmed via the guide's syntax skeleton only — same caveat as min_distance_cliffs."
     },
@@ -356,7 +540,12 @@
       "section": "TERRAIN_GENERATION",
       "kind": "standalone",
       "description": "Applies a color-correction preset to terrain rendering.",
-      "arguments": [{ "name": "type", "type": "otherConstant" }],
+      "arguments": [
+        {
+          "name": "type",
+          "type": "otherConstant"
+        }
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton — full documentation for TERRAIN_GENERATION wasn't reached before the source fetch was cut off. Verify before trusting the argument shape."
     },
@@ -365,7 +554,12 @@
       "section": "TERRAIN_GENERATION",
       "kind": "block",
       "description": "Paints patches of a terrain type onto the map.",
-      "arguments": [{ "name": "terrain", "type": "terrainConstant" }],
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
       "attributes": [
         "base_terrain",
         "base_layer",
@@ -399,7 +593,12 @@
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects all players' lands to each other.",
-      "attributes": ["default_terrain_replacement", "replace_terrain", "terrain_cost", "terrain_size"],
+      "attributes": [
+        "default_terrain_replacement",
+        "replace_terrain",
+        "terrain_cost",
+        "terrain_size"
+      ],
       "verified": false,
       "notes": "Name only, confirmed spelled with singular \"land\" (not \"lands\") in the guide's syntax skeleton — correcting an earlier unverified assumption used in src/editor/aoe2RmsLanguage.ts that had the plural. Recheck the aoe2RmsLanguage.ts COMMANDS list against this file."
     },
@@ -408,7 +607,12 @@
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects each team's lands to each other, but not to other teams.",
-      "attributes": ["default_terrain_replacement", "replace_terrain", "terrain_cost", "terrain_size"],
+      "attributes": [
+        "default_terrain_replacement",
+        "replace_terrain",
+        "terrain_cost",
+        "terrain_size"
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton."
     },
@@ -417,7 +621,12 @@
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects every land on the map to every other land, player or not.",
-      "attributes": ["default_terrain_replacement", "replace_terrain", "terrain_cost", "terrain_size"],
+      "attributes": [
+        "default_terrain_replacement",
+        "replace_terrain",
+        "terrain_cost",
+        "terrain_size"
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton."
     },
@@ -426,7 +635,12 @@
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects lands that share the same zone.",
-      "attributes": ["default_terrain_replacement", "replace_terrain", "terrain_cost", "terrain_size"],
+      "attributes": [
+        "default_terrain_replacement",
+        "replace_terrain",
+        "terrain_cost",
+        "terrain_size"
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton."
     },
@@ -436,10 +650,21 @@
       "kind": "block",
       "description": "Connects two specific zones to each other.",
       "arguments": [
-        { "name": "zoneA", "type": "integer" },
-        { "name": "zoneB", "type": "integer" }
+        {
+          "name": "zoneA",
+          "type": "integer"
+        },
+        {
+          "name": "zoneB",
+          "type": "integer"
+        }
       ],
-      "attributes": ["default_terrain_replacement", "replace_terrain", "terrain_cost", "terrain_size"],
+      "attributes": [
+        "default_terrain_replacement",
+        "replace_terrain",
+        "terrain_cost",
+        "terrain_size"
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton."
     },
@@ -448,7 +673,12 @@
       "section": "CONNECTION_GENERATION",
       "kind": "block",
       "description": "Connects player lands to a specific non-player land.",
-      "attributes": ["default_terrain_replacement", "replace_terrain", "terrain_cost", "terrain_size"],
+      "attributes": [
+        "default_terrain_replacement",
+        "replace_terrain",
+        "terrain_cost",
+        "terrain_size"
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton."
     },
@@ -458,10 +688,22 @@
       "kind": "standalone",
       "description": "Defines a named area (referenced by ID) used to constrain later object placement via actor_area/actor_area_to_place_in.",
       "arguments": [
-        { "name": "a", "type": "integer" },
-        { "name": "b", "type": "integer" },
-        { "name": "c", "type": "integer" },
-        { "name": "d", "type": "integer" }
+        {
+          "name": "a",
+          "type": "integer"
+        },
+        {
+          "name": "b",
+          "type": "integer"
+        },
+        {
+          "name": "c",
+          "type": "integer"
+        },
+        {
+          "name": "d",
+          "type": "integer"
+        }
       ],
       "verified": false,
       "notes": "Name and 4-integer argument count confirmed via the guide's syntax skeleton; exact meaning of each argument not reached before the source fetch was cut off."
@@ -471,8 +713,15 @@
       "section": "OBJECTS_GENERATION",
       "kind": "block",
       "description": "Places a themed group of objects (e.g. a mixed forage/relic cluster) as a unit.",
-      "arguments": [{ "name": "type", "type": "objectConstant" }],
-      "attributes": ["add_object"],
+      "arguments": [
+        {
+          "name": "type",
+          "type": "objectConstant"
+        }
+      ],
+      "attributes": [
+        "add_object"
+      ],
       "verified": false,
       "notes": "Name only, from the guide's syntax skeleton."
     },
@@ -481,7 +730,12 @@
       "section": "OBJECTS_GENERATION",
       "kind": "block",
       "description": "Places objects (resources, units, buildings) on the map, either bare (create_object GOLD) or with a block of placement-constraining attributes.",
-      "arguments": [{ "name": "type", "type": "objectConstant" }],
+      "arguments": [
+        {
+          "name": "type",
+          "type": "objectConstant"
+        }
+      ],
       "attributes": [
         "number_of_objects",
         "number_of_groups",
@@ -535,115 +789,1159 @@
     }
   ],
   "attributes": [
-    { "name": "terrain_type", "arguments": [{ "name": "terrain", "type": "terrainConstant", "default": "GRASS" }], "description": "The terrain this land is made of.", "verified": true },
-    { "name": "land_percent", "arguments": [{ "name": "percent", "type": "percent", "min": 0, "max": 100, "default": 100 }], "mutexWith": ["number_of_tiles"], "description": "Share of the map this land should occupy.", "verified": true },
-    { "name": "number_of_tiles", "arguments": [{ "name": "count", "type": "integer" }], "mutexWith": ["land_percent"], "description": "Absolute tile count for this land, instead of a percentage.", "verified": true },
-    { "name": "base_size", "arguments": [{ "name": "radius", "type": "integer", "default": 3 }], "description": "Base radius of the land before growth/fuzziness is applied.", "verified": true },
-    { "name": "set_circular_base", "description": "Forces the land's base shape to be circular. DE only.", "verified": true },
-    { "name": "generate_mode", "arguments": [{ "name": "mode", "type": "flag", "default": 0 }], "description": "Legacy generation-mode toggle. DE only.", "verified": true },
-    { "name": "land_position", "arguments": [{ "name": "x", "type": "percent", "min": 0, "max": 99 }, { "name": "y", "type": "percent", "min": 0, "max": 99 }], "description": "Fixes the land's position as a percentage of map dimensions. Ignores border settings.", "verified": true },
-    { "name": "circle_radius", "arguments": [{ "name": "radiusPercent", "type": "percent", "min": 1, "max": 50 }, { "name": "variance", "type": "integer", "default": 0 }], "description": "Radius (as a percent of map size) for a circular land, plus variance. DE only.", "verified": true },
-    { "name": "left_border", "arguments": [{ "name": "percent", "type": "percent", "max": 99, "default": 0, "cautionBelow": 0, "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map." }], "description": "Minimum distance from the map's left edge.", "verified": true, "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015." },
-    { "name": "right_border", "arguments": [{ "name": "percent", "type": "percent", "max": 99, "default": 0, "cautionBelow": 0, "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map." }], "description": "Minimum distance from the map's right edge.", "verified": true, "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015." },
-    { "name": "top_border", "arguments": [{ "name": "percent", "type": "percent", "max": 99, "default": 0, "cautionBelow": 0, "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map." }], "description": "Minimum distance from the map's top edge.", "verified": true, "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015. BUG (guide-documented): asymmetric borders for player lands can misbehave when top_border is larger than the other borders — always pair it with another border." },
-    { "name": "bottom_border", "arguments": [{ "name": "percent", "type": "percent", "max": 99, "default": 0, "cautionBelow": 0, "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map." }], "description": "Minimum distance from the map's bottom edge.", "verified": true, "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015." },
-    { "name": "border_fuzziness", "arguments": [{ "name": "percent", "type": "percent", "min": 0, "max": 100, "default": 20 }], "description": "Randomizes land edges instead of a hard border.", "verified": true },
-    { "name": "clumping_factor", "arguments": [{ "name": "value", "type": "integer", "default": 8, "description": "Useful range roughly 0-40; negative values produce snakey shapes." }], "description": "Controls how blobby vs. scattered a land/terrain's shape is.", "verified": true },
-    { "name": "land_conformity", "arguments": [{ "name": "percent", "type": "percent", "min": -1, "max": 100 }], "description": "DE-only land-shape parameter. Noted as buggy in the source guide.", "verified": true, "notes": "Guide explicitly flags this as buggy — worth a real playtest before relying on it." },
-    { "name": "base_elevation", "arguments": [{ "name": "level", "type": "integer", "min": 1, "max": 16, "default": 0 }], "description": "Elevation level this land starts at. Requires an <ELEVATION_GENERATION> section to be present.", "verified": true },
-    { "name": "assign_to_player", "arguments": [{ "name": "playerNumber", "type": "integer", "min": 1, "max": 8 }], "mutexWith": ["assign_to"], "description": "Assigns this land to a specific player number.", "verified": true },
-    { "name": "assign_to", "arguments": [{ "name": "target", "type": "otherConstant", "description": "AT_PLAYER, AT_COLOR, or AT_TEAM." }, { "name": "number", "type": "integer" }, { "name": "mode", "type": "integer", "min": -1, "max": 0 }, { "name": "flags", "type": "integer", "min": 0, "max": 3 }], "mutexWith": ["assign_to_player"], "description": "Assigns this land by player, color, or team.", "verified": true },
-    { "name": "zone", "arguments": [{ "name": "zoneId", "type": "integer" }], "mutexWith": ["set_zone_by_team", "set_zone_randomly"], "description": "Assigns this land to a numbered zone, used later for terrain/object placement scoping.", "verified": true },
-    { "name": "set_zone_by_team", "mutexWith": ["zone", "set_zone_randomly"], "description": "Assigns this land's zone automatically by team.", "verified": true },
-    { "name": "set_zone_randomly", "mutexWith": ["zone", "set_zone_by_team"], "description": "Assigns this land's zone randomly.", "verified": true },
-    { "name": "other_zone_avoidance_distance", "arguments": [{ "name": "distance", "type": "integer", "default": 0 }], "description": "Minimum distance to keep from lands in other zones.", "verified": true },
-    { "name": "min_placement_distance", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Minimum distance between instances of this land. Defaults to other_zone_avoidance_distance's value.", "verified": true },
-    { "name": "land_id", "arguments": [{ "name": "id", "type": "integer", "min": -10 }], "description": "Names this land so later commands (e.g. place_on_specific_land_id) can target it.", "verified": true },
-    { "name": "number_of_clumps", "arguments": [{ "name": "count", "type": "integer", "default": 1 }], "description": "How many separate blobs to split the placement into.", "verified": true },
-    { "name": "set_scale_by_size", "mutexWith": ["set_scale_by_groups"], "description": "Scales placement amount by map size.", "verified": true },
-    { "name": "set_scale_by_groups", "mutexWith": ["set_scale_by_size"], "description": "Scales placement amount by number of clumps/groups instead of map size.", "verified": true },
-    { "name": "spacing", "arguments": [{ "name": "tiles", "type": "integer", "min": 1, "default": 1 }], "description": "Minimum spacing between elevation clumps.", "verified": true },
-    { "name": "enable_balanced_elevation", "description": "Tries to keep elevation generation fair across player starting areas. DE only.", "verified": true },
-    { "name": "base_terrain", "arguments": [{ "name": "terrain", "type": "terrainConstant", "default": "GRASS" }], "description": "Sets the default/underlying terrain for this block (elevation clump or terrain patch), before the block's own terrain is layered on.", "verified": true, "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[]) — different context, both real; RMS reuses identifiers between command and attribute position." },
-    { "name": "base_layer", "arguments": [{ "name": "terrain", "type": "terrainConstant" }], "description": "Sets a secondary base terrain layer for this block. DE only.", "verified": true, "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[])." },
-    { "name": "beach_terrain", "arguments": [{ "name": "terrain", "type": "terrainConstant" }], "description": "Terrain used for the shoreline transition next to this terrain patch.", "verified": false, "notes": "Name only — see create_terrain's notes." },
-    { "name": "terrain_mask", "arguments": [{ "name": "mask", "type": "integer" }], "description": "Restricts which underlying terrains this patch can be painted over.", "verified": false, "notes": "Name only — see create_terrain's notes." },
-    { "name": "spacing_to_other_terrain_types", "arguments": [{ "name": "tiles", "type": "integer" }], "description": "Minimum spacing to keep from other terrain-generation patches.", "verified": false, "notes": "Name only — see create_terrain's notes." },
-    { "name": "spacing_to_specific_terrain", "arguments": [{ "name": "terrain", "type": "terrainConstant" }, { "name": "tiles", "type": "integer" }], "description": "Minimum spacing to keep from a specific named terrain.", "verified": false, "notes": "Name only — see create_terrain's notes." },
-    { "name": "set_flat_terrain_only", "description": "Only paints this terrain onto flat (non-elevated) ground.", "verified": false, "notes": "Name only — see create_terrain's notes." },
-    { "name": "set_avoid_player_start_areas", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Keeps this terrain away from player starting areas.", "verified": false, "notes": "Name only — see create_terrain's notes." },
-    { "name": "height_limits", "arguments": [{ "name": "min", "type": "integer" }, { "name": "max", "type": "integer" }], "description": "Restricts this terrain to a range of elevation levels.", "verified": true, "notes": "Confirmed via the working create_terrain example in the source guide." },
-    { "name": "default_terrain_replacement", "arguments": [{ "name": "terrain", "type": "terrainConstant" }], "description": "Terrain used to pave connections by default.", "verified": false, "notes": "Name only — full CONNECTION_GENERATION docs weren't reached in the source fetch." },
-    { "name": "replace_terrain", "arguments": [{ "name": "from", "type": "terrainConstant" }, { "name": "to", "type": "terrainConstant" }], "description": "Replaces one terrain with another along the connection path.", "verified": false, "notes": "Name only — see default_terrain_replacement's notes." },
-    { "name": "terrain_cost", "arguments": [{ "name": "terrain", "type": "terrainConstant" }, { "name": "cost", "type": "integer" }], "description": "Pathfinding cost weight for a terrain when routing this connection.", "verified": false, "notes": "Name only — see default_terrain_replacement's notes." },
-    { "name": "terrain_size", "arguments": [{ "name": "terrain", "type": "terrainConstant" }, { "name": "width", "type": "integer" }, { "name": "spacing", "type": "integer" }], "description": "Width/spacing of a terrain band used along the connection path.", "verified": false, "notes": "Name only — see default_terrain_replacement's notes." },
-    { "name": "add_object", "arguments": [{ "name": "type", "type": "objectConstant" }, { "name": "percent", "type": "percent" }], "description": "Adds an object type to an object group, weighted by percent chance.", "verified": false, "notes": "Name only — full OBJECTS_GENERATION docs weren't reached in the source fetch." },
-    { "name": "number_of_objects", "arguments": [{ "name": "count", "type": "integer" }], "description": "How many of this object to place.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "number_of_groups", "arguments": [{ "name": "count", "type": "integer" }], "description": "How many separate clusters to split the placement into.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "group_variance", "arguments": [{ "name": "value", "type": "integer" }], "description": "Randomizes how many objects land in each group.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "group_placement_radius", "arguments": [{ "name": "tiles", "type": "integer" }], "description": "Keeps grouped objects within this many tiles of the group's center.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_tight_grouping", "mutexWith": ["set_loose_grouping"], "description": "Places grouped objects on adjacent tiles.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_loose_grouping", "mutexWith": ["set_tight_grouping"], "description": "Allows more spread between grouped objects.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "min_connected_tiles", "arguments": [{ "name": "count", "type": "integer" }], "description": "Minimum contiguous placeable area required.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "resource_delta", "arguments": [{ "name": "amount", "type": "integer" }], "description": "Adjusts the resource amount carried by placed objects.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "second_object", "arguments": [{ "name": "type", "type": "objectConstant" }], "description": "A secondary object type placed alongside the primary one.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_scaling_to_map_size", "mutexWith": ["set_scaling_to_player_number"], "description": "Scales object count by map size.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_scaling_to_player_number", "mutexWith": ["set_scaling_to_map_size"], "description": "Scales object count by number of players.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_place_for_every_player", "mutexWith": ["place_on_specific_land_id"], "description": "Ensures every player's land gets a copy of this placement.", "verified": true, "notes": "Behavior confirmed by the official Age of Empires support summary referencing this attribute; exact argument shape not independently verified here." },
-    { "name": "place_on_specific_land_id", "arguments": [{ "name": "landId", "type": "integer" }], "mutexWith": ["set_place_for_every_player"], "description": "Restricts placement to a land tagged with land_id.", "verified": true, "notes": "Confirmed via the working create_object example in the source guide: create_object GOLD { place_on_specific_land_id 13 }." },
-    { "name": "avoid_other_land_zones", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Keeps placement away from other zones' lands.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "generate_for_first_land_only", "description": "Restricts generation to only the first land created.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_gaia_object_only", "description": "Placed objects belong to Gaia (neutral) rather than a player.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_gaia_unconvertible", "mutexWith": ["set_building_capturable"], "description": "Prevents Gaia-owned placed objects from being converted.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_building_capturable", "mutexWith": ["set_gaia_unconvertible"], "description": "Allows placed Gaia buildings to be captured.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "make_indestructible", "description": "Placed objects cannot be destroyed.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "min_distance_to_players", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Minimum distance to keep from any player's starting area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "max_distance_to_players", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Maximum distance to allow from any player's starting area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_circular_placement", "description": "Constrains placement to a circular area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "terrain_to_place_on", "arguments": [{ "name": "terrain", "type": "terrainConstant" }], "description": "Restricts placement to a specific terrain type.", "verified": true, "notes": "Widely used and unambiguous in community scripts; the argument shape (single terrain constant) is well established even though this exact source fetch didn't reach a formal description." },
-    { "name": "layer_to_place_on", "arguments": [{ "name": "layer", "type": "otherConstant" }], "description": "Restricts placement to a specific terrain layer.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "ignore_terrain_restrictions", "description": "Bypasses normal terrain-placement rules for this object.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "max_distance_to_other_zones", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Maximum distance allowed from other zones.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "place_on_forest_zone", "mutexWith": ["avoid_forest_zone"], "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).", "verified": true, "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use." },
-    { "name": "avoid_forest_zone", "arguments": [{ "name": "distance", "type": "integer" }], "mutexWith": ["place_on_forest_zone"], "description": "Keeps placement away from forest zones.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "avoid_cliff_zone", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Keeps placement away from cliff zones.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "min_distance_to_map_edge", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Minimum distance to keep from the edge of the map.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "min_distance_group_placement", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Minimum distance between separate placement groups.", "verified": true, "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name — treat the argument shape as high-confidence but not source-verified." },
-    { "name": "temp_min_distance_group_placement", "arguments": [{ "name": "distance", "type": "integer" }], "description": "Temporary override of min_distance_group_placement for this placement only.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "find_closest", "description": "Prefers the closest valid location rather than a random valid one.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "find_closest_to_map_center", "description": "Prefers locations closest to the map's center.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "find_closest_to_map_edge", "description": "Prefers locations closest to the map's edge.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "enable_tile_shuffling", "description": "Randomizes tile evaluation order during placement search.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "require_path", "arguments": [{ "name": "pathType", "type": "otherConstant" }], "description": "Requires a valid path of the given type to reach this placement.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "force_placement", "description": "Forces placement even if normal constraints would reject it.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "actor_area", "arguments": [{ "name": "areaId", "type": "integer" }], "description": "Associates this placement with an actor area created by create_actor_area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "actor_area_radius", "arguments": [{ "name": "radius", "type": "integer" }], "description": "Radius of the associated actor area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "override_actor_radius_if_required", "description": "Allows the actor area radius to be overridden if placement would otherwise fail.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "actor_area_to_place_in", "arguments": [{ "name": "areaId", "type": "integer" }], "description": "Restricts placement to inside a specific actor area.", "verified": true, "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name." },
-    { "name": "avoid_actor_area", "arguments": [{ "name": "areaId", "type": "integer" }], "description": "Keeps placement away from a specific actor area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "avoid_all_actor_areas", "description": "Keeps placement away from every defined actor area.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "set_facet", "arguments": [{ "name": "facet", "type": "integer" }], "description": "Sets the visual facet/rotation variant used for placed objects.", "verified": false, "notes": "Name only — see create_object's notes." },
-    { "name": "match_player_civ", "description": "Placed objects visually match the owning player's civilization.", "verified": false, "notes": "Name only — see create_object's notes." }
+    {
+      "name": "terrain_type",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant",
+          "default": "GRASS"
+        }
+      ],
+      "description": "The terrain this land is made of.",
+      "verified": true
+    },
+    {
+      "name": "land_percent",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": 0,
+          "max": 100,
+          "default": 100
+        }
+      ],
+      "mutexWith": [
+        "number_of_tiles"
+      ],
+      "description": "Share of the map this land should occupy.",
+      "verified": true
+    },
+    {
+      "name": "number_of_tiles",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "mutexWith": [
+        "land_percent"
+      ],
+      "description": "Absolute tile count for this land, instead of a percentage.",
+      "verified": true
+    },
+    {
+      "name": "base_size",
+      "arguments": [
+        {
+          "name": "radius",
+          "type": "integer",
+          "default": 3
+        }
+      ],
+      "description": "Base radius of the land before growth/fuzziness is applied.",
+      "verified": true
+    },
+    {
+      "name": "set_circular_base",
+      "description": "Forces the land's base shape to be circular. DE only.",
+      "verified": true
+    },
+    {
+      "name": "generate_mode",
+      "arguments": [
+        {
+          "name": "mode",
+          "type": "flag",
+          "default": 0
+        }
+      ],
+      "description": "Legacy generation-mode toggle. DE only.",
+      "verified": true
+    },
+    {
+      "name": "land_position",
+      "arguments": [
+        {
+          "name": "x",
+          "type": "percent",
+          "min": 0,
+          "max": 99
+        },
+        {
+          "name": "y",
+          "type": "percent",
+          "min": 0,
+          "max": 99
+        }
+      ],
+      "description": "Fixes the land's position as a percentage of map dimensions. Ignores border settings.",
+      "verified": true
+    },
+    {
+      "name": "circle_radius",
+      "arguments": [
+        {
+          "name": "radiusPercent",
+          "type": "percent",
+          "min": 1,
+          "max": 50
+        },
+        {
+          "name": "variance",
+          "type": "integer",
+          "default": 0
+        }
+      ],
+      "description": "Radius (as a percent of map size) for a circular land, plus variance. DE only.",
+      "verified": true
+    },
+    {
+      "name": "left_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
+        }
+      ],
+      "description": "Minimum distance from the map's left edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
+    },
+    {
+      "name": "right_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
+        }
+      ],
+      "description": "Minimum distance from the map's right edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
+    },
+    {
+      "name": "top_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
+        }
+      ],
+      "description": "Minimum distance from the map's top edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015. BUG (guide-documented): asymmetric borders for player lands can misbehave when top_border is larger than the other borders — always pair it with another border."
+    },
+    {
+      "name": "bottom_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
+        }
+      ],
+      "description": "Minimum distance from the map's bottom edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
+    },
+    {
+      "name": "border_fuzziness",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": 0,
+          "max": 100,
+          "default": 20
+        }
+      ],
+      "description": "Randomizes land edges instead of a hard border.",
+      "verified": true
+    },
+    {
+      "name": "clumping_factor",
+      "arguments": [
+        {
+          "name": "value",
+          "type": "integer",
+          "default": 8,
+          "description": "Useful range roughly 0-40; negative values produce snakey shapes."
+        }
+      ],
+      "description": "Controls how blobby vs. scattered a land/terrain's shape is.",
+      "verified": true
+    },
+    {
+      "name": "land_conformity",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": -1,
+          "max": 100
+        }
+      ],
+      "description": "DE-only land-shape parameter. Noted as buggy in the source guide.",
+      "verified": true,
+      "notes": "Guide explicitly flags this as buggy — worth a real playtest before relying on it."
+    },
+    {
+      "name": "base_elevation",
+      "arguments": [
+        {
+          "name": "level",
+          "type": "integer",
+          "min": 1,
+          "max": 16,
+          "default": 0
+        }
+      ],
+      "description": "Elevation level this land starts at. Requires an <ELEVATION_GENERATION> section to be present.",
+      "verified": true
+    },
+    {
+      "name": "assign_to_player",
+      "arguments": [
+        {
+          "name": "playerNumber",
+          "type": "integer",
+          "min": 1,
+          "max": 8
+        }
+      ],
+      "mutexWith": [
+        "assign_to"
+      ],
+      "description": "Assigns this land to a specific player number.",
+      "verified": true
+    },
+    {
+      "name": "assign_to",
+      "arguments": [
+        {
+          "name": "target",
+          "type": "otherConstant",
+          "description": "AT_PLAYER, AT_COLOR, or AT_TEAM."
+        },
+        {
+          "name": "number",
+          "type": "integer"
+        },
+        {
+          "name": "mode",
+          "type": "integer",
+          "min": -1,
+          "max": 0
+        },
+        {
+          "name": "flags",
+          "type": "integer",
+          "min": 0,
+          "max": 3
+        }
+      ],
+      "mutexWith": [
+        "assign_to_player"
+      ],
+      "description": "Assigns this land by player, color, or team.",
+      "verified": true
+    },
+    {
+      "name": "zone",
+      "arguments": [
+        {
+          "name": "zoneId",
+          "type": "integer"
+        }
+      ],
+      "mutexWith": [
+        "set_zone_by_team",
+        "set_zone_randomly"
+      ],
+      "description": "Assigns this land to a numbered zone, used later for terrain/object placement scoping.",
+      "verified": true
+    },
+    {
+      "name": "set_zone_by_team",
+      "mutexWith": [
+        "zone",
+        "set_zone_randomly"
+      ],
+      "description": "Assigns this land's zone automatically by team.",
+      "verified": true
+    },
+    {
+      "name": "set_zone_randomly",
+      "mutexWith": [
+        "zone",
+        "set_zone_by_team"
+      ],
+      "description": "Assigns this land's zone randomly.",
+      "verified": true
+    },
+    {
+      "name": "other_zone_avoidance_distance",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer",
+          "default": 0
+        }
+      ],
+      "description": "Minimum distance to keep from lands in other zones.",
+      "verified": true
+    },
+    {
+      "name": "min_placement_distance",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance between instances of this land. Defaults to other_zone_avoidance_distance's value.",
+      "verified": true
+    },
+    {
+      "name": "land_id",
+      "arguments": [
+        {
+          "name": "id",
+          "type": "integer",
+          "min": -10
+        }
+      ],
+      "description": "Names this land so later commands (e.g. place_on_specific_land_id) can target it.",
+      "verified": true
+    },
+    {
+      "name": "number_of_clumps",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer",
+          "default": 1
+        }
+      ],
+      "description": "How many separate blobs to split the placement into.",
+      "verified": true
+    },
+    {
+      "name": "set_scale_by_size",
+      "mutexWith": [
+        "set_scale_by_groups"
+      ],
+      "description": "Scales placement amount by map size.",
+      "verified": true
+    },
+    {
+      "name": "set_scale_by_groups",
+      "mutexWith": [
+        "set_scale_by_size"
+      ],
+      "description": "Scales placement amount by number of clumps/groups instead of map size.",
+      "verified": true
+    },
+    {
+      "name": "spacing",
+      "arguments": [
+        {
+          "name": "tiles",
+          "type": "integer",
+          "min": 1,
+          "default": 1
+        }
+      ],
+      "description": "Minimum spacing between elevation clumps.",
+      "verified": true
+    },
+    {
+      "name": "enable_balanced_elevation",
+      "description": "Tries to keep elevation generation fair across player starting areas. DE only.",
+      "verified": true
+    },
+    {
+      "name": "base_terrain",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant",
+          "default": "GRASS"
+        }
+      ],
+      "description": "Sets the default/underlying terrain for this block (elevation clump or terrain patch), before the block's own terrain is layered on.",
+      "verified": true,
+      "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[]) — different context, both real; RMS reuses identifiers between command and attribute position."
+    },
+    {
+      "name": "base_layer",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Sets a secondary base terrain layer for this block. DE only.",
+      "verified": true,
+      "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[])."
+    },
+    {
+      "name": "beach_terrain",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Terrain used for the shoreline transition next to this terrain patch.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "terrain_mask",
+      "arguments": [
+        {
+          "name": "mask",
+          "type": "integer"
+        }
+      ],
+      "description": "Restricts which underlying terrains this patch can be painted over.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "spacing_to_other_terrain_types",
+      "arguments": [
+        {
+          "name": "tiles",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum spacing to keep from other terrain-generation patches.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "spacing_to_specific_terrain",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        },
+        {
+          "name": "tiles",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum spacing to keep from a specific named terrain.",
+      "verified": false,
+      "repeatable": true,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "set_flat_terrain_only",
+      "description": "Only paints this terrain onto flat (non-elevated) ground.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "set_avoid_player_start_areas",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps this terrain away from player starting areas.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "height_limits",
+      "arguments": [
+        {
+          "name": "min",
+          "type": "integer"
+        },
+        {
+          "name": "max",
+          "type": "integer"
+        }
+      ],
+      "description": "Restricts this terrain to a range of elevation levels.",
+      "verified": true,
+      "notes": "Confirmed via the working create_terrain example in the source guide."
+    },
+    {
+      "name": "default_terrain_replacement",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Terrain used to pave connections by default.",
+      "verified": false,
+      "notes": "Name only — full CONNECTION_GENERATION docs weren't reached in the source fetch."
+    },
+    {
+      "name": "replace_terrain",
+      "arguments": [
+        {
+          "name": "from",
+          "type": "terrainConstant"
+        },
+        {
+          "name": "to",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Replaces one terrain with another along the connection path.",
+      "verified": false,
+      "repeatable": true,
+      "notes": "Name only — see default_terrain_replacement's notes."
+    },
+    {
+      "name": "terrain_cost",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        },
+        {
+          "name": "cost",
+          "type": "integer"
+        }
+      ],
+      "description": "Pathfinding cost weight for a terrain when routing this connection.",
+      "verified": false,
+      "repeatable": true,
+      "notes": "Name only — see default_terrain_replacement's notes."
+    },
+    {
+      "name": "terrain_size",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        },
+        {
+          "name": "width",
+          "type": "integer"
+        },
+        {
+          "name": "spacing",
+          "type": "integer"
+        }
+      ],
+      "description": "Width/spacing of a terrain band used along the connection path.",
+      "verified": false,
+      "repeatable": true,
+      "notes": "Name only — see default_terrain_replacement's notes."
+    },
+    {
+      "name": "add_object",
+      "arguments": [
+        {
+          "name": "type",
+          "type": "objectConstant"
+        },
+        {
+          "name": "percent",
+          "type": "percent"
+        }
+      ],
+      "description": "Adds an object type to an object group, weighted by percent chance.",
+      "verified": false,
+      "notes": "Name only — full OBJECTS_GENERATION docs weren't reached in the source fetch."
+    },
+    {
+      "name": "number_of_objects",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "description": "How many of this object to place.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "number_of_groups",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "description": "How many separate clusters to split the placement into.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "group_variance",
+      "arguments": [
+        {
+          "name": "value",
+          "type": "integer"
+        }
+      ],
+      "description": "Randomizes how many objects land in each group.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "group_placement_radius",
+      "arguments": [
+        {
+          "name": "tiles",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps grouped objects within this many tiles of the group's center.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_tight_grouping",
+      "mutexWith": [
+        "set_loose_grouping"
+      ],
+      "description": "Places grouped objects on adjacent tiles.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_loose_grouping",
+      "mutexWith": [
+        "set_tight_grouping"
+      ],
+      "description": "Allows more spread between grouped objects.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_connected_tiles",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum contiguous placeable area required.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "resource_delta",
+      "arguments": [
+        {
+          "name": "amount",
+          "type": "integer"
+        }
+      ],
+      "description": "Adjusts the resource amount carried by placed objects.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "second_object",
+      "arguments": [
+        {
+          "name": "type",
+          "type": "objectConstant"
+        }
+      ],
+      "description": "A secondary object type placed alongside the primary one.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_scaling_to_map_size",
+      "mutexWith": [
+        "set_scaling_to_player_number"
+      ],
+      "description": "Scales object count by map size.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_scaling_to_player_number",
+      "mutexWith": [
+        "set_scaling_to_map_size"
+      ],
+      "description": "Scales object count by number of players.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_place_for_every_player",
+      "mutexWith": [
+        "place_on_specific_land_id"
+      ],
+      "description": "Ensures every player's land gets a copy of this placement.",
+      "verified": true,
+      "notes": "Behavior confirmed by the official Age of Empires support summary referencing this attribute; exact argument shape not independently verified here."
+    },
+    {
+      "name": "place_on_specific_land_id",
+      "arguments": [
+        {
+          "name": "landId",
+          "type": "integer"
+        }
+      ],
+      "mutexWith": [
+        "set_place_for_every_player"
+      ],
+      "description": "Restricts placement to a land tagged with land_id.",
+      "verified": true,
+      "notes": "Confirmed via the working create_object example in the source guide: create_object GOLD { place_on_specific_land_id 13 }."
+    },
+    {
+      "name": "avoid_other_land_zones",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps placement away from other zones' lands.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "generate_for_first_land_only",
+      "description": "Restricts generation to only the first land created.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_gaia_object_only",
+      "description": "Placed objects belong to Gaia (neutral) rather than a player.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_gaia_unconvertible",
+      "mutexWith": [
+        "set_building_capturable"
+      ],
+      "description": "Prevents Gaia-owned placed objects from being converted.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_building_capturable",
+      "mutexWith": [
+        "set_gaia_unconvertible"
+      ],
+      "description": "Allows placed Gaia buildings to be captured.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "make_indestructible",
+      "description": "Placed objects cannot be destroyed.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_distance_to_players",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance to keep from any player's starting area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "max_distance_to_players",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Maximum distance to allow from any player's starting area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_circular_placement",
+      "description": "Constrains placement to a circular area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "terrain_to_place_on",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Restricts placement to a specific terrain type.",
+      "verified": true,
+      "notes": "Widely used and unambiguous in community scripts; the argument shape (single terrain constant) is well established even though this exact source fetch didn't reach a formal description."
+    },
+    {
+      "name": "layer_to_place_on",
+      "arguments": [
+        {
+          "name": "layer",
+          "type": "otherConstant"
+        }
+      ],
+      "description": "Restricts placement to a specific terrain layer.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "ignore_terrain_restrictions",
+      "description": "Bypasses normal terrain-placement rules for this object.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "max_distance_to_other_zones",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Maximum distance allowed from other zones.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "place_on_forest_zone",
+      "mutexWith": [
+        "avoid_forest_zone"
+      ],
+      "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).",
+      "verified": true,
+      "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use."
+    },
+    {
+      "name": "avoid_forest_zone",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "mutexWith": [
+        "place_on_forest_zone"
+      ],
+      "description": "Keeps placement away from forest zones.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "avoid_cliff_zone",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps placement away from cliff zones.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_distance_to_map_edge",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance to keep from the edge of the map.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_distance_group_placement",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance between separate placement groups.",
+      "verified": true,
+      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name — treat the argument shape as high-confidence but not source-verified."
+    },
+    {
+      "name": "temp_min_distance_group_placement",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Temporary override of min_distance_group_placement for this placement only.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "find_closest",
+      "description": "Prefers the closest valid location rather than a random valid one.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "find_closest_to_map_center",
+      "description": "Prefers locations closest to the map's center.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "find_closest_to_map_edge",
+      "description": "Prefers locations closest to the map's edge.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "enable_tile_shuffling",
+      "description": "Randomizes tile evaluation order during placement search.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "require_path",
+      "arguments": [
+        {
+          "name": "pathType",
+          "type": "otherConstant"
+        }
+      ],
+      "description": "Requires a valid path of the given type to reach this placement.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "force_placement",
+      "description": "Forces placement even if normal constraints would reject it.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "actor_area",
+      "arguments": [
+        {
+          "name": "areaId",
+          "type": "integer"
+        }
+      ],
+      "description": "Associates this placement with an actor area created by create_actor_area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "actor_area_radius",
+      "arguments": [
+        {
+          "name": "radius",
+          "type": "integer"
+        }
+      ],
+      "description": "Radius of the associated actor area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "override_actor_radius_if_required",
+      "description": "Allows the actor area radius to be overridden if placement would otherwise fail.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "actor_area_to_place_in",
+      "arguments": [
+        {
+          "name": "areaId",
+          "type": "integer"
+        }
+      ],
+      "description": "Restricts placement to inside a specific actor area.",
+      "verified": true,
+      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name."
+    },
+    {
+      "name": "avoid_actor_area",
+      "arguments": [
+        {
+          "name": "areaId",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps placement away from a specific actor area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "avoid_all_actor_areas",
+      "description": "Keeps placement away from every defined actor area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_facet",
+      "arguments": [
+        {
+          "name": "facet",
+          "type": "integer"
+        }
+      ],
+      "description": "Sets the visual facet/rotation variant used for placed objects.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "match_player_civ",
+      "description": "Placed objects visually match the owning player's civilization.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    }
   ],
   "directives": [
-    { "name": "#const", "arguments": [{ "name": "name", "type": "string" }, { "name": "value", "type": "integer" }], "description": "Defines a named integer constant usable anywhere a number is expected.", "verified": true, "notes": "Confirmed via real examples in the source guide, e.g. #const OUTLAW 158." },
-    { "name": "#define", "arguments": [{ "name": "name", "type": "string" }], "description": "Defines a preprocessor flag (no value) for use with if/elseif conditionals.", "verified": true },
-    { "name": "#include_drs", "arguments": [{ "name": "filename", "type": "string" }], "description": "Includes a script fragment from a DRS-packed resource file.", "verified": true },
-    { "name": "#includeXS", "arguments": [{ "name": "filename", "type": "string" }], "description": "Includes an XS script file. DE feature.", "verified": true },
-    { "name": "#undefine", "arguments": [{ "name": "name", "type": "string" }], "description": "Removes a previously #define'd flag.", "verified": false, "notes": "Used in this project's own test-maps/sample.rms by convention, but not directly confirmed in the source guide fetch used to populate this file (that fetch didn't reach the guide's Global Syntax section) — real-world community usage strongly suggests it exists, but re-verify before shipping." },
-    { "name": "#include", "arguments": [{ "name": "filename", "type": "string" }], "description": "Includes a plain script fragment file.", "verified": false, "notes": "Only #include_drs and #includeXS were confirmed in the source fetch — plain #include is a common assumption but wasn't independently confirmed. Verify before relying on it." },
-    { "name": "#ifdef", "arguments": [{ "name": "name", "type": "string" }], "description": "Preprocessor conditional: includes the following block only if the named flag is #define'd.", "verified": false, "notes": "Not reached in the source fetch (Global Syntax section wasn't in the fetched portion) — commonly documented elsewhere in the community, but re-verify." },
-    { "name": "#ifndef", "arguments": [{ "name": "name", "type": "string" }], "description": "Preprocessor conditional: includes the following block only if the named flag is NOT #define'd.", "verified": false, "notes": "Same caveat as #ifdef." },
-    { "name": "#else", "description": "Preprocessor-level else, distinct from the runtime else control keyword. Pairs with #ifdef/#ifndef.", "verified": false, "notes": "Same caveat as #ifdef." },
-    { "name": "#endif", "description": "Closes a preprocessor #ifdef/#ifndef block. Distinct from the runtime endif control keyword.", "verified": false, "notes": "Same caveat as #ifdef." }
+    {
+      "name": "#const",
+      "arguments": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "otherConstant"
+        }
+      ],
+      "description": "Assigns a label to a numeric ID. The value may be a literal number, a math expression, an rnd(), or another constant — everything in the game is a number internally, so constants resolve to their numeric value.",
+      "verified": true,
+      "notes": "value is typed otherConstant, NOT integer, so that constant-to-constant aliasing (#const PREDATOR_A WOLF) doesn't draw a false RMS0202. Guide L3295 'Everything in the game is represented internally by a numeric identifier' + L3353 'Pre-defined constants will be interpreted as numbers ... where numeric inputs are expected'; L3306 'Items can have multiple constants assigned to them'. otherConstant accepts word OR number (parser-design §6), and expression/rnd handling is ungated by argument type, so #const X (A * B) and #const X rnd(1,5) are unaffected."
+    },
+    {
+      "name": "#define",
+      "arguments": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "description": "Defines a preprocessor flag (no value) for use with if/elseif conditionals.",
+      "verified": true
+    },
+    {
+      "name": "#include_drs",
+      "arguments": [
+        {
+          "name": "filename",
+          "type": "string"
+        }
+      ],
+      "description": "Includes a script fragment from a DRS-packed resource file.",
+      "verified": true
+    },
+    {
+      "name": "#includeXS",
+      "arguments": [
+        {
+          "name": "filename",
+          "type": "string"
+        }
+      ],
+      "description": "Includes an XS script file. DE feature.",
+      "verified": true
+    },
+    {
+      "name": "#undefine",
+      "arguments": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "description": "Removes a previously #define'd flag.",
+      "verified": false,
+      "nonFunctional": true,
+      "notes": "Used in this project's own test-maps/sample.rms by convention, but not directly confirmed in the source guide fetch used to populate this file (that fetch didn't reach the guide's Global Syntax section) — real-world community usage strongly suggests it exists, but re-verify before shipping."
+    },
+    {
+      "name": "#include",
+      "arguments": [
+        {
+          "name": "filename",
+          "type": "string"
+        }
+      ],
+      "description": "Includes a plain script fragment file.",
+      "verified": false,
+      "nonFunctional": true,
+      "notes": "Only #include_drs and #includeXS were confirmed in the source fetch — plain #include is a common assumption but wasn't independently confirmed. Verify before relying on it."
+    }
   ],
   "controlKeywords": [
-    { "name": "if", "description": "Begins a runtime conditional block, evaluated during generation (not at parse time — contrast with #ifdef).", "verified": true },
-    { "name": "elseif", "description": "Additional branch of a runtime if/elseif/else/endif chain.", "verified": true },
-    { "name": "else", "description": "Fallback branch of a runtime if/elseif/else/endif chain.", "verified": true },
-    { "name": "endif", "description": "Closes a runtime if block.", "verified": true },
-    { "name": "start_random", "description": "Begins a block of percent_chance-weighted alternatives, closed by end_random.", "verified": true },
-    { "name": "percent_chance", "description": "Inside a start_random block, gives one alternative's weight (should sum to 100 across the block).", "verified": true },
-    { "name": "end_random", "description": "Closes a start_random block.", "verified": true }
+    {
+      "name": "if",
+      "description": "Begins a runtime conditional block, evaluated during generation (not at parse time — contrast with #ifdef).",
+      "verified": true
+    },
+    {
+      "name": "elseif",
+      "description": "Additional branch of a runtime if/elseif/else/endif chain.",
+      "verified": true
+    },
+    {
+      "name": "else",
+      "description": "Fallback branch of a runtime if/elseif/else/endif chain.",
+      "verified": true
+    },
+    {
+      "name": "endif",
+      "description": "Closes a runtime if block.",
+      "verified": true
+    },
+    {
+      "name": "start_random",
+      "description": "Begins a block of percent_chance-weighted alternatives, closed by end_random.",
+      "verified": true
+    },
+    {
+      "name": "percent_chance",
+      "description": "Inside a start_random block, gives one alternative's weight (should sum to 100 across the block).",
+      "verified": true
+    },
+    {
+      "name": "end_random",
+      "description": "Closes a start_random block.",
+      "verified": true
+    }
   ]
 }

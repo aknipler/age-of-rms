@@ -9,15 +9,28 @@
   overflow-x: auto;
 }
 
-.settingsCog {
+/* Ash's report: with Help Tips on, this button stopped sitting at the
+   far right and stuck right after the resource totals instead. Root
+   cause: margin-left: auto only affects the element it's set on when
+   THAT element is itself a flex item of .statusBar — but the button is
+   wrapped in <HelpTip>, whose own wrapper span becomes the real flex
+   item once help mode is on, leaving the button's own margin with
+   nothing left to push against. .cogSlot (the actual flex item,
+   StatusBar.tsx) carries the margin instead, so it holds regardless of
+   what HelpTip renders inside it. Same pattern as
+   AttributeRow.module.css's .labelSlot. */
+.cogSlot {
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.settingsCog {
   border: 1px solid #000;
   background: #fff;
   padding: 0.1rem 0.5rem;
   font-size: 0.9rem;
   line-height: 1.3;
   cursor: pointer;
-  flex-shrink: 0;
 }
 
 .settingsCog:hover {

@@ -1,0 +1,66 @@
+.card {
+  border: 1px solid #000;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0.4rem 0.6rem;
+}
+
+.strayHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.problemBadge {
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  font-size: 0.75rem;
+  border: 1px solid #000;
+}
+
+.severity-error {
+  background: #f8d7da;
+}
+
+.severity-warning {
+  background: #fff3cd;
+}
+
+.severity-info {
+  background: #d1ecf1;
+}
+
+.unknownBadge {
+  border: 1px dashed #999;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+  color: #555;
+  margin-left: 0.4rem;
+}
+
+.deleteButton,
+.stubButton,
+.fixButton {
+  border: 1px solid #999;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.1rem 0.5rem;
+}
+
+.fixButton {
+  border-color: #2a6;
+  color: #1a5c3a;
+  margin-left: 0.4rem;
+}
+
+.stubButton {
+  cursor: not-allowed;
+}
+
+.deleteButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -34,6 +34,13 @@ export interface Diagnostic {
   code: string;
   message: string; // beginner-first: what's wrong and what to do
   span: Span;
+  /**
+   * Optional beginner-facing fix suggestion (e.g. the nearest known name for
+   * an unknown identifier). Populated for RMS0200 ("unknown name") today —
+   * see unknownName() in diagnostics.ts. Consumed by the Breakdown raw-card
+   * quick-fix (docs/breakdown-design.md §3.7 / Appendix rev-2 changelog).
+   */
+  suggestion?: string;
 }
 
 export interface LexOptions {

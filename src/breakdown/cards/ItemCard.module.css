@@ -1,0 +1,11 @@
+.selectable {
+  border-left: 3px solid transparent;
+  padding-left: 0.4rem;
+  margin-left: -0.4rem;
+  cursor: default;
+}
+
+.selected {
+  border-left-color: #2a6df4;
+  background: rgba(42, 109, 244, 0.06);
+}

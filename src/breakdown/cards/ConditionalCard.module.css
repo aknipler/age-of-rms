@@ -1,0 +1,79 @@
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.branch {
+  border-left: 3px solid #999;
+  margin: 0.3rem 0;
+  padding: 0.2rem 0 0.2rem 0.6rem;
+}
+
+.branchHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.branchKeyword {
+  font-weight: 600;
+}
+
+.condition {
+  font-family: "Cascadia Code", Consolas, monospace;
+  border: 1px solid #999;
+  padding: 0.05rem 0.4rem;
+}
+
+.conditionMissing {
+  font-style: italic;
+  color: #a00;
+  font-size: 0.8rem;
+}
+
+.branchBody {
+  margin: 0.3rem 0;
+}
+
+.branchControls {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.preambleNote {
+  font-size: 0.75rem;
+  color: #a00;
+  margin: 0 0 0.2rem;
+}
+
+.addWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.addCommandButton {
+  border: 1px solid #999;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.1rem 0.5rem;
+}
+
+.branchControlButton {
+  border: 1px solid #999;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.1rem 0.5rem;
+}
+
+.branchControlButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

@@ -1,0 +1,9 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 18rem;
+  flex-shrink: 0;
+  border-right: 1px solid #000;
+  background: #fff;
+  min-height: 0;
+}

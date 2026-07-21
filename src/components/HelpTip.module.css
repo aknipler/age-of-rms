@@ -1,6 +1,16 @@
 .wrapper {
   position: relative;
   display: inline-block;
+  /* inline-block's default vertical-align is "baseline", which reserves
+     a little extra space below the box for descenders (the classic
+     "mystery gap under an inline-block/image" quirk) — inside a flex
+     row (align-items: center) this doesn't move the wrapper itself, but
+     it can still make ITS OWN computed height a fraction taller than
+     the same content rendered with no wrapper at all (help mode off),
+     which is what Ash was seeing as a small row-height difference
+     between the two modes. `middle` removes the reserved descender
+     space without changing anything about how HelpTip actually behaves. */
+  vertical-align: middle;
 }
 
 .popup {

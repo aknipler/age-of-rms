@@ -95,7 +95,7 @@ describe("tokenize — offsets", () => {
     // defects (BCC2's glued "}8050") — offset exactness must hold
     // regardless of whether the *content* is well-formed. Per
     // docs/parser-design.md §12, this is a non-negotiable CI gate.
-    const files = ["sample.rms", "Vanguard_v1.2.rms", "BCC2-Rekawa.rms", "Pa_Site_v1.1.rms", "AK_Six_Points_v1.4.rms"];
+    const files = ["sample.rms", "AK_Vanguard_v1.2.rms", "BCC2-Rekawa.rms", "Pa_Site_v1.1.rms", "AK_Six_Points_v1.4.rms"];
     for (const file of files) {
       const source = readCorpusFile(file);
       const { tokens } = tokenize(source);

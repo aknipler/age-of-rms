@@ -1,0 +1,112 @@
+.outer {
+  display: flex;
+  /* flex: 1 (not height: 100%) because this is a flex ITEM of
+     BreakdownPane's `.main` (a column flex container, alongside
+     SectionTabs above it) — height: 100% would demand the FULL height of
+     `.main` on top of whatever SectionTabs already takes, overflowing
+     past the bottom of the pane and into the StatusBar below it. flex: 1
+     instead claims only the space left over after SectionTabs, same
+     min-height: 0 pattern used at every other level of this tree
+     (App.module.css's .main, BreakdownPane.module.css's .pane/.main). */
+  flex: 1;
+  min-height: 0;
+  /* Hard boundary: this region's height is computed by flexbox from
+     .main's actual available space (see comment above) and should never
+     be exceeded by anything inside it — .view already clips its own
+     overflow via overflow-y: auto, but .ruler has no scroll mechanism of
+     its own, so without this, any residual sub-pixel sizing slop (or a
+     future change to either child) could still visually spill past the
+     bottom of the pane and into the StatusBar. */
+  overflow: hidden;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  /* No padding here (moved to .addWrapper/.content below) — Ash's
+     report: with padding on this element, the sticky .addWrapper only
+     sticks within the padding BOX's inner edge, leaving this element's
+     own padding as a visible gap above/left of it that scrolled card
+     content shows through as you scroll past. Moving the equivalent
+     spacing onto .addWrapper (whose opaque white background already
+     covers everything behind it) and .content instead means the sticky
+     header's background extends flush to the true top/left edges of the
+     scroll container, with nothing exposed behind it. */
+  overflow-y: auto;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+  /* §3.10 bug fix — without an explicit position, this is NOT the
+     offsetParent for its descendant cards, so DiagnosticsRuler's
+     `card.offsetTop` was being measured against some unrelated ancestor
+     further up the tree (roughly constant across every map/tab, and
+     unaffected by this container's own scrollHeight or scroll position)
+     instead of "how far down THIS scrollable content is this card" —
+     the exact cause of every symptom Ash reported (one static tick near
+     the top everywhere, no reaction to resize, no correlation to actual
+     scroll position). Making this element positioned is what makes it
+     the offsetParent, so offsetTop becomes relative to the scrollable
+     content's own top — unaffected by current scrollTop, which is
+     exactly the "distance from top of full document" the ruler math
+     assumes. */
+  position: relative;
+}
+
+.addWrapper {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* Full-width row (not self-sized to the button's text) per Ash's
+     feedback — this is also what makes the row a natural home for
+     future badges/Hide-Unused (§3.3.1) to sit alongside the button
+     without the whole row needing to be re-laid-out then. */
+  align-self: stretch;
+  background: #fff;
+  /* Was .view's own top/left/right padding — moved here (see .view's
+     comment) so the sticky header's opaque background, not exposed
+     .view padding, is what sits flush against the true edges. */
+  padding: 0.75rem 0.75rem 0;
+}
+
+.content {
+  /* The equivalent of .view's old left/right/bottom padding, scoped to
+     just the scrollable card list (not the sticky header, which handles
+     its own — see .addWrapper) so nothing shifts visually. */
+  padding: 0 0.75rem 0.75rem;
+}
+
+/* .addButtonSlot makes HelpTip's own wrapper span (always present as of
+   the HelpTip.tsx fix) a flex item with flex: 1, so IT gets a genuinely
+   definite width from the flex algorithm — .addButton's own
+   `width: 100%` (below) can then resolve against that. A plain
+   width: 100% on this slot itself does NOT work here: percentages only
+   resolve against the IMMEDIATE parent, and .addButton's immediate
+   parent is HelpTip's wrapper span, not this slot — an extra layer with
+   its own 100% width doesn't reach two levels down. flex-basis/flex-grow
+   don't have that limitation, which is why this needs to be flex, not
+   block+width. */
+.addButtonSlot {
+  display: flex;
+}
+
+.addButtonSlot > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.addButton {
+  display: block;
+  width: 100%;
+  border: 1px solid #000;
+  background: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.addButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

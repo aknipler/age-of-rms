@@ -1,0 +1,13 @@
+.card {
+  background: #fafafa;
+  border-style: dashed;
+}
+
+.text {
+  margin: 0;
+  font-style: italic;
+  color: #666;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.85rem;
+}

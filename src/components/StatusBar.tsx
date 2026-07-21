@@ -71,16 +71,23 @@ export function StatusBar({
       <HelpTip id="statusBar.problems">
         <span>{formatProblems(diagnostics)}</span>
       </HelpTip>
-      <HelpTip id="statusBar.generationSettings">
-        <button
-          type="button"
-          className={styles.settingsCog}
-          onClick={onOpenGenerationSettings}
-          aria-label="Generation settings"
-        >
-          ⚙
-        </button>
-      </HelpTip>
+      {/* .cogSlot (not .settingsCog) carries margin-left: auto — see its
+          CSS comment: HelpTip's own wrapper span is the actual flex item
+          here once help mode is on, so a margin set on the button itself
+          only pushes it right when help mode is off (HelpTip renders no
+          wrapper then, so the button WAS the flex item). */}
+      <span className={styles.cogSlot}>
+        <HelpTip id="statusBar.generationSettings">
+          <button
+            type="button"
+            className={styles.settingsCog}
+            onClick={onOpenGenerationSettings}
+            aria-label="Generation settings"
+          >
+            ⚙
+          </button>
+        </HelpTip>
+      </span>
     </div>
   );
 }

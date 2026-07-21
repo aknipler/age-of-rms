@@ -1,0 +1,87 @@
+.wrapper {
+  position: relative;
+}
+
+.panel {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  width: 22rem;
+  max-height: 20rem;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.search {
+  flex: 1;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #999;
+  font-size: 0.85rem;
+}
+
+.toggle {
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.entry {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #eee;
+  padding: 0.3rem 0.2rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.entry:hover {
+  background: #f0f4ff;
+}
+
+.entryName {
+  font-weight: 600;
+}
+
+.entryDesc {
+  color: #555;
+  font-size: 0.78rem;
+  flex: 1;
+}
+
+.chip {
+  font-size: 0.68rem;
+  border-radius: 999px;
+  padding: 0.02rem 0.4rem;
+  border: 1px solid #999;
+}
+
+.empty {
+  font-size: 0.8rem;
+  color: #777;
+  padding: 0.5rem;
+}

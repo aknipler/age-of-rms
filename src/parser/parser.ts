@@ -941,8 +941,18 @@ class Parser {
           this.diagnostics.push(d.malformedRnd(tok)); // RMS0214 instead of a baffling 0202
         } else if (/^\d/.test(tok.text)) {
           this.diagnostics.push(d.digitPrefixedWord(tok)); // RMS0212 — numeric slots ONLY (rev 5)
+        } else if (this.isDefinedSymbol(tok.text)) {
+          // A user constant standing in for a number — standard RMS idiom:
+          //   #const PL_LANDS_CLUMPING_FAC 15
+          //   create_land { clumping_factor PL_LANDS_CLUMPING_FAC }
+          // No diagnostic: the name resolves, so there is nothing wrong here.
+          // (Deliberately permissive about #define-vs-#const — see
+          // isDefinedSymbol. Judging *which* constant belongs in *which* slot
+          // is semantic, and belongs to validate(), spec §8.)
         } else {
-          this.diagnostics.push(d.argTypeMismatch(tok, argDef, unverified));
+          // Not a number, not inf, not ours. Either genuinely undefined, or
+          // defined in an include we can't read — the builder distinguishes.
+          this.diagnostics.push(d.unresolvedConstantInNumericSlot(tok, argDef, this.includes.length > 0));
         }
       }
       // Constant/string slots accept words (and numbers) freely — §2.1(1).
@@ -951,6 +961,43 @@ class Parser {
     }
 
     return { value, def: argDef, firstToken: tokenIdx, lastToken: tokenIdx, span: this.span(tokenIdx, tokenIdx) };
+  }
+
+  /**
+   * Has this name been defined by a `#const`/`#define` *seen so far* in this
+   * parse? Used to stop RMS0202 firing on the standard "constant as a value"
+   * idiom (see the call site in consumeOneArg).
+   *
+   * Deliberately "so far" rather than "anywhere in the file", and that is not
+   * a limitation of the single pass — it is the engine's own rule. The guide
+   * (line 148) states a definition "will only be true if [it is] defined
+   * higher up in the file … regardless of the section header", so a constant
+   * used above its `#const` genuinely does NOT resolve in-engine and warning
+   * about it is correct, not a false positive. A pre-pass collecting every
+   * symbol first would actually make us *less* accurate here.
+   *
+   * Permissive about kind: both `#const` (has a value) and `#define` (a bare
+   * flag) count. A `#define`d name in a numeric slot is probably an author
+   * mistake, but §2.1 pins that every word resolves to some internal token ID,
+   * and that our type diagnostics are "style warnings about probable
+   * mistakes, never correctness claims" — so flagging it here would risk
+   * exactly the false warning this method exists to remove. If it's worth
+   * reporting at all, it belongs in validate() (§8) where the whole symbol
+   * table is available at once.
+   *
+   * Linear scan: symbol counts are small (tens per map) and this only runs
+   * for a word that reached a numeric slot, which is rare. Swap for a Set if
+   * a profile ever says otherwise.
+   *
+   * TODO(predefinedLabels): once `language.json` gains `predefinedLabels`
+   * (parser-design §13 / CLAUDE.md tracked debt), engine-provided names
+   * should count as defined here too.
+   */
+  private isDefinedSymbol(name: string): boolean {
+    for (const symbol of this.symbols) {
+      if (symbol.name === name) return true;
+    }
+    return false;
   }
 
   /**

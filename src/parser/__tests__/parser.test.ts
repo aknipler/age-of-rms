@@ -100,6 +100,95 @@ describe("commands, attributes, args (§5.1 item 4, §6)", () => {
     expect(codes(r)).not.toContain("RMS0202");
   });
 
+  // §6 amendment: a #const used as an attribute value is standard RMS idiom
+  // and must not warn. Reported by Ash from live testing; the original rule
+  // ("numeric slots accept number/rnd/expression/inf") warned on every one,
+  // a goal-#5 violation. Resolution is symbol-table-aware, not type-aware.
+  describe("constants in numeric slots (§6 amendment)", () => {
+    it("a #const defined above the use draws NO diagnostic", () => {
+      const r = parse(
+        "#const PL_LANDS_CLUMPING_FAC 15\n<LAND_GENERATION>\n" +
+          "create_land { clumping_factor PL_LANDS_CLUMPING_FAC land_position 74 26 }",
+      );
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("a #define'd name also counts as defined (permissive by design)", () => {
+      const r = parse("#define FLAGGY\n<LAND_GENERATION>\ncreate_land { clumping_factor FLAGGY }");
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("a conditionally-defined #const counts as defined", () => {
+      const r = parse(
+        "if TINY_MAP\n#const C 5\nelse\n#const C 9\nendif\n<LAND_GENERATION>\ncreate_land { clumping_factor C }",
+      );
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("a name never defined anywhere still warns", () => {
+      const r = parse("<LAND_GENERATION>\ncreate_land { clumping_factor NEVER_DEFINED }");
+      expect(codes(r)).toContain("RMS0202");
+      expect(r.diagnostics.find((d) => d.code === "RMS0202")?.severity).toBe("warning");
+    });
+
+    it("use BEFORE the #const still warns — the engine requires definition higher up (guide L148)", () => {
+      const r = parse("<LAND_GENERATION>\ncreate_land { clumping_factor LATER }\n#const LATER 15");
+      expect(codes(r)).toContain("RMS0202");
+    });
+
+    it("softens to info when an include is present — the name may live in there (§7)", () => {
+      const r = parse(
+        "#include_drs foo.rms\n<LAND_GENERATION>\ncreate_land { clumping_factor FROM_INCLUDE }",
+      );
+      const d = r.diagnostics.find((x) => x.code === "RMS0202");
+      expect(d?.severity).toBe("info");
+    });
+  });
+
+  // #const's value slot is typed otherConstant, not integer. Guide L3295
+  // ("everything ... is represented internally by a numeric identifier"),
+  // L3353 (constants are read as numbers where numeric input is expected)
+  // and L3306 ("items can have multiple constants assigned to them") make
+  // constant-to-constant aliasing legal: `#const PREDATOR_A WOLF` is
+  // identical to `#const PREDATOR_A 3` when WOLF is 3. Rage Forest 2026
+  // alone had 155 false warnings from this before the data fix.
+  describe("#const value forms (all must parse clean)", () => {
+    it("aliases another constant", () => {
+      const r = parse("#const PREDATOR_A WOLF");
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("still takes a plain number", () => {
+      const r = parse("#const NUM 10");
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    // The regression that made this change risky: expression assembly keys
+    // off a leading "(" and is NOT gated on argument type, so retyping the
+    // slot must not disturb it. AD4 - Pag's line is a required §12 fixture.
+    it("still assembles a math expression (AD4 fixture)", () => {
+      const r = parse("#const MAPAREA (MAPSIZE * MAPSIZE)");
+      expect(codes(r)).not.toContain("RMS0208");
+      expect(codes(r)).not.toContain("RMS0202");
+      const node = r.script.preamble[0];
+      expect(node.kind).toBe("directive");
+      const value = node.kind === "directive" ? node.args[1]?.value : undefined;
+      expect(value && typeof value === "object" && "expr" in value).toBe(true);
+    });
+
+    it("still takes an rnd() (guide: rnd works with #const)", () => {
+      const r = parse("#const R rnd(1,5)");
+      const node = r.script.preamble[0];
+      const value = node.kind === "directive" ? node.args[1]?.value : undefined;
+      expect(value).toEqual({ rnd: [1, 5] });
+    });
+
+    it("still takes a float, and the inf flooring idiom (guide L3361)", () => {
+      expect(codes(parse("#const F 1.5"))).not.toContain("RMS0202");
+      expect(codes(parse("#const VAL (5.9 % -inf)"))).not.toContain("RMS0208");
+    });
+  });
+
   it("unknown-name runs collapse to ONE diagnostic (OWWC 'number of clumps' fixture)", () => {
     const r = parse("<ELEVATION_GENERATION>\ncreate_elevation 5 { number of clumps 10000 base_size 4 }");
     const unknowns = r.diagnostics.filter((d) => d.code === "RMS0200" || d.code === "RMS0215");

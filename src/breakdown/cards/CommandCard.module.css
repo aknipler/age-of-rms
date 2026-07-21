@@ -1,0 +1,85 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggle {
+  border: 1px solid #000;
+  background: #fff;
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.summary {
+  flex: 1;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.group {
+  border-top: 1px solid #ddd;
+  padding-top: 0.3rem;
+}
+
+.groupTitle {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #555;
+  margin: 0 0 0.25rem;
+}
+
+.argRow {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.25rem;
+  /* DiagnosticTooltip.tsx's popup anchors to this row (position:
+     absolute, top/bottom: 100%) — needs this to be its containing block,
+     same reasoning as AttributeRow.module.css's .row. */
+  position: relative;
+}
+
+.rowSeverity-error {
+  border-left: 3px solid #dc3545;
+  background: rgba(220, 53, 69, 0.06);
+}
+
+.rowSeverity-warning {
+  border-left: 3px solid #e0a300;
+  background: rgba(224, 163, 0, 0.08);
+}
+
+.rowSeverity-info {
+  border-left: 3px solid #17a2b8;
+  background: rgba(23, 162, 184, 0.06);
+}
+
+/* The fixed-width column — lives here, not on .argLabel, for the same
+   reason as AttributeRow.module.css's .labelSlot: .argLabel is nested
+   inside <HelpTip>, whose own wrapper becomes the actual flex item once
+   help mode is on, so a width set one level too deep has no effect on
+   column alignment in that mode. */
+.argLabelSlot {
+  min-width: 8rem;
+}
+
+.argLabel {
+  color: #333;
+}
+
+.argValue {
+  font-family: "Cascadia Code", Consolas, monospace;
+}

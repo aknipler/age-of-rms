@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "validate:reference": "node scripts/validate-reference-data.mjs"
+    "validate:reference": "node scripts/validate-reference-data.mjs",
+    "check:breakdown-prereqs": "node scripts/check-breakdown-prereqs.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

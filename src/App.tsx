@@ -1,26 +1,22 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { TitleBar } from "./components/TitleBar";
 import { MapHeader } from "./components/MapHeader";
 import { TabBar } from "./components/TabBar";
 import { PlaceholderPane } from "./components/PlaceholderPane";
 import { CodePane } from "./components/CodePane";
+import { BreakdownPane } from "./breakdown/BreakdownPane";
 import { StatusBar } from "./components/StatusBar";
 import { PreferencesDialog } from "./components/PreferencesDialog";
+import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
 import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
 import { useDocument } from "./hooks/useDocument";
+import { useSharedSelection } from "./hooks/useSharedSelection";
+import { useParsedDocument } from "./useParsedDocument";
 import type { TabId } from "./types";
-import type { Diagnostic } from "./parser/types";
-import type { ResourceTotals } from "./parser/resourceTotals";
 import styles from "./App.module.css";
 import "./App.css";
-
-const EMPTY_RESOURCE_TOTALS: ResourceTotals = {
-  total: { min: { food: 0, wood: 0, gold: 0, stone: 0 }, max: { food: 0, wood: 0, gold: 0, stone: 0 } },
-  player: { min: { food: 0, wood: 0, gold: 0, stone: 0 }, max: { food: 0, wood: 0, gold: 0, stone: 0 } },
-  neutral: { min: { food: 0, wood: 0, gold: 0, stone: 0 }, max: { food: 0, wood: 0, gold: 0, stone: 0 } },
-};
 
 // Split out from App so it can call useGenerationSettings — the hook
 // needs to run below GenerationSettingsProvider in the tree, same reason
@@ -31,21 +27,19 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<TabId>("breakdown");
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [generationSettingsOpen, setGenerationSettingsOpen] = useState(false);
-  // Diagnostics and resource totals are lifted the same way: CodePane
-  // owns the live parse (it mounts the worker), but StatusBar needs the
-  // results too. Deliberately NOT cleared when CodePane unmounts (e.g.
-  // switching to the Breakdown tab) — they reflect the last known parse,
-  // like most editors' Problems panels.
-  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
-  const [resourceTotals, setResourceTotals] = useState<ResourceTotals>(EMPTY_RESOURCE_TOTALS);
-  const handleDiagnosticsChange = useCallback((next: Diagnostic[]) => {
-    setDiagnostics(next);
-  }, []);
-  const handleResourceTotalsChange = useCallback((next: ResourceTotals) => {
-    setResourceTotals(next);
-  }, []);
   const doc = useDocument();
   const { playerCount } = useGenerationSettings();
+  // docs/breakdown-design.md §6.2: "one parse, in the worker" — lifted
+  // to app level so both CodePane (diagnostics/source, for Monaco
+  // markers) and BreakdownPane (the full ParseResult/AST) consume the
+  // same parse instead of each parsing independently. Deliberately not
+  // reset when switching tabs — Problems/Breakdown both reflect the last
+  // known parse, like most editors' Problems panels.
+  const parsed = useParsedDocument(doc.content, playerCount);
+  // Ash's post-3.9 follow-up: one selection anchor shared by both panes,
+  // lifted here (rather than living inside BreakdownPane, which unmounts
+  // on every tab switch) specifically so it survives Breakdown <-> Code.
+  const selection = useSharedSelection(parsed.source, parsed.parseResult);
 
   return (
     <div className={styles.app}>
@@ -59,16 +53,22 @@ function AppContent() {
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
       <main className={styles.main}>
         {activeTab === "breakdown" && (
-          <PlaceholderPane description="Breakdown editor — arrives in Phase 3." />
+          <BreakdownPane
+            hasFile={doc.filePath !== null}
+            source={parsed.source}
+            parseResult={parsed.parseResult}
+            applyTextEdit={doc.applyTextEdit}
+            reparseNow={parsed.reparseNow}
+            selection={selection}
+          />
         )}
         {activeTab === "code" && (
           <CodePane
-            content={doc.content}
-            onChange={doc.setContent}
             hasFile={doc.filePath !== null}
-            playerCount={playerCount}
-            onDiagnosticsChange={handleDiagnosticsChange}
-            onResourceTotalsChange={handleResourceTotalsChange}
+            source={parsed.source}
+            diagnostics={parsed.diagnostics}
+            selectedItem={selection.selectedItem}
+            onCursorOffsetChange={selection.setAnchor}
           />
         )}
         {activeTab === "advanced-tools" && (
@@ -76,13 +76,22 @@ function AppContent() {
         )}
       </main>
       <StatusBar
-        diagnostics={diagnostics}
-        total={resourceTotals.total}
-        player={resourceTotals.player}
-        neutral={resourceTotals.neutral}
+        diagnostics={parsed.diagnostics}
+        total={parsed.resourceTotals.total}
+        player={parsed.resourceTotals.player}
+        neutral={parsed.resourceTotals.neutral}
         onOpenGenerationSettings={() => setGenerationSettingsOpen(true)}
       />
       {preferencesOpen && <PreferencesDialog onClose={() => setPreferencesOpen(false)} />}
+      {/* Rendered only while a close-or-open attempt is waiting on the user.
+          The hook owns the pending promise; this just collects the answer. */}
+      {doc.unsavedAction !== null && (
+        <UnsavedChangesDialog
+          action={doc.unsavedAction}
+          mapName={doc.mapName}
+          onChoice={doc.resolveUnsavedChoice}
+        />
+      )}
       {generationSettingsOpen && (
         <GenerationSettingsDialog onClose={() => setGenerationSettingsOpen(false)} />
       )}

@@ -52,6 +52,14 @@
         "max": { "type": "number" },
         "default": {},
         "description": { "type": "string" },
+        "optional": {
+          "type": "boolean",
+          "description": "Whether this trailing argument may be omitted. Schema action item (docs/parser-design.md §13); honored by the parser if present."
+        },
+        "variadic": {
+          "type": "boolean",
+          "description": "Whether this trailing argument may repeat. Schema action item; honored by the parser if present."
+        },
         "cautionBelow": {
           "type": "number",
           "description": "If set, values below this threshold are still valid RMS (unlike min, which is a hard documented floor) but carry a real risk worth flagging live — e.g. a negative border value that can crash the game if it pushes the land origin off-map. Requires cautionMessage."
@@ -105,6 +113,14 @@
           "description": "Names of other attributes that cannot be used together with this one in the same block, e.g. land_percent vs. number_of_tiles."
         },
         "description": { "type": "string" },
+        "repeatable": {
+          "type": "boolean",
+          "description": "Whether this attribute is cumulative (multiple instances in one block are all applied), e.g. replace_terrain. Governs whether Breakdown offers an 'add another' affordance — NOT whether duplicate instances render as a list; that's the ground-truth rule (docs/breakdown-design.md §3.3, source presence, not this flag)."
+        },
+        "maxRepeats": {
+          "type": "number",
+          "description": "Caps the 'add another' affordance for a repeatable attribute. Do not add without re-checking DE patch notes (Update 153015) per docs/parser-design.md §8 — none is sourced today."
+        },
         "verified": { "type": "boolean" },
         "notes": { "type": "string" }
       }
@@ -117,6 +133,10 @@
         "name": { "type": "string", "pattern": "^#\\w+$" },
         "arguments": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
         "description": { "type": "string" },
+        "nonFunctional": {
+          "type": "boolean",
+          "description": "True for directives the DE exe accepts but that do nothing at runtime (#undefine/#include — engine ghosts, parser-design.md §7/§13). Drives Breakdown's 'has no effect in DE' badge (§3.6)."
+        },
         "verified": { "type": "boolean" },
         "notes": { "type": "string" }
       }

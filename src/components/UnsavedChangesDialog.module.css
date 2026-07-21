@@ -1,0 +1,86 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100; /* above PreferencesDialog (1000): this one blocks app exit */
+}
+
+.dialog {
+  background: #fff;
+  border: 1px solid #000;
+  min-width: 380px;
+  max-width: 480px;
+  padding: 1rem 1.25rem;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #000;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* The X. Same outcome as Cancel — see the component's comment. */
+.dismissButton {
+  border: 1px solid #000;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.9rem;
+}
+
+.dismissButton:hover {
+  background: #f0f0f0;
+}
+
+.message {
+  margin: 0 0 1rem;
+}
+
+.fileName {
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #f0f0f0;
+}
+
+/* Default action — visually primary, and the one Enter triggers. */
+.primary {
+  font-weight: 600;
+}
+
+/* Destructive: discards work. Deliberately not styled as the default. */
+.destructive {
+  color: #a00;
+}
+
+.destructive:hover {
+  background: #fdf0f0;
+}

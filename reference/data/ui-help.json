@@ -1,21 +1,296 @@
 {
   "entries": [
-    { "id": "titleBar.file", "text": "Open, Save, and Save As for .rms files." },
-    { "id": "titleBar.edit", "text": "Not implemented yet." },
-    { "id": "titleBar.preferences", "text": "App settings, including how these help popups behave." },
-    { "id": "titleBar.help", "text": "Not implemented yet." },
-    { "id": "mapHeader.mapName", "text": "The name of the currently open map, taken from its filename. Shows \"Untitled Map\" until you open or save a file." },
-    { "id": "mapHeader.lastSaved", "text": "When this map was last saved during this session. Shows a dash until you save at least once." },
-    { "id": "tabBar.breakdown", "text": "Shows your script as editable command blocks instead of raw code — good for building without memorizing syntax. Arrives in Phase 3." },
-    { "id": "tabBar.code", "text": "The full code editor, with RMS syntax highlighting and hover docs." },
-    { "id": "tabBar.advancedTools", "text": "A pane for built-in and (later) community-made tools that operate on your script. Arrives in Phase 5." },
-    { "id": "statusBar.total", "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Shown as a min-max range when if/start_random blocks make the exact count generation-dependent." },
-    { "id": "statusBar.player", "text": "Resources a single player gets from set_place_for_every_player placements — per player, not multiplied by player count (see Total for the map-wide sum across every player). v1 doesn't yet correlate placement with a specific player's land." },
-    { "id": "statusBar.neutral", "text": "Resources placed without set_place_for_every_player — everything not counted as Player. v1 doesn't yet check whether these sit inside or outside player territory." },
-    { "id": "statusBar.problems", "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. Click a squiggle in the editor to see the full message." },
-    { "id": "statusBar.generationSettings", "text": "Opens Generation Settings — map size and player count, used to compute the resource totals shown here." },
-    { "id": "generationSettings.playerCount", "text": "How many players this map is generated for. Scales resources placed with set_place_for_every_player in the totals above." },
-    { "id": "generationSettings.mapSize", "text": "The map size this script targets. Not yet used by the resource totals — will feed the approximate preview and consistency checker in a later phase." },
-    { "id": "preferences.helpMode", "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely." }
+    {
+      "id": "titleBar.file",
+      "text": "Open, Save, and Save As for .rms files."
+    },
+    {
+      "id": "titleBar.edit",
+      "text": "Not implemented yet."
+    },
+    {
+      "id": "titleBar.preferences",
+      "text": "App settings, including how these help popups behave."
+    },
+    {
+      "id": "titleBar.help",
+      "text": "Not implemented yet."
+    },
+    {
+      "id": "mapHeader.mapName",
+      "text": "The name of the currently open map, taken from its filename. Shows \"Untitled Map\" until you open or save a file."
+    },
+    {
+      "id": "mapHeader.lastSaved",
+      "text": "When this map was last saved during this session. Shows a dash until you save at least once."
+    },
+    {
+      "id": "tabBar.breakdown",
+      "text": "Shows your script as editable command blocks instead of raw code — good for building without memorizing syntax."
+    },
+    {
+      "id": "tabBar.code",
+      "text": "The full code editor, with RMS syntax highlighting and hover docs."
+    },
+    {
+      "id": "tabBar.advancedTools",
+      "text": "A pane for built-in and (later) community-made tools that operate on your script. Arrives in Phase 5."
+    },
+    {
+      "id": "statusBar.total",
+      "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Shown as a min-max range when if/start_random blocks make the exact count generation-dependent."
+    },
+    {
+      "id": "statusBar.player",
+      "text": "Resources a single player gets from set_place_for_every_player placements — per player, not multiplied by player count (see Total for the map-wide sum across every player). v1 doesn't yet correlate placement with a specific player's land."
+    },
+    {
+      "id": "statusBar.neutral",
+      "text": "Resources placed without set_place_for_every_player — everything not counted as Player. v1 doesn't yet check whether these sit inside or outside player territory."
+    },
+    {
+      "id": "statusBar.problems",
+      "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. Click a squiggle in the editor to see the full message."
+    },
+    {
+      "id": "statusBar.generationSettings",
+      "text": "Opens Generation Settings — map size and player count, used to compute the resource totals shown here."
+    },
+    {
+      "id": "generationSettings.playerCount",
+      "text": "How many players this map is generated for. Scales resources placed with set_place_for_every_player in the totals above."
+    },
+    {
+      "id": "generationSettings.mapSize",
+      "text": "The map size this script targets. Not yet used by the resource totals — will feed the approximate preview and consistency checker in a later phase."
+    },
+    {
+      "id": "preferences.helpMode",
+      "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely."
+    },
+    {
+      "id": "breakdown.tab.header",
+      "text": "Global constants and directives (#define/#const/#include) that appear before the first section — the natural home for defining a map-wide constant."
+    },
+    {
+      "id": "breakdown.tab.unknown",
+      "text": "A section name the parser doesn't recognize (likely a typo in a <SECTION_HEADER>). Its contents still render below so you can see and fix it."
+    },
+    {
+      "id": "breakdown.tab.playerSetup",
+      "text": "Where starting positions and team placement are configured."
+    },
+    {
+      "id": "breakdown.tab.landGeneration",
+      "text": "Commands that shape each player's land mass."
+    },
+    {
+      "id": "breakdown.tab.elevationGeneration",
+      "text": "Commands that add hills and elevation."
+    },
+    {
+      "id": "breakdown.tab.cliffGeneration",
+      "text": "Commands that place cliffs."
+    },
+    {
+      "id": "breakdown.tab.terrainGeneration",
+      "text": "Commands that paint additional terrain types onto the map."
+    },
+    {
+      "id": "breakdown.tab.connectionGeneration",
+      "text": "Commands that connect player areas (roads, water paths) and their terrain along the way."
+    },
+    {
+      "id": "breakdown.tab.objectsGeneration",
+      "text": "Commands that place resources, forests, and other objects."
+    },
+    {
+      "id": "breakdown.addCommand",
+      "text": "Opens a searchable list of commands for this section to insert. Filtered to this section by default — toggle \"show all sections\" to search everything."
+    },
+    {
+      "id": "breakdown.addCommand.showAll",
+      "text": "Search commands from every section, not just this tab's. RMS doesn't enforce section placement, so this is a convenience filter, not a restriction."
+    },
+    {
+      "id": "breakdown.addCommand.search",
+      "text": "Type to filter the command list by name or description. Escape closes the picker."
+    },
+    {
+      "id": "breakdown.addCommand.entry",
+      "text": "Click a command to insert it. The chip shows whether this command's reference data has been verified against the official docs — \"unverified\" entries may have incomplete or unconfirmed argument details, but are still safe to use."
+    },
+    {
+      "id": "breakdown.commandCard.summary",
+      "text": "Click +/− to expand this command and see or edit its arguments and attributes."
+    },
+    {
+      "id": "breakdown.commandCard.expand",
+      "text": "Expands or collapses this command's arguments and attributes."
+    },
+    {
+      "id": "breakdown.commandCard.delete",
+      "text": "Removes this command (and its block) from the script. Undo with Ctrl+Z."
+    },
+    {
+      "id": "breakdown.commandCard.argument",
+      "text": "A positional argument this command takes. Commits when you click away or press Enter; Escape reverts."
+    },
+    {
+      "id": "breakdown.commandCard.argumentName",
+      "text": "This argument's name — hover shows what it's for, sourced from the reference docs (falls back to type/range/default when no description is written yet)."
+    },
+    {
+      "id": "breakdown.attributeRow.value",
+      "text": "This attribute's current value, taken directly from the code. Commits when you click away or press Enter; Escape reverts to the current value."
+    },
+    {
+      "id": "breakdown.attributeRow.name",
+      "text": "This attribute's name — hover shows what it does, sourced from the reference docs."
+    },
+    {
+      "id": "breakdown.attributeRow.flag",
+      "text": "A checkbox attribute — checked means the flag is present in the code, unchecked means it's absent. Toggling adds or removes the flag immediately."
+    },
+    {
+      "id": "breakdown.attributeRow.repeatable",
+      "text": "This attribute appears more than once in the code, so every instance is listed and edited independently — none of them are merged or overwritten."
+    },
+    {
+      "id": "breakdown.attributeRow.absent",
+      "text": "Not present in the code yet. This faint row is a placeholder, not real content — clicking + inserts the attribute into the code."
+    },
+    {
+      "id": "breakdown.attributeRow.delete",
+      "text": "Removes this attribute (or this one instance of it, if it appears more than once) from the code. Undo with Ctrl+Z."
+    },
+    {
+      "id": "breakdown.attributeRow.addAnother",
+      "text": "Adds another instance of this repeatable attribute."
+    },
+    {
+      "id": "breakdown.attributeRow.otherContents",
+      "text": "A recognized attribute that isn't in this command's usual list, but is still valid and editable."
+    },
+    {
+      "id": "breakdown.conditionalCard",
+      "text": "An if/elseif/else block. Each branch's contents render below it and are fully editable."
+    },
+    {
+      "id": "breakdown.conditionalCard.condition",
+      "text": "The label this branch runs under (a game mode, a #define you made, etc). Commits on blur/Enter; free text is always accepted."
+    },
+    {
+      "id": "breakdown.conditionalCard.addCommand",
+      "text": "Adds a command inside this branch."
+    },
+    {
+      "id": "breakdown.conditionalCard.branchControls",
+      "text": "Add another elseif or an else branch (only one else is allowed)."
+    },
+    {
+      "id": "breakdown.conditionalCard.delete",
+      "text": "Removes this whole if/elseif/else block, including all its branches."
+    },
+    {
+      "id": "breakdown.conditionalCard.removeBranch",
+      "text": "Removes just this branch. Disabled when it's the only branch left — delete the whole conditional instead."
+    },
+    {
+      "id": "breakdown.randomCard",
+      "text": "A start_random block — each percent_chance branch has a weight and its own contents; exactly one branch runs when the map generates."
+    },
+    {
+      "id": "breakdown.randomCard.chance",
+      "text": "This branch's percent_chance weight. Commits on blur/Enter."
+    },
+    {
+      "id": "breakdown.randomCard.addCommand",
+      "text": "Adds a command inside this branch."
+    },
+    {
+      "id": "breakdown.randomCard.branchControls",
+      "text": "Adds another percent_chance branch."
+    },
+    {
+      "id": "breakdown.randomCard.delete",
+      "text": "Removes this whole start_random/end_random block, including all its branches."
+    },
+    {
+      "id": "breakdown.randomCard.removeBranch",
+      "text": "Removes just this branch. Disabled when it's the only branch left — delete the whole random block instead."
+    },
+    {
+      "id": "breakdown.directiveCard",
+      "text": "A preprocessor directive like #define or #const. Commits on blur/Enter; a quoted filename argument (#include_drs/#includeXS) keeps its quotes automatically."
+    },
+    {
+      "id": "breakdown.directiveCard.nonFunctional",
+      "text": "This directive is accepted by the game but does nothing in Definitive Edition — safe to leave, but it won't have any effect."
+    },
+    {
+      "id": "breakdown.directiveCard.delete",
+      "text": "Removes this directive line from the script."
+    },
+    {
+      "id": "breakdown.diagnosticsRuler.tick",
+      "text": "A problem somewhere in this card, coloured by its worst severity. Click to jump straight to it."
+    },
+    {
+      "id": "breakdown.commentCard",
+      "text": "A comment from your script, shown here for reference. Comments aren't editable in Breakdown yet — switch to the Code tab to change them."
+    },
+    {
+      "id": "breakdown.rawCard.why",
+      "text": "This code couldn't be shown as an editable block — usually because it's unusual/exotic RMS the parser intentionally leaves alone rather than risk misrepresenting it. The exact text from your file is shown below, unchanged."
+    },
+    {
+      "id": "breakdown.rawCard.fix",
+      "text": "Applies the suggested spelling in place — the region usually turns into a normal editable card once it re-parses."
+    },
+    {
+      "id": "breakdown.commandCard.fix",
+      "text": "This command name isn't recognized, but it's close to a known one — applies the suggested spelling in place. The card usually turns into a fully recognized command once it re-parses."
+    },
+    {
+      "id": "breakdown.rawCard.editInCode",
+      "text": "Jumps to this exact spot on the Code tab so you can edit it directly. Not yet wired up."
+    },
+    {
+      "id": "breakdown.strayAttribute",
+      "text": "An attribute written outside any command's { } block — it has no effect where it sits. Move it inside the intended command's block."
+    },
+    {
+      "id": "breakdown.problemBadge",
+      "text": "A parser diagnostic (error/warning/info) applies somewhere in this card — the same ones shown as squiggles on the Code tab."
+    },
+    {
+      "id": "breakdown.sidePanel.previewToggle",
+      "text": "Switches the map preview between the current in-progress view and the final generated result. Preview logic arrives in Phase 4."
+    },
+    {
+      "id": "breakdown.sidePanel.referenceRadio",
+      "text": "Switches the reference table below between Terrain constants, Object constants, and Commands."
+    },
+    {
+      "id": "breakdown.sidePanel.referenceTable",
+      "text": "A read-only lookup of the constants/commands available in RMS, sourced from this app's reference data. Some columns are placeholders pending later data-extraction work."
+    },
+    {
+      "id": "unsavedChanges.cancel",
+      "text": "Cancels the action. Age of RMS stays as it is and nothing is saved or discarded."
+    },
+    {
+      "id": "unsavedChanges.dismiss",
+      "text": "Cancels the action, exactly like the Cancel button. Pressing Esc or clicking outside the dialog does the same."
+    },
+    {
+      "id": "unsavedChanges.save",
+      "text": "Saves this map first, then continues with what you were doing (closing, or opening another map). If the map has never been saved, you'll be asked where to put it."
+    },
+    {
+      "id": "unsavedChanges.discard",
+      "text": "Continues WITHOUT saving — every change made since the last save is permanently discarded."
+    }
   ]
 }
