@@ -51,6 +51,7 @@ export interface AttributeDef {
   arguments?: ArgumentDef[];
   verified: boolean;
   mutexWith?: string[]; // consumed by validate() (spec §8), not the parser
+  requiresSections?: string[]; // cross-section engine requirements consumed by validate()
   repeatable?: boolean; // cumulative attributes — see spec §8
   maxRepeats?: number;
   notes?: string;

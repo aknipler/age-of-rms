@@ -1015,6 +1015,9 @@
         }
       ],
       "description": "Elevation level this land starts at. Requires an <ELEVATION_GENERATION> section to be present.",
+      "requiresSections": [
+        "ELEVATION_GENERATION"
+      ],
       "verified": true
     },
     {

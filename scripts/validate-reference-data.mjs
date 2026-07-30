@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Validates reference/data/*.json against reference/schemas/*.schema.json,
-// plus a referential-integrity check JSON Schema alone can't express: a
-// command's attributes[] must all exist in language.json's top-level
-// attributes[] array. Run via `npm run validate:reference`; wired into CI
-// (see .github/workflows/ci.yml).
+// plus referential-integrity checks JSON Schema alone can't express:
+// command attributes[] and attribute requiresSections[] references must
+// resolve within language.json. Run via `npm run validate:reference`;
+// wired into CI (see .github/workflows/ci.yml).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -63,9 +63,11 @@ for (const { schema, data } of FILES) {
 }
 
 // Referential integrity: every attribute name a command lists must exist
-// in the top-level attributes[] array.
+// in the top-level attributes[] array, and every required section must
+// exist in sections[].
 if (languageData) {
   const attributeNames = new Set(languageData.attributes.map((a) => a.name));
+  const sectionNames = new Set(languageData.sections);
   let refsOk = true;
   for (const command of languageData.commands) {
     for (const attrName of command.attributes ?? []) {
@@ -78,8 +80,19 @@ if (languageData) {
       }
     }
   }
+  for (const attribute of languageData.attributes) {
+    for (const sectionName of attribute.requiresSections ?? []) {
+      if (!sectionNames.has(sectionName)) {
+        hadError = true;
+        refsOk = false;
+        console.error(
+          `✗ language.json: attribute "${attribute.name}" requires unknown section "${sectionName}"`,
+        );
+      }
+    }
+  }
   if (refsOk) {
-    console.log("✓ language.json: all command→attribute references resolve");
+    console.log("✓ language.json: all command→attribute and attribute→section references resolve");
   }
 }
 

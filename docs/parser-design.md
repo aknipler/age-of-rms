@@ -308,6 +308,7 @@ Predefined engine labels come from a `predefinedLabels` array in `language.json`
 - Duplicate `#const` definition: **first definition wins in-engine** (guide-confirmed — this answers old verify #5). Warning when both definitions are unconditional; info when either is inside a conditional (exclusive-branch redefinition, as in Pa_Site's if/elseif chains, is legitimate runtime behavior — only one branch's tokens survive).
 - Cross-category constant use (`RMS0205`) and bare-ID style notes (`RMS0204`), gated per §6.
 - Wrong-section placement (command's `def.section` vs enclosing section — warning). Missing `<PLAYER_SETUP>` — info. Duplicate sections: **no diagnostic** (legal, §4).
+- Required-section dependencies declared by an attribute's `requiresSections` reference data. `base_elevation` requires `<ELEVATION_GENERATION>` even when that section is empty; omitting it can crash DE (`RMS0300`).
 - Duplicate attribute within one command block — **split by repeatability** (guide-documented: `spacing_to_specific_terrain`, `replace_terrain` ["can, and should, be used multiple times"], `terrain_cost`, and connection radius attributes are *cumulative*; every corpus connection block repeats them legally): attributes flagged `repeatable` in language.json get NO last-wins note; non-repeatable attributes get the info note ("the engine uses the last one"). **The rev-4 `maxRepeats: 4` claim for spacing_to_specific_terrain is withdrawn** — the guide (lines 1553–1573) documents no cap (its example merely has four lines); REVISION_3 attributed a 4-use cap to Update 153015's notes, so re-check that patch note before ever setting `maxRepeats`; shipping an unsourced cap would itself be a goal-#5 violation. **Breakdown consequence (pinned): repeatable attributes are a list in the block UI — an edit must never collapse them to one.** Rev 3's blanket last-wins rule would have made Breakdown corrupt every connection block it touched.
 - Shadowing a predefined name: `#const GOLD 123` is a **silent no-op in-engine** (first-definition-wins, and `random_map.def` defined it first) — warning, high-value for beginners. Data arrives with `predefinedLabels` + the constants DB; check every user `#define`/`#const` name against it.
 - **Use-before-definition** (guide line 148: definitions "will only be true if they are defined higher up in the file … regardless of the section header"): flag references whose token index precedes the definition's — warning (the engine silently ignores-or-substitutes per line 173, i.e. a silent map bug); include-softened to info as usual.
@@ -357,6 +358,7 @@ Lexing one linear scan; parsing one linear pass, amortized linear including §5.
 | RMS0215 | warning | Unexpected value where a statement was expected (number/rnd-initiated unknown-run) |
 | RMS0216 | warning | `//`-leading token ("`//` is not a comment in RMS — use `/* */`") — the most predictable C-style beginner mistake |
 | RMS0217 | warning | Value is valid RMS but reference data flags a caution for it (e.g. a negative border risking a land-origin-off-map crash) — distinct from RMS0203: NOT a min/max violation, message must say the value is valid |
+| RMS0300 | error | Attribute requires a section that is missing from the script (currently `base_elevation` → `<ELEVATION_GENERATION>`; omission can crash DE) |
 
 † info when the underlying language.json entry is `"verified": false` (§6.2).
 
@@ -364,7 +366,7 @@ Lexing one linear scan; parsing one linear pass, amortized linear including §5.
 
 **Did-you-mean (RMS0200):** two heuristics against known names of the context's category — (1) edit distance ≤ 2 (catches corpus-real `enable_balanced_elavation` → `elevation`, and case-only mismatches like `Create_Land`); (2) suffix/substring match (catches corpus-real `avoidance_distance` → `other_zone_avoidance_distance`, edit distance 11). Both are cheap at these vocabulary sizes.
 
-Messages must be beginner-first: what's wrong *and what to do*. Error severity is a strong claim (goal #5): only RMS0101 and RMS0103 carry it, both pinned to verify items.
+Messages must be beginner-first: what's wrong *and what to do*. Error severity is a strong claim (goal #5): RMS0101 and RMS0103 are pinned to verify items; RMS0300 is reserved for a guide-documented dependency with a controlled in-game crash reproduction.
 
 ## 11. Verify-in-game checklist
 
@@ -424,7 +426,7 @@ Five of rev 2's twelve items were answered by the full guide (recorded below); t
 src/parser/
   lexer.ts        tokenize(source, opts) → { tokens, lineOffsets, diagnostics }
   parser.ts       parseRms(source, lang, opts) → ParseResult
-  validate.ts     validate(result, refDb, opts) → Diagnostic[]   (Phase 2.4/2.5)
+  validate.ts     validateRms(result) → Diagnostic[] semantic checks
   types.ts        every interface in this doc
   diagnostics.ts  code table + message builders
   __tests__/      unit suites + corpus.test.ts + fuzz.test.ts + parse.bench.ts

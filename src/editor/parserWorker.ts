@@ -8,6 +8,7 @@ import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { parseRms } from "../parser/parser";
 import { computeResourceTotals, type GameConstantsForTotals, type ResourceTotals } from "../parser/resourceTotals";
+import { validateRms } from "../parser/validate";
 import type { LanguageData } from "../parser/language";
 import type { Diagnostic, ParseResult } from "../parser/types";
 
@@ -56,6 +57,7 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   const { requestId, source, playerCount } = event.data;
   const startedAt = performance.now();
   const result = parseRms(source, languageData);
+  result.diagnostics.push(...validateRms(result));
   const resourceTotals = computeResourceTotals(result.script, result.tokens, gameConstants, playerCount);
   const parseTimeMs = performance.now() - startedAt;
 

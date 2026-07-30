@@ -112,6 +112,12 @@
           "items": { "type": "string" },
           "description": "Names of other attributes that cannot be used together with this one in the same block, e.g. land_percent vs. number_of_tiles."
         },
+        "requiresSections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "description": "Section names that must be present anywhere in the script when this attribute is used. Names omit angle brackets and must resolve to top-level sections[]."
+        },
         "description": { "type": "string" },
         "repeatable": {
           "type": "boolean",

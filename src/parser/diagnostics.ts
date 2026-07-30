@@ -53,6 +53,7 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // data flags as risky. Message must say so explicitly (see cautionMessage
   // on the triggering language.json entry) so it doesn't read as an error.
   RMS0217: { severity: "warning", summary: "Value is valid RMS but reference data flags a caution for it" },
+  RMS0300: { severity: "error", summary: "Attribute requires a section that is missing from the script" },
 };
 
 function toSpan(token: Token): Span {
@@ -384,5 +385,15 @@ export function unexpectedValue(first: Token, last: Token): Diagnostic {
     "RMS0215",
     "Unexpected value — a command, attribute, or directive was expected here.",
     spanBetween(first, last),
+  );
+}
+
+// ---- Semantic diagnostic builders (validate.ts) ----
+
+export function missingRequiredSection(attributeToken: Token, sectionName: string): Diagnostic {
+  return makeDiagnostic(
+    "RMS0300",
+    `"${attributeToken.text}" requires an <${sectionName}> section — add that section to the script because the game may crash when it is missing.`,
+    toSpan(attributeToken),
   );
 }
