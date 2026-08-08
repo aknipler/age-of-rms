@@ -24,7 +24,7 @@ interface SectionTabsProps {
   diagnostics: Diagnostic[];
 }
 
-// docs/breakdown-design.md §3.1 — Header (if preamble non-empty) + the 7
+// docs/breakdown-design.md Sec.3.1 — Header (if preamble non-empty) + the 7
 // canonical sections (data-driven order/labels from sectionLabels.ts) +
 // any unknown sections (RMS0100), each with a count badge and a problem
 // badge computed by diagnostic-span containment over the tab's (possibly
@@ -49,7 +49,7 @@ export function SectionTabs({ tabs, activeId, onSelect, diagnostics }: SectionTa
               className={`${styles.tab} ${activeId === tab.id ? styles.tabActive : ""}`}
               onClick={() => onSelect(tab.id)}
             >
-              {/* Ash's ask: numbered tabs (0. Header, 1. Player Setup, 2. Land, ...)
+              {/* Numbered tabs (0. Header, 1. Player Setup, 2. Land, ...)
                   are ABSOLUTE — tied to each tab's fixed canonical identity
                   (SectionTab.number, from SECTION_NUMBERS), not its render
                   position. A missing section still renders an empty tab in

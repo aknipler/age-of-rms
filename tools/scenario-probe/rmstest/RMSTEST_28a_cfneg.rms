@@ -1,0 +1,94 @@
+/*
+RMSTEST_28a - can a single land with clumping_factor -5 fragment
+preview-design.md Sec.15 item 13, and item 3's residual
+
+QUESTION
+RMSTEST_21 produced a land at clumping_factor -5 that came back in SIX
+disconnected pieces, and one at cf 0 in three. That should be impossible.
+Sec.6.1 grows a land by sampling tiles 4-adjacent to already-owned tiles, and a
+region grown that way is 4-connected by construction. So either something else
+is editing land terrain after growth, or NEGATIVE CLUMPING IS NOT FRONTIER
+EXPANSION AT ALL - which would be a finding about Sec.6.1's growth model rather
+than about its clumping table.
+
+That is why this is not a table question and does not belong with items 2 and 3.
+
+WHAT RMSTEST_21 ALREADY RULED OUT
+  Cliffs           S3 post-dates land growth, and cliffs replaced no terrain
+  Neighbour lands  origin stamps precede growth, and growth rejects owned tiles
+
+WHAT THIS SCRIPT RULES OUT, that RMSTEST_21 could not
+RMSTEST_21 ran six lands at once. This runs ONE, on an otherwise empty map, so
+no second land can be implicated even in principle. Two further variables are
+pinned rather than left at their defaults:
+
+  border_fuzziness 0   Fuzziness converts tiles at the land boundary
+                       (RMSTEST_23 measured penetration at 1 tile). A boundary
+                       process that removes tiles is an obvious candidate for
+                       detaching a one-tile-wide neck, and leaving it at its
+                       default would have left that candidate live.
+  land_position 50 50  Origin pinned at map center so the land cannot run into
+                       a map edge and appear to split around it.
+
+NO <CLIFF_GENERATION> SECTION, deliberately. An EMPTY cliff header still
+generates cliffs - that is what contaminated the first calibration batch on
+2026-08-01. Do not add one to be safe.
+
+GENERATE AT NORMAL (200). Bigger than the land needs, so growth never reaches a
+map edge. Player count is irrelevant; use any.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. EXACTLY ONE SNOW patch. If Sec.6.1's growth model is right this is not a
+   close call, it is a structural guarantee, and any other answer refutes the
+   model rather than adjusting a constant.
+2. If it fragments, the SIZE DISTRIBUTION names the mechanism, and this is the
+   real payload of the run:
+     one large patch plus several single tiles
+         -> a boundary process is shedding tiles. Since fuzziness is off here,
+            that would point at something not currently modelled at all.
+     several patches of comparable size
+         -> not frontier expansion. Negative clumping is scattering seeds and
+            growing each, which is a different algorithm, and Sec.6.1's growth
+            model needs rewriting rather than retuning.
+     one large patch plus a few small clusters
+         -> frontier expansion that can jump a gap, i.e. the candidate set is
+            not strictly 4-adjacent
+3. Total SNOW area near 400, allowing the ~3 percent growth overshoot from item
+   7d. A total far below 400 means growth is terminating early, which would be
+   a third and separate finding.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+
+RUN IT THREE TIMES. Fragmentation may be probabilistic, and one connected
+result does not settle it.
+
+MATCHED PAIR: run RMSTEST_28b (cf 0) in the same sitting. RMSTEST_21 saw both
+fragment, and whether the mechanism is the same at 0 as at -5 tells us whether
+this is about negative values specifically or about low ones generally.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type SNOW
+    number_of_tiles 400
+    base_size 1
+    clumping_factor -5
+    border_fuzziness 0
+    land_position 50 50
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

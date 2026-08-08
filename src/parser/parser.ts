@@ -1,13 +1,13 @@
 // Phase 2.3 — the RMS parser core, implementing docs/parser-design.md
-// (rev 5) §§3-7. Pure function: no I/O, no globals, no exceptions escape
-// (spec goal #1). Iterative with an explicit frame stack (§5.0's preferred
+// (rev 5) Sec.Sec.3-7. Pure function: no I/O, no globals, no exceptions escape
+// (spec goal #1). Iterative with an explicit frame stack (Sec.5.0's preferred
 // shape — no recursion, so no depth-related throw is even possible; the
 // maxNestingDepth option still degrades absurd nesting to RawNodes so the
 // AST stays sane for consumers).
 //
 // Reading order for future sessions: the dispatch loop in `parseRms` is a
-// direct transcription of §5.1's numbered items; argument consumption
-// (§6) lives in `consumeArgs`; §5.3 degradation in `degrade`; §5.4 in
+// direct transcription of Sec.5.1's numbered items; argument consumption
+// (Sec.6) lives in `consumeArgs`; Sec.5.3 degradation in `degrade`; Sec.5.4 in
 // `handleOpenBrace`.
 
 import { tokenize } from "./lexer";
@@ -36,7 +36,7 @@ import type { ArgumentDef, AttributeDef, CommandDef, LanguageData, LanguageIndex
 import { buildLanguageIndex, NUMERIC_ARGUMENT_TYPES } from "./language";
 import * as d from "./diagnostics";
 
-const ASSEMBLY_CAP = 64; // shared by expression and quote assembly (spec §2.2 / §5.2)
+const ASSEMBLY_CAP = 64; // shared by expression and quote assembly (spec Sec.2.2 / Sec.5.2)
 const DEFAULT_MAX_NESTING = 200;
 
 // ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ interface BlockFrame {
   type: "block";
   node: BlockNode;
   owner: CommandNode | OrphanBlockNode;
-  // RMS0207 cascade suppression (§5.1): set when a token inside this block
+  // RMS0207 cascade suppression (Sec.5.1): set when a token inside this block
   // carried a lexer RMS0003 brace lint — one glued brace must not produce
   // fifty wrong-context warnings.
   suspect: boolean;
@@ -91,7 +91,7 @@ class Parser {
   /**
    * True when the run's FIRST token already carries its own diagnostic
    * (stray } → RMS0104, mismatched keyword → RMS0106) — the flush must not
-   * add a second one (spec §5.1: absorbed tokens keep their own diagnostic;
+   * add a second one (spec Sec.5.1: absorbed tokens keep their own diagnostic;
    * one diagnostic per run otherwise).
    */
   pendingRunDiagnosed = false;
@@ -108,7 +108,7 @@ class Parser {
     this.lineOffsets = lex.lineOffsets;
     this.diagnostics = [...lex.diagnostics];
 
-    // §2.1 aliasTable: lexer-level classification override. v1 limitation
+    // Sec.2.1 aliasTable: lexer-level classification override. v1 limitation
     // (documented): applied post-lex, so aliases of comment markers do not
     // affect the already-completed comment pass — fine while the table is
     // empty by default; revisit when token-aliases.json is imported.
@@ -148,7 +148,7 @@ class Parser {
       : top.node.preamble;
   }
 
-  /** Statement vs block context (§4): nearest block frame wins; if/random are transparent. */
+  /** Statement vs block context (Sec.4): nearest block frame wins; if/random are transparent. */
   inBlockContext(): boolean {
     for (let i = this.frames.length - 1; i >= 0; i--) {
       if (this.frames[i].type === "block") return true;
@@ -174,7 +174,7 @@ class Parser {
     }
   }
 
-  // ---- unknown runs (§5.1 coverage rule: no token is ever dropped) --------
+  // ---- unknown runs (Sec.5.1 coverage rule: no token is ever dropped) --------
 
   runPush(pos: number, alreadyDiagnosed = false): void {
     if (this.pendingRun.length === 0) this.pendingRunDiagnosed = alreadyDiagnosed;
@@ -193,7 +193,7 @@ class Parser {
       lastToken: lastIdx,
       span: this.span(firstIdx, lastIdx),
     };
-    // One diagnostic per run (§5.1) — unless the first token already carries
+    // One diagnostic per run (Sec.5.1) — unless the first token already carries
     // its own (RMS0104/0106 absorption, or a lexer RMS0003 glue lint — a
     // "}8050" token must not draw BOTH the glue lint and an unknown-name
     // warning). Word-initiated → RMS0200 with did-you-mean; value-initiated
@@ -212,13 +212,38 @@ class Parser {
     this.pendingRunDiagnosed = false;
   }
 
-  /** Did-you-mean (§10): edit distance ≤ 2 (case-insensitive), then suffix/substring. */
+  /**
+   * The attribute names the innermost enclosing block's command actually
+   * accepts, or undefined outside a block / for an unknown command. Used only
+   * to RANK did-you-mean candidates, never to reject a name — an attribute
+   * missing from a command's list is a reference-data gap, not evidence the
+   * author is wrong (CLAUDE.md: positive resolver, never negative authority).
+   */
+  enclosingCommandAttributes(): ReadonlySet<string> | undefined {
+    for (let i = this.frames.length - 1; i >= 0; i--) {
+      const frame = this.frames[i];
+      if (frame.type !== "block") continue;
+      const owner = frame.owner;
+      if (owner.kind !== "command" || !owner.def?.attributes) return undefined;
+      return new Set(owner.def.attributes);
+    }
+    return undefined;
+  }
+
+  /** Did-you-mean (Sec.10): edit distance ≤ 2 (case-insensitive), then prefix/suffix. */
   didYouMean(name: string, context: "command" | "attribute"): string | undefined {
     if (name.length < 3) return undefined;
+    // Non-functional names are excluded from the pool entirely. They are known
+    // to the engine, so they belong in language.json and RMS0310 reports them
+    // on sight — but suggesting one as a fix would send the author to a second
+    // dead end. A did-you-mean must always point at something that works.
+    const attributeNames = [...this.lang.attributesByName.values()]
+      .filter((a) => !a.nonFunctional)
+      .map((a) => a.name);
     const pool =
       context === "command"
-        ? [...this.lang.commandsByName.keys(), ...this.lang.attributesByName.keys()]
-        : [...this.lang.attributesByName.keys(), ...this.lang.commandsByName.keys()];
+        ? [...this.lang.commandsByName.keys(), ...attributeNames]
+        : [...attributeNames, ...this.lang.commandsByName.keys()];
     const lower = name.toLowerCase();
     let best: string | undefined;
     let bestDist = 3;
@@ -232,15 +257,44 @@ class Parser {
       }
     }
     if (best !== undefined) return best;
-    // Suffix/substring heuristic (avoidance_distance → other_zone_avoidance_distance).
+    // Containment heuristic: the typed name is a prefix OR suffix of a real
+    // one, shortest match wins.
+    //
+    // Suffix catches corpus-real `avoidance_distance` →
+    // `other_zone_avoidance_distance`. Prefix was added 2026-07-31 for the
+    // short forms the engine itself carries as dead strings — the guide's
+    // Non-Functional Syntax appendix lists `min_distance`, `max_distance`,
+    // `set_position` and `percent_of_land`, every one of them a truncation of
+    // a name that does work (`min_distance_to_players`, `land_percent`,
+    // `land_position`). They are the forms a beginner guesses at, and with
+    // suffix-only matching all four drew a bare "unknown attribute" with no
+    // suggestion at all — edit distance can't reach them either, the missing
+    // tails run to eleven characters.
+    //
+    // Both sides lowercased, which the suffix test previously was not: the
+    // edit-distance branch above is case-insensitive, and the mismatch was
+    // invisible only because every name in language.json is lowercase today.
+    //
+    // Ranked by "does the enclosing command accept it" FIRST and length
+    // second. Length alone picks a real but wrong neighbour on exactly the
+    // case that motivated the prefix rule: inside `create_object`,
+    // `min_distance` matches both `min_distance_cliffs` (19 chars, a terrain
+    // attribute) and `min_distance_to_players` (23, what the author meant),
+    // and shortest-wins hands over the one that cannot appear here.
     if (name.length >= 6) {
-      let shortest: string | undefined;
+      const allowed = context === "attribute" ? this.enclosingCommandAttributes() : undefined;
+      let bestAllowed: string | undefined;
+      let bestAny: string | undefined;
       for (const candidate of pool) {
-        if (candidate !== lower && candidate.endsWith(lower)) {
-          if (shortest === undefined || candidate.length < shortest.length) shortest = candidate;
+        const candidateLower = candidate.toLowerCase();
+        if (candidateLower === lower) continue;
+        if (!candidateLower.endsWith(lower) && !candidateLower.startsWith(lower)) continue;
+        if (bestAny === undefined || candidate.length < bestAny.length) bestAny = candidate;
+        if (allowed?.has(candidate) && (bestAllowed === undefined || candidate.length < bestAllowed.length)) {
+          bestAllowed = candidate;
         }
       }
-      return shortest;
+      return bestAllowed ?? bestAny;
     }
     return undefined;
   }
@@ -273,7 +327,7 @@ class Parser {
           break;
         case "number":
         case "rnd":
-          this.runPush(this.p); // §5.1 item 7 → RMS0215 at flush
+          this.runPush(this.p); // Sec.5.1 item 7 → RMS0215 at flush
           this.p++;
           break;
         default:
@@ -287,7 +341,7 @@ class Parser {
     this.finishAtEof();
   }
 
-  // ---- §5.1 item 1: section headers ---------------------------------------
+  // ---- Sec.5.1 item 1: section headers ---------------------------------------
 
   handleSectionHeader(): void {
     this.flushRun();
@@ -298,7 +352,7 @@ class Parser {
 
     if (hasCond) {
       // Legal RMS (token-filter model): conditionals may span section
-      // headers → §5.3 degradation, absorbing headers while only
+      // headers → Sec.5.3 degradation, absorbing headers while only
       // conditionals remain open. If blocks are ALSO open, the forward
       // scan stops at a header per RMS0103 semantics inside `degrade`.
       // All open frames are involved (blocks too, when mixed — the forward
@@ -338,7 +392,7 @@ class Parser {
     this.p++;
   }
 
-  // ---- §5.1 item 2: directives ---------------------------------------------
+  // ---- Sec.5.1 item 2: directives ---------------------------------------------
 
   parseDirective(): void {
     const hashPos = this.p;
@@ -370,7 +424,7 @@ class Parser {
     node.args = this.consumeArgs(def.arguments ?? [], hashTok, def.verified, /*quoteAssembly*/ true);
     if (node.args.length > 0) this.extend(node, node.args[node.args.length - 1].lastToken);
 
-    // Quoted-path bookkeeping + RMS0211 (§5.2).
+    // Quoted-path bookkeeping + RMS0211 (Sec.5.2).
     const firstArg = node.args[0];
     const quoted = firstArg !== undefined && this.tokens[firstArg.firstToken].text.startsWith('"');
     if (quoted && hashTok.text === "#includeXS") {
@@ -380,7 +434,7 @@ class Parser {
       this.includes.push({ directiveToken: hashIdx, path: String(firstArg.value), quoted });
     }
 
-    // Symbol table (§7).
+    // Symbol table (Sec.7).
     if (hashTok.text === "#define" && firstArg !== undefined) {
       this.symbols.push({
         name: this.tokens[firstArg.firstToken].text,
@@ -397,7 +451,7 @@ class Parser {
         conditionalDepth: this.conditionalDepth(),
       });
     } else if (hashTok.text === "#undefine" && firstArg !== undefined) {
-      // #undefine does NOTHING in-engine (§7) — record the attempt only.
+      // #undefine does NOTHING in-engine (Sec.7) — record the attempt only.
       const name = this.tokens[firstArg.firstToken].text;
       for (let i = this.symbols.length - 1; i >= 0; i--) {
         if (this.symbols[i].name === name) {
@@ -408,7 +462,7 @@ class Parser {
     }
   }
 
-  // ---- §5.1 item 3: control keywords ---------------------------------------
+  // ---- Sec.5.1 item 3: control keywords ---------------------------------------
 
   handleControlKeyword(text: string): void {
     const tokPos = this.p;
@@ -518,9 +572,9 @@ class Parser {
           const last = frame.node.preamble[frame.node.preamble.length - 1];
           this.diagnostics.push(d.randomPreamble(this.tokens[first.firstToken], this.tokens[last.lastToken]));
         }
-        // Pinned exception (§5.1): percent_chance takes one numeric operand;
+        // Pinned exception (Sec.5.1): percent_chance takes one numeric operand;
         // expression/rnd assembly are active in this slot. Data-driven
-        // `arguments[]` on controlKeywords replaces this once §13 lands.
+        // `arguments[]` on controlKeywords replaces this once Sec.13 lands.
         const chanceArgs = this.consumeArgs(
           [{ name: "chance", type: "integer" }],
           tok,
@@ -559,7 +613,7 @@ class Parser {
     }
   }
 
-  /** if/elseif condition: exactly one non-structural token (§5.1 pinned exception). */
+  /** if/elseif condition: exactly one non-structural token (Sec.5.1 pinned exception). */
   consumeCondition(keywordTok: Token): number | undefined {
     if (this.p >= this.nt.length) {
       this.diagnostics.push(d.wrongContextKeyword(keywordTok, "has no condition — the file ends here."));
@@ -592,7 +646,7 @@ class Parser {
     return this.frames.length;
   }
 
-  // ---- §5.1 items 4-7: words, braces, values -------------------------------
+  // ---- Sec.5.1 items 4-7: words, braces, values -------------------------------
 
   parseNamedOrRun(): void {
     const namePos = this.p;
@@ -600,7 +654,7 @@ class Parser {
     const nameTok = this.tokens[nameIdx];
     const inBlock = this.inBlockContext();
 
-    // §4 pinned lookup order: block → attribute first; statement → command first.
+    // Sec.4 pinned lookup order: block → attribute first; statement → command first.
     const asAttribute = this.lang.attributesByName.get(nameTok.text);
     const asCommand = this.lang.commandsByName.get(nameTok.text);
     const primary = inBlock ? asAttribute : asCommand;
@@ -650,7 +704,7 @@ class Parser {
     node.args = this.consumeArgs(def?.arguments ?? [], nameTok, def?.verified ?? true, false);
     if (node.args.length > 0) this.extend(node, node.args[node.args.length - 1].lastToken);
 
-    // Attached block (§5.1 item 4): next token is { and def says block (or unknown).
+    // Attached block (Sec.5.1 item 4): next token is { and def says block (or unknown).
     const blockCapable = def === undefined || def.kind === "block";
     if (blockCapable && this.p < this.nt.length && this.tokAt(this.p).kind === "openBrace") {
       this.openBlockFrame(node);
@@ -695,12 +749,12 @@ class Parser {
   }
 
   handleOpenBrace(): void {
-    // Depth cap first — none of the §5.4 paths may open a frame past it.
+    // Depth cap first — none of the Sec.5.4 paths may open a frame past it.
     if (this.constructDepth() >= this.maxNesting) {
       this.degradeTooDeep();
       return;
     }
-    // §5.4, in pinned order: unknown-run upgrade → shared block → plain orphan.
+    // Sec.5.4, in pinned order: unknown-run upgrade → shared block → plain orphan.
     const openTok = this.tokAt(this.p);
 
     // (a) Unknown word(s) followed by { — upgrade the run to an unknown command.
@@ -788,7 +842,7 @@ class Parser {
       return;
     }
     // } while an if/random is on top: mirror imbalance IF a block frame
-    // exists deeper (§5.3); otherwise a plain stray } (RMS0104, absorbed).
+    // exists deeper (Sec.5.3); otherwise a plain stray } (RMS0104, absorbed).
     if (top !== undefined && (top.type === "if" || top.type === "random")) {
       let blockPos = -1;
       for (let i = this.frames.length - 1; i >= 0; i--) {
@@ -815,7 +869,7 @@ class Parser {
       (block.items.length > 0 ? block.items[block.items.length - 1].lastToken : block.open);
     this.extend(block, lastIdx);
     this.extend(frame.owner, lastIdx);
-    // RMS0207 cascade summary (§5.1): one glued brace ≠ fifty warnings.
+    // RMS0207 cascade summary (Sec.5.1): one glued brace ≠ fifty warnings.
     if (frame.wrongContextCount > 1) {
       const lastTok = this.tokens[lastIdx];
       this.diagnostics.push(d.wrongContext(lastTok, "command", frame.wrongContextCount - 1));
@@ -824,7 +878,7 @@ class Parser {
 
   emitWrongContext(tok: Token, is: "command" | "attribute"): void {
     // Suppression only applies inside suspect blocks (glued-brace cascade,
-    // §5.1): suspect = an RMS0003-flagged token lies between this block's
+    // Sec.5.1): suspect = an RMS0003-flagged token lies between this block's
     // opening brace and the current token.
     for (let i = this.frames.length - 1; i >= 0; i--) {
       const f = this.frames[i];
@@ -848,7 +902,7 @@ class Parser {
     this.diagnostics.push(d.wrongContext(tok, is));
   }
 
-  // ---- §6: argument consumption --------------------------------------------
+  // ---- Sec.6: argument consumption --------------------------------------------
 
   consumeArgs(argDefs: ArgumentDef[], nameTok: Token, verified: boolean, quoteAssembly: boolean): ArgNode[] {
     const unverified = !verified;
@@ -948,14 +1002,14 @@ class Parser {
           // No diagnostic: the name resolves, so there is nothing wrong here.
           // (Deliberately permissive about #define-vs-#const — see
           // isDefinedSymbol. Judging *which* constant belongs in *which* slot
-          // is semantic, and belongs to validate(), spec §8.)
+          // is semantic, and belongs to validate(), spec Sec.8.)
         } else {
           // Not a number, not inf, not ours. Either genuinely undefined, or
           // defined in an include we can't read — the builder distinguishes.
           this.diagnostics.push(d.unresolvedConstantInNumericSlot(tok, argDef, this.includes.length > 0));
         }
       }
-      // Constant/string slots accept words (and numbers) freely — §2.1(1).
+      // Constant/string slots accept words (and numbers) freely — Sec.2.1(1).
     } else {
       this.diagnostics.push(d.argTypeMismatch(tok, argDef, unverified));
     }
@@ -978,20 +1032,24 @@ class Parser {
    *
    * Permissive about kind: both `#const` (has a value) and `#define` (a bare
    * flag) count. A `#define`d name in a numeric slot is probably an author
-   * mistake, but §2.1 pins that every word resolves to some internal token ID,
+   * mistake, but Sec.2.1 pins that every word resolves to some internal token ID,
    * and that our type diagnostics are "style warnings about probable
    * mistakes, never correctness claims" — so flagging it here would risk
    * exactly the false warning this method exists to remove. If it's worth
-   * reporting at all, it belongs in validate() (§8) where the whole symbol
+   * reporting at all, it belongs in validate() (Sec.8) where the whole symbol
    * table is available at once.
    *
    * Linear scan: symbol counts are small (tens per map) and this only runs
    * for a word that reached a numeric slot, which is rare. Swap for a Set if
    * a profile ever says otherwise.
    *
-   * TODO(predefinedLabels): once `language.json` gains `predefinedLabels`
-   * (parser-design §13 / CLAUDE.md tracked debt), engine-provided names
-   * should count as defined here too.
+   * TODO(predefinedLabels): `language.json` now HAS `predefinedLabels` (138
+   * entries, typed as `PredefinedLabel[]` in language.ts) — the precondition
+   * this TODO was waiting on is met, only the work is outstanding.
+   * Engine-provided names should count as defined here too, so that e.g.
+   * `clumping_factor LARGE_MAP` stops drawing RMS0202. Read the array off
+   * `this.lang.data.predefinedLabels ?? []`; do not hardcode a name list
+   * (CLAUDE.md: vocabulary is data-driven).
    */
   private isDefinedSymbol(name: string): boolean {
     for (const symbol of this.symbols) {
@@ -1001,7 +1059,7 @@ class Parser {
   }
 
   /**
-   * §2.2 expression assembly. Terminator rule (pinned): first token whose
+   * Sec.2.2 expression assembly. Terminator rule (pinned): first token whose
    * text ends with ")" regardless of kind — EXCEPT canonical rnd tokens,
    * which never terminate. Break-outs (structural/control/EOF/cap) degrade
    * the collected tokens to a RawNode with RMS0208.
@@ -1037,9 +1095,14 @@ class Parser {
     const exprSpan = this.span(firstIdx, lastIdx);
 
     // Guide-verified lints (RMS0210).
-    if (opener.text === "(") this.diagnostics.push(d.expressionLint("ungluedOperand", exprSpan));
+    //
+    // ONE unglued-operand diagnostic, however many ends are unglued. `( 5 + 1 )`
+    // has a bare `(` AND a bare `)`, and both used to report — same code, same
+    // message, same (whole-expression) span, so the second was a duplicate
+    // rather than a second finding. Spec Sec.5.1's one-diagnostic-per-problem
+    // convention applies.
     const terminator = this.tokens[lastIdx];
-    if (collected.length > 1 && terminator.text === ")") {
+    if (opener.text === "(" || (collected.length > 1 && terminator.text === ")")) {
       this.diagnostics.push(d.expressionLint("ungluedOperand", exprSpan));
     }
     for (let i = 0; i < collected.length; i++) {
@@ -1052,6 +1115,14 @@ class Parser {
       }
       if (t.kind === "word" || t.kind === "number") {
         const core = t.text.replace(/^\(+/, "").replace(/\)+$/, "");
+        // `-` is deliberately absent from the glued-operator class. A negative
+        // literal is one token by construction — `-5`, `-inf`, `(A + -1)` —
+        // so treating an interior `-` as glue would flag every negative
+        // operand as a malformed expression. The cost is that a genuinely
+        // glued minus (`(A-1)`) goes unreported: it lexes as one unknown word
+        // and reaches the normal type diagnostics instead, which is the safe
+        // direction under goal #5. Discriminating the two needs the engine's
+        // own rule (verify #15).
         if (!/^[+\-*/%]$/.test(core) && /[+*/%]/.test(core) && !core.startsWith("rnd(")) {
           this.diagnostics.push(d.expressionLint("gluedOperator", { start: t.start, end: t.end }));
         }
@@ -1075,7 +1146,7 @@ class Parser {
     };
   }
 
-  /** §5.2 quote assembly for filename-typed directive args. */
+  /** Sec.5.2 quote assembly for filename-typed directive args. */
   assembleQuote(argDef: ArgumentDef): ArgNode | undefined {
     const startPos = this.p;
     const collected: number[] = [this.nt[this.p]];
@@ -1129,7 +1200,116 @@ class Parser {
     return undefined;
   }
 
-  // ---- §5.3: degradation ----------------------------------------------------
+  // ---- Sec.5.3: degradation ----------------------------------------------------
+
+  /**
+   * Sec.5.3's "symbols and includes survive degradation", for the FORWARD half
+   * of the range.
+   *
+   * The backward half satisfies that rule for free: those tokens went through
+   * parseDirective() before the imbalance was detected, so their entries are
+   * already in this.symbols/this.includes when degrade() discards the nodes.
+   * The forward extension never parses at all — it is a raw token scan — so
+   * without this a `#const` past the trigger point would be invisible to
+   * isDefinedSymbol() and to validate(), and every later use of the name would
+   * draw the false unknown-symbol warning the pinned rule exists to prevent.
+   *
+   * Mirrors parseDirective()'s bookkeeping and nothing else: no AST node, and
+   * no diagnostics — the whole region is already covered by one RMS0110, and a
+   * second diagnostic inside it would break Sec.5.3's one-diagnostic promise.
+   *
+   * Leaves this.p just past the directive and its declared operands, using the
+   * same stop set parseDirective does — so a control keyword or brace is never
+   * swallowed as an operand and the scan's own counting stays in step. Quote
+   * assembly runs here too, or `#include_drs "my maps/x.inc"` would record its
+   * path as `"my`.
+   */
+  recordDirectiveInRawScan(conditionalDepth: number): void {
+    const hashIdx = this.nt[this.p];
+    const hashTok = this.tokens[hashIdx];
+    this.p++;
+
+    const def = this.lang.directivesByName.get(hashTok.text);
+    if (!def) return; // unknown `#` token — parseDirective consumes no args either
+
+    const operands: { firstToken: number; text: string; quoted: boolean }[] = [];
+    for (let i = 0; i < (def.arguments ?? []).length; i++) {
+      const operand = this.takeRawOperand();
+      if (operand === undefined) break;
+      operands.push(operand);
+    }
+
+    const first = operands[0];
+    if (first === undefined) return;
+
+    if (hashTok.text === "#include_drs" || hashTok.text === "#includeXS") {
+      this.includes.push({ directiveToken: hashIdx, path: first.text, quoted: first.quoted });
+    } else if (hashTok.text === "#define") {
+      this.symbols.push({
+        name: first.text,
+        directiveKind: "define",
+        nameToken: first.firstToken,
+        conditionalDepth,
+      });
+    } else if (hashTok.text === "#const") {
+      this.symbols.push({
+        name: first.text,
+        directiveKind: "const",
+        nameToken: first.firstToken,
+        valueToken: operands[1]?.firstToken,
+        conditionalDepth,
+      });
+    } else if (hashTok.text === "#undefine") {
+      for (let i = this.symbols.length - 1; i >= 0; i--) {
+        if (this.symbols[i].name === first.text) {
+          this.symbols[i].undefineAttempted = true;
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * One directive operand during a raw scan, with Sec.5.2 quote assembly so an
+   * `#include_drs "my maps/x.inc"` records the path it really has. Returns
+   * undefined (leaving this.p on the offending token) when the stop set or an
+   * unclosed quote ends the list — the caller stops asking for operands and the
+   * scan's own brace/conditional counting picks the token up as normal.
+   */
+  takeRawOperand(): { firstToken: number; text: string; quoted: boolean } | undefined {
+    if (this.stopSetAt(this.p)) return undefined;
+    const firstIdx = this.nt[this.p];
+    const first = this.tokens[firstIdx];
+    this.p++;
+    if (!first.text.startsWith('"')) {
+      return { firstToken: firstIdx, text: first.text, quoted: false };
+    }
+
+    const parts = [first.text];
+    let terminated = first.text.length > 1 && first.text.endsWith('"');
+    while (!terminated) {
+      // Same breakout set and cap as assembleQuote(); only the diagnostic differs.
+      if (this.p >= this.nt.length || parts.length >= ASSEMBLY_CAP) return undefined;
+      const tok = this.tokAt(this.p);
+      if (
+        tok.kind === "openBrace" ||
+        tok.kind === "closeBrace" ||
+        tok.kind === "sectionHeader" ||
+        tok.kind === "directive" ||
+        (tok.kind === "word" && this.lang.controlKeywords.has(tok.text))
+      ) {
+        return undefined;
+      }
+      parts.push(tok.text);
+      this.p++;
+      if (tok.text.endsWith('"')) terminated = true;
+    }
+    return {
+      firstToken: firstIdx,
+      text: parts.join(" ").replace(/^"/, "").replace(/"$/, ""),
+      quoted: true,
+    };
+  }
 
   /**
    * Wrap everything from the outermost involved frame (stack index
@@ -1149,13 +1329,23 @@ class Parser {
     }
 
     // Range start: outermost involved construct — including the statement
-    // owning an involved block (spec §5.3).
+    // owning an involved block (spec Sec.5.3).
     const outermost = this.frames[outermostIdx];
     const rangeStartToken =
       outermost.type === "block" ? outermost.owner.firstToken : outermost.node.firstToken;
 
     // The parent that will receive the RawNode.
     const parentItems = this.itemsBelowFrame(outermostIdx);
+
+    // Conditional depth of the frames that SURVIVE this degradation, captured
+    // before the pop below. Inside the forward scan, depth at any point is this
+    // plus however many of the involved conditionals are still open (openConds),
+    // which is what a directive down there must record (Sec.5.3).
+    let survivingCondDepth = 0;
+    for (let i = 0; i < outermostIdx; i++) {
+      const f = this.frames[i];
+      if (f.type === "if" || f.type === "random") survivingCondDepth++;
+    }
 
     // Pop involved frames; their nodes get discarded from parentItems below.
     this.frames.length = outermostIdx;
@@ -1184,6 +1374,11 @@ class Parser {
         // Only conditionals open → legal spanning; absorb the header.
         lastConsumedNt = this.p;
         this.p++;
+        continue;
+      }
+      if (tok.kind === "directive") {
+        this.recordDirectiveInRawScan(survivingCondDepth + openConds);
+        lastConsumedNt = this.p - 1;
         continue;
       }
       if (tok.kind === "openBrace") openBraces++;
@@ -1236,9 +1431,9 @@ class Parser {
       : below.node.preamble;
   }
 
-  /** §5.0: opening one more construct would exceed the cap — degrade it. */
+  /** Sec.5.0: opening one more construct would exceed the cap — degrade it. */
   degradeTooDeep(): void {
-    // Treat the would-be construct as a zero-frame §5.3 range starting at
+    // Treat the would-be construct as a zero-frame Sec.5.3 range starting at
     // the opener token; forward-scan its own body.
     const openerNt = this.p;
     const openerIdx = this.nt[openerNt];
@@ -1248,11 +1443,19 @@ class Parser {
 
     let openBraces = openerTok.kind === "openBrace" ? 1 : 0;
     let openConds = openerTok.kind === "openBrace" ? 0 : 1;
+    const survivingCondDepth = this.conditionalDepth(); // frames are not popped here
     let lastConsumedNt = openerNt;
     while (openBraces > 0 || openConds > 0) {
       if (this.p >= this.nt.length) break;
       const tok = this.tokAt(this.p);
       if (tok.kind === "sectionHeader" && openBraces > 0) break;
+      if (tok.kind === "directive") {
+        // Same rule as degrade()'s scan — Sec.5.3's symbols/includes survival
+        // is about the token stream, so a depth-capped region is no different.
+        this.recordDirectiveInRawScan(survivingCondDepth + openConds);
+        lastConsumedNt = this.p - 1;
+        continue;
+      }
       if (tok.kind === "openBrace") openBraces++;
       else if (tok.kind === "closeBrace") openBraces = Math.max(0, openBraces - 1);
       else if (tok.kind === "word" && (tok.text === "if" || tok.text === "start_random")) openConds++;
@@ -1274,7 +1477,7 @@ class Parser {
     this.diagnostics.push(d.nestingTooDeep(openerTok, this.maxNesting));
   }
 
-  // ---- EOF (§5.2) -----------------------------------------------------------
+  // ---- EOF (Sec.5.2) -----------------------------------------------------------
 
   finishAtEof(): void {
     this.flushRun();
@@ -1311,8 +1514,12 @@ function parseRndValue(text: string): { rnd: [number, number] } | undefined {
   return { rnd: [Number(m[1]), Number(m[2])] };
 }
 
-/** Banded Levenshtein with early exit above `cap`. */
-function editDistanceCapped(a: string, b: string, cap: number): number {
+/**
+ * Banded Levenshtein with early exit above `cap`. Exported for validate.ts,
+ * which needs the same did-you-mean heuristic for condition labels — the two
+ * passes must agree on what counts as "close enough to be a typo".
+ */
+export function editDistanceCapped(a: string, b: string, cap: number): number {
   if (a === b) return 0;
   const la = a.length;
   const lb = b.length;

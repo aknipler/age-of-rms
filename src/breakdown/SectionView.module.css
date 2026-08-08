@@ -24,8 +24,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  /* No padding here (moved to .addWrapper/.content below) — Ash's
-     report: with padding on this element, the sticky .addWrapper only
+  /* No padding here (moved to .addWrapper/.content below) — with padding
+     on this element, the sticky .addWrapper only
      sticks within the padding BOX's inner edge, leaving this element's
      own padding as a visible gap above/left of it that scrolled card
      content shows through as you scroll past. Moving the equivalent
@@ -37,13 +37,13 @@
   height: 100%;
   flex: 1;
   min-width: 0;
-  /* §3.10 bug fix — without an explicit position, this is NOT the
+  /* Sec.3.10 bug fix — without an explicit position, this is NOT the
      offsetParent for its descendant cards, so DiagnosticsRuler's
      `card.offsetTop` was being measured against some unrelated ancestor
      further up the tree (roughly constant across every map/tab, and
      unaffected by this container's own scrollHeight or scroll position)
      instead of "how far down THIS scrollable content is this card" —
-     the exact cause of every symptom Ash reported (one static tick near
+     the exact cause of every symptom reported (one static tick near
      the top everywhere, no reaction to resize, no correlation to actual
      scroll position). Making this element positioned is what makes it
      the offsetParent, so offsetTop becomes relative to the scrollable
@@ -57,9 +57,9 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  /* Full-width row (not self-sized to the button's text) per Ash's
-     feedback — this is also what makes the row a natural home for
-     future badges/Hide-Unused (§3.3.1) to sit alongside the button
+  /* Full-width row (not self-sized to the button's text) - this is also
+     what makes the row a natural home for
+     future badges/Hide-Unused (Sec.3.3.1) to sit alongside the button
      without the whole row needing to be re-laid-out then. */
   align-self: stretch;
   background: #fff;

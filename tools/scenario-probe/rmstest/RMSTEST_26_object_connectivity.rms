@@ -1,0 +1,23 @@
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+/* create_land { terrain_type SHALLOW land_position 50 50 base_size 3 land_percent 0 } */
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+  create_object GOLD 
+  {
+    terrain_to_place_on GRASS
+    number_of_objects 5
+    number_of_groups 300
+    temp_min_distance_group_placement 4
+    set_gaia_object_only
+    set_tight_grouping
+  }
+

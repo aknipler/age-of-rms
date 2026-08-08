@@ -1,0 +1,108 @@
+/*
+	RMSTEST 8 — is terrain_to_place_on checked per member under TIGHT grouping?
+
+	This is the sharper version of your suspicion, because it could reframe the
+	model rather than just add an exception. If the flood-fill checks TILE
+	VALIDITY (terrain, occupancy) per member while skipping DISTANCE-based
+	avoidances, then "tight = anchor only" is wrong as stated, and the real rule
+	is:
+
+	    anchor must satisfy everything;
+	    fill members must satisfy tile-level validity but not distance rules.
+
+	That model would also explain guide:2102's "if the number_of_objects exceeds
+	the available number of tiles, then a perfect square worth of objects will be
+	filled" — a cap that only makes sense if the fill is aware of which tiles it
+	may use.
+
+	GEOMETRY — deterministic, no random land placement.
+	  A 15x15 GRASS clearing at land_position 50 50 (tile 60,60 on a 120 map).
+	  Player lands are DESERT and pushed to circle_radius 45, so the ONLY grass
+	  on the map is that clearing — which means create_terrain DIRT with
+	  base_terrain GRASS has nowhere else it can go.
+	  DIRT is given number_of_tiles 9 in a single clump, so roughly a 3x3 patch
+	  sits somewhere inside the 15x15 grass square.
+	  The gold then asks for 25 objects with terrain_to_place_on DIRT — four
+	  times more objects than there are dirt tiles.
+
+	READ IT LIKE THIS
+	  Gold appears on GRASS as well as dirt, roughly 25 of them, spilling out
+	  around the dirt patch
+	      -> terrain_to_place_on is checked ONLY on the anchor. The fill is
+	         genuinely unchecked, "tight = anchor only" stands as a uniform rule,
+	         and Sec.6.6 can state it simply.
+	  Gold appears ONLY on the dirt tiles, about 9 of them, and none on grass
+	      -> terrain IS checked per member. The refined two-tier model above is
+	         the right one, and Sec.6.6 must distinguish tile-validity
+	         constraints from distance constraints instead of treating tight
+	         grouping as one rule.
+	  Gold count is between those, or on dirt plus exactly one ring of grass
+	      -> note it precisely; a partial spill would suggest the fill checks
+	         terrain but relaxes when it runs out, which is a third behaviour
+	         neither the guide nor the spec describes.
+
+	The count matters as much as the position here, so if you can, say roughly
+	how many gold piles appear as well as what they are standing on. Dirt and
+	grass are easy to tell apart, which is why this uses terrain rather than a
+	layer.
+
+	STONE is the CONTROL: same land, no terrain restriction, must appear.
+
+	Both create_objects carry set_gaia_object_only, since Test 3 confirmed a
+	frame-referenced non-ownable object without it places nothing.
+
+	RUN ON: Tiny, 2 players. One clearing at map centre, one sample per seed.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain FOREST
+
+create_player_lands
+{
+	terrain_type DESERT
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+create_land
+{
+	terrain_type GRASS
+	land_position 50 50
+	base_size 7
+	number_of_tiles 1
+	land_id 5
+	zone 7
+}
+
+<TERRAIN_GENERATION>
+
+create_terrain DIRT
+{
+	base_terrain GRASS
+	number_of_tiles 9
+	number_of_clumps 1
+}
+
+<OBJECTS_GENERATION>
+
+/* THE TEST: 25 objects restricted to a ~9-tile terrain patch. */
+create_object GOLD
+{
+	number_of_objects 25
+	set_tight_grouping
+	set_gaia_object_only
+	place_on_specific_land_id 5
+	terrain_to_place_on DIRT
+}
+
+/* CONTROL: same land, no terrain restriction. Must appear. */
+create_object STONE
+{
+	number_of_objects 1
+	set_gaia_object_only
+	place_on_specific_land_id 5
+}

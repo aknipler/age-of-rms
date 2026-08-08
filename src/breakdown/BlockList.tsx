@@ -7,12 +7,12 @@ import { commentsBetweenItems } from "./comments";
 import styles from "./BlockList.module.css";
 
 /**
- * Recursive Item[] renderer (docs/breakdown-design.md §6.1). A branch
+ * Recursive Item[] renderer (docs/breakdown-design.md Sec.6.1). A branch
  * segment renders a BlockList over branch.items, which is how nested
  * conditionals/blocks-within-branches render uniformly with a section
  * body — same component, different item list.
  *
- * Also where comments get interleaved (Ash's follow-up ask): every
+ * Also where comments get interleaved: every
  * BlockList call independently attributes to itself whichever comments
  * fall strictly between two of ITS OWN consecutive items — safe and
  * unambiguous, since item spans never overlap across different lists.

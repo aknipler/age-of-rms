@@ -1,0 +1,75 @@
+/*
+RMSTEST_33b - is create_object actually locked to <OBJECTS_GENERATION>
+CLAUDE.md tracked debt: validate()'s RMS0304 wrong-section check
+
+Companion to 33a, and the pair is the point - see 33a's header for why RMS0304
+is unbuilt and what a per-command answer is for. Run them in the same sitting.
+
+QUESTION
+Same question, opposite direction: create_object placed in
+<TERRAIN_GENERATION>. Two commands answering DIFFERENTLY would be the most
+useful result this pair can produce, because it would kill any hope of a single
+blanket rule and force RMS0304 to be a data-driven per-command list - which is
+also the only form of the check that fits this project's "vocabulary is
+data-driven" rule.
+
+METHOD
+A minimal map with an empty <OBJECTS_GENERATION> and one create_object sitting
+in <TERRAIN_GENERATION>. The object histogram is the binary reading.
+
+GOLD is chosen over a unit because it is gaia, needs no player, and appears in
+the export with an unambiguous count. set_gaia_object_only makes that explicit
+rather than relying on a default.
+
+GENERATE AT NORMAL (200), any player count.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. 40 GOLD objects appear, matching 33a's prediction 1, and section headers are
+   organisational for both. This is the outcome that most constrains us: RMS0304
+   would be a style hint at best, and the honest thing would be not to build it.
+2. No GOLD. Combined with 33a, either both are locked (build the check as a
+   warning, driven by language.json's section field) or exactly one is (build it
+   from a measured per-command list, and note the field alone is insufficient).
+3. GOLD appears but at the wrong count, or in the wrong place. Record the
+   discrepancy - it would mean the command ran with a different stage's
+   constraints applied, which is a third category neither 33a nor this script
+   was designed for and which nothing in Sec.9 currently models.
+
+WATCH FOR
+Objects placed in a terrain stage may be positioned before terrain exists, so a
+count of 40 with all of them clustered oddly is prediction 3, not prediction 1.
+Check positions, not just the count. This is the same mistake shape as reading a
+grown quantity when a counted one was available.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"
+  Default object histogram gives the count.
+  python probe_scenario.py "<scenario>" --clusters GOLD
+  gives the positions, which is what separates prediction 1 from prediction 3.
+
+ONE RUN, unless prediction 3 fires.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* DELIBERATELY IN THE WRONG SECTION. This is the test. */
+  create_object GOLD
+  {
+    number_of_objects 40
+    set_gaia_object_only
+    temp_min_distance_group_placement 6
+  }
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>

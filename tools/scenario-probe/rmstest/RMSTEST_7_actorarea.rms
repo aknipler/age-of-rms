@@ -1,0 +1,94 @@
+/*
+	RMSTEST 7 — is avoid_actor_area checked per member under TIGHT grouping?
+
+	This is the one row in docs/preview-design.md Sec.6.6's grouping-scope table
+	that the guide never rules on directly. Every other row cites a per-attribute
+	entry; the actor-area row rests entirely on the tight/loose illustrative
+	lists at guide:2122 / guide:2143, so it has no source at all.
+
+	Test 1 and Test 6 established: tight = one anchor checked, then unchecked
+	fill; loose = every member checked. If that generalises, avoid_actor_area
+	under tight grouping should be checked ONLY on the anchor.
+
+	GEOMETRY — everything here is deterministic, no random land placement.
+	  The clearing is a 15x15 grass square (base_size 7) at land_position 50 50,
+	  which on a 120-wide map is tile (60,60), so it spans 53..67 on both axes.
+	  create_actor_area 60 60 1234 5 is a SQUARE radius (guide:1994 — and those
+	  coordinates are in TILES, not percent), so it covers 55..65, an 11x11
+	  block centred in the clearing.
+	  Valid tiles for the gold are therefore the clearing MINUS the actor area:
+	  a 2-tile-wide border ring, 225 - 121 = 104 tiles. Plenty for 25 objects.
+
+	Player lands are pushed out to circle_radius 45 and made DESERT so they
+	cannot be confused with the central grass clearing.
+
+	READ IT LIKE THIS
+	  Gold sits in the central 11x11 block (or spills into it from the ring)
+	      -> anchor-only. avoid_actor_area follows Test 1's rule, and Sec.6.6's
+	         actor-area row should be folded into the general tight rule.
+	  Gold sits ONLY in the 2-tile border ring, forming a band or corner shape
+	  and leaving a clean square hole in the middle
+	      -> checked per MEMBER even under tight grouping. This is the case you
+	         suspected, and it means the tight rule is not uniform: some
+	         attributes are enforced during the fill and some are not.
+	  No gold at all
+	      -> re-roll; if it persists, the actor area is being read differently
+	         than assumed (check whether the radius is being treated as
+	         Euclidean, which would change the valid set).
+
+	The single STONE pile is a CONTROL on the same land with no avoidance. It
+	must appear. If it is missing, the map failed for an unrelated reason.
+
+	Both create_objects carry set_gaia_object_only because Test 3 CONFIRMED that
+	a frame-referenced non-ownable object without it places nothing — and
+	place_on_specific_land_id is a reference frame.
+
+	RUN ON: Tiny, 2 players. There is only one clearing that matters, at the
+	exact centre of the map, so one sample per seed.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain FOREST
+
+create_player_lands
+{
+	terrain_type DESERT
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+create_land
+{
+	terrain_type GRASS
+	land_position 50 50
+	base_size 7
+	number_of_tiles 1
+	land_id 5
+	zone 7
+}
+
+<OBJECTS_GENERATION>
+
+create_actor_area 60 60 1234 5
+
+/* THE TEST: tight group that must avoid the central 11x11 block. */
+create_object GOLD
+{
+	number_of_objects 25
+	set_tight_grouping
+	set_gaia_object_only
+	place_on_specific_land_id 5
+	avoid_actor_area 1234
+}
+
+/* CONTROL: same land, no avoidance. Must appear. */
+create_object STONE
+{
+	number_of_objects 1
+	set_gaia_object_only
+	place_on_specific_land_id 5
+}

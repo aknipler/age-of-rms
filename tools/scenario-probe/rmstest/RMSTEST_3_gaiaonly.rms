@@ -1,0 +1,68 @@
+/*
+	RMSTEST 3 — omit set_gaia_object_only under a reference frame: nothing
+	placed, or placed and owned?
+
+	guide:2354 says set_gaia_object_only "Must be used when placing player's
+	gold/stone/berries/deer/boar", and guide:2262 says objects that cannot be
+	owned by players "also require set_gaia_object_only to be placed for every
+	player". docs/preview-design.md Sec.6.6 reads "must"/"require" literally:
+	zero placements, one gaiaOnlyRequired failure, one note. Sec.15 item 9
+	flags it as unconfirmed, and it matters because 32 of our 33 corpus maps
+	use the attribute — so the question is what happens to the ONE that
+	forgets. An empty map or a normal one?
+
+	HOW IT DISCRIMINATES
+	Two per-player resource commands in separate distance bands so they cannot
+	be confused for each other:
+	  GOLD  6-10 tiles from the town centre, WITH the flag    -> control
+	  STONE 14-18 tiles from the town centre, WITHOUT it      -> the test
+
+	READ IT LIKE THIS
+	  Gold ring present, NO stone anywhere
+	      -> the engine places nothing. Sec.6.6 confirmed, and its
+	         gaiaOnlyRequired failure bucket is the right design.
+	  Both rings present
+	      -> the attribute is not actually required for placement. Sec.6.6's
+	         rule is WRONG and would blank out resources the engine draws
+	         fine, which is the opposite of the honest-approximation goal.
+	  Both present but stone is player-COLOURED (not neutral grey)
+	      -> it places and assigns ownership. Report the colour; that is a
+	         third outcome the spec does not model at all.
+
+	RUN ON: Tiny, 2 players. Two town centres, easy to inspect both.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	land_percent 60
+	base_size 8
+	circle_radius 30
+}
+
+<OBJECTS_GENERATION>
+
+/* CONTROL: has the flag. Must appear. */
+create_object GOLD
+{
+	number_of_objects 5
+	set_gaia_object_only
+	set_place_for_every_player
+	min_distance_to_players 6
+	max_distance_to_players 10
+}
+
+/* THE TEST: identical, but no set_gaia_object_only. */
+create_object STONE
+{
+	number_of_objects 5
+	set_place_for_every_player
+	min_distance_to_players 14
+	max_distance_to_players 18
+}

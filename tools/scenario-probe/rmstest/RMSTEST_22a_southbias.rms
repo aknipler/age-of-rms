@@ -1,0 +1,80 @@
+/*
+RMSTEST_22a - elevation seed south bias, WITHOUT enable_balanced_elevation
+preview-design.md Sec.15 item 1, Sec.6.2's seed weights
+
+QUESTION
+The guide says elevation seed selection is biased toward the south. Sec.6.2
+turns that into an integer weight of 100 + 100*y/(dim-1), meaning a tile at the
+far south is exactly twice as likely to seed a clump as one at the far north.
+The 2x is a [tune] guess. Nothing has ever measured the strength of the bias,
+only its direction.
+
+The reason it must be integer weights rather than a float curve is goal 5,
+determinism. That makes the constant cheap to change and worth getting right
+once, because every future seeded run inherits it.
+
+METHOD
+Five hundred one-tile-tall clumps with a 2000 tile budget, so each clump is
+about four tiles and the tile distribution is close to the seed distribution
+with only a little smearing. Read the mean y as a fraction of the map.
+
+The predictions are far enough apart to separate in a single run.
+  uniform seed pick        mean y = 0.500
+  Sec.6.2's south bias     mean y = 0.556   (this map)
+  enable_balanced_elevation mean y = 0.512  (RMSTEST_22b)
+
+Those come from integrating the weight over the map. Under weight 1 + u with u
+uniform on 0 to 1, the expected u is (1/2 + 1/3)/(1 + 1/2), which is 5/9.
+
+NO PLAYER LANDS ON PURPOSE. Sec.6.2 keeps seeds at least 9 tiles from every
+player land origin, and those origins sit on a circle, so including them would
+carve a ring-shaped hole out of the very distribution being measured. If the
+editor refuses to generate a map with no player lands, that refusal is itself
+worth recording, and the fallback is to add create_player_lands and treat the
+result as contaminated rather than as an answer.
+
+GENERATE AT TINY (120). 2000 tiles of 14400 is 14 percent coverage. Keep it
+low deliberately. At high coverage the southern rows saturate, later seeds land
+on already-elevated tiles, and the measured mean is dragged back toward 0.500,
+which would read as a weaker bias than the engine actually has. A dry run of
+the instrument at 34 percent coverage pulled a true 0.556 down to 0.543.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. mean y lands between 0.54 and 0.57, confirming a bias of roughly 2x.
+2. mean x lands on 0.500 within noise. This is the control. If x drifts, the
+   run is measuring something other than the seed weight and nothing else in
+   the output can be trusted.
+3. The banded histogram rises monotonically from north to south rather than
+   jumping, which is what a linear weight looks like and what a two-zone or
+   threshold implementation would not.
+
+RUN IT THREE TIMES. With 500 seeds the standard error on the mean is about
+0.013, so one run separates 0.500 from 0.556 at roughly 4 sigma. Three runs
+makes it unarguable and also shows the run to run spread, which 5.2's Monte
+Carlo needs anyway.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --rows ELEVATION
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+  create_elevation 1
+  {
+    number_of_clumps 500
+    number_of_tiles 2000
+    spacing 1
+  }
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

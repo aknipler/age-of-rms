@@ -1,8 +1,9 @@
-// Phase 2.3 parser unit suite — one test per docs/parser-design.md §5
-// production / §10 recovery path, plus the §12 micro-fixtures that don't
+// Phase 2.3 parser unit suite — one test per docs/parser-design.md Sec.5
+// production / Sec.10 recovery path, plus the Sec.12 micro-fixtures that don't
 // need corpus files. Corpus + fuzz live in their own files.
 
 import { describe, expect, it } from "vitest";
+
 import { parseRms } from "../parser";
 import type { LanguageData } from "../language";
 import type { CommandNode, IfNode, OrphanBlockNode, ParseResult, RandomNode, RawNode } from "../types";
@@ -12,7 +13,7 @@ const lang = loadLanguage();
 
 function parse(source: string, l: LanguageData = lang): ParseResult {
   const result = parseRms(source, l);
-  // Every unit test also enforces the §12 properties for free.
+  // Every unit test also enforces the Sec.12 properties for free.
   expect(checkProperties(result)).toEqual([]);
   return result;
 }
@@ -49,7 +50,7 @@ describe("sections and preamble", () => {
   });
 });
 
-describe("commands, attributes, args (§5.1 item 4, §6)", () => {
+describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   it("parses a block command with attributes", () => {
     const r = parse("<OBJECTS_GENERATION>\ncreate_object GOLD\n{\n  number_of_objects 4\n  set_gaia_object_only\n}");
     const cmd = r.script.sections[0].items[0] as CommandNode;
@@ -72,7 +73,7 @@ describe("commands, attributes, args (§5.1 item 4, §6)", () => {
     expect(r.script.sections[0].items[0].kind).toBe("attribute");
   });
 
-  it("bare numeric IDs are legal in constant slots — no type diagnostic (§2.1)", () => {
+  it("bare numeric IDs are legal in constant slots — no type diagnostic (Sec.2.1)", () => {
     const r = parse("<OBJECTS_GENERATION>\ncreate_object 32 { number_of_objects 4 }");
     expect(codes(r)).not.toContain("RMS0202");
   });
@@ -100,11 +101,11 @@ describe("commands, attributes, args (§5.1 item 4, §6)", () => {
     expect(codes(r)).not.toContain("RMS0202");
   });
 
-  // §6 amendment: a #const used as an attribute value is standard RMS idiom
-  // and must not warn. Reported by Ash from live testing; the original rule
+  // Sec.6 amendment: a #const used as an attribute value is standard RMS idiom
+  // and must not warn. Noticed from live testing; the original rule
   // ("numeric slots accept number/rnd/expression/inf") warned on every one,
   // a goal-#5 violation. Resolution is symbol-table-aware, not type-aware.
-  describe("constants in numeric slots (§6 amendment)", () => {
+  describe("constants in numeric slots (Sec.6 amendment)", () => {
     it("a #const defined above the use draws NO diagnostic", () => {
       const r = parse(
         "#const PL_LANDS_CLUMPING_FAC 15\n<LAND_GENERATION>\n" +
@@ -136,7 +137,7 @@ describe("commands, attributes, args (§5.1 item 4, §6)", () => {
       expect(codes(r)).toContain("RMS0202");
     });
 
-    it("softens to info when an include is present — the name may live in there (§7)", () => {
+    it("softens to info when an include is present — the name may live in there (Sec.7)", () => {
       const r = parse(
         "#include_drs foo.rms\n<LAND_GENERATION>\ncreate_land { clumping_factor FROM_INCLUDE }",
       );
@@ -165,7 +166,7 @@ describe("commands, attributes, args (§5.1 item 4, §6)", () => {
 
     // The regression that made this change risky: expression assembly keys
     // off a leading "(" and is NOT gated on argument type, so retyping the
-    // slot must not disturb it. AD4 - Pag's line is a required §12 fixture.
+    // slot must not disturb it. AD4 - Pag's line is a required Sec.12 fixture.
     it("still assembles a math expression (AD4 fixture)", () => {
       const r = parse("#const MAPAREA (MAPSIZE * MAPSIZE)");
       expect(codes(r)).not.toContain("RMS0208");
@@ -207,23 +208,112 @@ describe("commands, attributes, args (§5.1 item 4, §6)", () => {
     expect(diag?.message).toContain("other_zone_avoidance_distance");
   });
 
+  // BUG-005 piece 1. The two RMS0200 branches make different claims because
+  // they rest on different evidence, and the whole point of the fix is that the
+  // no-suggestion branch says nothing about the engine. That is a property of a
+  // string, so it regresses silently unless something pins it — the message had
+  // no test at all before this, which is how "the engine will silently ignore
+  // it" survived the positive-resolver rule by four months.
+  describe("RMS0200 asserts engine behaviour only where a did-you-mean earns it", () => {
+    const ENGINE_CLAIM = /the engine will/i;
+
+    it("no suggestion: reports the observation, makes no behavioural claim", () => {
+      // A name far enough from every known one that no suggestion fires.
+      const r = parse("<LAND_GENERATION>\ncreate_land { qqzzxx 5 }");
+      const diag = r.diagnostics.find((d) => d.code === "RMS0200");
+      expect(diag).toBeDefined();
+      expect(diag?.suggestion).toBeUndefined();
+      expect(diag?.message).not.toMatch(ENGINE_CLAIM);
+      expect(diag?.message).toContain("qqzzxx");
+    });
+
+    it("with a suggestion: keeps the confident wording, since a near-miss is evidence", () => {
+      const r = parse("<ELEVATION_GENERATION>\ncreate_elevation 5 { base_sixe 4 }");
+      const diag = r.diagnostics.find((d) => d.code === "RMS0200");
+      expect(diag?.suggestion).toBe("base_size");
+      expect(diag?.message).toMatch(ENGINE_CLAIM);
+    });
+  });
+
+  it("did-you-mean: prefix match on a truncated name", () => {
+    // A half-typed name is unreachable by edit distance once the missing tail
+    // runs past two characters, which is most of RMS's longer attributes.
+    // (The four dead engine strings that motivated this rule now have their
+    // own language.json entries and draw RMS0310 instead — see validate's
+    // suite. This exercises the heuristic on names the data does not carry.)
+    const suggestionFor = (source: string): string | undefined =>
+      parse(source).diagnostics.find((d) => d.code === "RMS0200")?.suggestion;
+
+    expect(suggestionFor("<OBJECTS_GENERATION>\ncreate_object GOLD { max_distance_to 5 }")).toBe(
+      "max_distance_to_players",
+    );
+  });
+
+  it("did-you-mean: ranks by what the enclosing command accepts, not by length", () => {
+    // min_distance_ is a prefix of four real attributes. The SHORTEST is
+    // min_distance_cliffs (19 chars), which create_object cannot take;
+    // min_distance_to_players (23) is the one that belongs here. Length alone
+    // would hand over the impossible one.
+    const diag = parse("<OBJECTS_GENERATION>\ncreate_object GOLD { min_distance_ 5 }").diagnostics.find(
+      (d) => d.code === "RMS0200",
+    );
+    expect(diag?.suggestion).toBe("min_distance_to_players");
+  });
+
+  it("did-you-mean: never suggests a name that is itself non-functional", () => {
+    // min_distance now HAS an entry (nonFunctional, replacedBy
+    // min_distance_to_players), so it is a known name. It must still never be
+    // offered as a fix — a did-you-mean has to point at something that works,
+    // or the author is sent to a second dead end.
+    const diag = parse("<OBJECTS_GENERATION>\ncreate_object GOLD { min_distanc 5 }").diagnostics.find(
+      (d) => d.code === "RMS0200",
+    );
+    expect(diag?.suggestion).not.toBe("min_distance");
+  });
+
   it("RMS0217: negative border value is valid (no RMS0203) but draws a caution, worded as valid", () => {
     const r = parse("<LAND_GENERATION>\ncreate_land { left_border -5 }");
     expect(codes(r)).not.toContain("RMS0203");
     expect(codes(r)).toContain("RMS0217");
     const diag = r.diagnostics.find((d) => d.code === "RMS0217");
-    expect(diag?.severity).toBe("warning");
+    // INFO, not warning. cautionBelow is a per-argument scalar, so this check
+    // cannot see the mitigation it recommends: 135 of the 135 attributable
+    // corpus sites sit in a block that already carries land_position or
+    // base_size, and 0 in a block with neither. Warning severity would fire
+    // hardest on authors who did the documented thing.
+    expect(diag?.severity).toBe("info");
     expect(diag?.message).toContain("valid RMS");
     expect(diag?.message.toLowerCase()).toContain("land_position");
+  });
+
+  it("RMS0217's border message claims no engine behaviour the guide does not state", () => {
+    // guide:887-890 says only "Negative values can be used, as long as the land
+    // origin stays inside the map", and names two ways to ensure that. It names
+    // no consequence at all. The shipped message used to say a negative border
+    // "can crash the game", which is the failure CLAUDE.md's reference-data
+    // rule exists to catch — a behavioural claim with no observation behind it.
+    const message =
+      parse("<LAND_GENERATION>\ncreate_land { left_border -5 }").diagnostics.find(
+        (d) => d.code === "RMS0217",
+      )?.message ?? "";
+    expect(message.toLowerCase()).not.toContain("crash");
+    expect(message.toLowerCase()).toContain("base_size");
   });
 
   it("RMS0217 does not fire for non-negative border values", () => {
     const r = parse("<LAND_GENERATION>\ncreate_land { left_border 5 }");
     expect(codes(r)).not.toContain("RMS0217");
   });
+
+  it("RMS0210: one unglued-operand diagnostic, not one per bare paren", () => {
+    // `( 5 + 1 )` has a bare opener AND a bare terminator. Both used to report,
+    // with the same code, message and span — a duplicate, not a second finding.
+    const r = parse("<LAND_GENERATION>\n#const A ( 5 + 1 )");
+    expect(codes(r).filter((c) => c === "RMS0210")).toHaveLength(1);
+  });
 });
 
-describe("the data-quality firewall (§6 stop set)", () => {
+describe("the data-quality firewall (Sec.6 stop set)", () => {
   const miniLang: LanguageData = {
     sections: ["TEST"],
     commands: [
@@ -255,9 +345,60 @@ describe("the data-quality firewall (§6 stop set)", () => {
     const tooFew = r.diagnostics.find((d) => d.code === "RMS0201");
     expect(tooFew?.severity).toBe("info");
   });
+
+  // BUG-003. RMS0201 is only ever as good as language.json's arity table, so
+  // the two halves of the bug need pinning in opposite directions: a legal
+  // omission must stay silent, and a real omission must keep warning. Pinning
+  // only the first would let a future "sweep everything with a default" turn
+  // the check off wholesale, which is the failure mode the entry's own
+  // terrain_state note warns about.
+  describe("RMS0201 optional-argument triage (BUG-003)", () => {
+    const rms0201 = (source: string) =>
+      parse(source).diagnostics.filter((d) => d.code === "RMS0201");
+
+    it("the optional flag works, on a case the guide states outright", () => {
+      // require_path is one of the five fixed on 2026-07-31, each carrying
+      // explicit guide prose: "No argument, or a value of 0 imposes no further
+      // restrictions" (guide:2719). That sentence is what licenses the flag —
+      // not the presence of a `default`, and not how often shipped maps use it.
+      expect(rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { require_path }")).toEqual([]);
+    });
+
+    it("ai_info_map_type: the three-argument form still warns — UNDETERMINED, not settled", () => {
+      // Deliberately pinned as-is. showType was briefly marked optional on the
+      // strength of 52 three-argument uses in the installed DE script set, then
+      // reverted: guide:475 lists showType Not functional on DE, so writing it
+      // and omitting it are indistinguishable in game and NO shipped script
+      // could ever have shown which form is correct. The 52 are independent
+      // (52 files, 20+ map types), which rules out copy-paste but not a
+      // silently-tolerated error. Change this test only from a game
+      // measurement, never from a recount of shipped maps.
+      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type ARABIA 0 0")).toHaveLength(1);
+    });
+
+    it("ai_info_map_type: the full four-argument form is fine", () => {
+      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type CUSTOM 1 0 0")).toEqual([]);
+    });
+
+    it("terrain_cost: a missing TerrainType still warns", () => {
+      // The counter-case. `Cost` carries a documented default (guide:1929) so a
+      // mechanical "has a default ⇒ optional" sweep would reach this command —
+      // but the argument being omitted here is the LEADING `TerrainType`, which
+      // guide:1925's signature makes required and gives no default at all.
+      const hits = rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { terrain_cost 10 }");
+      expect(hits).toHaveLength(1);
+    });
+
+    it("create_terrain: a missing TerrainType still warns", () => {
+      // guide:1437's signature is `create_terrain TerrainType { Attributes }`.
+      // This one caught our own sample.rms, which had never been read by the
+      // parser it predates.
+      expect(rms0201("<TERRAIN_GENERATION>\ncreate_terrain { base_terrain GRASS }")).toHaveLength(1);
+    });
+  });
 });
 
-describe("if / random (§5.1 item 3)", () => {
+describe("if / random (Sec.5.1 item 3)", () => {
   it("parses if/elseif/else/endif with items per branch", () => {
     const r = parse("if HUGE_MAP #define BIG\nelseif TINY_MAP #define SMALL\nelse #define MID\nendif");
     const node = r.script.preamble[0] as IfNode;
@@ -302,7 +443,7 @@ describe("if / random (§5.1 item 3)", () => {
   });
 });
 
-describe("§5.4: orphan, upgrade, shared blocks", () => {
+describe("Sec.5.4: orphan, upgrade, shared blocks", () => {
   it("unknown command followed by { upgrades to a block-shaped CommandNode", () => {
     const r = parse("<LAND_GENERATION>\ncraete_land { terrain_type GRASS }");
     const cmd = r.script.sections[0].items[0] as CommandNode;
@@ -338,7 +479,7 @@ describe("§5.4: orphan, upgrade, shared blocks", () => {
   });
 });
 
-describe("§5.3 degradation", () => {
+describe("Sec.5.3 degradation", () => {
   it("endif with a { open inside: ONE RMS0110, forward extension absorbs the trailing }", () => {
     const r = parse("<LAND_GENERATION>\nif A create_land { terrain_type GRASS endif land_percent 10 }\nbase_terrain WATER");
     expect(codes(r).filter((c) => c === "RMS0110")).toHaveLength(1);
@@ -371,9 +512,72 @@ describe("§5.3 degradation", () => {
     expect(codes(r).filter((c) => c === "RMS0110")).toHaveLength(1);
     expect(errorCodes(r)).toEqual([]);
   });
+
+  // Sec.5.3 pins that symbols and includes survive degradation, and says why:
+  // otherwise every later reference draws a false unknown-symbol warning. The
+  // BACKWARD half of the range got that for free (those tokens had already been
+  // through parseDirective). The forward extension added in rev 5 never parses
+  // at all, so a directive in it was absorbed into the RawNode and recorded
+  // nowhere — the pinned rule's own failure mode, produced by the mechanism
+  // written to prevent it.
+  describe("symbols and includes survive the FORWARD half of the range", () => {
+    const degraded = (tail: string): string =>
+      `<LAND_GENERATION>\nif REGICIDE\ncreate_land {\nland_percent 20\nendif\n${tail}\n}\ncreate_land { clumping_factor FOO }\n`;
+
+    it("a #const past the trigger point is still a defined symbol", () => {
+      const r = parse(degraded("#const FOO 5"));
+      expect(codes(r).filter((c) => c === "RMS0110")).toHaveLength(1);
+      expect(r.symbols.map((s) => s.name)).toContain("FOO");
+      // The whole point: the later use resolves, so no false RMS0202.
+      expect(codes(r)).not.toContain("RMS0202");
+    });
+
+    it("records the kind and the value token, not just the name", () => {
+      const symbol = parse(degraded("#const FOO 5")).symbols.find((s) => s.name === "FOO");
+      expect(symbol?.directiveKind).toBe("const");
+      expect(symbol?.valueToken).toBeDefined();
+      // Depth 0, and that is the engine's reading, not a shortcut: the `endif`
+      // that triggered the degradation has already closed the `if`, so a
+      // directive after it is unconditional however the region is rendered.
+      expect(symbol?.conditionalDepth).toBe(0);
+    });
+
+    it("records the depth a directive still nested inside a conditional sat at", () => {
+      // The mirror trigger: `}` arrives while an `if` opened inside the block
+      // is still open, so the forward scan crosses a directive that IS under a
+      // live conditional.
+      const r = parse(
+        "<LAND_GENERATION>\ncreate_land {\nif A\nland_percent 20\n}\n#const FOO 5\nendif\n",
+      );
+      expect(r.symbols.find((s) => s.name === "FOO")?.conditionalDepth).toBe(1);
+    });
+
+    it("an #include_drs past the trigger point still softens later diagnostics", () => {
+      const r = parse(degraded('#include_drs "some dir/lands.inc"'));
+      expect(r.includes.map((i) => i.path)).toEqual(["some dir/lands.inc"]);
+      expect(r.includes[0].quoted).toBe(true);
+    });
+
+    it("uses the same stop set as parseDirective, so a control keyword is never swallowed", () => {
+      // `#define endif` records nothing and leaves the `endif` to close the
+      // range, exactly as it behaves outside a degraded region. The two paths
+      // agreeing is the property worth pinning — a raw scan with its own idea
+      // of where a directive's operands end would desynchronise the range.
+      const r = parse(degraded("#define endif"));
+      expect(r.symbols.map((s) => s.name)).not.toContain("endif");
+      expect(parse("<LAND_GENERATION>\n#define endif\n").symbols).toEqual([]);
+    });
+
+    it("adds no second diagnostic inside the degraded range", () => {
+      // Sec.5.3's one-diagnostic promise: the region is already one RMS0110.
+      const r = parse(degraded('#includeXS "quoted.xs"'));
+      expect(codes(r).filter((c) => c === "RMS0110")).toHaveLength(1);
+      expect(codes(r)).not.toContain("RMS0211");
+    });
+  });
 });
 
-describe("unclosed constructs at EOF (§5.2)", () => {
+describe("unclosed constructs at EOF (Sec.5.2)", () => {
   it("unclosed { at EOF → RMS0101 error", () => {
     const r = parse("<LAND_GENERATION>\ncreate_land { terrain_type GRASS");
     expect(errorCodes(r)).toContain("RMS0101");
@@ -392,7 +596,7 @@ describe("unclosed constructs at EOF (§5.2)", () => {
   });
 });
 
-describe("math expressions (§2.2)", () => {
+describe("math expressions (Sec.2.2)", () => {
   it("Vanguard fixture: attribute-arg expression, three tokens, no lints", () => {
     const r = parse("<LAND_GENERATION>\ncreate_land { set_avoid_player_start_areas (PL_FOREST_MAX_DIST + 1) }");
     expect(codes(r).filter((c) => c.startsWith("RMS02"))).toEqual([]);
@@ -446,7 +650,7 @@ describe("math expressions (§2.2)", () => {
   });
 });
 
-describe("directives, quotes, includes, symbols (§5.2, §7)", () => {
+describe("directives, quotes, includes, symbols (Sec.5.2, Sec.7)", () => {
   it("quoted #include_drs path assembles across tokens", () => {
     const r = parse('#include_drs "my maps/some file.rms"');
     expect(r.includes).toHaveLength(1);
@@ -478,7 +682,7 @@ describe("directives, quotes, includes, symbols (§5.2, §7)", () => {
   });
 });
 
-describe("cascade suppression (§5.1, BCC2 shape)", () => {
+describe("cascade suppression (Sec.5.1, BCC2 shape)", () => {
   it("one glued brace produces ONE RMS0207 plus a summary, not one per command", () => {
     const r = parse(
       "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }8050 create_object STONE { number_of_objects 3 } create_object BOAR { number_of_objects 2 } create_object DEER { number_of_objects 1 }",

@@ -1,0 +1,50 @@
+/*
+	RMSTEST 5 — CONTROL FOR TEST 2. Byte-for-byte identical to
+	RMSTEST_2_circle0.rms except that the `circle_radius 0` line is DELETED.
+
+	Test 2 showed that circle_radius 0 does not stack players at the map
+	centre, which killed the reading docs/preview-design.md Sec.6.1 warned
+	about. What it could not settle is which of the two survivors is right:
+
+	  (a) 0 disables circle_radius and falls back to the DEFAULT unconstrained
+	      ring — radius 40, variance 20 per guide:845/849. On a 120-wide map
+	      that spans roughly 24-72 tiles from centre, which looks scattered
+	      rather than circular. This is what Sec.6.1 asserts.
+	  (b) 0 disables circular positioning ENTIRELY, so player lands position
+	      like neutral lands do (random within the cross-shaped area,
+	      guide:803). Also looks scattered. Sec.6.1 would be wrong.
+
+	This map generates condition (a) directly, because omitting the attribute
+	IS the default. So:
+
+	READ IT LIKE THIS
+	  Test 5 and Test 2 look like the same distribution
+	      -> 0 falls back to the default ring. Sec.6.1 CONFIRMED.
+	  Test 5 is visibly tighter / more obviously ring-shaped than Test 2
+	      -> 0 does something else, and Sec.6.1's fallback is WRONG. Test 2's
+	         wider spread would then be the cross-shaped-area behaviour.
+	  Test 5 puts islands in the map's four extreme corners and Test 2 never
+	  does (or vice versa)
+	      -> that is the cross-shaped area showing itself, since guide:803 says
+	         the cross excludes corners. Strongest possible signal, worth
+	         looking for specifically.
+
+	Nothing else is changed, deliberately — the comparison is only worth
+	anything if the two maps differ in exactly one line.
+
+	RUN ON: Tiny, 8 players. Please take the same number of seeds as Test 2
+	(three) so the two sets are compared like for like.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain WATER
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 6
+	number_of_tiles 150
+}

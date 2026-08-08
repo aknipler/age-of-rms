@@ -1,0 +1,136 @@
+/*
+RMSTEST_34 - WHICH zones does set_zone_by_team give un-teamed players
+preview-design.md Sec.15 item 14, second attempt
+
+WHY THIS EXISTS - RMSTEST_29 DID NOT SETTLE IT
+RMSTEST_29 ran three times at 8 players all un-teamed and returned eight
+separate, evenly sized, ring-spaced GRASS patches every time. That was read as
+confirming Sec.6.1's pinned choice. It does not. TWO hypotheses predict eight
+separate patches and RMSTEST_29 cannot tell them apart:
+
+  A  PINNED CHOICE. An un-teamed player keeps their own default player zone,
+     playerNumber - 10. Player 1 is in -9, player 8 in -2. Occupied set -9..-2.
+  B  Every player carries an engine-internal TeamNumber even when solo, so the
+     zone is TeamNumber - 9 exactly as guide:1056 says, with no special case.
+     Player 1 is in -8, player 8 in -1. Occupied set -8..-1.
+
+Both give eight DISTINCT zones, so both give eight non-touching lands. What
+RMSTEST_29 did rule out - and this part stands - is the third reading, that
+un-teamed collapses to a single shared zone and the lands merge.
+
+Note B is not in conflict with a team of one failing to register in
+TEAMn_SIZEm / PLAYERx_TEAMy. Those labels are about what the LOBBY reports;
+a zone is an internal land-growth property. The two can disagree and B is the
+hypothesis that they do.
+
+METHOD
+The hypotheses differ only in WHICH absolute zones are occupied, so probe the
+two boundary zones that separate them. Plant neutral lands with an explicit
+zone and measure whether each may touch the player lands:
+
+  DIRT   zone -9   nobody's zone under B, player 1's under A
+  DESERT zone -1   nobody's zone under A, player 8's under B
+  DIRT3  zone  5   nobody's zone under EITHER - the instrument control
+
+other_zone_avoidance_distance 20 is the instrument, exactly as in RMSTEST_29:
+lands in different zones are pushed 20 apart, lands sharing a zone are not.
+No player identification is needed, which matters because a random-map export
+carries no player-owned units - every unit belongs to gaia - so there is no way
+to tell player 1's land from player 8's. Terrain type carries the signal
+instead.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  plus a minimum-distance calculation from each probe terrain to GRASS.
+  The reading is WHICH probe comes within 20 tiles of any GRASS tile.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Under A: DIRT gets close to GRASS (min distance well under 20, plausibly
+   touching); DESERT stays at or above 20. Sec.6.1's pinned choice is measured
+   and stands.
+2. Under B: DESERT gets close; DIRT stays at or above 20. Sec.6.1 changes to
+   "an un-teamed player's zone is TeamNumber - 9 like everyone else", the
+   special case disappears, and the model gets simpler.
+3. DIRT3 must stay at or above 20 in every run. IT IS THE CONTROL AND IT IS NOT
+   OPTIONAL - if the control comes in close, other_zone_avoidance_distance is
+   not doing anything here and NEITHER probe can be read. This is the check
+   RMSTEST_29 lacked, which is why RMSTEST_29's result was over-read.
+4. If BOTH probes stay at or above 20 across all runs, the result is
+   inconclusive rather than negative: the same-zone probe has to get near a
+   player land by chance, and nothing forces it to. Re-run with larger neutral
+   lands before concluding anything.
+
+Note the asymmetry in strength. "Stays 20 away" is ENFORCED by the avoidance
+rule, so it is a strong signal. "Comes close" merely means it was ALLOWED to,
+so it depends on the draw - which is why three runs, and why prediction 4
+exists.
+
+GENERATE AT NORMAL (200) WITH 8 PLAYERS, ALL PLAYERS UN-TEAMED (plain FFA,
+no team setup at all - this is the default in the scenario editor and needs no
+lobby). RUN IT THREE TIMES.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 300
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    set_zone_by_team
+    other_zone_avoidance_distance 20
+  }
+
+  /* probe A - player 1's DEFAULT player zone under hypothesis A */
+  create_land
+  {
+    terrain_type DIRT
+    number_of_tiles 1500
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    zone -9
+    other_zone_avoidance_distance 20
+  }
+
+  /* probe B - player 8's TEAM zone under hypothesis B */
+  create_land
+  {
+    terrain_type DESERT
+    number_of_tiles 1500
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    zone -1
+    other_zone_avoidance_distance 20
+  }
+
+  /* CONTROL - nobody's zone under either hypothesis. Must stay 20 away. */
+  create_land
+  {
+    terrain_type DIRT3
+    number_of_tiles 1500
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    zone 5
+    other_zone_avoidance_distance 20
+  }
+
+<ELEVATION_GENERATION>
+
+/* NO <CLIFF_GENERATION> HEADER. An empty one generates cliffs, which is how the
+   2026-08-01 batch contaminated itself. Cliffs would put terrain 16 under
+   themselves (guide:1325) and add a second thing moving terrain around. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

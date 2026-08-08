@@ -1,8 +1,8 @@
-// Phase 3.3 — the §4.8 property gate. For seeded random intents over every
+// Phase 3.3 — the Sec.4.8 property gate. For seeded random intents over every
 // available corpus map: patched source re-parses with the intended change
 // and no other AST difference; comments outside deleted ranges survive
 // byte-identical. Per-file seeding (filename-derived) so results are
-// identical whether or not gitignored maps are present (spec §4.8 rev 3).
+// identical whether or not gitignored maps are present (spec Sec.4.8 rev 3).
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -67,7 +67,7 @@ function harvest(r: ParseResult): Pools {
         // Directives ARE removable: `removeNode` accepts DirectiveNode (intents.ts)
         // and computeEdit handles it generically via removeSpan. Excluding them was a
         // harness omission that left every directive edit — i.e. the whole Header tab
-        // surface (spec §3.1/§3.6) — with zero property coverage, and made maps whose
+        // surface (spec Sec.3.1/Sec.3.6) — with zero property coverage, and made maps whose
         // only content is directives generate no intents at all (the EM_* stubs below).
         pools.removables.push(item);
         for (const arg of item.args) {
@@ -111,10 +111,10 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
   if (pools.removables.length) kinds.push("remove");
   if (pools.closedBlocks.length) kinds.push("addAttr");
   if (pools.sections.length) kinds.push("addCmd");
-  // §3.9's `{ after: Item }` InsertTarget, reinstated in intents.ts/computeEdit.ts
+  // Sec.3.9's `{ after: Item }` InsertTarget, reinstated in intents.ts/computeEdit.ts
   // this session — reuses the `removables` pool (every command/attribute/
   // directive at any nesting depth) as anchors, since that's exactly the set
-  // of Items §3.9's card-selection can produce as `selectedItem`.
+  // of Items Sec.3.9's card-selection can produce as `selectedItem`.
   if (pools.removables.length) kinds.push("addCmdAfter");
   if (kinds.length === 0) return undefined;
   switch (pick(kinds)) {
@@ -158,7 +158,7 @@ const files = [...mapsUnder(join(REPO_ROOT, "test-maps")), ...mapsUnder(join(REP
   (a, b) => a.name.localeCompare(b.name),
 );
 
-describe("§4.8 property gate: patch → reparse → only the intended diff", () => {
+describe("Sec.4.8 property gate: patch → reparse → only the intended diff", () => {
   it("found corpus files", () => {
     expect(files.length).toBeGreaterThan(0);
   });
@@ -185,7 +185,7 @@ describe("§4.8 property gate: patch → reparse → only the intended diff", ()
         } catch (e) {
           if (e instanceof PatchError) {
             skipped++;
-            continue; // suppressed edit (unclosed container etc.) — spec §4.5
+            continue; // suppressed edit (unclosed container etc.) — spec Sec.4.5
           }
           throw new Error(`(${file.name}, iter ${iter}, ${intent.kind}) computeEdit threw: ${String(e)}`);
         }

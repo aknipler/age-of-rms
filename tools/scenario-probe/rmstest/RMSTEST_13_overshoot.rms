@@ -1,0 +1,75 @@
+/*
+	RMSTEST 13 — is elevation's ~3% overshoot caused by GROWTH, or by elevation
+	scaling differently from objects?
+
+	preview-design Sec.15 item 7d. RMSTEST_10 measured elevation tile counts of
+	853 and 851 against a budget of 829, and 428 against 414 — about 3% high in
+	all three. Sec.4 currently blames growth overshoot. That is a hypothesis
+	fitted to two data points, and at least two other explanations survive:
+
+	  (i)   growth overshoot — the clump adds tiles in batches and overshoots
+	        when it crosses its target.
+	  (ii)  elevation scales differently from objects. RMSTEST_11/12 measured
+	        the OBJECT path (set_scaling_to_map_size) and found exact area then
+	        truncation. Sec.4 asserts set_scale_by_size follows the same rule,
+	        but that has never been measured.
+	  (iii) the engine raises a skirt of extra tiles to render the hill edge.
+
+	THIS MAP REMOVES SCALING ENTIRELY. `number_of_tiles 829` with NO
+	set_scale_by_size means the budget is unambiguously 829 — the exact number
+	RMSTEST_10's scaled run was working from — with the scaling path deleted.
+
+	READ IT WITH THE PROBE — the elevation histogram, tiles at level 1
+	  ~853 (about 3% over)  -> GROWTH overshoots, independent of scaling.
+	                           Explanation (i). Sec.4's attribution is right,
+	                           and ~3% becomes a real [tune] value for Sec.6.2
+	                           since our own growth stops exactly at target.
+	  exactly 829           -> growth is EXACT, so the 3% lives in elevation's
+	                           scaling path. Explanation (ii): set_scale_by_size
+	                           does not follow Sec.4's rule, and Sec.6.2/6.4's
+	                           budgets need measuring separately from objects.
+	  something else        -> report it; both current explanations are wrong.
+
+	THEN RUN IT AGAIN WITH number_of_tiles 25 (edit this file, as with
+	RMSTEST_10). That separates explanation (iii):
+	  ~26 (about 3% over)   -> proportional to area. Consistent with (i).
+	  ~40+ (way over)       -> a perimeter-driven skirt. A 25-tile blob has a
+	                           perimeter around 18, so a skirt is an enormous
+	                           fraction of a small clump and a rounding-error
+	                           fraction of a large one. Explanation (iii).
+
+	DESIGN NOTES
+	  Identical to RMSTEST_10 except that set_scale_by_size is gone and the
+	  declared value is the post-scaling number — one variable changed.
+	  MaxHeight 1 so every raised tile is level 1 and the histogram is a single
+	  bucket. One clump, so no budget division. Player lands tiny and pushed to
+	  the rim, since elevation avoids player-land origins by about 9 tiles
+	  (guide:1169) and could otherwise eat into the budget.
+
+	RUN ON: Small, 2 players. Map size does not matter to the arithmetic now
+	that scaling is gone, but keep it Small so the comparison with RMSTEST_10
+	is like for like.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+<ELEVATION_GENERATION>
+
+create_elevation 1
+{
+	base_terrain GRASS
+	number_of_tiles 25
+	number_of_clumps 1
+}

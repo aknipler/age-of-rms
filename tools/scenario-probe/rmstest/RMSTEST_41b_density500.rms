@@ -1,0 +1,96 @@
+/*
+RMSTEST_41b - elevation bias vs CLUMP DENSITY, 500 clumps
+preview-design.md Sec.15 item 11 (Sec.6.2's model)
+
+READ THIS ON WHICHEVER OF 41a/41b/41c YOU OPEN FIRST - one experiment, and only
+the clump count differs. Per-clump budget is pinned at the measured 6-tile floor
+in all three.
+
+TWO HYPOTHESES HAVE ALREADY DIED HERE, SO READ THE DESIGN BEFORE THE RESULT
+  - "growth is biased": RMSTEST_40a/40b hold the clump-size ratio FLAT at 1.16
+    and 1.13 across a 4x change in per-clump budget. Growth is not meaningfully
+    biased. (40c could not be read - 36.5 components from a declared 50, so its
+    sizes are merged-component sizes.)
+  - "the ratio tracks coverage": 40b sits at 3.29% coverage and gives 1.41,
+    while RMSTEST_39 at 1.55% gives 1.88 and RMSTEST_35 at 6.21% gives 7.16.
+    Not monotone. Coverage is not the driver.
+
+What survives is CLUMP DENSITY - clumps per tile - which is the only single
+variable that orders all six runs held so far (0.00125 -> ~1.4-2.1, 0.0025 ->
+1.88, 0.0125 -> 7.16, 0.0347 -> 12.86). Note the last two are the SAME script at
+two map sizes, so the "map size" effect chased earlier was clump density.
+
+There is no mechanism for it. This trio is the test.
+
+WHY THE TILE RATIO IS THE READING AND MERGING NO LONGER MATTERS
+At high clump counts components merge and the seed/size decomposition degrades -
+that is what spoiled RMSTEST_35 and 40c. **The TILE ratio is immune: merging
+changes which tiles group together, never which tiles are elevated.** So unlike
+every previous attempt this design stays readable at every point in the sweep.
+Report the decomposition too, but read the tile ratio.
+
+THE DESIGN'S REAL STRENGTH - MATCHED-COVERAGE PAIRS
+Coverage rises with clump count here, which would normally confound the two.
+It does not, because each point has a partner already measured at nearly the
+same coverage and a very different clump count:
+
+  41a  250 clumps, 3.75% cover   vs  40b   50 clumps, 3.29% cover -> 1.41
+  41c 1000 clumps, 15.0% cover   vs  40c   50 clumps, 13.1% cover -> 2.08
+
+Matched coverage, 5x and 20x the clumps. If density drives the bias, 41a and 41c
+come back far above their partners. If they land near 1.4-2.1, density is dead
+too and the high ratios in RMSTEST_35/22a come from something else again.
+
+  41b  500 clumps at 6 tiles     vs  RMSTEST_35  500 clumps at 4 tiles -> 7.16
+Same clump count, different per-clump budget. If 41b reproduces ~7, clump count
+is confirmed and the budget is irrelevant; if 41b comes back near 1.5, then the
+sub-floor 4-tile budget in RMSTEST_35 is implicated and the whole density story
+is an artefact of that one script.
+
+READ IT WITH
+  Connected components of elevation > 0.
+  Per run: component count against the declared 500; centroid favoured:disfavoured
+  split; mean component size per side; and the raw TILE ratio, which is the
+  reading. Report coverage so the pairing above can be checked rather than assumed.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. DENSITY HOLDS: 41a well above 1.41 (interpolating, ~3-4), 41b near 7, 41c
+   highest. Then Sec.6.2 gets a density-indexed amplification, fitted and marked
+   [tune], with the mechanism still unknown but the behaviour predictable.
+2. DENSITY DIES: all three land near 1.4-2.1 like their matched partners. Then
+   three hypotheses have failed, RMSTEST_35 and 22a are the odd runs rather than
+   the rule, and the honest move is to stop modelling the ratio and fit the
+   qualitative behaviour only.
+3. 41b splits the difference from the other two - reproducing ~7 while 41a/41c
+   stay low - and the driver is the sub-floor per-clump budget, not density at
+   all. That would be the third mechanism this item has produced and the first
+   one nobody predicted.
+
+GENERATE AT NORMAL (200) WITH ANY PLAYER COUNT - no player lands, so the count
+does not enter. RUN EACH OF THE THREE FOUR TIMES (twelve generations), and
+REGENERATE BETWEEN SAVES - the check is that the elevated-tile total differs run
+to run.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+  create_elevation 1
+  {
+    number_of_clumps 500
+    number_of_tiles 3000
+    spacing 1
+  }
+
+/* NO <CLIFF_GENERATION> HEADER - an empty one generates cliffs. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

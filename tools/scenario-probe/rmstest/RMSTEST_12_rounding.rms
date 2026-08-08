@@ -1,0 +1,62 @@
+/*
+	RMSTEST 12 — how does the engine round a fractional scaled value?
+
+	The other half of preview-design Sec.15 item 7b. RMSTEST_11 settled the
+	METHOD: scaling uses exact map area, measured at 829 for declared 400 on
+	Small (400 × 20736/10000 = 829.44), against 840 for the guide's rounded
+	ratio column. But 829.44 floors to 829 AND rounds to 829, so that run says
+	nothing about which.
+
+	Sec.4 currently pins "round half up, floor at 1 for any attribute whose
+	declared value was >= 1". The round-half-up half is unverified.
+
+	THE ARITHMETIC (run on SMALL, 144x144 = 20736)
+	  500 × 20736/10000 = 1036.8
+	    floor -> 1036
+	    round -> 1037
+
+	One object apart. Nothing but an exact count could read that, which is the
+	whole reason tools/scenario-probe exists.
+
+	READ IT WITH THE PROBE
+	  python tools/scenario-probe/probe_scenario.py <saved scenario>
+	  Read GOLD (66). Ignore id 1358 — GRASS terrain decoration, ~1196 of them,
+	  unrelated.
+
+	  1036 -> the engine truncates. Sec.4's "round half up" is wrong; change it
+	          to floor, and check Sec.6.2/6.4's budgets for the same assumption.
+	  1037 -> round half up. Sec.4 stands as written, fully verified.
+	  840-ish or 1050 -> something is wrong with the run, not the rounding;
+	          1050 would be 500 × 2.1, i.e. the ratio model, which RMSTEST_11
+	          already refuted. Re-check the map size is Small.
+
+	  A count one or two BELOW the expected value is worth a second seed before
+	  concluding: 1037 objects on 20736 tiles is dense enough that an occasional
+	  placement failure is more plausible here than in RMSTEST_11.
+
+	Identical to RMSTEST_11 in every other respect, deliberately — one variable.
+
+	RUN ON: Small, 2 players.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+<OBJECTS_GENERATION>
+
+create_object GOLD
+{
+	number_of_objects 500
+	set_scaling_to_map_size
+}

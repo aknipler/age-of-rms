@@ -1,5 +1,5 @@
-// Phase 2.5 — resource totals. Covers the two UX decisions locked with
-// Ash before implementing (range display for if/random, flag-based
+// Phase 2.5 — resource totals. Covers the two UX decisions locked 
+// before implementing (range display for if/random, flag-based
 // Player/Neutral split via set_place_for_every_player), plus the count
 // arithmetic (number_of_objects x number_of_groups, rnd(...) widening,
 // player-count scaling).
@@ -53,7 +53,7 @@ describe("create_object contribution basics", () => {
   });
 });
 
-describe("Player vs Neutral split (flag-based, per Ash's v1 decision)", () => {
+describe("Player vs Neutral split", () => {
   it("set_place_for_every_player -> Player bucket is PER-PLAYER (unscaled); Total is map-wide (scaled)", () => {
     const t = totalsFor("<OBJECTS_GENERATION>\ncreate_object GOLD { set_place_for_every_player }", GOLD_ONLY, 4);
     expect(t.player.min.gold).toBe(800);
@@ -75,7 +75,7 @@ describe("Player vs Neutral split (flag-based, per Ash's v1 decision)", () => {
   });
 });
 
-describe("random-block range display (per Ash's v1 decision: range, not expected value)", () => {
+describe("random-block range display", () => {
   it("start_random with two percent_chance branches -> min/max span both branches", () => {
     const t = totalsFor(
       "<OBJECTS_GENERATION>\nstart_random\npercent_chance 50 create_object GOLD { number_of_objects 2 }\npercent_chance 50 create_object GOLD { number_of_objects 5 }\nend_random",
@@ -120,7 +120,7 @@ describe("random-block range display (per Ash's v1 decision: range, not expected
   });
 });
 
-describe("second_object companion type (Ash's bug report — MENINDEE's fish weren't counted)", () => {
+describe("second_object companion type", () => {
   // Real maps pair a resource-less placeholder primary type with the
   // actual resource object via second_object, e.g.
   // `create_object FISH_PLACEHOLDER { number_of_objects 1 second_object FISH }`.

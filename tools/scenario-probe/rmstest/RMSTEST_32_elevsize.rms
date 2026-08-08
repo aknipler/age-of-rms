@@ -1,0 +1,95 @@
+/*
+RMSTEST_32 - does the elevation diagonal step hold at another map size, with
+             player lands present
+preview-design.md Sec.15 item 11(b), Sec.6.2
+
+QUESTION
+RMSTEST_22a/22b overturned Sec.6.2 completely: DE renders the map rotated 45
+degrees, so the guide's "south" is the y-x diagonal, and the bias is a STEP
+(18:1, softening to 12:1 with enable_balanced_elevation) rather than the ramp
+every revision through rev 6 modelled. No linear weight could ever have fitted
+it. That result is not in doubt.
+
+What is unmeasured is its scope. Both runs were on ONE map size (120) with NO
+player lands, and the second of those was deliberate: Sec.6.2 excludes tiles
+within 9 of a player origin, and excluding lands kept the distribution clean
+enough to see the step at all. But player rings sit on a CIRCLE, and a circle
+crosses the diagonal. The interaction between that exclusion and the half-map
+step is exactly the thing a clean-room measurement cannot show, and 4.2 is about
+to rely on it.
+
+METHOD
+RMSTEST_22a's elevation block unchanged, at a different map size, with player
+lands present. Two variables move at once, which is normally wrong - here it is
+deliberate, because each has its own signature in the output and a single run
+answers both:
+  a size change shifts WHERE the step falls (it should stay on y = x, i.e. at
+    the map's own diagonal, not at a fixed tile count)
+  the player lands punch HOLES in the distribution at known radii, without
+    moving the step
+If the step moves, that is the size result. If the step blurs or tilts, that is
+the interaction result. They do not look alike.
+
+GENERATE AT NORMAL (200) WITH 8 PLAYERS. Normal rather than Tiny so the step
+sits at a different absolute tile coordinate (99.5 rather than 59.5) - a rule
+expressed in tiles and a rule expressed as a fraction of the map predict
+different things here, and on Tiny alone they were indistinguishable.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. The step is still at the y = x diagonal, now at the 200 map's own centre
+   line. If instead it stays near tile 60, the rule is in absolute tiles and was
+   only ever fitted to Tiny.
+2. The ratio across the step stays near 18:1. A materially different ratio at a
+   different size means the bias strength scales with the map, which nothing
+   currently models.
+3. The player-land exclusion shows up as eight low-elevation holes on the ring,
+   NOT as a change in the step. If the disfavoured half's elevation count rises
+   where the ring crosses the diagonal, the exclusion and the step interact and
+   Sec.6.2 needs both rules stated together rather than composed independently.
+4. Item 11(a)'s unexplained residual - the disfavoured half's internal gradient
+   running the wrong way, 0.09 next to the diagonal against 0.21 in the far
+   corner - should reappear here if it is real. It is only about 6 percent of
+   elevated tiles so it does not move the fit, but reproducing it at a second
+   size is what would turn it from a curiosity into something to model. If it
+   does NOT reappear, it was a Tiny-specific artefact and item 11(a) can close.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --rows ELEVATION --bands 20
+  Twenty bands rather than the default ten, because the question is now about
+  structure WITHIN each half, not just the ratio between them.
+  Also run --patches GRASS to locate the eight player lands, so the holes in the
+  elevation distribution can be attributed rather than guessed at.
+
+RUN IT THREE TIMES.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 200
+    base_size 4
+    clumping_factor 20
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+  create_elevation 7
+  {
+    base_terrain GRASS
+    number_of_clumps 60
+    number_of_tiles 2000
+    set_scale_by_size
+  }
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

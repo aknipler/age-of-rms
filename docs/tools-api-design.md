@@ -1,12 +1,12 @@
 # Advanced Tools API Design (Phase 5.1, rev 4)
 
-Contract for tools hosted in the Advanced Tools tab. Designed per PLAN.md: **v1 ships built-in (in-process) tools; v1.1 loads external process+manifest tools over stdin/stdout — both implement THIS same contract.** The API is therefore JSON-first: everything crossing the boundary must survive `JSON.stringify` round-trips, because for external tools it literally will. Written without a scheduled critique pass (token budget) — implementers should treat ambiguities as escalation points per house rule, and §9 lists the known open risks up front.
+Contract for tools hosted in the Advanced Tools tab. Designed per PLAN.md: **v1 ships built-in (in-process) tools; v1.1 loads external process+manifest tools over stdin/stdout — both implement THIS same contract.** The API is therefore JSON-first: everything crossing the boundary must survive `JSON.stringify` round-trips, because for external tools it literally will. Written without a scheduled critique pass (token budget) — implementers should treat ambiguities as escalation points per house rule, and Sec.9 lists the known open risks up front.
 
 ## 1. Goals
 
-1. **One contract, two transports.** A tool is defined by the message protocol (§4), not by where it runs. Built-in tools implement `ToolImplementation` in-process; external tools speak the identical messages as NDJSON over stdin/stdout. The host cannot tell them apart above the transport layer.
+1. **One contract, two transports.** A tool is defined by the message protocol (Sec.4), not by where it runs. Built-in tools implement `ToolImplementation` in-process; external tools speak the identical messages as NDJSON over stdin/stdout. The host cannot tell them apart above the transport layer.
 2. **Tools are documents the app displays, not extensions of the app** (PLAN.md's model #1). A tool cannot add menus, hook events, or touch the DOM. It receives context, emits progress, and returns output blocks and/or code edits. This is what makes the v1.1 trust model tractable.
-3. **Code is source of truth, still.** Tool edits are `TextEdit`s applied through the same shared-model path Breakdown uses (breakdown-design §6.4) — one undo entry, same staleness guard, never a bypass.
+3. **Code is source of truth, still.** Tool edits are `TextEdit`s applied through the same shared-model path Breakdown uses (breakdown-design Sec.6.4) — one undo entry, same staleness guard, never a bypass.
 4. **Long-running work is first-class.** The flagship tool (Generation Consistency Checker, 5.2) runs thousands of generations: the protocol has progress and cancellation from day one, not bolted on.
 5. **Serializable by construction.** `ParseResult` is already plain data (token indices, no cycles — a deliberate 2.3 property); the rest of the context is designed to match.
 
@@ -23,8 +23,8 @@ export interface ToolManifest {
   version: string;             // tool's own semver
   apiVersion: number;          // must equal TOOLS_API_VERSION
   description: string;         // one-liner for the Select Tool dropdown
-  capabilities: Capability[];  // §6 — everything not declared is denied
-  params?: ToolParamDef[];     // run-configuration form, rendered by the host (§5)
+  capabilities: Capability[];  // Sec.6 — everything not declared is denied
+  params?: ToolParamDef[];     // run-configuration form, rendered by the host (Sec.5)
   // v1.1 external tools add: entry (executable + args), language, author, homepage.
 }
 
@@ -64,9 +64,9 @@ export interface ToolContext {
   // tiles' SOURCE OF TRUTH (rev 4 — previously unnamed, and the one candidate
   // table is known-broken): no name→tiles mapping exists in src/ today. Create
   // ONE — `MAP_SIZE_TILES` next to MAP_SIZES in generationSettingsConstants.ts,
-  // sourced from the guide's Map Sizes table (parser-design §7.4; archived
+  // sourced from the guide's Map Sizes table (parser-design Sec.7.4; archived
   // guide) — and make the context builder AND the Phase-4 preview consume that
-  // same constant. DO NOT copy preview-design §4's table: it lists 6 sizes,
+  // same constant. DO NOT copy preview-design Sec.4's table: it lists 6 sizes,
   // omits Giant, and carries an unreconciled ordering issue (MAP_SIZES orders
   // Giant before Huge while in-game Giant=252 > Huge=240 — flagged there as
   // "reconcile during 4.3"). Building the mapping resolves half of that;
@@ -81,7 +81,7 @@ export interface ToolContext {
   // as a new capability when one does, don't widen silently).
 }
 
-export interface TextEdit { start: number; end: number; newText: string } // same shape as breakdown §4.1
+export interface TextEdit { start: number; end: number; newText: string } // same shape as breakdown Sec.4.1
 
 export interface ToolOutput {
   blocks: OutputBlock[];       // declarative display — the pane renders these, tools render nothing
@@ -112,7 +112,7 @@ export interface ToolImplementation {
 
 `run` returns immediately; all results flow through `emit`. Built-in tools that do heavy CPU work (the checker's Monte Carlo) run inside a **tool worker** (not the parser worker — a stuck tool must not stall diagnostics), where `emit` is `postMessage`. A synchronous throw from `run` is caught by the host and synthesized into an `error` terminal, same as a crash (rev 2).
 
-**Worker lifecycle (rev 4 — pinned): one worker per run.** The host spawns a fresh tool worker at `run`, and terminates it after the terminal message (or the 5s kill). Consequences, both deliberate: `worker.terminate()` needs no recovery logic (the next run spawns anew), and **tool module state cannot persist across runs** — a tool that wants persistence must put it in its output, not in globals. Spawn cost is irrelevant at one-run-at-a-time frequency (§5).
+**Worker lifecycle (rev 4 — pinned): one worker per run.** The host spawns a fresh tool worker at `run`, and terminates it after the terminal message (or the 5s kill). Consequences, both deliberate: `worker.terminate()` needs no recovery logic (the next run spawns anew), and **tool module state cannot persist across runs** — a tool that wants persistence must put it in its output, not in globals. Spawn cost is irrelevant at one-run-at-a-time frequency (Sec.5).
 
 **Who calls what (rev 3 — the handle/message relationship, stated instead of presumed):** `ToolRunHandle.cancel()` is the *in-process binding* of the `cancel` message; `HostMessage` is the *transport encoding*. Concretely: the host's Cancel button → host posts `{type:"cancel"}` to the tool worker (or writes it to the external tool's stdin) → the **worker shim's message handler** (which is host-authored plumbing, always responsive even while the tool's chunk is running… once the chunk yields) invokes the in-worker `handle.cancel()` → which sets a flag in the tool's closure, observed at the next chunk boundary. For a hypothetical main-thread tool the host would call `handle.cancel()` directly — same binding, no transport.
 
@@ -124,13 +124,13 @@ export interface ToolImplementation {
 
 One request, a stream of responses, one terminal message. For external tools each message is one NDJSON line (UTF-8, `\n`-delimited) — host→tool on stdin, tool→host on stdout; stderr is captured into a collapsible "tool log" block — **capped as a ring buffer (last 64KB; rev 4)**, since a chatty external tool must not balloon memory.
 
-**Infinity survives the boundary via sentinel encoding (rev 3; typed honestly rev 4):** `ArgValue` legitimately holds `Infinity`/`-Infinity` (`inf`/`-inf` words, parser §2.2), and `JSON.stringify(Infinity)` → `null` — silent AST corruption for any script using `inf`. Rule: the **context builder** deep-converts `±Infinity` → `{ "inf": 1 } | { "inf": -1 }` when constructing `ToolContext`, for **both** transports, so built-in and external tools see byte-identical data.
+**Infinity survives the boundary via sentinel encoding (rev 3; typed honestly rev 4):** `ArgValue` legitimately holds `Infinity`/`-Infinity` (`inf`/`-inf` words, parser Sec.2.2), and `JSON.stringify(Infinity)` → `null` — silent AST corruption for any script using `inf`. Rule: the **context builder** deep-converts `±Infinity` → `{ "inf": 1 } | { "inf": -1 }` when constructing `ToolContext`, for **both** transports, so built-in and external tools see byte-identical data.
 
 - **The wire form is its own type (rev 4 — `parseResult: ParseResult` was a lie post-conversion):** `ToolContext.parseResult` is typed **`SerializedParseResult`** — structurally `ParseResult` with every `ArgValue` `number` position widened to `number | { inf: 1 | -1 }`. The compiler then *forces* tools through the decoder; rev 3's `numeric()`-by-convention would have compiled `value * 2` and broken at runtime.
-- **Sentinel decoding is a PROTOCOL rule, not a shipped runtime (rev 4 — resolves the contradiction with §8's types-only publishing):** PROTOCOL.md documents the encoding and each language reimplements the 3-line decode. In-repo, `tools-api/index.ts` exports a `numeric()` helper for built-ins' convenience — that's app code, not part of the published `.d.ts`.
+- **Sentinel decoding is a PROTOCOL rule, not a shipped runtime (rev 4 — resolves the contradiction with Sec.8's types-only publishing):** PROTOCOL.md documents the encoding and each language reimplements the 3-line decode. In-repo, `tools-api/index.ts` exports a `numeric()` helper for built-ins' convenience — that's app code, not part of the published `.d.ts`.
 - **NaN cannot occur (rev 4, one sentence as requested):** v1 never evaluates expressions, and `ArgValue` numbers come only from `Number(text)` over the lexer's `/^-?\d+(\.\d+)?$/` and rnd-bounds regexes, which cannot produce NaN — no sentinel needed; the context builder asserts this in dev builds.
 
-The §9 round-trip test gains an explicit `inf` fixture — the corpus may not happen to contain one.
+The Sec.9 round-trip test gains an explicit `inf` fixture — the corpus may not happen to contain one.
 
 ```ts
 // host → tool (exactly one)
@@ -154,11 +154,11 @@ Rules: messages after a terminal are discarded with a console warning; a tool th
 
 ## 5. The pane (host UI, 5.1 implementation scope)
 
-`Select Tool` dropdown (from registered manifests) → params form (from `manifest.params`, typed like §3.4 breakdown editors, HelpTips per convention; **rev 4: the host validates/clamps submitted values against each `ToolParamDef` — min/max, options-membership — before they enter `ctx.params`, at run time, not just defaults at registration.** Implicit while the host owns the form; stated because v1.1 makes `params` part of the trust boundary and manifests arrive from strangers) → Run/Cancel button → progress bar (`progress` messages) → output area (rendered `OutputBlock`s) → Apply-edits button when present. "Waiting for tool selection…" empty state per the mockup. **Concurrency (rev 3 — pinned): one run at a time, app-wide.** Not per-tool: a single active run means one run-state in `host.ts`, one document-version snapshot for the staleness guard, and one progress surface. Switching tools or re-running while a run is active cancels the current run after a confirm. (Concurrent runs are a v1.x question nobody has asked for.)
+`Select Tool` dropdown (from registered manifests) → params form (from `manifest.params`, typed like Sec.3.4 breakdown editors, HelpTips per convention; **rev 4: the host validates/clamps submitted values against each `ToolParamDef` — min/max, options-membership — before they enter `ctx.params`, at run time, not just defaults at registration.** Implicit while the host owns the form; stated because v1.1 makes `params` part of the trust boundary and manifests arrive from strangers) → Run/Cancel button → progress bar (`progress` messages) → output area (rendered `OutputBlock`s) → Apply-edits button when present. "Waiting for tool selection…" empty state per the mockup. **Concurrency (rev 3 — pinned): one run at a time, app-wide.** Not per-tool: a single active run means one run-state in `host.ts`, one document-version snapshot for the staleness guard, and one progress surface. Switching tools or re-running while a run is active cancels the current run after a confirm. (Concurrent runs are a v1.x question nobody has asked for.)
 
 ## 6. Capabilities and trust
 
-v1 built-ins are trusted code; capabilities still gate what the host puts in `ToolContext` (least privilege keeps the contract honest, and the checker needs everything anyway: `read-source, read-ast, read-settings`). v1.1 external tools: the manifest's declared capabilities are shown in the install/run consent dialog ("This tool can read your script and propose edits"); `edit-source` never auto-applies (§4 already guarantees this); undeclared context fields are simply absent. The process-level risks (arbitrary code execution) are handled by the v1.1 trust flow per PLAN.md (unvetted warning + curated registry) — out of scope here, but the contract deliberately gives external tools no ambient authority beyond their stdin.
+v1 built-ins are trusted code; capabilities still gate what the host puts in `ToolContext` (least privilege keeps the contract honest, and the checker needs everything anyway: `read-source, read-ast, read-settings`). v1.1 external tools: the manifest's declared capabilities are shown in the install/run consent dialog ("This tool can read your script and propose edits"); `edit-source` never auto-applies (Sec.4 already guarantees this); undeclared context fields are simply absent. The process-level risks (arbitrary code execution) are handled by the v1.1 trust flow per PLAN.md (unvetted warning + curated registry) — out of scope here, but the contract deliberately gives external tools no ambient authority beyond their stdin.
 
 ## 7. Built-in registry (v1)
 
@@ -168,7 +168,7 @@ v1 built-ins are trusted code; capabilities still gate what the host puts in `To
 
 ```
 tools-api/
-  index.ts          every type in §2 + §4; the contract. Rev 3, honestly restated: this file
+  index.ts          every type in Sec.2 + Sec.4; the contract. Rev 3, honestly restated: this file
                     HAS type-only imports from src/parser (ParseResult, LanguageData,
                     GameConstantsData) — "no app imports" was false as written. The rule is:
                     NO RUNTIME imports (nothing executable crosses in), and the eventual
@@ -177,17 +177,17 @@ tools-api/
                     they are plain-data interfaces. Inverting the dependency (parser imports
                     the contract) was considered and rejected: the parser predates and
                     outranks the tools API.
-  PROTOCOL.md       prose spec of §4 for non-TS tool authors (v1.1; stub now)
+  PROTOCOL.md       prose spec of Sec.4 for non-TS tool authors (v1.1; stub now)
 src/tools/
   registry.ts       TOOLS list
   host.ts           run lifecycle, worker plumbing, cancellation, staleness guard (no React)
-  ToolsPane.tsx     §5 UI
+  ToolsPane.tsx     Sec.5 UI
   toolWorker.ts     worker entry for built-in tools
   builtin/
-    scriptStats.ts  §7 exemplar
+    scriptStats.ts  Sec.7 exemplar
     consistencyChecker/   (5.2)
   __tests__/
-    protocol.test.ts   §9 round-trip + lifecycle tests
+    protocol.test.ts   Sec.9 round-trip + lifecycle tests
 ```
 
 ## 9. Test plan and known risks (no critique pass — read this hardest)
@@ -200,6 +200,6 @@ Tests: (1) **serialization round-trip** — every `ToolContext`/`ToolMessage` fi
 
 **5.2 sequencing dependency (rev 3):** the checker's static layer keys on `resourceAmounts`/`constId` in game-constants.json — which are **all placeholders until the Phase 4.0 extraction lands** (CLAUDE.md), and several language.json sections remain `"verified": false`. The API is ready before the data is: build the checker's *structure* against it freely, but do not present its static-analysis output as trustworthy (or demo it to the Discord) until 4.0 replaces the placeholder data. Monte Carlo findings additionally wait on the Phase 4 generator itself.
 
-**Rev 4 changelog (second independent critique — all 7 adopted):** `mapSize.tiles` given a named single source of truth (`MAP_SIZE_TILES` in generationSettingsConstants.ts, from the guide's Map Sizes table; preview-design §4's 6-row Giant-less table explicitly NOT the source, its Giant/Huge ordering issue cross-referenced; rev 3's own union comment had elided Giant); `SerializedParseResult` wire type so the compiler forces sentinel decoding (`numeric()` by convention would compile and break); sentinel decode = PROTOCOL.md rule per language, in-repo helper is app code, published artifact stays types-only; NaN impossible by construction (regex-sourced numbers, no evaluation) with a dev assert; one-worker-per-run lifecycle (no cross-run module state, terminate needs no recovery); edit bounds validation (malformed = reject whole set, like overlap); run-time param validation named as trust-boundary prep; stderr ring-capped at 64KB. The critique's process note stands: finding #1 was a cross-doc data dependency that same-author §9 self-listing structurally misses — scheduled independent critiques remain the house rule for a reason.
+**Rev 4 changelog (second independent critique — all 7 adopted):** `mapSize.tiles` given a named single source of truth (`MAP_SIZE_TILES` in generationSettingsConstants.ts, from the guide's Map Sizes table; preview-design Sec.4's 6-row Giant-less table explicitly NOT the source, its Giant/Huge ordering issue cross-referenced; rev 3's own union comment had elided Giant); `SerializedParseResult` wire type so the compiler forces sentinel decoding (`numeric()` by convention would compile and break); sentinel decode = PROTOCOL.md rule per language, in-repo helper is app code, published artifact stays types-only; NaN impossible by construction (regex-sourced numbers, no evaluation) with a dev assert; one-worker-per-run lifecycle (no cross-run module state, terminate needs no recovery); edit bounds validation (malformed = reject whole set, like overlap); run-time param validation named as trust-boundary prep; stderr ring-capped at 64KB. The critique's process note stands: finding #1 was a cross-doc data dependency that same-author Sec.9 self-listing structurally misses — scheduled independent critiques remain the house rule for a reason.
 
 Known risks to watch (would normally be critique fodder): `partial`-as-full-redraw may be slow for huge tables (mitigate: cap table rows rendered, "show all" affordance); `ParseResult` serialization cost for external tools is per-run (fine) but the v1.1 process spawn should send context *after* the consent gate, not before; the 5s cancel grace + SIGKILL needs Windows-specific testing under Tauri's shell plugin; `OutputBlock` deliberately has no markdown — resist adding it until a sanitization story exists; `apiVersion` checking must reject, not warn, or v1.1 tools will depend on leniency; **the chunked-cancel recipe is JS-shaped (rev 4)** — a single-threaded Python tool blocking on `stdin.readline()` while working never sees `cancel`; PROTOCOL.md needs a per-language delivery recipe (non-blocking stdin poll between chunks, or a dedicated reader thread setting a flag) before v1.1 ships.

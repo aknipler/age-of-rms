@@ -2,8 +2,8 @@
 // Per docs/parser-design.md goal #4, ALL command/attribute/directive/
 // control-keyword/section knowledge flows through this module — the parser
 // hardcodes nothing (with one pinned exception: control-keyword operand
-// arity, §5.1, until `arguments[]` lands on controlKeywords entries in the
-// data — see spec §13).
+// arity, Sec.5.1, until `arguments[]` lands on controlKeywords entries in the
+// data — see spec Sec.13).
 
 export type ArgumentType =
   | "integer"
@@ -23,13 +23,13 @@ export interface ArgumentDef {
   max?: number;
   default?: number | string;
   description?: string;
-  optional?: boolean; // schema action item (spec §13) — honored if present
+  optional?: boolean; // schema action item (spec Sec.13) — honored if present
   variadic?: boolean; // schema action item — honored if present
   // Advisory range, distinct from min: a value below cautionBelow is still
   // valid RMS (no min violation), but is worth flagging live — e.g. a
   // negative border value that can crash the game if it pushes the land
   // origin off-map. RMS0217, added post-spec (2.4 bug-fix session) — see
-  // docs/parser-design.md §10.
+  // docs/parser-design.md Sec.10.
   cautionBelow?: number;
   cautionMessage?: string; // required alongside cautionBelow; user-facing text
 }
@@ -42,6 +42,11 @@ export interface CommandDef {
   arguments?: ArgumentDef[];
   attributes?: string[]; // name refs into LanguageData.attributes
   verified: boolean;
+  // Set when a patch superseded this command but the engine still accepts it.
+  // The string is user-facing replacement guidance, rendered verbatim by
+  // validate()'s RMS0309 — so the deprecation list lives in the data, not in
+  // a name check inside validate.ts (CLAUDE.md: vocabulary is data-driven).
+  deprecated?: string;
   notes?: string;
 }
 
@@ -50,9 +55,29 @@ export interface AttributeDef {
   description?: string;
   arguments?: ArgumentDef[];
   verified: boolean;
-  mutexWith?: string[]; // consumed by validate() (spec §8), not the parser
-  repeatable?: boolean; // cumulative attributes — see spec §8
+  mutexWith?: string[]; // consumed by validate() (spec Sec.8), not the parser
+  // What the guide says HAPPENS when a mutexWith pair co-occurs, where it says
+  // so. RMS0307 appends it. Absent for most pairs because the guide only
+  // declares the exclusion for them, and the generic message claims no more.
+  mutexNote?: string;
+  repeatable?: boolean; // cumulative attributes — see spec Sec.8
   maxRepeats?: number;
+  // A sections[] name that must appear somewhere in the script for this
+  // attribute to have any effect. Drives validate()'s RMS0311 — the one
+  // error-severity semantic check — so only engine-verified cases belong
+  // here. `base_elevation` -> `ELEVATION_GENERATION` is the only one today.
+  requiresSection?: string;
+  // True for names the DE exe carries as strings with nothing behind them —
+  // the guide's Non-Functional Syntax appendix. Same meaning as the flag on
+  // DirectiveDef, and the reason it now exists on attributes too: without an
+  // entry these names drew a bare "unknown attribute", which is both wrong
+  // (the engine does know the word) and useless (it names no alternative).
+  nonFunctional?: boolean;
+  // The working attribute this dead string corresponds to, rendered into
+  // RMS0310's message. Separate from CommandDef.deprecated, which means
+  // something different: a deprecated command still WORKS and the guidance is
+  // about style. These never worked at all.
+  replacedBy?: string;
   notes?: string;
 }
 
@@ -73,13 +98,66 @@ export interface ControlKeywordDef {
   notes?: string;
 }
 
+// Mirrors the `category` enum in reference/schemas/language.schema.json's
+// $defs/predefinedLabel. The schema is authoritative — it is what CI validates
+// the data against. Mirrored as a union rather than typed `string` so the
+// preview generator's category switch (docs/preview-design.md Sec.3.1) gets
+// exhaustiveness checking: add a category to the data and the schema, and the
+// compiler points at every switch that hasn't handled it yet.
+export type PredefinedLabelCategory =
+  | "gameMode"
+  | "mapSize"
+  | "startingResources"
+  | "startingAge"
+  | "lobbySetting"
+  | "playerCount"
+  | "teamCount"
+  | "teamSize"
+  | "playerInTeam"
+  | "gameVersion";
+
+/**
+ * A condition label the engine defines itself — usable as the ConditionLabel of
+ * if/elseif with no #define. Two consumers, one array: validate()'s
+ * unknown-constant check treats these as defined, and the preview generator
+ * builds its branch-selection environment by deciding which of these are true
+ * for the current generation settings. Do not duplicate the list in code.
+ */
+export interface PredefinedLabel {
+  name: string; // may lead with a digit — 4_PLAYER_GAME, 2_TEAM_GAME are real
+  category: PredefinedLabelCategory;
+  description: string;
+  verified: boolean;
+  // mapSize labels only. `dimensions` is the side length in tiles; `mapSize` is
+  // the matching MAP_SIZES value, absent for sizes no setting can select (the
+  // MORE_MAP_SIZES tier, reachable only by launch option or override_map_size).
+  // Both are stored rather than derived because the legacy and modern names are
+  // offset by one size — LARGE_MAP and MAPSIZE_NORMAL are both 200×200, so a
+  // consumer inferring dimensions from the name gets it wrong on every
+  // size-aware map (docs/preview-design.md Sec.4).
+  //
+  // `mapSize` stays a plain string rather than importing MapSize from
+  // src/generationSettings/: this module is the parser's, and the parser does
+  // not depend on app-layer modules (parser-design goal #4). Consumers that
+  // already own MapSize can narrow it themselves.
+  dimensions?: number;
+  mapSize?: string;
+  notes?: string;
+}
+
 export interface LanguageData {
   sections: string[];
   commands: CommandDef[];
   attributes: AttributeDef[];
   directives: DirectiveDef[];
   controlKeywords: ControlKeywordDef[];
-  predefinedLabels?: string[]; // schema action item (spec §7/§13) — absent today
+  // Optional even though the schema marks it *required*, deliberately: nothing
+  // checks this shape at runtime (parserWorker.ts reaches LanguageData through
+  // a double cast, which asserts rather than verifies), and preview-design
+  // Sec.3.1 mandates a `refDb.predefinedLabels ?? []` guard as the backstop
+  // that stops a data regression from silently evaluating every conditional as
+  // undefined. Typing it non-optional would make that mandated guard dead code.
+  predefinedLabels?: PredefinedLabel[];
 }
 
 /** Precomputed lookup maps. Build once per LanguageData, share freely. */
@@ -90,7 +168,7 @@ export interface LanguageIndex {
   attributesByName: ReadonlyMap<string, AttributeDef>;
   directivesByName: ReadonlyMap<string, DirectiveDef>;
   controlKeywords: ReadonlySet<string>;
-  /** Union of command + attribute names — the "known name" stop set (spec §6). */
+  /** Union of command + attribute names — the "known name" stop set (spec Sec.6). */
   knownNames: ReadonlySet<string>;
 }
 

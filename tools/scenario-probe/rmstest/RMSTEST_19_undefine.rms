@@ -1,0 +1,138 @@
+/*
+	RMSTEST 19 — does #undefine do anything, and does it eat its argument?
+
+	Two questions, both about a directive the guide lists under Non-Functional
+	Syntax. That appendix was built by string-searching the game's own
+	non-localized-key-value-strings file, and it reports that none of the
+	strings it found appear to do anything. That is a NEGATIVE claim from a
+	string dump, hedged in the guide's own wording, and it has never been put
+	in front of the engine.
+
+	It now carries weight it did not carry before. validate()'s guard analysis
+	(parser-design Sec.8, RMS0301/RMS0314) skips the monotonicity check for
+	NEGATED conditions on the grounds that definitions in RMS only ever
+	accumulate — a name undefined at a later line must have been undefined at
+	an earlier one. That shortcut is sound only while #undefine is inert. If it
+	works, the analysis can call a live assignment dead. RMS0310 also tells the
+	user outright that deleting an #undefine line changes nothing.
+
+	ONE MAP, BOTH ANSWERS. The two observables are independent — object counts
+	for Q1, the colour of the map for Q2 — so neither can mask the other.
+
+	--------------------------------------------------------------------
+	Q1. DOES #undefine REMOVE A FLAG?
+
+	  #define TEST_FLAG then #undefine TEST_FLAG, then branch on it.
+
+	  7 BOAR present  -> #undefine did NOTHING. The guide is right, the
+	                     shortcut in validate() is sound, nothing changes.
+	  7 BOAR absent   -> #undefine WORKS. The guide's appendix is wrong about
+	                     this entry. subsumes() in src/parser/validate.ts must
+	                     then check negated guards for an intervening #undefine
+	                     exactly as it checks positive ones for a #define, and
+	                     RMS0310's message needs rewriting.
+
+	  CONTROL: 5 RELIC, behind a flag that is defined and never undefined.
+	  If the relics are missing the map itself is broken and Q1 says nothing —
+	  a conditional that never fires would otherwise look exactly like a
+	  working #undefine. (RMSTEST 7 shipped without a control and its result
+	  was unreadable; RMSTEST 9 had to re-run it.)
+
+	--------------------------------------------------------------------
+	Q2. DOES #undefine CONSUME THE FOLLOWING TOKEN?
+
+	  Unanswerable from the guide, which lists the bare word and no arity. It
+	  decides whether `#undefine FOO` is one statement or two, and therefore
+	  whether language.json's one-argument entry for it is right at all.
+
+	  The probe is `#undefine base_terrain` followed by `SNOW` on its own line.
+
+	  Map is WHITE       -> the operand was NOT consumed. `base_terrain` stayed
+	                        in the stream as a command and took SNOW as its
+	                        argument. `#undefine FOO` is two statements, and
+	                        language.json should carry NO arguments for it.
+	  Map is NOT white   -> the operand WAS consumed. `base_terrain` was eaten
+	                        by the directive and SNOW was left as a stray word
+	                        the engine ignored. The current one-argument entry
+	                        is right.
+
+	  Reading this needs no probe and no counting — it is the whole backdrop
+	  of the map. Player lands paint themselves GRASS, so judge the colour
+	  BETWEEN the lands, not on them.
+
+	--------------------------------------------------------------------
+	WHAT AGE OF RMS PREDICTS TODAY, recorded before the run so the comparison
+	is honest rather than reconstructed afterwards:
+
+	  Q1 — it keeps TEST_FLAG defined (parser-design Sec.7, on the guide's
+	       word). It predicts 7 BOAR.
+	  Q2 — its argument consumption stops at known command and attribute
+	       names, so `base_terrain` is NOT eaten and the pair parses as
+	       `base_terrain SNOW`. It predicts a WHITE map. Note this is a
+	       side-effect of an error-tolerance rule, not a considered claim
+	       about the engine, which is exactly why it is worth testing.
+
+	  It also emits an info-level RMS0201 on line 91 — "#undefine expects 1
+	  argument but only 0 were found" — which is the arity assumption in
+	  language.json surfacing as a false complaint about a legal line. If Q2
+	  comes back WHITE, that entry's `arguments` array should be deleted
+	  outright rather than left unverified.
+
+	--------------------------------------------------------------------
+	READ IT WITH THE PROBE (tools/scenario-probe) if exporting:
+	  RELIC count  -> expect 5, always. Anything else invalidates the run.
+	  BOAR count   -> 7 or 0. That is Q1.
+	  terrain histogram -> a large SNOW (32) count is Q2's "white".
+
+	DESIGN NOTES
+	  No placement constraints on either object. Constraints can silently fail
+	  to place, and a short count would be indistinguishable from a branch that
+	  did not run — the same failure mode the control exists to rule out.
+	  Counts are 5 and 7 so a miscount still cannot confuse them.
+	  Neither object spawns on its own, so every one on the map came from here.
+	  base_terrain is deliberately NOT set anywhere else; Q2 owns it.
+
+	RUN ON: any size, 2 players. Nothing here is size-dependent.
+*/
+
+#define CONTROL_FLAG
+
+#define TEST_FLAG
+#undefine TEST_FLAG
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+
+/* Q2's probe. Do not add a base_terrain line anywhere else in this file. */
+#undefine base_terrain
+SNOW
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 6
+	number_of_tiles 1
+	circle_radius 40 0
+}
+
+<OBJECTS_GENERATION>
+
+/* Control: proves a conditional block places objects at all. */
+if CONTROL_FLAG
+create_object RELIC
+{
+	number_of_objects 5
+	set_gaia_object_only
+}
+endif
+
+/* Q1: this flag was #define'd and then #undefine'd. */
+if TEST_FLAG
+create_object BOAR
+{
+	number_of_objects 7
+	set_gaia_object_only
+}
+endif

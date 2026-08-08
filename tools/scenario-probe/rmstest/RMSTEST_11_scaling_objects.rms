@@ -1,0 +1,75 @@
+/*
+	RMSTEST 11 — settle exact-area vs rounded-ratio scaling, WITHOUT the growth
+	overshoot that made RMSTEST_10 unreadable.
+
+	RMSTEST_10 measured create_elevation and got a multiplier of ~2.13 across
+	three runs (853, 851 at declared 400; 428 at declared 200 — linear, so no
+	constant overhead). Both candidate models sit BELOW that: exact area is
+	2.0736, the guide's rounded ratio column is 2.1. The gap is almost certainly
+	the elevation clump growing slightly past its target, which means a tile
+	count measures what the clump reached, not what it was told to reach.
+
+	Objects have no such problem. number_of_objects is a COUNT — the engine
+	places exactly that many or fails; nothing grows. So scaling a count reads
+	the budget directly.
+
+	THE ARITHMETIC (run on SMALL, 144x144 = 20736 tiles)
+	  exact area:     400 × 20736/10000 = 829.44  -> 829 (floor or round)
+	  rounded ratio:  400 × 2.1         = 840
+
+	An 11-object gap, and the probe counts objects exactly.
+
+	READ IT WITH THE PROBE
+	  python tools/scenario-probe/probe_scenario.py <saved scenario>
+	  Look at the objects histogram for GOLD (66). IGNORE id 1358 — that is the
+	  GRASS terrain's auto-placed decoration at density 60 per 1000 tiles, about
+	  1245 of them, and it has nothing to do with this test.
+
+	  829 GOLD -> exact area. preview-design Sec.4 is right, guide:3429's
+	              "multiply by the area ratio" is an author-facing
+	              simplification, and Sec.13's fixture asserting 829 stands.
+	  840 GOLD -> the engine really does use the rounded ratio column. Sec.4's
+	              central argument is wrong and the scaling rule, plus
+	              Sec.6.2/6.4's tile budgets, need rewriting.
+	  830-839  -> report the exact number. Rounding of the fractional result is
+	              its own open question (Sec.15 item 7b's second half) and a
+	              value in this band would speak to it.
+	  far below either -> placement failed for lack of room rather than
+	              scaling being different. Should not happen on 20736 empty
+	              tiles, but check before concluding.
+
+	DESIGN NOTES
+	  Flat all-grass map, no elevation, no terrain commands, no constraints on
+	  the gold at all — every tile is a valid candidate, so nothing can starve
+	  the count. No reference frame, so set_gaia_object_only is not required
+	  (Test 3 confirmed that requirement is frame-scoped).
+	  Player lands are tiny and pushed to the rim so their 49 tiles each cannot
+	  matter.
+	  set_scaling_to_map_size is the object-side counterpart of
+	  set_scale_by_size, and Sec.4 pins BOTH to the same dim²/10000 rule, so
+	  this test speaks to the whole scaling question, not just to objects.
+
+	RUN ON: Small, 2 players.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+<OBJECTS_GENERATION>
+
+create_object GOLD
+{
+	number_of_objects 400
+	set_scaling_to_map_size
+}

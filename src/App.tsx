@@ -11,9 +11,12 @@ import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
 import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
+import { PreviewViewProvider, PreviewViewportProvider } from "./components/preview/PreviewViewContext";
 import { useDocument } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useParsedDocument } from "./useParsedDocument";
+import { ParsedDocumentProvider } from "./ParsedDocumentContext";
+import { PreviewResultProvider } from "./PreviewResultContext";
 import type { TabId } from "./types";
 import styles from "./App.module.css";
 import "./App.css";
@@ -29,14 +32,14 @@ function AppContent() {
   const [generationSettingsOpen, setGenerationSettingsOpen] = useState(false);
   const doc = useDocument();
   const { playerCount } = useGenerationSettings();
-  // docs/breakdown-design.md §6.2: "one parse, in the worker" — lifted
+  // docs/breakdown-design.md Sec.6.2: "one parse, in the worker" — lifted
   // to app level so both CodePane (diagnostics/source, for Monaco
   // markers) and BreakdownPane (the full ParseResult/AST) consume the
   // same parse instead of each parsing independently. Deliberately not
   // reset when switching tabs — Problems/Breakdown both reflect the last
   // known parse, like most editors' Problems panels.
   const parsed = useParsedDocument(doc.content, playerCount);
-  // Ash's post-3.9 follow-up: one selection anchor shared by both panes,
+  // One selection anchor shared by both panes,
   // lifted here (rather than living inside BreakdownPane, which unmounts
   // on every tab switch) specifically so it survives Breakdown <-> Code.
   const selection = useSharedSelection(parsed.source, parsed.parseResult);
@@ -51,30 +54,40 @@ function AppContent() {
       />
       <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
-      <main className={styles.main}>
-        {activeTab === "breakdown" && (
-          <BreakdownPane
-            hasFile={doc.filePath !== null}
-            source={parsed.source}
-            parseResult={parsed.parseResult}
-            applyTextEdit={doc.applyTextEdit}
-            reparseNow={parsed.reparseNow}
-            selection={selection}
-          />
-        )}
-        {activeTab === "code" && (
-          <CodePane
-            hasFile={doc.filePath !== null}
-            source={parsed.source}
-            diagnostics={parsed.diagnostics}
-            selectedItem={selection.selectedItem}
-            onCursorOffsetChange={selection.setAnchor}
-          />
-        )}
-        {activeTab === "advanced-tools" && (
-          <PlaceholderPane description="Advanced Tools pane — arrives in Phase 5." />
-        )}
-      </main>
+      {/* Both providers sit above the tab switch so what they hold survives
+          it. ParsedDocumentProvider makes parsed.parseResult reachable from
+          inside MapSidePanel without threading a prop through it
+          (ParsedDocumentContext.tsx); PreviewResultProvider owns the preview
+          worker and its last result, which used to die with PreviewPane on
+          every Breakdown/Code switch (PreviewResultContext.tsx). */}
+      <ParsedDocumentProvider parseResult={parsed.parseResult}>
+        <PreviewResultProvider parseResult={parsed.parseResult}>
+          <main className={styles.main}>
+            {activeTab === "breakdown" && (
+              <BreakdownPane
+                hasFile={doc.filePath !== null}
+                source={parsed.source}
+                parseResult={parsed.parseResult}
+                applyTextEdit={doc.applyTextEdit}
+                reparseNow={parsed.reparseNow}
+                selection={selection}
+              />
+            )}
+            {activeTab === "code" && (
+              <CodePane
+                hasFile={doc.filePath !== null}
+                source={parsed.source}
+                diagnostics={parsed.diagnostics}
+                selectedItem={selection.selectedItem}
+                onCursorOffsetChange={selection.setAnchor}
+              />
+            )}
+            {activeTab === "advanced-tools" && (
+              <PlaceholderPane description="Advanced Tools pane — arrives in Phase 5." />
+            )}
+          </main>
+        </PreviewResultProvider>
+      </ParsedDocumentProvider>
       <StatusBar
         diagnostics={parsed.diagnostics}
         total={parsed.resourceTotals.total}
@@ -103,7 +116,16 @@ function App() {
   return (
     <HelpSettingsProvider>
       <GenerationSettingsProvider>
-        <AppContent />
+        {/* Above AppContent, so the preview's seed/view/colour and its
+            canvas zoom/pan survive the tab switch that unmounts the pane
+            holding them. Two providers, not one context, so a drag or wheel
+            tick (which changes viewport on every frame) doesn't re-render
+            the seed/colour-mode controls — see PreviewViewContext.tsx. */}
+        <PreviewViewProvider>
+          <PreviewViewportProvider>
+            <AppContent />
+          </PreviewViewportProvider>
+        </PreviewViewProvider>
       </GenerationSettingsProvider>
     </HelpSettingsProvider>
   );

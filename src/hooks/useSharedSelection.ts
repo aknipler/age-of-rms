@@ -5,16 +5,16 @@ import { findItemAtOffsetInScript } from "../breakdown/selectionResolve";
 import type { Item, ParseResult, Span } from "../parser/types";
 
 /**
- * The single cross-tab selection anchor (Ash's follow-up to §3.9): one
+ * The single cross-tab selection anchor: one
  * offset into the document that Breakdown's card selection AND the Code
  * tab's cursor/selection both read from and write to. Lifted to app level
- * (unlike §3.9's original `selectedAnchor`, which lived inside
+ * (unlike Sec.3.9's original `selectedAnchor`, which lived inside
  * `BreakdownPane` and was destroyed every time that pane unmounted on a
  * tab switch) specifically so it survives Breakdown <-> Code tab
  * switches — that's the whole point: "where you are looking at is the
  * same when you switch tabs."
  *
- * Same offset-anchoring scheme as §6.3/§3.9 (a single nullable anchor,
+ * Same offset-anchoring scheme as Sec.6.3/Sec.3.9 (a single nullable anchor,
  * shifted-and-dropped by edits), but the shift trigger is now the shared
  * Monaco model's own `onDidChangeContent` rather than Breakdown's
  * `applyEdit` queueing — that's what makes this correct for EVERY edit
@@ -46,7 +46,7 @@ export function useSharedSelection(source: string, parseResult: ParseResult | nu
         .sort((a, b) => b.start - a.start);
       // model.getValue() here is the text AFTER this exact change (the
       // event fires post-apply) — no manual string surgery needed to
-      // compute what we're waiting for, unlike §3.9's original
+      // compute what we're waiting for, unlike Sec.3.9's original
       // applyEdit-side queueing.
       pendingRef.current.push({ edits, expectedSource: model.getValue() });
     });
@@ -60,7 +60,7 @@ export function useSharedSelection(source: string, parseResult: ParseResult | nu
     if (matchedUpTo === -1) {
       // Nothing in the queue matches the parse that just landed — some
       // other change superseded it. Drop rather than wait forever (same
-      // trade-off §3.9's original queue made).
+      // trade-off Sec.3.9's original queue made).
       pendingRef.current = [];
       return;
     }

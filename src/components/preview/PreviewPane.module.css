@@ -1,0 +1,59 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #000;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.seed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.seedInput {
+  width: 5rem;
+  font-size: 0.7rem;
+  padding: 0.05rem 0.2rem;
+}
+
+.reroll {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+.readout {
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: #333;
+  min-height: 1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.readoutHint {
+  color: #777;
+}

@@ -1,0 +1,167 @@
+/*
+RMSTEST_38 - does clumping_factor control land CONNECTEDNESS
+preview-design.md Sec.15 item 16 (Sec.6.1's land-growth model)
+
+THE QUESTION
+RMSTEST_28a/28b showed a single create_land coming back in several disconnected
+pieces - at cf -5 (3/5/4 pieces) and, decisively, at cf 0 in the control
+(4/4/1). A region grown by frontier expansion from one origin CANNOT fragment,
+so "one origin, one frontier" is wrong. Re-checked under 8-connectivity, so it
+is not the probe's connectivity choice: the pieces are genuinely disconnected
+even allowing diagonal adjacency.
+
+What that leaves unanswered is whether fragmentation is a PROPERTY OF LOW
+CLUMPING or a property of land growth in general. Both runs so far sat at the
+low end, which is exactly why the effect looked absolute rather than graded.
+
+WORKING HYPOTHESIS, from community observation plus our own measurement
+Community testing (AoK Heaven, "The Cartographer: RMS Discoveries") puts the
+accepted range at roughly -100 to 99 rather than the conventional 1-15, with
+negatives giving "super spindly" lands and values near +100 giving "very clumped
+and roundish" ones. Our tracked corpus uses -20 through 100. Put beside the
+fragmentation, that suggests:
+
+  clumping_factor controls how strongly growth prefers tiles ADJACENT to the
+  existing mass, and at low or negative values the land may place tiles
+  DETACHED from it.
+
+That is "several seeds scattered and grown separately" expressed as one
+parameter rather than as a separate seeding stage. If it holds, Sec.6.1's weight
+buckets survive intact and the only change is that the neighborsOwned = 0 bucket
+stops being empty.
+
+METHOD - ONE MAP, SIX LANDS, NO INTERACTION
+Six lands, one per clumping_factor value, each with its own terrain so the probe
+can separate them, placed far enough apart that they never meet. Every other
+attribute is identical and matches RMSTEST_28a/28b exactly - number_of_tiles 400,
+base_size 1, border_fuzziness 0 - so the new runs are directly comparable to the
+old ones rather than being a fresh baseline.
+
+  SNOW    cf -20    beyond anything measured
+  DESERT  cf   0    reproduces the RMSTEST_28b control
+  DIRT    cf   8    the documented default
+  DIRT2   cf  20    the corpus mode
+  DIRT3   cf  40    high
+  GRASS3  cf 100    corpus uses this 18 times, above the community's stated 99
+
+Generated at Giant (252) = 63504 tiles, so six 400-tile lands occupy under 4% of
+the map. Positions are on a 3 x 2 grid 76 and 101 tiles apart; a compact 400-tile
+land has a radius near 11 tiles and even a badly spindly one should not span
+half that separation. **Check this rather than assume it** - the read-off below
+includes a bounding-box overlap check, and if any two lands touch, that pair is
+void and needs re-running singly.
+
+Why one map instead of six single-land scripts: six scripts at three runs each is
+eighteen generations, this is three. The cost is the no-interaction assumption,
+which is checkable from the export itself, so it is a cheap trade.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  ...and once per terrain: DESERT, DIRT, DIRT2, DIRT3, GRASS3.
+  For each: piece COUNT, the size distribution, and circularity.
+  Also confirm total tiles per terrain sits near 400 (+ the ~3% growth overshoot
+  of item 7d); a total far below 400 would mean growth terminated early, which
+  is a different finding and would invalidate the piece count.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. THE ONE THAT MATTERS: piece count falls MONOTONICALLY as cf rises, reaching
+   1 somewhere in the corpus's common band of 15-25. That confirms the
+   hypothesis, and Sec.6.1 needs a changed weight table rather than a new
+   pipeline stage - much the smaller repair.
+2. Pieces persist at cf 100. Then growth is not frontier-based at ANY setting and
+   Sec.6.1 must be rebuilt from scratch, which is the expensive outcome and the
+   reason this test is worth a sitting.
+3. Piece count is flat across the whole sweep. Then fragmentation is unrelated to
+   clumping and something else entirely is editing land terrain - go looking for
+   that before modelling anything.
+4. Circularity should rise with cf across the sweep (RMSTEST_20/21 measured it
+   ramping smoothly to ~15 then saturating). If circularity saturates while piece
+   count keeps falling, connectedness and shape are separate knobs and the single
+   clumping_factor parameter drives two mechanisms - worth knowing before fitting
+   either.
+5. cf 100 is above the community's reported maximum of 99. If its land looks
+   identical to cf 40's rather than more clumped, the value is being clamped, and
+   that is a free finding about the 18 corpus uses of it.
+
+GENERATE AT GIANT (252) WITH ANY PLAYER COUNT - there are no player lands, so the
+count does not enter. RUN IT THREE TIMES, and REGENERATE BETWEEN SAVES: a
+previous batch exported the same generated map three times, and the check is that
+the per-terrain tile totals differ run to run.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type SNOW
+    number_of_tiles 400
+    base_size 1
+    clumping_factor -20
+    border_fuzziness 0
+    land_position 20 20
+  }
+
+  create_land
+  {
+    terrain_type DESERT
+    number_of_tiles 400
+    base_size 1
+    clumping_factor 0
+    border_fuzziness 0
+    land_position 50 20
+  }
+
+  create_land
+  {
+    terrain_type DIRT
+    number_of_tiles 400
+    base_size 1
+    clumping_factor 8
+    border_fuzziness 0
+    land_position 80 20
+  }
+
+  create_land
+  {
+    terrain_type DIRT2
+    number_of_tiles 400
+    base_size 1
+    clumping_factor 20
+    border_fuzziness 0
+    land_position 20 60
+  }
+
+  create_land
+  {
+    terrain_type DIRT3
+    number_of_tiles 400
+    base_size 1
+    clumping_factor 40
+    border_fuzziness 0
+    land_position 50 60
+  }
+
+  create_land
+  {
+    terrain_type GRASS3
+    number_of_tiles 400
+    base_size 1
+    clumping_factor 100
+    border_fuzziness 0
+    land_position 80 60
+  }
+
+<ELEVATION_GENERATION>
+
+/* NO <CLIFF_GENERATION> HEADER - an empty one generates cliffs, which would put
+   terrain 16 under them (guide:1325) and add a second thing moving terrain. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

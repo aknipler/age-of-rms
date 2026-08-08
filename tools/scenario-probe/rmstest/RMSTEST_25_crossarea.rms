@@ -1,0 +1,120 @@
+/*
+RMSTEST_25 - cross-shaped land placement area
+preview-design.md Sec.15 item 2
+
+QUESTION
+Where can a neutral land origin actually land. Guide:803 says "lands are
+positioned at random in a cross-shaped area, and will never be in the corners"
+and gives no numbers. Sec.6.1 approximates that as rejecting a candidate when
+both |x-center| and |y-center| exceed dim*0.35, which is a guess nobody has
+tested. The 0.35 was never measured.
+
+METHOD
+Sixty single-tile neutral lands of SNOW, no land_position, so every origin is
+sampled by the engine's own rejection loop. Each land is then one 4-connected
+SNOW patch and its centroid is the origin. Read the scatter, not a screenshot.
+
+min_placement_distance 0 on every land, and every land left in the shared
+default zone, so neither origin spacing nor other_zone_avoidance_distance
+shapes the scatter. The only surviving constraint is the cross.
+
+GENERATE AT TINY (120). Center is 60. Under the 0.35 model the rejected corner
+region is the four 18x18 squares beyond 42 tiles from center on BOTH axes,
+which is 1296 of 14400 tiles, or 9 percent. Sixty origins over five runs is 300
+samples, so a uniform draw would put about 27 in those corners and the cross
+model predicts zero. The two are far apart enough to separate in one sitting.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Zero origins in the four corner squares. If any appear, 0.35 is too small.
+2. If the true boundary is looser than 0.35, origins appear in a ring inside
+   the corner squares and the innermost corner origin gives the real constant
+   directly, as max(|x-60|, |y-60|) over the corner-most sample.
+3. The scatter is symmetric about both axes. An asymmetric result means the
+   cross is not centered, which nothing in the guide suggests.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+
+WATCH FOR, and this is the failure mode that does not announce itself
+The patch count must be 60. Two origins landing within one tile merge into a
+single patch, and a merged patch reports one centroid sitting between two real
+origins, which is a plausible-looking coordinate that is not an origin. A patch
+of roughly 20 tiles where the rest are roughly 10 is the tell. Discard any run
+whose patch count is below 60 rather than trying to correct it.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+  create_land { terrain_type SNOW number_of_tiles 1 base_size 1 min_placement_distance 0 }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

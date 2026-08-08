@@ -1,0 +1,102 @@
+/*
+RMSTEST_35 - the elevation diagonal step at a SECOND SIZE, with NO player lands
+preview-design.md Sec.15 item 11(b)
+
+WHY THIS EXISTS - RMSTEST_32 IS CONFOUNDED
+RMSTEST_32 measured the favoured:disfavoured ratio across the y = x diagonal at
+Normal (200) with 8 players, and got 2.25 / 2.40 / 2.08 - call it 2.24:1 -
+against the 18:1 that RMSTEST_22a measured at Tiny (120). That is an order of
+magnitude, it is stable across three distinct maps, and it cannot be dismissed.
+
+But RMSTEST_32 changed TWO things at once against RMSTEST_22a:
+  - map size, 120 -> 200
+  - player lands, absent -> eight present
+and Sec.6.2's elevation rule excludes tiles within 9 of a player origin. Eight
+exclusion discs sit on a ring, and that ring CROSSES the diagonal, so the
+exclusion and the step are not independent. RMSTEST_32's own prediction 3 said
+exactly this would happen. Its band profiles came back noisy and inconsistent
+between runs, which is what eight holes on a ring looks like.
+
+So the 2.24:1 cannot be attributed. This script changes ONE thing.
+
+METHOD
+Byte-for-byte RMSTEST_22a - same base terrain, same create_elevation, same
+declared numbers, no player lands, no create_player_lands at all - generated at
+Normal (200) instead of Tiny (120). The declared tile budget is deliberately
+NOT scaled: the reading is a RATIO between two halves of the map, which is
+density-independent, and holding the declared numbers fixed keeps the only
+difference the map size.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --rows ELEVATION --bands 20
+  and the diagonal split - count elevated tiles with y > x against y < x.
+  The ratio is the reading. --rows gives the marginals as corroboration:
+  mean y should sit above 0.5 and mean x below it by a similar margin.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Ratio near 18:1. Then the step does NOT weaken with map size, and the entire
+   drop to 2.24:1 in RMSTEST_32 is caused by the player-land exclusion. Sec.6.2
+   would then be wrong to state the step and the exclusion as independent rules
+   composed together, and item 11(b) becomes a real modelling change.
+2. Ratio near 2.24:1. Then the strength is SIZE-dependent and nothing currently
+   models that. The 18:1 constant would be a Tiny-specific fit, and every map
+   size would need its own - which is a far worse outcome for Sec.6.2 than 1.
+3. Ratio somewhere between. Both effects are real and partially additive; the
+   exclusion cannot then be separated without a third run, and the honest thing
+   is to say so rather than split the difference.
+
+4. Item 11(a)'s residual - the disfavoured half's internal gradient running the
+   WRONG way (0.09 next to the diagonal, 0.21 in the far corner at Tiny) -
+   should reappear cleanly here, because this run has no player lands to muddy
+   the bands. RMSTEST_32's band profiles were too noisy to judge it. If it does
+   not reappear in a clean run at a second size, item 11(a) closes as a
+   Tiny-specific artefact.
+
+GENERATE AT NORMAL (200) WITH ANY PLAYER COUNT - there are no player lands, so
+the count does not enter. RUN IT THREE TIMES, and REGENERATE BETWEEN SAVES:
+RMSTEST_32's first attempt exported the same generated map three times, which
+looked like three runs and was one. The check is that the elevated-tile totals
+differ between runs; identical totals mean identical maps.
+
+SECOND CONFIGURATION, ADDED 2026-08-04 - ALSO GENERATE THIS AT LUDICROUS (480),
+SIX TIMES. Item 11(a) established that the elevation bias weakens within ~12
+tiles of the map edge and that the width does NOT scale with map size - but that
+rests on exactly two sizes, 120 and 200. Two points define a line, and this
+project has just been caught by two points at one end of a range: Sec.15 item 16,
+where cf -5 and cf 0 made a merely mis-parameterised model look refuted. A third
+size at the far end of the range is the cheap guard against repeating it.
+
+SIX runs rather than three at this size, deliberately. The tile budget here is
+absolute, so at 480 coverage falls to about 0.9% against 6.2% at Normal, and the
+disfavoured near-edge cells are already the thinnest part of the reading. The
+ratio is density-normalised and therefore unbiased by the sparseness; only the
+noise grows, and runs are what fix noise.
+
+Read it exactly as the Normal runs are read, then compare WHERE the ratio
+recovers - not what it recovers to. If recovery still completes by ~12 tiles the
+band is absolute and the constant can be pinned. If it stretches toward ~29
+tiles (12 x 480/200) it is proportional after all and Sec.6.2 needs a dim term.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+  create_elevation 1
+  {
+    number_of_clumps 500
+    number_of_tiles 2000
+    spacing 1
+  }
+
+/* NO <CLIFF_GENERATION> HEADER - an empty one generates cliffs. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

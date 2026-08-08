@@ -1,0 +1,87 @@
+/*
+	RMSTEST 18 — is min_distance_group_placement enforced during a tight
+	group's FILL, or only once per group?
+
+	preview-design Sec.15 item 10, the last open engine question. Sec.6.6 now
+	states a uniform rule from three measurements: under tight grouping the
+	ANCHOR is checked against every constraint and the fill is checked against
+	nothing. The three tested were avoid_forest_zone (distance avoidance),
+	terrain_to_place_on (tile validity) and avoid_actor_area (area exclusion).
+
+	min_distance_group_placement is a different SHAPE of constraint. The other
+	three ask "is this tile acceptable"; this one asks "is this tile far enough
+	from other placements". It is the one candidate that could plausibly be
+	enforced per member while the others are not, which would give the uniform
+	rule its first exception.
+
+	guide:2611 defines it as spacing between individual objects of the same
+	command and all future ones; guide:2614 then says "If the objects are
+	grouped, distance refers to the center of the group, not the individual
+	members." So the guide and our measured rule agree here, and this test is a
+	confirmation rather than a coin flip — worth running precisely because
+	agreement predicted in advance is the cheapest kind of evidence to get.
+
+	SETUP: six tight groups of 49 (7x7 blobs) with a required spacing of 12.
+
+	WHAT TO MEASURE — the gap between BLOBS, not the object count. Tight groups
+	are contiguous, so the gold forms six clumps that can be recovered by
+	spatial clustering; group membership is not stored in the scenario file and
+	does not need to be.
+
+	  minimum edge-to-edge gap between blobs clearly BELOW 12 (roughly 0-6)
+	      -> the constraint is applied once per group. The uniform rule holds
+	         for a fourth constraint, now spanning four distinct kinds, and
+	         guide:2614 is right. Sec.15 item 10 closes.
+	  minimum gap at or ABOVE 12 on every pair
+	      -> enforced per member. First exception to the uniform rule; Sec.6.6
+	         needs a carve-out naming this attribute and the reason, and
+	         temp_min_distance_group_placement then needs the same test.
+	  FEWER than six blobs
+	      -> two groups merged into one contiguous mass, which is an even
+	         stronger once-per-group signal: their members are at distance 1.
+	         Report the count.
+
+	Send the export and the analysis will be run against it; no manual counting.
+
+	DESIGN NOTES
+	  Flat all-grass map with no terrain, elevation or constraints other than
+	  the one under test, so nothing else can influence where the groups land.
+	  49 per group is a size already known to place reliably (RMSTEST_8 placed
+	  25 tight with no trouble) while being wide enough that a 12-tile spacing
+	  measured at the anchor leaves blob edges visibly closer than 12.
+	  Six groups on Small is 294 objects on 20736 tiles — dense enough that the
+	  spacing constraint actually bites, far from dense enough to run out of
+	  room.
+	  No reference frame, so set_gaia_object_only is not required (Test 3
+	  confirmed that requirement is frame-scoped) and no frame logic can
+	  interfere.
+	  Player lands are tiny and pushed to the rim so they cannot crowd the
+	  placement area.
+
+	RUN ON: Small, 2 players. Twice if convenient — the placement is random and
+	a second run guards against one lucky arrangement.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+<OBJECTS_GENERATION>
+
+create_object GOLD
+{
+	number_of_objects 49
+	number_of_groups 6
+	set_tight_grouping
+	min_distance_group_placement 12
+}

@@ -1,4 +1,4 @@
-// Pure ArgValue -> display-text rendering (docs/breakdown-design.md §3.4).
+// Pure ArgValue -> display-text rendering (docs/breakdown-design.md Sec.3.4).
 // Read-only for 3.2 — no parsing back, just formatting for display. The
 // real "render an item to text" for inserts is patch/formatStyle.ts,
 // 3.3 scope; this is display-only and much simpler.

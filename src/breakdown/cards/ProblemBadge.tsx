@@ -8,7 +8,7 @@ const SEVERITY_LABEL: Record<DiagnosticSeverity, string> = {
   info: "info",
 };
 
-/** §3.1/§5 — badges reuse the parser's own diagnostics, mapped by span containment; Breakdown invents no validation of its own. */
+/** Sec.3.1/Sec.5 — badges reuse the parser's own diagnostics, mapped by span containment; Breakdown invents no validation of its own. */
 export function ProblemBadge({ severity }: { severity: DiagnosticSeverity }) {
   return (
     <HelpTip id="breakdown.problemBadge">

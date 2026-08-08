@@ -1,0 +1,63 @@
+/*
+RMSTEST_22b - elevation seed south bias, WITH enable_balanced_elevation
+preview-design.md Sec.15 item 1, Sec.6.2's seed weights
+
+QUESTION
+Identical to RMSTEST_22a in every respect except the one attribute, which is
+the only way to attribute a difference to it. The guide still calls the
+distribution "slightly biased" even with the attribute set, so Sec.6.2 models
+the residual as 100 + 15*y/(dim-1), a 1.15x pull instead of 2x. The 15 is the
+softest [tune] number in the whole document. It was chosen to be small and
+nonzero because the guide says "slightly", and that is the entire evidence.
+
+Three outcomes are all live, and they are not variations on a theme:
+  mean y near 0.512   the residual bias is real and roughly the modelled size
+  mean y near 0.500   the attribute removes the bias entirely, and the guide's
+                      "slightly" describes sampling noise rather than a rule
+  mean y near 0.556   the attribute does nothing at all, which would be a
+                      finding of the same shape as item 9's set_gaia_object_only
+
+The third is worth stating out loud because a preview that models a knob the
+engine ignores lies in exactly the direction users trust most, and because this
+project has already found one attribute that did nothing.
+
+METHOD, GENERATION SIZE, COVERAGE CAUTION AND PLAYER LAND REASONING
+All as RMSTEST_22a. Read that header. Nothing here differs except the
+attribute, and keeping the two identical is the point.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. mean y sits strictly below RMSTEST_22a's, whatever the absolute value. If it
+   does not, the attribute is inert.
+2. mean y lands between 0.500 and 0.525.
+3. mean x lands on 0.500 within noise, same control as 22a.
+
+RUN IT THREE TIMES, and run it in the same sitting as 22a so the comparison is
+not across a game patch.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --rows ELEVATION
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+  enable_balanced_elevation
+
+  create_elevation 1
+  {
+    number_of_clumps 500
+    number_of_tiles 2000
+    spacing 1
+  }
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

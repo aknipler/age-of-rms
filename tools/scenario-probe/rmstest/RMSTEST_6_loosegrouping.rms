@@ -1,0 +1,91 @@
+/*
+	RMSTEST 6 — does LOOSE grouping check avoid_forest_zone per member, when
+	TIGHT grouping only checks it once on an anchor?
+
+	Test 1 established the tight-group mechanism: one member is placed, it has
+	to pass the avoid restrictions, then the rest fill in from there unchecked.
+	The open question is whether loose grouping differs — and whether the
+	tight/loose split in guide:2122 / guide:2143 is the real rule after all,
+	rather than the per-attribute table in docs/preview-design.md Sec.6.6.
+
+	This map puts BOTH conditions in the SAME clearing on the SAME seed, so
+	they are compared directly instead of across two runs:
+
+	  STONE  12 objects, set_loose_grouping, group_placement_radius 6
+	  GOLD   25 objects, set_tight_grouping          <- known behaviour, in-map
+	                                                    reference
+
+	Both carry avoid_forest_zone 6 in a 15x15 clearing (radius 7), where only a
+	roughly 1-tile-radius patch at the clearing's centre satisfies that
+	distance. So per-member checking is severely constrained and anchor-only
+	checking is not.
+
+	STONE is deliberately declared FIRST because the engine places commands in
+	script order, first come first served — if GOLD ran first its 25 tight
+	members would occupy the centre and starve the test.
+
+	READ IT LIKE THIS  (look at the STONE piles only; GOLD is the reference)
+	  Stone scattered widely, some piles near or against the tree line
+	      -> loose ALSO checks only an anchor. The tight/loose split is not
+	         real, and Sec.6.6's table collapses to one rule for both.
+	  Stone confined to a tight knot at the clearing's centre, well clear of
+	  the forest, and FEWER than 12 piles present
+	      -> loose checks EVERY member. guide:2143 is right, the tight/loose
+	         split IS the rule, and Sec.6.6's per-attribute table is wrong in
+	         a third way: it is neither per-attribute nor uniformly anchor-only.
+	  Stone absent entirely
+	      -> per-member checking plus an unlucky anchor. Re-roll a few seeds
+	         before concluding; absence across many seeds still means
+	         per-member.
+
+	Worth noting either way: if stone comes out SHORT of 12, that is
+	guide:2143's documented "some group members fail to spawn", and it is what
+	Sec.6.6's groupPartial failure bucket is meant to represent.
+
+	SECOND QUESTION, same map, no extra work: you thought some attributes may
+	check every member even under tight grouping. If the GOLD block here
+	behaves exactly as it did in Test 1, avoid_forest_zone is not one of them.
+	Identifying which attributes DO would need a separate map per attribute,
+	so if you have a candidate in mind, name it and I will write that test
+	directly rather than guessing.
+
+	RUN ON: Tiny, 4 players. Four clearings = four samples per seed.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain FOREST
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 7
+	number_of_tiles 1
+	border_fuzziness 0
+	circle_radius 33
+}
+
+<OBJECTS_GENERATION>
+
+/* THE TEST: loose, spread over radius 6, same avoidance as Test 1. */
+create_object STONE
+{
+	number_of_objects 12
+	set_loose_grouping
+	group_placement_radius 6
+	set_gaia_object_only
+	set_place_for_every_player
+	avoid_forest_zone 6
+}
+
+/* IN-MAP REFERENCE: the tight group from Test 1, unchanged. */
+create_object GOLD
+{
+	number_of_objects 25
+	set_tight_grouping
+	set_gaia_object_only
+	set_place_for_every_player
+	avoid_forest_zone 6
+}

@@ -1,0 +1,96 @@
+/*
+RMSTEST_30 - does grouped_by_team space TEAMS evenly, or space PLAYERS evenly
+preview-design.md Sec.15 item 15
+
+QUESTION
+guide:356 pins the intra-team spacing exactly, at double the base_size, and says
+nothing at all about what happens to the ring itself. Two readings survive:
+
+  A  Teams are spaced evenly around the ring, and each team's members are
+     packed together at their team's slot. Sec.6.1 models this one.
+  B  Players are spaced evenly around the ring and merely REORDERED so that
+     teammates end up adjacent.
+
+At 4v4 the two are nearly indistinguishable, which is exactly why this has gone
+unresolved - 4v4 is the configuration anyone would test by hand. They diverge
+sharply at UNEVEN team sizes, and that is what this run is for.
+
+METHOD
+create_player_lands with grouped_by_team and a base_size large enough that the
+intra-team spacing is unambiguous. Each player land is one 4-connected GRASS
+patch, so the eight centroids are the eight origins, and the matrix of angular
+gaps between consecutive origins answers the question directly. This is the same
+instrument and the same shape of question as RMSTEST_18's spacing matrix, which
+is why it is cheap.
+
+THREE CONFIGURATIONS, and the third is the one that decides it:
+  30-A  4v4
+  30-B  2v2v2v2
+  30-C  5v1v1v1   <- the discriminator
+
+TEAMS ARE SET OUTSIDE THE SCRIPT, in the lobby or the editor's player settings.
+Read RMSTEST_29's note on this before starting; if the editor cannot set teams
+for a random map, both 29 and 30 need a real lobby.
+
+GENERATE AT NORMAL (200) WITH 8 PLAYERS, all three configurations.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. 30-C under reading A: one dense arc of five origins with tight, equal gaps,
+   then three lone origins spread across the rest of the circle. Gap
+   distribution is strongly BIMODAL - a few small intra-team gaps and a few
+   large inter-team ones.
+2. 30-C under reading B: eight origins at near-uniform 45 degree gaps, with the
+   five teammates simply happening to be consecutive. Gap distribution is
+   UNIMODAL and flat.
+   These two predictions do not overlap, so one run at 5v1v1v1 settles it.
+3. 30-A should look almost identical under both readings. It is included as the
+   sanity case, NOT as evidence - if 30-A and 30-C disagree about which reading
+   holds, trust 30-C.
+4. 30-B distinguishes a subtler thing: under A, four evenly spaced pairs; under
+   B, eight evenly spaced singles. The gap sequence should alternate
+   small-large-small-large under A and be constant under B.
+
+ALSO UNANSWERED, and this run may show it for free
+What happens when the packed groups do not fit the circumference. It is
+reachable on a small map with a large base_size, and 30-C on Normal with
+base_size 8 puts five lands into one arc. If the five-team arc wraps into its
+neighbours, or if origins start landing on top of each other, that is the
+overflow behaviour showing itself and it is worth recording even though nothing
+currently models it.
+
+WATCH FOR
+Patch count must be 8. Packed teammates are the most likely lands in this batch
+to merge into a single patch, and a merged patch reports one centroid sitting
+between two real origins - see RMSTEST_25. If teams merge at base_size 8, drop
+number_of_tiles rather than base_size, since base_size is what sets the spacing
+being measured.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Convert each centroid to an angle about the map center (99.5, 99.5 on a 200
+  map), sort, and take consecutive differences. That gap sequence is the answer.
+*/
+
+<PLAYER_SETUP>
+  grouped_by_team
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 200
+    base_size 8
+    clumping_factor 20
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

@@ -1,6 +1,6 @@
-// §12 fuzz-lite: random token soup must never throw and must satisfy the
+// Sec.12 fuzz-lite: random token soup must never throw and must satisfy the
 // coverage/span-fidelity properties; plus the adversarial deep-nesting case
-// (spec §5.0). Seeded PRNG — failures reproduce.
+// (spec Sec.5.0). Seeded PRNG — failures reproduce.
 
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
@@ -87,7 +87,7 @@ describe("fuzz-lite (seeded)", () => {
     }
   });
 
-  it("20k-token nested-if adversary completes without throwing (§5.0)", () => {
+  it("20k-token nested-if adversary completes without throwing (Sec.5.0)", () => {
     const source = new Array(20000).fill("if").join(" ");
     const result = parseRms(source, lang);
     expect(checkProperties(result)).toEqual([]);

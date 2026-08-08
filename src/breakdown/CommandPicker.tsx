@@ -4,17 +4,24 @@ import { HelpTip } from "../components/HelpTip";
 import styles from "./CommandPicker.module.css";
 
 interface CommandPickerProps {
-  /** The tab's section name (canonical or unknown-section raw name) — filters the list by default, per §3.2. */
+  /** The tab's section name (canonical or unknown-section raw name) — filters the list by default, per Sec.3.2. */
   defaultSection?: string;
   onPick: (name: string) => void;
   onClose: () => void;
 }
 
-// docs/breakdown-design.md §3.2 — a searchable list of every command,
+// docs/breakdown-design.md Sec.3.2 — a searchable list of every command,
 // filtered to the active tab's section by default with a "show all
-// sections" toggle (cross-section placement draws no diagnostic yet —
-// validate() doesn't exist, §0.1 — so this is a pure convenience filter,
-// never a hard restriction). Each entry shows name + one-line description
+// sections" toggle. This is a pure convenience filter, never a hard
+// restriction: cross-section placement still draws no diagnostic.
+//
+// The reason changed even though the behaviour did not. validate() has since
+// shipped, but its wrong-section check (RMS0304) is deliberately unbuilt —
+// `CommandDef.section` records where the guide *documents* a command, not
+// where the engine accepts one, and 52 of the 53 corpus hits were shipped,
+// working maps (docs/build-log.md, validate() tuning table). So the filter
+// stays advisory until an in-game session settles which commands are
+// genuinely section-locked. Each entry shows name + one-line description
 // + a verified/unverified chip.
 export function CommandPicker({ defaultSection, onPick, onClose }: CommandPickerProps) {
   const { lang } = useBreakdownContext();

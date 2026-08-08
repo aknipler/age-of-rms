@@ -47,7 +47,7 @@
    held with help mode off (HelpTip renders no wrapper, .label WAS the
    flex item) and collapsed to fit-content with it on. .labelSlot is a
    wrapper we control that's always the actual flex item, regardless of
-   what HelpTip does inside it. Ash's report; same fragile pattern as
+   what HelpTip does inside it. Same fragile pattern as
    StatusBar.module.css's .settingsCog margin-left: auto. */
 .labelSlot {
   min-width: 12rem;

@@ -1,0 +1,87 @@
+/*
+RMSTEST_33a - is create_terrain actually locked to <TERRAIN_GENERATION>
+CLAUDE.md tracked debt: validate()'s RMS0304 wrong-section check
+
+NOT a Sec.15 item. This is the blocker on one of the two Sec.8 checks that
+shipped unbuilt, and it is a game question, so it rides along with this batch.
+Skip it if the sitting runs long - nothing else depends on it.
+
+QUESTION
+validate() has nine of eleven Sec.8 checks live. RMS0304, the wrong-section
+check, is not built, and the build log records why: we do not know WHICH
+commands are actually section-locked. language.json assigns every command a
+section, but that field records where a command BELONGS in well-formed RMS, and
+nobody has established that the engine enforces it. Those are different claims
+and the check needs the second one.
+
+Getting this wrong is expensive in a specific direction. If the engine happily
+runs a misplaced command, RMS0304 would flag working maps as broken - the exact
+false-positive class that BUG-002 and BUG-005 have already cost this project
+three rounds of work. So the check stays unbuilt until measured, which is the
+right call and is why this script exists rather than a plausible argument.
+
+METHOD
+create_terrain, placed in <OBJECTS_GENERATION> instead of
+<TERRAIN_GENERATION>. Everything else is a minimal working map. The terrain
+histogram is a clean binary: either SNOW appears or it does not.
+
+The <TERRAIN_GENERATION> header is present but EMPTY, so the section exists and
+only the command's placement is wrong. That matters - an absent section is a
+different test, and an absent <ELEVATION_GENERATION> is already known to be an
+error-severity condition that crashes in play.
+
+GENERATE AT NORMAL (200), any player count.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. SNOW appears at roughly its declared share. The engine reads the script as a
+   flat statement list and section headers are mostly organisational. If so,
+   RMS0304 must NOT be built as an error for this command, and probably should
+   be info at most.
+2. SNOW does not appear at all. The section genuinely gates execution, RMS0304
+   is worth building as a warning, and this command can be listed as locked.
+3. Generation fails or the map comes back malformed. Also an answer, and the
+   strongest possible argument for the check - but record exactly what "fails"
+   looked like, because a crash and a silent no-op need different diagnostic
+   text.
+
+WHAT THIS DOES NOT ESTABLISH, and it is the reason to run 33b as well
+One command answering one way says nothing about the others. There is no reason
+to expect a uniform rule: the engine may hoist some commands, ignore others, and
+enforce a third group. RMS0304 needs a PER-COMMAND list, and this batch starts it
+with two entries rather than pretending to finish it. Extend the same pattern to
+create_land in <TERRAIN_GENERATION>, and to the <ELEVATION_GENERATION> commands,
+before the check is built.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"
+  The default terrain histogram is the whole reading. Look for SNOW.
+
+ONE RUN IS ENOUGH if the answer is clean. Run a second only if SNOW appears at a
+share far off the declared 10 percent, which would suggest the command ran but
+under different rules.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* DELIBERATELY IN THE WRONG SECTION. This is the test. */
+  create_terrain SNOW
+  {
+    base_terrain GRASS
+    land_percent 10
+    number_of_clumps 10
+    set_scale_by_groups
+  }
+
+<CONNECTION_GENERATION>

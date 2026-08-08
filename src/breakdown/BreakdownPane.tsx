@@ -11,7 +11,7 @@ import { findItemAtOffset } from "./selectionResolve";
 import { extractComments } from "./comments";
 import type { EditIntent } from "./patch/intents";
 import type { SharedSelectionApi } from "../hooks/useSharedSelection";
-import { BreakdownSidePanel } from "./sidepanel/BreakdownSidePanel";
+import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
 import { buildSectionTabs } from "./sectionTabsModel";
@@ -30,12 +30,12 @@ interface BreakdownPaneProps {
   hasFile: boolean;
   source: string;
   parseResult: ParseResult | null;
-  /** From useDocument (§6.4) — pushes a TextEdit onto the shared Monaco model. */
+  /** From useDocument (Sec.6.4) — pushes a TextEdit onto the shared Monaco model. */
   applyTextEdit: ApplyTextEdit;
-  /** From useParsedDocument (§6.2) — BUG-001 Part B, bypasses the debounce for a programmatic edit's reparse. */
+  /** From useParsedDocument (Sec.6.2) — BUG-001 Part B, bypasses the debounce for a programmatic edit's reparse. */
   reparseNow: (source: string) => void;
   /**
-   * Ash's post-3.9 follow-up: card selection is now owned by App (see
+   * Card selection is now owned by App (see
    * useSharedSelection), not this component, specifically so it survives
    * this component unmounting on every Breakdown -> Code tab switch.
    */
@@ -43,11 +43,11 @@ interface BreakdownPaneProps {
 }
 
 // docs/breakdown-design.md — the Breakdown editor. As of 3.4, wired to the
-// text-patch engine (§4): every card action becomes an EditIntent,
-// computeEdit() turns it into a TextEdit, and applyTextEdit (§6.4) pushes
+// text-patch engine (Sec.4): every card action becomes an EditIntent,
+// computeEdit() turns it into a TextEdit, and applyTextEdit (Sec.6.4) pushes
 // it onto the shared Monaco model, which drives useParsedDocument's
 // reparse and re-renders this tree from the new AST. Ephemeral UI state
-// (expansion, focus) is anchored to source offsets (§6.3), owned here so
+// (expansion, focus) is anchored to source offsets (Sec.6.3), owned here so
 // it survives the reparse that replaces `parseResult` on every edit.
 export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, reparseNow, selection }: BreakdownPaneProps) {
   const tabs = useMemo(() => (parseResult ? buildSectionTabs(parseResult.script) : []), [parseResult]);
@@ -56,18 +56,18 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   const comments = useMemo(() => (parseResult ? extractComments(parseResult.tokens) : []), [parseResult]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
-  // §6.3 expansion anchors: a set of source offsets captured at
+  // Sec.6.3 expansion anchors: a set of source offsets captured at
   // expand-time (a card's span.start). A card renders expanded iff some
   // anchor falls within its current span (isAnchoredWithin).
   const [expandedAnchors, setExpandedAnchors] = useState<Set<number>>(new Set());
 
-  // §3.9 — single-select. As of the post-3.9 cross-tab-sync follow-up,
+  // Sec.3.9 — single-select. As of the post-3.9 cross-tab-sync follow-up,
   // the anchor itself lives in App (useSharedSelection) so it survives
   // this component unmounting on a tab switch; `selection` below is
   // where all of isSelected/selectCard/clearSelection/selectedItem now
   // come from.
 
-  // §6.3/§4.11 focus restoration: editors register themselves (by their
+  // Sec.6.3/Sec.4.11 focus restoration: editors register themselves (by their
   // own current anchor offset) here as they mount/update; a pending
   // request is resolved by exact-offset lookup once the pane re-renders
   // from the next parse (computeEdit's `caret` is already a valid
@@ -139,8 +139,8 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   const applyEdit = useCallback(
     (intent: EditIntent) => {
       if (!parseResult) return null;
-      // Rapid-action fix (Ash's "over-deletes when I delete a bunch of
-      // cards fast" report): `computeEdit` inside applyEditIntent only
+      // Rapid-action fix (over-deletes when deleting a bunch of
+      // cards fast): `computeEdit` inside applyEditIntent only
       // knows about THIS `parseResult` — the last CONFIRMED parse — but if
       // a previous card action already landed on the model while ITS
       // reparse is still in flight (tracked right here in
@@ -205,7 +205,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     });
   }, [source]);
 
-  // Tab switch clears selection (§3.9 — the selected card is no longer
+  // Tab switch clears selection (Sec.3.9 — the selected card is no longer
   // on screen, and an off-screen insert anchor is exactly the surprise
   // this feature exists to remove). This is a SECTION-tab switch inside
   // Breakdown — distinct from the top-level Breakdown/Code tab switch,
@@ -302,7 +302,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
       }}
     >
       <div className={styles.pane}>
-        <BreakdownSidePanel />
+        <MapSidePanel />
         <div className={styles.main}>
           <SectionTabs
             tabs={tabs}

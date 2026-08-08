@@ -1,4 +1,4 @@
-// Pure §3.1 logic: ScriptNode -> the section sub-tab list. Kept free of
+// Pure Sec.3.1 logic: ScriptNode -> the section sub-tab list. Kept free of
 // React so SectionTabs is a thin renderer over this.
 import type { Diagnostic, DiagnosticSeverity, Item, ScriptNode, SectionNode, Span } from "../parser/types";
 import { CANONICAL_SECTION_ORDER, sectionLabel, SECTION_NUMBERS } from "./sectionLabels";
@@ -9,7 +9,7 @@ export interface SectionTab {
   label: string;
   known: boolean;
   /**
-   * Absolute display number (Ash's ask) — fixed by canonical identity
+   * Absolute display number — fixed by canonical identity
    * (SECTION_NUMBERS: header=0, PLAYER_SETUP=1, ...), NOT by this tab's
    * position in the rendered array, so a missing section never shifts
    * the numbers on the sections after it. Unknown sections (no fixed
@@ -24,7 +24,7 @@ export interface SectionTab {
    * The disjoint source ranges this tab aggregates (a duplicate same-type
    * section tab covers more than one). Problem-badge severity is computed
    * by containment against these, never by min/max offset across them
-   * (§3.1 — the ranges may have unrelated code between them).
+   * (Sec.3.1 — the ranges may have unrelated code between them).
    */
   ranges: Span[];
   /** The concrete SectionNodes this tab aggregates, in source order (for provenance / future add-command targeting). */

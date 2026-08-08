@@ -1,4 +1,4 @@
-// §3.10 — the diagnostics overview ruler. Split per this codebase's
+// Sec.3.10 — the diagnostics overview ruler. Split per this codebase's
 // "pure logic first, DOM glue after" convention (ephemeralAnchors.ts,
 // selectionResolve.ts, comments.ts): deciding WHICH top-level items get a
 // tick and what severity each shows is a pure function of the AST +
@@ -21,7 +21,7 @@ export interface RulerTick {
  * hidden contents (`maxSeverityWithin` reads the whole span regardless of
  * expand state, which is exactly what makes "ticks for cards inside
  * collapsed containers still appear, positioned at the collapsed
- * container's tick" (§3.10) fall out for free, with no separate
+ * container's tick" (Sec.3.10) fall out for free, with no separate
  * expand-state check needed here).
  */
 export function ticksForItems(items: readonly Item[], diagnostics: readonly Diagnostic[]): RulerTick[] {

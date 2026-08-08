@@ -28,7 +28,7 @@ interface HelpTipProps {
    * content — `text` lets the caller supply that content directly
    * (typically sourced from doc-strings.json / language.json, the same
    * data src/editor/aoe2RmsHover.ts's Monaco hover reads, so the two
-   * surfaces never disagree — breakdown-design.md §8). `id` is still
+   * surfaces never disagree — breakdown-design.md Sec.8). `id` is still
    * required and still used as the ui-help.json fallback if `text` is
    * itself undefined (e.g. no doc-string exists for this exact name).
    */
@@ -56,8 +56,8 @@ export function HelpTip({ id, children, text }: HelpTipProps) {
     return () => window.clearTimeout(timeoutRef.current);
   }, [hovering, mode]);
 
-  // Ash's reports (Add Command's width, attribute-column alignment, the
-  // StatusBar cog, and a small row-height difference) all turned out to
+  // Add Command's width, attribute-column alignment, the
+  // StatusBar cog, and a small row-height difference all turned out to
   // be the SAME root cause: this component used to render a completely
   // different DOM shape depending on the setting — a real `<span>`
   // wrapper when help mode was on, nothing at all (a bare Fragment) when

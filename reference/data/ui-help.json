@@ -266,7 +266,7 @@
     },
     {
       "id": "breakdown.sidePanel.previewToggle",
-      "text": "Switches the map preview between the current in-progress view and the final generated result. Preview logic arrives in Phase 4."
+      "text": "Switches the map preview between Current and Final. Final draws the whole script. Current is meant to draw only what the script has built up to a line you pin, so you can see what a half written script produces — that pinning isn't built yet, so both positions currently draw the same full-script result. The preview draws your actual script, generated in the background as you edit."
     },
     {
       "id": "breakdown.sidePanel.referenceRadio",
@@ -291,6 +291,62 @@
     {
       "id": "unsavedChanges.discard",
       "text": "Continues WITHOUT saving — every change made since the last save is permanently discarded."
+    },
+    {
+      "id": "generationSettings.teamPreset",
+      "text": "Common lobby setups. Selecting one takes over the team assignments (and the player count, except for FFA); press the same button again to release it and get your own configuration back."
+    },
+    {
+      "id": "generationSettings.teamButton",
+      "text": "This player's team. Left click to advance through - 1 2 3 4, right click to go back. \"-\" means no team. Teams are capped at 4 because the game's script conditionals are."
+    },
+    {
+      "id": "generationSettings.teamReadout",
+      "text": "How the game will actually read this lobby. Team numbers are renumbered by lobby order rather than the number you picked, and a team with only one player is not counted as a team at all, so a 1v1 reports no teams."
+    },
+    {
+      "id": "preview.canvas",
+      "text": "The approximate map preview. Drag to pan, use the wheel to zoom around the pointer, double click to fit the whole map. Hovering a tile shows its terrain, elevation and anything placed on it underneath."
+    },
+    {
+      "id": "preview.approximateBadge",
+      "text": "This is a heuristic re-creation of what your script might generate, not the game's own map generator. Layouts here are plausible rather than predictive, so always test in game before publishing a map."
+    },
+    {
+      "id": "preview.seedChip",
+      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It has no relationship to the seed the game uses for a real match."
+    },
+    {
+      "id": "preview.reroll",
+      "text": "Draws a new seed and generates a fresh arrangement. Rolling through several is how you tell a layout that holds up from one that got lucky once."
+    },
+    {
+      "id": "preview.notesDrawer",
+      "text": "Everything the preview did not simulate, plus every placement that failed. Worth opening before trusting a layout, because a quiet map is not the same as a correct one."
+    },
+    {
+      "id": "preview.failureCount",
+      "text": "How many placements the preview could not make. A failure usually means the script asked for something the map cannot supply, such as a resource on a terrain that was never generated. The notes drawer lists one line per command per kind of failure, with a count beside it, rather than one line per attempt — a single command can fail tens of thousands of times and they all have the same cause."
+    },
+    {
+      "id": "preview.colorMode",
+      "text": "Which set of terrain colours to draw with. Game uses the average colour of each terrain's own texture from your install, so snow looks like snow; terrains that share a texture file, such as Forest and Underbrush, share a colour. Minimap uses the colour class stored in the game's own data, which is flatter and only has twelve colours in it, so every snow terrain comes out grass green — but it does tell forest apart from underbrush. Both come from the game files; neither is a claim about what the minimap draws in a real match."
+    },
+    {
+      "id": "preview.legend",
+      "text": "Which terrain each colour stands for, and where the colour came from. A row is marked when its colour did not come from the mode you selected, which happens when the reference data has no colour for that terrain."
+    },
+    {
+      "id": "preview.zoomIn",
+      "text": "Zooms in on the middle of the view. The mouse wheel zooms around the pointer instead, which is usually what you want."
+    },
+    {
+      "id": "preview.zoomOut",
+      "text": "Zooms out from the middle of the view."
+    },
+    {
+      "id": "preview.zoomFit",
+      "text": "Fits the whole map back into the panel. Double clicking the map does the same thing."
     }
   ]
 }

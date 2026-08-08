@@ -23,12 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
+# Python (tools/extract-constants)
+__pycache__/
+*.pyc
+
 test-maps/local
 test-maps/*
 !test-maps/sample.rms
 !test-maps/13_Rings_v1.2.rms
 !test-maps/AK_*.rms
-!test-maps/AD4 - Pag - v1.2.rms
 !test-maps/AD4 - Ra.rms
 !test-maps/BCC2-Rekawa.rms
 !test-maps/Chaotic_straitv0.99.rms

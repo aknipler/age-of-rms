@@ -1,0 +1,74 @@
+/*
+	RMSTEST 10 — does scaling use the EXACT map area, or the guide's rounded
+	area-ratio column?
+
+	Open across three revisions of docs/preview-design.md (Sec.15 item 7b).
+	Sec.4 pins scaling to `declared × dim²/10000` computed from the live dim,
+	and argues the guide's ratio column is a display rounding. guide:3429 says
+	the opposite in plain words — "multiply your chosen number by the area ratio
+	listed for a given map size" — so an implementer reading the guide gets a
+	different number than an implementer reading our spec.
+
+	THE ARITHMETIC (run this on SMALL, 144x144 = 20736 tiles)
+	  exact:        400 × 20736/10000 = 400 × 2.0736 = 829.44
+	  rounded ratio: 400 × 2.1                       = 840.0
+
+	An 11-tile gap. Invisible on screen, trivial for tools/scenario-probe.
+
+	READ IT WITH THE PROBE, NOT BY EYE
+	  1. Editor: Map Size = Small, 2 players, this script, Generate Map.
+	  2. Save As a scenario.
+	  3. python tools/scenario-probe/probe_scenario.py <that file>
+	  4. Read the "elevation" histogram. Everything at level 1 is what
+	     create_elevation raised; level 0 is untouched map.
+
+	  ~829 at level 1  -> exact area. Sec.4 is right, guide:3429 is a
+	                      simplification for authors, and the fixture in
+	                      Sec.13 asserting 829 stands.
+	  ~840 at level 1  -> the engine really does use the rounded ratio column.
+	                      Sec.4's central argument is wrong and the scaling rule
+	                      needs rewriting, along with Sec.6.2/6.4's tile budgets.
+	  anything else    -> report the exact number. A short count could mean the
+	                      clump ran out of room rather than a different formula,
+	                      so check whether it is near 829/840 or far below both.
+
+	WHAT THIS DOES *NOT* SETTLE: the rounding rule (Sec.15 item 7b's second
+	half). 829.44 floors to 829 and rounds to 829, so both give the same answer
+	here — deliberately, to isolate one variable. If this comes back 829, a
+	follow-up with `number_of_tiles 500` (exact 1036.8: floor 1036, round 1037)
+	separates floor from round.
+
+	DESIGN NOTES
+	  MaxHeight is 1 so every raised tile sits at level 1 and the histogram is a
+	  single unambiguous bucket. One clump, so the budget is not divided.
+	  Player lands are tiny and pushed to the rim because elevation avoids
+	  player-land origins by about 9 tiles (guide:1169) and could otherwise eat
+	  into the budget. 400 tiles is ~4% of a Small map, so there is no shortage
+	  of room.
+	  enable_balanced_elevation is deliberately ABSENT — it is irrelevant to the
+	  count and adding it would change one more thing at once.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+<ELEVATION_GENERATION>
+
+create_elevation 1
+{
+	base_terrain GRASS
+	number_of_tiles 200
+	number_of_clumps 1
+	set_scale_by_size
+}

@@ -9,7 +9,7 @@ import { HelpTip } from "../../components/HelpTip";
 import cardStyles from "./cards.module.css";
 import styles from "./ConditionalCard.module.css";
 
-// docs/breakdown-design.md §3.5 — same shape as ConditionalCard, one
+// docs/breakdown-design.md Sec.3.5 — same shape as ConditionalCard, one
 // segment per percent_chance branch, wired to the patch engine (setChance,
 // addBranch "percent_chance", removeBranch, addCommand `in: "branch"`).
 export function RandomCard({ node }: { node: RandomNode }) {

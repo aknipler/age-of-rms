@@ -12,22 +12,22 @@ interface RawCardProps {
   kindLabel: string;
 }
 
-// docs/breakdown-design.md §3.7 — the universal read-only fallback:
+// docs/breakdown-design.md Sec.3.7 — the universal read-only fallback:
 // anything the structured UI can't represent renders verbatim, with the
 // parser's own diagnostic and an "Edit in Code tab" affordance. Raw
 // cards are the only cards with no Breakdown-side editing, by design —
 // this holds for both v1 (no patch engine yet) and v1.x (these regions
-// stay Code-tab-only even once 3.3/3.4 ship, §1 non-goals).
+// stay Code-tab-only even once 3.3/3.4 ship, Sec.1 non-goals).
 export function RawCard({ node, kindLabel }: RawCardProps) {
   const { source, diagnostics, applyEdit } = useBreakdownContext();
   const text = source.slice(node.span.start, node.span.end);
   const nodeDiagnostics = diagnosticsWithin(diagnostics, node.span);
   const worstSeverity = nodeDiagnostics[0]?.severity;
 
-  // §3.3's did-you-mean quick-fix, wired to the patch engine in 3.4
-  // (§4.1's `applySuggestion` intent — the common typo path and the whole
+  // Sec.3.3's did-you-mean quick-fix, wired to the patch engine in 3.4
+  // (Sec.4.1's `applySuggestion` intent — the common typo path and the whole
   // reason did-you-mean exists). Targets the RawNode's *first* token,
-  // per §4.1's pinned rev-4 shape.
+  // per Sec.4.1's pinned rev-4 shape.
   const suggestion = nodeDiagnostics.find((d) => d.suggestion)?.suggestion;
   const rawNode = node.kind === "raw" ? node : undefined;
 

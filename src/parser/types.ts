@@ -1,5 +1,5 @@
 // Core lexer/parser types shared across src/parser/*. Per
-// docs/parser-design.md §14: no imports from React, Monaco, or Tauri
+// docs/parser-design.md Sec.14: no imports from React, Monaco, or Tauri
 // anywhere under src/parser/ — it must run unchanged in plain Node
 // (Vitest) and, later, in a bare web worker (CREATION_PLAN 2.4).
 
@@ -38,7 +38,7 @@ export interface Diagnostic {
    * Optional beginner-facing fix suggestion (e.g. the nearest known name for
    * an unknown identifier). Populated for RMS0200 ("unknown name") today —
    * see unknownName() in diagnostics.ts. Consumed by the Breakdown raw-card
-   * quick-fix (docs/breakdown-design.md §3.7 / Appendix rev-2 changelog).
+   * quick-fix (docs/breakdown-design.md Sec.3.7 / Appendix rev-2 changelog).
    */
   suggestion?: string;
 }
@@ -47,7 +47,7 @@ export interface LexOptions {
   /**
    * Whether RMS's block comments (its only comment syntax) nest inside
    * each other. Defaults to true — DE-confirmed behavior per
-   * docs/parser-design.md §2 "Comment handling" (rev 2 had this
+   * docs/parser-design.md Sec.2 "Comment handling" (rev 2 had this
    * defaulting false, which was wrong).
    */
   nestedComments?: boolean;
@@ -60,13 +60,13 @@ export interface LexResult {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 2.3: AST types, per docs/parser-design.md §3/§4.
+// Phase 2.3: AST types, per docs/parser-design.md Sec.3/Sec.4.
 //
 // One deliberate representation choice, documented here because the spec's
-// own §4 sketches show `Token` objects while its §3 says "AST nodes reference
+// own Sec.4 sketches show `Token` objects while its Sec.3 says "AST nodes reference
 // tokens by index" and rev 5's ArgNode uses indices: nodes store TOKEN
 // INDICES (into ParseResult.tokens) everywhere, never Token objects. Indices
-// are what the §12 coverage/ownership properties and the Phase-3.3 patch
+// are what the Sec.12 coverage/ownership properties and the Phase-3.3 patch
 // engine actually need; the Token object is always one array lookup away.
 // ---------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ export interface NodeBase {
 export type ArgValue =
   | number // includes floats; Infinity/-Infinity for inf/-inf words in numeric slots
   | { rnd: [number, number] }
-  | { expr: { tokens: number[] } } // §2.2 — token indices, unevaluated
+  | { expr: { tokens: number[] } } // Sec.2.2 — token indices, unevaluated
   | string; // constant/label reference; quoted paths: assembled, quotes stripped
 
 export interface ArgNode extends NodeBase {
@@ -175,10 +175,10 @@ export interface SymbolInfo {
   nameToken: number;
   valueToken?: number; // #const only (may reference an expression's first token)
   // 0 = unconditionally defined. Counts BOTH if-branches AND start_random
-  // branches (pinned, docs/parser-design.md §3).
+  // branches (pinned, docs/parser-design.md Sec.3).
   conditionalDepth: number;
   // A later #undefine names this symbol — which does NOTHING in-engine
-  // (docs/parser-design.md §7). validate() must NOT treat it as removed.
+  // (docs/parser-design.md Sec.7). validate() must NOT treat it as removed.
   undefineAttempted?: boolean;
 }
 
@@ -189,9 +189,9 @@ export interface IncludeInfo {
 }
 
 export interface ParseOptions {
-  nestedComments?: boolean; // default TRUE (docs/parser-design.md §2)
-  aliasTable?: ReadonlyMap<string, TokenKind>; // default empty (§2.1) — lexer-level classification override
-  maxNestingDepth?: number; // default 200 (§5.0)
+  nestedComments?: boolean; // default TRUE (docs/parser-design.md Sec.2)
+  aliasTable?: ReadonlyMap<string, TokenKind>; // default empty (Sec.2.1) — lexer-level classification override
+  maxNestingDepth?: number; // default 200 (Sec.5.0)
 }
 
 export interface ParseResult {

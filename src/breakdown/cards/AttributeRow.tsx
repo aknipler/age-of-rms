@@ -17,7 +17,7 @@ interface InstanceValueProps {
   helpId: string;
 }
 
-// docs/breakdown-design.md §3.4/§4.11 — set-value edits, commit on
+// docs/breakdown-design.md Sec.3.4/Sec.4.11 — set-value edits, commit on
 // blur/Enter. Wired to the same-value-source-order intent regardless of
 // whether this arg belongs to a listed attribute, an unlisted one (Other
 // contents), or a positional command argument (reused by CommandCard).
@@ -32,7 +32,7 @@ export function AttributeValueEditor({ arg, type, helpId }: InstanceValueProps) 
       </span>
     );
   }
-  // §3.4's quoting round-trip: a quoted source token (only #include_drs/
+  // Sec.3.4's quoting round-trip: a quoted source token (only #include_drs/
   // #includeXS filename args are ever written this way) is allowed to
   // contain spaces — computeEdit re-quotes on write iff the original
   // token was quoted, so whitespace here is legal RMS, not unrenderable.
@@ -52,16 +52,16 @@ export function AttributeValueEditor({ arg, type, helpId }: InstanceValueProps) 
   );
 }
 
-/** Exported for OtherContentsRow.tsx — a known-but-unlisted attribute (§3.3(c)) renders as this same typed row, just with no repeatable/badge framing. */
+/** Exported for OtherContentsRow.tsx — a known-but-unlisted attribute (Sec.3.3(c)) renders as this same typed row, just with no repeatable/badge framing. */
 export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; helpId: string }) {
   const { tokens, applyEdit, diagnostics } = useBreakdownContext();
   const name = tokens[node.name].text;
   const defArgs = node.def?.arguments ?? [];
   const isBareFlag = node.args.length === 0 && defArgs.length === 0;
-  // Ash's follow-up ask: a diagnostic on this attribute previously only
+  // A diagnostic on this attribute previously only
   // showed up in the owning CommandCard's HEADER badge — easy to miss
   // which of several attributes it was actually about. Highlighting the
-  // specific row too (same span-containment rule §5 already uses for the
+  // specific row too (same span-containment rule Sec.5 already uses for the
   // header badge, just scoped to this one node instead of the whole
   // command) makes that immediate.
   const severity = maxSeverityWithin(diagnostics, node.span);
@@ -69,7 +69,7 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
   // Custom-positioned popup instead of a native `title` — see
   // DiagnosticTooltip.tsx: a browser tooltip can't be repositioned, so it
   // was free to land on top of a HelpTip popup opened by something
-  // nested in this same row (Ash's report). Always hoverable when a
+  // nested in this same row. Always hoverable when a
   // severity exists (unlike HelpTip, not gated behind the help-mode
   // setting), just flips above/below to avoid colliding with one.
   const diagHover = useDiagnosticHover();
@@ -148,12 +148,12 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
 
 interface AttributeRowProps {
   slot: AttributeSlot;
-  /** The command's block (or the bare command itself, for brace synthesis, §4.6) — needed to construct addAttribute/toggleFlag intents. */
+  /** The command's block (or the bare command itself, for brace synthesis, Sec.4.6) — needed to construct addAttribute/toggleFlag intents. */
   target: AttributeTarget;
 }
 
 /**
- * Renders one def.attributes[] slot per docs/breakdown-design.md §3.3's
+ * Renders one def.attributes[] slot per docs/breakdown-design.md Sec.3.3's
  * all-attributes model:
  * - 0 instances: faint, byte-free add-affordance -> addAttribute/toggleFlag(on).
  * - 1 instance: filled row (value editor(s), or checkbox for a flag).
@@ -178,7 +178,7 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
       }
       if (result) requestFocus(result.caret);
     };
-    // Ash's report: attributes were merging multiple-per-line only while
+    // Attributes were merging multiple-per-line only while
     // Help Tips was on. Root cause — this used to wrap the WHOLE row
     // <div> in <HelpTip>. HelpTip's own wrapper (HelpTip.module.css's
     // .wrapper) is `display: inline-block`; with help mode on, that put

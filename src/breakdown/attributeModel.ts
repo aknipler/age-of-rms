@@ -1,4 +1,4 @@
-// Pure logic for the §3.3 "all-attributes model" — kept free of React so
+// Pure logic for the Sec.3.3 "all-attributes model" — kept free of React so
 // it's testable the same way as the parser's own pure modules, and so
 // CommandCard just renders what this computes.
 import type { AttributeNode, CommandNode, Item } from "../parser/types";
@@ -13,7 +13,7 @@ export interface AttributeSlot {
    * 2+ = the ground-truth rule: always a list, regardless of
    * `def.repeatable` — presence in the source is ground truth, the flag
    * only gates whether "add another" is offered (docs/breakdown-design.md
-   * §3.3, rev 2's load-bearing fix).
+   * Sec.3.3, rev 2's load-bearing fix).
    */
   instances: AttributeNode[];
   /** A bare flag (no arguments, or a single bare `flag`-typed arg). */

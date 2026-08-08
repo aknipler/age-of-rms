@@ -1,0 +1,142 @@
+/*
+RMSTEST_37 - WHICH zone does set_zone_by_team give an un-teamed player
+preview-design.md Sec.15 item 14, third attempt - PROXIMITY IS NOW FORCED
+
+WHY 29 AND 34 BOTH FAILED, AND THEY FAILED DIFFERENTLY
+RMSTEST_29 returned eight separate patches, which both surviving hypotheses
+predict, so it could not discriminate. RMSTEST_34 added probe lands at the two
+boundary zones - and came back with every probe, INCLUDING THE CONTROL, sitting
+17 to 21 tiles from the player lands. Nothing separated them.
+
+RMSTEST_34's own prediction 4 named that outcome in advance: sharing a zone only
+PERMITS contact, it does not compel it. A probe land placed at random has to
+happen to grow next to the one player land it might share a zone with, and on a
+200 map with eight players it simply never did. The asymmetry was in the header
+and the design still leaned on the weak half of it.
+
+So this attempt stops sampling and starts arranging. direct_placement pins
+player 1 at a known tile and every probe goes at a known offset from it. Contact
+is then decided by the zone rule alone, because the geometry is fixed.
+
+THE HYPOTHESES, both about PLAYER 1 specifically
+  A  PINNED CHOICE. Un-teamed keeps the default player zone, playerNumber - 10.
+     Player 1 is in zone -9.
+  B  Every player carries an engine-internal TeamNumber even when solo, so the
+     zone is TeamNumber - 9 with no special case. Player 1 is in zone -8.
+
+Note this corrects RMSTEST_34's probe choice. That script probed -9 and -1, on
+the reasoning that -1 is player 8's zone under B - but it pinned nothing about
+where player 8 was, so the -1 probe was untestable even in principle. Both
+probes here are aimed at PLAYER 1, whose position is fixed.
+
+METHOD
+  player 1   GRASS  at tile (100,100), set_zone_by_team
+  probe A    DIRT   at tile (100, 78), zone -9   shares with P1 under A only
+  probe B    DESERT at tile (100,122), zone -8   shares with P1 under B only
+  control    DIRT3  at tile ( 78,100), zone  5   shares under NEITHER
+
+Every probe origin is 22 tiles from player 1's origin - far enough that
+min_placement_distance cannot reject it, close enough that a land of this size
+reaches player 1's edge in a few growth rounds if nothing stops it. With
+other_zone_avoidance_distance 20, a probe in a DIFFERENT zone is pushed away and
+grows outward instead; a probe SHARING the zone grows straight into contact.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  plus minimum distance from each probe terrain to the GRASS land.
+  The reading is WHICH probe is in contact. Contact means roughly 0 to 5 tiles;
+  pushed-away means at or above 20.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Under A: DIRT in contact with GRASS, DESERT at or above 20. Sec.6.1's pinned
+   choice becomes a measurement and the special case stays.
+2. Under B: DESERT in contact, DIRT at or above 20. Sec.6.1 loses the special
+   case entirely - an un-teamed player's zone is TeamNumber - 9 like everyone
+   else - and the model gets simpler.
+3. DIRT3 must be at or above 20 in every run. IT IS THE CONTROL. If it makes
+   contact, other_zone_avoidance_distance is not separating anything at these
+   distances and neither probe can be read - which is exactly the state
+   RMSTEST_34 ended in, and the reason this script exists.
+4. If BOTH DIRT and DESERT make contact, the zone rule is not exclusive and
+   neither hypothesis is right as stated. Record it; that would be a third
+   finding rather than a failed run.
+
+The instrument is now symmetric: contact and non-contact are both forced by the
+geometry, so unlike RMSTEST_34 a null result actually means something.
+
+GENERATE AT NORMAL (200) WITH 8 PLAYERS, ALL UN-TEAMED (plain FFA, no team
+setup, no lobby needed). RUN IT THREE TIMES.
+
+Note direct_placement means players 2-8 get no land at all - that is intended.
+Only player 1's zone is under test, and the seven absent lands remove every
+other thing that could have pushed a probe around.
+*/
+
+<PLAYER_SETUP>
+  direct_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  /* Player 1, pinned. set_zone_by_team is the attribute under test. */
+  create_land
+  {
+    terrain_type GRASS
+    number_of_tiles 200
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    land_position 50 50
+    assign_to AT_PLAYER 1 0 0
+    set_zone_by_team
+    other_zone_avoidance_distance 20
+  }
+
+  /* probe A - player 1's zone under hypothesis A */
+  create_land
+  {
+    terrain_type DIRT
+    number_of_tiles 200
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    land_position 50 39
+    zone -9
+    other_zone_avoidance_distance 20
+  }
+
+  /* probe B - player 1's zone under hypothesis B */
+  create_land
+  {
+    terrain_type DESERT
+    number_of_tiles 200
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    land_position 50 61
+    zone -8
+    other_zone_avoidance_distance 20
+  }
+
+  /* CONTROL - nobody's zone under either hypothesis. Must NOT make contact. */
+  create_land
+  {
+    terrain_type DIRT3
+    number_of_tiles 200
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    land_position 39 50
+    zone 5
+    other_zone_avoidance_distance 20
+  }
+
+<ELEVATION_GENERATION>
+
+/* NO <CLIFF_GENERATION> HEADER - an empty one generates cliffs. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

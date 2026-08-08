@@ -38,7 +38,7 @@ create_land
 
 <ELEVATION_GENERATION>
 
-create_elevation
+create_elevation 7
 {
     base_size 6
     number_of_clumps 20
@@ -47,15 +47,15 @@ create_elevation
 <TERRAIN_GENERATION>
 
 start_random
-    percent_chance 60 create_terrain
+    percent_chance 60 create_terrain DIRT3
     {
-        terrain_type DIRT3
+        base_terrain GRASS
         number_of_clumps 10
         number_of_tiles 200
     }
-    percent_chance 40 create_terrain
+    percent_chance 40 create_terrain LEAVES
     {
-        terrain_type LEAVES
+        base_terrain GRASS
         number_of_clumps 8
         number_of_tiles 150
     }

@@ -2,30 +2,53 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ageofrms.dev/schemas/game-constants.schema.json",
   "title": "Game Constants",
-  "description": "Terrain and object constants used by AoE2:DE RMS scripts. Fields mirror the Breakdown reference-table columns from PLAN.md's UI section (constant ID, RMS constant, descriptive name, DE texture file), plus per-object resource amounts used for the Phase 2.5 status-bar resource totals. Machine-extracted from the game's data files by tools/extract-constants once that exists (Phase 4.0); hand-maintained subset until then — see PLAN.md 'Reference DB approach'.",
+  "description": "Terrain and object constants used by AoE2:DE RMS scripts. Fields mirror the Breakdown reference-table columns from PLAN.md's UI section (constant ID, RMS constant, descriptive name, DE texture file), plus per-object resource amounts used for the status-bar resource totals. Machine-extracted from the game's data files by tools/extract-constants — a maintainer re-runs it against their own local DE install after a game patch and PRs the diff; see that tool's README and PLAN.md 'Reference DB approach'. Entries with verified: false have not yet been through that extraction and remain hand-curated placeholders.",
   "type": "object",
-  "required": ["constants"],
+  "required": [
+    "constants"
+  ],
   "additionalProperties": false,
   "properties": {
     "constants": {
       "type": "array",
-      "items": { "$ref": "#/$defs/constant" }
+      "items": {
+        "$ref": "#/$defs/constant"
+      }
     }
   },
   "$defs": {
     "constant": {
       "type": "object",
-      "required": ["rmsConstant", "descriptiveName", "category", "verified"],
+      "required": [
+        "rmsConstant",
+        "descriptiveName",
+        "category",
+        "verified"
+      ],
       "additionalProperties": false,
       "properties": {
         "constId": {
-          "type": ["integer", "null"],
-          "description": "The internal DE numeric ID for this terrain/object. Null until confirmed — do not guess this value; it must come from the game's data files or a trusted community dump, not general knowledge."
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "The internal DE numeric ID for this terrain/object. Null until confirmed. Do not guess this value. It must come from the game's data files or a trusted community dump, not general knowledge."
+        },
+        "idSource": {
+          "type": "string",
+          "enum": [
+            "extracted",
+            "patch-notes"
+          ],
+          "description": "Provenance of constId. 'extracted' = read from the game's own random_map.def by tools/extract-constants; 'patch-notes' = taken from a dated official patch note. Consumed by the parser's RMS0204/RMS0205 message gating (parser-design Sec.6), which only uses resolved-ID wording when provenance is trusted. Absent means unknown provenance - do not backfill by hand."
         },
         "rmsConstant": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "pattern": "^[A-Z][A-Z0-9_]*$",
-          "description": "The exact identifier used in RMS scripts, e.g. GRASS, GOLD."
+          "description": "The exact identifier used in RMS scripts, e.g. GRASS, GOLD. NULL for the terrains that have no callable constant at all — of the 131 DE terrains only 78 are named, and a script reaches the rest by writing the bare id (terrain_type 26) or defining its own #const. Null therefore means 'this terrain exists and can be placed, just not by name', which is different information from an absent entry, and every name lookup must simply fail to match it rather than treat it as a wildcard."
         },
         "descriptiveName": {
           "type": "string",
@@ -33,21 +56,95 @@
         },
         "category": {
           "type": "string",
-          "enum": ["terrain", "object"]
+          "enum": [
+            "terrain",
+            "object"
+          ]
         },
         "deTextureFile": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "DE texture filename shown in the reference table (e.g. g_grs). Null until confirmed."
+        },
+        "isWater": {
+          "type": "boolean",
+          "description": "Terrain entries only. True when the terrain is water for placement purposes: the community DE table lists it as buildable only by water buildings, or as passable only by ships. Discharges preview-design Sec.12 item 6, which recorded the dat's own is_water as an undecoded bitfield and named a /WATER/ name heuristic as the interim fallback. The heuristic cannot see the 53 unnamed terrains at all and misreads named ones in both directions (YELLOW_SHALLOW_WATER is water and matches; DLC_MANGROVESHALLOW is walkable, buildable land and does not). Absent means unknown, and the name heuristic still applies."
+        },
+        "isForest": {
+          "type": "boolean",
+          "description": "Terrain entries only. True for the tree-bearing terrains, taken from the community DE table's own descriptive name (every one of the 24 is named \"Forest, ...\"). Feeds the forest-zone mask that place_on_forest_zone reads. The /FOREST|JUNGLE|BAMBOO/ name heuristic it replaces missed every unnamed forest, including \"Forest, Oak Bush\" and \"Forest, Bush\". Note underbrush terrains are deliberately NOT forest: they are the ground a forest is drawn on, not the treeline. Absent means unknown, and the name heuristic still applies."
+        },
+        "isHybrid": {
+          "type": "boolean",
+          "description": "Terrain entries only. True for the shallows — terrain that BOTH land units and ships can cross, so it is neither land nor open water but sits between them. Taken from the community DE table's own 'Unit Pathing' column, which reads 'all' on exactly 24 rows; the nine beach terrains and the five rice farms are removed, leaving these ten: 4 SHALLOW, 26 Ice Navigable, 54 DLC_MANGROVESHALLOW, 55 DLC_MANGROVEFOREST, 59 DLC_NEWSHALLOW, 90 Forest Reeds (Shallows), 93 and 94 Moddable Walkable Shallows, 111 MUDDY_SHALLOW, 115 YELLOW_SHALLOW. A beach terrain is removed because it is what this rule PRODUCES rather than a thing it edges, and a rice farm because 'both can path it' describes farmland without making it wet. It is ORTHOGONAL to isWater and does not restate it: isWater still answers the placement question every other stage asks (a shallow is water you cannot build a house on), while isHybrid answers the depth question only the automatic-beach rule asks, and the two disagree in both directions — SHALLOW is water and hybrid, DLC_MANGROVESHALLOW is hybrid and not water. The two forests in the set (55, 90) are a flagged judgment call: both are named as growing out of a shallow rather than out of dry ground, so they are edged as shallows. There is no name heuristic for absence, unlike isWater and isForest: YELLOW_SHALLOW is hybrid and YELLOW_SHALLOW_WATER is open water, so no pattern separates them, and every one of the 131 rows carries this field explicitly. Absent therefore means a terrain the table has never covered, and such a terrain is treated as not hybrid, which leaves it behaving exactly as it did before the field existed."
+        },
+        "isBeach": {
+          "type": "boolean",
+          "description": "Terrain entries only. True for the beach terrains themselves — the sand a coastline is made of, as opposed to the ground on either side of it. Taken from the community DE table's 'Building Allowed' column, whose value 'walls only' selects exactly nine rows and nothing else: 2 BEACH, 37 ICYSHORE, 51 DLC_BEACH2, 52 DLC_BEACH3, 53 DLC_BEACH4, 91 DLC_REEDSBEACH, 107 DLC_WETBEACH, 108 DLC_GRAVELBEACH, 109 DLC_WETROCKBEACH. The same nine are the rows whose own beachTerrain is null, since a beach does not grow a beach, but that is a consequence rather than the derivation — this field is read where the question is 'is this tile sand', not 'what sand would this tile grow'. Read by the 'shore' habitat, which means open water touching a beach. Absent means a terrain the table has never covered and is treated as not beach.",
+          "$comment": "Every one of the 131 terrain rows carries this field explicitly, so absence really does mean an uncovered terrain rather than a gap in transcription."
+        },
+        "beachTerrain": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Terrain entries only. The terrain id the engine automatically writes onto a tile of THIS terrain when it borders anything deeper than itself, or null when this terrain never grows a beach. Not an RMS command — it is engine behaviour that runs whether or not a script asks for it, and create_terrain's own beach_terrain attribute overrides it for that command's tiles (guide:1483, whose stated default of BEACH is this field). Derived from the community DE table (Zetnus, 'AoE2 Terrains', reference-docs/) by four of its own columns: the beach terrains themselves (Building Allowed 'walls only', or a Descriptive Name starting 'Beach') are null, since a beach does not grow a beach and the guide's beach_terrain DLC_BEACH2 example would otherwise be a no-op; the four terrains whose Comments read 'no beaches' (15, 27, 28, 36) are null; open water is null; snowy and icy terrains take 37 (ICYSHORE, whose row reads 'created when snowy terrains border water'); everything else takes 2 (BEACH, 'automatically placed when land terrains border water'). THE SHALLOWS ARE NOT WATER FOR THIS FIELD. All ten isHybrid rows carry a beach, because a shallow borders open water on its far side and the boundary is edged there too — the seven that had null (4, 59, 90, 93, 94, 111, 115) had it only because the first derivation pass read their isWater flag and stopped. ONE EXTRAPOLATION, flagged: only ids 32/33/34 carry the explicit 'icy beach when bordering water' annotation, and the other thirteen snow/ice terrains are matched on the table's own Descriptive Name and Comments text against that ICYSHORE row's phrase 'snowy terrains'. Absent means unknown and the generator falls back to BEACH for anything that is not open water, which is what 88 of the 131 rows say anyway."
+        },
+        "previewColor": {
+          "type": "array",
+          "description": "Terrain fill colour for the preview's GAME mode (the default), as [r, g, b] 0-255. The mean colour of the terrain's own texture, averaged over the opaque texels of resources/_common/terrain/textures/<deTextureFile>.dds by tools/extract-constants. Distinguishes every terrain that has its own texture, including snow; terrains sharing a texture file (FOREST/LEAVES both g_for, DESERT/PALM_DESERT both g_pal) necessarily share a colour, which is what minimapColor separates. Terrain entries only; absent means the extraction could not read the texture, and the renderer falls back to a hash colour rather than guessing.",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "minimapColor": {
+          "type": "array",
+          "description": "Terrain fill colour for the preview's MINIMAP mode, as [r, g, b] 0-255. The dat's own Terrain.colors[0] decoded through resources/_common/palettes/original.pal (that field holds palette indices, not RGB). KNOWN COARSENESS, measured 2026-08-05: across the 131 enabled terrain records this field takes only 12 distinct values — it is a legacy colour class, so every snow variant carries grass's green and minimap mode genuinely draws snow as grass. That is the data reported faithfully, not a bug, and it is why previewColor is the default. It does separate terrains previewColor cannot (FOREST dark green vs LEAVES grass green). Terrain entries only; absent means the palette or dat could not be read.",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "habitat": {
+          "type": "string",
+          "enum": [
+            "land",
+            "water",
+            "shore",
+            "any"
+          ],
+          "description": "Object entries only. Where this object may be placed, the preview's coarse stand-in for the engine's terrain table (a per-object terrain-restriction id indexing a per-restriction row of allowed terrains). 'shore' means OPEN WATER TOUCHING A BEACH — a water tile, not a beach tile and not a shallow, orthogonally adjacent to one of the nine isBeach terrains. Both of the objects that use it stand there: SHORE_FISH and DLC_BOXTURTLE are one family, which guide:4991 states outright by glossing MELKARYBA as \"small fish, ie. shore fish or box turtles\". It was previously read as the waterline within one tile on either side, which put both of them on the sand as often as in the water. 'water' by contrast includes the shallows, matching guide:4717's \"water and amphibious terrains\" for OYSTERS. Absent means unknown, and the generator falls back to 'land': the reference data knows a couple of dozen objects of several hundred, so an 'unrestricted' fallback put trees in open water on real maps — and note the 'land' fallback has its own cost, which is why the ocean-fish rows below exist at all. Note a script can rewrite the real table at runtime with effect_amount SET_ATTRIBUTE <object> ATTR_TERRAIN_ID <n>, which this field cannot express and the preview does not model."
+        },
+        "isTree": {
+          "type": "boolean",
+          "description": "Object entries only. True for trees and bushes. Cosmetic: the preview draws them in the wood colour instead of the near-white unknown-object colour, which otherwise buries forest terrain under white dots. The generator falls back to a name pattern when this is absent."
         },
         "resourceAmounts": {
           "type": "object",
-          "description": "Per-object resource yield. Only meaningful for category: object resource nodes. Used by the Phase 2.5 status-bar totals.",
+          "description": "Per-object resource yield, as the UNMODIFIED base/default value from the game's data files (what a plain create_object of this type gets before any in-script resource_delta / effect-percent-style modifier). Only meaningful for category: object resource nodes. Used by the status-bar totals — src/parser/resourceTotals.ts does not currently model script-level modifiers to this base value.",
           "additionalProperties": false,
           "properties": {
-            "food": { "type": "number" },
-            "wood": { "type": "number" },
-            "gold": { "type": "number" },
-            "stone": { "type": "number" }
+            "food": {
+              "type": "number"
+            },
+            "wood": {
+              "type": "number"
+            },
+            "gold": {
+              "type": "number"
+            },
+            "stone": {
+              "type": "number"
+            }
           }
         },
         "verified": {
@@ -71,7 +168,7 @@
           "category": "terrain",
           "deTextureFile": null,
           "verified": false,
-          "notes": "Name/usage confirmed against the Definitive RMS Scripting Guide (Zetnus). constId and deTextureFile still need the real extraction script (Phase 4.0) or a trusted community dat-dump — do not treat null as 0."
+          "notes": "Name/usage confirmed against the Definitive RMS Scripting Guide (Zetnus). constId and deTextureFile still need the real extraction script or a trusted community dat-dump — do not treat null as 0."
         },
         {
           "constId": null,
@@ -79,7 +176,9 @@
           "descriptiveName": "Gold Mine",
           "category": "object",
           "deTextureFile": null,
-          "resourceAmounts": { "gold": 800 },
+          "resourceAmounts": {
+            "gold": 800
+          },
           "verified": false,
           "notes": "resourceAmounts.gold is an illustrative placeholder, not sourced from verified game data — replace once confirmed."
         }

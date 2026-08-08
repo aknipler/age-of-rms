@@ -9,7 +9,7 @@
   overflow-x: auto;
 }
 
-/* Ash's report: with Help Tips on, this button stopped sitting at the
+/* With Help Tips on, this button stopped sitting at the
    far right and stuck right after the resource totals instead. Root
    cause: margin-left: auto only affects the element it's set on when
    THAT element is itself a flex item of .statusBar — but the button is

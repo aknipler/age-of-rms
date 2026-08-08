@@ -42,7 +42,7 @@ function ArgRow({
   // Custom-positioned popup instead of a native `title` — see
   // DiagnosticTooltip.tsx: a browser tooltip can't be repositioned, so it
   // was free to land on top of a HelpTip popup opened by the argument
-  // label/value editor nested in this same row (Ash's report).
+  // label/value editor nested in this same row.
   const diagHover = useDiagnosticHover();
 
   return (
@@ -71,11 +71,11 @@ interface CommandCardProps {
   command: CommandNode;
 }
 
-// docs/breakdown-design.md §3.3 — the workhorse card. Collapsed/expanded
+// docs/breakdown-design.md Sec.3.3 — the workhorse card. Collapsed/expanded
 // with the all-attributes model in the expanded body. Wired to the patch
 // engine as of 3.4: delete, positional-arg edits, and (via AttributeRow)
 // attribute set/add/delete/toggle all construct real EditIntents.
-// Expansion is anchored to the command's span.start (§6.3) via context
+// Expansion is anchored to the command's span.start (Sec.6.3) via context
 // rather than local state, so it survives a reparse triggered by an edit
 // elsewhere in the document.
 export function CommandCard({ command }: CommandCardProps) {
@@ -84,7 +84,7 @@ export function CommandCard({ command }: CommandCardProps) {
   const name = tokens[command.name].text;
   const severity = maxSeverityWithin(diagnostics, command.span);
   const known = command.def !== undefined;
-  // §3.3's unknown-name boundary has two cases with a did-you-mean
+  // Sec.3.3's unknown-name boundary has two cases with a did-you-mean
   // Diagnostic.suggestion: a bare RawNode (RawCard's Fix button, wired in
   // 3.4) and this one — a def-less CommandNode via the word+`{` upgrade.
   // Both got the same suggestion field from unknownName(), but only
@@ -104,18 +104,18 @@ export function CommandCard({ command }: CommandCardProps) {
   // `create_terrain FOREST` with no `{ }` at all) still gets the full
   // all-attributes list, every slot absent — buildCommandBreakdown
   // handles `command.block === undefined` internally. This is what makes
-  // the §4.6 brace-synthesis path reachable: clicking "add" on an absent
+  // the Sec.4.6 brace-synthesis path reachable: clicking "add" on an absent
   // slot targets the CommandNode itself (attributeTarget below) and
   // computeEdit synthesizes the `{ }`.
   const breakdown = known ? buildCommandBreakdown(command, lang) : null;
   // Def-less commands still render positional args + any block contents
-  // generically (Other contents), preserving total coverage (§3.3's
+  // generically (Other contents), preserving total coverage (Sec.3.3's
   // unknown-name boundary: this path is ONLY reached for a block-attached
   // unknown command, i.e. word immediately followed by `{` — a bare
   // unknown name never becomes a def-less CommandNode, it's a RawNode,
   // see cardKind.ts/ItemCard.tsx).
   const genericOtherContents = !known && command.block ? command.block.items : [];
-  // §4.6 brace synthesis: addAttribute needs a BlockNode when the command
+  // Sec.4.6 brace synthesis: addAttribute needs a BlockNode when the command
   // has one, else the CommandNode itself (computeEdit synthesizes `{ }`).
   const attributeTarget = command.block ?? command;
 

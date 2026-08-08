@@ -9,7 +9,7 @@ const SEVERITY_BORDER: Record<DiagnosticSeverity, string> = {
   info: "#17a2b8",
 };
 
-// Ash's follow-up ask: the per-row/per-arg diagnostic message used to be
+// the per-row/per-arg diagnostic message used to be
 // a native `title` attribute on the row div (AttributeRow.tsx/
 // CommandCard.tsx), which fires the browser's own OS-rendered tooltip.
 // That can't be repositioned or suppressed from CSS/JS at all, so it was

@@ -1,0 +1,160 @@
+/*
+RMSTEST_20 - clumping_factor regimes for TERRAINS
+preview-design.md Sec.15 item 3, Sec.6.4's table
+
+QUESTION
+Sec.6.4 models guide:1648's four terrain regimes as frontier weight buckets.
+Negative is snakey, 0 to 5 irregular, 5 to 25 rounder, above 25 clamped to the
+rounder behaviour with no directional streaking. Every one of those boundaries
+came from reading prose. None has been measured, and the table is deliberately
+non-monotonic, which is a strong claim to make on no evidence.
+
+Note this is the terrain table, NOT the land table. Rev 4 corrected the land
+table and left its terrain twin pointing at it, which was the same error one
+level down. RMSTEST_21 covers lands separately for that reason.
+
+METHOD
+Nine create_terrain commands, one clump each, identical 400 tile budgets,
+distinct terrain constants, and clumping_factor stepped across every regime
+boundary the table claims. Same map, same run, so seed and map state are shared
+and the only difference between the nine patches is the factor.
+
+Read circularity, which is 4*pi*area/perimeter^2, normalised so a disc is 1.0
+and a one-tile-wide snake tends toward 0. A solid square reads 0.785. It is
+scale free, so the nine are comparable directly.
+
+spacing_to_other_terrain_types 0 everywhere, so the nine do not push each other
+around and each one grows into whatever GRASS is left. FOREST and LEAVES are
+excluded because forest terrain auto-places a tree object per tile, and BEACH
+and the water terrains are excluded because DE paints beach automatically at a
+land and water boundary, which is the trap that made the first attempt at item
+7c unreadable.
+
+GENERATE AT NORMAL (200). Nine clumps of 400 is 3600 tiles of 40000, or 9
+percent, so the later commands still have plenty of eligible GRASS.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Circularity rises with clumping_factor across -5, 0, 3, 5, 8, 15, 20, 25.
+2. DIRT at -5 is the lowest of the nine and clearly separated, not merely last.
+3. GRASS3 at 40 reads the same as GRASS2 at 25 within run to run noise. That
+   is the clamp claim, and it is the one most likely to be wrong, because it
+   was reasoned from the absence of a guide sentence rather than from one.
+4. The 0 to 5 and 5 to 25 boundaries produce a visible step rather than a
+   smooth ramp. If circularity ramps smoothly instead, the bucket model is the
+   wrong shape and a continuous weight is closer to the engine.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches DIRT
+  and once per terrain, or read the terrain histogram first and pick.
+
+WATCH FOR
+Patch count per terrain should be 1. Two patches means the clump was split by
+ineligible tiles and its circularity is meaningless. Also check each patch is
+near 400 tiles. A short patch ran out of eligible GRASS and its shape is a
+record of what was left over, not of its clumping factor.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* negative, "extremely snakey" */
+  create_terrain DIRT
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor -5
+    spacing_to_other_terrain_types 0
+  }
+
+  /* 0 to 5, "more irregular terrain patches" */
+  create_terrain DIRT2
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 0
+    spacing_to_other_terrain_types 0
+  }
+
+  create_terrain DIRT3
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 3
+    spacing_to_other_terrain_types 0
+  }
+
+  /* the 5 boundary itself, which the table straddles */
+  create_terrain DESERT
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 5
+    spacing_to_other_terrain_types 0
+  }
+
+  /* 5 to 25, "rounder terrain patches". 8 is the LAND default, irregular for
+     lands and rounder for terrains, which is exactly the value that a shared
+     bucket function would mis-classify. */
+  create_terrain PALM_DESERT
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 8
+    spacing_to_other_terrain_types 0
+  }
+
+  create_terrain SNOW
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 15
+    spacing_to_other_terrain_types 0
+  }
+
+  /* 20 is the terrain default (guide:1646, "different than for lands") */
+  create_terrain ICE
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 20
+    spacing_to_other_terrain_types 0
+  }
+
+  create_terrain GRASS2
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 25
+    spacing_to_other_terrain_types 0
+  }
+
+  /* above the guide's stated useful range. Sec.6.4 clamps to the 25 behaviour
+     and invents no directional regime. This pair is the clamp test. */
+  create_terrain GRASS3
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 400
+    clumping_factor 40
+    spacing_to_other_terrain_types 0
+  }
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

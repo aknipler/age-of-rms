@@ -20,7 +20,7 @@ const ZERO_RANGE: ResourceRange = {
   max: { food: 0, wood: 0, gold: 0, stone: 0 },
 };
 
-// k-abbreviated per Ash's locked 2.5 format decision: whole numbers under
+// k-abbreviated decision: whole numbers under
 // 1000 shown as-is, 1000+ divided by 1000 with at most one decimal place
 // ("1.8k", "60k") — matches the mockup's "F: 1.8k W: 2.7k G: 5k" style.
 function formatK(n: number): string {
@@ -31,7 +31,7 @@ function formatK(n: number): string {
   return `${fixed.endsWith(".0") ? fixed.slice(0, -2) : fixed}k`;
 }
 
-// Range display per Ash's locked 2.5 decision ("keep track of options and
+// Range display ("keep track of options and
 // do a range, e.g. 10k-15k"): a hyphenated min-max span when if/random
 // blocks make the count generation-dependent, collapsing to a single
 // number when min === max (a script with no conditional placement, or a

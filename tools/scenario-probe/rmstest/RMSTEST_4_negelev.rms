@@ -1,0 +1,86 @@
+/*
+	RMSTEST 4 — what height does a negative base_elevation actually produce?
+
+	guide:957 says "Negative values maximally elevate a land (not recommended
+	due to rendering issues)" and never says what "maximally" resolves to.
+	guide:954 documents the range as 1-16, default 0. docs/preview-design.md
+	Sec.6.1 was just changed to clamp negatives to 16 — that number is an
+	INFERENCE from the word "maximally" and nothing else. It matters because
+	Sec.4 declares elevation as a Uint8Array, so an unclamped -1 stores 255 and
+	the renderer's brightness shading draws that land blinding white.
+
+	This also incidentally tests guide:952's claim that an EMPTY
+	<ELEVATION_GENERATION> section is enough for base_elevation to work at all.
+
+	HOW IT DISCRIMINATES
+	Three reference patches in a row across the middle of the map, on a flat
+	grass base, each a different terrain so they are trivially told apart:
+	  west   DIRT  base_elevation -1   <- the test
+	  centre SNOW  base_elevation 7
+	  east   DESERT base_elevation 16
+
+	READ IT LIKE THIS
+	  DIRT visibly the same height as DESERT -> maximum is 16. Sec.6.1's clamp
+	                                            is right.
+	  DIRT clearly higher than DESERT        -> the cap is above 16. Report how
+	                                            it compares; Sec.6.1's clamp
+	                                            value is wrong.
+	  DIRT flat, level with the grass base   -> negatives are ignored or
+	                                            treated as 0. Sec.6.1 is wrong
+	                                            and should clamp to 0.
+	  Nothing elevated anywhere              -> an empty ELEVATION_GENERATION
+	                                            section is NOT sufficient;
+	                                            guide:952 is wrong.
+
+	Easiest way to judge height is the shadow/step count on the patch edges, or
+	just rotate the camera low. Screenshot from a low angle if you can.
+
+	RUN ON: Tiny, 2 players. Player lands are kept small and off-centre so they
+	do not overlap the three patches.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 5
+	number_of_tiles 1
+	circle_radius 42
+}
+
+create_land
+{
+	terrain_type DIRT
+	land_position 25 50
+	number_of_tiles 260
+	base_size 5
+	base_elevation -1
+	zone 7
+}
+
+create_land
+{
+	terrain_type SNOW
+	land_position 50 50
+	number_of_tiles 260
+	base_size 5
+	base_elevation 7
+	zone 8
+}
+
+create_land
+{
+	terrain_type DESERT
+	land_position 75 50
+	number_of_tiles 260
+	base_size 5
+	base_elevation 16
+	zone 9
+}
+
+<ELEVATION_GENERATION>

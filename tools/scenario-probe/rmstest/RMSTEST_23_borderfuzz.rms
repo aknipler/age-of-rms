@@ -1,0 +1,127 @@
+/*
+RMSTEST_23 - border_fuzziness penetration depth
+preview-design.md Sec.15 item 1, Sec.6.1's border rejection
+
+QUESTION
+border_fuzziness is an adherence percentage, default 20. Sec.6.1 specifies it
+as one Bernoulli(f/100) rejection roll PER TILE OF DEPTH beyond the border, so
+a candidate d tiles out draws d rolls and is rejected if any succeeds.
+Penetration then decays geometrically with a mean of a few tiles at the
+default, and the edge comes out ragged.
+
+That form was chosen over rev 3's single depth-independent coin flip because
+the flat version accepts 80 percent of the first ring past the border AND 80
+percent of the ring past that, which dissolves the border rather than fuzzing
+it. The correction is sound reasoning about a distribution and it is still only
+reasoning. Nobody has looked at a real fuzzed edge and counted.
+
+METHOD
+Four lands, identical in every way except border_fuzziness, each pinned to its
+own horizontal strip so they cannot interfere, each with left_border 40 and a
+budget big enough that growth presses hard against that border rather than
+stopping on its own. The observable is min x per terrain, and the penetration
+depth is border tile minus min x.
+
+On a 200 map, left_border 40 puts the border at tile 80. Each land sits at 45
+percent across, which is tile 90, so it starts inside the legal region and
+grows leftward into the border. A 2000 tile round land has a radius near 25, so
+without a border it would reach x = 65, which is 15 tiles past. That is enough
+headroom for the decay to be visible without being so much that every value
+saturates.
+
+The four endpoints Sec.6.1 states exactly and which need no rolls at all:
+  f = 0     borders ignored entirely, always accepted
+  f = 100   d >= 1 never accepted, a hard stop at the border
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. min x is ordered DIRT <= DIRT2 <= DIRT3 <= DESERT, that is penetration falls
+   as f rises. If the order breaks anywhere the model is wrong in kind, not
+   just in its constant.
+2. DIRT at f 0 reaches roughly x 65, the unconstrained radius, showing the
+   border is genuinely inert at 0.
+3. DESERT at f 100 stops at exactly x 80, no tile past it. An exact 80 is the
+   cleanest single reading on this map, because it is a hard boundary rather
+   than a distribution, and if it comes back at 79 or 81 then Sec.4's border
+   tile arithmetic is off by one and that is worth more than the fuzziness
+   constant itself.
+4. DIRT2 at the default f 20 penetrates a mean of a few tiles, so min x lands
+   near 76 or 77. Under rev 3's rejected flat model it would have reached far
+   deeper, near 65, because a flat 80 percent acceptance barely resists. The
+   gap between those two is the whole reason the spec was rewritten, so this is
+   the reading that either vindicates the rewrite or undoes it.
+
+WATCH FOR
+The edge is ragged by construction, so min x is a single extreme sample and
+noisy. Run this one FIVE times and compare the distribution of min x, not one
+value. If a cleaner instrument is wanted afterward, --rows on each terrain with
+--bands 20 gives the tile count per column and the decay profile directly,
+which is a much better fit to the geometric claim than an extreme is.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --bbox DIRT
+  once per terrain, then
+  python probe_scenario.py "<scenario>" --rows DIRT --bands 20
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  /* f = 0, borders ignored entirely */
+  create_land
+  {
+    terrain_type DIRT
+    number_of_tiles 2000
+    land_position 45 12
+    left_border 40
+    border_fuzziness 0
+    clumping_factor 20
+    base_size 2
+  }
+
+  /* f = 20, the default, and the value rev 3 and rev 4 disagree about */
+  create_land
+  {
+    terrain_type DIRT2
+    number_of_tiles 2000
+    land_position 45 37
+    left_border 40
+    border_fuzziness 20
+    clumping_factor 20
+    base_size 2
+  }
+
+  /* f = 50 */
+  create_land
+  {
+    terrain_type DIRT3
+    number_of_tiles 2000
+    land_position 45 62
+    left_border 40
+    border_fuzziness 50
+    clumping_factor 20
+    base_size 2
+  }
+
+  /* f = 100, hard stop. The exact-boundary reading. */
+  create_land
+  {
+    terrain_type DESERT
+    number_of_tiles 2000
+    land_position 45 87
+    left_border 40
+    border_fuzziness 100
+    clumping_factor 20
+    base_size 2
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

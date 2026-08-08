@@ -1,0 +1,46 @@
+/*
+	RMSTEST 2 — what does circle_radius 0 actually do?
+
+	guide:844 says "0 will disable circle_radius" and guide:842 documents the
+	argument range as 1-50, so 0 is out of range AND documented as meaningful.
+	docs/preview-design.md Sec.6.6... Sec.6.1 infers that "disable" means fall
+	back to the default unconstrained ring (radius ~40% of map width, variance
+	~20). That is an INFERENCE, not guide text, and the spec leans on it hard:
+	it warns that reading 0 as a literal radius "stacks every player on the map
+	center, which is both a visible lie and a guaranteed originFallbackCenter
+	storm".
+
+	Also worth knowing: language.json declares circle_radius's radiusPercent as
+	min 1, so validate() will flag this legal script when it ships.
+
+	HOW IT DISCRIMINATES
+	Player lands are grass islands on a water base, so their positions are
+	unmistakable on the minimap with no terrain noise.
+
+	READ IT LIKE THIS
+	  Islands in a wide ring, roughly 40% of map width from centre
+	      -> "disable" = fall back to the default ring. Sec.6.1 confirmed.
+	  Islands piled on/near the map centre, possibly overlapping
+	      -> 0 is taken as a literal radius. Sec.6.1 is WRONG.
+	  Islands scattered with no ring structure at all
+	      -> "disable" = position like a neutral land (cross-shaped random
+	         area). Sec.6.1 is WRONG in a different way, and this is the
+	         reading its own wording ("disables circular positioning
+	         entirely") most naturally suggests.
+
+	RUN ON: Tiny, 8 players. Maximum players makes the ring shape obvious.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain WATER
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 6
+	number_of_tiles 150
+	circle_radius 0
+}

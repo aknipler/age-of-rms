@@ -1,0 +1,92 @@
+/*
+	RMSTEST 16 — border percent to tiles, WITHOUT the beach confound.
+
+	RMSTEST_15 was unreadable for a reason I built into it. Its base terrain was
+	WATER, and DE auto-generates a BEACH ring wherever land meets water — 432
+	beach tiles in that run, a one-tile band all the way around the land. So the
+	land's true edge sat one tile outside the grass, and "is the boundary at the
+	grass or at the beach" changes every inset by one, which is exactly the
+	precision the question needs. The four candidate models differ by one tile.
+
+	Fix: no water anywhere. DESERT base, GRASS land. Nothing triggers beach, so
+	the grass edge IS the land edge, full stop.
+
+	SHAPE — READ THE MIDDLE, NOT THE CORNERS. Bordered lands come out chamfered
+	(the well-known "borders make a hexagon" behaviour); RMSTEST_15 showed the
+	corners cut at 45 degrees over about four tiles. The bounding box still
+	reports the correct flat-edge extent, because the chamfer only cuts inward
+	from the corners — verified in that run, where the middle row spanned
+	exactly the same x range as the bbox. So --bbox remains the right tool. If
+	the numbers ever look suspect, re-check against a middle row.
+
+	FOUR EDGES, FOUR VALUES, chosen so every candidate gives a unique signature.
+	On TINY (120 wide):
+
+	  left   3  -> 3.6   floor 3 | round 4 | ceil 4
+	  right  2  -> 2.4   floor 2 | round 2 | ceil 3
+	  top    6  -> 7.2   floor 7 | round 7 | ceil 8
+	  bottom 9  -> 10.8  floor 10 | round 11 | ceil 11
+
+	READ IT WITH THE PROBE
+	  python probe_scenario.py <scenario> --bbox GRASS
+
+	  left=3 right=3 top=7 bottom=11  -> floor low edges, ceil high edges.
+	                                     Sec.4 CONFIRMED as written.
+	  left=3 right=2 top=7 bottom=10  -> plain floor on all four.
+	  left=4 right=2 top=7 bottom=11  -> plain round-half-up on all four.
+	  left=4 right=3 top=8 bottom=11  -> plain ceil on all four.
+	  anything else                   -> report all four; the values were picked
+	                                     so no two models collide, so an
+	                                     unlisted signature means the rule is
+	                                     none of these.
+
+	ALSO CHECK, and report even if it looks fine:
+	  1. Total tiles. GRASS + DESERT should sum to 14400 with NO third terrain.
+	     If a beach or anything else appears, the confound is not gone and the
+	     insets are again off by one.
+	  2. Axis mapping. All four declared values differ, so if the insets come
+	     back transposed then Sec.4's left/right-are-x, top/bottom-are-y claim
+	     is wrong.
+	  3. border_fuzziness 100 giving a crisp edge, which is Sec.4's reading of
+	     the argument as ADHERENCE (guide:903 names it %BorderAdherence). A
+	     ragged edge means that reading is inverted, and Sec.6.1's border model
+	     needs revisiting across the 19 corpus maps that set it.
+
+	DESIGN NOTES
+	  Player lands are DESERT — the same as the base terrain — so they cannot
+	  add or remove GRASS anywhere and cannot affect the bbox. circle_radius 5
+	  keeps them near the centre, far from every border.
+	  land_percent 100 so growth is stopped by the borders, not by a tile
+	  budget. base_size 1 and land_position 50 50 so it starts small and central
+	  and expands into all four borders evenly.
+
+	RUN ON: TINY, 2 players. The arithmetic above is dim-120 only — on any other
+	size this header's predictions are wrong.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain DESERT
+
+create_player_lands
+{
+	terrain_type DESERT
+	base_size 3
+	number_of_tiles 1
+	circle_radius 5 0
+}
+
+create_land
+{
+	terrain_type GRASS
+	land_position 50 50
+	base_size 1
+	land_percent 100
+	border_fuzziness 100
+	left_border 3
+	right_border 2
+	top_border 6
+	bottom_border 9
+}

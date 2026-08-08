@@ -1,0 +1,90 @@
+/*
+RMSTEST_39 - the RAW elevation seed distribution, without growth or merging
+preview-design.md Sec.15 item 11(a)
+
+THE PROBLEM WITH EVERY ELEVATION MEASUREMENT SO FAR
+RMSTEST_22a, 32 and 35 all measured ELEVATED TILES. Elevated tiles are what a
+seed grew into, so every number this project has for the diagonal bias - 18:1,
+7.16:1, the 29:1 interior and 3.7:1 border figures - is a seed distribution seen
+through a growth blur, and through merging: RMSTEST_35 declared 500 clumps and
+returned only ~283 components per run, so nearly half of them ran together.
+
+That matters for item 11(a) specifically. We know the bias weakens within ~12
+tiles of the map edge, we know the width does not scale with map size, and we
+know it is NOT seed exclusion (component centroids appear at edge distance 0)
+and NOT spillover across the diagonal (only 0.7-3.0% of disfavoured tiles sit in
+a component that also holds favoured tiles). Both candidate mechanisms are dead,
+and what is left to ask is whether the SEEDS themselves are less biased near the
+boundary, or whether seeding is uniform and something in growth produces the
+effect.
+
+A grown-tile measurement cannot separate those. This one can.
+
+METHOD
+Set the per-clump share to the measured clump floor, so each clump IS its seed
+plus the minimum growth the engine always applies:
+
+  number_of_clumps 100, number_of_tiles 600  ->  6 tiles per clump
+
+100 clumps of ~6 tiles on a 200 map is 1.5% coverage against RMSTEST_35's 6.2%,
+so merging should be rare and each connected component is one seed to within a
+tile or two. Five runs gives ~500 near-clean seeds.
+
+Everything else matches RMSTEST_22a and 35 exactly - GRASS base, no player
+lands, spacing 1, create_elevation 1 - so the only change is the clump/tile
+split. Nothing about the bias itself is varied.
+
+READ IT WITH
+  Connected components of elevation > 0; take each centroid as a seed.
+  Then, for seeds: the favoured:disfavoured split, and that split PROFILED
+  AGAINST DISTANCE FROM THE NEAREST MAP EDGE, which is the reading.
+  Also report component count against the declared 100 - if it is far below,
+  merging is still significant and the seeds are not clean.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Seeds show the SAME edge softening as grown tiles: near-parity within ~5
+   tiles of the boundary, full bias by ~12. Then the weakening is in the SEED
+   BIAS FUNCTION itself, Sec.6.2's border band is modelling the right thing, and
+   growth is innocent. This is the outcome that closes 11(a) with a mechanism
+   located even if not explained.
+2. Seeds are uniformly biased regardless of edge distance. Then seeding is
+   clean and GROWTH produces the border effect - presumably by clipping against
+   the boundary and redistributing - and Sec.6.2's border band is fitted to the
+   wrong stage. That would be the more interesting and more expensive result.
+3. The raw seed ratio is much HIGHER than the 29:1 measured from grown tiles.
+   Expected either way and worth capturing: growth necessarily blurs seeds
+   across the line, so grown tiles understate the seeding bias. **This run gives
+   the first uncontaminated estimate of the actual weight ratio**, which is the
+   number Sec.6.2's weight table should be fitted to rather than 18:1 or 29:1.
+4. Component count comes back near 100. Well below ~85 means merging is still
+   material and the centroids are not seeds; the run still reads, but every
+   figure needs the same caveat the earlier ones carry.
+
+GENERATE AT NORMAL (200) WITH ANY PLAYER COUNT - no player lands, so the count
+does not enter. RUN IT FIVE TIMES, and REGENERATE BETWEEN SAVES: three separate
+batches have now produced duplicate exports, and the check is that the elevated
+tile total differs run to run.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+  create_elevation 1
+  {
+    number_of_clumps 100
+    number_of_tiles 600
+    spacing 1
+  }
+
+/* NO <CLIFF_GENERATION> HEADER - an empty one generates cliffs. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

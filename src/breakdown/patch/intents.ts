@@ -1,5 +1,5 @@
-// Phase 3.3 — EditIntent/TextEdit/EditResult types, docs/breakdown-design.md §4.1 (rev 4).
-// No React/Monaco/Tauri imports anywhere under src/breakdown/patch/ (spec §12).
+// Phase 3.3 — EditIntent/TextEdit/EditResult types, docs/breakdown-design.md Sec.4.1 (rev 4).
+// No React/Monaco/Tauri imports anywhere under src/breakdown/patch/ (spec Sec.12).
 
 import type {
   ArgNode,
@@ -23,7 +23,7 @@ export interface TextEdit {
 
 export interface EditResult {
   edit: TextEdit;
-  /** Post-edit caret offset in the NEW source (focus restoration, spec §6.3/§4.11). */
+  /** Post-edit caret offset in the NEW source (focus restoration, spec Sec.6.3/Sec.4.11). */
   caret: number;
 }
 
@@ -36,18 +36,18 @@ export interface BranchRef {
   index: number;
 }
 
-/** BlockNode when the command has a block; CommandNode when it has none (§4.6 brace synthesis). */
+/** BlockNode when the command has a block; CommandNode when it has none (Sec.4.6 brace synthesis). */
 export type AttributeTarget = BlockNode | CommandNode;
 
-/** never expr — expressions are Code-tab-only (spec §3.4). */
+/** never expr — expressions are Code-tab-only (spec Sec.3.4). */
 export type ArgValueInput = number | { rnd: [number, number] } | string;
 
-// `{ after: Item }` (rev 3 dropped this as consumer-less; §3.9's card
+// `{ after: Item }` (rev 3 dropped this as consumer-less; Sec.3.9's card
 // selection reinstates it — "add" now resolves to inserting after the
 // selected card when something is selected, per docs/breakdown-design.md
-// §3.9/§4.5). Anchor offset is the item's own `span.end` (not "start of
+// Sec.3.9/Sec.4.5). Anchor offset is the item's own `span.end` (not "start of
 // the next sibling's line"), so a same-line trailing comment on the
-// anchor stays attached to it — the insert mirrors §4.6's delete-time
+// anchor stays attached to it — the insert mirrors Sec.4.6's delete-time
 // comment-adjacency rule. Style comes from the anchor item's own line,
 // so a nested (in-branch/in-block) anchor inserts at that same depth
 // with no special-casing — the anchor carries its context implicitly.
@@ -68,7 +68,7 @@ export type EditIntent =
   | { kind: "addBranch"; parent: IfNode | RandomNode; branch: "elseif" | "else" | "percent_chance" }
   | { kind: "removeBranch"; branch: BranchRef }
   // 3.4 follow-up: widened from `node: RawNode` to also accept a def-less
-  // CommandNode. §3.3's unknown-name boundary has TWO cases that both carry
+  // CommandNode. Sec.3.3's unknown-name boundary has TWO cases that both carry
   // a did-you-mean Diagnostic.suggestion — a bare unknown name (RawNode,
   // e.g. `elavation 5`) and a block-attached one (def-less CommandNode via
   // the word+`{` upgrade, e.g. `elavation { }`) — and the fix mechanics are
@@ -81,7 +81,7 @@ export type EditIntent =
 
 /**
  * Thrown for intents the UI is specified to suppress (unclosed containers,
- * §4.5/§4.10 guards) or that are structurally invalid. Not a crash: callers
+ * Sec.4.5/Sec.4.10 guards) or that are structurally invalid. Not a crash: callers
  * (and the property-test generator) treat it as "this edit is unavailable".
  */
 export class PatchError extends Error {}

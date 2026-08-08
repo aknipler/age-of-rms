@@ -1,0 +1,85 @@
+/*
+	RMSTEST 15 — how does a border percentage convert to tiles?
+
+	preview-design Sec.15 item 7c. Sec.4 pins: low-index edges (left, top) take
+	floor(pct/100 × dim), high-index edges (right, bottom) take ceil. The only
+	evidence is guide:885-886's single worked example — 2% of a 120-wide map
+	needs 2 on top/left and 3 on bottom/right. One data point cannot distinguish
+	an asymmetric rule from plain rounding that happens to agree at that point,
+	and Sec.4 says so.
+
+	FOUR EDGES, FOUR DIFFERENT VALUES, chosen so that every candidate model
+	produces a distinct signature. On TINY (120 wide):
+
+	  left   3  -> 3.6   floor 3 | round 4 | ceil 4
+	  right  2  -> 2.4   floor 2 | round 2 | ceil 3
+	  top    6  -> 7.2   floor 7 | round 7 | ceil 8
+	  bottom 9  -> 10.8  floor 10 | round 11 | ceil 11
+
+	READ IT WITH THE PROBE
+	  python probe_scenario.py <scenario> --bbox GRASS
+	  Read the four "inset" numbers, which are already expressed the same way
+	  the border attributes are — distance from each map edge.
+
+	  left=3 right=3 top=7 bottom=11  -> floor on low edges, ceil on high.
+	                                     Sec.4 CONFIRMED as written.
+	  left=3 right=2 top=7 bottom=10  -> plain floor on all four edges.
+	  left=4 right=2 top=7 bottom=11  -> plain round-half-up on all four.
+	  left=4 right=3 top=8 bottom=11  -> plain ceil on all four.
+
+	Any other combination: report all four numbers. The values were picked so
+	that no two models collide, so an unlisted signature means the rule is
+	something none of us proposed.
+
+	THIS ALSO CHECKS TWO OTHER THINGS FOR FREE
+	  1. Which attribute maps to which axis. Sec.4 claims left/right are x and
+	     top/bottom are y. All four values differ, so if the insets come back
+	     transposed the bbox says so immediately.
+	  2. border_fuzziness 100. Sec.4 reads the argument as ADHERENCE
+	     (guide:903 calls it %BorderAdherence), so 100 should mean a hard stop
+	     and a crisp rectangle. If the grass edge comes back ragged instead,
+	     that reading is inverted and Sec.6.1's whole border model needs
+	     revisiting — which would matter on the 19 corpus maps that set it.
+
+	DESIGN NOTES
+	  base_terrain WATER so the grass rectangle's extent is unambiguous.
+	  land_percent 100 so the land grows until the borders stop it rather than
+	  until a tile budget runs out.
+	  Player lands are DESERT, not grass, so they cannot pollute the GRASS
+	  bounding box, and circle_radius 5 keeps them near the map centre where
+	  they cannot touch any border. They will read as desert holes inside the
+	  grass; that is expected and harmless.
+	  base_size 1 and land_position 50 50 so the land starts small and central
+	  and grows outward into all four borders evenly.
+
+	RUN ON: TINY, 2 players. The arithmetic above is specific to dim 120 —
+	on any other size the predicted signatures are different and this header
+	is wrong.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain WATER
+
+create_player_lands
+{
+	terrain_type DESERT
+	base_size 3
+	number_of_tiles 1
+	circle_radius 5 0
+}
+
+create_land
+{
+	terrain_type GRASS
+	land_position 50 50
+	base_size 1
+	land_percent 100
+	border_fuzziness 100
+	left_border 3
+	right_border 2
+	top_border 6
+	bottom_border 9
+}

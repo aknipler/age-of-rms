@@ -2,7 +2,7 @@
 // underlying data src/editor/aoe2RmsHover.ts's Monaco hover provider reads
 // (reference/data/doc-strings.json, falling back to reference/data/language.json's
 // own `description` fields) so Breakdown and hover can never disagree
-// (docs/breakdown-design.md §8's help-coverage rule). This is a smaller
+// (docs/breakdown-design.md Sec.8's help-coverage rule). This is a smaller
 // module than aoe2RmsHover.ts on purpose — HelpTip's popup is plain text,
 // not Monaco's richer markdown (signature blocks, cautions, verified
 // badge), so this only needs the summary lookup, not the full formatter.

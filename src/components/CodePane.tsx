@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { PlaceholderPane } from "./PlaceholderPane";
+import { MapSidePanel } from "./sidepanel/MapSidePanel";
 import { AOE2_RMS_THEME } from "../editor/aoe2RmsLanguage";
 import { diagnosticsToMarkers } from "../editor/diagnosticsToMarkers";
 import { DOCUMENT_MODEL_PATH, getDocumentModel } from "../hooks/useDocument";
@@ -19,13 +20,13 @@ interface CodePaneProps {
   /**
    * Live diagnostics + the exact source they were computed for, from
    * AppContent's single useParsedDocument() instance (docs/breakdown-design.md
-   * §6.2 — "one parse, in the worker", CodePane no longer owns the parse
+   * Sec.6.2 — "one parse, in the worker", CodePane no longer owns the parse
    * itself as of the Breakdown 3.2 lift).
    */
   source: string;
   diagnostics: Diagnostic[];
   /**
-   * Ash's post-3.9 cross-tab-sync follow-up: the Item the shared selection
+   * Cross-tab-sync follow-up: the Item the shared selection
    * anchor currently resolves to (from App's useSharedSelection), used
    * ONLY at mount time to select+reveal that range — this is "switching
    * to Code shows that section of code, selected, in the middle of the
@@ -39,7 +40,7 @@ interface CodePaneProps {
    * Fires on every cursor/selection move while this pane is mounted, so
    * the shared anchor always reflects "where the user is looking" in the
    * Code tab — that's what lets switching back to Breakdown resolve to
-   * the right card, per Ash's "cursor / selection is maintained" ask.
+   * the right card so that cursor / selection is maintained.
    */
   onCursorOffsetChange?: (offset: number) => void;
 }
@@ -58,7 +59,7 @@ interface CodePaneProps {
 // IMarkerData using the model's own offset<->position conversion, which
 // is what actually draws the squiggles.
 //
-// §6.4 migration (3.4): this editor no longer owns/controls its content
+// Sec.6.4 migration (3.4): this editor no longer owns/controls its content
 // via a `value` prop. It attaches to the single persistent Monaco
 // ITextModel created in src/hooks/useDocument.ts (`path={DOCUMENT_MODEL_PATH}`
 // + `keepCurrentModel` so unmounting the Code tab never disposes it).
@@ -130,7 +131,7 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
     // — "switching to Code should have that section of code in the
     // middle of the page, text selected." Uses the model directly rather
     // than `source` (a prop, possibly one debounce cycle behind) since
-    // the model IS the authoritative current text (§6.4).
+    // the model IS the authoritative current text (Sec.6.4).
     if (selectedItem) {
       const model = getDocumentModel();
       const startPos = model.getPositionAt(selectedItem.span.start);
@@ -178,23 +179,41 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
   }
 
   return (
-    <div className={styles.codePane}>
-      <Editor
-        height="100%"
-        width="100%"
-        language="aoe2-rms"
-        theme={AOE2_RMS_THEME}
-        path={DOCUMENT_MODEL_PATH}
-        keepCurrentModel
-        onMount={handleMount}
-        options={{
-          minimap: { enabled: true },
-          fontSize: 13,
-          fontFamily: '"Cascadia Code", Consolas, monospace',
-          wordWrap: "off",
-          scrollBeyondLastLine: false,
-        }}
-      />
+    <div className={styles.pane}>
+      {/*
+        The same preview + reference column the Breakdown tab carries. Both
+        are useful while reading code — the preview to see what a terrain
+        command actually produced, the table to look up a constant without
+        leaving the editor — and there was no reason beyond history for them
+        to be Breakdown-only.
+
+        It is rendered per-tab rather than lifted to App because the two tabs
+        frame their content differently (Code insets its editor in a bordered
+        box; Breakdown does not) and because the Advanced Tools tab wants
+        neither. What must NOT live per-tab is the preview's own state: the
+        pane fully unmounts on every tab switch, so seed, view and colour mode
+        are held in PreviewViewContext above the switch. Without that, walking
+        to Code and back would silently reset a seed you had re-rolled to.
+      */}
+      <MapSidePanel />
+      <div className={styles.editorFrame}>
+        <Editor
+          height="100%"
+          width="100%"
+          language="aoe2-rms"
+          theme={AOE2_RMS_THEME}
+          path={DOCUMENT_MODEL_PATH}
+          keepCurrentModel
+          onMount={handleMount}
+          options={{
+            minimap: { enabled: true },
+            fontSize: 13,
+            fontFamily: '"Cascadia Code", Consolas, monospace',
+            wordWrap: "off",
+            scrollBeyondLastLine: false,
+          }}
+        />
+      </div>
     </div>
   );
 }

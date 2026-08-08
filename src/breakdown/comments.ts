@@ -1,5 +1,5 @@
-// Ash's follow-up ask: "show comments in Breakdown too." RMS's only
-// comment syntax is /* */ (docs/parser-design.md §2); the lexer's
+// Show comments in Breakdown too. RMS's only
+// comment syntax is /* */ (docs/parser-design.md Sec.2); the lexer's
 // comment-span pass marks every token inside one — including nested /* */
 // when nestedComments is on — as `isTrivia`, and the parser then skips
 // trivia tokens entirely when building the AST. That makes comments

@@ -1,4 +1,4 @@
-// Pure AST-node-kind -> card-kind mapping, docs/breakdown-design.md §3.2's
+// Pure AST-node-kind -> card-kind mapping, docs/breakdown-design.md Sec.3.2's
 // table. Kept free of React so it's usable both by BlockList (rendering)
 // and by a plain-Node coverage test (every Item from every corpus file
 // maps to exactly one card-kind, mirroring the parser's own coverage
@@ -14,7 +14,7 @@ export type CardKind =
   | "sharedBlock" // OrphanBlockNode -> read-only shared-block card (rendered via RawCard shell)
   | "raw"; // RawNode -> RawCard
 
-/** Total mapping (docs/breakdown-design.md §3.2): every Item kind maps to exactly one card kind. */
+/** Total mapping (docs/breakdown-design.md Sec.3.2): every Item kind maps to exactly one card kind. */
 export function cardKindForItem(item: Item): CardKind {
   switch (item.kind) {
     case "command":

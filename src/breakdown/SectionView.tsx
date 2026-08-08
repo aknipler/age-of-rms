@@ -11,12 +11,12 @@ interface SectionViewProps {
   tab: SectionTab;
 }
 
-// docs/breakdown-design.md §3.2: an "Add" button opening a command
+// docs/breakdown-design.md Sec.3.2: an "Add" button opening a command
 // picker (filtered to this tab's section by default), then the
 // BlockList of the active section's items in source order.
 //
 // 3.4: the picker constructs a real `addCommand` intent, targeting the
-// LAST concrete SectionNode this tab aggregates (§3.1's rule for
+// LAST concrete SectionNode this tab aggregates (Sec.3.1's rule for
 // duplicate same-type sections — "add-command defaults to the last
 // section of that type"). The Header tab has no SectionNode at all
 // (ScriptNode.preamble is a bare Item[]) — computeEdit's InsertTarget
@@ -27,12 +27,12 @@ export function SectionView({ tab }: SectionViewProps) {
   const { applyEdit, requestFocus, selectedItem, clearSelection } = useBreakdownContext();
   const [pickerOpen, setPickerOpen] = useState(false);
   const targetSection = tab.sections[tab.sections.length - 1];
-  // §3.10 — the diagnostics ruler measures/queries against this exact
+  // Sec.3.10 — the diagnostics ruler measures/queries against this exact
   // scroll container (offsetTop of each top-level card's data-anchor
   // node, relative to this element's own scrollHeight).
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // §3.9 — Add Command resolves relative to the current selection when one
+  // Sec.3.9 — Add Command resolves relative to the current selection when one
   // exists (insert right after the selected card), falling back to the
   // existing "append to this tab's last concrete section" default
   // otherwise. ItemCard.tsx stops click propagation on every card, so this

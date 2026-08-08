@@ -1,4 +1,4 @@
-// Phase 3.3 — per-intent unit fixtures, breakdown-design §10 (rev 4).
+// Phase 3.3 — per-intent unit fixtures, breakdown-design Sec.10 (rev 4).
 // Each asserts the exact TextEdit shape and/or that the re-parse yields the
 // intended structure with clean astDiff, incl. every rev-2/3/4 defect fixture.
 
@@ -32,7 +32,7 @@ function run(src: string, intent: EditIntent): { out: string; b: ParseResult } {
 
 const firstCmd = (r: ParseResult) => r.script.sections[0].items[0] as CommandNode;
 
-describe("setArgValue (§4.4)", () => {
+describe("setArgValue (Sec.4.4)", () => {
   it("replaces exactly the arg span", () => {
     const src = "<LAND_GENERATION>\ncreate_land { land_percent 30 base_size 5 }";
     const a = parse(src);
@@ -42,7 +42,7 @@ describe("setArgValue (§4.4)", () => {
     expect(out).toBe("<LAND_GENERATION>\ncreate_land { land_percent 55 base_size 5 }");
   });
 
-  it("quoted include path keeps its quotes; #const name gets none (§3.4 overload)", () => {
+  it("quoted include path keeps its quotes; #const name gets none (Sec.3.4 overload)", () => {
     const src = '#include_drs "my maps/a.rms"\n#const FOO 5';
     const a = parse(src);
     const inc = a.script.preamble[0] as CommandNode; // DirectiveNode shape-compatible for args
@@ -56,7 +56,7 @@ describe("setArgValue (§4.4)", () => {
   });
 });
 
-describe("delete modes (§4.6)", () => {
+describe("delete modes (Sec.4.6)", () => {
   it("whole-line: node alone on its line vanishes with no blank residue", () => {
     const src = "<LAND_GENERATION>\ncreate_land\n{\n\tland_percent 30\n\tbase_size 5\n}";
     const a = parse(src);
@@ -102,7 +102,7 @@ describe("delete modes (§4.6)", () => {
   });
 });
 
-describe("addAttribute / toggleFlag (§4.6)", () => {
+describe("addAttribute / toggleFlag (Sec.4.6)", () => {
   it("own-lines block: inserted before } matching indent", () => {
     const src = "<LAND_GENERATION>\ncreate_land\n{\n\tland_percent 30\n}";
     const a = parse(src);
@@ -117,7 +117,7 @@ describe("addAttribute / toggleFlag (§4.6)", () => {
     expect(out).toBe("<LAND_GENERATION>\ncreate_land { land_percent 30 base_size 7 }");
   });
 
-  it("block-less command synthesizes braces (§4.6, AttributeTarget=CommandNode)", () => {
+  it("block-less command synthesizes braces (Sec.4.6, AttributeTarget=CommandNode)", () => {
     const src = "<LAND_GENERATION>\ncreate_land";
     const a = parse(src);
     const { out, b } = run(src, { kind: "addAttribute", target: firstCmd(a), name: "land_percent", value: [40] });
@@ -142,7 +142,7 @@ describe("addAttribute / toggleFlag (§4.6)", () => {
   });
 });
 
-describe("addCommand + placeholders (§4.3/§4.5, rev 4 pins)", () => {
+describe("addCommand + placeholders (Sec.4.3/Sec.4.5, rev 4 pins)", () => {
   it("placeholders parse as structured nodes — no RawNode, no errors", () => {
     const src = "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
     const a = parse(src);
@@ -169,7 +169,7 @@ describe("addCommand + placeholders (§4.3/§4.5, rev 4 pins)", () => {
   });
 });
 
-describe("branches (§4.5 in:branch, §4.10, §4.4 optional targets)", () => {
+describe("branches (Sec.4.5 in:branch, Sec.4.10, Sec.4.4 optional targets)", () => {
   const condSrc = "if HUGE_MAP\n\t#define BIG\nelseif TINY_MAP\n\t#define SMALL\nendif";
 
   it("insert into a middle branch anchors before the next elseif", () => {
@@ -241,7 +241,7 @@ describe("branches (§4.5 in:branch, §4.10, §4.4 optional targets)", () => {
   });
 });
 
-describe("applySuggestion (§4.1 rev 4 — the quick-fix goes through the pipeline)", () => {
+describe("applySuggestion (Sec.4.1 rev 4 — the quick-fix goes through the pipeline)", () => {
   it("typo fix promotes the run to a structured node", () => {
     const src = "<ELEVATION_GENERATION>\ncreate_elevation 5 { base_size 4 }";
     const typo = src.replace("base_size", "base_sixe");
@@ -262,7 +262,7 @@ describe("applySuggestion (§4.1 rev 4 — the quick-fix goes through the pipeli
   });
 });
 
-describe("CRLF files (§4.3 eol detection)", () => {
+describe("CRLF files (Sec.4.3 eol detection)", () => {
   it("inserts use \\r\\n and nothing else changes", () => {
     const src = "<LAND_GENERATION>\r\ncreate_land\r\n{\r\n\tland_percent 30\r\n}";
     const a = parse(src);

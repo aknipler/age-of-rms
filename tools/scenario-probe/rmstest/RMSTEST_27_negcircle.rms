@@ -1,0 +1,102 @@
+/*
+RMSTEST_27 - what does a NEGATIVE circle_radius do
+preview-design.md Sec.6.1, and the open half of the radiusPercent min decision
+
+QUESTION
+guide:842 documents %Radius as a number in the range 1-50. guide:844 adds that
+"0 will disable circle_radius", which Tests 2 and 5 confirmed means the
+attribute behaves exactly as if absent. Nothing anywhere addresses a NEGATIVE
+value, and RMSTEST_2 and RMSTEST_5 only ever tested 0.
+
+This is not idle. language.json declares radiusPercent with min 1, so RMS0203
+currently false-warns on the legal circle_radius 0. The fix is a one-line data
+change, but "widen the min to 0" and "widen the min to allow negatives" are
+different changes and we cannot pick between them without knowing whether a
+negative is legal RMS or an author error worth warning about.
+
+Precedent says do not assume a negative is simply rejected. Negative
+base_elevation resolves to 16 (RMSTEST_4), and negative border values are
+explicitly legal (guide:887). RMS tolerates negatives in more places than the
+guide's stated ranges suggest.
+
+METHOD
+Byte-for-byte RMSTEST_24 with one line added: circle_radius -20. Everything
+else - SNOW base, eight player lands, tile budget, clumping, fuzziness - is
+identical, so RMSTEST_24's measured result IS the control and no new control
+run is needed.
+
+Base terrain is SNOW rather than WATER for the reason RMSTEST_24 gives: an
+island layout would make DE auto-paint a BEACH ring at every land/water
+boundary, which shifts patch edges and is the trap that made the first attempt
+at item 7c unreadable.
+
+GENERATE AT TINY (120) WITH 8 PLAYERS. Same as RMSTEST_24, because the
+comparison is only valid against a control at the same size and player count.
+
+THE FOUR CANDIDATE READINGS, and each has its own signature
+  (a) Treated like 0, i.e. as if the attribute were absent.
+      mean distance from center ~50 tiles, sd ~7
+  (b) Absolute value taken, so radius 20 percent of full width.
+      mean ~24 tiles, and sd ~0
+  (c) Clamped to the declared minimum of 1, so radius 1 percent.
+      mean ~1.2 tiles, all eight lands piled on the center
+  (d) Taken literally as a negative radius.
+      Expect nonsense: everything at center, or a failed generation
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. (a). A negative is most likely folded into the same "not a usable radius"
+   branch that 0 already takes. Recorded as the prediction precisely because it
+   is the convenient answer - it would let radiusPercent's min go to 0 and treat
+   anything below as the same disable sentinel.
+2. TWO readings separate these, not one, and the second is the one to trust.
+   The MEAN distance separates (a) from (b) from (c). But the SPREAD separates
+   (a) from (b) independently: an explicit circle_radius carries variance 0 by
+   default (guide:847), so reading (b) predicts a PERFECT ring with all eight
+   radii equal, while reading (a) inherits the no-attribute jitter that
+   RMSTEST_24 measured at sd 7.11. Two independent signals agreeing is what
+   makes this one run sufficient.
+3. Eight GRASS patches. Fewer means lands merged and those centroids are not
+   origins - see RMSTEST_25's note on merged patches.
+
+RUN IT FIVE TIMES. Eight origins is a small sample for a spread, and the ring
+rotation differs per run. Five runs gives 40 radii, matching RMSTEST_24's
+sample exactly so the two are directly comparable.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Map center on a 120 map is 59.5, 59.5. Distance from center is
+  sqrt((cx-59.5)^2 + (cy-59.5)^2) on the printed centroids.
+  Compare mean AND sd against RMSTEST_24's 50.44 and 7.11.
+
+IF THE ANSWER IS (b), ONE FOLLOW-UP IS WANTED
+Absolute-value handling raises the question of what happens above the
+documented 50. Re-run this script with circle_radius -60: if the mean lands at
+60 percent of width the value is passed through unclamped, and guide:846's
+warning about values over 50 forcing players into the corners applies to
+negatives too.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 60
+    base_size 3
+    clumping_factor 20
+    border_fuzziness 0
+    circle_radius -20
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

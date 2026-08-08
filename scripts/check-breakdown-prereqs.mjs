@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Grep-based refresher for docs/breakdown-design.md §0.1's reference-data
+// Grep-based refresher for docs/breakdown-design.md Sec.0.1's reference-data
 // prerequisites table. The table pins occurrence counts as of a given spec
 // revision, and rev 4 found four of eight rows had drifted from what the
 // repo actually contained — this script is rev 4's fix: re-derive the
@@ -33,13 +33,26 @@ function row(field, actual, expected, note, { informational = false } = {}) {
 
 const language = readJson("reference/data/language.json");
 
-// repeatable — rev 4 table: 4, named replace_terrain/terrain_cost/terrain_size/spacing_to_specific_terrain
+// repeatable — rev 5 table: 5, the rev-4 four plus avoid_actor_area
 const repeatableAttrs = language.attributes.filter((a) => a.repeatable === true).map((a) => a.name).sort();
 row(
   "repeatable",
   `${repeatableAttrs.length} (${repeatableAttrs.join(", ") || "none"})`,
-  "4 (replace_terrain, spacing_to_specific_terrain, terrain_cost, terrain_size)",
-  "§3.3 ground-truth rule renders duplicates as a list regardless of this flag — it only governs whether \"add another\" is offered.",
+  "5 (avoid_actor_area, replace_terrain, spacing_to_specific_terrain, terrain_cost, terrain_size)",
+  "Sec.3.3 ground-truth rule renders duplicates as a list regardless of this flag — it only governs whether \"add another\" is offered.",
+);
+
+// predefinedLabels — rev 5 table: 138 engine-defined condition labels.
+// Consumed by validate()'s unknown-constant check and by the preview's
+// branch selection (docs/preview-design.md Sec.3.1); the count is expected
+// to move only if a DE patch adds lobby settings or map sizes.
+const predefinedLabels = language.predefinedLabels ?? [];
+const labelCategories = [...new Set(predefinedLabels.map((l) => l.category))].sort();
+row(
+  "predefinedLabels",
+  `${predefinedLabels.length} (${labelCategories.length} categories)`,
+  "138 (10 categories)",
+  "Sec.7 — engine-defined condition labels. Also the last blocking prerequisite for validate() (parser-design Sec.13 item 3).",
 );
 
 // nonFunctional — rev 4 table: 2, #undefine/#include
@@ -48,7 +61,7 @@ row(
   "nonFunctional",
   `${nonFunctionalDirectives.length} (${nonFunctionalDirectives.join(", ") || "none"})`,
   "2 (#include, #undefine)",
-  "Drives §3.6's \"has no effect in DE\" badge.",
+  "Drives Sec.3.6's \"has no effect in DE\" badge.",
 );
 
 // #ifdef family removed from directives[]
@@ -58,7 +71,7 @@ row(
   "#ifdef family in directives[]",
   stillPresent.length === 0 ? "removed" : `still present: ${stillPresent.join(", ")}`,
   "removed",
-  "parser-design §13 item 2 — these don't exist in DE.",
+  "parser-design Sec.13 item 2 — these don't exist in DE.",
 );
 
 // sectionLabels.ts exists with 7 entries
@@ -81,7 +94,7 @@ results.push({
   actual: sectionLabelsStatus,
   expected: "exists (7 keys)",
   ok: sectionLabelsKeyCount === 7,
-  note: "§7 item 3 — display labels for the section sub-tabs.",
+  note: "Sec.7 item 3 — display labels for the section sub-tabs.",
 });
 
 // argument default coverage — rev 4 table: 34/130
@@ -98,7 +111,7 @@ function scanArgs(arr) {
 scanArgs(language.commands);
 scanArgs(language.attributes);
 scanArgs(language.directives);
-row("argument default coverage", `${withDefault}/${totalArgs}`, "34/130", "Not blocking (§3.3's no-default absent-row path is the common case) — shapes the pitch, not correctness.");
+row("argument default coverage", `${withDefault}/${totalArgs}`, "34/130", "Not blocking (Sec.3.3's no-default absent-row path is the common case) — shapes the pitch, not correctness.");
 
 // Diagnostic.suggestion field on types.ts
 const typesSrc = read("src/parser/types.ts");
@@ -106,23 +119,23 @@ row(
   "Diagnostic.suggestion field",
   typesSrc.includes("suggestion") && /interface Diagnostic[\s\S]*?suggestion\??:/.test(typesSrc) ? "exists" : "missing",
   "exists",
-  "§7 item 10 — populated by unknownName() in diagnostics.ts, consumed by the raw-card quick-fix / applySuggestion intent.",
+  "Sec.7 item 10 — populated by unknownName() in diagnostics.ts, consumed by the raw-card quick-fix / applySuggestion intent.",
 );
 
 // applySuggestion intent — 3.3 scope, expected NOT yet built as of 3.2.
 // Informational: absence here is correct pre-3.3, so it's never a "mismatch".
 const hasPatchDir = existsSync(path.join(repoRoot, "src/breakdown/patch"));
 results.push({
-  field: "applySuggestion intent (§4.1, 3.3 scope)",
+  field: "applySuggestion intent (Sec.4.1, 3.3 scope)",
   actual: hasPatchDir ? "src/breakdown/patch/ exists — check intents.ts" : "not built (src/breakdown/patch/ absent)",
   expected: "not built until 3.3",
   ok: true,
   note: "Expected absent through 3.2; do not treat as a regression.",
 });
 
-// useParsedDocument hook exists (§6.2)
+// useParsedDocument hook exists (Sec.6.2)
 const hasUseParsedDocument = existsSync(path.join(repoRoot, "src/useParsedDocument.ts"));
-row("useParsedDocument.ts (§6.2)", hasUseParsedDocument ? "exists" : "missing", "exists", "Lifts the single worker parse to app level.");
+row("useParsedDocument.ts (Sec.6.2)", hasUseParsedDocument ? "exists" : "missing", "exists", "Lifts the single worker parse to app level.");
 
 // CodePane staleness guard — just report the line it's on so the spec's
 // "line drifts, grep for it" note has a live answer.
@@ -134,12 +147,12 @@ results.push({
   actual: guardLineIndex >= 0 ? `line ${guardLineIndex + 1}` : "not found — check CodePane.tsx by hand",
   expected: "present somewhere in CodePane.tsx",
   ok: guardLineIndex >= 0,
-  note: "Guards against applying markers for a stale parse; §6.2 depends on useParsedDocument still exposing `source`. Line number drifts — this is just a pointer, not a spec claim.",
+  note: "Guards against applying markers for a stale parse; Sec.6.2 depends on useParsedDocument still exposing `source`. Line number drifts — this is just a pointer, not a spec claim.",
 });
 
 // ---- report ----
 const nameWidth = Math.max(...results.map((r) => r.field.length));
-console.log("docs/breakdown-design.md §0.1 prerequisite refresh\n");
+console.log("docs/breakdown-design.md Sec.0.1 prerequisite refresh\n");
 for (const r of results) {
   const mark = r.ok ? "✓" : "?";
   console.log(`${mark} ${r.field.padEnd(nameWidth)}  actual: ${r.actual}`);
@@ -151,5 +164,5 @@ const mismatches = results.filter((r) => !r.ok);
 console.log(
   mismatches.length === 0
     ? "\nAll rows match the rev-4 table — no drift detected."
-    : `\n${mismatches.length} row(s) differ from the rev-4 table (see "spec says" above). This is a report, not a failure — update docs/breakdown-design.md §0.1 if the repo is now correct, or fix the repo if it's not.`,
+    : `\n${mismatches.length} row(s) differ from the rev-4 table (see "spec says" above). This is a report, not a failure — update docs/breakdown-design.md Sec.0.1 if the repo is now correct, or fix the repo if it's not.`,
 );

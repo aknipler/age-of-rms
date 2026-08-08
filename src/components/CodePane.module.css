@@ -1,6 +1,22 @@
-.codePane {
+/* The Code tab is now two columns: the shared map/reference panel and the
+   editor. The panel sets its own fixed width and flex-shrink: 0, so this only
+   has to be a row that allows its children to shrink below content size —
+   without min-width: 0 a flex child refuses to shrink past its intrinsic
+   width, and Monaco reports a very large one. */
+.pane {
+  display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+}
+
+/* Was `.codePane`. The margin and border used to sit on the tab's whole
+   content area; they belong to the editor box specifically now that something
+   else shares the row. */
+.editorFrame {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
   margin: 0.75rem 1.25rem;
   border: 1px solid #000;
   display: flex;

@@ -1,0 +1,129 @@
+/*
+RMSTEST_21 - clumping_factor regimes for LANDS
+preview-design.md Sec.15 item 3, Sec.6.1's table
+
+QUESTION
+The land table has different boundaries from the terrain table. Negative snakey,
+0 to 10 irregular, 11 to 40 rounder, and above 40 "lands that extend in one
+direction away from the origin". That last regime is the weakest thing in
+Sec.6.1. The guide gives one sentence, and the model built on it, a per-land
+preferred direction chosen at origin time with weight rising on the projection
+onto it, is an invention. It has never been seen.
+
+METHOD
+Six lands, one per regime, distinct terrains, identical 600 tile budgets, each
+pinned with land_position so they do not compete for space and so the origin is
+known exactly rather than inferred. Read circularity for the shape and the
+bounding box aspect ratio for the directional claim, because a land that
+extends one way is not merely less circular, it is ELONGATED, and those are
+different observables. A snake is low circularity with a squarish bounding box.
+A directional land is low circularity with a lopsided one.
+
+No borders anywhere, so growth stops only on the tile budget or on another land.
+
+GENERATE AT NORMAL (200). Six lands of 600 tiles is 3600 of 40000. Positions
+are spread on a 3 by 2 grid at 20, 50 and 80 percent across and 25 and 70
+percent down, giving each land about 60 tiles of clearance, which a round 600
+tile land does not come close to using.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Circularity rises across -5, 0, 8, 25 as it should for lands.
+2. clumping_factor 60 produces a bounding box whose long side is at least 1.6
+   times its short side, while every other land sits near 1.0 to 1.2. This is
+   the real test. If the 60 land comes back roughly square, the directional
+   regime does not exist and Sec.6.1's 40+ row should collapse into the rounder
+   row.
+3. If the directional regime IS real, the 40 land and the 60 land both show it,
+   which puts the boundary at or below 40 rather than above it.
+4. 8, the land default, sits in the irregular band and reads noticeably less
+   circular than 25. The terrain table calls 8 rounder. If lands and terrains
+   read the same at 8, the two tables are one table and rev 4's split was
+   wrong in the other direction.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches DIRT
+  once per terrain. The bbox column is what settles prediction 2.
+
+WATCH FOR
+Each terrain must come back as ONE patch. Two lands growing into each other
+merge in the terrain histogram only if they share a terrain, which they do not
+here, but a land that hits another land stops early, so check the areas are
+near 600 before trusting any shape reading. An area well under 600 means the
+land was blocked and its shape records the obstruction.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  /* negative, "extremely snakey, generally not recommended" */
+  create_land
+  {
+    terrain_type DIRT
+    number_of_tiles 600
+    land_position 20 25
+    clumping_factor -5
+    base_size 2
+  }
+
+  /* 0 to 10, "more irregular lands" */
+  create_land
+  {
+    terrain_type DIRT2
+    number_of_tiles 600
+    land_position 50 25
+    clumping_factor 0
+    base_size 2
+  }
+
+  /* 8 is the land default (guide:925), the irregular regime */
+  create_land
+  {
+    terrain_type DIRT3
+    number_of_tiles 600
+    land_position 80 25
+    clumping_factor 8
+    base_size 2
+  }
+
+  /* 11 to 40, "rounder lands" */
+  create_land
+  {
+    terrain_type DESERT
+    number_of_tiles 600
+    land_position 20 70
+    clumping_factor 25
+    base_size 2
+  }
+
+  /* the 40 boundary itself */
+  create_land
+  {
+    terrain_type SNOW
+    number_of_tiles 600
+    land_position 50 70
+    clumping_factor 40
+    base_size 2
+  }
+
+  /* above 40, "lands that extend in one direction away from the origin".
+     The whole reason this map exists. */
+  create_land
+  {
+    terrain_type ICE
+    number_of_tiles 600
+    land_position 80 70
+    clumping_factor 60
+    base_size 2
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

@@ -1,0 +1,93 @@
+/*
+RMSTEST_29 - what zone does set_zone_by_team give an UN-TEAMED player
+preview-design.md Sec.15 item 14
+
+QUESTION
+guide:1056 gives a team's zone as TeamNumber - 9 and says nothing about team 0,
+which is the engine's own value for un-teamed (guide:1002). Taken literally the
+formula puts every un-teamed player in zone -9, which is ALSO player 1's own
+default zone (playerNumber - 10). That would merge every un-teamed player's land
+with player 1's and with each other's, so an FFA map that writes
+set_zone_by_team collapses into one landmass.
+
+Sec.6.1 currently pins the graceful alternative instead - un-teamed players keep
+their default playerNumber - 10 - and says so explicitly as A CHOICE, NOT A
+MEASUREMENT. This run turns it into one or the other. The fix is one line
+whichever way it goes, but 4.2 should not be built on a guess.
+
+METHOD
+create_player_lands with set_zone_by_team and a large
+other_zone_avoidance_distance. Zone membership is not directly visible in an
+export, so the avoidance distance is the instrument: lands in DIFFERENT zones
+push each other apart, lands in the SAME zone do not. Turn the invisible
+property into a measurable gap.
+
+The two configurations are the whole test and must both be run:
+  29-ALL   every player un-teamed (FFA)
+  29-MIX   players 1 and 2 on team 1, everyone else un-teamed
+
+TEAMS ARE SET OUTSIDE THE SCRIPT. They come from the lobby, not from RMS. In
+the scenario editor set them under the player/diplomacy settings before
+generating. IF THE EDITOR WILL NOT LET YOU SET TEAMS FOR A RANDOM MAP, this one
+has to be run from a real game lobby with the script as the selected map and the
+result exported afterwards. Check this before committing a sitting to it - it is
+the only script in the batch with a setup step the editor may not support, and
+finding that out after generating everything else would waste the sitting.
+
+GENERATE AT NORMAL (200) WITH 8 PLAYERS, both configurations.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. 29-ALL, if un-teamed keeps the default zone (Sec.6.1's pinned choice):
+   eight separate GRASS patches, well spaced, indistinguishable from a map with
+   no set_zone_by_team at all.
+2. 29-ALL, if the literal formula holds: all eight lands in one zone, so
+   other_zone_avoidance_distance constrains nothing between them and they are
+   free to touch. Expect FEWER THAN EIGHT patches, and in the extreme one large
+   merged mass. Patch count is the reading.
+3. 29-MIX is the control that makes 29-ALL interpretable. Players 1 and 2 share
+   a real team and should touch each other regardless of which reading is true,
+   so it proves the avoidance instrument is actually working. If 29-MIX shows 8
+   separate patches then other_zone_avoidance_distance is not doing anything
+   here and NEITHER configuration can be read - fix the instrument first.
+4. Under the literal reading, 29-MIX is the sharper case: players 1-2 are in
+   zone -8 while the six un-teamed sit in zone -9 WITH player 1. Player 1 would
+   have to be in two zones at once, so watch specifically whether player 1's
+   land merges with its teammate, with the un-teamed pool, or neither. Any of
+   the three is informative and the third would mean the formula is not what
+   either reading assumes.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Patch COUNT answers the question. Centroid spacing is the corroboration:
+  under separate zones the minimum centre-to-centre distance should exceed
+  other_zone_avoidance_distance, under a shared zone it need not.
+
+RUN EACH CONFIGURATION THREE TIMES. Two lands failing to touch in one seed
+proves nothing; three seeds with no contact is a reasonable read.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 300
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    set_zone_by_team
+    other_zone_avoidance_distance 20
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

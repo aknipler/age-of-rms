@@ -1,6 +1,6 @@
 // Phase 3.4 glue layer between the pure patch engine (src/breakdown/patch/,
-// which per docs/breakdown-design.md §12 must stay free of React/Monaco)
-// and the shared Monaco document model (§6.4). Cards never call
+// which per docs/breakdown-design.md Sec.12 must stay free of React/Monaco)
+// and the shared Monaco document model (Sec.6.4). Cards never call
 // computeEdit directly — they go through BreakdownContext's `applyEdit`,
 // which is this function bound to the current ParseResult/lang/pushEdit.
 import { computeEdit } from "./patch/computeEdit";
@@ -14,13 +14,13 @@ export type ApplyTextEdit = (edit: { start: number; end: number; newText: string
 
 /**
  * Computes the TextEdit for `intent` and pushes it onto the shared Monaco
- * model via `applyTextEdit` (which uses pushEditOperations — §6.4 — so the
+ * model via `applyTextEdit` (which uses pushEditOperations — Sec.6.4 — so the
  * edit lands on Monaco's own undo/redo stack and triggers
  * useParsedDocument's debounced reparse). Returns the EditResult (so
- * callers get `caret` for focus restoration, §4.11/§6.3) on success.
+ * callers get `caret` for focus restoration, Sec.4.11/Sec.6.3) on success.
  *
  * PatchError means "this edit is unavailable" (an unclosed container, an
- * out-of-range branch, etc. — see docs/breakdown-design.md §4.5/§4.10's
+ * out-of-range branch, etc. — see docs/breakdown-design.md Sec.4.5/Sec.4.10's
  * suppression rules) — callers render an inert control, not a crash.
  * Any other thrown error is a real bug and is allowed to propagate.
  *

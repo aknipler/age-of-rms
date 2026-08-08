@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { rebaseEdit, shiftPointThroughEdits } from "../ephemeralAnchors";
 
-// Ash's "rapid delete corrupts an unrelated command" report. Root cause:
+// Rapid delete corrupts an unrelated command report. Root cause:
 // computeEdit's offsets are only valid relative to the last CONFIRMED
 // parse, but a second rapid card action can land on the model before the
 // first action's reparse catches up. rebaseEdit is what makes the SECOND

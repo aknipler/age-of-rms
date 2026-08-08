@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Diagnostic, Item } from "../../parser/types";
 import { ticksForItems } from "../rulerTicks";
 
-// §3.10 — the diagnostics overview ruler's pure "which top-level items
+// Sec.3.10 — the diagnostics overview ruler's pure "which top-level items
 // get a tick, and what severity" logic (DOM measurement/positioning is
 // intentionally NOT covered here, see DiagnosticsRuler.tsx's own doc
 // comment for why that half can't be pure-tested).
@@ -42,7 +42,7 @@ describe("ticksForItems", () => {
     expect(ticksForItems(items, diagnostics)).toEqual([]);
   });
 
-  it("includes a diagnostic nested deep inside an item's span (collapsed-container case, §3.10)", () => {
+  it("includes a diagnostic nested deep inside an item's span (collapsed-container case, Sec.3.10)", () => {
     // A diagnostic on something inside a command's block still counts
     // toward the OWNING top-level item's tick — this is what makes
     // "ticks for cards inside collapsed containers still appear" true

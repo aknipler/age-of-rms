@@ -40,7 +40,7 @@ describe("tokenize — token kinds", () => {
   });
 
   it("does NOT classify a leading-dot float or comma/percent-suffixed numbers as number", () => {
-    // Per docs/parser-design.md §2 the pinned regex is /^-?\d+(\.\d+)?$/ —
+    // Per docs/parser-design.md Sec.2 the pinned regex is /^-?\d+(\.\d+)?$/ —
     // no leading-digit requirement relaxed, no comma/percent handling
     // (that's the engine's truncation behavior, a parser/validate()
     // concern per RMS0212, not a lexer one).
@@ -55,7 +55,7 @@ describe("tokenize — token kinds", () => {
 
   it("does not classify a space-split rnd() as rnd — it stays two word tokens", () => {
     // "rnd(1, 5)" is two whitespace-separated tokens, not one — the
-    // canonical form has no interior space (spec §2.2, RMS0214 note).
+    // canonical form has no interior space (spec Sec.2.2, RMS0214 note).
     const { tokens } = tokenize("rnd(1, 5)");
     expect(tokens.map((t) => t.text)).toEqual(["rnd(1,", "5)"]);
     expect(kindsOf(tokens)).toEqual(["word", "word"]);
@@ -94,17 +94,39 @@ describe("tokenize — offsets", () => {
     // including the named perf benchmark and a file with known real
     // defects (BCC2's glued "}8050") — offset exactness must hold
     // regardless of whether the *content* is well-formed. Per
-    // docs/parser-design.md §12, this is a non-negotiable CI gate.
-    const files = ["sample.rms", "AK_Vanguard_v1.2.rms", "BCC2-Rekawa.rms", "Pa_Site_v1.1.rms", "AK_Six_Points_v1.4.rms"];
+    // docs/parser-design.md Sec.12, this is a non-negotiable CI gate.
+    //
+    // Collected into a list and asserted ONCE, the way testUtils.checkProperties
+    // does, rather than per token. That is a harness decision, not a weaker
+    // check — the comparison is identical and every failure still names its
+    // file and token. But these five files carry 76,534 tokens, and an
+    // `expect()` per token costs ~7.6s of assertion-object construction against
+    // ~0.07s of actual comparison, which pushed a gate that tests a 0.4s
+    // workload past the 5s default timeout on a loaded machine. A
+    // non-negotiable gate that fails on machine speed stops being a gate.
+    // BCC2-Rekawa moved to test-maps/broken/ on 2026-08-05 (its RMS0101 fires
+    // by design), so it carries a subdirectory here. It is deliberately kept in
+    // this list: offset exactness must hold on malformed content too, which is
+    // precisely what a known-defective file is for.
+    const files = [
+      "sample.rms",
+      "AK_Vanguard_v1.2.rms",
+      "broken/BCC2-Rekawa.rms",
+      "Pa_Site_v1.1.rms",
+      "AK_Six_Points_v1.4.rms",
+    ];
+    const mismatches: string[] = [];
     for (const file of files) {
       const source = readCorpusFile(file);
       const { tokens } = tokenize(source);
       for (const token of tokens) {
-        expect(source.slice(token.start, token.end), `${file}: token ${JSON.stringify(token.text)}`).toBe(
-          token.text,
-        );
+        const slice = source.slice(token.start, token.end);
+        if (slice !== token.text) {
+          mismatches.push(`${file}: token ${JSON.stringify(token.text)} at ${token.start} slices to ${JSON.stringify(slice)}`);
+        }
       }
     }
+    expect(mismatches).toEqual([]);
   });
 });
 
@@ -204,10 +226,10 @@ describe("tokenize — comments", () => {
     expect(codesOf(diagnostics)).toContain("RMS0002");
   });
 
-  // Guide fixture strings, docs/parser-design.md §12 (lines 2936-2943 of
+  // Guide fixture strings, docs/parser-design.md Sec.12 (lines 2936-2943 of
   // the archived guide). Interpretation note: the guide's own text wraps
   // these as prose sentences, e.g. "/*this is NOT a comment*/" — under
-  // RMS's whitespace-splitting model (§2) that string is actually SIX
+  // RMS's whitespace-splitting model (Sec.2) that string is actually SIX
   // separate tokens ("/*this", "is", "NOT", "a", "comment*/"), not one.
   // We assert the token-level behavior each fixture actually implies,
   // not a literal reproduction of the guide's prose formatting. The

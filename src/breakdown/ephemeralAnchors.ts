@@ -1,4 +1,4 @@
-// docs/breakdown-design.md §6.3 — ephemeral UI state (expansion, focus)
+// docs/breakdown-design.md Sec.6.3 — ephemeral UI state (expansion, focus)
 // anchored to source offsets rather than node identity, since every edit
 // re-derives the AST from scratch (new node objects every time). Kept
 // free of React so it's plain-logic testable, same convention as
@@ -38,7 +38,7 @@ export function isAnchoredWithin(anchors: ReadonlySet<number>, span: Span): bool
 }
 
 /**
- * Same shift as shiftAnchors, for a single nullable anchor — §3.9's
+ * Same shift as shiftAnchors, for a single nullable anchor — Sec.3.9's
  * `selectedAnchor` is exactly one offset (or none), not a Set, but must
  * obey the identical shift-and-drop rule (and the identical BUG-001
  * ordering fix in BreakdownPane: only ever called once the matching

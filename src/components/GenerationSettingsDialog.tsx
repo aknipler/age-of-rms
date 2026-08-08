@@ -1,6 +1,7 @@
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
 import { MAP_SIZES, MAX_PLAYER_COUNT, MIN_PLAYER_COUNT } from "../generationSettings/generationSettingsConstants";
 import { HelpTip } from "./HelpTip";
+import { TeamSection } from "./TeamSection";
 import styles from "./PreferencesDialog.module.css";
 
 interface GenerationSettingsDialogProps {
@@ -10,10 +11,10 @@ interface GenerationSettingsDialogProps {
 // Mirrors PreferencesDialog's shape (overlay + fixed box, reuses its CSS
 // module — same look, no need for a near-duplicate stylesheet). Map
 // size + player count feed the status-bar resource totals now
-// (playerCount only, per Ash's locked 2.5 decision) and the approximate
+// (playerCount only) and the approximate
 // preview / consistency checker later (PLAN.md).
 export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogProps) {
-  const { playerCount, setPlayerCount, mapSize, setMapSize } = useGenerationSettings();
+  const { playerCount, setPlayerCount, mapSize, setMapSize, playerCountLocked } = useGenerationSettings();
 
   return (
     <div className={styles.overlay} onMouseDown={onClose}>
@@ -28,6 +29,10 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
               type="number"
               min={MIN_PLAYER_COUNT}
               max={MAX_PLAYER_COUNT}
+              // Locked while a preset that names a player count is active
+              // ("2v2" asserts four players). FFA leaves this enabled — see
+              // TeamPreset.playerCount.
+              disabled={playerCountLocked}
               value={playerCount}
               onChange={(event) => {
                 const next = Number(event.target.value);
@@ -55,6 +60,8 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
             </select>
           </div>
         </HelpTip>
+
+        <TeamSection />
 
         <div className={styles.actions}>
           <button type="button" className={styles.closeButton} onClick={onClose}>

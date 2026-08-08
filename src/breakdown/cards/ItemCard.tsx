@@ -29,13 +29,13 @@ function renderInner(item: Item) {
 }
 
 /**
- * Central dispatcher, docs/breakdown-design.md §3.2's table. Every `Item`
+ * Central dispatcher, docs/breakdown-design.md Sec.3.2's table. Every `Item`
  * kind maps to exactly one card component — the mapping is total
  * (cardKindForItem throws on an unhandled kind at compile time via its
  * `never` exhaustiveness check), so nothing in the AST is silently
  * dropped from the UI (goal #3).
  *
- * §3.9 (post-3.4) — this is also the single place that makes every card
+ * Sec.3.9 (post-3.4) — this is also the single place that makes every card
  * selectable, incl. nested ones: BlockList recursively renders ItemCard
  * for a branch's items too, so wrapping here covers top-level AND nested
  * cards uniformly with no per-card-type change. stopPropagation is the

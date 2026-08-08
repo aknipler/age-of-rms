@@ -1,0 +1,90 @@
+/*
+RMSTEST_24 - default player ring radius and variance, with no circle_radius
+preview-design.md Sec.15 item 1, Sec.6.1's player land placement
+
+QUESTION
+Two questions, and the second one matters more.
+
+First, the constants. With no circle_radius attribute at all, Sec.6.1 uses
+radius 40 [tune] and variance 20 [tune], from guide:845 "the standard radius
+for unconstrained lands is around 40" and guide:849 "20 seems to be close to
+the standard amount of variance when not using circle_radius". Both are the
+guide author's estimates of an engine default, hedged in the guide's own words.
+Neither has been measured.
+
+Second, and this is the one that changes the rendering, WHAT IS 40 A
+PERCENTAGE OF. Sec.6.1 says circle_radius values are a percentage of map width
+and that the default follows the same rule, but "percentage of map width"
+admits two readings that differ by a factor of two.
+  40 percent of the full width   ->  48 tiles from center on a 120 map
+  40 percent of the half width   ->  24 tiles from center on a 120 map
+On a 120 map the half width is 60, so the first reading puts the player ring at
+48 of a possible 60 and nearly on the map edge, and the second puts it halfway
+in. Those are completely different maps. The preview draws whichever we pick
+and there is currently no evidence for either.
+
+METHOD
+Eight player lands on a SNOW base with no circle_radius anywhere, each land
+small enough to stay well separated. Each player land is one 4-connected GRASS
+patch, so the eight centroids are the eight origins. Compute each origin's
+distance from map center and read the mean for the radius and the spread for
+the variance.
+
+Base terrain is SNOW rather than WATER on purpose. An island layout on water
+would be the natural way to separate player lands, and it would also make DE
+auto-paint a BEACH ring at every land and water boundary, which shifts the
+patch edges and is the exact trap that made the first attempt at item 7c
+unreadable. No water, no beach, no correction to reason about.
+
+GENERATE AT TINY (120) WITH 8 PLAYERS. Small map so the two candidate radii,
+48 and 24 tiles, are far apart relative to the variance.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. Eight GRASS patches, one per player. Fewer means two lands merged and the
+   centroids between them are not origins.
+2. Mean distance from center lands near 48 rather than near 24, because the
+   guide's phrase is "percentage of map width" without qualification. Stated as
+   a prediction precisely because it is the reading Sec.6.1 already assumes and
+   therefore the one at risk of being believed without checking.
+3. The eight origins are evenly spaced in angle with a random whole-ring
+   rotation, so the angular gaps are near 45 degrees each while the absolute
+   angles differ from run to run.
+4. The eight radii are NOT identical. Variance 20 predicts a visible spread. If
+   all eight come back at the same distance, the implicit jitter does not exist
+   and Sec.6.1's "no circle_radius" branch should use variance 0, which would
+   also mean guide:849's estimate is describing something else.
+
+RUN IT FIVE TIMES. Eight origins is a small sample for a variance, and the ring
+rotation differs per run, so five runs gives 40 radii, which is enough to
+separate a real spread from a fixed ring.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Map center on a 120 map is 59.5, 59.5. Distance from center is
+  sqrt((cx-59.5)^2 + (cy-59.5)^2) on the printed centroids.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  /* No circle_radius, deliberately. The absence IS the test. */
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 60
+    base_size 3
+    clumping_factor 20
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

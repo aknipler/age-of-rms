@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { shiftSingleAnchor } from "../ephemeralAnchors";
 
-// §3.9's selectedAnchor generalization of BUG-001's shift-and-drop rule to
+// Sec.3.9's selectedAnchor generalization of BUG-001's shift-and-drop rule to
 // a single nullable anchor. Thin wrapper over shiftAnchors, but the
 // null-passthrough and unwrap-from-Set behavior are worth pinning down
 // directly rather than trusting by inspection.

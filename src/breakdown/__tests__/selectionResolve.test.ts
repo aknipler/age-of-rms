@@ -3,7 +3,7 @@ import { parseRms } from "../../parser/parser";
 import { loadLanguage } from "../../parser/__tests__/testUtils";
 import { findItemAtOffsetInScript } from "../selectionResolve";
 
-// §3.9 — findItemAtOffset must resolve to the innermost SELECTABLE item at
+// Sec.3.9 — findItemAtOffset must resolve to the innermost SELECTABLE item at
 // a given offset: it descends into if/random branches (those render as
 // separate nested ItemCards) but must NOT descend into a command's own
 // block/attributes (those render as part of the same CommandCard, not a

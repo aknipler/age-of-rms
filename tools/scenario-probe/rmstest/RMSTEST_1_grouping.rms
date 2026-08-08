@@ -1,0 +1,66 @@
+/*
+	RMSTEST 1 — does avoid_forest_zone apply to a tight group's CENTRE or to
+	each MEMBER?
+
+	The guide contradicts itself. Under set_tight_grouping (guide:2122) it
+	lists avoid_forest_zone among constraints that "apply only to the center
+	of the group". Under avoid_forest_zone's own entry (guide:2569) it says
+	"if the objects are grouped, distance will apply to the individual group
+	members", unconditionally. docs/preview-design.md Sec.6.6 picks the
+	per-attribute entry, so it predicts MEMBER.
+
+	HOW IT DISCRIMINATES
+	Each player gets a 15x15 grass clearing (base_size 7, growth target
+	already met so it cannot expand) surrounded by forest. avoid_forest_zone 6
+	is then geometrically impossible for a 5x5 tight group's outer members —
+	they sit 2 tiles from centre, so they would need a clearing radius of 8 —
+	but it is satisfiable for the group's CENTRE, which only needs radius 6.
+
+	READ IT LIKE THIS
+	  GOLD present (a 5x5 block of gold piles)  -> CENTRE. guide:2122 wins,
+	                                               preview-design Sec.6.6 is
+	                                               WRONG and needs reverting.
+	  GOLD absent                               -> MEMBER. Sec.6.6 confirmed.
+
+	The single STONE pile is a CONTROL with the same avoid_forest_zone 6 and
+	no grouping. It must always appear. If stone is missing too, the map
+	failed for an unrelated reason and this run tells us nothing.
+
+	RUN ON: Tiny, 4 players. Four clearings = four samples.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain WATER
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 7
+	number_of_tiles 1
+	border_fuzziness 0
+	circle_radius 33
+}
+
+<OBJECTS_GENERATION>
+
+/* THE TEST: 25 objects, tight, avoid_forest_zone 6 */
+create_object GOLD
+{
+	number_of_objects 25
+	set_tight_grouping
+	set_gaia_object_only
+	set_place_for_every_player
+	avoid_forest_zone 6
+}
+
+/* THE CONTROL: same avoidance, ungrouped. Must always appear. */
+create_object STONE
+{
+	number_of_objects 1
+	set_gaia_object_only
+	set_place_for_every_player
+	avoid_forest_zone 6
+}

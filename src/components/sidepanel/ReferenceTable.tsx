@@ -1,20 +1,40 @@
 import { useState } from "react";
-import { useBreakdownContext } from "../BreakdownContext";
-import { HelpTip } from "../../components/HelpTip";
+import gameConstantsRaw from "../../../reference/data/game-constants.json";
+import languageDataRaw from "../../../reference/data/language.json";
+import type { LanguageData } from "../../parser/language";
+import type { GameConstantsData } from "../../breakdown/gameConstants";
+import { HelpTip } from "../HelpTip";
 import styles from "./ReferenceTable.module.css";
+
+// Read straight from the reference data rather than through
+// BreakdownContext, which is what this component used to do.
+//
+// That dependency was the only thing tying the reference table to the
+// Breakdown tab, and it was never a real one: of the fifteen fields on
+// BreakdownContextValue this needed exactly two, `gameConstants` and `lang`,
+// both of which are module-level JSON that never changes at runtime. The rest
+// of that context is edit intents, expansion anchors and card selection —
+// machinery a read-only lookup table has no business requiring. Dropping it is
+// what lets the Code tab render this component at all, since there is no
+// BreakdownProvider over there and there should not be one.
+//
+// Same double-cast reasoning as parserWorker.ts: resolveJsonModule infers a
+// literal type from the file that does not always structurally overlap the
+// hand-written interface, and `npm run validate:reference` (ajv) is the real
+// guarantee the data is shaped correctly.
+const gameConstants = gameConstantsRaw as unknown as GameConstantsData;
+const languageData = languageDataRaw as unknown as LanguageData;
 
 type Mode = "terrain" | "objects" | "commands";
 
 /**
- * docs/breakdown-design.md §3.8 — a read-only reference/lookup aid, not
+ * docs/breakdown-design.md Sec.3.8 — a read-only reference/lookup aid, not
  * filtered to the current selection (spec explicitly calls that a
  * nice-to-have, not required for 3.2). Terrain/Objects come from
- * game-constants.json (constId/deTextureFile mostly null pending Phase
- * 4.0's extraction script — shown as "—"); Commands comes from
- * language.json's commands[], with the verified/unverified chip.
+ * game-constants.json; Commands comes from language.json's commands[], with
+ * the verified/unverified chip.
  */
 export function ReferenceTable() {
-  const { gameConstants, lang } = useBreakdownContext();
   const [mode, setMode] = useState<Mode>("terrain");
 
   return (
@@ -66,7 +86,7 @@ export function ReferenceTable() {
               </tr>
             </thead>
             <tbody>
-              {lang.data.commands.map((c) => (
+              {languageData.commands.map((c) => (
                 <tr key={c.name}>
                   <td>
                     {c.name}
@@ -80,7 +100,20 @@ export function ReferenceTable() {
           </table>
         </HelpTip>
       )}
-      {mode !== "commands" && <p className={styles.note}>IDs/textures pending extraction (Phase 4.0).</p>}
+      {/*
+        This used to read "IDs/textures pending extraction (Phase 4.0)". That
+        extraction ran on 2026-07-30 and the values above are real, so the note
+        was telling users to distrust correct data. What is still true is the
+        coverage: the table holds 31 of DE's several hundred constants, which
+        is the thing worth saying (CLAUDE.md: reference data is a positive
+        resolver, never a negative authority — a name missing from this table
+        proves nothing about the game).
+      */}
+      {mode !== "commands" && (
+        <p className={styles.note}>
+          The common constants, not all of them — a name missing here may still be valid in game.
+        </p>
+      )}
     </div>
   );
 }

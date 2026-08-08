@@ -1,0 +1,89 @@
+.section {
+  margin-top: 0.75rem;
+  border-top: 1px solid #000;
+  padding-top: 0.5rem;
+}
+
+.heading {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.presetButton {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.presetButton:hover {
+  background: #f0f0f0;
+}
+
+.presetActive {
+  background: #000;
+  color: #fff;
+}
+
+.presetActive:hover {
+  background: #222;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.playerLabel {
+  min-width: 5rem;
+}
+
+/* Fixed width so the column doesn't jiggle as the glyph changes between
+   "-" and a digit. */
+.teamButton {
+  border: 1px solid #000;
+  background: #fff;
+  width: 2rem;
+  padding: 0.2rem 0;
+  text-align: center;
+  cursor: pointer;
+  font: inherit;
+}
+
+.teamButton:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+.teamButton:disabled {
+  color: #888;
+  border-color: #888;
+  cursor: default;
+}
+
+.readout {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.lockNote {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #444;
+}

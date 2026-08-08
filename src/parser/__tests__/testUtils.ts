@@ -1,5 +1,5 @@
 // Shared helpers for the Phase 2.3 parser suites: language.json loading and
-// the two non-negotiable §12 properties (coverage/ownership + span fidelity)
+// the two non-negotiable Sec.12 properties (coverage/ownership + span fidelity)
 // that corpus.test.ts and fuzz.test.ts both gate on.
 
 import { readFileSync } from "node:fs";
@@ -85,9 +85,9 @@ export function collectNodes(result: ParseResult): { node: Ranged; children: Ran
 }
 
 /**
- * §12 property (a): every non-trivia token is inside at least one node's
+ * Sec.12 property (a): every non-trivia token is inside at least one node's
  * token range, and children nest strictly within their parents.
- * §12 property (b): every node's span starts/ends exactly at its first/last
+ * Sec.12 property (b): every node's span starts/ends exactly at its first/last
  * token's text.
  * Returns a list of human-readable violations (empty = pass).
  */

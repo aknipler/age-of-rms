@@ -11,7 +11,7 @@ import {
 // Whitespace is pinned as the C `isspace` set — nothing more. Unicode
 // space-lookalikes (NBSP etc.) are deliberately NOT whitespace; they end
 // up glued inside a token instead, which is what RMS0004 flags. See
-// docs/parser-design.md §2.
+// docs/parser-design.md Sec.2.
 const WHITESPACE = new Set([" ", "\t", "\n", "\v", "\f", "\r"]);
 
 const SECTION_HEADER_PATTERN = /^<[A-Z0-9_]+>$/;
@@ -28,7 +28,7 @@ const GLUED_MARKERS = ["{", "}", "/*", "*/"];
 // which is easy to silently corrupt via editors/encodings.
 const BOM = String.fromCharCode(0xfeff);
 
-// Non-standard space characters per docs/parser-design.md §2: NBSP
+// Non-standard space characters per docs/parser-design.md Sec.2: NBSP
 // (0x00A0), Ogham space mark (0x1680), the general punctuation space
 // run (0x2000-0x200B), narrow no-break space (0x202F), medium
 // mathematical space (0x205F), ideographic space (0x3000), and a
@@ -71,7 +71,7 @@ function computeLineOffsets(source: string): number[] {
 
 /**
  * Splits `source` into whitespace-separated tokens and classifies each
- * one, per docs/parser-design.md §2 ("The RMS lexical model — the
+ * one, per docs/parser-design.md Sec.2 ("The RMS lexical model — the
  * insight everything rests on"). This is a pure splitter: it does not
  * know what a command, attribute, or expression is — that's the parser's
  * job (Phase 2.3). Never throws, per spec goal #1 — any input (empty,
@@ -118,7 +118,7 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
  * Comment-span pass: walks the token array matching commentOpen/
  * commentClose with a nesting-depth counter, marking every enclosed
  * token — including the markers themselves — as trivia. Mutates the
- * tokens in place (isTrivia only). See §2 "Comment handling".
+ * tokens in place (isTrivia only). See Sec.2 "Comment handling".
  *
  * When `nestedComments` is false, a second `/*` encountered while
  * already inside a comment does not open a new level (depth stays at 1)
@@ -173,7 +173,7 @@ function lintTokens(tokens: Token[], diagnostics: Diagnostic[]): void {
     for (const marker of GLUED_MARKERS) {
       if (token.text !== marker && token.text.includes(marker)) {
         diagnostics.push(embeddedMarker(token, marker));
-        break; // one diagnostic per token, per docs/parser-design.md §10
+        break; // one diagnostic per token, per docs/parser-design.md Sec.10
       }
     }
 

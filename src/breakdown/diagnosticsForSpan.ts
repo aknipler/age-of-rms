@@ -2,7 +2,7 @@ import type { Diagnostic, DiagnosticSeverity, Span } from "../parser/types";
 
 const SEVERITY_RANK: Record<DiagnosticSeverity, number> = { info: 0, warning: 1, error: 2 };
 
-/** Diagnostics whose span is contained within `span` — the §5 rule: row/card badges reuse the parser's own diagnostics, mapped by span containment, never Breakdown-invented validation. */
+/** Diagnostics whose span is contained within `span` — the Sec.5 rule: row/card badges reuse the parser's own diagnostics, mapped by span containment, never Breakdown-invented validation. */
 export function diagnosticsWithin(diagnostics: readonly Diagnostic[], span: Span): Diagnostic[] {
   return diagnostics.filter((d) => d.span.start >= span.start && d.span.end <= span.end);
 }

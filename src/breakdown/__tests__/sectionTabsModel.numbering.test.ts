@@ -20,11 +20,11 @@ function script(preambleLen: number, sections: SectionNode[]): ScriptNode {
   } as unknown as ScriptNode;
 }
 
-// Ash's ask: tab numbering must be absolute (tied to a section's fixed
+// Tab numbering must be absolute (tied to a section's fixed
 // canonical identity), not derived from which tabs happen to render — a
 // missing section (e.g. no <ELEVATION_GENERATION> in the file) must not
 // change the numbers of the sections after it.
-describe("buildSectionTabs — absolute numbering (Ash's ask)", () => {
+describe("buildSectionTabs — absolute numbering", () => {
   it("numbers Header=0 and the canonical seven 1-7 regardless of which sections are present", () => {
     // Only PLAYER_SETUP and OBJECTS_GENERATION actually present in source —
     // ELEVATION_GENERATION and everything between is "missing" (empty tab).

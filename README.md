@@ -13,7 +13,7 @@ Code is always the single source of truth. Breakdown and preview are views gener
 
 ## Status
 
-Early development (Phase 3 — Breakdown now complete). Usable. See `PLAN.md` for the full design.
+Early development (Breakdown now complete). Usable. See `PLAN.md` for the full design.
 
 ## Tech stack
 

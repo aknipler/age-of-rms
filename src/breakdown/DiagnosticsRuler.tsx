@@ -6,11 +6,11 @@ import { HelpTip } from "../components/HelpTip";
 import styles from "./DiagnosticsRuler.module.css";
 
 interface MeasuredTick extends RulerTick {
-  /** 0-1 fraction of the scroll container's `scrollHeight` — Monaco-ruler-style, NOT a source-offset computation (§3.10's "mapping problem": cards are variable-height and resize at runtime, so this can only come from real layout). */
+  /** 0-1 fraction of the scroll container's `scrollHeight` — Monaco-ruler-style, NOT a source-offset computation (Sec.3.10's "mapping problem": cards are variable-height and resize at runtime, so this can only come from real layout). */
   topFraction: number;
 }
 
-/** The currently-visible slice of the scroll container, as a fraction of its full scrollHeight — the "you are here" indicator Ash asked for, since ticks alone give no sense of whether a problem is on-screen right now. */
+/** The currently-visible slice of the scroll container, as a fraction of its full scrollHeight — since ticks alone give no sense of whether a problem is on-screen right now. */
 interface Viewport {
   topFraction: number;
   heightFraction: number;
@@ -22,7 +22,7 @@ interface DiagnosticsRulerProps {
   containerRef: RefObject<HTMLDivElement | null>;
 }
 
-// §3.10 (post-3.4, sequenced last as the hardest/only DOM-measurement
+// Sec.3.10 (post-3.4, sequenced last as the hardest/only DOM-measurement
 // item — see docs/breakdown-design.md's own cost note). A thin vertical
 // track along the section's scroll container, one tick per top-level
 // item carrying a diagnostic, positioned by actual rendered offsetTop
@@ -77,7 +77,7 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
     setTicks(next);
   }, [items, diagnostics, containerRef]);
 
-  // "Where am I currently looking" — Ash's ask: ticks alone give no way
+  // "Where am I currently looking" — ticks alone give no way
   // to tell whether a problem is on-screen right now. Same
   // scrollHeight-fraction math as ticks, but for the container's own
   // visible slice (scrollTop/clientHeight) instead of a card's offsetTop.
@@ -96,7 +96,7 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
     remeasureViewport();
   }, [remeasureTicks, remeasureViewport]);
 
-  // Measure in a layout effect (per §3.10's own instruction: "measure in
+  // Measure in a layout effect (per Sec.3.10's own instruction: "measure in
   // a layout effect... do not measure during render"), keyed on
   // everything that can change layout WITHOUT necessarily changing the
   // container's own border-box size (which is all a ResizeObserver on
@@ -112,7 +112,7 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
   // Pure resize (pane drag, window resize, DevTools open/close) doesn't
   // change the AST or expansion state, so the effect above wouldn't
   // re-fire for it — a ResizeObserver on the scroll container is the
-  // only way to catch that case, per §3.10's own instruction. Scrolling
+  // only way to catch that case, per Sec.3.10's own instruction. Scrolling
   // ALSO doesn't change the AST/expansion/container size, but it's the
   // one thing that moves the viewport indicator — a plain scroll listener
   // covers it (deliberately NOT routed through remeasureTicks too: ticks
@@ -131,8 +131,8 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
     };
   }, [containerRef, remeasure, remeasureViewport]);
 
-  // Always rendered (Ash: "always have the ruler, even if there are no
-  // diagnostics") — it's also the only visible indicator of where the
+  // Always rendered, even if no diagnostics are present. It's also
+  //  the only visible indicator of where the
   // current viewport sits in the section, independent of whether
   // anything is actually wrong.
   return (
@@ -163,7 +163,7 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
                 const el = containerRef.current?.querySelector<HTMLElement>(`[data-anchor="${tick.anchor}"]`);
                 el?.scrollIntoView({ block: "center" });
                 // selectCard's signature takes a Span and only reads
-                // `.start` (§3.9) — a tick only ever has the anchor
+                // `.start` (Sec.3.9) — a tick only ever has the anchor
                 // offset itself, so a single-point span is exactly what's
                 // needed, not a real range.
                 const span: Span = { start: tick.anchor, end: tick.anchor + 1 };

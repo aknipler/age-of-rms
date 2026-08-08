@@ -1,0 +1,109 @@
+/*
+	RMSTEST 9 — Test 7 again, with the actor area MADE VISIBLE.
+
+	Test 7 was under-specified: an actor area is invisible, so "gold sat
+	off-centre" could have meant "gold avoided the area" or "the area is not
+	where I assumed and gold went where it liked". This marks the area with
+	terrain, which costs nothing because terrain does not occupy tiles.
+
+	THE MARKER
+	  create_land DIRT at land_position 50 50 with base_size 5 stamps an 11x11
+	  square. create_actor_area 60 60 1234 5 is a square radius in TILES
+	  (guide:1994), so it covers 55..65 — the same 11x11.
+	  The DIRT square therefore IS the actor area, drawn on the ground.
+	  The GRASS land underneath is base_size 7 (15x15, spanning 53..67), so a
+	  2-tile grass border remains visible around the dirt.
+
+	This also silently checks a spec assumption: preview-design Sec.4 maps
+	land_position 50 50 to tile round(50/100 * 120) = (60,60). If the dirt
+	square is NOT concentric with the grass border, that mapping is wrong and
+	is worth more than this test is.
+
+	NO REFERENCE FRAME, deliberately. Tests 7 and 8 both showed
+	place_on_specific_land_id does not confine the candidate set to that land,
+	and here a frame would be actively harmful: the DIRT stamp takes ownership
+	of the middle tiles, so a land-id frame could exclude the actor area for
+	the wrong reason and fake a per-member result. Frameless gold is confined
+	to the clearings anyway, because tree occupancy blocks the surrounding
+	forest. set_gaia_object_only is omitted for the same reason it is not
+	needed: guide:2354 scopes that requirement to per-player placement, and
+	Test 3 confirmed it only under a frame.
+
+	READ IT LIKE THIS
+	  Gold sitting ON the dirt square
+	      -> avoid_actor_area is NOT checked during the fill. Combined with
+	         Test 8 (terrain_to_place_on also unchecked), tight grouping is
+	         confirmed as a single uniform rule: the anchor is checked, the
+	         fill is not, full stop.
+	  Gold strictly on the 2-tile grass border, dirt square completely clear
+	      -> avoid_actor_area IS checked per member, making it the one
+	         exception to the rule Test 8 established. Sec.6.6 would then need
+	         a genuine per-attribute distinction after all — for this attribute
+	         only, and now with evidence rather than a guide inference.
+	  No gold anywhere across several seeds
+	      -> frameless gold needs something this map does not give it. Check
+	         the STONE control: if stone also fails, the frameless assumption
+	         above is wrong and I will re-do this with a frame plus a shared
+	         land_id.
+
+	The single STONE is the CONTROL: frameless, no avoidance. It must appear.
+
+	RUN ON: Tiny, 2 players. One clearing at map centre, one sample per seed.
+	Worth 3 or 4 seeds — Test 7 only produced gold about half the time.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain FOREST
+
+create_player_lands
+{
+	terrain_type DESERT
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+/* The clearing: 15x15 grass, spans tiles 53..67. */
+create_land
+{
+	terrain_type GRASS
+	land_position 50 50
+	base_size 7
+	number_of_tiles 1
+	land_id 5
+	zone 7
+}
+
+/* The marker: 11x11 dirt, spans 55..65, stamped last so it stays visible
+   (guide: "the land placed last will be the one visible"). Geometrically
+   identical to the actor area declared below. */
+create_land
+{
+	terrain_type DIRT
+	land_position 50 50
+	base_size 5
+	number_of_tiles 1
+	land_id 6
+	zone 8
+}
+
+<OBJECTS_GENERATION>
+
+create_actor_area 60 60 1234 5
+
+/* THE TEST: tight group that must avoid the (now visible) actor area. */
+create_object GOLD
+{
+	number_of_objects 25
+	set_tight_grouping
+	avoid_actor_area 1234
+}
+
+/* CONTROL: no avoidance. Must appear. */
+create_object STONE
+{
+	number_of_objects 1
+}

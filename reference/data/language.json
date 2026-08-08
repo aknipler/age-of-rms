@@ -8,6 +8,1008 @@
     "CONNECTION_GENERATION",
     "OBJECTS_GENERATION"
   ],
+  "predefinedLabels": [
+    {
+      "name": "DEATH_MATCH",
+      "category": "gameMode",
+      "description": "Death match game mode.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "REGICIDE",
+      "category": "gameMode",
+      "description": "Regicide game mode.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "CAPTURE_THE_RELIC",
+      "category": "gameMode",
+      "description": "Capture the Relic game mode (HD/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "CAPTURE_RELICS",
+      "category": "gameMode",
+      "description": "Capture the Relic game mode under UserPatch (UP only; DE uses CAPTURE_THE_RELIC).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "RANDOM_MAP",
+      "category": "gameMode",
+      "description": "Standard random map game mode (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "TURBO_RANDOM_MAP",
+      "category": "gameMode",
+      "description": "Random map with the turbo mode tickbox enabled (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "WONDER_RACE",
+      "category": "gameMode",
+      "description": "Wonder Race game mode (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "DEFEND_WONDER",
+      "category": "gameMode",
+      "description": "Defend the Wonder game mode (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "EMPIRE_WARS",
+      "category": "gameMode",
+      "description": "Empire Wars game mode (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "BATTLE_ROYALE",
+      "category": "gameMode",
+      "description": "Battle Royale game mode (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "SUDDEN_DEATH",
+      "category": "gameMode",
+      "description": "Sudden Death game mode (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "KING_OT_HILL",
+      "category": "gameMode",
+      "description": "King of the Hill game mode (UP/DE only). Note the spelling: OT, not OF.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The guide warns that KING_OF_THE_HILL is a map type rather than a game mode and is always true, so a script testing that name instead is always taking the branch."
+    },
+    {
+      "name": "TINY_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 120 x 120 map size (in-game description: Tiny).",
+      "dimensions": 120,
+      "mapSize": "Tiny",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_TINY are the same 120 x 120 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "SMALL_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 144 x 144 map size (in-game description: Small).",
+      "dimensions": 144,
+      "mapSize": "Small",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_SMALL are the same 144 x 144 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "MEDIUM_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 168 x 168 map size (in-game description: Medium).",
+      "dimensions": 168,
+      "mapSize": "Medium",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_MEDIUM are the same 168 x 168 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "LARGE_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 200 x 200 map size (in-game description: Normal).",
+      "dimensions": 200,
+      "mapSize": "Normal",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_NORMAL are the same 200 x 200 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "HUGE_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 220 x 220 map size (in-game description: Large).",
+      "dimensions": 220,
+      "mapSize": "Large",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_LARGE are the same 220 x 220 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "GIGANTIC_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 240 x 240 map size (in-game description: Huge).",
+      "dimensions": 240,
+      "mapSize": "Huge",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_HUGE are the same 240 x 240 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "LUDIKRIS_MAP",
+      "category": "mapSize",
+      "description": "Legacy name for the 480 x 480 map size (in-game description: Ludicrous).",
+      "dimensions": 480,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Legacy and modern names are offset by one size from Normal upward: this label and MAPSIZE_LUDICROUS are the same 480 x 480 map. See docs/preview-design.md Sec.4."
+    },
+    {
+      "name": "MAPSIZE_MINI",
+      "category": "mapSize",
+      "description": "80 x 80 map size (in-game description: Miniature (1 player)).",
+      "dimensions": 80,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_TINY",
+      "category": "mapSize",
+      "description": "120 x 120 map size (in-game description: Tiny (2 player)).",
+      "dimensions": 120,
+      "mapSize": "Tiny",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "MAPSIZE_SMALL",
+      "category": "mapSize",
+      "description": "144 x 144 map size (in-game description: Small (3 player)).",
+      "dimensions": 144,
+      "mapSize": "Small",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "MAPSIZE_MEDIUM",
+      "category": "mapSize",
+      "description": "168 x 168 map size (in-game description: Medium (4 player)).",
+      "dimensions": 168,
+      "mapSize": "Medium",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "MAPSIZE_NORMAL",
+      "category": "mapSize",
+      "description": "200 x 200 map size (in-game description: Normal (6 player)).",
+      "dimensions": 200,
+      "mapSize": "Normal",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "MAPSIZE_LARGE",
+      "category": "mapSize",
+      "description": "220 x 220 map size (in-game description: Large (8 player)).",
+      "dimensions": 220,
+      "mapSize": "Large",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "MAPSIZE_HUGE",
+      "category": "mapSize",
+      "description": "240 x 240 map size (in-game description: Huge).",
+      "dimensions": 240,
+      "mapSize": "Huge",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "MAPSIZE_GIANT",
+      "category": "mapSize",
+      "description": "252 x 252 map size (in-game description: Giant).",
+      "dimensions": 252,
+      "mapSize": "Giant",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_MASSIVE",
+      "category": "mapSize",
+      "description": "276 x 276 map size (in-game description: Massive).",
+      "dimensions": 276,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_ENORMOUS",
+      "category": "mapSize",
+      "description": "300 x 300 map size (in-game description: Enormous).",
+      "dimensions": 300,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_COLOSSAL",
+      "category": "mapSize",
+      "description": "320 x 320 map size (in-game description: Colossal).",
+      "dimensions": 320,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_INCREDIBLE",
+      "category": "mapSize",
+      "description": "360 x 360 map size (in-game description: Incredible).",
+      "dimensions": 360,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_MONSTROUS",
+      "category": "mapSize",
+      "description": "400 x 400 map size (in-game description: Monstrous).",
+      "dimensions": 400,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming. Selectable in game only with the MORE_MAP_SIZES launch option."
+    },
+    {
+      "name": "MAPSIZE_LUDICROUS",
+      "category": "mapSize",
+      "description": "480 x 480 map size (in-game description: Ludicrous).",
+      "dimensions": 480,
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. DE only; added March 2024 to standardize the naming."
+    },
+    {
+      "name": "HIGH_RESOURCES",
+      "category": "startingResources",
+      "description": "High starting resources.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "MEDIUM_RESOURCES",
+      "category": "startingResources",
+      "description": "Medium starting resources.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "LOW_RESOURCES",
+      "category": "startingResources",
+      "description": "Low starting resources, which is the AoE2 default.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Same as DEFAULT_RESOURCES in AoE2; the two differ in Return of Rome."
+    },
+    {
+      "name": "DEFAULT_RESOURCES",
+      "category": "startingResources",
+      "description": "Default starting resources, the same setting as LOW_RESOURCES in AoE2.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. Same as LOW_RESOURCES in AoE2; the two differ in Return of Rome."
+    },
+    {
+      "name": "INFINITE_RESOURCES",
+      "category": "startingResources",
+      "description": "Infinite starting resources (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "RANDOM_RESOURCES",
+      "category": "startingResources",
+      "description": "Randomized starting resources (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "DARK_AGE_START",
+      "category": "startingAge",
+      "description": "Game starts in the Dark Age (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "FEUDAL_AGE_START",
+      "category": "startingAge",
+      "description": "Game starts in the Feudal Age (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "CASTLE_AGE_START",
+      "category": "startingAge",
+      "description": "Game starts in the Castle Age (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "IMPERIAL_AGE_START",
+      "category": "startingAge",
+      "description": "Game starts in the Imperial Age (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "POST_IMPERIAL_AGE_START",
+      "category": "startingAge",
+      "description": "Game starts in the Post-Imperial Age (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "FIXED_POSITIONS",
+      "category": "lobbySetting",
+      "description": "The team together tickbox is enabled.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "TURBO_MODE",
+      "category": "lobbySetting",
+      "description": "The turbo mode tickbox is enabled (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "TEAM_POSITIONS",
+      "category": "lobbySetting",
+      "description": "Team positions are enabled (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "FULL_TECH_TREE",
+      "category": "lobbySetting",
+      "description": "The full tech tree tickbox is enabled (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "AI_PLAYERS",
+      "category": "lobbySetting",
+      "description": "At least one AI player is present (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "SOLID_FARMS",
+      "category": "lobbySetting",
+      "description": "The solid farms tickbox is enabled, an AoE1 setting (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "ANTIQUITY_MODE",
+      "category": "lobbySetting",
+      "description": "The antiquity mode checkbox is enabled (DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "1_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 1 player in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "2_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 2 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "3_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 3 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "4_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 4 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "5_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 5 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "6_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 6 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "7_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 7 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "8_PLAYER_GAME",
+      "category": "playerCount",
+      "description": "Exactly 8 players in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "0_TEAM_GAME",
+      "category": "teamCount",
+      "description": "Exactly 0 teams in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. A team is only detected when at least 2 players share it."
+    },
+    {
+      "name": "1_TEAM_GAME",
+      "category": "teamCount",
+      "description": "Exactly 1 team in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. A team is only detected when at least 2 players share it."
+    },
+    {
+      "name": "2_TEAM_GAME",
+      "category": "teamCount",
+      "description": "Exactly 2 teams in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. A team is only detected when at least 2 players share it."
+    },
+    {
+      "name": "3_TEAM_GAME",
+      "category": "teamCount",
+      "description": "Exactly 3 teams in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. A team is only detected when at least 2 players share it."
+    },
+    {
+      "name": "4_TEAM_GAME",
+      "category": "teamCount",
+      "description": "Exactly 4 teams in the game (UP/DE only).",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. A team is only detected when at least 2 players share it."
+    },
+    {
+      "name": "TEAM0_SIZE0",
+      "category": "teamSize",
+      "description": "Team 0 has 0 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE1",
+      "category": "teamSize",
+      "description": "Team 0 has 1 player (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE2",
+      "category": "teamSize",
+      "description": "Team 0 has 2 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE3",
+      "category": "teamSize",
+      "description": "Team 0 has 3 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE4",
+      "category": "teamSize",
+      "description": "Team 0 has 4 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE5",
+      "category": "teamSize",
+      "description": "Team 0 has 5 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE6",
+      "category": "teamSize",
+      "description": "Team 0 has 6 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE7",
+      "category": "teamSize",
+      "description": "Team 0 has 7 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM0_SIZE8",
+      "category": "teamSize",
+      "description": "Team 0 has 8 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE0",
+      "category": "teamSize",
+      "description": "Team 1 has 0 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE2",
+      "category": "teamSize",
+      "description": "Team 1 has 2 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE3",
+      "category": "teamSize",
+      "description": "Team 1 has 3 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE4",
+      "category": "teamSize",
+      "description": "Team 1 has 4 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE5",
+      "category": "teamSize",
+      "description": "Team 1 has 5 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE6",
+      "category": "teamSize",
+      "description": "Team 1 has 6 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE7",
+      "category": "teamSize",
+      "description": "Team 1 has 7 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM1_SIZE8",
+      "category": "teamSize",
+      "description": "Team 1 has 8 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM2_SIZE0",
+      "category": "teamSize",
+      "description": "Team 2 has 0 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM2_SIZE2",
+      "category": "teamSize",
+      "description": "Team 2 has 2 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM2_SIZE3",
+      "category": "teamSize",
+      "description": "Team 2 has 3 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM2_SIZE4",
+      "category": "teamSize",
+      "description": "Team 2 has 4 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM2_SIZE5",
+      "category": "teamSize",
+      "description": "Team 2 has 5 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM2_SIZE6",
+      "category": "teamSize",
+      "description": "Team 2 has 6 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM3_SIZE0",
+      "category": "teamSize",
+      "description": "Team 3 has 0 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM3_SIZE2",
+      "category": "teamSize",
+      "description": "Team 3 has 2 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM3_SIZE3",
+      "category": "teamSize",
+      "description": "Team 3 has 3 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM3_SIZE4",
+      "category": "teamSize",
+      "description": "Team 3 has 4 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM4_SIZE0",
+      "category": "teamSize",
+      "description": "Team 4 has 0 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "TEAM4_SIZE2",
+      "category": "teamSize",
+      "description": "Team 4 has 2 players (UP/DE only). Team number is lobby order, not the selected team number.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section. The enumeration looks irregular (TEAM1_SIZE1 is absent while TEAM0_SIZE1 is present) but is exactly the set reachable under the guide's own rule that a team needs at least 2 players (guide:1004, guide:3115), with team 0 as the un-teamed remainder and at most 8 players: all 45 candidate names were checked and the 29 present are precisely the 29 reachable. Derived and verified, not transcribed-as-written. Team number is lobby order, not the selected team number."
+    },
+    {
+      "name": "PLAYER1_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 1 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER1_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 1 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER1_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 1 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER1_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 1 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER1_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 1 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER2_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 2 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER2_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 2 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER2_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 2 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER2_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 2 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER2_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 2 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER3_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 3 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER3_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 3 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER3_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 3 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER3_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 3 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER3_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 3 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER4_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 4 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER4_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 4 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER4_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 4 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER4_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 4 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER4_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 4 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER5_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 5 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER5_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 5 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER5_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 5 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER5_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 5 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER5_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 5 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER6_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 6 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER6_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 6 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER6_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 6 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER6_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 6 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER6_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 6 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER7_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 7 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER7_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 7 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER7_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 7 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER7_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 7 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER7_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 7 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER8_TEAM0",
+      "category": "playerInTeam",
+      "description": "Player 8 is on team 0 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER8_TEAM1",
+      "category": "playerInTeam",
+      "description": "Player 8 is on team 1 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER8_TEAM2",
+      "category": "playerInTeam",
+      "description": "Player 8 is on team 2 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER8_TEAM3",
+      "category": "playerInTeam",
+      "description": "Player 8 is on team 3 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "PLAYER8_TEAM4",
+      "category": "playerInTeam",
+      "description": "Player 8 is on team 4 (UP/DE only). Player and team numbers are lobby order, not selected numbers.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "UP_AVAILABLE",
+      "category": "gameVersion",
+      "description": "Running UserPatch 1.4 or later.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "UP_EXTENSION",
+      "category": "gameVersion",
+      "description": "Running UserPatch 1.5.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "DE_AVAILABLE",
+      "category": "gameVersion",
+      "description": "Running Definitive Edition.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "DE_GAME_ROME",
+      "category": "gameVersion",
+      "description": "Running DE in Return of Rome, i.e. AoE1.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    },
+    {
+      "name": "DE_GAME_AGE2",
+      "category": "gameVersion",
+      "description": "Running DE in regular AoE2.",
+      "verified": true,
+      "notes": "Sourced from the Definitive RMS Scripting Guide (Zetnus), Conditionals section."
+    }
+  ],
   "commands": [
     {
       "name": "random_placement",
@@ -116,11 +1118,11 @@
         {
           "name": "showType",
           "type": "flag",
-          "description": "0 or 1."
+          "description": "0 or 1. UP only - not functional on DE."
         }
       ],
       "verified": true,
-      "notes": "Exact behavior differs slightly per game version per the source guide."
+      "notes": "Exact behavior differs slightly per game version per the source guide. showType was marked optional on 2026-08-05 and REVERTED the same day - omissibility is UNDETERMINED, not established. The guide (guide:459) gives it default 0 but never says it may be omitted, unlike the five attributes fixed on 2026-07-31 which each carry explicit prose to that effect. The only positive evidence was 52 three-argument uses in the installed DE script set against 284 four-argument ones, and that evidence cannot bear the weight: guide:475 lists showType Not functional on DE, so writing it and omitting it are indistinguishable in game, and no shipped script could ever have revealed which form is correct. Same shape as avoidance_distance. The 52 uses are independent (52 files, 20+ distinct map types), which rules out a copy-paste artefact but not a silently-tolerated author error. Settle it with an RMSTEST that puts a distinguishable token after a three-argument call and checks whether the engine consumes it."
     },
     {
       "name": "effect_amount",
@@ -171,7 +1173,9 @@
           "type": "integer"
         }
       ],
-      "verified": true
+      "deprecated": "use effect_amount instead",
+      "verified": true,
+      "notes": "Made obsolete by Update 141935 (docs/parser-design.md Sec.8). Still parses and still carries its argument shape — the engine accepts it, so this is a note, not an error."
     },
     {
       "name": "guard_state",
@@ -400,7 +1404,7 @@
         {
           "name": "maxHeight",
           "type": "integer",
-          "min": 1,
+          "min": 0,
           "max": 16,
           "default": 0
         }
@@ -415,7 +1419,8 @@
         "spacing",
         "enable_balanced_elevation"
       ],
-      "verified": true
+      "verified": true,
+      "notes": "maxHeight min corrected 1 -> 0 on 2026-07-31, same cause and same guide phrasing as base_elevation.level: guide:1177 reads \"MaxHeight - number (1-16) (default: 0 - not elevated)\", so 0 is documented-legal and min 1 contradicted the declared default."
     },
     {
       "name": "cliff_type",
@@ -473,7 +1478,8 @@
           "default": 5
         }
       ],
-      "verified": true
+      "verified": true,
+      "notes": "min 3 is DELIBERATE — do not widen it to match corpus usage. guide:1366: \"minimum must be at least 3 for cliffs to appear\". Six DE-official maps declare 1 or 2 (Fortress.rms:748, Mediterranean.rms:266, Cliffbound.rms:2348, Sandrift.rms:2361, Shrubland.rms:2384, lombardia.rms2:355) and this was briefly read as a false-positive class like circle_radius 0 and base_elevation 0, then reverted 2026-08-05. It is not the same class: those two values are documented as FUNCTIONAL (0 disables circle placement; 0 means not-elevated), so warning on them was wrong. A sub-3 length is documented as NON-functional, so RMS0203 here tells an author their cliff section does nothing — a true positive and one of the more useful warnings we can emit. Corroborating recollection: Fortress declares 5-10 cliffs and is not remembered as having any. Confirm with the three-arm test in preview-design.md Sec.15 item 17b before changing this."
     },
     {
       "name": "max_length_of_cliff",
@@ -686,27 +1692,31 @@
       "name": "create_actor_area",
       "section": "OBJECTS_GENERATION",
       "kind": "standalone",
-      "description": "Defines a named area (referenced by ID) used to constrain later object placement via actor_area/actor_area_to_place_in.",
+      "description": "Creates an actor area at a fixed map location rather than on an object, with the given identifier and radius, used to constrain later object placement via actor_area_to_place_in/avoid_actor_area.",
       "arguments": [
         {
-          "name": "a",
-          "type": "integer"
+          "name": "x",
+          "type": "integer",
+          "description": "X coordinate in TILES, not a percentage of map width. Must be scaled to map size by hand. May sit outside the map."
         },
         {
-          "name": "b",
-          "type": "integer"
+          "name": "y",
+          "type": "integer",
+          "description": "Y coordinate in TILES, not a percentage of map width. Must be scaled to map size by hand. May sit outside the map."
         },
         {
-          "name": "c",
-          "type": "integer"
+          "name": "identifier",
+          "type": "integer",
+          "description": "Identifier referred to later by actor_area_to_place_in and avoid_actor_area. Multiple actor areas may share one identifier."
         },
         {
-          "name": "d",
-          "type": "integer"
+          "name": "radius",
+          "type": "integer",
+          "description": "Square radius in tiles."
         }
       ],
-      "verified": false,
-      "notes": "Name and 4-integer argument count confirmed via the guide's syntax skeleton; exact meaning of each argument not reached before the source fetch was cut off."
+      "verified": true,
+      "notes": "Full argument semantics from guide:1982-1996, worked example at guide:1999-2011; supersedes the earlier a/b/c/d stub left unresolved when a source fetch was cut off. Three facts the argument list cannot carry. (1) These fixed-position areas are created BEFORE any create_object command, regardless of where the command sits in the script (guide:1990). That is specific to create_actor_area and does NOT generalise to areas defined by the actor_area ATTRIBUTE on create_object, which come into existence as their objects are placed — guide:2782's rule that several objects sharing one actor_area take the radius of 'the first object successfully created' only means anything if those are built progressively. So avoid_actor_area may reference a create_actor_area identifier declared anywhere in the file, but an attribute-defined one only after that object has been placed. (2) Coordinates are in TILES and must be scaled to map size by hand; off-map coordinates are legal and are the documented way to use a large radius to fence off the map edges (guide:1993). (3) The command CRASHES the game if no lands are generated (guide:1996) — unreachable on a finished map, reachable while editing one."
     },
     {
       "name": "create_object_group",
@@ -782,7 +1792,8 @@
         "avoid_actor_area",
         "avoid_all_actor_areas",
         "set_facet",
-        "match_player_civ"
+        "match_player_civ",
+        "building_architecture"
       ],
       "verified": true,
       "notes": "Command confirmed via two real working examples in the source guide: bare `create_object MONUMENT` and blocked `create_object GOLD { place_on_specific_land_id 13 }`. Most of the attribute list beyond place_on_specific_land_id is name-only — see individual attributes[] entries."
@@ -790,248 +1801,57 @@
   ],
   "attributes": [
     {
-      "name": "terrain_type",
+      "name": "actor_area",
       "arguments": [
         {
-          "name": "terrain",
-          "type": "terrainConstant",
-          "default": "GRASS"
-        }
-      ],
-      "description": "The terrain this land is made of.",
-      "verified": true
-    },
-    {
-      "name": "land_percent",
-      "arguments": [
-        {
-          "name": "percent",
-          "type": "percent",
-          "min": 0,
-          "max": 100,
-          "default": 100
-        }
-      ],
-      "mutexWith": [
-        "number_of_tiles"
-      ],
-      "description": "Share of the map this land should occupy.",
-      "verified": true
-    },
-    {
-      "name": "number_of_tiles",
-      "arguments": [
-        {
-          "name": "count",
+          "name": "areaId",
           "type": "integer"
         }
       ],
-      "mutexWith": [
-        "land_percent"
-      ],
-      "description": "Absolute tile count for this land, instead of a percentage.",
-      "verified": true
+      "description": "Associates this placement with an actor area created by create_actor_area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
     },
     {
-      "name": "base_size",
+      "name": "actor_area_radius",
       "arguments": [
         {
           "name": "radius",
-          "type": "integer",
-          "default": 3
+          "type": "integer"
         }
       ],
-      "description": "Base radius of the land before growth/fuzziness is applied.",
-      "verified": true
+      "description": "Radius of the associated actor area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
     },
     {
-      "name": "set_circular_base",
-      "description": "Forces the land's base shape to be circular. DE only.",
-      "verified": true
-    },
-    {
-      "name": "generate_mode",
+      "name": "actor_area_to_place_in",
       "arguments": [
         {
-          "name": "mode",
-          "type": "flag",
-          "default": 0
+          "name": "areaId",
+          "type": "integer"
         }
       ],
-      "description": "Legacy generation-mode toggle. DE only.",
-      "verified": true
+      "description": "Restricts placement to inside a specific actor area.",
+      "verified": true,
+      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name."
     },
     {
-      "name": "land_position",
+      "name": "add_object",
       "arguments": [
         {
-          "name": "x",
-          "type": "percent",
-          "min": 0,
-          "max": 99
+          "name": "type",
+          "type": "objectConstant"
         },
         {
-          "name": "y",
-          "type": "percent",
-          "min": 0,
-          "max": 99
-        }
-      ],
-      "description": "Fixes the land's position as a percentage of map dimensions. Ignores border settings.",
-      "verified": true
-    },
-    {
-      "name": "circle_radius",
-      "arguments": [
-        {
-          "name": "radiusPercent",
-          "type": "percent",
-          "min": 1,
-          "max": 50
-        },
-        {
-          "name": "variance",
-          "type": "integer",
-          "default": 0
-        }
-      ],
-      "description": "Radius (as a percent of map size) for a circular land, plus variance. DE only.",
-      "verified": true
-    },
-    {
-      "name": "left_border",
-      "arguments": [
-        {
           "name": "percent",
-          "type": "percent",
-          "max": 99,
-          "default": 0,
-          "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
+          "type": "percent"
         }
       ],
-      "description": "Minimum distance from the map's left edge.",
-      "verified": true,
-      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
-    },
-    {
-      "name": "right_border",
-      "arguments": [
-        {
-          "name": "percent",
-          "type": "percent",
-          "max": 99,
-          "default": 0,
-          "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
-        }
-      ],
-      "description": "Minimum distance from the map's right edge.",
-      "verified": true,
-      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
-    },
-    {
-      "name": "top_border",
-      "arguments": [
-        {
-          "name": "percent",
-          "type": "percent",
-          "max": 99,
-          "default": 0,
-          "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
-        }
-      ],
-      "description": "Minimum distance from the map's top edge.",
-      "verified": true,
-      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015. BUG (guide-documented): asymmetric borders for player lands can misbehave when top_border is larger than the other borders — always pair it with another border."
-    },
-    {
-      "name": "bottom_border",
-      "arguments": [
-        {
-          "name": "percent",
-          "type": "percent",
-          "max": 99,
-          "default": 0,
-          "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS, but can crash the game if they push the land origin outside the map — pair a negative border with an explicit land_position to keep the origin on-map."
-        }
-      ],
-      "description": "Minimum distance from the map's bottom edge.",
-      "verified": true,
-      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
-    },
-    {
-      "name": "border_fuzziness",
-      "arguments": [
-        {
-          "name": "percent",
-          "type": "percent",
-          "min": 0,
-          "max": 100,
-          "default": 20
-        }
-      ],
-      "description": "Randomizes land edges instead of a hard border.",
-      "verified": true
-    },
-    {
-      "name": "clumping_factor",
-      "arguments": [
-        {
-          "name": "value",
-          "type": "integer",
-          "default": 8,
-          "description": "Useful range roughly 0-40; negative values produce snakey shapes."
-        }
-      ],
-      "description": "Controls how blobby vs. scattered a land/terrain's shape is.",
-      "verified": true
-    },
-    {
-      "name": "land_conformity",
-      "arguments": [
-        {
-          "name": "percent",
-          "type": "percent",
-          "min": -1,
-          "max": 100
-        }
-      ],
-      "description": "DE-only land-shape parameter. Noted as buggy in the source guide.",
-      "verified": true,
-      "notes": "Guide explicitly flags this as buggy — worth a real playtest before relying on it."
-    },
-    {
-      "name": "base_elevation",
-      "arguments": [
-        {
-          "name": "level",
-          "type": "integer",
-          "min": 1,
-          "max": 16,
-          "default": 0
-        }
-      ],
-      "description": "Elevation level this land starts at. Requires an <ELEVATION_GENERATION> section to be present.",
-      "verified": true
-    },
-    {
-      "name": "assign_to_player",
-      "arguments": [
-        {
-          "name": "playerNumber",
-          "type": "integer",
-          "min": 1,
-          "max": 8
-        }
-      ],
-      "mutexWith": [
-        "assign_to"
-      ],
-      "description": "Assigns this land to a specific player number.",
-      "verified": true
+      "description": "Adds an object type to an object group, weighted by percent chance.",
+      "repeatable": true,
+      "verified": false,
+      "notes": "Name only — full OBJECTS_GENERATION docs weren't reached in the source fetch. repeatable set from corpus evidence: stacking add_object lines is the entire mechanism of create_object_group (one line per member type, percentages summing across them), and 43 blocks across the 57-map corpus repeat it. Without the flag validate()'s RMS0306 false-warns on every object group."
     },
     {
       "name": "assign_to",
@@ -1065,19 +1885,844 @@
       "verified": true
     },
     {
-      "name": "zone",
+      "name": "assign_to_player",
       "arguments": [
         {
-          "name": "zoneId",
+          "name": "playerNumber",
+          "type": "integer",
+          "min": 1,
+          "max": 8
+        }
+      ],
+      "mutexWith": [
+        "assign_to"
+      ],
+      "description": "Assigns this land to a specific player number.",
+      "verified": true
+    },
+    {
+      "name": "avoid_actor_area",
+      "arguments": [
+        {
+          "name": "areaId",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps placement away from a specific actor area.",
+      "repeatable": true,
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "avoid_all_actor_areas",
+      "description": "Keeps placement away from every defined actor area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "avoid_cliff_zone",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "description": "Keeps placement away from cliff zones.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "avoid_forest_zone",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "mutexWith": [
+        "place_on_forest_zone"
+      ],
+      "description": "Keeps placement away from forest zones.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "avoid_other_land_zones",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "description": "Keeps placement away from other zones' lands.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "base_elevation",
+      "arguments": [
+        {
+          "name": "level",
+          "type": "integer",
+          "min": 0,
+          "max": 16,
+          "default": 0
+        }
+      ],
+      "description": "Elevation level this land starts at. Requires an <ELEVATION_GENERATION> section to be present.",
+      "requiresSection": "ELEVATION_GENERATION",
+      "verified": true,
+      "notes": "requiresSection established 2026-07-30 during Phase 4.1 engine verification: the section may be completely empty, its mere presence is enough (guide:952, confirmed in-game by RMSTEST_4_negelev.rms). Without it the map generates and looks correct while the slopes silently do nothing, and the guide's author reports in a public Discord message that the map then crashes when played — that second half is second-hand and is attributed, not asserted, in the RMS0311 message. min corrected 1 -> 0 on 2026-07-31: guide:954 reads \"Height - number (1-16) (default: 0 - not elevated)\", so the same line that supplies the range also documents 0 as the legal value meaning flat. Transcribing only the parenthesised range made min contradict default, and RMS0203 then false-warned on all 461 corpus uses of \"base_elevation 0\" — the second-largest diagnostic source in the tool. Negative values are also legal (guide:957, maximally elevate; confirmed in-game as 16 by RMSTEST_4) and still draw RMS0203; leave that until a negative shows up in a real script, since the corpus has none."
+    },
+    {
+      "name": "base_layer",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Sets a secondary base terrain layer for this block. DE only.",
+      "verified": true,
+      "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[])."
+    },
+    {
+      "name": "base_size",
+      "arguments": [
+        {
+          "name": "radius",
+          "type": "integer",
+          "default": 3
+        }
+      ],
+      "description": "Base radius of the land before growth/fuzziness is applied.",
+      "verified": true
+    },
+    {
+      "name": "base_terrain",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant",
+          "default": "GRASS"
+        }
+      ],
+      "description": "Sets the default/underlying terrain for this block (elevation clump or terrain patch), before the block's own terrain is layered on.",
+      "verified": true,
+      "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[]) — different context, both real; RMS reuses identifiers between command and attribute position."
+    },
+    {
+      "name": "beach_terrain",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Terrain used for the shoreline transition next to this terrain patch.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "border_fuzziness",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": 0,
+          "max": 100,
+          "default": 20
+        }
+      ],
+      "description": "Randomizes land edges instead of a hard border.",
+      "verified": true
+    },
+    {
+      "name": "bottom_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+        }
+      ],
+      "description": "Minimum distance from the map's bottom edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
+    },
+    {
+      "name": "building_architecture",
+      "arguments": [
+        {
+          "name": "architectureSet",
+          "type": "integer",
+          "description": "Architecture set index the building is drawn in."
+        }
+      ],
+      "description": "Selects which civilisation architecture set a Gaia-placed building is rendered with. Cosmetic only - it changes the graphic, not placement or behaviour.",
+      "verified": false,
+      "notes": "Not in the Definitive RMS Scripting Guide. Recovered from the DE install: 72 uses across BR_BattleontheIce.rms and BR_FallofRome.rms, both Forgotten Empires Battle Royale maps, always inside create_object on building-type objects placed with set_gaia_object_only (STABLE, STRANGETRADE, ARCHERY_RANGE, BARRACKS take 2; GUARD_TOWER takes 1) and never on units, trees or resources. The two maps share one template, so that is one authoring decision rather than two - but the value VARIES BY OBJECT within it, which is the evidence avoidance_distance lacked (see parser-design Sec.13 item 5, where every one of its 320 uses passed a constant defined as 0 and could therefore never have been observed to matter). The argument range is unknown: only 1 and 2 are attested, so no min/max is declared. verified: false until an in-game test or a patch note pins the set numbering."
+    },
+    {
+      "name": "circle_radius",
+      "arguments": [
+        {
+          "name": "radiusPercent",
+          "type": "percent",
+          "min": -50,
+          "max": 50,
+          "description": "Percent of MAP WIDTH (not half-width). Three distinct behaviours, all measured: positive = an explicit ring of that radius; 0 = disables circular positioning and falls back to the default ring (guide:844); NEGATIVE = a third behaviour that is neither (RMSTEST_27)."
+        },
+        {
+          "name": "variance",
+          "type": "integer",
+          "default": 0,
+          "optional": true
+        }
+      ],
+      "description": "Radius (as a percent of map width) for circular player-land positioning, plus an optional variance. DE only. Zero and negative values are LEGAL and each mean something different - see the radiusPercent argument.",
+      "verified": true,
+      "notes": "Range widened from min 1 to min -50 on 2026-08-04. guide:842 documents 1-50 but the engine accepts both 0 and negative values with distinct, measured behaviours, so the old min made RMS0203 fire on correct scripts. 0 = disable, confirmed in-game (RMSTEST_2/RMSTEST_5) to behave exactly as if the attribute were absent. Negative is NOT the same as 0: RMSTEST_27 (circle_radius -20, five runs on Tiny at 8 players, 34 origins) gave mean radius 33.2 tiles = 27.6% of dim with CV 0.44, against the default ring's 50.4 tiles / CV 0.14 and against 24 tiles / CV 0 for an absolute-value reading. Scattered rather than annular, and centre-biased relative to uniform. Not yet modelled precisely."
+    },
+    {
+      "name": "clumping_factor",
+      "arguments": [
+        {
+          "name": "value",
+          "type": "integer",
+          "default": 8,
+          "description": "Higher = blobbier, rounder and CONNECTED; lower = stringier and may fragment. Measured (RMSTEST_38): a single land comes back in one piece at cf >= 20, in 1-2 pieces at the default 8, and in 6-10 pieces at cf -20. No min/max is declared deliberately - the conventional 1-15 is far too narrow, community testing reports about -100 to 99, and the corpus uses -20 through 100."
+        }
+      ],
+      "description": "Controls how blobby vs. scattered a land/terrain's shape is.",
+      "verified": true,
+      "notes": "Documentation widened 2026-08-04. Community sources (AoK Heaven 'The Cartographer: RMS Discoveries') report -100..99 against the conventional 1-15, corroborated by corpus values of -20..100. MEASURED by RMSTEST_38 across five maps at cf -20/0/8/20/40/100: piece count falls monotonically and hits a hard 1 by cf 20; circularity of the largest piece runs 0.133/0.181/0.360/0.409/0.428/0.463; and at cf -20 the land FAILS its declared tile budget by 6.5% while every other setting overshoots by the usual +3-4%. cf 100 is accepted and not clamped, which matters for the 18 corpus uses of it. See preview-design.md Sec.6.1 and Sec.15 item 16."
+    },
+    {
+      "name": "default_terrain_replacement",
+      "arguments": [
+        {
+          "name": "terrain",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Terrain used to pave connections by default.",
+      "verified": false,
+      "notes": "Name only — full CONNECTION_GENERATION docs weren't reached in the source fetch."
+    },
+    {
+      "name": "enable_balanced_elevation",
+      "description": "Tries to keep elevation generation fair across player starting areas. DE only.",
+      "verified": true
+    },
+    {
+      "name": "enable_tile_shuffling",
+      "description": "Randomizes tile evaluation order during placement search.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "find_closest",
+      "description": "Prefers the closest valid location rather than a random valid one.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "find_closest_to_map_center",
+      "description": "Prefers locations closest to the map's center.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "find_closest_to_map_edge",
+      "description": "Prefers locations closest to the map's edge.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "force_placement",
+      "description": "Forces placement even if normal constraints would reject it.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "generate_for_first_land_only",
+      "description": "Restricts generation to only the first land created.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "generate_mode",
+      "arguments": [
+        {
+          "name": "mode",
+          "type": "flag",
+          "default": 0
+        }
+      ],
+      "description": "Legacy generation-mode toggle. DE only.",
+      "verified": true
+    },
+    {
+      "name": "group_placement_radius",
+      "arguments": [
+        {
+          "name": "tiles",
+          "type": "integer"
+        }
+      ],
+      "description": "Keeps grouped objects within this many tiles of the group's center.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "group_variance",
+      "arguments": [
+        {
+          "name": "value",
+          "type": "integer"
+        }
+      ],
+      "description": "Randomizes how many objects land in each group.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "height_limits",
+      "arguments": [
+        {
+          "name": "min",
+          "type": "integer"
+        },
+        {
+          "name": "max",
+          "type": "integer"
+        }
+      ],
+      "description": "Restricts this terrain to a range of elevation levels.",
+      "verified": true,
+      "notes": "Confirmed via the working create_terrain example in the source guide."
+    },
+    {
+      "name": "ignore_terrain_restrictions",
+      "description": "Bypasses normal terrain-placement rules for this object.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "land_conformity",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": -1,
+          "max": 100
+        }
+      ],
+      "description": "DE-only land-shape parameter. Noted as buggy in the source guide.",
+      "verified": true,
+      "notes": "Guide explicitly flags this as buggy — worth a real playtest before relying on it."
+    },
+    {
+      "name": "land_id",
+      "arguments": [
+        {
+          "name": "id",
+          "type": "integer",
+          "min": -10
+        }
+      ],
+      "description": "Names this land so later commands (e.g. place_on_specific_land_id) can target it.",
+      "verified": true
+    },
+    {
+      "name": "land_percent",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "min": 0,
+          "max": 100,
+          "default": 100
+        }
+      ],
+      "mutexWith": [
+        "number_of_tiles"
+      ],
+      "description": "Share of the map this land should occupy.",
+      "verified": true
+    },
+    {
+      "name": "land_position",
+      "arguments": [
+        {
+          "name": "x",
+          "type": "percent",
+          "min": 0,
+          "max": 99
+        },
+        {
+          "name": "y",
+          "type": "percent",
+          "min": 0,
+          "max": 99
+        }
+      ],
+      "description": "Fixes the land's position as a percentage of map dimensions. Ignores border settings.",
+      "verified": true
+    },
+    {
+      "name": "layer_to_place_on",
+      "arguments": [
+        {
+          "name": "layer",
+          "type": "otherConstant"
+        }
+      ],
+      "description": "Restricts placement to a specific terrain layer.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "left_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+        }
+      ],
+      "description": "Minimum distance from the map's left edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
+    },
+    {
+      "name": "make_indestructible",
+      "description": "Placed objects cannot be destroyed.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "match_player_civ",
+      "description": "Placed objects visually match the owning player's civilization.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "max_distance",
+      "description": "Non-functional engine string. The working attribute is max_distance_to_players.",
+      "nonFunctional": true,
+      "replacedBy": "max_distance_to_players",
+      "verified": false,
+      "notes": "Engine string with no behaviour behind it, from the guide's Non-Functional Syntax appendix (found by searching the game's own non-localized-key-value-strings file; the guide reports that none of the listed strings appear to do anything). Present here so the name resolves and RMS0310 can name a working alternative — without an entry it drew a bare unknown-attribute warning, which is both wrong (the engine does carry the word) and useless (it named nothing to use instead). No `arguments` on purpose: a name with no behaviour has no arity, and the appendix lists the bare word. `verified` is false because `replacedBy` is our inference from the naming, not a guide statement — it has no effect on diagnostics here, since an entry with no arguments produces none. The sibling directives #undefine and #include carry the same flag."
+    },
+    {
+      "name": "max_distance_to_other_zones",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Maximum distance allowed from other zones.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "max_distance_to_players",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Maximum distance to allow from any player's starting area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_connected_tiles",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum contiguous placeable area required.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_distance",
+      "description": "Non-functional engine string. The working attribute is min_distance_to_players.",
+      "nonFunctional": true,
+      "replacedBy": "min_distance_to_players",
+      "verified": false,
+      "notes": "Engine string with no behaviour behind it, from the guide's Non-Functional Syntax appendix (found by searching the game's own non-localized-key-value-strings file; the guide reports that none of the listed strings appear to do anything). Present here so the name resolves and RMS0310 can name a working alternative — without an entry it drew a bare unknown-attribute warning, which is both wrong (the engine does carry the word) and useless (it named nothing to use instead). No `arguments` on purpose: a name with no behaviour has no arity, and the appendix lists the bare word. `verified` is false because `replacedBy` is our inference from the naming, not a guide statement — it has no effect on diagnostics here, since an entry with no arguments produces none. The sibling directives #undefine and #include carry the same flag."
+    },
+    {
+      "name": "min_distance_group_placement",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance between separate placement groups.",
+      "verified": true,
+      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name — treat the argument shape as high-confidence but not source-verified."
+    },
+    {
+      "name": "min_distance_to_map_edge",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance to keep from the edge of the map.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_distance_to_players",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance to keep from any player's starting area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "min_placement_distance",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer"
+        }
+      ],
+      "description": "Minimum distance between instances of this land. Defaults to other_zone_avoidance_distance's value.",
+      "verified": true
+    },
+    {
+      "name": "number_of_clumps",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer",
+          "default": 1
+        }
+      ],
+      "description": "How many separate blobs to split the placement into.",
+      "verified": true
+    },
+    {
+      "name": "number_of_groups",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "description": "How many separate clusters to split the placement into.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "number_of_objects",
+      "arguments": [
+        {
+          "name": "count",
+          "type": "integer"
+        }
+      ],
+      "description": "How many of this object to place.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "number_of_tiles",
+      "arguments": [
+        {
+          "name": "count",
           "type": "integer"
         }
       ],
       "mutexWith": [
-        "set_zone_by_team",
-        "set_zone_randomly"
+        "land_percent"
       ],
-      "description": "Assigns this land to a numbered zone, used later for terrain/object placement scoping.",
+      "description": "Absolute tile count for this land, instead of a percentage.",
       "verified": true
+    },
+    {
+      "name": "other_zone_avoidance_distance",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer",
+          "default": 0
+        }
+      ],
+      "description": "Minimum distance to keep from lands in other zones.",
+      "verified": true
+    },
+    {
+      "name": "override_actor_radius_if_required",
+      "description": "Allows the actor area radius to be overridden if placement would otherwise fail.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "percent_of_land",
+      "description": "Non-functional engine string. The working attribute is land_percent.",
+      "nonFunctional": true,
+      "replacedBy": "land_percent",
+      "verified": false,
+      "notes": "Engine string with no behaviour behind it, from the guide's Non-Functional Syntax appendix (found by searching the game's own non-localized-key-value-strings file; the guide reports that none of the listed strings appear to do anything). Present here so the name resolves and RMS0310 can name a working alternative — without an entry it drew a bare unknown-attribute warning, which is both wrong (the engine does carry the word) and useless (it named nothing to use instead). No `arguments` on purpose: a name with no behaviour has no arity, and the appendix lists the bare word. `verified` is false because `replacedBy` is our inference from the naming, not a guide statement — it has no effect on diagnostics here, since an entry with no arguments produces none. The sibling directives #undefine and #include carry the same flag."
+    },
+    {
+      "name": "place_on_forest_zone",
+      "mutexWith": [
+        "avoid_forest_zone"
+      ],
+      "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).",
+      "verified": true,
+      "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use."
+    },
+    {
+      "name": "place_on_specific_land_id",
+      "arguments": [
+        {
+          "name": "landId",
+          "type": "integer"
+        }
+      ],
+      "mutexWith": [
+        "set_place_for_every_player"
+      ],
+      "description": "Restricts placement to a land tagged with land_id.",
+      "verified": true,
+      "notes": "Confirmed via the working create_object example in the source guide: create_object GOLD { place_on_specific_land_id 13 }."
+    },
+    {
+      "name": "replace_terrain",
+      "arguments": [
+        {
+          "name": "from",
+          "type": "terrainConstant"
+        },
+        {
+          "name": "to",
+          "type": "terrainConstant"
+        }
+      ],
+      "description": "Replaces one terrain with another along the connection path.",
+      "verified": false,
+      "repeatable": true,
+      "notes": "Name only — see default_terrain_replacement's notes."
+    },
+    {
+      "name": "require_path",
+      "arguments": [
+        {
+          "name": "pathType",
+          "type": "otherConstant",
+          "optional": true
+        }
+      ],
+      "description": "Requires a valid path of the given type to reach this placement.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "resource_delta",
+      "arguments": [
+        {
+          "name": "amount",
+          "type": "integer"
+        }
+      ],
+      "description": "Adjusts the resource amount carried by placed objects.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "right_border",
+      "arguments": [
+        {
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+        }
+      ],
+      "description": "Minimum distance from the map's right edge.",
+      "verified": true,
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
+    },
+    {
+      "name": "second_object",
+      "arguments": [
+        {
+          "name": "type",
+          "type": "objectConstant"
+        }
+      ],
+      "description": "A secondary object type placed alongside the primary one.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_avoid_player_start_areas",
+      "arguments": [
+        {
+          "name": "distance",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "description": "Keeps this terrain away from player starting areas.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "set_building_capturable",
+      "mutexWith": [
+        "set_gaia_unconvertible"
+      ],
+      "description": "Allows placed Gaia buildings to be captured.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_circular_base",
+      "description": "Forces the land's base shape to be circular. DE only.",
+      "verified": true
+    },
+    {
+      "name": "set_circular_placement",
+      "description": "Constrains placement to a circular area.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_facet",
+      "arguments": [
+        {
+          "name": "facet",
+          "type": "integer"
+        }
+      ],
+      "description": "Sets the visual facet/rotation variant used for placed objects.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_flat_terrain_only",
+      "description": "Only paints this terrain onto flat (non-elevated) ground.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
+    },
+    {
+      "name": "set_gaia_object_only",
+      "description": "Placed objects belong to Gaia (neutral) rather than a player.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_gaia_unconvertible",
+      "mutexWith": [
+        "set_building_capturable"
+      ],
+      "description": "Prevents Gaia-owned placed objects from being converted.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_loose_grouping",
+      "mutexWith": [
+        "set_tight_grouping"
+      ],
+      "description": "Allows more spread between grouped objects.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_place_for_every_player",
+      "mutexWith": [
+        "place_on_specific_land_id"
+      ],
+      "description": "Ensures every player's land gets a copy of this placement.",
+      "verified": true,
+      "notes": "Behavior confirmed by the official Age of Empires support summary referencing this attribute; exact argument shape not independently verified here."
+    },
+    {
+      "name": "set_position",
+      "description": "Non-functional engine string. The working attribute is land_position.",
+      "nonFunctional": true,
+      "replacedBy": "land_position",
+      "verified": false,
+      "notes": "Engine string with no behaviour behind it, from the guide's Non-Functional Syntax appendix (found by searching the game's own non-localized-key-value-strings file; the guide reports that none of the listed strings appear to do anything). Present here so the name resolves and RMS0310 can name a working alternative — without an entry it drew a bare unknown-attribute warning, which is both wrong (the engine does carry the word) and useless (it named nothing to use instead). No `arguments` on purpose: a name with no behaviour has no arity, and the appendix lists the bare word. `verified` is false because `replacedBy` is our inference from the naming, not a guide statement — it has no effect on diagnostics here, since an entry with no arguments produces none. The sibling directives #undefine and #include carry the same flag."
+    },
+    {
+      "name": "set_scale_by_groups",
+      "mutexWith": [
+        "set_scale_by_size"
+      ],
+      "mutexNote": "Only the last of the two applies, so the earlier line does nothing. To scale a terrain by both, use set_scale_by_groups on its own — it scales the total tile count as well. Elevation has no combined form; do that by hand with conditionals.",
+      "description": "Scales number_of_clumps to the map size. The unscaled value refers to a 100x100 map. For terrains (not elevation) it scales the total tile count too.",
+      "notes": "mutexNote is guide:1662/1679, which state the co-occurrence consequence outright. That closes parser-design Sec.11 verify item 21 without a game session: the question was whether the pair is really exclusive and which wins, and the guide answers both.",
+      "verified": true
+    },
+    {
+      "name": "set_scale_by_size",
+      "mutexWith": [
+        "set_scale_by_groups"
+      ],
+      "mutexNote": "Only the last of the two applies, so the earlier line does nothing. To scale a terrain by both, use set_scale_by_groups on its own — it scales the total tile count as well. Elevation has no combined form; do that by hand with conditionals.",
+      "description": "Scales number_of_tiles to the map size. The unscaled value refers to a 100x100 map.",
+      "verified": true
+    },
+    {
+      "name": "set_scaling_to_map_size",
+      "mutexWith": [
+        "set_scaling_to_player_number"
+      ],
+      "description": "Scales object count by map size.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_scaling_to_player_number",
+      "mutexWith": [
+        "set_scaling_to_map_size"
+      ],
+      "description": "Scales object count by number of players.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
+    },
+    {
+      "name": "set_tight_grouping",
+      "mutexWith": [
+        "set_loose_grouping"
+      ],
+      "description": "Places grouped objects on adjacent tiles.",
+      "verified": false,
+      "notes": "Name only — see create_object's notes."
     },
     {
       "name": "set_zone_by_team",
@@ -1098,69 +2743,6 @@
       "verified": true
     },
     {
-      "name": "other_zone_avoidance_distance",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer",
-          "default": 0
-        }
-      ],
-      "description": "Minimum distance to keep from lands in other zones.",
-      "verified": true
-    },
-    {
-      "name": "min_placement_distance",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Minimum distance between instances of this land. Defaults to other_zone_avoidance_distance's value.",
-      "verified": true
-    },
-    {
-      "name": "land_id",
-      "arguments": [
-        {
-          "name": "id",
-          "type": "integer",
-          "min": -10
-        }
-      ],
-      "description": "Names this land so later commands (e.g. place_on_specific_land_id) can target it.",
-      "verified": true
-    },
-    {
-      "name": "number_of_clumps",
-      "arguments": [
-        {
-          "name": "count",
-          "type": "integer",
-          "default": 1
-        }
-      ],
-      "description": "How many separate blobs to split the placement into.",
-      "verified": true
-    },
-    {
-      "name": "set_scale_by_size",
-      "mutexWith": [
-        "set_scale_by_groups"
-      ],
-      "description": "Scales placement amount by map size.",
-      "verified": true
-    },
-    {
-      "name": "set_scale_by_groups",
-      "mutexWith": [
-        "set_scale_by_size"
-      ],
-      "description": "Scales placement amount by number of clumps/groups instead of map size.",
-      "verified": true
-    },
-    {
       "name": "spacing",
       "arguments": [
         {
@@ -1172,60 +2754,6 @@
       ],
       "description": "Minimum spacing between elevation clumps.",
       "verified": true
-    },
-    {
-      "name": "enable_balanced_elevation",
-      "description": "Tries to keep elevation generation fair across player starting areas. DE only.",
-      "verified": true
-    },
-    {
-      "name": "base_terrain",
-      "arguments": [
-        {
-          "name": "terrain",
-          "type": "terrainConstant",
-          "default": "GRASS"
-        }
-      ],
-      "description": "Sets the default/underlying terrain for this block (elevation clump or terrain patch), before the block's own terrain is layered on.",
-      "verified": true,
-      "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[]) — different context, both real; RMS reuses identifiers between command and attribute position."
-    },
-    {
-      "name": "base_layer",
-      "arguments": [
-        {
-          "name": "terrain",
-          "type": "terrainConstant"
-        }
-      ],
-      "description": "Sets a secondary base terrain layer for this block. DE only.",
-      "verified": true,
-      "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[])."
-    },
-    {
-      "name": "beach_terrain",
-      "arguments": [
-        {
-          "name": "terrain",
-          "type": "terrainConstant"
-        }
-      ],
-      "description": "Terrain used for the shoreline transition next to this terrain patch.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
-    },
-    {
-      "name": "terrain_mask",
-      "arguments": [
-        {
-          "name": "mask",
-          "type": "integer"
-        }
-      ],
-      "description": "Restricts which underlying terrains this patch can be painted over.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
     },
     {
       "name": "spacing_to_other_terrain_types",
@@ -1257,67 +2785,16 @@
       "notes": "Name only — see create_terrain's notes."
     },
     {
-      "name": "set_flat_terrain_only",
-      "description": "Only paints this terrain onto flat (non-elevated) ground.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
-    },
-    {
-      "name": "set_avoid_player_start_areas",
+      "name": "temp_min_distance_group_placement",
       "arguments": [
         {
           "name": "distance",
           "type": "integer"
         }
       ],
-      "description": "Keeps this terrain away from player starting areas.",
+      "description": "Temporary override of min_distance_group_placement for this placement only.",
       "verified": false,
-      "notes": "Name only — see create_terrain's notes."
-    },
-    {
-      "name": "height_limits",
-      "arguments": [
-        {
-          "name": "min",
-          "type": "integer"
-        },
-        {
-          "name": "max",
-          "type": "integer"
-        }
-      ],
-      "description": "Restricts this terrain to a range of elevation levels.",
-      "verified": true,
-      "notes": "Confirmed via the working create_terrain example in the source guide."
-    },
-    {
-      "name": "default_terrain_replacement",
-      "arguments": [
-        {
-          "name": "terrain",
-          "type": "terrainConstant"
-        }
-      ],
-      "description": "Terrain used to pave connections by default.",
-      "verified": false,
-      "notes": "Name only — full CONNECTION_GENERATION docs weren't reached in the source fetch."
-    },
-    {
-      "name": "replace_terrain",
-      "arguments": [
-        {
-          "name": "from",
-          "type": "terrainConstant"
-        },
-        {
-          "name": "to",
-          "type": "terrainConstant"
-        }
-      ],
-      "description": "Replaces one terrain with another along the connection path.",
-      "verified": false,
-      "repeatable": true,
-      "notes": "Name only — see default_terrain_replacement's notes."
+      "notes": "Name only — see create_object's notes."
     },
     {
       "name": "terrain_cost",
@@ -1335,6 +2812,18 @@
       "verified": false,
       "repeatable": true,
       "notes": "Name only — see default_terrain_replacement's notes."
+    },
+    {
+      "name": "terrain_mask",
+      "arguments": [
+        {
+          "name": "mask",
+          "type": "integer"
+        }
+      ],
+      "description": "Restricts which underlying terrains this patch can be painted over.",
+      "verified": false,
+      "notes": "Name only — see create_terrain's notes."
     },
     {
       "name": "terrain_size",
@@ -1358,244 +2847,6 @@
       "notes": "Name only — see default_terrain_replacement's notes."
     },
     {
-      "name": "add_object",
-      "arguments": [
-        {
-          "name": "type",
-          "type": "objectConstant"
-        },
-        {
-          "name": "percent",
-          "type": "percent"
-        }
-      ],
-      "description": "Adds an object type to an object group, weighted by percent chance.",
-      "verified": false,
-      "notes": "Name only — full OBJECTS_GENERATION docs weren't reached in the source fetch."
-    },
-    {
-      "name": "number_of_objects",
-      "arguments": [
-        {
-          "name": "count",
-          "type": "integer"
-        }
-      ],
-      "description": "How many of this object to place.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "number_of_groups",
-      "arguments": [
-        {
-          "name": "count",
-          "type": "integer"
-        }
-      ],
-      "description": "How many separate clusters to split the placement into.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "group_variance",
-      "arguments": [
-        {
-          "name": "value",
-          "type": "integer"
-        }
-      ],
-      "description": "Randomizes how many objects land in each group.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "group_placement_radius",
-      "arguments": [
-        {
-          "name": "tiles",
-          "type": "integer"
-        }
-      ],
-      "description": "Keeps grouped objects within this many tiles of the group's center.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_tight_grouping",
-      "mutexWith": [
-        "set_loose_grouping"
-      ],
-      "description": "Places grouped objects on adjacent tiles.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_loose_grouping",
-      "mutexWith": [
-        "set_tight_grouping"
-      ],
-      "description": "Allows more spread between grouped objects.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "min_connected_tiles",
-      "arguments": [
-        {
-          "name": "count",
-          "type": "integer"
-        }
-      ],
-      "description": "Minimum contiguous placeable area required.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "resource_delta",
-      "arguments": [
-        {
-          "name": "amount",
-          "type": "integer"
-        }
-      ],
-      "description": "Adjusts the resource amount carried by placed objects.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "second_object",
-      "arguments": [
-        {
-          "name": "type",
-          "type": "objectConstant"
-        }
-      ],
-      "description": "A secondary object type placed alongside the primary one.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_scaling_to_map_size",
-      "mutexWith": [
-        "set_scaling_to_player_number"
-      ],
-      "description": "Scales object count by map size.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_scaling_to_player_number",
-      "mutexWith": [
-        "set_scaling_to_map_size"
-      ],
-      "description": "Scales object count by number of players.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_place_for_every_player",
-      "mutexWith": [
-        "place_on_specific_land_id"
-      ],
-      "description": "Ensures every player's land gets a copy of this placement.",
-      "verified": true,
-      "notes": "Behavior confirmed by the official Age of Empires support summary referencing this attribute; exact argument shape not independently verified here."
-    },
-    {
-      "name": "place_on_specific_land_id",
-      "arguments": [
-        {
-          "name": "landId",
-          "type": "integer"
-        }
-      ],
-      "mutexWith": [
-        "set_place_for_every_player"
-      ],
-      "description": "Restricts placement to a land tagged with land_id.",
-      "verified": true,
-      "notes": "Confirmed via the working create_object example in the source guide: create_object GOLD { place_on_specific_land_id 13 }."
-    },
-    {
-      "name": "avoid_other_land_zones",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Keeps placement away from other zones' lands.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "generate_for_first_land_only",
-      "description": "Restricts generation to only the first land created.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_gaia_object_only",
-      "description": "Placed objects belong to Gaia (neutral) rather than a player.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_gaia_unconvertible",
-      "mutexWith": [
-        "set_building_capturable"
-      ],
-      "description": "Prevents Gaia-owned placed objects from being converted.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_building_capturable",
-      "mutexWith": [
-        "set_gaia_unconvertible"
-      ],
-      "description": "Allows placed Gaia buildings to be captured.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "make_indestructible",
-      "description": "Placed objects cannot be destroyed.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "min_distance_to_players",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Minimum distance to keep from any player's starting area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "max_distance_to_players",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Maximum distance to allow from any player's starting area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_circular_placement",
-      "description": "Constrains placement to a circular area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
       "name": "terrain_to_place_on",
       "arguments": [
         {
@@ -1608,226 +2859,47 @@
       "notes": "Widely used and unambiguous in community scripts; the argument shape (single terrain constant) is well established even though this exact source fetch didn't reach a formal description."
     },
     {
-      "name": "layer_to_place_on",
+      "name": "terrain_type",
       "arguments": [
         {
-          "name": "layer",
-          "type": "otherConstant"
+          "name": "terrain",
+          "type": "terrainConstant",
+          "default": "GRASS"
         }
       ],
-      "description": "Restricts placement to a specific terrain layer.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "The terrain this land is made of.",
+      "verified": true
     },
     {
-      "name": "ignore_terrain_restrictions",
-      "description": "Bypasses normal terrain-placement rules for this object.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "max_distance_to_other_zones",
+      "name": "top_border",
       "arguments": [
         {
-          "name": "distance",
-          "type": "integer"
+          "name": "percent",
+          "type": "percent",
+          "max": 99,
+          "default": 0,
+          "cautionBelow": 0,
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
         }
       ],
-      "description": "Maximum distance allowed from other zones.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "place_on_forest_zone",
-      "mutexWith": [
-        "avoid_forest_zone"
-      ],
-      "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).",
+      "description": "Minimum distance from the map's top edge.",
       "verified": true,
-      "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use."
+      "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015. BUG (guide-documented): asymmetric borders for player lands can misbehave when top_border is larger than the other borders — always pair it with another border."
     },
     {
-      "name": "avoid_forest_zone",
+      "name": "zone",
       "arguments": [
         {
-          "name": "distance",
+          "name": "zoneId",
           "type": "integer"
         }
       ],
       "mutexWith": [
-        "place_on_forest_zone"
+        "set_zone_by_team",
+        "set_zone_randomly"
       ],
-      "description": "Keeps placement away from forest zones.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "avoid_cliff_zone",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Keeps placement away from cliff zones.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "min_distance_to_map_edge",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Minimum distance to keep from the edge of the map.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "min_distance_group_placement",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Minimum distance between separate placement groups.",
-      "verified": true,
-      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name — treat the argument shape as high-confidence but not source-verified."
-    },
-    {
-      "name": "temp_min_distance_group_placement",
-      "arguments": [
-        {
-          "name": "distance",
-          "type": "integer"
-        }
-      ],
-      "description": "Temporary override of min_distance_group_placement for this placement only.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "find_closest",
-      "description": "Prefers the closest valid location rather than a random valid one.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "find_closest_to_map_center",
-      "description": "Prefers locations closest to the map's center.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "find_closest_to_map_edge",
-      "description": "Prefers locations closest to the map's edge.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "enable_tile_shuffling",
-      "description": "Randomizes tile evaluation order during placement search.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "require_path",
-      "arguments": [
-        {
-          "name": "pathType",
-          "type": "otherConstant"
-        }
-      ],
-      "description": "Requires a valid path of the given type to reach this placement.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "force_placement",
-      "description": "Forces placement even if normal constraints would reject it.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "actor_area",
-      "arguments": [
-        {
-          "name": "areaId",
-          "type": "integer"
-        }
-      ],
-      "description": "Associates this placement with an actor area created by create_actor_area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "actor_area_radius",
-      "arguments": [
-        {
-          "name": "radius",
-          "type": "integer"
-        }
-      ],
-      "description": "Radius of the associated actor area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "override_actor_radius_if_required",
-      "description": "Allows the actor area radius to be overridden if placement would otherwise fail.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "actor_area_to_place_in",
-      "arguments": [
-        {
-          "name": "areaId",
-          "type": "integer"
-        }
-      ],
-      "description": "Restricts placement to inside a specific actor area.",
-      "verified": true,
-      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name."
-    },
-    {
-      "name": "avoid_actor_area",
-      "arguments": [
-        {
-          "name": "areaId",
-          "type": "integer"
-        }
-      ],
-      "description": "Keeps placement away from a specific actor area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "avoid_all_actor_areas",
-      "description": "Keeps placement away from every defined actor area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "set_facet",
-      "arguments": [
-        {
-          "name": "facet",
-          "type": "integer"
-        }
-      ],
-      "description": "Sets the visual facet/rotation variant used for placed objects.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
-    },
-    {
-      "name": "match_player_civ",
-      "description": "Placed objects visually match the owning player's civilization.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Assigns this land to a numbered zone, used later for terrain/object placement scoping.",
+      "verified": true
     }
   ],
   "directives": [
@@ -1845,7 +2917,7 @@
       ],
       "description": "Assigns a label to a numeric ID. The value may be a literal number, a math expression, an rnd(), or another constant — everything in the game is a number internally, so constants resolve to their numeric value.",
       "verified": true,
-      "notes": "value is typed otherConstant, NOT integer, so that constant-to-constant aliasing (#const PREDATOR_A WOLF) doesn't draw a false RMS0202. Guide L3295 'Everything in the game is represented internally by a numeric identifier' + L3353 'Pre-defined constants will be interpreted as numbers ... where numeric inputs are expected'; L3306 'Items can have multiple constants assigned to them'. otherConstant accepts word OR number (parser-design §6), and expression/rnd handling is ungated by argument type, so #const X (A * B) and #const X rnd(1,5) are unaffected."
+      "notes": "value is typed otherConstant, NOT integer, so that constant-to-constant aliasing (#const PREDATOR_A WOLF) doesn't draw a false RMS0202. Guide L3295 'Everything in the game is represented internally by a numeric identifier' + L3353 'Pre-defined constants will be interpreted as numbers ... where numeric inputs are expected'; L3306 'Items can have multiple constants assigned to them'. otherConstant accepts word OR number (parser-design Sec.6), and expression/rnd handling is ungated by argument type, so #const X (A * B) and #const X rnd(1,5) are unaffected."
     },
     {
       "name": "#define",
@@ -1891,7 +2963,7 @@
       "description": "Removes a previously #define'd flag.",
       "verified": false,
       "nonFunctional": true,
-      "notes": "Used in this project's own test-maps/sample.rms by convention, but not directly confirmed in the source guide fetch used to populate this file (that fetch didn't reach the guide's Global Syntax section) — real-world community usage strongly suggests it exists, but re-verify before shipping."
+      "notes": "ENGINE-VERIFIED 2026-08-01 by RMSTEST_19_undefine.rms, two runs, both agreeing. (1) #undefine does NOTHING: a flag #define'd then #undefine'd still took its branch (7 of 7 objects placed, against a control of 5 that proved the conditional fires at all). The guide's appendix is right, and validate()'s subsumes() may keep skipping the monotonicity check for negated guards, which is sound only while definitions are irreversible. (2) It does NOT consume the following token: `#undefine base_terrain` followed by `SNOW` produced a 98% SNOW map, so base_terrain survived and ran. The `arguments` array below is therefore NOT a claim about the engine, which reads this as two independent statements. It is kept deliberately, and measured: deleting it makes the operand a separate statement to our parser too, which then reports RMS0200 unknown-command on the flag name of every real #undefine line, including test-maps/sample.rms:16. The array groups the line into the unit the author wrote so RMS0310 can cover all of it at once. `verified` stays false because the arity is a tooling convenience rather than a sourced fact."
     },
     {
       "name": "#include",
@@ -1904,7 +2976,7 @@
       "description": "Includes a plain script fragment file.",
       "verified": false,
       "nonFunctional": true,
-      "notes": "Only #include_drs and #includeXS were confirmed in the source fetch — plain #include is a common assumption but wasn't independently confirmed. Verify before relying on it."
+      "notes": "Confirmed 2026-07-31 against the guide's Non-Functional Syntax appendix, which lists plain #include as an inert engine string; the working directives are #include_drs and #includeXS, documented separately. `verified` stays false for the same reason as #undefine: the appendix sources the name and its inertness, not an argument shape. Note the contrast worth keeping straight — #include_drs really does splice a file in AT THE POINT OF THE DIRECTIVE (the guide's blind-random example puts five of them inside one start_random, which only works in place), so 'include does nothing' is true of this spelling alone."
     }
   ],
   "controlKeywords": [

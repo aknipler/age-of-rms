@@ -1,4 +1,4 @@
-// Phase 3.3 — formatting inference + item rendering, docs/breakdown-design.md §4.3 (rev 4).
+// Phase 3.3 — formatting inference + item rendering, docs/breakdown-design.md Sec.4.3 (rev 4).
 // All inference reads the source via token spans; nothing is guessed.
 
 import type { ParseResult } from "../../parser/types";
@@ -53,7 +53,7 @@ export function inferStyle(
   let onOwnLines: boolean;
   if (itemSpans.length > 0) {
     // Own-lines iff a newline separates the opener from the first item, or
-    // any consecutive pair of items (spec §4.3).
+    // any consecutive pair of items (spec Sec.4.3).
     onOwnLines = /\n/.test(src.slice(openerEnd, itemSpans[0].start));
     for (let i = 1; !onOwnLines && i < itemSpans.length; i++) {
       onOwnLines = /\n/.test(src.slice(itemSpans[i - 1].end, itemSpans[i].start));
@@ -61,7 +61,7 @@ export function inferStyle(
   } else if (closerStart !== undefined) {
     onOwnLines = /\n/.test(src.slice(openerEnd, closerStart));
   } else {
-    onOwnLines = true; // empty section / empty file default (spec §4.3)
+    onOwnLines = true; // empty section / empty file default (spec Sec.4.3)
   }
 
   let indentUnit: string;
@@ -75,7 +75,7 @@ export function inferStyle(
   return { indentUnit, onOwnLines, eol };
 }
 
-// ---- value / item rendering (spec §4.3 "Rendering an item to text") ----
+// ---- value / item rendering (spec Sec.4.3 "Rendering an item to text") ----
 
 export function renderValue(value: ArgValueInput): string {
   if (typeof value === "number") {
@@ -91,7 +91,7 @@ export function renderValue(value: ArgValueInput): string {
  * Placeholder for a required arg with no supplied value (rev 4 pin):
  * numeric types → def.default ?? def.min ?? 0; constant/string → def.default
  * ?? "TODO". Both are always consumed as ArgNodes by the parser, so a
- * placeholder can never coalesce into an unknown-run (spec §4.3).
+ * placeholder can never coalesce into an unknown-run (spec Sec.4.3).
  */
 export function placeholderFor(def: ArgumentDef): string {
   if (def.default !== undefined) return String(def.default);
@@ -129,6 +129,6 @@ export function renderAttribute(def: AttributeDef | undefined, name: string, val
 
 export function renderCommand(def: CommandDef | undefined, name: string): Rendered {
   // Bare command (no braces) even for block-kind defs: legal RMS; the block
-  // is synthesized by the first addAttribute (§4.6) — one brace-adding path.
+  // is synthesized by the first addAttribute (Sec.4.6) — one brace-adding path.
   return renderNamed(name, def?.arguments, undefined);
 }

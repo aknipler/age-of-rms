@@ -7,7 +7,7 @@ import * as monaco from "monaco-editor";
 
 const RMS_FILTERS = [{ name: "AoE2 Random Map Script", extensions: ["rms"] }];
 
-// docs/breakdown-design.md §6.4 — the persistent Monaco ITextModel is the
+// docs/breakdown-design.md Sec.6.4 — the persistent Monaco ITextModel is the
 // authoritative document buffer, created ONCE at module scope (not inside
 // the hook) so React 18 StrictMode's double-invoke of component bodies/lazy
 // initializers can never try to create a second model at the same URI
@@ -21,7 +21,7 @@ const RMS_FILTERS = [{ name: "AoE2 Random Map Script", extensions: ["rms"] }];
 export const DOCUMENT_MODEL_PATH = "inmemory://model/document.rms";
 const documentModel = monaco.editor.createModel("", "aoe2-rms", monaco.Uri.parse(DOCUMENT_MODEL_PATH));
 
-/** Exposed so CodePane can bind <Editor> to this exact model (§6.4) and so Breakdown's applyEdit glue can push edits onto it. */
+/** Exposed so CodePane can bind <Editor> to this exact model (Sec.6.4) and so Breakdown's applyEdit glue can push edits onto it. */
 export function getDocumentModel(): monaco.editor.ITextModel {
   return documentModel;
 }
@@ -38,13 +38,13 @@ export function getDocumentModel(): monaco.editor.ITextModel {
 // capability doesn't cover, no matter what the code says.
 export function useDocument() {
   const [filePath, setFilePath] = useState<string | null>(null);
-  // `content` is now a DERIVED MIRROR of documentModel's text (§6.4),
+  // `content` is now a DERIVED MIRROR of documentModel's text (Sec.6.4),
   // updated via onDidChangeContent below — not the source of truth itself.
   const [content, setContentState] = useState(() => documentModel.getValue());
   const [isDirty, setIsDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
-  // Dirty is "model version != last-saved version" (§6.4's suggested
+  // Dirty is "model version != last-saved version" (Sec.6.4's suggested
   // cleaner signal than string compare) rather than comparing strings —
   // it also means an undo back to the saved state correctly clears dirty,
   // which a string-equality check would have gotten right anyway but this
@@ -95,7 +95,7 @@ export function useDocument() {
   // Mirror the model's text into React state on every change, whichever
   // side made it — Code-tab typing, Breakdown's pushEditOperations, or
   // undo/redo. This is the "content becomes a derived mirror via
-  // onDidChangeContent" piece of §6.4.
+  // onDidChangeContent" piece of Sec.6.4.
   useEffect(() => {
     const subscription = documentModel.onDidChangeContent(() => {
       setContentState(documentModel.getValue());
@@ -233,10 +233,10 @@ export function useDocument() {
 
   const mapName = filePath ? fileNameFromPath(filePath) : "Untitled Map";
 
-  // Applies a byte-level TextEdit (docs/breakdown-design.md §4.1's
+  // Applies a byte-level TextEdit (docs/breakdown-design.md Sec.4.1's
   // TextEdit shape) to the shared document model via pushEditOperations,
   // which lands on Monaco's own undo/redo stack — the same stack Ctrl+Z
-  // in the Code tab uses (§6.4). This is the one function Breakdown's
+  // in the Code tab uses (Sec.6.4). This is the one function Breakdown's
   // patch-application glue (src/breakdown/applyEdit.ts) needs from this
   // hook; it deliberately takes a structurally-typed edit rather than
   // importing src/breakdown/patch/intents.ts's TextEdit, so this hook
@@ -252,7 +252,7 @@ export function useDocument() {
     );
   }, []);
 
-  // §6.4's "one undo stack" promise has a reachability gap: the model's
+  // Sec.6.4's "one undo stack" promise has a reachability gap: the model's
   // undo/redo stack is real and shared, but Ctrl+Z is normally a
   // keybinding the Monaco *editor instance* owns, and that instance only
   // exists while CodePane is mounted (the Code tab is active). Switch to

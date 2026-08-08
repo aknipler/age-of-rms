@@ -1,0 +1,106 @@
+/*
+RMSTEST_36 - does grouped_by_team space TEAMS or space PLAYERS
+preview-design.md Sec.15 item 15, second attempt
+
+WHY THIS EXISTS - RMSTEST_30 CANNOT BE READ
+RMSTEST_30 was run three times at 4v4 with teams correctly set, and the angular
+gaps came back strongly bimodal - clusters of 9-43 degrees separated by two arcs
+of 119-150. That looks like reading A. It is not evidence for it, for two
+reasons that compound:
+
+  1. RMSTEST_30 specifies NO circle_radius, so the DEFAULT ring applies, and
+     RMSTEST_24 measured that default as carrying radial variance (sd 7.11)
+     AND about +/-7 degrees of angular jitter. Non-uniform spacing is the
+     default ring's own behaviour before grouped_by_team touches anything.
+  2. Far worse, it used base_size 8 with 200 tiles and returned only 4, 6 and 4
+     patches from 8 lands. Adjacent lands MERGED. Merging two neighbours on a
+     45-degree ring leaves an apparent gap near 90, and merging three leaves
+     135 - which is precisely the 119-150 that was read as team separation.
+     The bimodality is fully explained by merging alone.
+
+Both defects push the result toward reading A, which is the reading Sec.6.1
+already models, so this is the shape of error that confirms what you expected.
+
+METHOD
+Two changes, each removing one defect:
+  - circle_radius 40 0 - an EXPLICIT radius with variance EXPLICITLY 0
+    (guide:847 gives variance default 0, and RMSTEST_27 shows the default ring
+    is not reachable by any other spelling). A perfect ring, so every angular
+    deviation is attributable to grouped_by_team and nothing else.
+  - base_size 3 with 40 tiles - small lands. At radius 40% of 200 = 80 tiles the
+    ring circumference is about 500 tiles, so 45-degree neighbours sit ~63 tiles
+    apart and CANNOT merge, while teammates at the documented 2*base_size = 6
+    tiles certainly will.
+
+That turns the question into a PATCH COUNT, which is the cheapest possible
+reading and needs no angular arithmetic:
+
+  reading A (teams spaced evenly, members packed at 2*base_size)
+      5v1v1v1 -> the five merge into ONE patch, three singles -> 4 PATCHES
+      4v4     -> 2 PATCHES
+  reading B (players spaced evenly, merely reordered so teammates are adjacent)
+      5v1v1v1 -> 8 separate patches at ~45 degrees -> 8 PATCHES
+      4v4     -> 8 PATCHES
+
+4 against 8 is not a judgement call. Gaps remain available as corroboration.
+
+THREE CONFIGURATIONS:
+  36-A  4v4        control, and the one that should show 2 vs 8
+  36-C  5v1v1v1    the discriminator
+
+TEAMS ARE SET OUTSIDE THE SCRIPT, in the lobby or the editor's player settings.
+The RMSTEST_30 re-run proved the editor CAN set them - it produced a correct
+4v4 as [1,3,5,7] vs [2,4,6,8] - so this is known to be workable. What it must
+NOT be is the same configuration three times: 4v4 alone cannot separate the
+readings under any instrument.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Patch count is the reading. Patch count near 8 with even ~45 degree gaps is
+  reading B; a small count with the merged blob much larger than the singles is
+  reading A.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. 36-C returns 4 patches, one of them roughly five times the area of the other
+   three. Reading A, Sec.6.1 stands as written.
+2. 36-C returns 8 patches at even gaps. Reading B, and Sec.6.1's ring model is
+   wrong in a way that matters for every team map.
+3. 36-C returns 8 patches at UNEVEN gaps. Neither reading - the members are
+   being pulled together without merging, so 2*base_size is not the spacing, and
+   guide:356 is describing something else. Record the gap matrix; it becomes the
+   measurement.
+4. 36-A must return 2 patches under reading A and 8 under B. If 36-A and 36-C
+   disagree about which reading holds, the grouping depends on team SIZE, which
+   nothing models and which would be the most interesting outcome available.
+
+GENERATE AT NORMAL (200) WITH 8 PLAYERS.
+  Run 36-A at 4v4 twice.
+  Run 36-C at 5v1v1v1 three times - it is the discriminator, give it the runs.
+Set the teams before generating, and REGENERATE between saves.
+*/
+
+<PLAYER_SETUP>
+  grouped_by_team
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    number_of_tiles 40
+    base_size 3
+    clumping_factor 20
+    border_fuzziness 0
+    circle_radius 40 0
+  }
+
+<ELEVATION_GENERATION>
+
+/* NO <CLIFF_GENERATION> HEADER - an empty one generates cliffs. */
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

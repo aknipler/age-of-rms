@@ -2,40 +2,112 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ageofrms.dev/schemas/language.schema.json",
   "title": "RMS Language Definition",
-  "description": "Every RMS command, its attributes, preprocessor directives, and runtime control keywords, for DE — section membership, argument shapes, mutual exclusivity. Powers the Phase 2 parser, Monaco autocomplete/highlighting (src/editor/aoe2RmsLanguage.ts's COMMANDS/ATTRIBUTES lists should eventually be generated from this file instead of hand-duplicated), and Breakdown's command/attribute dropdowns. Attributes are defined once in the top-level attributes[] array and referenced by name from each command that accepts them, rather than duplicated per command — a command's own attributes[] field is just a list of names pointing into that array.",
+  "description": "Every RMS command, its attributes, preprocessor directives, and runtime control keywords, for DE — section membership, argument shapes, mutual exclusivity. Powers the parser, Monaco autocomplete/highlighting (src/editor/aoe2RmsLanguage.ts's COMMANDS/ATTRIBUTES lists should eventually be generated from this file instead of hand-duplicated), and Breakdown's command/attribute dropdowns. Attributes are defined once in the top-level attributes[] array and referenced by name from each command that accepts them, rather than duplicated per command — a command's own attributes[] field is just a list of names pointing into that array.",
   "type": "object",
-  "required": ["sections", "commands", "attributes", "directives", "controlKeywords"],
+  "required": [
+    "sections",
+    "predefinedLabels",
+    "commands",
+    "attributes",
+    "directives",
+    "controlKeywords"
+  ],
   "additionalProperties": false,
   "properties": {
     "sections": {
       "type": "array",
       "description": "The section headers a script is divided into (e.g. <PLAYER_SETUP>), in generation order. Written without the angle brackets here.",
-      "items": { "type": "string", "pattern": "^[A-Z][A-Z_]*$" }
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z_]*$"
+      }
+    },
+    "predefinedLabels": {
+      "type": "array",
+      "description": "Condition labels the engine defines itself, usable as the ConditionLabel of if/elseif without any #define (random_map.def is the authoritative in-engine source; transcribed here from the guide's Conditionals section and Map Sizes table). Two consumers, one array: validate()'s unknown-constant check treats these as defined, and the preview generator (docs/preview-design.md Sec.3.1) builds its branch-selection environment by choosing which of these are true for the current generation settings. Do not duplicate this list in code.",
+      "items": {
+        "$ref": "#/$defs/predefinedLabel"
+      }
     },
     "commands": {
       "type": "array",
-      "items": { "$ref": "#/$defs/command" }
+      "items": {
+        "$ref": "#/$defs/command"
+      }
     },
     "attributes": {
       "type": "array",
-      "items": { "$ref": "#/$defs/attribute" }
+      "items": {
+        "$ref": "#/$defs/attribute"
+      }
     },
     "directives": {
       "type": "array",
-      "items": { "$ref": "#/$defs/directive" }
+      "items": {
+        "$ref": "#/$defs/directive"
+      }
     },
     "controlKeywords": {
       "type": "array",
-      "items": { "$ref": "#/$defs/controlKeyword" }
+      "items": {
+        "$ref": "#/$defs/controlKeyword"
+      }
     }
   },
   "$defs": {
+    "predefinedLabel": {
+      "type": "object",
+      "required": ["name", "category", "description", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_]*$",
+          "description": "Note the pattern admits a leading digit: 4_PLAYER_GAME and 2_TEAM_GAME are real engine labels (docs/parser-design.md Sec.13)."
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "gameMode",
+            "mapSize",
+            "startingResources",
+            "startingAge",
+            "lobbySetting",
+            "playerCount",
+            "teamCount",
+            "teamSize",
+            "playerInTeam",
+            "gameVersion"
+          ],
+          "description": "What decides whether this label is true. The preview generator switches on this to build its environment: mapSize reads the map-size setting, playerCount the player-count setting, gameVersion is always DE, and the team categories are undefined until a teams setting exists."
+        },
+        "description": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "integer",
+          "description": "mapSize labels only: the map's side length in tiles. The legacy and modern names are offset by one size for Normal/Large/Huge (LARGE_MAP and MAPSIZE_NORMAL are both 200), which is why this is data rather than something a consumer derives from the name — see docs/preview-design.md Sec.4. Area-based scaling is computed as dim squared over 10000; the guide's rounded area-ratio column is deliberately not stored."
+        },
+        "mapSize": {
+          "type": "string",
+          "description": "mapSize labels only, and only where the app offers that size: the matching MAP_SIZES value in src/generationSettings/generationSettingsConstants.ts. Absent on sizes reachable only via the MORE_MAP_SIZES launch option or override_map_size, which no setting can select but a script may still branch on."
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
     "argument": {
       "type": "object",
       "required": ["name", "type"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
+        "name": {
+          "type": "string"
+        },
         "type": {
           "type": "string",
           "enum": [
@@ -48,13 +120,19 @@
             "flag"
           ]
         },
-        "min": { "type": "number" },
-        "max": { "type": "number" },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
         "default": {},
-        "description": { "type": "string" },
+        "description": {
+          "type": "string"
+        },
         "optional": {
           "type": "boolean",
-          "description": "Whether this trailing argument may be omitted. Schema action item (docs/parser-design.md §13); honored by the parser if present."
+          "description": "Whether this trailing argument may be omitted. Schema action item (docs/parser-design.md Sec.13); honored by the parser if present."
         },
         "variadic": {
           "type": "boolean",
@@ -62,7 +140,7 @@
         },
         "cautionBelow": {
           "type": "number",
-          "description": "If set, values below this threshold are still valid RMS (unlike min, which is a hard documented floor) but carry a real risk worth flagging live — e.g. a negative border value that can crash the game if it pushes the land origin off-map. Requires cautionMessage."
+          "description": "If set, values below this threshold are still valid RMS (unlike min, which is a hard documented floor) but carry a real risk worth flagging live (e.g. a negative border value that can crash the game if it pushes the land origin off-map). Requires cautionMessage."
         },
         "cautionMessage": {
           "type": "string",
@@ -75,7 +153,10 @@
       "required": ["name", "section", "kind", "description", "verified"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
         "section": {
           "type": "string",
           "description": "One of the top-level sections[] entries, e.g. \"LAND_GENERATION\"."
@@ -85,19 +166,34 @@
           "enum": ["block", "standalone"],
           "description": "block = opens a { } body (e.g. create_land { ... }). standalone = a single statement with inline arguments and no body (e.g. base_terrain GRASS)."
         },
-        "description": { "type": "string" },
+        "description": {
+          "type": "string"
+        },
         "arguments": {
           "type": "array",
           "description": "Inline arguments taken by this command itself (both kinds can have these — a block command's MaxHeight-style argument, or a standalone command's whole argument list).",
-          "items": { "$ref": "#/$defs/argument" }
+          "items": {
+            "$ref": "#/$defs/argument"
+          }
         },
         "attributes": {
           "type": "array",
           "description": "Names of entries in the top-level attributes[] array valid inside this command's { } block. Only meaningful when kind is \"block\"; omit or leave empty for standalone commands.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "verified": { "type": "boolean" },
-        "notes": { "type": "string" }
+        "deprecated": {
+          "type": "string",
+          "description": "Present when the engine still accepts this command but a patch has superseded it. The string is the user-facing replacement guidance, shown verbatim by validate()'s RMS0309 (docs/parser-design.md Sec.8). Cite the patch that obsoleted it in notes.",
+          "minLength": 1
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
       }
     },
     "attribute": {
@@ -105,24 +201,56 @@
       "required": ["name", "description", "verified"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
-        "arguments": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/argument"
+          }
+        },
         "mutexWith": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Names of other attributes that cannot be used together with this one in the same block, e.g. land_percent vs. number_of_tiles."
         },
-        "description": { "type": "string" },
+        "mutexNote": {
+          "type": "string",
+          "description": "What the guide says actually HAPPENS when this attribute and a mutexWith partner appear in one block, plus the guide's own advice. Appended to RMS0307's message when present. Only set it where the guide states the consequence: for most pairs it says 'mutually exclusive' and nothing more, and the generic message says exactly that much."
+        },
+        "description": {
+          "type": "string"
+        },
         "repeatable": {
           "type": "boolean",
-          "description": "Whether this attribute is cumulative (multiple instances in one block are all applied), e.g. replace_terrain. Governs whether Breakdown offers an 'add another' affordance — NOT whether duplicate instances render as a list; that's the ground-truth rule (docs/breakdown-design.md §3.3, source presence, not this flag)."
+          "description": "Whether this attribute is cumulative (multiple instances in one block are all applied), e.g. replace_terrain. Governs whether Breakdown offers an 'add another' affordance — not whether duplicate instances render as a list; that's the ground-truth rule (docs/breakdown-design.md Sec.3.3, source presence, not this flag)."
         },
         "maxRepeats": {
           "type": "number",
-          "description": "Caps the 'add another' affordance for a repeatable attribute. Do not add without re-checking DE patch notes (Update 153015) per docs/parser-design.md §8 — none is sourced today."
+          "description": "Caps the 'add another' affordance for a repeatable attribute. Do not add without re-checking DE patch notes (Update 153015) per docs/parser-design.md Sec.8. None is sourced today."
         },
-        "verified": { "type": "boolean" },
-        "notes": { "type": "string" }
+        "requiresSection": {
+          "type": "string",
+          "description": "A top-level sections[] name that must be present somewhere in the script for this attribute to do anything. validate() raises RMS0311 when the attribute is used and the section is absent. The only entry today is base_elevation, which needs <ELEVATION_GENERATION>: without it the map still generates and looks correct, but the slopes never take effect. Set this only for engine-verified cases — it is the one error-severity semantic check."
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "nonFunctional": {
+          "type": "boolean",
+          "description": "True for names the DE exe carries as strings with no behaviour behind them (the guide's Non-Functional Syntax appendix: min_distance, max_distance, set_position, percent_of_land). Same meaning as the directive flag. validate() raises RMS0310 rather than letting the parser report a bare unknown name."
+        },
+        "replacedBy": {
+          "type": "string",
+          "description": "Name of the working attribute this dead string corresponds to, rendered into RMS0310's message. Distinct from a deprecation: a deprecated command still works, these never did. Only meaningful alongside nonFunctional."
+        }
       }
     },
     "directive": {
@@ -130,15 +258,29 @@
       "required": ["name", "description", "verified"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "pattern": "^#\\w+$" },
-        "arguments": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
-        "description": { "type": "string" },
+        "name": {
+          "type": "string",
+          "pattern": "^#\\w+$"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/argument"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
         "nonFunctional": {
           "type": "boolean",
-          "description": "True for directives the DE exe accepts but that do nothing at runtime (#undefine/#include — engine ghosts, parser-design.md §7/§13). Drives Breakdown's 'has no effect in DE' badge (§3.6)."
+          "description": "True for directives the DE exe accepts but that do nothing at runtime (#undefine/#include — engine ghosts, parser-design.md Sec.7/Sec.13). Drives Breakdown's 'has no effect in DE' badge (Sec.3.6)."
         },
-        "verified": { "type": "boolean" },
-        "notes": { "type": "string" }
+        "verified": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
       }
     },
     "controlKeyword": {
@@ -146,9 +288,15 @@
       "required": ["name", "description", "verified"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "verified": { "type": "boolean" }
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        }
       }
     }
   },
@@ -187,8 +335,14 @@
         {
           "name": "#const",
           "arguments": [
-            { "name": "name", "type": "string" },
-            { "name": "value", "type": "integer" }
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "integer"
+            }
           ],
           "description": "Defines a named integer constant usable anywhere a number is expected.",
           "verified": true

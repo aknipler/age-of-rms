@@ -1,0 +1,83 @@
+/*
+	RMSTEST 17 — reproduce the guide's own worked border example exactly.
+
+	RMSTEST_16 measured the border rule to the tile, twice:
+
+	    min_x = round(left_pct  /100 · dim)   max_x = dim − round(right_pct /100 · dim)
+	    min_y = round(top_pct   /100 · dim)   max_y = dim − round(bottom_pct/100 · dim)
+
+	Round-half-up on all four edges, with the asymmetry living in `dim` versus
+	index 0 rather than in the rounding. That contradicts what preview-design
+	Sec.4 said for five revisions (floor on low edges, ceil on high), so the
+	formula deserves a check against the one case the guide states outright.
+
+	guide:885-886: "to stop 2 tiles from the edge on a tiny (120x120) map, a
+	value of 2 must be used for the top and left borders, but a value of 3 is
+	needed for the bottom and right borders."
+
+	So: all four borders set to 2, on Tiny. 2/100 x 120 = 2.4, round -> 2.
+
+	WHAT THE MEASURED FORMULA PREDICTS
+	    min_x = 2                 -> tiles 0,1 empty      = 2-tile gap
+	    min_y = 2                 -> tiles 0,1 empty      = 2-tile gap
+	    max_x = 120 - 2 = 118     -> tile 119 empty       = 1-tile gap
+	    max_y = 120 - 2 = 118     -> tile 119 empty       = 1-tile gap
+
+	  i.e. bbox x 2..118, y 2..118.
+
+	That IS the guide's sentence: value 2 gives a 2-tile gap on top/left, and
+	only a 1-tile gap on bottom/right, so you need a larger value there. It also
+	explains why the guide says 3 rather than 2.5 — 3 is simply the smallest
+	integer that buys at least a 2-tile gap on the high edges (it actually buys
+	3, since round(3.6) = 4 -> max 116). Read "a value of 3 is needed" as "the
+	smallest integer that achieves at least this", not as an exact equality.
+
+	READ IT WITH THE PROBE
+	  python probe_scenario.py <scenario> --bbox GRASS
+
+	  x 2..118, y 2..118  -> measured formula CONFIRMED, and it reconciles with
+	                         the guide. Sec.4's residual note can be deleted.
+	  x 2..117, y 2..117  -> the high edges are dim−1−round(v), not dim−round(v).
+	                         The formula is off by one on the high edges and
+	                         Sec.4 needs a correction (RMSTEST_16's numbers would
+	                         then need re-deriving too).
+	  x 2..116, y 2..116  -> ceil on the high edges after all, i.e. the OLD
+	                         Sec.4 rule, and RMSTEST_16's result needs explaining.
+	  anything else       -> report all four coordinates.
+
+	CHECK FIRST, BEFORE READING THE BOX: GRASS + DESERT must equal 14400 with no
+	third terrain. RMSTEST_15 was wrecked by an automatic BEACH ring that only
+	appeared because its base terrain was WATER, and it shifted every edge by a
+	tile. This map has no water for the same reason.
+
+	Otherwise identical to RMSTEST_16 — one variable changed, the border values.
+
+	RUN ON: TINY, 2 players. The arithmetic is dim-120 only.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain DESERT
+
+create_player_lands
+{
+	terrain_type DESERT
+	base_size 3
+	number_of_tiles 1
+	circle_radius 5 0
+}
+
+create_land
+{
+	terrain_type GRASS
+	land_position 50 50
+	base_size 1
+	land_percent 100
+	border_fuzziness 100
+	left_border 2
+	right_border 2
+	top_border 2
+	bottom_border 2
+}

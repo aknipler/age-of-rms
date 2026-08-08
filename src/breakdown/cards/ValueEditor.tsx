@@ -6,7 +6,7 @@ import { HelpTip } from "../../components/HelpTip";
 import styles from "./AttributeRow.module.css";
 
 /**
- * §4.11 raw-text -> ArgValueInput. Soft validation (§5/§4.11): an
+ * Sec.4.11 raw-text -> ArgValueInput. Soft validation (Sec.5/Sec.4.11): an
  * out-of-range number or unrecognized constant is legal RMS and commits
  * anyway (the diagnostic surfaces on the row after reparse) — this only
  * ever produces a value, never rejects one. Rejection (whitespace in a
@@ -24,24 +24,24 @@ export function parseRawValue(raw: string, type: ArgumentType): ArgValueInput {
 }
 
 interface ValueEditorProps {
-  /** Current AST-rendered display text — the value Escape reverts to and the value a same-text commit is a no-op against (§4.11). */
+  /** Current AST-rendered display text — the value Escape reverts to and the value a same-text commit is a no-op against (Sec.4.11). */
   text: string;
   type: ArgumentType;
-  /** The value's current span.start — its identity anchor (§6.3) for the focus registry, and the React key so an unrelated reparse never clobbers in-progress typing on this exact field. */
+  /** The value's current span.start — its identity anchor (Sec.6.3) for the focus registry, and the React key so an unrelated reparse never clobbers in-progress typing on this exact field. */
   anchorOffset: number;
-  /** Called only when the committed text differs from `text`. `restoreFocusOnEnter` distinguishes an Enter-commit (should refocus via caret) from a blur-commit (must not, §4.11). */
+  /** Called only when the committed text differs from `text`. `restoreFocusOnEnter` distinguishes an Enter-commit (should refocus via caret) from a blur-commit (must not, Sec.4.11). */
   onCommit: (value: ArgValueInput, restoreFocusOnEnter: boolean) => void;
   disabled?: boolean;
   helpId: string;
-  /** §3.4's quoting round-trip — true only for a quoted filename slot, where internal spaces are legal RMS. */
+  /** Sec.3.4's quoting round-trip — true only for a quoted filename slot, where internal spaces are legal RMS. */
   allowSpaces?: boolean;
 }
 
-// docs/breakdown-design.md §3.4/§4.11 — the shared value editor: typed
+// docs/breakdown-design.md Sec.3.4/Sec.4.11 — the shared value editor: typed
 // display, uncontrolled during typing (no EditIntent per keystroke),
 // commits on blur/Enter, Escape reverts, checkbox/combobox specifics are
 // handled by the two branches below (constant combobox uses a native
-// <datalist> so free text is always still accepted, per §3.4).
+// <datalist> so free text is always still accepted, per Sec.3.4).
 export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, helpId, allowSpaces }: ValueEditorProps) {
   const { gameConstants, parseResult, registerFocusable } = useBreakdownContext();
   const [error, setError] = useState<string | null>(null);
@@ -49,13 +49,13 @@ export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, help
   const commit = (raw: string, restoreFocusOnEnter: boolean) => {
     if (raw === text) {
       setError(null);
-      return; // §4.11 — identical-to-current commits produce no edit/reparse/undo-entry
+      return; // Sec.4.11 — identical-to-current commits produce no edit/reparse/undo-entry
     }
-    // §4.11: only input that can't be RENDERED into a token at all is
+    // Sec.4.11: only input that can't be RENDERED into a token at all is
     // rejected — internal whitespace in what must stay a single token.
     // `string`-typed slots here are plain name slots (see AttributeRow's
     // usage), not quoted filenames (those are DirectiveCard's own path,
-    // §3.4's overload note), so whitespace is rejected uniformly.
+    // Sec.3.4's overload note), so whitespace is rejected uniformly.
     if (!allowSpaces && /\s/.test(raw.trim())) {
       setError("can't contain spaces here");
       return;

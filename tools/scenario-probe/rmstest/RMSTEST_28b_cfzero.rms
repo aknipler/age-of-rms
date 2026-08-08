@@ -1,0 +1,60 @@
+/*
+RMSTEST_28b - CONTROL FOR 28a. Identical except clumping_factor is 0, not -5.
+preview-design.md Sec.15 item 13
+
+WHY THIS EXISTS
+RMSTEST_21 saw fragmentation at BOTH cf -5 (six pieces) and cf 0 (three). If
+only the negative value fragments, the mechanism is specific to negative
+clumping and Sec.6.1's growth model survives for the normal range. If 0
+fragments too, the boundary is somewhere in the low range and the model is
+wrong across a band of ordinary values, which is much more serious - cf 0 is a
+value real maps write.
+
+Read the two together. Separately they each show a number of patches; together
+they show whether the count depends on the sign or on the magnitude.
+
+Everything else is byte-for-byte 28a: one land, map center, fuzziness off, no
+cliff section, same tile budget, same map size.
+
+GENERATE AT NORMAL (200), any player count. Same sitting as 28a.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. One SNOW patch, for the same structural reason as 28a.
+2. If both fragment, expect FEWER pieces here than at -5 (RMSTEST_21 saw 3
+   against 6). A monotone relationship between clumping factor and piece count
+   is itself the finding: it would mean the clumping factor is controlling how
+   far the growth candidate set reaches, not how tightly it clusters, and
+   Sec.6.1's whole reading of the parameter is inverted.
+3. If 28a fragments and this does NOT, the effect is sign-specific and the
+   search narrows to whatever the engine does with a negative here.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+
+RUN IT THREE TIMES, matching 28a run for run.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type SNOW
+    number_of_tiles 400
+    base_size 1
+    clumping_factor 0
+    border_fuzziness 0
+    land_position 50 50
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

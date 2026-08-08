@@ -1,10 +1,10 @@
 // Phase 2.5 — status-bar resource totals. Pure function over a parsed
 // script + the game-constants reference data: no React/Monaco/Tauri
-// imports (docs/parser-design.md §14 discipline extended to this module
+// imports (docs/parser-design.md Sec.14 discipline extended to this module
 // so it can run unchanged inside the parser worker, same as parseRms
 // itself, and stay fully Vitest-testable).
 //
-// Two UX decisions locked with Ash before implementing (CREATION_PLAN 2.5
+// Two UX decisions locked before implementing (CREATION_PLAN 2.5
 // explicitly required asking first):
 //   1. if/start_random blocks make the exact count generation-dependent —
 //      shown as a min-max RANGE, not a single expected value.
@@ -16,15 +16,13 @@
 //      deliberately placed next to a player's start via land_id still
 //      counts as Neutral here) but was explicitly deferred to a later pass.
 //
-// Player bucket is PER-PLAYER, not summed across players (Ash's
-// correction after the first pass, which had multiplied it by
-// playerCount and made it read like a second Total). set_place_for_every_
+// Player bucket is PER-PLAYER, not summed across players. set_place_for_every_
 // player places one copy near EACH player, so what a player actually
 // sees/gets is the per-instance amount — the same number regardless of
 // player count. Total, by contrast, IS multiplied by playerCount, since
 // it's the sum of every copy actually placed on the map.
 //
-// `second_object` (Ash's second bug report): a create_object block can
+// `second_object`: a create_object block can
 // place a companion object alongside its primary type at the same spot
 // — real maps use this to pair an invisible placeholder type (e.g.
 // FISH_PLACEHOLDER, which carries no resourceAmounts of its own) with
@@ -277,7 +275,7 @@ function walkItem(item: Item, tokens: Token[], constantsByName: ReadonlyMap<stri
       return walkRandom(item, tokens, constantsByName, playerCount);
     case "orphanBlock":
       // Best-effort: a stray/glued-brace recovery block may still contain
-      // legitimate create_object calls (spec §5.4 keeps these lossless).
+      // legitimate create_object calls (spec Sec.5.4 keeps these lossless).
       return walkItems(item.block.items, tokens, constantsByName, playerCount);
     case "attribute":
     case "directive":

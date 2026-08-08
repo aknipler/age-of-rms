@@ -4,7 +4,7 @@ import type { ParseRequestMessage, ParseResponseMessage } from "./editor/parserW
 import type { Diagnostic, ParseResult } from "./parser/types";
 import type { ResourceTotals } from "./parser/resourceTotals";
 
-// docs/breakdown-design.md §6.2: "one parse, in the worker". This
+// docs/breakdown-design.md Sec.6.2: "one parse, in the worker". This
 // supersedes the old src/editor/useRmsDiagnostics.ts — Breakdown needs
 // the full ParseResult (the AST), not just diagnostics, so the parse is
 // lifted to app level (AppContent) and both CodePane (diagnostics +
@@ -23,7 +23,7 @@ const EMPTY_RESOURCE_TOTALS: ResourceTotals = {
 export interface ParsedDocumentState {
   /**
    * The exact source string this state was computed for. Retained
-   * deliberately (§6.2): CodePane's marker-application effect uses it as
+   * deliberately (Sec.6.2): CodePane's marker-application effect uses it as
    * a staleness guard (`model.getValue() !== source` -> skip), and that
    * guard must survive the lift. `parseResult.source` carries the same
    * string once a parse has completed; `source` is exposed directly so
@@ -65,7 +65,7 @@ export interface ParsedDocumentApi extends ParsedDocumentState {
 
 /**
  * The single parse of the current document (docs/breakdown-design.md
- * §6.2). `playerCount` comes from GenerationSettingsContext and is read
+ * Sec.6.2). `playerCount` comes from GenerationSettingsContext and is read
  * fresh on every re-parse, same as the hook this replaces.
  */
 export function useParsedDocument(content: string, playerCount: number): ParsedDocumentApi {

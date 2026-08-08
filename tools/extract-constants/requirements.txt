@@ -1,0 +1,5 @@
+genieutils-py>=0.1.2
+# Reads the terrain .dds textures for previewColor. Only --colors-only and the
+# terrain half of a full run need it; everything else works without it, and
+# average_texture_color returns None rather than failing when it is missing.
+Pillow>=10.0.0

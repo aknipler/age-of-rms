@@ -1,0 +1,88 @@
+/*
+	RMSTEST 14 — do the DEFAULT tile budgets scale with map size?
+
+	preview-design Sec.15 item 7a. The guide gives elevation's default as
+	"about 120 on tiny maps" (guide:1228) and terrain's as "default:122 tiles on
+	a tiny map" (guide:1616). Sec.6.2 and Sec.6.4 model both as scaling with
+	area — `120 × dim²/14400` and `122 × dim²/14400`. That "on a tiny map"
+	phrasing is suggestive but it is not a statement that the default scales,
+	and the modelling has always been flagged as an assumption.
+
+	If the defaults are FIXED rather than scaled, every map larger than Tiny
+	gets far less default elevation and terrain than the spec predicts — on
+	Ludicrous the error would be 16x.
+
+	ONE MAP, BOTH ANSWERS. Neither create_elevation nor create_terrain declares
+	number_of_tiles, so both fall back to their defaults. They live in different
+	sections and are read from different histograms, so a single export measures
+	both at once.
+
+	RUN IT TWICE: once on TINY (120x120 = 14400), once on SMALL
+	(144x144 = 20736). Two seeds each is worth it — both quantities are GROWN,
+	so each carries the ~3% overshoot and about 2% run-to-run spread measured in
+	RMSTEST_13.
+
+	READ IT WITH THE PROBE
+	  elevation default = the count at level 1
+	  terrain default   = the DIRT (6) count
+
+	COMPARE THE RATIO, NOT THE ABSOLUTE VALUES. Growth overshoot inflates both
+	sizes by the same ~3%, so it cancels in a ratio and would otherwise muddy a
+	direct comparison against 120 or 122.
+
+	  Small/Tiny ≈ 1.44  -> the defaults scale with area (20736/14400 = 1.44).
+	                        Sec.6.2/6.4's `× dim²/14400` modelling is right.
+	  Small/Tiny ≈ 1.00  -> the defaults are FIXED. Both sections are wrong for
+	                        every size above Tiny, and the constants become
+	                        literal 120/122 with no scaling term.
+	  anything else      -> report both raw numbers; a third relationship
+	                        (side-length rather than area, say, which would give
+	                        1.2) is worth knowing about.
+
+	Sanity anchor: on Tiny the raw numbers should land near 124 and 126 — the
+	guide's 120/122 plus overshoot. If Tiny itself is far off those, the guide's
+	stated defaults are wrong and that matters more than the scaling question.
+
+	DESIGN NOTES
+	  MaxHeight 1 so all raised tiles sit at level 1, one histogram bucket.
+	  One clump each, so no budget division.
+	  DIRT is the terrain because it is visually and numerically distinct from
+	  the GRASS base and is already a known constant (id 6).
+	  Player lands are tiny and pushed to the rim; elevation avoids player-land
+	  origins by about 9 tiles (guide:1169) and could otherwise eat the budget.
+	  Sections run LAND -> ELEVATION -> TERRAIN (guide:135), so the dirt is
+	  painted after the hill exists. That does not disturb the elevation count,
+	  which lives on a separate layer from terrain.
+
+	RUN ON: Tiny, then Small. 2 players.
+*/
+
+<PLAYER_SETUP>
+random_placement
+
+<LAND_GENERATION>
+base_terrain GRASS
+
+create_player_lands
+{
+	terrain_type GRASS
+	base_size 3
+	number_of_tiles 1
+	circle_radius 45 0
+}
+
+<ELEVATION_GENERATION>
+
+create_elevation 1
+{
+	base_terrain GRASS
+	number_of_clumps 1
+}
+
+<TERRAIN_GENERATION>
+
+create_terrain DIRT
+{
+	base_terrain GRASS
+	number_of_clumps 1
+}

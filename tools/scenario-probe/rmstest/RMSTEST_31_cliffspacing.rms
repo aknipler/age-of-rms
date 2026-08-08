@@ -1,0 +1,99 @@
+/*
+RMSTEST_31 - do cliff tiles count as foreign terrain for terrain spacing
+preview-design.md Sec.15 item 12, Sec.6.4, Sec.9 item 7
+
+QUESTION
+Sec.9 item 7 describes an under-cliff terrain-16 mechanic. Three exports with
+33-56 cliff units each did NOT show it: every terrain histogram summed to
+exactly dim squared with no terrain 16 anywhere. Not simulating a mechanic that
+does not appear costs nothing.
+
+The problem is what was resting on it. Sec.6.4 approximates cliff tiles as
+counting as foreign terrain for spacing_to_other_terrain_types, and that
+approximation was justified BY the terrain-16 mechanic - if a cliff overwrites
+the tile beneath it, of course a spacing rule sees foreign terrain there. The
+justification is gone. The behaviour may well survive on its own, but right now
+Sec.6.4 carries a rule with no reason behind it, which is the state most likely
+to be quietly wrong.
+
+METHOD
+One terrain generated with a large spacing_to_other_terrain_types, on a map that
+also generates cliffs. If cliffs count as foreign terrain, SNOW keeps its
+distance from them. If they do not, SNOW ignores them entirely and patches sit
+right up against cliff units.
+
+<CLIFF_GENERATION> IS PRESENT AND POPULATED HERE, deliberately, and this is the
+one script in the batch where that is correct. Note the trap it comes from: an
+EMPTY cliff header still generates cliffs, which is what contaminated the
+2026-08-01 batch. Here we want cliffs and we say so.
+
+Cliffs are OBJECTS in the export, not terrain - that is what the three earlier
+exports established. So this needs two reads and a comparison between them,
+rather than a single terrain histogram.
+
+GENERATE AT NORMAL (200), any player count.
+
+FIRST, FIND THE CLIFF OBJECT'S NAME
+Run the probe with no flags and read the default object histogram. The cliff
+entry's name is whatever that prints - do not guess it, and do not assume it
+matches a constant in game-constants.json, which holds 31 of several hundred.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. If cliffs DO count as foreign terrain: the minimum distance from any SNOW
+   tile to any cliff unit is at or above the declared spacing of 6. Sec.6.4's
+   rule stands and gets a new justification that does not depend on terrain 16.
+2. If they do NOT: SNOW patches abut cliff units, with minimum distances of 0
+   or 1. Sec.6.4's approximation is wrong and should be deleted rather than
+   re-justified.
+3. Confirm again that no terrain 16 appears and that the terrain histogram sums
+   to exactly 40000. Two independent exports already showed this; a third at a
+   different map size makes it a property rather than a coincidence.
+
+THE ORTHOGONAL READING, which is the one most likely to be interesting
+Also check whether cliffs avoid SNOW - i.e. whether the constraint runs the
+other way. Cliff generation and terrain generation are different stages (S3 and
+S4), and Sec.9 item 7 puts cliffs BEFORE terrain, so a spacing rule declared on
+the terrain cannot have influenced where the cliffs went. If the cliffs turn out
+to be the ones doing the avoiding, the stage order in Sec.9 is wrong, which
+would matter far more than the spacing rule this run was written to settle.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"                       (find cliff name)
+  python probe_scenario.py "<scenario>" --patches SNOW
+  python probe_scenario.py "<scenario>" --clusters <cliffname>
+  Then take the minimum distance between any SNOW patch tile and any cliff
+  position. The patch bounding boxes are enough for a first pass; if they
+  overlap, the answer is already (2).
+
+RUN IT THREE TIMES.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<CLIFF_GENERATION>
+  min_number_of_cliffs 20
+  max_number_of_cliffs 30
+  min_length_of_cliff 4
+  max_length_of_cliff 9
+
+<TERRAIN_GENERATION>
+
+  create_terrain SNOW
+  {
+    base_terrain GRASS
+    land_percent 8
+    number_of_clumps 12
+    spacing_to_other_terrain_types 6
+    set_scale_by_groups
+  }
+
+<OBJECTS_GENERATION>
+
+<CONNECTION_GENERATION>

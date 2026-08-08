@@ -11,9 +11,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest run",
+    "test": "node scripts/check-test-floor.mjs",
     "validate:reference": "node scripts/validate-reference-data.mjs",
-    "check:breakdown-prereqs": "node scripts/check-breakdown-prereqs.mjs"
+    "check:breakdown-prereqs": "node scripts/check-breakdown-prereqs.mjs",
+    "test:raw": "vitest run"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

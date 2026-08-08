@@ -1,4 +1,4 @@
-// Phase 3.3 — the shift-aware AST comparator (breakdown-design §4.8).
+// Phase 3.3 — the shift-aware AST comparator (breakdown-design Sec.4.8).
 // Implements clauses 1, 2, 4, 5 fully; clause 3's ancestor-chain rule is
 // verified implicitly (ancestors straddle and are excluded from 1-2; their
 // stretched spans are exercised by clause 5's well-nestedness) plus light

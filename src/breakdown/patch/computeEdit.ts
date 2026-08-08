@@ -1,6 +1,6 @@
-// Phase 3.3 — the text-patch engine, docs/breakdown-design.md §4 (rev 4).
+// Phase 3.3 — the text-patch engine, docs/breakdown-design.md Sec.4 (rev 4).
 // Pure: no I/O, no React/Monaco/Tauri. Every intent reduces to one span
-// replace or one anchored insert (§4.2), computed from token spans only.
+// replace or one anchored insert (Sec.4.2), computed from token spans only.
 
 import type { AttributeNode, BlockNode, CommandNode, Item, ParseResult, SectionNode } from "../../parser/types";
 import type { LanguageIndex } from "../../parser/language";
@@ -38,7 +38,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
   const tokens = result.tokens;
   const eol = detectEol(src);
 
-  // ---- shared insert helpers (§4.5) ----
+  // ---- shared insert helpers (Sec.4.5) ----
 
   function ownLineInsert(anchorTokenStart: number, indent: string, rendered: Rendered): EditResult {
     // Insert a full line so the anchor token keeps its own line + indent.
@@ -47,7 +47,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       const newText = indent + rendered.text + eol;
       return { edit: { start: at, end: at, newText }, caret: at + indent.length + rendered.caretOffset };
     }
-    // Anchor shares its line with other content — degrade to inline (§4.3 governs).
+    // Anchor shares its line with other content — degrade to inline (Sec.4.3 governs).
     const newText = rendered.text + " ";
     return { edit: { start: anchorTokenStart, end: anchorTokenStart, newText }, caret: anchorTokenStart + rendered.caretOffset };
   }
@@ -86,9 +86,9 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     return { edit: { start: at, end: at, newText: " " + rendered.text }, caret: at + 1 + rendered.caretOffset };
   }
 
-  // §3.9/§4.5 — insert immediately after a selected card. Offset is the
+  // Sec.3.9/Sec.4.5 — insert immediately after a selected card. Offset is the
   // anchor's own span.end (keeps a same-line trailing comment attached
-  // to the anchor, mirroring §4.6's delete-time rule); style (own-line
+  // to the anchor, mirroring Sec.4.6's delete-time rule); style (own-line
   // vs inline, indent) is read from the anchor's OWN line rather than
   // scanning the whole container, so a nested anchor (inside a branch or
   // block) inserts at that same depth for free.
@@ -138,7 +138,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     return { edit: { start: at, end: at, newText: rendered.text + " " }, caret: at + rendered.caretOffset };
   }
 
-  // ---- §4.6 deletion: whole-line vs surgical, all-or-nothing ----
+  // ---- Sec.4.6 deletion: whole-line vs surgical, all-or-nothing ----
 
   function removeSpan(span: { start: number; end: number }): EditResult {
     const L = src.slice(lineStartOf(src, span.start), span.start);
@@ -194,7 +194,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       const def = lang.attributesByName.get(intent.name);
       const rendered = renderAttribute(def, intent.name, intent.kind === "addAttribute" ? intent.value : []);
       if (intent.target.kind === "block") return insertIntoBlock(intent.target, rendered);
-      // §4.6 brace synthesis — the command has no block at all.
+      // Sec.4.6 brace synthesis — the command has no block at all.
       const cmd: CommandNode = intent.target;
       if (cmd.block !== undefined) return insertIntoBlock(cmd.block, rendered);
       const at = tokens[cmd.lastToken].end;
@@ -222,7 +222,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
         const tok = tokens[ifBranch.condition];
         return { edit: { start: tok.start, end: tok.end, newText: intent.value }, caret: tok.start };
       }
-      const at = tokens[ifBranch.keyword].end; // §4.4 absent case: insert after keyword
+      const at = tokens[ifBranch.keyword].end; // Sec.4.4 absent case: insert after keyword
       return { edit: { start: at, end: at, newText: " " + intent.value }, caret: at + 1 };
     }
 
