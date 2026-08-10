@@ -9,6 +9,16 @@ import type { TerrainBitmap } from "./terrainBitmap";
 const BACKGROUND = "#14161a";
 const MAP_EDGE = "rgba(255, 255, 255, 0.35)";
 const HIGHLIGHT = "rgba(255, 255, 255, 0.85)";
+// Amber rather than a second white, and drawn thicker: the selected tile has
+// to stay findable once the pointer has moved away, including while the
+// hover outline sits on a neighbouring tile.
+const SELECTION = "rgba(255, 196, 61, 0.95)";
+// Red rather than the selection's amber, and a TRIANGLE rather than a circle
+// or a diamond: objects are circles and both outlines are diamonds, so a
+// failure mark has to be findable by shape alone at the zoom levels where
+// colour is two pixels wide.
+const FAILURE_FILL = "rgba(226, 62, 50, 0.95)";
+const FAILURE_EDGE = "rgba(0, 0, 0, 0.8)";
 
 /**
  * Wraps the pure bitmap in an offscreen canvas, which is what `drawImage`
@@ -36,6 +46,19 @@ export interface PreviewScene {
   terrain: HTMLCanvasElement;
   /** Tile under the pointer, drawn with an outline. */
   highlight?: { x: number; y: number } | null;
+  /** Tile the user clicked, drawn with its own heavier outline and kept until they click it again. */
+  selection?: { x: number; y: number } | null;
+  /**
+   * Object names to leave undrawn (the reference table's Preview Obj. List).
+   *
+   * A VIEW filter and nothing more: the objects are still in `result.objects`,
+   * still counted in the table, still in the tile readout. Hiding them here
+   * rather than filtering the array upstream is what keeps that true — a
+   * filtered array would make the hidden objects disappear from the readout
+   * and the counts as well, which turns a display control into something that
+   * looks like it changed the generation.
+   */
+  hiddenObjects?: ReadonlySet<string>;
 }
 
 /**
@@ -45,20 +68,26 @@ export interface PreviewScene {
  * everything below is in CSS pixels and composes onto whatever is already
  * there, which is why this uses `transform` rather than `setTransform`.
  */
-export function drawPreview(
-  ctx: CanvasRenderingContext2D,
-  viewport: Viewport,
-  scene: PreviewScene,
-): void {
+export function drawPreview(ctx: CanvasRenderingContext2D, viewport: Viewport, scene: PreviewScene): void {
   ctx.clearRect(0, 0, viewport.width, viewport.height);
   ctx.fillStyle = BACKGROUND;
   ctx.fillRect(0, 0, viewport.width, viewport.height);
 
   drawTerrain(ctx, viewport, scene);
   drawMapEdge(ctx, viewport, scene.snapshot.dim);
-  drawObjects(ctx, viewport, scene.result);
+  drawObjects(ctx, viewport, scene.result, scene.hiddenObjects);
   drawPlayers(ctx, viewport, scene.result);
-  if (scene.highlight) drawHighlight(ctx, viewport, scene.highlight.x, scene.highlight.y);
+  // Last of the content layers, so a mark is never hidden by the very objects
+  // or player flag sitting on the land it is complaining about.
+  drawFailureMarks(ctx, viewport, scene.result);
+  if (scene.highlight) {
+    drawTileOutline(ctx, viewport, scene.highlight.x, scene.highlight.y, HIGHLIGHT, 1.5);
+  }
+  // After the hover outline, so the selection stays visible when the pointer
+  // happens to be resting on the tile that is already selected.
+  if (scene.selection) {
+    drawTileOutline(ctx, viewport, scene.selection.x, scene.selection.y, SELECTION, 2.5);
+  }
 }
 
 /**
@@ -107,10 +136,16 @@ function drawMapEdge(ctx: CanvasRenderingContext2D, viewport: Viewport, dim: num
   ctx.stroke();
 }
 
-function drawObjects(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewResult): void {
+function drawObjects(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  result: PreviewResult,
+  hidden?: ReadonlySet<string>,
+): void {
   const radius = Math.max(1.1, Math.min(5, viewport.halfWidth * 0.75));
   const outlined = radius >= 2.4;
   for (const object of result.objects) {
+    if (hidden !== undefined && hidden.has(object.objectRef)) continue;
     const point = tileToScreen(viewport, object.x, object.y);
     if (offCanvas(point.x, point.y, viewport, radius)) continue;
     ctx.beginPath();
@@ -152,11 +187,55 @@ function drawPlayers(ctx: CanvasRenderingContext2D, viewport: Viewport, result: 
   }
 }
 
-function drawHighlight(
+/**
+ * Sec.15 item 5's marks: a warning triangle on each land the picture is lying
+ * about (`FailureMark` in generator/types.ts carries the measurement that
+ * decided which those are).
+ *
+ * A FLOOR of 9px and no ceiling-driven fade, unlike objects, which shrink to
+ * 1.1px and vanish into the terrain when zoomed out. The two want opposite
+ * things: an object dot is one of thousands and reading the map means reading
+ * their density, so it may become texture; a mark is one of a handful and its
+ * whole job is to be noticed from the zoom level the map opens at.
+ */
+function drawFailureMarks(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewResult): void {
+  const size = Math.max(9, Math.min(20, viewport.halfWidth * 2.4));
+  const half = size / 2;
+  for (const mark of result.failureMarks) {
+    const point = tileToScreen(viewport, mark.x, mark.y);
+    if (offCanvas(point.x, point.y, viewport, size)) continue;
+    // Drawn sitting ON the tile rather than centred over it — the apex points
+    // at the tile the mark is about, which matters once two marks are close
+    // enough that only their tips separate them.
+    const apexY = point.y - size * 0.86;
+    ctx.beginPath();
+    ctx.moveTo(point.x, apexY);
+    ctx.lineTo(point.x + half, point.y);
+    ctx.lineTo(point.x - half, point.y);
+    ctx.closePath();
+    ctx.fillStyle = FAILURE_FILL;
+    ctx.fill();
+    ctx.strokeStyle = FAILURE_EDGE;
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+    if (size >= 12) {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${Math.round(size * 0.6)}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("!", point.x, apexY + size * 0.62);
+    }
+  }
+}
+
+/** One tile's diamond, stroked. Shared by the hover highlight and the selection, which differ only in colour and weight. */
+function drawTileOutline(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
   x: number,
   y: number,
+  stroke: string,
+  lineWidth: number,
 ): void {
   const halfHeight = halfHeightOf(viewport);
   const centre = tileToScreen(viewport, x, y);
@@ -166,8 +245,8 @@ function drawHighlight(
   ctx.lineTo(centre.x + viewport.halfWidth, centre.y);
   ctx.lineTo(centre.x, centre.y + halfHeight);
   ctx.closePath();
-  ctx.strokeStyle = HIGHLIGHT;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineWidth;
   ctx.stroke();
 }
 

@@ -36,7 +36,25 @@ export interface ArgumentDef {
 
 export interface CommandDef {
   name: string;
+  /**
+   * Where the GUIDE DOCUMENTS this command. Deliberately NOT "where the engine
+   * accepts it" — see `sectionLocked`, which is that fact and is a different
+   * field for a reason.
+   */
   section: string;
+  /**
+   * True only where the engine has been MEASURED to discard the command
+   * outside `section`. Read by validate()'s RMS0304 and by nothing else;
+   * absent means unknown, and unknown reports nothing.
+   *
+   * The two fields look redundant and are not. Enforcing `section` as though
+   * it were this flag warned 53 times on the corpus, 52 of them `effect_amount`
+   * used outside <PLAYER_SETUP> by shipped, working maps — so at least one
+   * command is provably not locked the way its `section` implies, and a
+   * blanket rule rebuilds the false-positive class BUG-002 and BUG-005 cost
+   * three rounds of work.
+   */
+  sectionLocked?: boolean;
   kind: "standalone" | "block";
   description?: string;
   arguments?: ArgumentDef[];
@@ -60,6 +78,15 @@ export interface AttributeDef {
   // so. RMS0307 appends it. Absent for most pairs because the guide only
   // declares the exclusion for them, and the generic message claims no more.
   mutexNote?: string;
+  // Attribute names, at least one of which must be in the SAME block for this
+  // attribute to do anything. A guide "Requires:" line, and the failure is
+  // silent — the whole command places nothing. Drives RMS0315. Same bar as
+  // requiresSection: the guide must state the requirement AND the consequence
+  // must be known, which for the only entry today means measured in game.
+  requiresOneOf?: string[];
+  // What unmet looks like to the author. RMS0315 appends it. Sibling of
+  // mutexNote, and data rather than code for the same reason.
+  requiresNote?: string;
   repeatable?: boolean; // cumulative attributes — see spec Sec.8
   maxRepeats?: number;
   // A sections[] name that must appear somewhere in the script for this

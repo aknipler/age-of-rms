@@ -36,9 +36,18 @@ describe("buildTerrainBitmap", () => {
       const bitmap = buildTerrainBitmap(snapshot(dim), palette);
       expect(bitmap.dim).toBe(dim);
       expect(bitmap.pixels.length).toBe(dim * dim * 4);
+      // Scan first, assert once. The per-pixel `expect` this replaces ran
+      // ~78,000 times across the four sizes and cost ~4 s, which tipped
+      // vitest's 5 s default under full-suite load and went red on a renderer
+      // nobody had touched. An assertion inside a hot loop is a wall clock.
+      let firstTransparent = -1;
       for (let i = 3; i < bitmap.pixels.length; i += 4) {
-        expect(bitmap.pixels[i]).toBe(255);
+        if (bitmap.pixels[i] !== 255) {
+          firstTransparent = (i - 3) / 4;
+          break;
+        }
       }
+      expect(firstTransparent).toBe(-1);
     }
   });
 

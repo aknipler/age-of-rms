@@ -14,6 +14,7 @@ import {
   forestZoneMask,
   percentRound,
   NO_LAYER,
+  isBeachTerrain,
   isWaterTerrain,
   positionPercentToTile,
   resolveTerrainId,
@@ -286,6 +287,23 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
     expect(beachTerrainFor(depthConstants, 4)).toBe(DEFAULT_BEACH_TERRAIN);
     expect(beachTerrainFor(depthConstants, 22)).toBeUndefined(); // open water still grows none
     expect(beachTerrainFor(depthConstants, 0)).toBe(DEFAULT_BEACH_TERRAIN);
+  });
+
+  it("asks 'is this sand' separately from 'what sand would this grow'", () => {
+    // The nine beach rows satisfy both — a beach does not grow a beach — and
+    // reading one off the other would be wrong anyway: open water grows no
+    // beach either and is emphatically not sand. The `shore` habitat depends
+    // on the difference.
+    const sand: TerrainConstantForMasks[] = [
+      { constId: 2, rmsConstant: "BEACH", category: "terrain", isWater: false, isBeach: true, beachTerrain: null },
+      { constId: 22, rmsConstant: "DEEP_WATER", category: "terrain", isWater: true, isBeach: false, beachTerrain: null },
+    ];
+    expect(isBeachTerrain(sand, 2)).toBe(true);
+    expect(isBeachTerrain(sand, 22)).toBe(false); // grows no beach, still not sand
+    expect(beachTerrainFor(sand, 2)).toBeUndefined();
+    expect(beachTerrainFor(sand, 22)).toBeUndefined();
+    expect(isBeachTerrain(sand, 9999)).toBe(false); // unknown id
+    expect(isBeachTerrain(sand, undefined)).toBe(false);
   });
 
   it("honours an explicit beachTerrain over the fallback, including a null one", () => {

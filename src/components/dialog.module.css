@@ -1,3 +1,10 @@
+/* Modal chrome shared by every dialog in the app (Settings, Generation
+   Settings). This used to live in PreferencesDialog.module.css, which
+   GenerationSettingsDialog imported across component boundaries — fine
+   while both dialogs were the same plain box, wrong the moment Settings
+   grew its own tabbed layout. Settings-specific rules now live in
+   settings/SettingsDialog.module.css and this file stays generic. */
+
 .overlay {
   position: fixed;
   inset: 0;

@@ -583,24 +583,36 @@ describe("corpus: applyConnections never throws", () => {
   });
 
   for (const name of corpusFiles) {
-    // 15s, not the 5s default: unlike the other stages' corpus gates, S5's
+    // 60s, not the 5s default: unlike the other stages' corpus gates, S5's
     // real cost scales with land-pair count (a map with ~27 lands and
     // multiple create_connect_all_lands commands, e.g. `AD4 - Pag -
-    // v1.2.rms`, runs several hundred A* searches) -- under 1s in
-    // isolation, but that genuinely-higher cost is exactly what tips it
-    // over vitest's 5s default under full-suite parallel load, observed
-    // failing 2 of 3 full-suite runs while passing standalone every time.
+    // v1.2.rms`, runs several hundred A* searches) -- fast in isolation, but
+    // that genuinely-higher cost is exactly what tips it over vitest's 5s
+    // default under full-suite parallel load, observed failing 2 of 3
+    // full-suite runs while passing standalone every time.
     // Not a bug to architect around (no iteration cap is warranted here --
     // Sec.11 names pathological CLUMP counts, not land-pair counts, and
     // this corpus has nothing resembling a 9320-land script), just an
     // honestly slower gate than its neighbours.
+    //
+    // **Raised from 15s on 2026-08-08, after it went red twice on a stage
+    // that session never touched.** The number to size this against is the
+    // LOAD FACTOR, not the cost: `24hr_Caverns.rms` is the worst map at 8.4s
+    // standalone and took 16.8s under full-suite load, reproducing to the
+    // millisecond across two runs. This machine has been recorded at up to
+    // 3.7x between an isolated and a loaded run of the same code, so a
+    // ceiling under ~2x the standalone worst case is a coin flip. 60s is
+    // ~7x, chosen the same way `corpus.test.ts`'s Vanguard benchmark was
+    // rewritten to a relative bound: a wall clock on a shared machine
+    // measures the machine, so leave enough room that only a complexity
+    // change can trip it.
     it(
       name,
       () => {
         const source = readFileSync(join(corpusDir, name), "utf8");
         expect(() => place(source, 12345)).not.toThrow();
       },
-      15000,
+      60000,
     );
   }
 });

@@ -373,6 +373,83 @@ describe("RMS0303 — use before definition", () => {
   });
 });
 
+/**
+ * The corpus reports ZERO of these (see rms0304.measure.test.ts), so this suite
+ * is the only evidence the check works at all — the RMS0314 situation, and the
+ * reason the negative cases below are written out one by one rather than
+ * summarised. Every `expect(...).not.toContain` here is a specific false
+ * positive this check has already produced once, or one it would produce if
+ * driven by `CommandDef.section`.
+ */
+describe("RMS0304 — a command in a section the engine will not run it from", () => {
+  it("flags create_terrain in <OBJECTS_GENERATION> (RMSTEST_33a)", () => {
+    const found = only("<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n", "RMS0304");
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+  });
+
+  it("flags create_object in <TERRAIN_GENERATION> (RMSTEST_33b)", () => {
+    const found = only("<TERRAIN_GENERATION>\ncreate_object GOLD { number_of_objects 4 }\n", "RMS0304");
+    expect(found).toHaveLength(1);
+  });
+
+  it("names both the section it needs and the section it is in", () => {
+    const found = only("<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n", "RMS0304");
+    expect(found[0].message).toContain("<TERRAIN_GENERATION>");
+    expect(found[0].message).toContain("<OBJECTS_GENERATION>");
+  });
+
+  it("says nothing when the command is where it belongs", () => {
+    expect(codes("<TERRAIN_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n")).not.toContain("RMS0304");
+  });
+
+  it("says nothing about effect_amount outside <PLAYER_SETUP>", () => {
+    // The counter-example the whole design exists for: 52 of the 53 hits a
+    // section-driven check produces on this corpus are this line, in shipped
+    // maps that work. effect_amount carries no sectionLocked flag, so nothing
+    // is claimed about it in either direction.
+    const source = "<OBJECTS_GENERATION>\neffect_amount SET_ATTRIBUTE GOLD ATTR_TERRAIN_ID 1\n";
+    expect(codes(source)).not.toContain("RMS0304");
+  });
+
+  it("says nothing about a command whose lock has never been measured", () => {
+    // create_player_lands in <PLAYER_SETUP> is the 53rd corpus hit, in our own
+    // test-maps/sample.rms. Unmeasured means silent, not "probably fine".
+    expect(codes("<PLAYER_SETUP>\ncreate_player_lands { base_size 5 }\n")).not.toContain("RMS0304");
+  });
+
+  it("flags a locked command nested inside a conditional", () => {
+    // A command inside `if X` still belongs to the enclosing section, so the
+    // check has to see through branches rather than only scan direct items.
+    const source = "<OBJECTS_GENERATION>\nif DEATH_MATCH\ncreate_terrain SNOW { number_of_clumps 4 }\nendif\n";
+    expect(codes(source)).toContain("RMS0304");
+  });
+
+  it("says nothing in the preamble, where nothing has been measured", () => {
+    expect(codes("create_terrain SNOW { number_of_clumps 4 }\n<TERRAIN_GENERATION>\n")).not.toContain("RMS0304");
+  });
+
+  it("says nothing inside a section header it does not recognise", () => {
+    expect(codes("<SOME_FUTURE_SECTION>\ncreate_terrain SNOW { number_of_clumps 4 }\n")).not.toContain("RMS0304");
+  });
+
+  it("stays silent after a degraded region, which may have swallowed a header", () => {
+    // Sec.8's suppression rule. The gibberish parses to a RawNode, and the
+    // parser's recovery scan absorbs a section header outright when only
+    // conditionals are open — so a command after one cannot be trusted to be
+    // in the section it appears to be in, and warning would report the
+    // recovery as the author's mistake.
+    const source = "<OBJECTS_GENERATION>\n!!! ??? %%%\ncreate_terrain SNOW { number_of_clumps 4 }\n";
+    expect(codes(source)).not.toContain("RMS0304");
+  });
+
+  it("resumes at the next real header, which cannot have been swallowed", () => {
+    const source =
+      "<LAND_GENERATION>\n!!! ??? %%%\n<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n";
+    expect(codes(source)).toContain("RMS0304");
+  });
+});
+
 describe("RMS0305 — missing <PLAYER_SETUP>", () => {
   it("notes a sectioned script with no PLAYER_SETUP", () => {
     const found = only("<LAND_GENERATION>\ncreate_land { base_size 5 }\n", "RMS0305");
@@ -439,6 +516,50 @@ describe("RMS0307 — mutually exclusive attributes", () => {
     );
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain("Only the last of the two applies");
+  });
+});
+
+describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", () => {
+  // guide:2509 carries the Requires line, and the consequence was measured in
+  // game 2026-08-10 rather than reasoned from it: `AK_Namatjira.rms`'s single
+  // `create_object SHORE_FISH { ... ignore_terrain_restrictions }` has neither
+  // partner and spawns no shore fish at all. The attribute reads like a flag
+  // that weakens a rule; on its own it silently empties the command.
+  it("flags ignore_terrain_restrictions written on its own", () => {
+    const found = only("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 10 ignore_terrain_restrictions }\n", "RMS0315");
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).toContain("places nothing at all");
+  });
+
+  it("stays quiet with set_place_for_every_player", () => {
+    expect(
+      codes("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { set_place_for_every_player number_of_objects 10 ignore_terrain_restrictions }\n"),
+    ).not.toContain("RMS0315");
+  });
+
+  it("stays quiet with place_on_specific_land_id, the other half of the either/or", () => {
+    expect(
+      codes("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { place_on_specific_land_id 3 number_of_objects 10 ignore_terrain_restrictions }\n"),
+    ).not.toContain("RMS0315");
+  });
+
+  it("counts a partner written inside a conditional branch, unlike RMS0306/RMS0307", () => {
+    // The scope difference is the whole correctness argument and it runs the
+    // opposite way to the two checks next door. They ask "was this set twice",
+    // where descending into branches false-warns on an ordinary if/else. This
+    // asks "is the partner anywhere at all", and a partner in a branch is a
+    // partner. Reporting it would rebuild the false-positive class BUG-002 and
+    // BUG-005 each cost three rounds.
+    const source =
+      "<OBJECTS_GENERATION>\ncreate_object SHORE_FISH {\nignore_terrain_restrictions\nif DEATH_MATCH\nset_place_for_every_player\nendif\n}\n";
+    expect(codes(source)).not.toContain("RMS0315");
+  });
+
+  it("names both partners, from the data rather than from the message", () => {
+    const found = only("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { ignore_terrain_restrictions }\n", "RMS0315");
+    expect(found[0].message).toContain("set_place_for_every_player");
+    expect(found[0].message).toContain("place_on_specific_land_id");
   });
 });
 

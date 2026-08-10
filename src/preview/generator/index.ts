@@ -30,8 +30,10 @@ import type { LanguageIndex } from "../../parser/language";
 import type { ParseResult } from "../../parser/types";
 import type {
   CommandReport,
+  FailureMark,
   InstantiatedScript,
   InstantiatedValue,
+  LandOrigin,
   PreviewOptions,
   PreviewResult,
   PreviewSettings,
@@ -68,6 +70,78 @@ import { applyObjects, type ObjectConstant } from "./objects";
 export interface PreviewReferenceData {
   language: LanguageIndex;
   constants: readonly ObjectConstant[];
+}
+
+/**
+ * Sec.15 item 5's two land outcomes, split by whose problem each one is:
+ * a canvas MARK where the script's own result is not what the map reads like,
+ * and a drawer NOTE where the gap is in our model. `FailureMark` in types.ts
+ * carries the measurement that put each on its own side of that line.
+ *
+ * Derived here, from the origins and the finished grid, rather than emitted by
+ * `lands.ts` alongside its `PlacementFailure`s. Three reasons, in the order
+ * they mattered:
+ *
+ * 1. **`owned` here means the same thing the canvas shows.** A later land
+ *    overwrites an earlier one's tiles, so a land can finish with none through
+ *    no fault of its own growth. Counting `grid.landId` after every land has
+ *    run is the only place that fact exists; growth's own `state.owned` is a
+ *    running figure of the same quantity, and re-deriving it from the finished
+ *    grid cannot drift from what is drawn.
+ * 2. It needs no change to the Sec.7 failure contract, which is 5.2's, and
+ *    whose coalescing would have destroyed the per-land positions anyway.
+ * 3. One O(dim²) pass — 40,000 reads on a Normal map against a ~460 ms median
+ *    generation, so it does not need to be folded into a loop that already
+ *    walks the grid.
+ */
+function collectLandOutcomes(
+  origins: readonly LandOrigin[],
+  grid: TileGrid,
+): { marks: FailureMark[]; note?: SimulationNote } {
+  const marks: FailureMark[] = [];
+  if (origins.length === 0) return { marks };
+
+  const owned = new Int32Array(origins.length);
+  for (let index = 0; index < grid.landId.length; index++) {
+    const landId = grid.landId[index];
+    // -1 is base terrain (grid.ts), and a defensive upper bound because
+    // landId is an Int16Array whose values are written by one function.
+    if (landId >= 0 && landId < origins.length) owned[landId]++;
+  }
+
+  let overwritten = 0;
+  for (let index = 0; index < origins.length; index++) {
+    const origin = origins[index];
+    if (origin.fromOriginFallback) {
+      marks.push({
+        x: origin.x,
+        y: origin.y,
+        kind: "landAtMapCenter",
+        commandSpan: origin.commandSpan,
+        label:
+          "No valid spot was found for this land, so the engine drops it at the map centre, on top of whatever is already there.",
+      });
+      continue;
+    }
+    // `declaredTargetTiles > 0` is the guard that keeps deliberate zero-tile
+    // stamps out of the count. Scripts use them as walls and markers —
+    // AK_Six_Points draws an ellipse out of 120 of them — and a land that
+    // asked for nothing and got nothing has not failed at anything.
+    if (owned[index] === 0 && origin.declaredTargetTiles > 0) overwritten++;
+  }
+
+  return {
+    marks,
+    note:
+      overwritten > 0
+        ? {
+            key: "landOverwrittenBeforeGrowth",
+            prominence: "drawer",
+            stage: "S1",
+            text: `${overwritten} ${overwritten === 1 ? "land is" : "lands are"} missing from this preview. Each one's starting square was covered by a later land before it could grow, and this preview grows a land outward from its own tiles — with none, it has nowhere to start. What the engine does in that position has not been measured, so the map may be showing less land here than a real game would.`,
+          }
+        : undefined,
+  };
 }
 
 
@@ -169,6 +243,10 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
 
   const landResult = placeLandOrigins(instantiated, grid, constants, opts.seed);
   growLands(landResult.origins, grid, landResult.reports, opts.seed);
+  // Immediately after growth: nothing later writes `landId`, and reading it
+  // here keeps the marks a statement about land generation rather than about
+  // whatever S4 painted over the result.
+  const landOutcomes = collectLandOutcomes(landResult.origins, grid);
   // Both strictly after growth, and both over the land's FINAL footprint
   // (Sec.6.1). Terrain first only for readability — they write different
   // arrays, so the order between them is not load-bearing.
@@ -232,6 +310,7 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
     ...instantiated.notes,
     baseFillNote,
     beachNote,
+    landOutcomes.note,
     ...landResult.notes,
     ...baseElevationNotes,
     ...cliffsResult.notes,
@@ -247,6 +326,7 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
     objects: objectsResult.objects,
     players: objectsResult.players,
     reports,
+    failureMarks: landOutcomes.marks,
     notes,
   };
 }

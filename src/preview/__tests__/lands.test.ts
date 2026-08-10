@@ -559,6 +559,50 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
       expect(farthest).toBeLessThan(50);
     }
   });
+
+  it("a seed never lands on the far side of a wall the land cannot cross", () => {
+    // The other half of item 27, measured 2026-08-10. Bounding the seed radius
+    // was necessary and not sufficient: the radius is max(12, 0.12*dim), so on
+    // AK_Six_Points a land whose origin sits 20 tiles from a wall still seeded
+    // straight through it, and the map's flood came out at 7,741 / 7,897 /
+    // 10,855 tiles across three seeds against an interior of 14,201 — one
+    // clean region, one plus a stranded blob, and one that escaped into the
+    // open sea. The seed-dependence was never in growth, it was in how many
+    // seeds happened to jump a wall.
+    //
+    // Reproduced here in miniature: a full-height wall of zero-tile land
+    // stamps at 30% across (x = 60 on the 200-tile Normal grid), with the
+    // growing land's origin 12 tiles west of it. 12 < the 24-tile seed radius,
+    // so an unfiltered draw reaches past the wall on most seeds.
+    //
+    // `base_size 1` (a 3x3 stamp), one stamp per whole percent: the rows land
+    // 2 tiles apart on a 200 grid and each stamp reaches +/-1, so the wall is
+    // sealed 4-connected. An earlier version used `base_size 0` and 120
+    // stamps, whose rounded positions left gaps the land simply walked
+    // through — the fixture, not the code, and it failed loudly enough to be
+    // caught.
+    const wall: string[] = [];
+    for (let percent = 0; percent <= 100; percent++) {
+      wall.push(
+        `create_land {@land_position 30 ${percent}@base_size 1@number_of_tiles 0@terrain_type SNOW@}`,
+      );
+    }
+    const source = ["<LAND_GENERATION>", "base_terrain WATER", ...wall, "create_land {@land_position 24 50@base_size 2@number_of_tiles 4000@terrain_type DIRT@clumping_factor 8@}"]
+      .join("\n")
+      .replace(/@/g, "\n");
+
+    for (let seed = 1; seed <= 6; seed++) {
+      const { grid, dim, origins } = placeAndGrow(source, seed);
+      const flood = origins.length - 1; // the last create_land is the grower
+      const wallX = Math.round((30 / 100) * dim);
+      let east = 0;
+      for (let i = 0; i < grid.landId.length; i++) {
+        if (grid.landId[i] !== flood) continue;
+        if (i % dim > wallX) east++;
+      }
+      expect(east).toBe(0);
+    }
+  });
 });
 
 describe("bucketWeights / reservoirSize (Sec.6.1's two growth knobs, isolated from the full pipeline)", () => {

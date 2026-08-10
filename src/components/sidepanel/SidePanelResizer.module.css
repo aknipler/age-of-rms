@@ -1,0 +1,61 @@
+/* CREATION_PLAN 4.4. Both strips are 14px wide: enough to be an easy pointer
+   target and to hold the chevron button, narrow enough that a collapsed panel
+   really does give the whole tab back to the editor.
+
+   These two elements are the flex items in the surrounding pane, and the
+   HelpTip wrapper sits INSIDE them around the button (see SidePanelResizer's
+   header for why that way round). `flex: 0 0 14px` rather than a plain width,
+   so a pane that runs out of room shrinks the editor rather than squeezing
+   the splitter down to something un-grabbable. */
+
+.resizer {
+  flex: 0 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  background: #e9e9e9;
+  border-right: 1px solid #000;
+  /* Stops a touch drag scrolling the pane instead of moving the splitter.
+     Pointer capture handles the mouse; this is the touch half. */
+  touch-action: none;
+  user-select: none;
+}
+
+.resizer:hover,
+.dragging {
+  background: #cfd6e4;
+}
+
+.resizer:focus-visible {
+  outline: 2px solid #2b5fa8;
+  outline-offset: -2px;
+}
+
+.reopener {
+  flex: 0 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9e9e9;
+  border-right: 1px solid #000;
+}
+
+/* A tall thin pill rather than a square: at 14px wide there is no room for a
+   conventional button, and a vertical target is what the eye finds against a
+   full-height strip. */
+.collapseButton {
+  width: 14px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: #cfcfcf;
+  color: #000;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.collapseButton:hover {
+  background: #b4bdd0;
+}

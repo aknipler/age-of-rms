@@ -1,0 +1,138 @@
+/*
+RMSTEST_42 - what does ignore_terrain_restrictions do with NO frame attribute
+Feeds: objects.ts's whole-command gate, validate()'s RMS0315, preview-design:542
+
+QUESTION
+Namatjira was run in game on 2026-08-10 and its one shore-fish command spawns
+nothing. That command is
+
+  create_object SHORE_FISH {
+    terrain_to_place_on DLC_MANGROVESHALLOW
+    ignore_terrain_restrictions
+    ...                       <- no set_place_for_every_player,
+  }                              no place_on_specific_land_id
+
+and guide:2509 carries "Requires: set_place_for_every_player or
+place_on_specific_land_id". So the rule was taken to be: requirement unmet, the
+whole command places nothing. That is what objects.ts and RMS0315 now implement.
+
+THE PROBLEM IS THAT NAMATJIRA CANNOT TELL THE TWO MODELS APART, and both predict
+the zero that was observed.
+
+  Model A - the command is VOIDED. Requirement unmet, nothing places, whatever
+            else the command says.
+  Model B - the FLAG is merely INERT (which is what preview-design:542 already
+            says for this whole attribute family). The flag does nothing, so
+            SHORE_FISH keeps its shore habitat, which is open water beside a
+            beach. The command also says terrain_to_place_on
+            DLC_MANGROVESHALLOW, and a shallow is never open water. The two
+            constraints contradict, and zero fish place for that reason instead.
+
+Both give zero shore fish on Namatjira. The map is silent on which.
+
+WHY THIS MATTERS ENOUGH TO SPEND A RUN ON
+Model A empties 47 commands across 11 corpus maps. Model B leaves most of them
+placing objects normally and only removes the flag's effect. That is a large
+difference in what the preview draws, and a large difference in whether RMS0315
+is a warning about a dead command or a note about a dead attribute.
+
+There is also evidence pointing at B, and it is worth stating because it argues
+against the thing this project just shipped. find_closest carries the IDENTICAL
+"Requires:" line at guide:2649, and the corpus uses it with no frame attribute
+71 times across working maps. If that line meant "the command places nothing",
+71 shipped commands would silently place nothing - and unlike a decorative fish,
+missing starting resources is something an author would have noticed. So the
+Requires line by itself does not appear to void a command, and if
+ignore_terrain_restrictions really does, it is special rather than an instance
+of a general rule.
+
+METHOD
+Three commands on one map, each with NO frame attribute, differing only in the
+flag and in what the object is restricted from. The whole reading is the object
+histogram plus where the objects sit.
+
+The map is half grass, half water, so "on land" and "in water" are both
+available and distinguishable in the probe.
+
+  1. SALMON + ignore_terrain_restrictions
+       A: nothing at all.
+       B: salmon in the water only - the flag is inert, so the fish's own
+          restriction still applies.
+       C: salmon on the grass too - the flag works frameless, and neither A nor
+          B is right.
+  2. SALMON with no flag. The control. Salmon in the water under every model;
+     if this one is empty the map itself is wrong and the run tells us nothing.
+  3. OLIVE_TREE + ignore_terrain_restrictions. A land object with a flag that
+     has nothing to lift, which separates "the command is voided" from anything
+     to do with terrain.
+       A: nothing.
+       B and C: trees on the grass, normally.
+
+Command 3 is the cleanest single discriminator and 1 is the informative one.
+Read both.
+
+GENERATE AT NORMAL (200), any player count.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --clusters
+  Object counts are the answer. SALMON_1 / SALMON_2 cannot be told apart in the
+  histogram, so read the total against 60 and use the water/land split: model B
+  gives 60 (all in water), model A gives 30 (only the unflagged command), and
+  model C gives 60 with some on grass.
+
+ONE RUN IS ENOUGH. Every outcome here is a presence/absence at a factor of two,
+not a distribution.
+
+IF THE ANSWER IS B, revert the whole-command gate in objects.ts to a
+flag-is-inert model and re-scope RMS0315 from "this command places nothing" to
+"this attribute does nothing here". The 47-command corpus figure in the build
+log becomes wrong and should be struck rather than left to age.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain WATER
+
+  create_land
+  {
+    terrain_type GRASS
+    land_percent 50
+    left_border 0
+    right_border 50
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* 1. THE TEST. Flag, no frame attribute. */
+  create_object SALMON
+  {
+    number_of_objects 30
+    set_gaia_object_only
+    ignore_terrain_restrictions
+  }
+
+  /* 2. CONTROL. Same object, no flag. Must produce fish in the water. */
+  create_object SALMON
+  {
+    number_of_objects 30
+    set_gaia_object_only
+  }
+
+  /* 3. THE CLEAN DISCRIMINATOR. A land object, so the flag has nothing to
+     lift and only the voiding question is left. */
+  create_object OLIVE_TREE
+  {
+    number_of_objects 30
+    set_gaia_object_only
+    ignore_terrain_restrictions
+  }
+
+<CONNECTION_GENERATION>

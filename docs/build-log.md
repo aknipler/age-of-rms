@@ -167,9 +167,9 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
 - 5.1 Advanced Tools API design — DONE (Fable session, **no critique pass — token budget; spec Sec.9 lists its own known risks in lieu**): `docs/tools-api-design.md`. Core decisions: one JSON-first contract, two transports (built-in tools in a dedicated tool worker — NOT the parser worker; v1.1 external tools speak identical messages as NDJSON over stdin/stdout); tools are display-documents not app-extensions (declarative `OutputBlock`s, no HTML/markdown from tools in v1); capability-gated context (`read-source`/`read-ast`/`read-settings`/`edit-source` — undeclared fields simply absent); progress + cooperative cancellation first-class (the 5.2 checker needs them); **edits are proposals** — Apply button, disjointness check, descending-order single-batch apply through the breakdown Sec.6.4 shared model = one undo entry, staleness guard (model changed since run → re-run, never rebase); `apiVersion` hard-rejects mismatches. Types live in `tools-api/index.ts` (no app imports — future published contract), host in `src/tools/`. Ships with a trivial exemplar tool (scriptStats) alongside the checker. Sec.9 = test plan (serialization round-trip over a real corpus parse is the load-bearing one) + known-risk list for whoever implements.
 - 5.1 rev 2 — self-critique applied (same Fable session/author, NOT an independent review — weight accordingly; changelog in spec Sec.9). Two findings would have blocked the flagship tool: (1) rev 1's cooperative cancellation ("cancel() sets a flag the tool polls") was unimplementable across the worker boundary — a tight synchronous loop never services the event loop, so no message ever arrives; now tools MUST chunk work in awaitable units, cancel is a message, and no-terminal-within-5s hard-kills uniformly (worker.terminate() / SIGKILL), with the busy-loop kill path in the test plan. (2) No capability exposed reference data — the checker's static layer needs game-constants + full language.json; added `read-reference`. Also: built-ins may import app modules (checker links the Phase-4 generator → not externalizable until that's a lib — stated honestly); edits from tools without `edit-source` are dropped-with-warning (enforcement on the result path too); codeRef staleness, `text` param type, sync-throw handling, progress throttling.
 - 5.1 rev 3 — independent critique received and applied (all 8 findings; changelog in spec Sec.9). The two ship-broken bugs: `settings.mapSize` was typed `number` but is a string union in the app (now `{ name, tiles }` — tools never import app types); `Infinity` in ArgValue silently becomes `null` through JSON (now sentinel-encoded `{inf:±1}` by the context builder on BOTH transports + explicit round-trip fixture). One fix redirected with reasoning: critique offered stripping `ParseResult.source` for the read-ast capability leak — rejected because `tokens[].text` reconstructs the document anyway; pinned as read-ast implies read-source, collapsed in the consent dialog. Also: tools-api type-home contradiction resolved (type-only imports from src/parser; published artifact = bundled .d.ts; dependency inversion rejected); handle↔message cancel binding stated; concurrency = one run app-wide; ToolParamDef discriminated union; GameConstantsData interface = action item in language.ts; **5.2 sequencing warning: the checker's static layer is garbage until Phase 4.0 replaces placeholder game-constants — build structure, don't trust or demo output**.
-- 5.1 rev 4 — second independent critique, all 7 adopted (changelog in spec Sec.9). Standouts: `mapSize.tiles` had NO source of truth — new `MAP_SIZE_TILES` constant to create in generationSettingsConstants.ts from the guide's Map Sizes table (do NOT copy preview-design Sec.4's table: 6 rows, omits Giant, unreconciled Giant-252>Huge-240 ordering flagged for 4.3); `ToolContext.parseResult` is now typed `SerializedParseResult` (ArgValue number positions widened to `number | {inf:±1}`) so the compiler forces sentinel decoding; sentinel decode is a PROTOCOL.md per-language rule, published artifact stays types-only; one-worker-per-run (no cross-run state); edit bounds validation; run-time param validation; stderr 64KB ring; NaN impossible by construction. Process lesson reconfirmed: the mapSize finding was a cross-doc data dependency same-author review structurally misses.
+- 5.1 rev 4 — second independent critique, all 7 adopted (changelog in spec Sec.9). Standouts: `mapSize.tiles` had NO source of truth — new `MAP_SIZE_TILES` constant to create in generationSettingsConstants.ts from the guide's Map Sizes table (do NOT copy preview-design Sec.4's table: 6 rows, omits Giant, unreconciled Giant-252>Huge-240 ordering flagged for 4.3) **[WITHDRAWN at rev 5, 2026-08-10 — do not act on this. The "6 rows, omits Giant" claim described rev 4 of preview-design, which is now at rev 7; the ordering issue was fixed 2026-08-01 and `validate:reference` asserts it; and `MAP_SIZE_TILES` must NOT be created, because `resolveMapDim` in `src/preview/generator/mapDimensions.ts` already does this job from `predefinedLabels`. Cite preview-design by content, never by section number — it renumbers every revision.]**; `ToolContext.parseResult` is now typed `SerializedParseResult` (ArgValue number positions widened to `number | {inf:±1}`) so the compiler forces sentinel decoding; sentinel decode is a PROTOCOL.md per-language rule, published artifact stays types-only; one-worker-per-run (no cross-run state); edit bounds validation; run-time param validation; stderr 64KB ring; NaN impossible by construction. Process lesson reconfirmed: the mapSize finding was a cross-doc data dependency same-author review structurally misses.
 - 3.1 rev 4 — third breakdown critique applied (during 3.2). **Systemic finding: the spec froze repo snapshots as normative text and went stale** — Sec.0.1's table was wrong on 4 of 8 rows (P2 is DONE: `repeatable`×4, `nonFunctional`×2, `#ifdef` family removed; `Diagnostic.suggestion` exists at types.ts:43; Sec.6.2/useParsedDocument/sectionLabels implemented; defaults 34/130; CodePane guard at components/CodePane.tsx:63). Table re-synced with rev-4 dates + standing rule: rows carry verified-dates, implementers re-check before acting; a grep-based check script (`scripts/check-breakdown-prereqs.mjs`, `npm run check:breakdown-prereqs`) is the preferred refresh — **built** (post-3.2 refresh pass): re-derives all 8 Sec.0.1 rows from the actual source files (language.json counts, types.ts, sectionLabels.ts, useParsedDocument.ts, CodePane.tsx's staleness-guard line) and reports drift; a report, not a CI gate. Ran clean against the current repo — no drift. Also fixed a stale `#ifdef`-suppression comment in `SectionView.tsx` left over from when P2 was still blocking. **Repeatable reconciliation: the data pass was right, the doc was wrong** — `terrain_size` repeats (per-terrain width/spacing), no "connection radius" attribute does; parser-design Sec.8's phrase is imprecise, correct when next touched. Substantive gaps closed: **`applySuggestion` intent added to Sec.4.1** (quick-fix previously bypassed the intent pipeline entirely — unreachable through the specified architecture and invisible to the Sec.4.8 gate; its per-intent expectation: structure free WITHIN the old RawNode span, nothing outside); **placeholder tokens pinned** (`def.min ?? 0` numeric / literal `TODO` constant-string — both always consumed as ArgNodes, so they can never coalesce into unknown-runs and fail Sec.4.8 on a correct edit); Sec.6.3 anchors inside a deleted range are dropped. Both new Sec.10 fixtures added. Declined for now: moving the changelog appendices out of the doc (flagged as bloat; do it when tokens are cheap).
-- Next: 5.1 implementation (Sonnet — pane, host, worker plumbing, scriptStats, protocol tests; same session: add GameConstantsData to language.ts AND create MAP_SIZE_TILES from the guide table, wiring preview-design Sec.4's future consumer to it), then 5.2 checker (design session first; mind the 4.0 placeholder-data dependency). Phase-3 next-steps above still stand (3.2 → 3.3 → 3.4).
+- Next: 5.1 implementation (pane, host, worker plumbing, scriptStats, protocol tests; same session: generate the published `GameConstantsData` from `reference/schemas/game-constants.schema.json` per tools-api-design rev 5 Sec.2, and add `tools-api` to `tsconfig.json`'s `include` and the eslint purity globs in the same session the directory is created). **The former "create MAP_SIZE_TILES from the guide table" instruction is withdrawn — see the bracketed correction on the rev-4 line above; `resolveMapDim` already exists.** Then 5.2 checker (design session first; mind the 4.0 placeholder-data dependency). Phase-3 next-steps above still stand (3.2 → 3.3 → 3.4).
 
 - 3.3 Text-patch engine — DONE (Fable session), **Sec.4.8 property gate GREEN before any UI wiring** (per CREATION_PLAN's ordering rule). Verified in /tmp scratch mirror (stale-mount workaround again — mount served all files fine this time; one earlier `wc` glitch was cosmetic): `tsc --noEmit` clean; **unit suite 22/22**; **property gate 34/34 files** (33 corpus maps visible to the sandbox + AK_Vanguard, ~25 seeded intents each: setArgValue/removeNode/addAttribute/addCommand; per-file filename-derived mulberry32 seeds per spec Sec.4.8 rev 3). Files: `src/breakdown/patch/intents.ts` (EditIntent incl. rev-4 `applySuggestion` + `AttributeTarget`, PatchError = "edit unavailable", not a crash), `formatStyle.ts` (eol/indent/onOwnLines inference, Sec.4.3 placeholder pins `def.min ?? 0`/`TODO`, renderers return caretOffset), `computeEdit.ts` (~370 lines — all Sec.4.2–4.10 intents; Sec.4.6 whole-line/surgical all-or-nothing deletes; Sec.4.5 anchors incl. branch terminators; brace synthesis; quote round-trip via first-token `"` check), `__tests__/astDiff.ts` (clauses 1/2/4/5 + boundary-stretch rule; clause 3 per-intent checks live in the tests), `patch.property.test.ts` (60s per-file timeout — AK_Vanguard needs ~7s), `patch.unit.test.ts` (every Sec.10 rev-2/3/4 fixture: delete modes incl. trailing-comment + interior-comment clause-4 scoping, duplicate-middle delete, quote/no-quote string overload, absent-condition insert, branch insert middle/last/unclosed-suppressed, add/removeBranch guards incl. last-percent_chance, applySuggestion promote-to-structured, placeholder cleanliness, CRLF).
   - **Spec-level discovery, recorded in breakdown-design Sec.4.8**: the pre/post partition's `end <= start` boundary misclassifies containers that end exactly at an append point — they legitimately STRETCH to absorb the insert (section append, brace synthesis). Comparator accepts identical-or-stretched for nodes touching the edit point; leaf siblings still held to strict identity. Found by the gate's first run — clause 1 failed on correct edits, the exact defect class rev 2/3 kept fixing in the spec.
@@ -3264,3 +3264,566 @@ Mutation-tested four lines, each confirmed red then reverted. Restoring the land
 ### Verification
 
 `npm test` 36/1248, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes.
+
+## Shore fish, box turtles and the ocean-fish family (2026-08-08)
+
+Two defects reported against `QS_Three_Bays_v1.1.rms`, with one root in common: the habitat model had a boundary in the wrong place and a fallback doing more work than it should.
+
+### `shore` meant the waterline, and it means open water touching a beach
+
+The band was symmetric — one tile of water plus one tile of land — on the reasoning that SHORE_FISH stands on the water side and DLC_BOXTURTLE on the land side, so a band including both was the honest way to cover a per-object row we do not have. **The premise is wrong and the guide says so plainly**: guide:4991 glosses the shared DE constant MELKARYBA as "small fish, ie. shore fish or box turtles". They are one family with one rule, and both stand in the water. Measured on Three Bays at seed 7 on Normal: 130 of 226 shore fish were on the sand.
+
+`shore` is now **a tile of open water orthogonally adjacent to a beach**, with three exclusions that each had to be argued rather than assumed:
+
+- **Not the beach.** The reported bug.
+- **Not a shallow.** `terrainDepth` from the beach work earlier the same day already separates the three, and a shallow is walkable ground as far as the game is concerned, which is the same reason it is not where a fish goes. This is what makes the habitat a three-way question rather than a two-way one, and it is also why `water` and `shore` are not nested: `water` INCLUDES the shallows, matching guide:4717's "water and amphibious terrains" for OYSTERS.
+- **Not water merely near land.** The anchor is a beach terrain, which needed a new `isBeach` flag on all 131 terrain rows — the community table's "Building Allowed: walls only" selects exactly the nine beach terrains and nothing else, checked against the sheet rather than assumed.
+
+**`isBeach` is not derivable from `beachTerrain: null` even though the same nine rows satisfy both.** A beach does not grow a beach, so the coincidence is real, and reading one off the other is still wrong: open water grows no beach either and is emphatically not sand. A mutant that made the derivation turns five tests red, four of them by putting shore fish in the middle of the ocean.
+
+The cost of anchoring on beach rather than on "any land neighbour" is stated rather than hidden. The two coincide everywhere the engine's own beach rule has run, and diverge where a script paints its coastline over — Pag replaces BEACH with DIRT along its connection paths, and a shore object will not place against that stretch. A test pins that consequence so it is a decision rather than a surprise.
+
+### TUNA was on the beach because "fish" was not in the data
+
+Nine bare `create_object TUNA` commands, no `terrain_to_place_on`, so TUNA took the unknown-object fallback of `land`. All 119 came out on dry ground, 77 of them on the beach. After: 121 placed, 119 open water, 2 shallows, 0 beach. SNAPPER went 3-on-beach to 2 water + 1 shallow, OYSTERS 5-on-beach to 5 water.
+
+**The interesting part is which sentence was wrong.** The `any` → `land` change of 2026-08-07 justified itself on an asymmetry: land objects dominate, and "the small water family is nearly always written with an explicit `terrain_to_place_on`", which is honoured ahead of the guessed habitat. That claim was drawn from `Menindee_AUS_v2.3.rms`, which names a terrain for every fish — and it names one because it is placing fish on SHALLOWS, where the author wants a particular water terrain. A script placing fish on OPEN water has no reason to name anything: the engine's terrain table already restricts the object, so the attribute is redundant and authors skip it. The sample that produced the rule was the exception to it, and nothing in the reasoning could have caught that because the rule was checked against the map that suggested it.
+
+The fix is rows, not a better fallback: TUNA, SNAPPER, SALMON, DORADO, MARLIN1 and OYSTERS gain `habitat: "water"`, `constId` left null because the id is not needed to answer the question and guessing it would be a second, separate claim. Deliberately not a name pattern — a row is a claim about one object, a pattern is a claim about every name nobody has looked at yet, which is the line objects.ts's own header already drew for `WATER_NAME_PATTERN`.
+
+**Scope held deliberately.** PERCH and MARLIN2 are plausible siblings and are absent because they appear in no tracked map; DOLPHIN is absent for a different reason, that every corpus use carries its own `#const DOLPHIN 61`, making it a script-level name rather than a game constant. The notes on the new rows say what the evidence is and what it is not: the names are written bare in shipped scripts with no `#const`, which is consistent with a predefined constant but does not prove one, since the engine passes an undefined name silently. Nothing depends on that either way. The real fix remains Sec.15 item 23, the dat's own terrain-restriction table.
+
+### An incidental fix: a renderer test that measured the machine
+
+`terrainBitmap.test.ts`'s "one opaque RGBA pixel per tile" went red in the full run and passed alone. Cause was ~78,000 `expect()` calls in one loop over four grid sizes, costing about 4 s against vitest's 5 s default — a wall clock on a shared machine, the same class the CLAUDE.md corpus-gate entries record. Rewritten to scan first and assert once: 3.97 s to 73 ms, with a failure message that now names the offending tile. Mutation-tested by making one pixel alpha 254 (red, correct index reported) then reverted. Nothing to do with this session's change beyond lengthening the run enough to expose it.
+
+### Tests
+
+**36 files / 1255 tests** (+7). `objects.test.ts` +6 net on a `placeOnColumns()` cross-section helper whose last entry fills the rest of the grid: shore fish land on the water column beside the beach and only there; DLC_BOXTURTLE behaves identically; a shallow interposed between water and beach yields NO shore at all rather than falling back to the shallow; a coastline with no beach yields none either, pinning the stated limitation; the ocean-fish family reads `water`; DLC_BOXTURTLE reads `shore`; and TUNA reaches the open sea while SHORE_FISH does not leave the beach's own column, which is the one assertion that separates the two water habitats. That is seven new tests less the one they replace, "holds a shore object to the waterline", which asserted the defect: its fixture had no beach on it at all, so under the corrected rule it describes a coast with no shore. `grid.test.ts` +1 for `isBeachTerrain` against `beachTerrainFor`.
+
+**A second wall-clock gate went red on the way out, and was raised rather than investigated as a regression.** `connections.test.ts`'s per-map corpus timeout was 15s; `24hr_Caverns.rms` costs 8.4s standalone and took 16.8s under full-suite load, reproducing to the millisecond across two runs. S5 is a stage this session never touched — the changes are in `objects.ts` and one new `grid.ts` function that only `objects.ts` calls — so the number to size the ceiling against is the LOAD FACTOR, recorded on this machine at up to 3.7x, not the cost. Raised to 60s (~7x standalone) on the same reasoning that turned the Vanguard benchmark into a relative bound: leave enough room that only a complexity change can trip it.
+
+Mutation-tested four lines, each confirmed red then reverted: admitting shallows to the shore band (1 red); anchoring on any land rather than on beach (1 red, the painted-over-coast test); deriving `isBeach` from `beachTerrainFor` (5 red); and dropping `water` from the accepted declared habitats (4 red).
+
+### Verification
+
+`npm test` 36/1255, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes.
+
+## The terrain table read out of the dat, and the fish family finished (2026-08-08)
+
+Follow-on to the shore-habitat session. PERCH, MARLIN2 and DOLPHIN were asked for as `water`, with the question attached: is this extractable from the game rather than transcribed by hand, perhaps via the Advanced Genie Editor?
+
+**Yes, and it does not need AGE.** AGE is the documented fallback for when the format parse breaks; the parse has not broken. `genieutils-py` — already a dependency of `tools/extract-constants` — reads it against the current build, and the join is four lines:
+
+```python
+df   = DatFile.parse(".../empires2_x2_p1.dat")
+unit = df.civs[0].units[object_id]                  # civ 0 is gaia, 2701 slots
+row  = df.terrain_restrictions[unit.terrain_restriction].passable_buildable_dmg_multiplier
+allowed = [tid for tid, v in enumerate(row) if v > 0]   # 131 floats, > 0 = permitted
+```
+
+53 restriction rows × 131 terrains, joined to `random_map.def`'s 1114 constants, which the tool already scans.
+
+### What it says, including about work already shipped
+
+Restriction **19** — FISH, SHORE_FISH, TUNA, SNAPPER, SALMON, DORADO, DLC_BOXTURTLE — permits 15 terrains: 14 water plus 26 Ice Navigable, and **no beach, no shallow**. Restriction **13** (MARLIN1/2, and unit 61 'DOLP3' which is what `#const DOLPHIN 61` points at) and **3** (OYSTERS) permit 38: every water, shallow and beach plus the five rice farms — guide:4717's "water and amphibious terrains" for OYSTERS, verbatim, from the other side.
+
+The bigger find is a second field nobody had looked at. `Unit.placement_side_terrain` is a two-slot "must sit beside" requirement, `(-1, -1)` on 1064 of 1083 resolvable entries and `(2, 35)` — Beach or Ice — on the rest; stripped of id collisions the users are **SHORE_FISH, DLC_BOXTURTLE and DOCK, and nothing else**. So yesterday's `shore` rule — open water, not a shallow, touching a beach — is not an approximation of the terrain table. It IS the terrain table, restriction 19 plus side-terrain 2, and the two objects that share the field are the two guide:4991 calls one family. **A rule reached by reading a guide gloss and a bug report turned out to be the two fields the engine actually stores.** Recorded because the reverse is the usual outcome, and because it is the strongest evidence yet that Sec.12 item 7's coarse classes were cut in roughly the right places.
+
+Two smaller corrections fell out. `FISH_PERCH` is a real predefined constant and is **id 53 — the same unit as FISH**; there is no bare `PERCH` in `random_map.def`. And `MARLIN1`/`MARLIN2` carry `/* DOLPHIN1 */` and `/* DOLPHIN2 */` comments in DE's own file, so the marlins and the dolphins are one series.
+
+### The trap that stops this being a loop
+
+`random_map.def`'s numeric ids are **per namespace and collide freely**. Id 45 is `DOCK` and also `CUSTOM`, `DLC_CRACKED`, `CIVILIZATION_GEORGIANS` and `ATTR_BLAST_DEFENSE`. Id 61 is the dolphin unit and also `DLC_JUNGLEROAD` and `ATTR_CHARGE_EVENT`. 1083 of 1114 constants "resolve" to a gaia unit slot and most of those resolutions are meaningless — the first probe printed a side-terrain requirement for `CIVILIZATION_WEI`, which is how it was noticed. **An extraction that does not first decide which constants are OBJECT constants will confidently give civilizations and attribute enums a terrain habitat**, and every one of those rows would look plausible. Deciding that split — `random_map.def`'s own section structure is the obvious source and is unchecked — is the remaining work. The dat read is the easy half, which is the opposite of how the item was written up.
+
+Also left open deliberately: restriction 19 permits **no shallow** while the preview's `water` class includes shallows, so a strict transcription is not a superset of what ships. Shipped maps put fish on shallows on purpose (`Menindee_AUS_v2.3.rms` writes `terrain_to_place_on SHALLOW` for every one of its fish, honoured ahead of habitat, so nothing visible changes today). Whether `habitat` stays four coarse classes or becomes the real per-terrain mask is a decision to take before transcribing, not during.
+
+### Data
+
+Ten rows added, eight updated. The six rows added yesterday with `constId: null` now carry their real ids (TUNA 457, SNAPPER 458, SALMON 456, DORADO 455, MARLIN1 450, OYSTERS 2170) and `verified: true`; DLC_BOXTURTLE gains 1141. New: MARLIN2 451, FISH_PERCH 53, the `FISH_*`/`GREAT_FISH_*` alias spellings `random_map.def` binds to the same units, and DOLPHIN/PERCH with `constId: null` because **neither is a DE constant** — the water answer for DOLPHIN comes from unit 61's restriction 13, and DE's own name for the perch is `FISH_PERCH`.
+
+`idSource` is deliberately left absent on all of them: the schema says not to backfill it by hand, and these were read by a probe rather than by `tools/extract-constants`. It reads as slightly less provenance than the values have, which is the safe direction — the parser's RMS0204/RMS0205 gating only firms up its wording when provenance is trusted.
+
+### Tests
+
+**36 files / 1257 tests** (+2). `objects.test.ts` gains the rest-of-the-family habitat sweep and an id assertion that pins DOLPHIN/PERCH as null on purpose — absence of a number there is a fact about the game, not a gap in the transcription.
+
+### Verification
+
+`npm test` 36/1257, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes.
+
+## `water` and `amphibious` are two classes (2026-08-08)
+
+The open question left by the terrain-table read — restriction 19 permits no shallow, but shipped maps put fish on shallows, so is a strict transcription safe? — was answered from outside the data, and the answer inverts the evidence.
+
+**Fish cannot be placed on shallow-type terrain. The maps that appear to do it are using a workaround, and the workaround is the proof.** `Menindee_AUS_v2.3.rms` writes `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW … second_object FISH }`. Checked against the dat: `FISH_PLACEHOLDER` is unit 647, terrain restriction **0**, all 131 terrains permitted — an object with no restrictions at all, which is the entire reason it is the placeholder of choice. guide:2211 recommends exactly this, "bypass terrain restrictions by using an invisible placeholder object as the main object".
+
+So the `terrain_to_place_on SHALLOW` belongs to the PLACEHOLDER and never to the fish, and the fish arrives as a second object with its own restriction never consulted. **Yesterday's write-up read those commands as "shipped maps place fish on shallows deliberately, so a strict transcription is not a superset of what ships" — the same sentence, read one level of indirection too shallow.** The maps are evidence that fish cannot be placed there directly, since otherwise nobody would pay for a placeholder. Same shape as the `terrain_to_place_on` overstatement two entries above, and from the same map: `Menindee` keeps looking like the general case and keeps being the special one.
+
+### The split
+
+`Habitat` gains a fifth value. `water` now means **open water only** (`DEPTH_WATER`); `amphibious` means **anything that is not plain dry land** — water, shallows and beaches. Rows reassigned strictly from the measured restriction id, not by judgement: restriction 19 → `water` (FISH, TUNA, SNAPPER, SALMON, DORADO, FISH_PERCH and the alias spellings), restrictions 13/3/15 → `amphibious` (MARLIN1/2, GREAT_FISH_MARLIN/2, DOLPHIN, OYSTERS, TRANSPORT_SHIP).
+
+`land` was deliberately NOT re-expressed as `depth === DEPTH_LAND` while the neighbouring branches were being rewritten, even though it reads as the obvious tidy-up. It differs from the existing `!isWater` on exactly the three shallows the water flag calls dry (`DLC_MANGROVESHALLOW`, Ice Navigable, `DLC_MANGROVEFOREST`), and whether a land object may stand on those is unmeasured — a second behaviour change riding along unasked inside the first.
+
+### Measured, seed 7 on Normal
+
+`QS_Three_Bays_v1.1.rms`: TUNA 123, **all open water, 0 shallows** (was 119 water + 2 shallows before the split, and 0 water + 77 beach before yesterday's habitat rows). SNAPPER 3, all water. SHORE_FISH 213, all water.
+
+`Menindee_AUS_v2.3.rms`: FISH_PLACEHOLDER 18 on shallows with its 18 second objects riding along on the same tiles, plus 26 SHORE_FISH also arriving as second objects on shallows. The bypass works and is visible in the output, which is the point — with fish now barred from shallows outright, this is the ONLY route they have.
+
+**One visible consequence, chased down rather than waved through:** Three Bays' oysters now put 5 of 7 on beach, where both oyster commands write `terrain_to_place_on WATER`. Not a leak. Both use `set_tight_grouping`, and rev 6's measured rule is that a tight group checks the ANCHOR only — the fill is checked against habitat but not against the author's `terrain_to_place_on`. `amphibious` permits beaches because restriction 3 does, so the fill spills onto the adjacent sand exactly as the engine's own table allows.
+
+### Tests
+
+**36 files / 1260 tests** (+3). `objects.test.ts`: an ocean fish stays off an interposed shallow column; the amphibious family reaches it; and a `second_object` rides its main object's tile onto a shallow that its own habitat forbids. Two existing habitat sweeps were split to assert the two classes separately rather than loosened.
+
+Mutation-tested three lines, each red then reverted. Restoring `water` to the water mask breaks the fish-off-shallows test; collapsing `amphibious` into `water` breaks the amphibious test; and **adding a habitat check to the second-object emit breaks the bypass test** — that last one is the regression this session most wants guarded, because it is a one-line "consistency fix" someone will reach for and it would silently empty every pond on Menindee.
+
+### Verification
+
+`npm test` 36/1260, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes.
+
+## `terrain_to_place_on` does not lift the terrain table (2026-08-08)
+
+Reported: `AK_Hourglass_v2.0.rms`'s shore fish spawn all over the water instead of hugging the beach. The shore rule itself was fine; the command never reached it.
+
+```
+create_object SHORE_FISH { terrain_to_place_on WATER number_of_objects 200000 temp_min_distance_group_placement 4 set_gaia_object_only }
+```
+
+`buildCandidatePredicates` carried a carve-out: when a command wrote `terrain_to_place_on`, the habitat check was **skipped entirely**. So this command was filtered by "terrain must be WATER" and nothing else — no shore constraint at all, 788 shore fish across the open sea.
+
+### Why the carve-out was wrong, and the evidence was already in hand
+
+Its rationale: `terrain_to_place_on` "names the GROUND, which is the same thing habitat is guessing at, and the author saying so outranks our guess". The premise is right and the conclusion does not follow. **Naming a terrain does not lift the engine's terrain table**, and the proof is the placeholder idiom read from the other side: if `terrain_to_place_on SHALLOW` were enough to put a fish on a shallow, `Menindee_AUS_v2.3.rms` would write `create_object FISH { terrain_to_place_on SHALLOW }` and be done. It instead pays for `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW … second_object FISH }`, where the placeholder is unit 647 with terrain restriction 0 — all 131 terrains. **Nobody buys an unrestricted carrier object if naming the terrain already works.** guide:2510 names the actual override and it is `ignore_terrain_restrictions`, which is why that one still gates the check.
+
+That argument was available one session earlier and was not made. The previous entry recorded the placeholder fact, used it to split `water` from `amphibious`, and stopped — the same fact also refutes the carve-out sitting fifteen lines further down the same function, and nothing prompted a re-read of the neighbours. **A fact that overturns one rule is worth pointing at every rule that quantifies over the same thing**, which is the `validate()`-era lesson about carrying a new rule back to the code that predates it, in miniature and within a single file.
+
+### What survives
+
+The carve-out is kept for **exactly the case that motivated it and no wider**: an UNDECLARED habitat. The reference data covers a few dozen objects of several hundred, so an unknown water object falls back to `land`, and an author writing `terrain_to_place_on SHALLOW` for one is the only signal there is — narrowing by a guessed `land` would place nothing and read as the object failing rather than as a restriction. Where the habitat came from the dat's own restriction table there is no guess to defer to, and the two narrow each other exactly as `layer_to_place_on` already does. `objectHabitatIsDeclared` is a separate exported predicate rather than a richer return type from `objectHabitat`, because it decides one thing and naming it is what makes the distinction visible at the call site.
+
+### Measured, seed 7 on Normal, whole tracked corpus
+
+Four maps change and **every single difference is SHORE_FISH**: Hourglass 788 → 245, `AK_ForeDaut_v1.3.rms` 66 → 36, `AK_Six_Points_v1.4.rms` 200 → 136, `OWWC1Tewaipounamu-edited-v1.2.rms` 84 → 75. Nothing else moves beyond ±2 on TUNA/MARLIN1 as vacated tiles reshuffle. `Menindee_AUS_v2.3.rms` is byte-identical at 14298 objects, which is the undeclared-habitat carve-out doing its job. On Hourglass all 245 survivors are open water AND adjacent to beach.
+
+The count dropping is the fix, not a loss: the command asks for 200000 and gets as many as fit, so confining it to the beach ring is supposed to reduce it.
+
+### Tests
+
+**36 files / 1263 tests** (+3). A declared habitat and `terrain_to_place_on` narrowing each other (DEEP_WATER alone would allow two columns, shore alone one, both together exactly one — so the assertion cannot pass under either rule alone); a contradiction placing nothing rather than picking a winner; and an undeclared habitat still deferring.
+
+Mutation-tested both directions, which matters here because the change is a conditional with two ways to be wrong. Restoring the old carve-out turns the first two red. Removing the carve-out entirely turns three red, including the `second_object` bypass and the pre-existing undeclared-habitat test — that second mutant is the one that shows the fix is a narrowing rather than a deletion.
+
+### Verification
+
+`npm test` 36/1263, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes.
+
+## `max_distance_to_other_zones` is a MINIMUM (2026-08-08)
+
+Reported: `QS_Three_Bays_v1.1.rms` line 1145 is a "tuna everywhere" command and there was barely any tuna on the map.
+
+```
+create_object TUNA { number_of_objects 4096 temp_min_distance_group_placement 8 min_distance_group_placement 7 max_distance_to_other_zones 4 set_gaia_object_only set_scaling_to_map_size avoid_actor_area 3110 }
+```
+
+guide:2527, in its own capitals: *"Minimum (NOT maximum) distance, in tiles, that objects will stay away from terrains that they are restricted from being placed on"*, and guide:2528's worked example is "deep fish away from beaches". The predicate shipped as `dist !== UNREACHABLE && dist <= d` — a maximum, on both halves. So `max_distance_to_other_zones 4` confined the tuna to a 4-tile ribbon hugging the shoreline instead of pushing them 4 tiles off it into open sea: the exact inverse of what the line is for.
+
+Two details worth keeping. The **UNREACHABLE half was inverted too**: no restricted terrain anywhere means the constraint cannot bind, so it must pass, and the old code failed it — an all-water map placed zero fish. And **preview-design Sec.6.6 already said "minimum, not maximum" and even flagged that the guide shouts it**; the spec was right and only the code was wrong, which is the failure mode a spec is supposed to prevent and does not when nothing tests the code against it.
+
+**There was no test of this attribute at all — not one, in either direction.** That is the whole explanation for how an inverted comparison survived: the two sibling predicates immediately above it (`avoid_forest_zone`, `avoid_cliff_zone`) both carry the correct `dist === UNREACHABLE || dist >= d` shape, so the wrong one sat between two right ones and read as consistent at a glance. An attribute whose NAME contradicts its behaviour is exactly the one to write the test for first.
+
+### Measured, seed 7 on Normal
+
+`QS_Three_Bays_v1.1.rms` L1145: **118 → 200 tuna**, and spread over the whole sea rather than a shore ribbon. The remaining shortfall against the requested 16384 is the script's own spacing, not the predicate — 21638 open-water tiles, **17373 of them now qualify** (80%), and `min_distance_group_placement 7` caps a perfect lattice at ~355, so 200 from random sequential placement is the expected packing efficiency rather than a constraint biting.
+
+**One consequence that goes the other way, isolated by disabling the predicate rather than assumed:** Three Bays' central-lake OYSTERS (×2) and SNAPPER commands now place nothing, where the old maximum reading placed 7 and 3. Disabling the predicate entirely gives 14 and 3, so it is this rule and not another. The mechanism is coherent — each is confined by `actor_area_to_place_in` to a small bay AND asked to sit 3 or 5 tiles clear of dry land, and inside those areas nothing is far enough out. **Whether the engine agrees is unmeasured, and this is the one place where the approximation could be ours rather than the author's**: our land generation only has to be slightly tighter than DE's for a bay that works in game to fail here. Recorded rather than tuned away, because softening a rule the guide states in capitals to rescue two commands is the move CLAUDE.md's `border_fuzziness` entry exists to warn against.
+
+### Tests
+
+**36 files / 1266 tests** (+3), the first coverage this attribute has ever had. An object pushed away from restricted terrain (grass at x = 0 and 1, so a water tile's distance is x − 1; d = 3 means x >= 4, where the old reading allowed x = 2..4 — the two bands share one column, so no assertion on minimum x can pass under both); the all-water map placing fish rather than none; and d = 0 being a no-op rather than a filter.
+
+Mutation-tested by restoring the old `!== UNREACHABLE && <= d`: all three go red, then reverted.
+
+### Verification
+
+`npm test` 36/1266, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes.
+
+## CREATION_PLAN 4.4 — the side panel resizes and collapses (2026-08-10)
+
+The map preview + reference column shipped in 4.2 at a fixed 18rem, and 4.2 put it on the **Code** tab, which had been full width. So half of this step is a fix rather than a nicety: somebody who just wants to write code had lost that space with no way to get it back. The other half, dragging, is what makes the preview usable for actually inspecting a generated map, which is why the step sits after 4.3 rather than before.
+
+### What landed
+
+`src/components/sidepanel/sidePanelLayout.ts` — the arithmetic, pure and Node-testable. `clampSidePanelWidth`, `resolveSidePanelDrag` (returns a discriminated union, so a caller cannot read a width out of a collapse), `isSidePanelWidth` for the store round trip, and the four constants. `src/components/sidepanel/SidePanelLayoutContext.tsx` — width plus collapsed flag, persisted to `settings.json` alongside the help (1.7) and generation (2.5) settings. `src/components/sidepanel/SidePanelResizer.tsx` + its CSS — the 14px separator strip and the chevron button, plus `SidePanelReopener` for the collapsed state. `MapSidePanel` now renders a fragment of panel-then-separator and takes its width from context.
+
+### The decisions worth recording
+
+**The width is one value shared by both tabs, above the tab switch.** Local state would have been two independent widths that reset on every Breakdown⇄Code switch, since the inactive tab is genuinely unmounted — the trap `PreviewViewContext.tsx` exists to document, and the reason CREATION_PLAN 4.4 named that file. Unlike the two contexts already there, this one **is** persisted, and the line that decides it is the one `PreviewViewContext` already draws: a seed is where you happen to be looking right now, a panel width is how you want the app laid out.
+
+**A drag writes to the store once, not sixty times a second.** `setWidth` updates state only; `commitWidth` writes. Every store write is an IPC hop into the Rust host, and putting one in a pointermove loop would be a disk-backed round trip per frame for a value that only matters once the user lets go. Keyboard resizing commits per press, which auto-repeat makes a few per second rather than ~60.
+
+**The "leave room for the editor" rule is CSS (`max-width: 70%`), not drag arithmetic.** It has to hold when the *window* resizes, which is not a drag and would never run that code. One rule, in the layer that sees a resize without being told about it. `sidePanelLayout.ts` therefore clamps only to the panel's own bounds and says so.
+
+**The collapse threshold has a margin (48px) below the minimum.** Without one, every drag that bottoms out collapses the panel, so the minimum width is unreachable — you can never actually sit at it. A test pins both edges of that margin.
+
+**HelpTip wraps the button, not the strip.** HelpTip's wrapper is `position: relative` and its popup is `top: 100%`, so wrapping a full-height element anchors the popup below the entire pane, off the bottom of the app. Same trap `DiagnosticsRuler.tsx` documents for its ticks and the same fix: the sized element is the outer div and HelpTip goes inside it. One entry (`sidePanel.resizer`) covers resizing and hiding both, because it reads as one control — the call `PreviewPane` made when it reused `breakdown.sidePanel.previewToggle`.
+
+`setPointerCapture` is the detail that makes the drag survive a fast pointer leaving a 14px strip, and the button's own `onPointerDown` has to `stopPropagation` or the click that hides the panel starts a drag instead.
+
+### Tests
+
+**37 files / 1279 tests** (+13, `sidePanelLayout.test.ts`). The component is not covered — this project has no jsdom environment — which is exactly why the rules worth asserting were put on the pure side of the line, the same split `teamModel.ts` uses.
+
+Mutation-tested three lines, each confirmed red then restored: dropping `COLLAPSE_DRAG_MARGIN` from the collapse threshold (the "sticks at the minimum" test goes red), dropping the non-finite guard in `clampSidePanelWidth` (the NaN test goes red — a `NaN` width reaches React as no width attribute at all, so the panel silently shrinks to its content), and narrowing `isSidePanelWidth`'s bounds to strict inequalities (the boundary test goes red).
+
+### Verification
+
+`npm test` 37/1279, `npm run typecheck` clean, `npm run lint` 0 errors, `npm run validate:reference` passes. **Not visually verified** — this app calls Tauri store APIs synchronously on mount, so it cannot render outside the real host (see CLAUDE.md's sandbox caveats). Confirming the drag feel, the collapse, and that both survive a restart needs a local `npm run tauri dev`.
+
+---
+
+## Settings dialog — Preferences renamed and split into tabs (2026-08-10)
+
+Preferences was one box holding one radio group. It is now **Settings**, a tabbed dialog with six tabs: **General, Hotkeys, Theme, Breakdown, Code, Advanced Tools**. Only General has controls today (help mode, moved across unchanged); the other five are placeholders that each name what they are for and what they are expected to grow.
+
+### What moved
+
+`PreferencesDialog.tsx` and `PreferencesDialog.module.css` are deleted. In their place:
+
+- `src/components/dialog.module.css` — the modal chrome (overlay, box, title, option row, actions, close button), lifted verbatim out of the old stylesheet.
+- `src/components/settings/SettingsDialog.tsx` + `.module.css` — the shell: vertical tab strip, panel, close.
+- `src/components/settings/settingsTabs.ts` — the tab table.
+- `src/components/settings/GeneralSettings.tsx` — help mode.
+- `src/components/settings/SettingsPlaceholder.tsx` + five one-call wrappers around it.
+
+`App.tsx` (`settingsOpen`), `TitleBar.tsx` (`onOpenSettings`, label "Settings") and `ui-help.json` (`titleBar.settings`, `settings.helpMode`, six `settings.tab.*` entries) follow the rename.
+
+**The stylesheet split is the part that was not just a rename.** `GenerationSettingsDialog` imported `PreferencesDialog.module.css` across a component boundary — fine while both dialogs were the same plain box, wrong the moment one of them grew a fixed-size two-column layout, since `.dialog` is the class both were reading. Generic chrome now lives in `dialog.module.css` and settings-specific rules live beside the settings dialog. Generation Settings stays a separate dialog rather than becoming a Settings tab: those are properties of the script being written, not preferences about the app, which is why they open from the status bar.
+
+### Decisions worth recording
+
+**The tab strip is vertical.** Six labels do not fit across a dialog the width of its content, and a sidebar keeps the list cheap to extend.
+
+**Tabs are data, not a switch statement.** `SETTINGS_TABS` carries the panel *component* per entry and the dialog renders `<ActivePanel />`, so adding a tab is one table entry plus one file and the dialog never changes.
+
+**The box is a fixed size and the panel scrolls inside it.** A dialog that resizes per tab moves the tab strip out from under the cursor.
+
+**Roving tabindex, selection follows focus.** Only the selected tab is in the tab order; arrows, Home and End move within the strip. Selection following focus is right here because switching panels costs nothing — nothing loads or submits.
+
+**Panels are keyed by tab id**, so switching remounts rather than reusing the previous panel's state. Unrelated panels sharing a mount would leak state between them once they hold real controls.
+
+**`.tabList > span` is `display: block`.** HelpTip always renders its own `<span>` wrapper (the fix recorded against the StatusBar cog and Add Command width), so the span is the flex item, not the button — without the rule the buttons shrink to their text width instead of filling the strip.
+
+### Verification
+
+`npm test` 37/1279, `npm run typecheck` clean, `npm run lint` 0 errors (13 pre-existing warnings, none in the new files), `npm run validate:reference` passes. **Not visually verified** — this app calls Tauri store APIs synchronously on mount, so it cannot render outside the real host (CLAUDE.md's sandbox caveats). Confirming the layout, the arrow-key strip and Escape-to-close needs a local `npm run tauri dev`.
+
+## Preview — tile selection, a readout that wraps, and shortened constant names (2026-08-10)
+
+Three changes to the preview pane, all in the UI layer. No generator file was touched.
+
+**Click a tile to pin its readout.** Hover already produced a readout and it vanished the moment the pointer left, which is exactly when you want to read it — the tile you are inspecting is usually the one you then want to compare against the notes drawer or the code. A click now selects, a second click on the same tile deselects, and a `Clear` button next to the readout does the same thing for anyone who has panned the tile off screen. The selected tile draws an amber diamond over the white hover one, and `drawHighlight` generalised into `drawTileOutline(colour, weight)` since the two differ only in those two values. Selection is drawn AFTER the hover outline so it stays visible when the pointer rests on the tile that is already selected.
+
+**Click and pan are separated by accumulated travel, not by distance from the press point.** The canvas takes pointer capture on press for panning, so an `onClick` handler would also fire at the end of every drag. `endDrag` therefore does the click detection itself, against a `travel` counter that sums `|dx| + |dy|` over the whole gesture — a drag that wanders out and comes back has small displacement and large travel, and displacement alone would call it a click. Threshold is 4 px; zero would make selection nearly impossible, since a mouse moves a pixel or two during any real click. `pointercancel` passes `clicked: false`, because a gesture taken away from us is not a gesture the user completed.
+
+**The selection is coordinates, held above the tab switch; the description is derived.** `PreviewViewContext` gains `selectedTile`/`toggleSelectedTile`/`clearSelectedTile`, alongside the seed and colour mode and for the same reason — `PreviewPane` unmounts on every Breakdown⇄Code switch. Storing `{x, y}` rather than a captured `HoveredTile` is the part that matters beyond tab switching: **a selection outlives the re-roll that regenerates the map**, and a stored description would keep showing the previous generation's terrain under a tile the user is looking at right now. Deriving on every render makes that impossible by construction. `PreviewCanvas` consequently no longer describes tiles at all — it reports coordinates and the pane looks them up (new `components/preview/tileInfo.ts`, holding `TileInfo`, `indexObjectsByTile`, `describeTile` and `tallyObjects`, all pure and unit-tested). The object index moved up to the pane with it, so hover and selection share one index rather than building two.
+
+Guarded: a `dim` change (a re-roll at a different map size, or `override_map_size`) can leave a selection off the new grid. Reading past a typed array's end yields `undefined`, which renders as "terrain undefined" rather than throwing, so the bounds check is explicit and the readout falls back to the hint line.
+
+**The readout wraps instead of truncating.** It was one `white-space: nowrap` line with `text-overflow: ellipsis`, in a column ~300 px wide. A tile with a few objects on it always overflowed, so the cut fell on the objects — and a stacked tile is usually the reason anyone looked at it. It is now a two-column grid (`auto 1fr`), one row each for Tile, Terrain (plus its layer), Elevation (plus cliff) and Objects, with `overflow-wrap: anywhere` on the value column so a long object list grows the pane by a line rather than disappearing. The header says "Selected tile" or "Hovered tile", because a readout that stops following the pointer with no explanation reads as a frozen UI.
+
+**"Shorten long #const / #define names", Settings ▸ General, on by default.** A name over six characters displays as its first three letters plus a single-character ellipsis (`SHORE_FISH` → `SHO…`); hovering shows the full name. `src/settings/nameDisplay.ts` is the pure rule, `AppSettingsContext` is a third settings context persisting to the same `settings.json` under `shortenLongNames`, and `components/ScriptName.tsx` renders one name.
+
+Two decisions inside that:
+
+- **A third context rather than a field on `HelpSettingsContext`**, which already loads the same file. The split is by what the setting is about, not by where it is stored: `HelpSettingsContext` is read by every `HelpTip` and by the imperative Monaco hover provider, and widening it would re-render all of that for an unrelated preference.
+- **The full name rides on a native `title`, not on a `HelpTip`** — a deliberate exception to the wrap-everything-in-HelpTip rule. HelpTip is gated on the help-mode setting, so with tips off the hidden name would be unreachable. This is the one case where the tooltip is not an explanation of a control but **the data itself**, and a value the app has chosen to hide has to stay recoverable regardless of how the help system is configured. `<abbr>` rather than `<span>`, since that is precisely what it is and screen readers announce the expansion.
+
+Scope note: this applies to object names in the tile readout, which is where a script-written name actually reaches the preview UI (`PlacedObject.objectRef` is "the RMS constant name as written"). Terrain names in the readout and legend come from `game-constants.json` and are resolved back to the canonical constant, so a script `#const` never surfaces there.
+
+### Mutation tests
+
+`shortenName`'s `<=` boundary flipped to `<` — three tests red, restored.
+
+`tallyObjects`'s key reverted to the name-first, no-separator form — and **it survived**, which was the finding. The test written for it (`"BOAR"` gaia vs `"BOAR"` owned by player 1) cannot fail under that form, because those two keys differ anyway. The pair that separates the forms is `MARLIN1` placed by gaia against `MARLIN` owned by player 1 — **both are real DE constants** — which collide into one tally with the name first and one of the two vanishes from the readout. A test for that case was added, confirmed red under the mutation, then the key restored to player-first (`1:MARLIN`), where a number or the literal `gaia` always terminates at the colon and no pair can collide. Same shape as the `bucketWeights` finding in `lands.ts`: the first test passed under the bug it was named after.
+
+### Verification
+
+`npm test` 39/1300, `npm run typecheck` clean, `npm run lint` 0 errors (14 warnings, all pre-existing categories — the new context draws the same `react-refresh/only-export-components` warning every other context in the app does), `npm run validate:reference` passes. **Not visually verified**, for the standing reason in CLAUDE.md's sandbox caveats: this app calls Tauri store APIs synchronously on mount, so it cannot render outside the real host. Confirming click-to-select, the wrapped rows and the shortening toggle needs a local `npm run tauri dev`.
+
+### Merge note
+
+Written alongside two parallel sessions (the side-panel resize/collapse and the settings-dialog split). The settings work was already on disk and complete when this started, so `GeneralSettings.tsx` was extended in place rather than duplicated; the only shared files touched are `App.tsx` (one provider), `GeneralSettings.tsx` (one fieldset), `ui-help.json` (two entries) and CLAUDE.md's test-count row.
+
+---
+
+## 5.1 rev 5 — third independent critique folded in (2026-08-10, design only, no code)
+
+`docs/tools-api-design.md` goes rev 4 → rev 5. Two rounds were outstanding: the rev-4 review (two passes, both dated 2026-07-30, never folded in) and a new rev-5 review. Every repo claim in both was re-derived against the working tree before acting.
+
+### The finding that shaped the whole round: a review is a repo snapshot too
+
+The rev-4 review was accurate on 2026-07-30 and **four of its twelve findings had decayed by 2026-08-10**. Folding its edit list in verbatim would have landed three wrong instructions:
+
+- **B1's fix is obsolete.** It told rev 5 to replace "create `MAP_SIZE_TILES`" with "resolve it from `predefinedLabels`". That resolver now exists — `resolveMapDim` in `src/preview/generator/mapDimensions.ts`, tested over all seven sizes — so writing a second one is the same mistake one level down. The criticism held; the prescription did not.
+- **B2 is already implemented, and the repo went the OTHER way on purpose.** `PredefinedLabel` is typed at `language.ts:126` with its 10-member category union at `:107`. But the review prescribed making `predefinedLabels` non-optional and `language.ts:148-160` deliberately keeps `?`, with a comment giving the reason (nothing checks the shape at runtime; a non-optional type makes preview-design's mandated `?? []` guard read as dead code). Rev 5 records this as settled and says not to re-litigate it.
+- **B3's fix would now make things worse.** "Promote the hover module's interface" rested on that interface being the complete view. `game-constants.json` went from 31 entries / 7 keys to **164 / 17**; ten fields exist in none of the five TypeScript views. Promoting any of them publishes a type missing ten fields. The published type is now generated from the schema instead, which is the artefact CI already validates.
+- **Its game-constants Minor is factually inverted, and edit-list item 14 was a trap.** It states twice that all 31 `constId` are null and all 31 `verified` false, and tells rev 5 to go "correct" CLAUDE.md and `build-log.md:395` for describing a file that does not exist. Measured 2026-08-10: **164 entries, 2 null `constId`, 44 `verified: true`.** Both documents are right and acting on item 14 would have broken them.
+
+Standing instruction now written into the spec (Sec.10.2): **fold a review in by re-deriving each finding, not by transcribing its edit list.** The half-life of an undated repo claim here is about a week.
+
+### Blocking findings from the rev-5 round
+
+- **`read-settings` could not construct the input the flagship tool's own dependency requires.** `generatePreview` takes `PreviewSettings = { playerCount, mapSize, teams }` (`generator/types.ts:37-54`); `ToolContext.settings` supplied only the first two. Per-player team assignment landed 2026-08-01, after rev 3 pinned the settings shape, and it is not cosmetic — it decides the player ring, `grouped_by_team`, `set_zone_by_team`, and the whole `TEAMn_SIZEm` / `PLAYERx_TEAMy` label environment S0 builds branch selection from. A checker handed only `playerCount` invents teams or silently generates a different map than the pane is showing. `teams: number[]` added, narrowed by the existing `isTeams` guard.
+- **`mapSize.tiles` is the LOBBY dimension and a script can change it.** `override_map_size` (`instantiate.ts:288-302`) replaces it, and `InstantiatedScript.dim` is what every stage generates against. Any static check keyed on map area — `land_percent` over-allocation, impossible count×spacing, both named in CREATION_PLAN 5.2's brief — computes against the wrong grid on every overriding script, and fails quietly in the direction of "your map is fine". One sentence in Sec.2 that is impossible to guess.
+
+### Three numbers the review left as "decide it", now decided
+
+- **The seed stays OUT of the context.** The pane's seed is view state in `PreviewViewContext` (defaults to 1, not persisted); the Monte Carlo layer varies the seed by construction so it is the one value it does not want; and a tool that wants a fixed seed already has an `integer` param, which the host validates and which the settings echo puts in the output header. A tool needing to reproduce the pane exactly is a future `read-preview-view` capability and an escalation, not a silent widening.
+- **Cancel grace 5s → 15s, derived rather than rounded.** 5s is shorter than one unit of the flagship tool's own work: one generation costs a median ~460 ms and up to **3.8 s** over the 32 tracked maps, against a machine load factor reaching **3.7×**. A perfectly cooperative checker cancelled one millisecond into `24hr_Caverns.rms` missed the deadline under any load and was killed as if wedged. 3.8 × 3.7 ≈ 14, so 15s with the derivation stated. Same mistake the preview watchdog already paid for in the other direction. Related: the chunk unit is now **one generation**, not "one batch" — `generatePreview` is synchronous and cannot yield inside itself, and a tool-chosen batch size would make the deadline measure the batch rather than the cooperativeness.
+- **A run watchdog now exists at all: 30s of silence.** Rev 4's only kill path was post-cancel, so a wedged built-in bricked the pane until app restart (one run app-wide). Chunking is already mandatory, so silence is the right signal; 30s is ~2× the legitimate worst gap between chunk boundaries. One worker per run makes the kill the whole recovery — no retry cap needed.
+
+### Also folded in
+
+`ErrorReason` splits `cancelled` / `killed` / `unresponsive` / `protocol` / `tool-error` (rev 4 collapsed an honoured cancel and a hard kill into one terminal, throwing away the only signal that a tool misbehaves). Sec.1 names the prohibited value set explicitly instead of saying "serializable" — `undefined` and `Map`/`Set` are both live today (`InstantiatedValue` carries `undefined` as load-bearing; `LanguageIndex` is Maps and Sets, so **every tool must build its own index**). Sec.9's round-trip test moves to **`toStrictEqual`**: `toEqual` ignores undefined-valued keys by design, so the load-bearing test was blind to the exact class it existed to guard. `codeRef` carries a `Span` rather than a bare offset. `selection` is added as `{ offset, item? }` — **not** the rev-4 review's `Span`, which is not implementable: the Monaco editor instance only exists while CodePane is mounted, and a tool runs from the Tools tab, so `useSharedSelection`'s offset anchor is the only thing that survives the tab switch. `read-settings` → `read-generation-settings`, because `settings.json` now holds four unrelated families and this is a v1.1 consent-dialog string. Apply now ends at `reparseNow(source)`, and states that `rebaseEdit` is **not** for tool edits.
+
+The surviving rev-4 findings all land: source-equality staleness gate (B4), host-side stale-run rejection without a wire `runId` (B5), inbound validation and stdout caps (B6), `multiSelect` plus the `string[]` union widening (S1), Sec.6's capability list corrected to include `read-reference` (S3), the deep-clone-before-convert pin (S4), `ParseResult<N>` parameterization (S5), `applyTextEdits` named as new work with the descending sort demoted to an implementation detail (S6), document-replace cancel and the settings echo (L1, L2), the pane's seven `ui-help.json` ids.
+
+### The highest-value item, and why it is a test rather than a rule
+
+**Three consecutive revisions were broken by the same dependency.** Rev 3 typed `settings.mapSize` as `number` against a string union; rev 4 had `tiles` with no source of truth while the data had one; rev 5 found `teams` missing three weeks after it shipped. Each was filed as "a cross-doc data dependency same-author review structurally misses" — a rule that has now failed three times, because it asks a reader to notice an absence. Sec.9 item 2 is a four-line test that builds a `PreviewSettings` out of a `ToolContext` and calls `generatePreview`: it is the flagship tool's actual first step and **it stops compiling the day the app's settings type grows a required field**. Its limit is stated in the spec rather than oversold — it does not catch a new optional field, or a stable type whose meaning changed.
+
+### Two things found in this pass that neither review had
+
+- **Sec.2's normative type block still said `parseResult?: ParseResult` while Sec.4 pinned it as `SerializedParseResult`.** The code block is what an implementer copies. Fixed.
+- **`tools-api/` at the repo root would ship untypechecked.** `tsconfig.json:23` is `"include": ["src"]`, so `tsc --noEmit` never sees a root-level `tools-api/index.ts` — the one file destined to be a published artefact. ESLint would cover it (`**/*.{ts,tsx}`); the purity gate would not, since its globs name the three `src/` directories explicitly. Sec.8 now says to decide this in the same session that creates the directory.
+
+### Housekeeping
+
+The rev-2/3/4 changelogs moved out of the spec into this log, following `preview-design.md` rev 7 and for its stated reason. The rev-4 preamble ("written without a scheduled critique pass") and Sec.9's "no critique pass — read this hardest" heading were both false after three rounds and are gone. Rev 3's 5.2 sequencing warning is **re-pointed rather than deleted** (Sec.10.1): `constId` is real now, so "all placeholders until 4.0 lands" would be ignored the first time someone opened the file — what is actually still soft is `resourceAmounts` on 8 of 164 rows, 116 of 131 terrains `verified: false`, `language.json` at 28/41 commands and 38/94 attributes, and `resourceTotals.ts` not modelling script-level resource modifiers at all. New open item recorded in Sec.10: **PLAN.md and CREATION_PLAN 5.2 both assume "1000 runs should be seconds, not minutes", and at the measured median that is ~8 minutes for one player count and ~30 for the 2/4/6/8 matrix.** `collectSnapshots: false` is the only cost knob the generator offers and its effect has never been measured. A 5.2 problem, but it is what sizes the protocol's progress/cancel/`partial` design.
+
+The two `MAP_SIZE_TILES` propagation sites in this log are corrected above: the rev-4 line carries a bracketed withdrawal (it is a changelog) and the `Next:` line's instruction is deleted outright.
+
+**No code or data changed this session.** Design docs only: `docs/tools-api-design.md`, this log, and CLAUDE.md's Phase 5 row. `npm test` was not run and has no reason to have moved.
+
+## Reference table — the Preview Obj. List (2026-08-10)
+
+A fourth mode beside Terrain/Objects/Commands, and the first one in that panel that is a **control** rather than a lookup. It lists every object the open script names, with how many the current generation placed and a tick box deciding whether the canvas draws it.
+
+### Where the rows come from, and why not from the placed objects
+
+`result.objects` was the obvious source and it is the wrong one on its own: it only knows what reached the map, so an object the script asks for and the generator never places would simply be absent from the table. Absent reads as "the table does not cover that", when the answer worth showing is **0**. That number is the diagnostic — it is what a terrain restriction or a distance band nothing satisfies looks like from the outside, and the class of bug the last four review rounds were mostly about.
+
+So `src/components/sidepanel/objectInventory.ts` walks the AST instead. Four places name an object and the fourth is easy to miss: `create_object X`, `add_object X` inside a group, `second_object X` (guide:2211's placeholder idiom, where the second object is the one the author cares about), and `create_object G` where G is a **group name** rather than an object — excluded, because no placement ever carries the group's own name and a row for it would read 0 forever. Group names are collected in the same pass for exactly that subtraction. Branch contents count from every branch of an `if`/`start_random`: the table is about what the script mentions, and a name that only appears under `percent_chance 5` is the one hardest to find by reading.
+
+The rows are then **unioned** with the spawned tallies. That direction matters as a safety property rather than a nicety — the checkboxes are keyed on rows, so anything drawable without a row would be permanently unhideable.
+
+Sorted by name, not by count: the counts change on every re-roll, and a table that reorders itself under the pointer is unusable for the one thing it exists for.
+
+### Hiding is a view filter and stays one
+
+`hiddenObjects` is a `ReadonlySet<string>` on `PreviewViewContext` (above the tab switch, same reasoning as the seed), consumed by `drawPreview`'s object loop. **A set of hidden names rather than a map of visible ones**, because the default is "draw everything": the empty set IS the default state, and an object written for the first time after an edit is visible without anything having registered it. Per-object visibility flags would make a new name's default depend on whether the table had seen it yet.
+
+The filter lives in the renderer, not upstream of it. Filtering `result.objects` would have been fewer lines and would also have removed the hidden objects from the tile readout and from their own Total Spawned count, turning a display control into something indistinguishable from a change to the generation.
+
+A "Show all (N hidden)" button appears above the table while anything is hidden. Unticking is per row, and a long list can end up with a dozen hidden objects and no record of which — re-ticking them one at a time is the kind of chore that makes people abandon a control.
+
+`PreviewCanvas` takes the set as a **prop** rather than calling `usePreviewView()` itself: the pane already subscribes to that context, and a second subscriber would re-render the canvas on every seed keystroke and colour-mode click for a value it does not read.
+
+### The warning, and why it is outside the panel
+
+Unticking anything raises a triangle beside the Preview Obj. List label and a 10px band of yellow inside the section's edge. Both exist because the **effect shows up where the control is not** — objects missing from a map, with the table that explains it three radio buttons away and not even on screen while Terrain is selected. The band is an `::after` overlay on a new non-scrolling `.section` wrapper, not an inset shadow on `.panel`: an inset box-shadow on a scroll container moves with its content in Chromium, so the band would have slid out of view the moment the table was scrolled.
+
+### Tests
+
+8 new (`src/components/sidepanel/__tests__/objectInventory.test.ts`), against real `parseRms` output. Three mutants confirmed red then reverted: dropping the group-name subtraction, dropping `second_object` from the attribute check, and dropping the union with the placed tallies — each turns exactly the test written for it red and nothing else. Full suite measured **41 files / 1321 tests** on this mount, which includes a parallel session's work; CLAUDE.md's row is updated to the measurement.
+
+Not visually verified — the app cannot render outside the Tauri host (see CLAUDE.md's sandbox caveats). `npm run tauri dev` locally is the confirmation.
+
+## 2026-08-10 — Sec.15 item 23 closed: the terrain table is extracted and taken
+
+The remaining half of item 23, automating what was demonstrated by hand on 2026-08-08. `tools/extract-constants` gains `--habitat-only` (with `--dry-run`), which derives `habitat` for every object entry from the engine's own terrain restriction rows, reports every disagreement with what the file already says, and only then writes.
+
+### The run agreed with the hand assignments, and the first version of the derivation did not
+
+**Result: 18 of 18 hand assignments reproduced, 13 habitats added to entries that had none, 0 contradictions.** The nine ordinary fish stayed `water`, SHORE_FISH and DLC_BOXTURTLE stayed `shore`, the great fish, OYSTERS and TRANSPORT_SHIP stayed `amphibious`.
+
+That is the second result. The first run of the first implementation moved every fish to `amphibious`, which would have undone the `water`/`amphibious` split this same item established two days earlier and put fish back on the shallows. The cause is worth recording because the code read as careful: `derive_habitat` was an ordered chain of predicates, and its `amphibious` test was "the row permits any hybrid terrain". Restriction 19 permits 15 terrains — 14 open water and **26 `Ice, Navigable`**, which carries `isHybrid` in our own terrain table. One terrain out of fifteen tripped a threshold and flipped nine rows.
+
+**The replacement asks a different question: which of the classes the app implements has a terrain set closest to this row?** Smallest symmetric difference wins. It reproduces every hand assignment by a margin rather than a hair:
+
+| row | objects | permits | best | runner-up |
+|---|---|---|---|---|
+| 19 (ordinary fish) | 12 | 15 | **water**, differs on 1 | amphibious, 18 |
+| 13 / 3 / 15 | 21 | 38 | **amphibious**, 5 | water, 24 |
+| 0 (unrestricted) | 72 | 131 | **any**, 0 | land, 21 |
+| 7 (most land objects) | 177 | 116 | **land**, 8 | any, 15 |
+
+The class sets are transcribed from `objects.ts`'s `habitatMask` and `grid.ts`'s `terrainDepth`, not paraphrased from the schema's prose, because the whole method is "which class does the app actually implement that comes closest" — scoring against a class the app does not have would be measuring nothing. Two transcription details look like slips and are not: `land` is `!isWater` and deliberately not `depth === LAND`, and `water` excludes hybrids even though they carry `isWater`, because `terrainDepth` tests `isHybrid` first and returns early.
+
+**The generalisable part: a threshold over a derived flag is a model, and this one was never pointed at the case it existed to decide.** "Permits any hybrid" was written while reading rows that had many hybrids or none; the row with exactly one was the whole question and nobody looked at it. Same family as `max_distance_to_other_zones` two days earlier — an inversion that read as consistency because its neighbours looked the same.
+
+### The mismatch number is kept, and it prices the vocabulary
+
+`derive_habitat` returns a `HabitatFit`, not a string: the chosen class, how many terrains it differs from the engine's row by, and the runner-up with its distance. All of it goes into the entry's `notes` and is printed worst-first by the run.
+
+This is what answers the question the item left open — whether the five coarse classes should be retired for the raw 131-terrain mask. **They stay, and they now carry the size of what they cost.** The land family fits worst: restriction 8 (GOLD/STONE/FORAGE) permits 83 of the 110 terrains `land` covers, so 27 terrains where the engine says no are terrain the preview still uses. That is a limit of a five-value vocabulary rather than an error in the join, and `land` still wins by a wide margin (runner-up `any` at 48). The argument for retiring the classes is now a number in the file instead of a judgement.
+
+Two cases the mode reports rather than acts on. A **tie** between the best two classes leaves the entry alone — picking one of a tie is a coin flip wearing a measurement's clothes. And a `placement_side_terrain` the chosen class cannot express is **flagged**: `shore` is `water` plus "must sit beside a beach" and applies cleanly to restriction 19, but the DOCK family carries the same `(2, 35)` over an `amphibious`-shaped row (restriction 6) and no class says that. No DOCK is in the reference data today, so it reports and changes nothing.
+
+### The namespace split was the blocker, and the check that mattered ran the other way
+
+`parse_random_map_def_sections` reads the `/* SECTION */` comments that `strip_rms_comments` throws away, so it is deliberately line-based rather than built on it. `object_constants` keeps the five object sections and drops `STRING_*` (localisation ids) and `*_CLASS` (unit-class ids, a third id space): **1114 flat names become 618 object names.**
+
+Resolving is not the same as being right — 45 is `DOCK` and `CUSTOM` and `CIVILIZATION_GEORGIANS` and `ATTR_BLAST_DEFENSE`, so an id that "works" proves nothing on its own. So every one of the 31 resolvable object constants was checked against its unit's own name in the dat: `GOLD`→`GOLDM`, `STONE`→`STONM`, `SHORE_FISH`→`FISHS`, `TUNA`→`FISH3`, `OYSTERS`→`Oysters`, `MONUMENT`→`KOH-FLAG`. All 31 correct. `DOLPHIN` and `PERCH` resolve to nothing and are correctly left alone — both are script-level `#const`s, not names the file defines.
+
+### What changed in the data, including the part that is not a documentation change
+
+13 entries gained a habitat: GOLD/STONE/FORAGE, DEER/BOAR/SHEEP/WOLF, RELIC/VILLAGER/KING, HOUSE, TOWN_CENTER (all `land`) and MONUMENT (`any`, on an exact fit — it is unit 826 `KOH-FLAG`, a King-of-the-Hill marker the engine really does allow anywhere).
+
+**Writing `land` where the field was absent is not a no-op even though the generator's fallback for an absent habitat is also `land`.** It flips `habitatIsData`, which is what decides whether an author's `terrain_to_place_on` narrows the habitat or replaces it. So `create_object GOLD { terrain_to_place_on WATER }` now places nothing instead of placing on water, which is what restriction 8 says the engine does. Intended, and correct, but a behaviour change rather than a data annotation — worth stating because the diff looks like the latter.
+
+### Tests
+
+28 new Python tests (45 → 73 in `test_extract_constants.py`, which is stdlib unittest and not part of the vitest suite, so CLAUDE.md's test row is unaffected by them). Seven mutants run through a harness that asserts each match is unique before substituting and verifies the restore by hash.
+
+**Two of the seven survived the first pass, and both were real holes.** A `water` class that quietly includes the shallows still beat `amphibious` on the fish row, just by less — the ranking tests could not see it, and a `water` that includes shallows is a fish standing on walkable ground. Fixed by pinning the class *definition* (an open-water row must fit `water` **exactly**, mismatch 0) rather than only its rank. And the commented-out-`#const` guard survived because the fixture had no live definition *after* the comment, so the bogus section was never created and nothing was lost — which is precisely the shape of the real defect, where the damage is to the names *below* the comment. Fixed by adding one, and by asserting the name survives into the object namespace. All seven red after that.
+
+Full vitest suite green (40 files / 1318 tests on this mount at the time of the run; a parallel session has since landed more). `npm run validate:reference` passes. A second `--habitat-only` run is byte-identical, so the mode is idempotent against the real file and not only in the unit test.
+
+## 2026-08-10 — RMS0304 built, the last unbuilt Sec.8 check
+
+The wrong-section check, unbuilt since `validate()` shipped on 2026-07-31 and unblocked by RMSTEST_33a/33b on 2026-08-04. Built the only way the spec allows, which is the whole content of the work: **driven by a per-command `sectionLocked` flag, never by `CommandDef.section`.**
+
+### The two fields, and why one of them is not the other
+
+`CommandDef.section` records where the guide DOCUMENTS a command. It is not a claim about the engine, and treating it as one is the trap this check has been sitting in front of for six weeks. `sectionLocked` is the engine claim, set only where an in-game run measured it, and today that is exactly two commands:
+
+- `create_terrain` — RMSTEST_33a put it in `<OBJECTS_GENERATION>`, three runs on a 200 map, **zero SNOW** (40000/40000 base terrain).
+- `create_object` — RMSTEST_33b put it in `<TERRAIN_GENERATION>`, three runs, **zero GOLD**.
+
+In both, the script's own `base_terrain GRASS` applied normally, so the script parsed and ran and exactly one command was discarded. Each command's `notes` in `language.json` now carries its run, so the flag cannot be copied to a third command without someone noticing there is no sentence to write.
+
+Everything else is silent. That is not caution, it is the measurement: 39 of 41 commands have never been tested in a wrong section, and the corpus contains a standing counter-example proving at least one of them is not locked the way its `section` implies.
+
+### The corpus census is a permanent test, not a number in this entry
+
+CREATION_PLAN 2.7 asked for the corpus counted before and after, per command name. `src/parser/__tests__/rms0304.measure.test.ts` prints both columns on every run, and **recomputes the rejected design rather than quoting it**:
+
+```
+===== if driven by CommandDef.section (the rejected design): 53 =====
+   52  effect_amount
+    1  create_player_lands
+===== as shipped, driven by sectionLocked: 0 =====
+sectionLocked commands (2): create_terrain → <TERRAIN_GENERATION>, create_object → <OBJECTS_GENERATION>
+files walked: 57
+```
+
+53 → 0, reproducing the 2026-07-31 figure exactly. The 52 `effect_amount` hits are `24hr_Blind Valley.rms`, `QS_Three_Bays_v1.1.rms`, `TC2 - Comeer v1.4.rms` and `W4 - Immersion.rms`, all shipped and working; the 53rd is `create_player_lands` in `<PLAYER_SETUP>` in our own `test-maps/sample.rms`.
+
+Keeping the rejected design **executable** next to the shipped one is the point. "52 of 53 were false positives" is the kind of fact that decays into folklore a later session either re-derives from scratch or quietly disbelieves while simplifying the check — and this project has already paid three rounds for that class of mistake (BUG-002, BUG-005). A number that recomputes itself cannot go stale, and it will move on its own if the corpus ever grows a real hit.
+
+### Zero corpus hits is the expected result, and is not evidence the check works
+
+The corpus is expert-written and DE-official; nobody ships a `create_object` in `<TERRAIN_GENERATION>`. Same situation as RMS0314, and the same response, because **a check that has only ever passed proves nothing**:
+
+- Eleven worked examples in `validate.test.ts`, in both directions. Every negative case is a specific false positive — `effect_amount` outside `<PLAYER_SETUP>`, `create_player_lands` in `<PLAYER_SETUP>` — rather than a general "does not overfire" gesture.
+- **Six mutants, all confirmed red then restored by hash.** Deleting the `sectionLocked` gate (2 red), deleting the suppression (1), deleting the raw-node marker (1), dropping the unknown-section exemption (1), inverting the match test (7). The sixth is the one worth naming: **deleting `"sectionLocked": true` from `create_terrain` in `language.json` turns four tests red**, which is the proof the check reads the data rather than a name list, and the only mutant that could have caught a check that merely looked data-driven.
+
+### Three silences, each a refusal to claim past the measurement
+
+- **The preamble.** What was measured is a locked command in the WRONG section, never one in NO section. `currentSection` is undefined while the preamble is walked and the check returns.
+- **An unrecognised section header.** What the engine does with a header it does not know is not something anyone has run.
+- **Anything after a degraded region in the same section.** This is Sec.8's wrong-section suppression rule, revived here because RMS0304 was its only consumer and the spec says to revive them together.
+
+The suppression rule is not hypothetical. The parser's recovery scan **absorbs a section header outright** when only conditionals are open (`parser.ts`: "Only conditionals open → legal spanning; absorb the header"), so every item after a degraded region can be attributed to the wrong section — and warning on those would report the parser's own recovery as the author's mistake, on exactly the broken files where an extra warning is least readable. It is deliberately triggered by **any** `RawNode` rather than only the reasons that can swallow a header: the two directions are not symmetric, since over-suppressing loses a true positive in an already-broken file while under-suppressing manufactures warnings out of recovery, and this check's entire history is false positives.
+
+Two tests pin the boundary in both directions — silent after a degraded region, and firing again at the next real header, which by construction cannot have been swallowed.
+
+### Threading, and one small structural note
+
+`validate.ts` gained `currentSection` and `sectionAttributionLost` as mutable fields rather than `walkItem` parameters, matching the reasoning already written above `guards`: `walkItem` is an eight-arm discriminated-union switch and only two arms care. The `raw` arm stops being a pure no-op — it still emits nothing, but it now records that section attribution is no longer trustworthy.
+
+`CommandPicker.tsx`'s comment was updated rather than deleted. Its section filter stays advisory, and now for a third reason: the filter reads `section` (documentation) and the diagnostic reads `sectionLocked` (engine), so the two are deliberately different sets rather than one lagging the other.
+
+### Verification
+
+`npm run typecheck`, `npm run lint` (0 errors, 14 pre-existing warnings) and `npm run validate:reference` all clean. Full suite **42 files / 1340 tests** green.
+
+**One thing to re-run rather than trust.** The first full run of the session reported 2 failed / 1334 passed; three subsequent runs were clean, and the file count moved 40 → 41 → 42 across them as a parallel session landed work. The failing run's JSON report was cleaned up before it could be read, so which two failed is unrecoverable. Consistent with the load-dependent flakiness this file already documents, and with a suite being measured while another session writes to it, but it is an unexplained red rather than a diagnosed one.
+
+## 2026-08-10 — `ignore_terrain_restrictions` has two engine rules, and the code had neither
+
+Reported as two preview bugs, one of which was not a bug and one of which was two.
+
+### The report, and what the measurement said
+
+**"Shore fish on Namatjira do not touch beach."** They did not, and the preview was right about the reason and wrong about everything downstream. `AK_Namatjira.rms:4865` writes its one shore-fish command as `terrain_to_place_on DLC_MANGROVESHALLOW` + `ignore_terrain_restrictions`, so the shore rule was lifted deliberately and 232 fish sat on mangrove shallow, 160 of them beside sand. The two control maps whose bug produced the shore rule in the first place were untouched: `QS_Three_Bays_v1.1` 213 of 213 touching beach, `AK_Hourglass_v2.0` 245 of 245. So the shore fix was intact and this map opted out of it.
+
+**Then the map was run in the actual game, and it spawns no shore fish at all.**
+
+### Rule (a): the flag is not a standalone flag
+
+guide:2509 carries a `Requires:` line, `set_place_for_every_player` or `place_on_specific_land_id`, and the engine's answer when neither is present is not "the restrictions apply after all". The command places **nothing**. It has been in the guide the whole time, next to the sentence the code did read (guide:2510, the one that names the override).
+
+This is the third time this file has paid for the same shape. `max_distance_to_other_zones` was inverted for months against a guide line that shouts "Minimum (NOT maximum)" in its own capitals, and `terrain_to_place_on` was lifting the terrain table on a reading nobody had tested. **A guide line that looks like documentation of an attribute is a rule, and an attribute with no test is where they hide.** All three had zero test coverage in either direction at the time they were wrong.
+
+Corpus effect: **47 commands across 11 maps** now place nothing where they used to place objects (Chaotic Strait 16, Three Bays 12, Menindee 9, Vanguard 3, Comeer 2, and one each on five more). Namatjira's shore fish go 232 to 0, which is the number the game gives.
+
+**Two existing tests were asserting the behaviour the engine never had**, both writing the flag standalone and expecting it to work. They were repaired rather than deleted, since their real claims (the flag lifts the table; `terrain_to_place_on` still narrows) are correct and still pinned.
+
+### Rule (b): the shore class is exempt from what the flag lifts
+
+Most objects really do go anywhere under it; guide:2513's own example puts SALMON on grass. Shore fish and box turtles do not. Measured in game: they keep the beach anchor and cannot leave the water, and what the flag buys them is the **shallows**.
+
+So the flag is no longer a gate on the habitat check, it is an argument to it. `habitatMask` returns "unrestricted" for every class except `shore`, which switches to a relaxed band: anything that is not dry land, orthogonally adjacent to a beach. The beach tile itself stays excluded in both modes, because it is dry land and "not on land" is the half the flag does not touch.
+
+**The exception lives inside the mask rather than at the call site**, and that placement is the durable part. A caller holding "if the flag is set, skip the habitat check" is one refactor away from beaching the fish again; a mask that answers "which tiles qualify, given the flag" cannot decay that way.
+
+### The other report: `ONGRID_PLACEHOLDER_NAVAL` on land in Pag
+
+Confirmed against `empires2_x2_p1.dat` directly rather than reasoned about: unit **1546** is `PLACEHOLDER (NAVAL)`, terrain restriction 6, 40 terrains permitted, which `derive_habitat` classes as `amphibious`. Water, shallows, beaches and ice. The preview had it on DESERT, DIRT and forest, 111 of them, each carrying a `second_object FISH_PERCH` onto dry ground.
+
+Two independent gaps, and only one of them is coverage.
+
+1. **`game-constants.json` has 33 object rows**, about 20 with a habitat, so anything else takes `objectHabitat`'s `land` default. That is the extraction's half.
+2. **`objectEntry` matched on name only.** Pag writes `#const ONGRID_PLACEHOLDER_NAVAL 1546`, an author invented name, and **unit 1546 has no `#const` in `random_map.def` at all**, so no amount of completeness in the data file could ever resolve it by name. The id is the only handle that exists.
+
+Measured over the 56 corpus maps: **397 distinct names reach `create_object`, 11 have a habitat row, and 216 are script `#const`s rather than DE names.** The `#const` bucket is the larger half of the gap, so id resolution is not a garnish on the extraction, it is most of the fix.
+
+`objectEntry` now falls back to the symbol table and matches on `constId`, in `resolveTerrainId`'s order and for its reason (built-in name first, since the engine loads `random_map.def` before the script). It resolves nothing the data has no row for, which is the point of separating the halves: this closes the lookup, the extraction closes the coverage. Same lesson as the terrain resolver, one namespace late. **A rule established in one pass is not established in the passes that predate it.**
+
+### RMS0315, and a `Requires:` field for the language data
+
+The engine rule earns a diagnostic, so `AttributeDef` gained `requiresOneOf` and `requiresNote` (schema, TS type and one entry), and `validate()` gained RMS0315 at warning severity. One entry today; a second needs no code change. The bar for adding one is `requiresSection`'s: the guide must state the requirement AND the consequence must be known, which here means measured in game.
+
+**The search is block-WIDE, and the scope runs opposite to the two checks it sits between.** RMS0306/RMS0307 walk direct items only, because descending into branches would false-warn on the most ordinary conditional in RMS. RMS0315 asks "is the partner anywhere at all", and a partner inside an `if` is a partner. It matches on token text rather than a resolved `def`, so an unrecognised attribute still counts as present, which is the positive-resolver rule pointed at its own consequence: this answer *suppresses* a warning. It errs toward the false negative (a partner supplied in only one branch is still a bug on the other paths) and the code says so.
+
+**Corpus: 56 sites across 12 maps**, reported by a new permanent reporter in the RMS0200/0201/0304 family. Unlike RMS0304's expected zero this one has plenty to say, and the clearest find is `AK_Vanguard_v1.2.rms:1508-1510`: three identical `create_object STONE` lines carrying the flag with no partner, directly above four `create_object GOLD` lines of the same shape without it. The author believed the flag was doing something. All three commands place nothing, and nothing in game would ever have told them. The engine's silence is why these survive.
+
+**Attribute to attribute references were never gated.** `validate:reference` checked command to attribute and nothing else, so a typo in `mutexWith` silently stops RMS0307 ever pairing, and a typo in `requiresOneOf` would make RMS0315 fire on every correct use of the attribute, since the partner it looks for cannot be written. Both fields are now checked, and the gate was mutation-tested by introducing the typo (exit 1, naming the field and the bad name) before restoring.
+
+### A reporter that has never printed anything
+
+All three existing measure files, RMS0200, RMS0201 and RMS0304, use `console.log`, and **Vitest 4 intercepts console output under this repo's config, so none of them prints a line and all of them exit 0.** That reads exactly like a check that found nothing. `--disableConsoleIntercept` is required, and it is now written into the new reporter's header and into parser-design.
+
+### Verification
+
+Seven mutants confirmed red one at a time and restored, with `diff` against a pre-mutation copy of `objects.ts` rather than an assumption that the restore was exact: the prerequisite gate disabled, the relaxed shore band collapsed to strict, the relaxed band admitting dry land, the id path removed, RMS0315's branch search disabled, `requiresOneOf` renamed in the data (proving the check is data-driven and not name-driven), and a typo'd partner name against the new reference gate.
+
+`npm run typecheck`, `npm run lint` (0 errors, 14 pre-existing warnings) and `npm run validate:reference` all clean.
+
+### The part that is NOT settled, and the run that settles it
+
+**Namatjira cannot tell apart the two models that both predict its zero**, and this was noticed only after the gate shipped.
+
+- **A, what is implemented.** Requirement unmet, the whole command is voided.
+- **B.** The flag is merely INERT, which is what `preview-design.md:542` already says for this entire attribute family. SHORE_FISH then keeps its shore habitat (open water beside a beach), the command also says `terrain_to_place_on DLC_MANGROVESHALLOW`, a shallow is never open water, the two contradict, and zero fish place for that reason instead.
+
+**There is corpus evidence pointing at B.** `find_closest` carries the identical `Requires:` line at guide:2649 and appears **71 times with no frame attribute** across working maps. If that line voided a command, 71 shipped commands would place nothing — and unlike a decorative fish, missing starting resources is something an author would notice. So the Requires line alone does not appear to void a command, and if `ignore_terrain_restrictions` does, it is special rather than an instance of a general rule.
+
+The difference is not cosmetic: A empties 47 corpus commands, B leaves most of them placing normally.
+
+`tools/scenario-probe/rmstest/RMSTEST_42_ignoreterrain_frameless.rms` is written and unrun. Three frameless commands on a half-land half-water map — a flagged SALMON, an unflagged SALMON control, and a flagged OLIVE_TREE — where A gives 30 objects, B gives 60 with the fish confined to water, and "the flag works frameless after all" gives 60 with fish on grass. **If it comes back B, revert the whole-command gate to a flag-is-inert model, re-scope RMS0315 from "this command places nothing" to "this attribute does nothing here", and strike the 47-command figure above rather than leaving it to age.**

@@ -149,14 +149,78 @@ describe("objectHabitat (the terrain table's coarse stand-in)", () => {
     expect(objectHabitat("SHORE_FISH", constants)).toBe("shore");
   });
 
+  it("resolves a script #const to its row BY ID, the way resolveTerrainId does for terrain", () => {
+    // 216 of the 397 distinct object names the corpus writes are the author's
+    // own `#const`s, not DE names, so a name-only lookup misses most of the
+    // roster no matter how complete the data file gets. `AD4 - Pag - v1.2.rms`
+    // writes `#const ONGRID_PLACEHOLDER_NAVAL 1546` and unit 1546 has no
+    // `#const` in random_map.def at all — the id is the only handle there is.
+    const symbols = new Map([
+      ["MY_OWN_FISH", 457], // TUNA
+      ["MY_OWN_GOLD", 66], // GOLD
+    ]);
+    expect(objectHabitat("MY_OWN_FISH", constants)).toBe("land"); // no symbols: the unknown-object fallback
+    expect(objectHabitat("MY_OWN_FISH", constants, symbols)).toBe("water");
+    // Every lookup in the stage takes the same path, not just habitat.
+    expect(objectCategory("MY_OWN_GOLD", constants, symbols)).toBe("resource-gold");
+    expect(requiresGaiaOnly("MY_OWN_GOLD", constants, symbols)).toBe(true);
+  });
+
+  it("a built-in name still wins over a script #const of the same name", () => {
+    // `resolveTerrainId`'s order and its reason: the engine loads
+    // random_map.def before the script and `#const` is first-definition-wins,
+    // so a script redefining a built-in name does not take effect in game.
+    const symbols = new Map([["SHORE_FISH", 457]]);
+    expect(objectHabitat("SHORE_FISH", constants, symbols)).toBe("shore");
+  });
+
   it("puts the DE ocean-fish family in the water, where the 'land' fallback used to put it ashore", () => {
     // Six rows added because the fallback's failure is not rare: a script
     // placing a fish on OPEN water has no reason to write
     // `terrain_to_place_on`, so `QS_Three_Bays_v1.1.rms`'s nine bare TUNA
     // commands took the land default and put 77 of 119 tuna on the beach.
-    for (const name of ["TUNA", "SNAPPER", "SALMON", "DORADO", "MARLIN1", "OYSTERS"]) {
+    for (const name of ["TUNA", "SNAPPER", "SALMON", "DORADO"]) {
       expect(objectHabitat(name, constants)).toBe("water");
     }
+    // The great fish and the oysters are a different restriction row and a
+    // different class — see the amphibious test below.
+    for (const name of ["MARLIN1", "OYSTERS"]) {
+      expect(objectHabitat(name, constants)).toBe("amphibious");
+    }
+  });
+
+  it("covers the rest of the family, including the names random_map.def defines twice", () => {
+    // MARLIN2/FISH_PERCH were added once the dat confirmed them; the FISH_*
+    // and GREAT_FISH_* spellings are aliases random_map.def binds to the same
+    // ids, and a script writing one of those used to miss the row and take
+    // the land default. DOLPHIN and PERCH are not DE constants at all — the
+    // rows exist so the written name still resolves to a habitat.
+    // Restriction 19 — open water only.
+    for (const name of ["FISH_PERCH", "FISH_TUNA", "FISH_SNAPPER", "FISH_SALMON", "FISH_DORADO", "PERCH"]) {
+      expect(objectHabitat(name, constants)).toBe("water");
+    }
+    // Restriction 13 — the great fish, which the file's own comments call the
+    // dolphins (`#const MARLIN1 450 /* DOLPHIN1 */`).
+    for (const name of ["MARLIN2", "GREAT_FISH_MARLIN", "GREAT_FISH_MARLIN2", "DOLPHIN"]) {
+      expect(objectHabitat(name, constants)).toBe("amphibious");
+    }
+  });
+
+  it("carries the dat-confirmed ids, and only those", () => {
+    // The six rows shipped earlier the same day with `constId: null` because
+    // the id had not been read. It has now: random_map.def joined against
+    // empires2_x2_p1.dat's unit table. DOLPHIN and PERCH stay null because no
+    // DE constant of that name exists to take an id from — absence of a
+    // number here is a fact about the game, not a gap in the transcription.
+    const byName = new Map(constants.filter((c) => c.category === "object").map((c) => [c.rmsConstant, c.constId]));
+    expect(byName.get("TUNA")).toBe(457);
+    expect(byName.get("FISH_TUNA")).toBe(457); // same unit, second spelling
+    expect(byName.get("MARLIN2")).toBe(451);
+    expect(byName.get("FISH_PERCH")).toBe(53); // the same unit as FISH
+    expect(byName.get("FISH")).toBe(53);
+    expect(byName.get("DLC_BOXTURTLE")).toBe(1141);
+    expect(byName.get("DOLPHIN")).toBeNull();
+    expect(byName.get("PERCH")).toBeNull();
   });
 
   it("groups DLC_BOXTURTLE with SHORE_FISH, which is what the guide's own gloss does", () => {
@@ -212,17 +276,250 @@ describe("terrain restrictions (the engine's terrain table, applied end to end)"
     expect(objects.every((o) => onWater(grid, o))).toBe(true);
   });
 
-  it("holds a shore object to the waterline", () => {
-    const { grid, objects } = placeOnSplitMap(script("SHORE_FISH {\nnumber_of_objects 200\n}\n"));
+  // ---- the shore habitat: OPEN WATER TOUCHING A BEACH ---------------------
+  //
+  // A cross-section built as vertical columns, so "which column did it land
+  // on" is the whole assertion. `columns` is read left to right and repeated
+  // down every row; S6 runs alone, since S1-S5 would repaint the fixture.
+
+  const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
+  const SHALLOW = constants.find((c) => c.rmsConstant === "SHALLOW")!.constId!;
+  const DEEP_WATER = constants.find((c) => c.rmsConstant === "DEEP_WATER")!.constId!;
+
+  function placeOnColumns(source: string, columns: readonly number[], seed = 1) {
+    const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(), seed);
+    const grid = createTileGrid(instantiated.dim, GRASS);
+    for (let y = 0; y < grid.dim; y++) {
+      for (let x = 0; x < grid.dim; x++) {
+        // The last entry fills the rest of the map, so a short cross-section
+        // still describes the whole grid.
+        grid.terrain[y * grid.dim + x] = columns[Math.min(x, columns.length - 1)];
+      }
+    }
+    const result = applyObjects(instantiated, grid, constants, [], seed);
+    return { grid, ...result };
+  }
+
+  it("puts a shore object in the water beside the beach, never on the beach itself", () => {
+    // The bug this replaces: the band was symmetric about the waterline, so it
+    // admitted the sand as readily as the sea. Measured on
+    // `QS_Three_Bays_v1.1.rms`, 130 of 226 shore fish came out beached.
+    const columns = [DEEP_WATER, DEEP_WATER, BEACH, GRASS];
+    const { objects } = placeOnColumns(script("SHORE_FISH {\nnumber_of_objects 200\n}\n"), columns);
     expect(objects.length).toBeGreaterThan(0);
-    // The split runs down x = dim/2, so every placement must sit on one of
-    // the two columns either side of it.
-    const half = grid.dim / 2;
-    for (const o of objects) expect(Math.abs(o.x - (half - 0.5))).toBeLessThanOrEqual(1.5);
+    for (const o of objects) expect(o.x).toBe(1); // the water column touching the beach, and only it
+  });
+
+  it("treats DLC_BOXTURTLE exactly as SHORE_FISH — one family, one rule", () => {
+    const columns = [DEEP_WATER, DEEP_WATER, BEACH, GRASS];
+    const { objects } = placeOnColumns(script("DLC_BOXTURTLE {\nnumber_of_objects 200\n}\n"), columns);
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBe(1);
+  });
+
+  it("does not count a shallow as shore, even when it is the tile touching the beach", () => {
+    // "water terrain, not hybrid" is the point: a shallow is walkable ground
+    // as far as the game is concerned, so the fish goes past it to the water.
+    const columns = [DEEP_WATER, DEEP_WATER, SHALLOW, BEACH, GRASS];
+    const { objects } = placeOnColumns(script("SHORE_FISH {\nnumber_of_objects 200\n}\n"), columns);
+    // The shallow (x=2) sits between the water and the beach, so NOTHING is
+    // open water touching a beach and there is no shore at all.
+    expect(objects).toHaveLength(0);
+  });
+
+  it("finds no shore on a coast whose beach has been painted over", () => {
+    // Stated rather than hidden: the anchor is a beach terrain, not "any land
+    // neighbour". `AD4 - Pag - v1.2.rms` replaces BEACH with DIRT along its
+    // connection paths, and a shore object will not place against that
+    // stretch. What the engine anchors on is one row of its terrain table,
+    // which is Sec.15 item 23's data and not ours yet.
+    const { objects } = placeOnColumns(script("SHORE_FISH {\nnumber_of_objects 200\n}\n"), [DEEP_WATER, DEEP_WATER, GRASS]);
+    expect(objects).toHaveLength(0);
+  });
+
+  it("keeps an ocean fish off the shallows — a fish cannot stand on one", () => {
+    // The dat is explicit: restriction 19, which every ordinary fish carries,
+    // permits 15 terrains and NO shallow among them. Our `water` class used
+    // to include shallows because the water MASK does, which is a different
+    // question.
+    const { objects } = placeOnColumns(script("TUNA {\nnumber_of_objects 200\n}\n"), [DEEP_WATER, SHALLOW, BEACH, GRASS]);
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBe(0); // the open water column, never the shallow
+  });
+
+  it("lets the amphibious family onto the shallows, which is the whole point of the split", () => {
+    // Restrictions 13/3/15 permit 38 terrains including every shallow and
+    // every beach. OYSTERS is guide:4717's own "water and amphibious
+    // terrains" object, so it is the one that names the class.
+    const { objects } = placeOnColumns(script("OYSTERS {\nnumber_of_objects 200\n}\n"), [DEEP_WATER, SHALLOW, BEACH, GRASS]);
+    expect(objects.length).toBeGreaterThan(0);
+    expect(objects.some((o) => o.x === 1)).toBe(true); // reaches the shallow
+    expect(objects.every((o) => o.x <= 2)).toBe(true); // never the dry grass
+  });
+
+  it("a second_object rides the main object's tile, bypassing its OWN habitat", () => {
+    // guide:2211's placeholder idiom, and the reason the rule above does not
+    // break `Menindee_AUS_v2.3.rms`: it writes
+    // `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW ...
+    // second_object FISH }`. The placeholder is unit 647, restriction 0, all
+    // 131 terrains; the fish rides in on its tile. If the second object were
+    // re-checked against its own habitat this would place nothing, and every
+    // pond fish on that map would vanish — which is exactly what a `land`
+    // fallback plus a habitat check would do silently.
+    const source = script("PLACEHOLDER_X {\nterrain_to_place_on SHALLOW\nnumber_of_objects 40\nsecond_object TUNA\n}\n");
+    const { objects } = placeOnColumns(source, [DEEP_WATER, SHALLOW, BEACH, GRASS]);
+    const fish = objects.filter((o) => o.objectRef === "TUNA");
+    expect(fish.length).toBeGreaterThan(0);
+    // On the shallow column, where TUNA's own habitat forbids it outright.
+    for (const o of fish) expect(o.x).toBe(1);
+  });
+
+  it("terrain_to_place_on NARROWS a declared habitat, it does not switch it off", () => {
+    // `AK_Hourglass_v2.0.rms` writes `create_object SHORE_FISH
+    // { terrain_to_place_on WATER number_of_objects 200000 }`. The carve-out
+    // that let `terrain_to_place_on` suppress the habitat check left that with
+    // no shore constraint at all: 788 shore fish over the open sea, down to
+    // 245 hugging the beach once both apply.
+    //
+    // What refutes the carve-out is the placeholder idiom read backwards: if
+    // naming the terrain lifted the terrain table, nobody would need an
+    // unrestricted carrier object to get a fish onto a shallow.
+    const columns = [DEEP_WATER, DEEP_WATER, BEACH, GRASS];
+    const { objects } = placeOnColumns(script("SHORE_FISH {\nterrain_to_place_on DEEP_WATER\nnumber_of_objects 200\n}\n"), columns);
+    expect(objects.length).toBeGreaterThan(0);
+    // DEEP_WATER alone would allow x = 0 and 1; shore alone would allow only
+    // x = 1. Both together is x = 1, and that is the whole assertion.
+    for (const o of objects) expect(o.x).toBe(1);
+  });
+
+  it("a contradiction between the two places nothing rather than picking one", () => {
+    // SHORE_FISH cannot be on GRASS, and an author saying so does not make it
+    // possible — `ignore_terrain_restrictions` is the documented override
+    // (guide:2510) and this command does not use it.
+    const { objects } = placeOnColumns(script("SHORE_FISH {\nterrain_to_place_on GRASS\nnumber_of_objects 200\n}\n"), [DEEP_WATER, DEEP_WATER, BEACH, GRASS]);
+    expect(objects).toHaveLength(0);
+  });
+
+  it("but an UNDECLARED habitat still defers to terrain_to_place_on", () => {
+    // The carve-out survives for exactly the case it was written for. The
+    // reference data covers a few dozen objects of several hundred, so an
+    // unknown one falls back to `land`; narrowing by that guess would place
+    // nothing and read as the object failing. This is what keeps
+    // `Menindee_AUS_v2.3.rms`'s FISH_PLACEHOLDER on its shallows — measured:
+    // that map's object count is byte-identical across this change.
+    expect(objectHabitat("PLACEHOLDER_X", constants)).toBe("land"); // the guess
+    const { objects } = placeOnColumns(script("PLACEHOLDER_X {\nterrain_to_place_on SHALLOW\nnumber_of_objects 40\n}\n"), [DEEP_WATER, SHALLOW, BEACH, GRASS]);
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBe(1); // on the shallow, against a `land` habitat
+  });
+
+  // ---- ignore_terrain_restrictions: what it lifts, and what it does not ---
+  //
+  // Measured in game 2026-08-10. Two rules, and the second is the one nobody
+  // would guess from the attribute's name. Every fixture here carries
+  // `place_on_specific_land_id -11` because of the FIRST rule (guide:2509's
+  // Requires line) — without a partner attribute the command places nothing at
+  // all, so a test of the second rule written without one would pass for the
+  // wrong reason. -11 is "a random position on the map" (guide:2288), which
+  // needs no land to exist.
+
+  it("lets the shore class onto the shallows, which is all it lets them onto", () => {
+    // The same fixture as the shallow test above, where the strict rule finds
+    // no shore at all: the shallow at x = 1 separates the open water from the
+    // beach. Under the flag the shallow itself becomes placeable, and nothing
+    // else does — not the open water at x = 0 (it touches no beach), not the
+    // beach at x = 2, not the grass at x = 3.
+    const columns = [DEEP_WATER, SHALLOW, BEACH, GRASS];
+    const body = "SHORE_FISH {\nnumber_of_objects 200\nplace_on_specific_land_id -11\n";
+    expect(placeOnColumns(script(body + "}\n"), columns).objects).toHaveLength(0);
+    const { objects } = placeOnColumns(script(body + "ignore_terrain_restrictions\n}\n"), columns);
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBe(1);
+  });
+
+  it("does NOT put a shore object on dry land, however the flag is written", () => {
+    // The half that separates this class from every other object. guide:2513's
+    // own example puts SALMON on grass under this flag; a shore fish or a box
+    // turtle still needs a beach beside it and still cannot leave the water.
+    const columns = [DEEP_WATER, DEEP_WATER, BEACH, GRASS];
+    const { objects } = placeOnColumns(
+      script("DLC_BOXTURTLE {\nnumber_of_objects 200\nplace_on_specific_land_id -11\nignore_terrain_restrictions\n}\n"),
+      columns,
+    );
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBe(1); // never the beach at 2, never the grass at 3
+  });
+
+  it("but every other habitat really is lifted — guide:2513's salmon on grass", () => {
+    // The control that keeps the shore exception from quietly becoming a
+    // general one: TUNA is `water`, the map is all grass, and the flag is the
+    // whole reason it places.
+    const body = "TUNA {\nnumber_of_objects 50\nplace_on_specific_land_id -11\n";
+    expect(placeOnColumns(script(body + "}\n"), [GRASS]).objects).toHaveLength(0);
+    expect(placeOnColumns(script(body + "ignore_terrain_restrictions\n}\n"), [GRASS]).objects.length).toBeGreaterThan(0);
+  });
+
+  // ---- max_distance_to_other_zones: a MINIMUM, despite the name ----------
+  //
+  // guide:2527 in its own capitals: "Minimum (NOT maximum) distance, in tiles,
+  // that objects will stay away from terrains that they are restricted from
+  // being placed on", and guide:2528's example is "deep fish away from
+  // beaches". It shipped as a maximum — the reading the name invites, and the
+  // reason the guide shouts — with NO test of any kind, which is how an
+  // inverted comparison survives review.
+
+  it("pushes an object AWAY from restricted terrain, not towards it", () => {
+    // Grass at x = 0 and 1, open water everywhere else, so a water tile's
+    // 4-connected distance to land is x - 1. d = 3 therefore means x >= 4.
+    // Under the old maximum reading the very same command allowed x = 2..4,
+    // which is the opposite band and shares only one column with this one —
+    // so an assertion on the minimum x cannot pass under both.
+    const { objects } = placeOnColumns(
+      script("TUNA {\nnumber_of_objects 300\nmax_distance_to_other_zones 3\n}\n"),
+      [GRASS, GRASS, DEEP_WATER],
+    );
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBeGreaterThanOrEqual(4);
+  });
+
+  it("is vacuously satisfied when the map holds no restricted terrain at all", () => {
+    // The second half of the same inversion, and the half that fails loudest:
+    // the old code required `dist !== UNREACHABLE`, so on an all-water map —
+    // where nothing is restricted and the constraint cannot bind — it placed
+    // ZERO fish rather than all of them.
+    const { objects } = placeOnColumns(
+      script("TUNA {\nnumber_of_objects 300\nmax_distance_to_other_zones 5\n}\n"),
+      [DEEP_WATER],
+    );
+    expect(objects.length).toBeGreaterThan(0);
+  });
+
+  it("a distance of 0 is a no-op rather than a filter", () => {
+    const withZero = placeOnColumns(
+      script("TUNA {\nnumber_of_objects 300\nmax_distance_to_other_zones 0\n}\n"),
+      [GRASS, GRASS, DEEP_WATER],
+    );
+    const without = placeOnColumns(script("TUNA {\nnumber_of_objects 300\n}\n"), [GRASS, GRASS, DEEP_WATER]);
+    expect(withZero.objects.length).toBe(without.objects.length);
+  });
+
+  it("an ocean fish takes the whole sea, not just its edge", () => {
+    // The distinction between the two water habitats, in one assertion: TUNA
+    // is `water` and reaches the open sea; SHORE_FISH is `shore` and does not
+    // leave the beach's own column.
+    const columns = [DEEP_WATER, DEEP_WATER, DEEP_WATER, BEACH, GRASS];
+    const { objects } = placeOnColumns(script("TUNA {\nnumber_of_objects 200\n}\n"), columns);
+    expect(objects.length).toBeGreaterThan(0);
+    expect(objects.every((o) => o.x <= 2)).toBe(true); // never the beach or the grass
+    expect(objects.some((o) => o.x < 2)).toBe(true); // and not confined to the shore column
   });
 
   it("lets ignore_terrain_restrictions through, which is the documented opt-out", () => {
-    const { grid, objects } = placeOnSplitMap(script("OLIVE_TREE {\nnumber_of_objects 200\nignore_terrain_restrictions\n}\n"));
+    // `place_on_specific_land_id -11` is not decoration: guide:2509's Requires
+    // line means the flag does nothing on its own, and this fixture used to
+    // omit it — asserting a behaviour the engine never had. See the
+    // attributePrerequisite tests.
+    const { grid, objects } = placeOnSplitMap(script("OLIVE_TREE {\nnumber_of_objects 200\nplace_on_specific_land_id -11\nignore_terrain_restrictions\n}\n"));
     expect(objects.some((o) => onWater(grid, o))).toBe(true);
   });
 
@@ -232,7 +529,7 @@ describe("terrain restrictions (the engine's terrain table, applied end to end)"
     // `AK_Six_Points_v1.4.rms` got 11 DLC_ANIMALSKELETONs into open water
     // from a command that says `terrain_to_place_on DIRT`.
     const { grid, objects } = placeOnSplitMap(
-      script("OLIVE_TREE {\nnumber_of_objects 200\nterrain_to_place_on WATER\nignore_terrain_restrictions\n}\n"),
+      script("OLIVE_TREE {\nnumber_of_objects 200\nterrain_to_place_on WATER\nplace_on_specific_land_id -11\nignore_terrain_restrictions\n}\n"),
     );
     expect(objects.length).toBeGreaterThan(50);
     // The flag let it onto water, and terrain_to_place_on kept it there.
@@ -380,6 +677,34 @@ describe("applyObjects: FailureBucket instrumentation", () => {
     const report = reports.find((r) => r.stage === "S6");
     expect(report?.failures.some((f) => f.bucket === "gaiaOnlyRequired")).toBe(false);
     expect(report?.placed).toBeGreaterThan(0);
+  });
+
+  it("attributePrerequisite: ignore_terrain_restrictions with neither partner attribute places nothing", () => {
+    // guide:2509's Requires line, confirmed in game 2026-08-10 on
+    // `AK_Namatjira.rms` — whose one shore-fish command is exactly this shape,
+    // and which spawns no shore fish at all while this preview drew 232.
+    const { reports, objects } = bare("<OBJECTS_GENERATION>\ncreate_object HOUSE { number_of_objects 10 ignore_terrain_restrictions }");
+    expect(reports[0].failures[0].bucket).toBe("attributePrerequisite");
+    expect(reports[0].placed).toBe(0);
+    expect(objects).toHaveLength(0);
+  });
+
+  it("no attributePrerequisite failure once set_place_for_every_player is added", () => {
+    const source =
+      "<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n<OBJECTS_GENERATION>\ncreate_object HOUSE { set_place_for_every_player number_of_objects 1 ignore_terrain_restrictions }";
+    const { reports } = place(source, 1, { playerCount: 2 });
+    const report = reports.find((r) => r.stage === "S6");
+    expect(report?.failures.some((f) => f.bucket === "attributePrerequisite")).toBe(false);
+    expect(report?.placed).toBeGreaterThan(0);
+  });
+
+  it("place_on_specific_land_id -11 satisfies the requirement even though it references no land", () => {
+    // The reason the gate reads attribute NAMES rather than the resolved frame
+    // kind: -11 is "a random position on the map" and resolves to the frameless
+    // kind, but the author did write the attribute the requirement names.
+    const { reports } = bare("<OBJECTS_GENERATION>\ncreate_object HOUSE { number_of_objects 10 place_on_specific_land_id -11 ignore_terrain_restrictions }");
+    expect(reports[0].failures.some((f) => f.bucket === "attributePrerequisite")).toBe(false);
+    expect(reports[0].placed).toBeGreaterThan(0);
   });
 
   it("minExceedsMax: a deterministic zero, checked before any candidate work", () => {

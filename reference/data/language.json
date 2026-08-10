@@ -1558,6 +1558,7 @@
     {
       "name": "create_terrain",
       "section": "TERRAIN_GENERATION",
+      "sectionLocked": true,
       "kind": "block",
       "description": "Paints patches of a terrain type onto the map.",
       "arguments": [
@@ -1584,7 +1585,7 @@
         "height_limits"
       ],
       "verified": true,
-      "notes": "Command itself and the attributes base_terrain/land_percent/number_of_clumps/height_limits are confirmed via a real working example in the source guide: create_terrain DESERT { base_terrain GRASS  land_percent 100  number_of_clumps 9320  height_limits 1 7 }. The rest of this attribute list is name-only (see the attributes[] entries)."
+      "notes": "Command itself and the attributes base_terrain/land_percent/number_of_clumps/height_limits are confirmed via a real working example in the source guide: create_terrain DESERT { base_terrain GRASS  land_percent 100  number_of_clumps 9320  height_limits 1 7 }. The rest of this attribute list is name-only (see the attributes[] entries). sectionLocked measured in-game 2026-08-04 by RMSTEST_33a: create_terrain SNOW placed in <OBJECTS_GENERATION>, three runs on a 200 map, produced zero SNOW (40000/40000 base terrain) while the script's own base_terrain GRASS applied normally — so the script ran and this one command was discarded."
     },
     {
       "name": "accumulate_connections",
@@ -1738,6 +1739,7 @@
     {
       "name": "create_object",
       "section": "OBJECTS_GENERATION",
+      "sectionLocked": true,
       "kind": "block",
       "description": "Places objects (resources, units, buildings) on the map, either bare (create_object GOLD) or with a block of placement-constraining attributes.",
       "arguments": [
@@ -1796,7 +1798,7 @@
         "building_architecture"
       ],
       "verified": true,
-      "notes": "Command confirmed via two real working examples in the source guide: bare `create_object MONUMENT` and blocked `create_object GOLD { place_on_specific_land_id 13 }`. Most of the attribute list beyond place_on_specific_land_id is name-only — see individual attributes[] entries."
+      "notes": "Command confirmed via two real working examples in the source guide: bare `create_object MONUMENT` and blocked `create_object GOLD { place_on_specific_land_id 13 }`. Most of the attribute list beyond place_on_specific_land_id is name-only — see individual attributes[] entries. sectionLocked measured in-game 2026-08-04 by RMSTEST_33b: create_object GOLD placed in <TERRAIN_GENERATION>, three runs on a 200 map, produced zero GOLD while the script's own base_terrain GRASS applied normally — so the script ran and this one command was discarded."
     }
   ],
   "attributes": [
@@ -2211,9 +2213,11 @@
     },
     {
       "name": "ignore_terrain_restrictions",
-      "description": "Bypasses normal terrain-placement rules for this object.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Bypasses normal terrain-placement rules for this object. Only works alongside set_place_for_every_player or place_on_specific_land_id.",
+      "requiresOneOf": ["set_place_for_every_player", "place_on_specific_land_id"],
+      "requiresNote": "Without one of them the engine places nothing at all from this command — not the object on its normal terrain, nothing.",
+      "verified": true,
+      "notes": "The requirement is guide:2509's own \"Requires:\" line and it was confirmed in game 2026-08-10: AK_Namatjira.rms's single create_object SHORE_FISH carries the flag with neither partner and spawns no shore fish whatsoever. The flag also does not lift everything it appears to — shore fish and box turtles keep their beach anchor under it and only gain the shallows (same measurement), which is modelled in src/preview/generator/objects.ts rather than here."
     },
     {
       "name": "land_conformity",

@@ -47,6 +47,7 @@ import type {
   Item,
   ParseResult,
   RandomNode,
+  SectionNode,
   SymbolInfo,
   Token,
 } from "./types";
@@ -135,11 +136,32 @@ class Validator {
   // an error hundreds of times per file.
   private readonly disabledDefinitions = new Set<string>();
 
-  // Sec.8's wrong-section suppression rule (ignore everything between a
-  // degraded region that swallowed a section header and the next real header)
-  // is absent along with the RMS0304 check it existed to serve — it has no
-  // other consumer. Reviving one means reviving both, plus threading the
-  // enclosing SectionNode back through the walk below.
+  // The section currently being walked, or undefined while walking the
+  // preamble. A mutable field rather than a walkItem parameter for the same
+  // reason `guards` below is one: walkItem is an eight-arm discriminated-union
+  // switch and exactly two arms care.
+  //
+  // RMS0304 reports NOTHING for the preamble. That is a deliberate limit and
+  // not an oversight — what RMSTEST_33a/33b measured is a locked command in the
+  // WRONG section, never one in no section at all, and this check does not
+  // claim past its measurement.
+  private currentSection: SectionNode | undefined;
+
+  // Sec.8's wrong-section suppression rule, revived alongside RMS0304 (its
+  // only consumer). A degraded region can SWALLOW a section header — the
+  // parser's recovery scan absorbs one outright when only conditionals are
+  // open (parser.ts, "Only conditionals open → legal spanning; absorb the
+  // header") — and every item after that point is then attributed to the
+  // previous section. Reporting those would be reporting the parser's own
+  // recovery as the author's mistake, and it would do so exactly on the
+  // broken files where a warning is least readable.
+  //
+  // Deliberately triggered by ANY RawNode rather than only the reasons that
+  // can absorb a header. The two directions are not symmetric: over-suppressing
+  // loses a true positive in an already-degraded file, while under-suppressing
+  // invents warnings from a recovery artefact, and this check's whole history
+  // is false positives.
+  private sectionAttributionLost = false;
 
   // RMS0311 is a file-level condition with a line-level span: report the first
   // use of each attribute that's missing its section, not all forty.
@@ -221,8 +243,14 @@ class Validator {
 
     this.walkItems(this.result.script.preamble);
     for (const section of this.result.script.sections) {
+      // Reset per section: "the next real header" in Sec.8's suppression rule
+      // is exactly this loop boundary, since a header the parser DID see is
+      // one that could not have been swallowed.
+      this.currentSection = section;
+      this.sectionAttributionLost = false;
       this.walkItems(section.items);
     }
+    this.currentSection = undefined;
 
     // After the walk, not during: it consumes the execution paths the walk
     // collects, and a path is only known once its whole subtree has been
@@ -544,6 +572,7 @@ class Validator {
     switch (item.kind) {
       case "command":
         this.checkDeprecated(item);
+        this.checkWrongSection(item);
         this.checkArgs(item.args);
         if (item.block) {
           this.checkBlockContents(item.block);
@@ -602,6 +631,11 @@ class Validator {
       case "raw":
         // Opaque by construction (spec Sec.4: a RawNode has no children).
         // The parser already said what it needed to via RMS0110/RMS0107.
+        //
+        // It does have one consequence for this pass: a degraded region may
+        // have eaten a section header, so nothing after it in this section can
+        // be trusted to be in the section it appears to be in.
+        this.sectionAttributionLost = true;
         break;
     }
   }
@@ -612,6 +646,44 @@ class Validator {
   private checkDeprecated(item: CommandNode): void {
     if (!item.def?.deprecated) return;
     this.diagnostics.push(d.deprecatedCommand(this.tokens[item.name], item.def.deprecated));
+  }
+
+  /**
+   * RMS0304 — a command the engine will not run from where it is written.
+   *
+   * **Driven by `CommandDef.sectionLocked`, never by `CommandDef.section`, and
+   * that distinction is the entire check.** `section` records where the guide
+   * DOCUMENTS a command. Enforcing it warned 53 times on the corpus and 52 of
+   * those were `effect_amount` used outside <PLAYER_SETUP> by shipped, working
+   * maps — so at least one command is provably not locked the way its `section`
+   * implies, and a blanket rule rebuilds the false-positive class BUG-002 and
+   * BUG-005 already cost three rounds of work. `sectionLocked` is set only
+   * where the engine has been measured: two commands today, `create_terrain`
+   * (RMSTEST_33a) and `create_object` (RMSTEST_33b), each of which produced
+   * NOTHING from the wrong section across three runs while the rest of the
+   * script ran normally.
+   *
+   * **Expect zero hits on this corpus, and do not read that as the check
+   * failing.** These are expert-written and DE-official maps; nobody ships a
+   * `create_object` in <TERRAIN_GENERATION>. Same situation as RMS0314, and the
+   * same response: the unit tests carry worked examples in both directions,
+   * because a corpus count of zero says nothing about whether a check can fire.
+   *
+   * Three silences, each a refusal to claim past the measurement:
+   * - the preamble (`currentSection === undefined`) — measured is wrong
+   *   section, not no section;
+   * - an unrecognised section name (`known === false`) — what the engine does
+   *   with a header it does not know is not something we have measured;
+   * - anything after a degraded region in the same section — see
+   *   `sectionAttributionLost`.
+   */
+  private checkWrongSection(item: CommandNode): void {
+    if (this.sectionAttributionLost) return;
+    const section = this.currentSection;
+    if (section === undefined || !section.known) return;
+    if (item.def?.sectionLocked !== true) return;
+    if (section.name === item.def.section) return;
+    this.diagnostics.push(d.wrongSection(this.tokens[item.name], item.def.section, section.name));
   }
 
   /** RMS0311 — the one error. Data-driven via AttributeDef.requiresSection. */
@@ -823,6 +895,28 @@ class Validator {
       this.diagnostics.push(d.duplicateAttribute(this.tokens[item.name], this.tokens[previous.name]));
     }
 
+    // RMS0315 — a guide "Requires:" partner that is nowhere in this block.
+    //
+    // **The search is block-WIDE, unlike the two checks above, and the two
+    // scopes are answering opposite questions.** RMS0306/RMS0307 ask "did the
+    // author set this twice", where descending into branches would false-warn
+    // on the most ordinary conditional in RMS (branches are mutually exclusive
+    // at runtime, so `if A x else x endif` sets `x` once). This one asks "is
+    // the partner anywhere at all", and a partner written inside a branch is a
+    // partner. Reporting it would be exactly the false-positive class BUG-002
+    // and BUG-005 cost three rounds each.
+    //
+    // Erring toward the false NEGATIVE is deliberate: a branch that supplies
+    // the partner only sometimes is still a real bug on the other path, and
+    // this check will stay quiet about it. Saying so is the honest version of
+    // a rule whose evidence is an absence.
+    for (const [, node] of firstByName) {
+      const options = node.def?.requiresOneOf;
+      if (!options || options.length === 0) continue;
+      if (options.some((partner) => this.blockDeclaresAttribute(block, partner))) continue;
+      this.diagnostics.push(d.missingRequiredPartner(this.tokens[node.name], options, node.def?.requiresNote));
+    }
+
     const reportedPairs = new Set<string>();
     for (const [name, node] of firstByName) {
       for (const otherName of node.def?.mutexWith ?? []) {
@@ -847,6 +941,26 @@ class Validator {
         );
       }
     }
+  }
+
+  /**
+   * Is `name` written anywhere inside this block, at any branch depth?
+   *
+   * Matches on the TOKEN TEXT rather than on `item.def`, so an attribute the
+   * language data has never heard of still counts as present. That is the
+   * positive-resolver rule pointed at its own consequence: this function's
+   * answer is used to SUPPRESS a warning, so an unrecognised name must not be
+   * read as an absent one.
+   */
+  private blockDeclaresAttribute(block: BlockNode, name: string): boolean {
+    const search = (items: readonly Item[]): boolean =>
+      items.some((item) => {
+        if (item.kind === "attribute") return this.tokens[item.name].text === name;
+        if (item.kind === "if") return item.branches.some((b) => search(b.items));
+        if (item.kind === "random") return search(item.preamble) || item.branches.some((b) => search(b.items));
+        return false;
+      });
+    return search(block.items);
   }
 
   /**

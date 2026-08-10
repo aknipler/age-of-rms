@@ -15,17 +15,22 @@ from pathlib import Path
 
 from extract_constants import (
     ExtractedObject,
+    ExtractedPlacement,
     ExtractedTerrain,
     build_unit_lookup,
     clean_dat_filename,
+    derive_habitat,
     format_constant,
     format_game_constants,
     format_preview_color,
     format_resource_amounts,
+    habitat_note,
     merge_entry,
     merge_terrain_colors,
+    object_constants,
     parse_jasc_palette,
     parse_random_map_def,
+    parse_random_map_def_sections,
     strip_rms_comments,
 )
 
@@ -462,6 +467,237 @@ class TestRoundTripAgainstRepoFile(unittest.TestCase):
         data = json.loads(original)
         reformatted = format_game_constants(data["constants"])
         self.assertEqual(reformatted, original)
+
+
+#: A miniature random_map.def carrying both traps the real file sets: a
+#: commented-out `#const` that is shaped exactly like a section header, and
+#: dashed decoration rules that carry no title and must not reset the section.
+SAMPLE_DEF = """\
+#const AI_FLAG 3
+
+/*------------------------*/
+/*         GAIA           */
+/*------------------------*/
+#const GOLD      66
+#const DEER      65
+/* #const ARCHER    4 */
+#const WOLF      126
+
+/* UNITS */
+#const VILLAGER  83
+#const OCEAN_FISH_CLASS  5
+
+/* EXPORTED FROM THE DATABASE */
+#const OYSTERS   2170
+#const STRING_SOMETHING 21001
+
+/* TERRAIN CONSTANTS */
+#const GRASS     0
+#const WATER     1
+"""
+
+
+class TestParseRandomMapDefSections(unittest.TestCase):
+    def test_splits_on_section_headers(self):
+        sections = parse_random_map_def_sections(SAMPLE_DEF)
+        self.assertEqual(sections["GAIA"], [("GOLD", 66), ("DEER", 65), ("WOLF", 126)])
+        self.assertEqual(sections["UNITS"], [("VILLAGER", 83), ("OCEAN_FISH_CLASS", 5)])
+        self.assertEqual(sections["TERRAIN CONSTANTS"], [("GRASS", 0), ("WATER", 1)])
+
+    def test_content_before_the_first_header_is_kept(self):
+        # Dropping it would silently lose names rather than misfile them, which
+        # is the harder failure to notice.
+        self.assertEqual(parse_random_map_def_sections(SAMPLE_DEF)["(preamble)"], [("AI_FLAG", 3)])
+
+    def test_commented_out_const_is_not_a_section_header(self):
+        # The trap that cut the object namespace from 651 names to 69 while
+        # every name it kept was still correct. ARCHER must not become a
+        # section, and DEER must stay in GAIA rather than falling into one.
+        sections = parse_random_map_def_sections(SAMPLE_DEF)
+        self.assertNotIn("#const ARCHER    4", sections)
+        self.assertEqual([title for title in sections if "ARCHER" in title], [])
+
+    def test_commented_out_const_is_not_a_live_definition(self):
+        names = [name for members in parse_random_map_def_sections(SAMPLE_DEF).values() for name, _ in members]
+        self.assertNotIn("ARCHER", names)
+
+    def test_dashed_rules_do_not_reset_the_section(self):
+        self.assertNotIn("", parse_random_map_def_sections(SAMPLE_DEF))
+        self.assertIn("GAIA", parse_random_map_def_sections(SAMPLE_DEF))
+
+
+class TestObjectConstants(unittest.TestCase):
+    def test_keeps_only_the_object_sections(self):
+        objects = object_constants(SAMPLE_DEF)
+        self.assertEqual(objects, {"GOLD": 66, "DEER": 65, "WOLF": 126, "VILLAGER": 83, "OYSTERS": 2170})
+
+    def test_a_name_after_a_commented_out_const_stays_in_its_section(self):
+        """The 651-to-69 defect, stated as the loss it actually causes.
+
+        Mistaking `/* #const ARCHER 4 */` for a section header does not just
+        invent a section — it moves every name BELOW it out of the object
+        namespace, and the names that survive are all still correct, so the
+        failure is quiet enough to ship.
+        """
+        self.assertIn("WOLF", object_constants(SAMPLE_DEF))
+
+    def test_excludes_terrain_namespace(self):
+        # The whole point of the split: GRASS is id 0 in the TERRAIN namespace
+        # and would otherwise resolve against unit slot 0.
+        self.assertNotIn("GRASS", object_constants(SAMPLE_DEF))
+
+    def test_excludes_class_and_string_ids(self):
+        objects = object_constants(SAMPLE_DEF)
+        self.assertNotIn("OCEAN_FISH_CLASS", objects)
+        self.assertNotIn("STRING_SOMETHING", objects)
+
+
+#: Terrain flags shaped like the real table's four kinds, with the real ids so
+#: a failure reads against the install. `Ice, Navigable` (26) is the one that
+#: matters: hybrid but NOT water, and inside the fish restriction.
+HABITAT_TERRAINS = {
+    0: {"rmsConstant": "GRASS"},
+    10: {"rmsConstant": "DIRT"},
+    63: {"rmsConstant": "Rice Farm"},
+    1: {"rmsConstant": "WATER", "isWater": True},
+    22: {"rmsConstant": "DEEP_WATER", "isWater": True},
+    23: {"rmsConstant": "MED_WATER", "isWater": True},
+    57: {"rmsConstant": "DLC_WATER4", "isWater": True},
+    26: {"rmsConstant": "Ice, Navigable", "isHybrid": True},
+    54: {"rmsConstant": "DLC_MANGROVESHALLOW", "isHybrid": True},
+    4: {"rmsConstant": "SHALLOW", "isWater": True, "isHybrid": True},
+    2: {"rmsConstant": "BEACH", "isBeach": True},
+    37: {"rmsConstant": "ICYSHORE", "isBeach": True},
+}
+
+#: Restriction 19's shape: open water plus navigable ice, no beach, no shallow.
+FISH_ROW = [1, 22, 23, 57, 26]
+#: Restrictions 13/3/15: water, shallows, beaches and the rice farms.
+GREAT_FISH_ROW = [1, 22, 23, 57, 26, 4, 54, 2, 37, 63]
+NO_SIDE = [-1, -1]
+BESIDE_BEACH = [2, 35]
+
+
+class TestDeriveHabitat(unittest.TestCase):
+    def test_fish_row_is_water_not_amphibious(self):
+        """The regression this function was rewritten for.
+
+        The predicate-chain version classified restriction 19 as `amphibious`
+        because ONE of its 15 terrains (26, navigable ice) carries `isHybrid`,
+        which would have put every ordinary fish back on the shallows and
+        undone the 2026-08-08 water/amphibious split.
+        """
+        fit = derive_habitat(FISH_ROW, NO_SIDE, HABITAT_TERRAINS)
+        self.assertEqual(fit.habitat, "water")
+        self.assertEqual(fit.runner_up, "amphibious")
+        self.assertLess(fit.mismatch, fit.runner_up_mismatch)
+
+    def test_great_fish_row_is_amphibious(self):
+        fit = derive_habitat(GREAT_FISH_ROW, NO_SIDE, HABITAT_TERRAINS)
+        self.assertEqual(fit.habitat, "amphibious")
+
+    def test_water_class_is_open_water_exactly_and_excludes_shallows(self):
+        """Pins the class DEFINITION, not just which class ranks first.
+
+        Ranking tests alone survive a `water` that quietly includes the
+        shallows — it still beats `amphibious` on the fish row, just by less —
+        and a `water` that includes shallows is a fish standing on walkable
+        ground, which is the whole thing the 2026-08-08 split established
+        cannot happen. Asserting an EXACT fit against the open-water set is
+        what makes the mismatch number load-bearing rather than decorative.
+        """
+        open_water = [1, 22, 23, 57]
+        fit = derive_habitat(open_water, NO_SIDE, HABITAT_TERRAINS)
+        self.assertEqual(fit.habitat, "water")
+        self.assertEqual(fit.mismatch, 0)
+
+    def test_adding_a_shallow_to_an_open_water_row_stops_it_fitting_water_exactly(self):
+        # The other direction of the same claim: SHALLOW is not in `water`, so
+        # a row containing one cannot fit `water` perfectly.
+        fit = derive_habitat([1, 22, 23, 57, 4], NO_SIDE, HABITAT_TERRAINS)
+        self.assertGreater(fit.mismatch, 0)
+
+    def test_side_terrain_over_a_water_row_is_shore(self):
+        self.assertEqual(derive_habitat(FISH_ROW, BESIDE_BEACH, HABITAT_TERRAINS).habitat, "shore")
+
+    def test_side_terrain_over_a_non_water_row_is_reported_not_applied(self):
+        # The DOCK family (restriction 6): the same "must sit beside a beach"
+        # requirement over an amphibious-shaped row, which no class expresses.
+        fit = derive_habitat(GREAT_FISH_ROW, BESIDE_BEACH, HABITAT_TERRAINS)
+        self.assertEqual(fit.habitat, "amphibious")
+        self.assertTrue(fit.side_terrain_unmodelled)
+
+    def test_water_row_without_a_side_terrain_is_not_shore(self):
+        self.assertFalse(derive_habitat(FISH_ROW, NO_SIDE, HABITAT_TERRAINS).side_terrain_unmodelled)
+
+    def test_every_terrain_permitted_is_any(self):
+        fit = derive_habitat(list(HABITAT_TERRAINS), NO_SIDE, HABITAT_TERRAINS)
+        self.assertEqual(fit.habitat, "any")
+        self.assertEqual(fit.mismatch, 0)
+
+    def test_dry_row_is_land(self):
+        self.assertEqual(derive_habitat([0, 10, 63], NO_SIDE, HABITAT_TERRAINS).habitat, "land")
+
+    def test_mismatch_reports_the_coarseness_rather_than_hiding_it(self):
+        # A land row the class overshoots: the engine permits 2 of the 7
+        # terrains `land` covers, so 5 differ and the answer says so.
+        fit = derive_habitat([0, 10], NO_SIDE, HABITAT_TERRAINS)
+        self.assertEqual(fit.habitat, "land")
+        self.assertEqual(fit.mismatch, 5)
+
+    def test_empty_row_is_unclassified(self):
+        self.assertIsNone(derive_habitat([], NO_SIDE, HABITAT_TERRAINS))
+
+    def test_row_of_unknown_terrains_is_unclassified(self):
+        self.assertIsNone(derive_habitat([9001], NO_SIDE, HABITAT_TERRAINS))
+
+    def test_a_tie_is_unclassified_rather_than_arbitrary(self):
+        # A degenerate table with no hybrid and no beach makes `water` and
+        # `amphibious` the same set, so nothing distinguishes them and picking
+        # one would be a coin flip wearing a measurement's clothes.
+        degenerate = {0: {"rmsConstant": "GRASS"}, 1: {"rmsConstant": "WATER", "isWater": True}}
+        self.assertIsNone(derive_habitat([1], NO_SIDE, degenerate))
+
+    def test_no_terrain_flags_is_unclassified(self):
+        self.assertIsNone(derive_habitat(FISH_ROW, NO_SIDE, {}))
+
+
+class TestHabitatNote(unittest.TestCase):
+    FIT = None
+
+    def setUp(self):
+        self.fit = derive_habitat(FISH_ROW, NO_SIDE, HABITAT_TERRAINS)
+        self.placement = ExtractedPlacement(restriction_id=19, allowed_terrains=FISH_ROW, side_terrains=NO_SIDE)
+
+    def test_records_the_restriction_and_the_fit(self):
+        note = habitat_note("constId 53 confirmed. Extracted 2026-07-30.", self.fit, self.placement, "2026-08-10")
+        self.assertIn("terrain restriction 19", note)
+        self.assertIn("'water'", note)
+        self.assertIn("runner-up amphibious", note)
+
+    def test_preserves_the_extraction_provenance(self):
+        note = habitat_note("constId 53 confirmed. Extracted 2026-07-30.", self.fit, self.placement, "2026-08-10")
+        self.assertTrue(note.startswith("constId 53 confirmed. Extracted 2026-07-30."))
+
+    def test_is_idempotent(self):
+        """Running the habitat pass twice must leave the file byte-identical.
+
+        An appended clause would stack, and the second run's diff would be
+        noise on every object entry — the same failure the round-trip test
+        guards for the file as a whole.
+        """
+        once = habitat_note("constId 53 confirmed.", self.fit, self.placement, "2026-08-10")
+        twice = habitat_note(once, self.fit, self.placement, "2026-08-10")
+        self.assertEqual(once, twice)
+
+    def test_handles_an_entry_with_no_prior_notes(self):
+        note = habitat_note(None, self.fit, self.placement, "2026-08-10")
+        self.assertIn("terrain restriction 19", note)
+
+    def test_flags_an_unmodelled_side_terrain(self):
+        fit = derive_habitat(GREAT_FISH_ROW, BESIDE_BEACH, HABITAT_TERRAINS)
+        placement = ExtractedPlacement(restriction_id=6, allowed_terrains=GREAT_FISH_ROW, side_terrains=BESIDE_BEACH)
+        self.assertIn("placement_side_terrain", habitat_note("", fit, placement, "2026-08-10"))
 
 
 if __name__ == "__main__":

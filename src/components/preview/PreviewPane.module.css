@@ -44,16 +44,63 @@
   cursor: pointer;
 }
 
+/* Deliberately NOT `white-space: nowrap` with an ellipsis, which is what this
+   was. The column is narrow and a tile with a few objects on it always
+   overflowed, so the interesting half of the readout was the half that got
+   cut — and a stacked tile is usually the reason you looked. It wraps now,
+   and the pane grows by a line instead of hiding content. */
 .readout {
   font-size: 0.66rem;
   font-variant-numeric: tabular-nums;
   color: #333;
   min-height: 1em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .readoutHint {
   color: #777;
+}
+
+.readoutHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+/* A selected tile is pinned, and it has to say so — otherwise a readout that
+   stops following the pointer reads as a frozen UI. */
+.readoutPinned {
+  font-weight: 600;
+  color: #7a4a00;
+}
+
+.clearSelection {
+  font-size: 0.62rem;
+  padding: 0 0.3rem;
+  cursor: pointer;
+}
+
+/* Label column sized to its content, value column takes the rest and wraps
+   inside its own cell — so a long object list pushes the readout taller
+   rather than wider, and the labels stay aligned down the left. */
+.readoutGrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.05rem 0.4rem;
+  margin: 0.1rem 0 0;
+}
+
+.readoutLabel {
+  color: #777;
+}
+
+.readoutValue {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The same red the canvas draws the marker triangle in (drawPreview.ts), so
+   the sentence and the glyph read as one thing. */
+.readoutProblem {
+  color: #e23e32;
 }

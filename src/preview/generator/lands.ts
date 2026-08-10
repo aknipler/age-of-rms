@@ -984,6 +984,11 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   // away counts the same as one 150 tiles away — while making a detached seed
   // mean "this land broke apart" rather than "this land also appeared over
   // there". Tracked for confirmation as Sec.15 item 27.
+  //
+  // The radius was necessary and NOT sufficient, measured 2026-08-10: 24 tiles
+  // on a Normal map is further than that origin sits from its own wall, so
+  // seeds still crossed it. `reachableWithinWindow` below is the other half,
+  // and it is the half that closed the item.
   const radius = Math.max(RESERVOIR_MIN_RADIUS, Math.round(dim * RESERVOIR_RADIUS_OF_DIM));
   const minX = Math.max(0, bounds.minX, state.origin.x - radius);
   const maxX = Math.min(dim - 1, bounds.maxX - 1, state.origin.x + radius);
@@ -992,6 +997,12 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   if (minX > maxX || minY > maxY) return;
   const center = dim / 2;
   const crossHalf = CROSS_SHAPE_COEFFICIENT * (dim / 2);
+  // A seed must be somewhere this land could have GROWN to. See
+  // reachableWithinWindow: without this a seed crosses walls the land itself
+  // cannot cross, which is Sec.15 item 27's whole mechanism.
+  const windowWidth = maxX - minX + 1;
+  const reachable = reachableWithinWindow(state, grid, minX, maxX, minY, maxY);
+  if (reachable === undefined) return;
   const seen = new Set<number>();
   const maxAttempts = count * 20;
   for (let attempt = 0; attempt < maxAttempts && state.reservoir.length < count; attempt++) {
@@ -1000,9 +1011,92 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
     if (state.origin.generateMode !== 1 && Math.abs(x - center) > crossHalf && Math.abs(y - center) > crossHalf) continue;
     const idx = tileIndex(grid, x, y);
     if (grid.landId[idx] !== -1 || seen.has(idx)) continue;
+    if (reachable[(y - minY) * windowWidth + (x - minX)] === 0) continue;
     seen.add(idx);
     state.reservoir.push(idx);
   }
+}
+
+/**
+ * The free tiles inside the sampling window that this land could reach on
+ * foot, 4-connected, starting from the tiles it already owns.
+ *
+ * WHY THIS EXISTS — Sec.15 item 27, measured on `AK_Six_Points_v1.4.rms`
+ * 2026-08-10. That map draws a closed ellipse of 120 zero-tile stamps and
+ * floods the inside with `create_land { land_percent 100 }`, and it also lays
+ * four `DLC_MANGROVESHALLOW` lands whose borders confine them to two-row
+ * horizontal strips spanning the full map width. Two of those strips run
+ * straight through the ellipse and, once grown, cut its 14,201-tile interior
+ * into slices. The flood's origin sits in the middle slice.
+ *
+ * Bounding the seed radius to a neighbourhood of the origin (2026-08-07) was
+ * necessary and not sufficient: the radius is `max(12, 0.12·dim)` = 24 tiles
+ * on a Normal map, and the origin at (180, 98) is nearer than that to BOTH
+ * strips and to the ellipse wall. So seeds still landed on the far side of
+ * barriers, and the land's final size was 7,741 / 7,897 / 10,855 across three
+ * seeds — one clean slice, one slice plus a stranded blob, and one that
+ * escaped the ellipse entirely and grew in the open sea. **The seed-dependence
+ * was never in growth. It was in how many seeds happened to jump a wall.**
+ *
+ * WHY IT DOES NOT DISTURB THE CALIBRATION. RMSTEST_38 fitted `reservoirSize`
+ * against a piece-count column measured on an OPEN map, where every tile in
+ * the window is reachable and this filter removes nothing. Fragmentation still
+ * happens for the reason it always did — a seed 20 tiles away is its own blob
+ * whether or not a path exists to it. What the filter removes is not a
+ * fragment, it is a teleport.
+ *
+ * COST is bounded by the window, not by the map: `(2r+1)²` is ~2,400 tiles on
+ * a Normal map, once per land at growth start, against an O(dim²) map of
+ * 40,000. It cannot become the scan that Sec.11 warns about. The mask is a
+ * `Uint8Array` over WINDOW coordinates rather than a `Set` of tile indices,
+ * which is not premature: the first version used a Set and cost 17% of total
+ * corpus generation time, because a Set of numbers boxes and hashes every
+ * member. The typed array brought that to about 3%.
+ *
+ * Returns `undefined` when the land can reach nothing at all, so the caller
+ * can skip sampling entirely rather than spin through its attempt budget.
+ */
+function reachableWithinWindow(
+  state: GrowthLand,
+  grid: TileGrid,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+): Uint8Array | undefined {
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  const reachable = new Uint8Array(width * height);
+  // Seeded from every owned tile inside the window rather than from the origin
+  // point alone: a land whose stamp is a circle of radius 4 has a whole
+  // footprint to leave from, and starting at one tile would make the search
+  // depend on where in its own stamp that tile happened to be.
+  const queue: number[] = [];
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (grid.landId[tileIndex(grid, x, y)] === state.index) queue.push(tileIndex(grid, x, y));
+    }
+  }
+  let found = 0;
+  let head = 0;
+  while (head < queue.length) {
+    const tile = queue[head++];
+    for (const n of fourNeighbors(grid, tile)) {
+      const x = n % grid.dim;
+      const y = (n - x) / grid.dim;
+      if (x < minX || x > maxX || y < minY || y > maxY) continue;
+      const local = (y - minY) * width + (x - minX);
+      if (reachable[local] === 1) continue;
+      // A tile owned by ANOTHER land is a wall, exactly as it is for growth's
+      // own `acceptCandidate`. Owned by this land, it is floor already visited
+      // by the seeding loop above.
+      if (grid.landId[n] !== -1) continue;
+      reachable[local] = 1;
+      found++;
+      queue.push(n);
+    }
+  }
+  return found === 0 ? undefined : reachable;
 }
 
 function drawFromFrontier(state: GrowthLand, rng: Rng): number | undefined {

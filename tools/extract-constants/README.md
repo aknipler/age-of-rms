@@ -101,6 +101,20 @@ reference-data edits. Both modes are idempotent — re-running replaces the
 previous colour sentence in `notes` rather than stacking another copy,
 which is pinned by `test_is_idempotent_across_runs`.
 
+Add `--habitat-only` to refresh **just** the `habitat` field on object entries
+from the engine's own terrain table, leaving every other field alone. Pair it
+with `--dry-run` first — see "The terrain restriction table" below, which is
+where that mode is documented in full.
+
+```bash
+python extract_constants.py --habitat-only --dry-run
+```
+
+The three narrow modes are mutually exclusive, and each one exists for the same
+reason: a full run recomputes `verified` and rewrites `notes` wholesale, which
+is right when re-extracting everything and wrong when adding one field to a
+working tree carrying uncommitted reference-data edits.
+
 ## The two terrain colours, and why there are two
 
 Terrain entries carry `previewColor` and `minimapColor`, and the preview
@@ -136,22 +150,139 @@ npm run validate:reference   # from the repo root
 then review the `git diff` on `reference/data/game-constants.json`
 before committing, same as any other reference-data change.
 
-## Wanted next: the terrain restriction table
+## The terrain restriction table — `--habitat-only`
 
-The highest-value thing this script does not yet read. The dat stores a
-per-object `terrain_restriction_id` indexing a per-restriction row of allowed
-terrains — the "terrain table" — and it decides where every object may stand.
-Three separate approximations in the preview are waiting on it
-(`preview-design.md` Sec.15 item 23): object habitat currently falls back to
-`land` for anything the 16-entry object list does not cover, shore objects are
-one hand-drawn band, and the trees a forest terrain spawns automatically are
-drawn as a tint rather than emitted.
+The dat stores a per-object `terrain_restriction_id` indexing a per-restriction
+row of allowed terrains — the "terrain table" — and it decides where every
+object may stand. It is now read, and the run that reads it writes `habitat`:
 
-genieutils exposes the restrictions alongside the unit and terrain blocks this
-script already walks, so it is an extraction job rather than an engine
-measurement. Emit it as the `habitat` field the schema already declares
-(`land`/`water`/`shore`/`any`) rather than as raw rows; the preview's
-placement model is deliberately coarser than the table.
+```bash
+python extract_constants.py --habitat-only --dry-run   # report only
+python extract_constants.py --habitat-only             # take it
+```
+
+**Run `--dry-run` first and read the report, every time.** The report is the
+point of this mode rather than a courtesy. Every `habitat` in the file was
+assigned by hand on 2026-08-08 from a handful of restriction rows read one at a
+time, so the automated answer can be checked against the hand answer on the
+entries where both exist — and on the first real run it disagreed, correctly
+(see below). A mode that silently overwrote them would have thrown that away.
+
+**The first real run (2026-08-10) agreed with every hand assignment** and added
+13 habitats to entries that had none: nine ordinary fish stayed `water`,
+SHORE_FISH and DLC_BOXTURTLE stayed `shore`, the great fish, OYSTERS and
+TRANSPORT_SHIP stayed `amphibious`. The 13 additions are the land family
+(GOLD/STONE/FORAGE, DEER/BOAR/SHEEP/WOLF, RELIC/VILLAGER/KING, HOUSE and
+TOWN_CENTER) plus MONUMENT, which is `any` because it resolves to unit 826
+`KOH-FLAG`, a King-of-the-Hill marker the engine really does allow anywhere.
+
+Both are worth knowing before reading a diff. Writing `land` where the field
+was previously absent is **not** a no-op even though the generator's fallback
+for an absent habitat is also `land`: it flips `habitatIsData`, which is what
+decides whether an author's `terrain_to_place_on` narrows the habitat or
+replaces it. That is the intended effect — the fallback is a guess and these
+are measured — but it is a behaviour change, not a documentation change.
+
+### It is a distance, not a chain of predicates
+
+The derivation picks **the class whose own terrain set is closest to the
+engine's row**, smallest symmetric difference winning, and the classes are
+transcribed from `objects.ts`'s `habitatMask` rather than paraphrased from the
+schema's prose.
+
+It first shipped as an ordered chain instead — `any`, `shore`, then
+`amphibious` if the row permits any hybrid, else `water` — and the first run
+against a real install refuted it on the exact family this work was about.
+Restriction 19 (every ordinary fish) permits 15 terrains: 14 open water plus
+**26, `Ice, Navigable`**, which carries `isHybrid` in our own terrain table. One
+hybrid tripped the test and made all nine fish rows `amphibious`, undoing the
+2026-08-08 `water`/`amphibious` split and putting fish back on the shallows.
+
+A distance has no threshold to get wrong, and it separates the cases by a
+margin rather than a hair:
+
+| row | objects | permits | best | runner-up |
+|---|---|---|---|---|
+| 19 (ordinary fish) | 12 | 15 | **water**, differs on 1 | amphibious, 18 |
+| 13 / 3 / 15 (great fish, OYSTERS, TRANSPORT_SHIP) | 21 | 38 | **amphibious**, 5 | water, 24 |
+| 0 (unrestricted, incl. FISH_PLACEHOLDER) | 72 | 131 | **any**, 0 | land, 21 |
+| 7 (most land objects) | 177 | 116 | **land**, 8 | any, 15 |
+
+The `mismatch` column is the honest half of the answer, so it is written into
+each entry's `notes` and printed worst-first. **The land family fits worst**:
+restriction 8 (GOLD/STONE/FORAGE) permits 83 of the 110 terrains `land` covers,
+so there are 27 terrains where the engine says no and the preview will still
+place. That is the cost of a five-value vocabulary, not an error in the join,
+and `land` still wins by a wide margin. Whether the classes should be retired
+for the raw 131-terrain mask is the open question; `allowed_terrains` is
+already there for whoever takes it on.
+
+Two more things the mode reports rather than acts on. A row it cannot
+classify — an empty row, or a tie between the best two classes — is **left
+alone**, because picking one of a tie is a coin flip wearing a measurement's
+clothes. And a `placement_side_terrain` that the chosen class cannot express is
+flagged: `shore` is `water` plus "must sit beside a beach", so the rule applies
+cleanly to restriction 19, but the DOCK family carries the same `(2, 35)`
+requirement over an `amphibious`-shaped row (restriction 6) and no class says
+that. No DOCK is in the reference data today, so it reports and changes
+nothing.
+
+The mode is idempotent: it replaces the habitat clause in `notes` rather than
+stacking another copy, pinned by `TestHabitatNote.test_is_idempotent` and
+confirmed against the real file (a second run is byte-identical).
+
+### The namespace split, which was the actual blocker
+
+The dat read is four lines. What stood in the way was that `random_map.def`'s
+ids are **per namespace and collide freely** — id 45 is `DOCK` and also
+`CUSTOM`, `DLC_CRACKED`, `CIVILIZATION_GEORGIANS` and `ATTR_BLAST_DEFENSE`; id
+61 is the dolphin unit and also `DLC_JUNGLEROAD` and `ATTR_CHARGE_EVENT`. 1083
+of the 1114 constants "resolve" to a gaia unit slot and most of those
+resolutions are meaningless, so a flat join would have confidently given
+civilizations a terrain habitat.
+
+The split is in the file itself, in the `/* SECTION */` comments that
+`strip_rms_comments` throws away, so `parse_random_map_def_sections` is
+deliberately line-based rather than built on it. `object_constants` then keeps
+the five object sections and drops `STRING_*` (localisation ids) and `*_CLASS`
+(unit-class ids, a third id space). 1114 flat names become **618 object names**.
+
+Two traps, both hit while writing it and both now pinned by a test:
+
+- **A commented-out `#const` looks exactly like a section header.** The file
+  carries 35 of them (`/* #const ARCHER    4 */`). Treating those as headers
+  shattered `EXPORTED FROM THE DATABASE` into 40 one-line sections and cut the
+  object namespace from 651 names to 69 — a failure quiet enough to ship,
+  because every name it kept was still correct. What it actually does is move
+  every name *below* the comment out of the namespace.
+- **Titles are decorated with dashed rules** (`/*-----*/`), which carry no
+  title and must not reset the section.
+
+The join was then checked the other way, which is the check this blocker
+actually needed: every one of the 31 resolvable object constants points at a
+unit whose own name in the dat matches it — `GOLD`→`GOLDM`, `SHORE_FISH`→
+`FISHS`, `TUNA`→`FISH3`, `OYSTERS`→`Oysters`. A join that resolves is not a
+join that is right.
+
+### The read itself
+
+The join is:
+
+```python
+df   = DatFile.parse(".../resources/_common/dat/empires2_x2_p1.dat")
+unit = df.civs[0].units[object_id]                  # civ 0 is gaia, 2701 slots
+row  = df.terrain_restrictions[unit.terrain_restriction].passable_buildable_dmg_multiplier
+allowed = [tid for tid, v in enumerate(row) if v > 0]   # 131 floats, > 0 = permitted
+```
+
+53 restriction rows × 131 terrains, wrapped as `DatExtraction.placement`.
+Object ids come from `object_constants` rather than `parse_random_map_def`, for
+the namespace reason above. The second field taken in the same pass is
+`unit.placement_side_terrain`, a two-slot "must sit beside" requirement that is
+`(-1, -1)` for almost everything and `(2, 35)` — Beach or Ice — for exactly
+SHORE_FISH, DLC_BOXTURTLE and the DOCK family. That pair of fields is the whole
+of the preview's `shore` habitat. (`unit.placement_terrain`, "must stand ON",
+is unused across the roster.)
 
 Note the table is also mutable at run time from inside a script, via
 `effect_amount SET_ATTRIBUTE <object> ATTR_TERRAIN_ID <n>`, which no static

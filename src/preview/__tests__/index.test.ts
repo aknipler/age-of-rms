@@ -145,6 +145,100 @@ describe("generatePreview: cross-stage note dedup (Sec.10: 'a final pass keeps t
   });
 });
 
+describe("generatePreview: failure marks (Sec.15 item 5)", () => {
+  // The marks are derived in index.ts from the origins and the finished grid,
+  // so this is the only file that can test them — which is also the argument
+  // for deriving them here rather than inside lands.ts.
+
+  it("marks a land the border settings leave nowhere to place", () => {
+    // left 60% and right 60% overlap, so borderBounds yields an empty box and
+    // placeOrigin fails outright rather than exhausting its 100 attempts.
+    const result = run(
+      "<LAND_GENERATION>\ncreate_land { land_percent 10 left_border 60 right_border 60 }\n",
+    );
+    expect(result.failureMarks).toHaveLength(1);
+    expect(result.failureMarks[0].kind).toBe("landAtMapCenter");
+  });
+
+  it("a land covered before it could grow is a NOTE about our model, not a mark against the script", () => {
+    // Land 1 is stamped at the centre and land 2 stamps over it (later wins),
+    // so land 1 owns nothing before growth starts. clumping_factor 100 is what
+    // makes it stay that way: at that setting the detached-seed reservoir is
+    // empty (RMSTEST_38 / Sec.15 item 16), so there is no second candidate
+    // source to grow from and the land is genuinely absent.
+    //
+    // All 15 corpus instances of an empty land have exactly this cause, which
+    // is why it is not a canvas marker: growing only from owned tiles is our
+    // model's rule, and the engine's behaviour here is unmeasured (Sec.15
+    // item 30). Marking it would blame the author for our approximation.
+    const result = run(
+      "<LAND_GENERATION>\n" +
+        "create_land { land_position 50 50 base_size 0 number_of_tiles 20 clumping_factor 100 }\n" +
+        "create_land { land_position 50 50 base_size 8 number_of_tiles 20 clumping_factor 100 }\n",
+    );
+    expect(result.failureMarks).toHaveLength(0);
+    const note = result.notes.find((n) => n.key === "landOverwrittenBeforeGrowth");
+    expect(note?.text).toContain("1 land is missing");
+  });
+
+  it("does NOT count a deliberate zero-tile stamp that got covered", () => {
+    // The same shape as the test above with the target removed. Scripts use
+    // zero-tile lands as walls and markers (AK_Six_Points draws an ellipse out
+    // of 120 of them) and a land that asked for nothing has failed at nothing.
+    const result = run(
+      "<LAND_GENERATION>\n" +
+        "create_land { land_position 50 50 base_size 0 number_of_tiles 0 clumping_factor 100 }\n" +
+        "create_land { land_position 50 50 base_size 8 number_of_tiles 20 clumping_factor 100 }\n",
+    );
+    expect(result.notes.some((n) => n.key === "landOverwrittenBeforeGrowth")).toBe(false);
+  });
+
+  it("does NOT mark an ordinary growth shortfall, which is the normal outcome", () => {
+    // Two lands each declaring the whole map. Both fall far short, both are
+    // drawn at their real size, and neither is a lie — measured over the
+    // corpus, growthShortfall fires 230 times across 35 maps at a median 12%
+    // of target, so marking it would speckle nearly every map. This test is
+    // the guard on that decision: it goes red the moment somebody widens the
+    // marks to the whole bucket.
+    const result = run(
+      "<LAND_GENERATION>\n" +
+        "create_land { land_percent 100 }\n" +
+        "create_land { land_percent 100 }\n",
+    );
+    const shortfalls = result.reports
+      .flatMap((r) => r.failures)
+      .filter((f) => f.bucket === "growthShortfall");
+    expect(shortfalls.length).toBeGreaterThan(0);
+    expect(result.failureMarks).toHaveLength(0);
+  });
+
+  it("marks nothing on a map where every land placed normally", () => {
+    // The floor the whole feature rests on: 46 of the ~52 corpus maps produce
+    // no marks at all, and a marker that appears on a healthy map is worse
+    // than no marker.
+    const result = run(
+      "<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands { base_size 6 land_percent 8 }\n",
+      1,
+      false,
+      { playerCount: 4 },
+    );
+    expect(result.failureMarks).toHaveLength(0);
+  });
+
+  it("every mark sits on the map and points at a real command", () => {
+    const source = readFileSync(join(REPO_ROOT, "test-maps", "AK_Namatjira.rms"), "utf8");
+    const result = run(source, 7, false);
+    for (const mark of result.failureMarks) {
+      expect(mark.x).toBeGreaterThanOrEqual(0);
+      expect(mark.x).toBeLessThan(result.dim);
+      expect(mark.y).toBeGreaterThanOrEqual(0);
+      expect(mark.y).toBeLessThan(result.dim);
+      expect(mark.commandSpan.end).toBeGreaterThan(mark.commandSpan.start);
+      expect(mark.label.length).toBeGreaterThan(0);
+    }
+  }, 15000);
+});
+
 describe("generatePreview: determinism (Sec.13 bedrock)", () => {
   const corpusDir = join(REPO_ROOT, "test-maps");
   const sampleMaps = ["13_Rings_v1.2.rms", "24hr_A Heart Map.rms", "AK_Namatjira.rms"];

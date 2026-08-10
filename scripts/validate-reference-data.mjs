@@ -78,8 +78,27 @@ if (languageData) {
       }
     }
   }
+  // Attribute→attribute references, which were never checked. A typo in one of
+  // these does not fail loudly, it fails as a diagnostic: an unresolvable
+  // `mutexWith` name silently stops RMS0307 ever pairing, and an unresolvable
+  // `requiresOneOf` name makes RMS0315 fire on EVERY correct use of the
+  // attribute, since the partner it is looking for cannot be written.
+  let attrRefsOk = true;
+  for (const attribute of languageData.attributes) {
+    for (const field of ["mutexWith", "requiresOneOf"]) {
+      for (const other of attribute[field] ?? []) {
+        if (attributeNames.has(other)) continue;
+        hadError = true;
+        attrRefsOk = false;
+        console.error(`✗ language.json: attribute "${attribute.name}" ${field} references unknown attribute "${other}"`);
+      }
+    }
+  }
   if (refsOk) {
     console.log("✓ language.json: all command→attribute references resolve");
+  }
+  if (attrRefsOk) {
+    console.log("✓ language.json: all mutexWith / requiresOneOf references resolve");
   }
 
   // Internal consistency: a numeric `default` must satisfy the `min`/`max` the

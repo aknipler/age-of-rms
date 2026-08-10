@@ -90,6 +90,97 @@ def parse_random_map_def(text: str) -> dict[str, int]:
     return result
 
 
+# --- The namespace split (preview-design Sec.15 item 23) -------------------
+#
+# `parse_random_map_def` above flattens the whole file into one name -> id
+# dict, which is right for what it does (looking up an id for a name we
+# already know is a terrain or an object) and WRONG for going the other way.
+# The file's ids are per namespace and collide freely: 45 is `DOCK` and also
+# `CUSTOM`, `CIVILIZATION_GEORGIANS` and `ATTR_BLAST_DEFENSE`; 61 is a dolphin
+# and also `DLC_JUNGLEROAD` and `ATTR_CHARGE_EVENT`. Joined flat against the
+# dat's unit roster, 1083 of 1114 constants "resolve" to a unit slot, and most
+# of those resolutions are meaningless — an extraction built on that would
+# confidently give civilizations a terrain habitat.
+#
+# The split is in the file itself, in the `/* SECTION */` comments that
+# `strip_rms_comments` throws away. Measured on the current DE build: 21
+# headers, and the object sections hold 651 names against 1114 flat.
+
+SECTION_HEADER_RE = re.compile(r"/\*\s*([^*/][^*]*?)\s*\*/")
+
+#: Sections whose `#const`s name a placeable object. `OBJECT TYPES` is a
+#: heading over GAIA/UNITS/BUILDINGS rather than a section with members of its
+#: own; `EXPORTED FROM THE DATABASE` is the long tail (588 live names).
+OBJECT_SECTIONS = frozenset({"OBJECT TYPES", "GAIA", "UNITS", "BUILDINGS", "EXPORTED FROM THE DATABASE"})
+
+
+def parse_random_map_def_sections(text: str) -> dict[str, list[tuple[str, int]]]:
+    """Section title -> [(name, id)], in file order, for LIVE `#const`s only.
+
+    Deliberately line-based rather than built on `strip_rms_comments`: the
+    section headers ARE comments, so stripping first destroys the only
+    structure this function exists to read.
+
+    Two traps, both hit while writing this and both worth the guard:
+
+    1. **A commented-out `#const` looks exactly like a section header.** The
+       file carries 35 of them (`/* #const ARCHER    4 */`) — names moved into
+       the exported block and left behind as documentation. Treating those as
+       headers shattered `EXPORTED FROM THE DATABASE` into 40 one-line
+       "sections" and cut the object namespace from 651 names to 69, which is
+       a failure quiet enough to ship: every name it kept was correct.
+    2. **Titles are decorated with dashed rules** (`/*-----*/` above and below
+       the text). Those carry no title and must not reset the section.
+    """
+    sections: dict[str, list[tuple[str, int]]] = {}
+    current = "(preamble)"
+    for line in text.splitlines():
+        stripped = line.strip()
+        header = SECTION_HEADER_RE.fullmatch(stripped)
+        if header is not None and "#const" not in stripped:
+            title = header.group(1).strip("- ")
+            if title:
+                current = title
+            continue
+        if stripped.startswith("/*"):
+            continue  # a commented-out #const, kept out of the live set
+        match = CONST_RE.search(line)
+        if match is not None:
+            sections.setdefault(current, []).append((match.group(1), int(match.group(2))))
+    return sections
+
+
+def object_constants(text: str) -> dict[str, int]:
+    """The object namespace of `random_map.def`: name -> unit id.
+
+    Two exclusions inside the object sections, each measured rather than
+    assumed:
+
+    - **`STRING_*`** (9 names) are localisation string ids in the 21000s. They
+      sit as a contiguous run at the very end of the exported block, so the
+      name test and the position test agree; the name test is used because a
+      future patch could append after them.
+    - **`*_CLASS`** (24 names: `OCEAN_FISH_CLASS`, `WARSHIP_CLASS`, …) are unit
+      CLASS ids, which are a third id space and small integers, so they resolve
+      to unrelated unit slots. This is the same collision one level down, and
+      leaving them in gave `ARCHERY_CLASS` and `CAVALRY_CLASS` a terrain
+      habitat off unit 0-ish. If a DE patch adds one, the run prints the list
+      so it is visible rather than silent.
+
+    Aliasing is NOT an error and is left alone: 28 ids carry two names each
+    (`WALL`/`STONE_WALL`, `FISH_TUNA`/`TUNA`, `SCOUT`/`SCOUT_CAVALRY`). Two
+    names for one unit is what the file means, and both should resolve.
+    """
+    sections = parse_random_map_def_sections(text)
+    result: dict[str, int] = {}
+    for title in OBJECT_SECTIONS:
+        for name, value in sections.get(title, []):
+            if name.startswith("STRING_") or name.endswith("_CLASS"):
+                continue
+            result[name] = value
+    return result
+
+
 # ---------------------------------------------------------------------------
 # 2. Locating install files
 # ---------------------------------------------------------------------------
@@ -125,6 +216,169 @@ class ExtractedTerrain:
 @dataclass
 class ExtractedObject:
     resource_amounts: dict[str, float]
+
+
+@dataclass
+class ExtractedPlacement:
+    """The engine's own terrain table for one object (Sec.15 item 23).
+
+    `restriction_id` indexes `DatFile.terrain_restrictions`; `allowed_terrains`
+    is that row expanded to the terrain ids it permits. `side_terrains` is
+    `Unit.placement_side_terrain`, a two-slot "must sit BESIDE" requirement
+    that is `(-1, -1)` on all but six entries of the whole object namespace.
+    """
+
+    restriction_id: int
+    allowed_terrains: list[int]
+    side_terrains: list[int]
+
+
+#: Which terrains each coarse habitat class permits, as a predicate over one
+#: terrain entry's own flags. These are TRANSCRIBED from `objects.ts`'s
+#: `habitatMask` and `grid.ts`'s `terrainDepth`, not paraphrased from the
+#: schema's prose, because the whole method below is "which class does the app
+#: implement that comes closest to this row" — a paraphrase would be scoring
+#: against a class the app does not have. Two transcription details that look
+#: like slips and are not:
+#:
+#: - **`land` is `not isWater`, NOT `depth == LAND`.** `objects.ts` says so in
+#:   a comment and gives the reason: the two differ on the three shallows the
+#:   water flag calls dry, and whether a land object may stand on those is
+#:   unmeasured.
+#: - **`water` excludes hybrids even though they carry `isWater`.**
+#:   `terrainDepth` tests `isHybrid` FIRST and returns early, so a shallow is
+#:   never `DEPTH_WATER` however the water flag reads.
+#:
+#: `shore` is deliberately absent: its terrain set IS `water`'s, and what
+#: separates the two is the side-terrain requirement rather than any terrain.
+#: Scoring it here would only produce a tie with `water` on every row.
+HABITAT_CLASS_TERRAINS = {
+    "any": lambda f: True,
+    "land": lambda f: not f.get("isWater"),
+    "water": lambda f: bool(f.get("isWater")) and not f.get("isHybrid"),
+    "amphibious": lambda f: bool(f.get("isWater") or f.get("isHybrid") or f.get("isBeach")),
+}
+
+
+@dataclass
+class HabitatFit:
+    """A derived habitat plus how well it actually fits, which is the half a
+    bare class name would throw away. `mismatch` is the size of the symmetric
+    difference between the engine's row and the class's own terrain set, so 0
+    is exact and larger is coarser; `runner_up` is the next-best class, and the
+    gap between the two is what makes the answer trustworthy or not."""
+
+    habitat: str
+    mismatch: int
+    runner_up: str
+    runner_up_mismatch: int
+    #: True when the row carries a `placement_side_terrain` that the chosen
+    #: class has no way to express — see `derive_habitat`'s side-terrain note.
+    side_terrain_unmodelled: bool = False
+
+
+def derive_habitat(allowed: list[int], side_terrains: list[int], terrain_flags: dict[int, dict]) -> HabitatFit | None:
+    """Map a measured allowed-terrain set onto the five habitat classes the
+    app already consumes, by **choosing the class whose own terrain set is
+    closest to the engine's row** — smallest symmetric difference wins.
+
+    **Why classes rather than the raw 131-terrain mask.** The classes were cut
+    when no table was available, and the honest expectation was that reading
+    the table would retire them. It did not: they have now survived contact
+    with it three times — the `shore` pair, the `water`/`amphibious` split
+    (2026-08-08), and this derivation. Keeping them costs one mapping function
+    and keeps `objects.ts` unchanged; the raw mask stays available in
+    `allowed_terrains` for whoever wants to retire them on evidence.
+
+    **Why a distance and not a chain of predicates.** This function first
+    shipped as an ordered chain — `any`, then `shore`, then `amphibious` on
+    "permits any hybrid", then `water` — and the first real run against the
+    install refuted it on the very family item 23 was written about. Restriction
+    19 (every ordinary fish) permits 15 terrains: 14 open water plus **26, `Ice,
+    Navigable`**, which carries `isHybrid` in our own terrain table. One hybrid
+    in the set tripped the `permits_shallow` test and classified all nine fish
+    rows as `amphibious`, contradicting the hand assignment made on 2026-08-08
+    and undoing that day's whole `water`/`amphibious` split — a fish would have
+    been placeable on a shallow again.
+
+    A distance has no such threshold to get wrong, and it separates the two
+    cases by a wide margin rather than a hair (measured against this install):
+
+    | row       | objects | permits | best        | gap to runner-up |
+    |-----------|---------|---------|-------------|------------------|
+    | 19 fish   | 12      | 15      | water 1     | amphibious 18    |
+    | 13/3/15   | 21      | 38      | amphibious 5| water 24         |
+    | 0         | 72      | 131     | any 0       | land 21          |
+    | 7 (land)  | 177     | 116     | land 8      | any 15           |
+
+    The `mismatch` column is the honest part of the answer and is why it is
+    returned rather than discarded. The land family fits worst — restriction 8
+    (GOLD/STONE/FORAGE) permits 83 of the 110 terrains `land` covers, so 27
+    terrains where the engine says no are terrain the preview will still use.
+    That is a limit of a five-value vocabulary, not an error in this join, and
+    it is `land` by a wide margin regardless (runner-up `any` at 48).
+
+    **Side terrains.** `shore` is `water` plus "must sit beside a beach", so a
+    row that fits `water` AND carries a side terrain is `shore` — which is not
+    an approximation of the table, it IS the table (restriction 19's
+    SHORE_FISH/DLC_BOXTURTLE, the pair the class was cut for). The DOCK family
+    (restriction 6) carries the same `(2, 35)` requirement over an
+    `amphibious`-shaped row, and no class can say that; rather than silently
+    widen it to `shore` or silently drop the requirement, the fit records
+    `side_terrain_unmodelled` and the caller prints it. No DOCK is in the
+    reference data today, so this reports rather than changes anything.
+
+    Returns None only when there is nothing to measure (an empty row) or when
+    the best two classes tie, which is a real answer: a future patch could
+    introduce a shape nobody has seen, and picking one of a tie would hide it.
+    """
+    if not allowed or not terrain_flags:
+        return None
+
+    measured = set(allowed) & set(terrain_flags)
+    if not measured:
+        return None
+
+    scored = sorted(
+        (len(measured ^ {t for t, flags in terrain_flags.items() if permits(flags)}), name)
+        for name, permits in HABITAT_CLASS_TERRAINS.items()
+    )
+    (best_distance, best), (runner_distance, runner) = scored[0], scored[1]
+    if best_distance == runner_distance:
+        return None
+
+    has_side_terrain = any(side >= 0 for side in side_terrains)
+    if has_side_terrain and best == "water":
+        return HabitatFit("shore", best_distance, runner, runner_distance)
+    return HabitatFit(best, best_distance, runner, runner_distance, side_terrain_unmodelled=has_side_terrain)
+
+
+#: Separates an entry's extraction provenance from its habitat provenance in
+#: `notes`. A habitat run must be idempotent — running it twice has to leave the
+#: file byte-identical rather than stacking a second clause — and it must not
+#: touch what the full run wrote, since the two passes confirm different fields
+#: on different days. Splitting on a sentinel gives both.
+HABITAT_NOTE_SEPARATOR = " | habitat: "
+
+
+def habitat_note(existing: str | None, fit: "HabitatFit", placement: "ExtractedPlacement", run_date: str) -> str:
+    """The entry's `notes` with its habitat clause replaced (not appended).
+
+    Records the restriction id and the fit, because a habitat with neither is
+    an assertion: `land` derived from a row the class misses by 27 terrains and
+    `water` derived from a row it misses by 1 are different claims, and the
+    file should not read the same for both. Pure, so it is unit-testable
+    without an install — same reason as `clean_dat_filename`.
+    """
+    head = (existing or "").split(HABITAT_NOTE_SEPARATOR)[0].strip()
+    detail = (
+        f"'{fit.habitat}' derived from terrain restriction {placement.restriction_id} "
+        f"({len(placement.allowed_terrains)} terrains permitted; closest of the coarse classes, "
+        f"differing on {fit.mismatch}; runner-up {fit.runner_up} at {fit.runner_up_mismatch})"
+    )
+    if fit.side_terrain_unmodelled:
+        detail += f"; NOTE placement_side_terrain {placement.side_terrains} is not expressible as a habitat class"
+    return f"{head}{HABITAT_NOTE_SEPARATOR}{detail}. Derived {run_date} by tools/extract-constants --habitat-only."
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +640,29 @@ class DatExtraction:
         if not (0 <= const_id < len(terrains)):
             return None
         return ExtractedTerrain(texture_file=clean_dat_filename(terrains[const_id].name_2))
+
+    def placement(self, const_id: int) -> ExtractedPlacement | None:
+        """The engine's terrain table for one object — Sec.15 item 23's four
+        lines, with the bounds checks a shipped tool needs.
+
+        `passable_buildable_dmg_multiplier` is 131 floats per restriction row,
+        one per terrain, and `> 0` means permitted. The name is the dat's, not
+        ours: the same row does triple duty for pathing, building and damage,
+        and only the first reading is used here.
+        """
+        unit = self._units_by_id.get(const_id)
+        if unit is None:
+            return None
+        restrictions = self.dat.terrain_restrictions
+        rid = unit.terrain_restriction
+        if not (0 <= rid < len(restrictions)):
+            return None
+        row = restrictions[rid].passable_buildable_dmg_multiplier
+        return ExtractedPlacement(
+            restriction_id=rid,
+            allowed_terrains=[i for i, v in enumerate(row) if v > 0],
+            side_terrains=[int(s) for s in unit.placement_side_terrain],
+        )
 
     def object(self, const_id: int) -> ExtractedObject | None:
         unit = self._units_by_id.get(const_id)
@@ -690,6 +967,123 @@ def format_game_constants(constants: list[dict]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 5b. Habitat derivation run (preview-design Sec.15 item 23)
+# ---------------------------------------------------------------------------
+
+
+def run_habitat_only(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Derive `habitat` for every object entry from the engine's own terrain
+    table, and report every disagreement with what the file already says.
+
+    **The report is the point, not the write.** Every habitat in the file
+    today was assigned by hand on 2026-08-08 from a handful of restriction
+    rows read one at a time, and the value of automating it is only partly
+    that it scales — it is mostly that the automated answer can be checked
+    against the hand answer on the entries where both exist. A run that
+    silently overwrote them would throw that away.
+    """
+    import json
+
+    if dat is None:
+        print("Cannot derive habitats without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    def_matches = find_file(install_path, "random_map.def")
+    if not def_matches:
+        print("random_map.def not found.", file=sys.stderr)
+        return 1
+    objects = object_constants(def_matches[0].read_text(encoding="utf-8", errors="replace"))
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    constants = existing["constants"]
+    # Terrain flags come from the file, not the dat: isWater/isHybrid/isBeach
+    # are the community DE terrain table's, and this script has never sourced
+    # them (see CONSTANT_KEY_ORDER's note). The derivation therefore reads OUR
+    # classification of terrain and the ENGINE's classification of objects,
+    # which is the only combination available and is worth saying out loud.
+    terrain_flags = {
+        entry["constId"]: entry
+        for entry in constants
+        if entry.get("category") == "terrain" and entry.get("constId") is not None
+    }
+
+    run_date = date.today().isoformat()
+    unchanged, changed, unresolved, unclassified, loose, side_notes = [], [], [], [], [], []
+    updated: list[dict] = []
+    for entry in constants:
+        if entry.get("category") != "object":
+            updated.append(entry)
+            continue
+        name = entry.get("rmsConstant")
+        const_id = objects.get(name, entry.get("constId"))
+        placement = dat.placement(const_id) if const_id is not None else None
+        if placement is None:
+            unresolved.append(name)
+            updated.append(entry)
+            continue
+        fit = derive_habitat(placement.allowed_terrains, placement.side_terrains, terrain_flags)
+        if fit is None:
+            unclassified.append((name, placement.restriction_id, len(placement.allowed_terrains)))
+            updated.append(entry)
+            continue
+        current = entry.get("habitat")
+        if current == fit.habitat:
+            unchanged.append(name)
+        else:
+            changed.append((name, current, fit, placement.restriction_id))
+        # Every fit worth a second look is collected, whether or not it changed
+        # the value: a habitat that AGREES with the hand assignment and fits its
+        # row badly is exactly as interesting as one that disagrees, and the
+        # first version of this report could not say so.
+        if fit.mismatch > 0:
+            loose.append((name, fit, placement.restriction_id, len(placement.allowed_terrains)))
+        if fit.side_terrain_unmodelled:
+            side_notes.append((name, fit.habitat, placement.side_terrains))
+        replacement = dict(entry)
+        replacement["habitat"] = fit.habitat
+        replacement["notes"] = habitat_note(entry.get("notes"), fit, placement, run_date)
+        updated.append(replacement)
+
+    print(f"\nObject namespace from random_map.def: {len(objects)} names")
+    print(f"Object entries in {output.name}: {sum(1 for c in constants if c.get('category') == 'object')}")
+    print(f"  habitat agrees with the file : {len(unchanged)}")
+    print(f"  habitat CHANGED by this run  : {len(changed)}")
+    for name, current, fit, rid in changed:
+        print(
+            f"      {name:22s} {str(current):12s} -> {fit.habitat:12s} "
+            f"(restriction {rid}, {fit.mismatch} terrains differ, runner-up {fit.runner_up} at {fit.runner_up_mismatch})"
+        )
+    if loose:
+        # Sorted worst-first so the coarsest join is the first thing read. This
+        # is the number that says how much a five-value vocabulary is costing,
+        # and it is a property of the vocabulary rather than a fault to fix.
+        print(f"  approximate fits (worst first): {len(loose)}")
+        for name, fit, rid, permitted in sorted(loose, key=lambda item: -item[1].mismatch):
+            print(
+                f"      {name:22s} {fit.habitat:12s} restriction {rid:3d}: engine permits {permitted:3d}, "
+                f"class differs on {fit.mismatch:3d} (runner-up {fit.runner_up} at {fit.runner_up_mismatch})"
+            )
+    if side_notes:
+        print(f"  side terrain NOT modelled    : {len(side_notes)}")
+        for name, habitat, sides in side_notes:
+            print(f"      {name:22s} {habitat:12s} must sit beside terrain {sides} — no class expresses this")
+    if unclassified:
+        print(f"  no class fits (left alone)   : {len(unclassified)}")
+        for name, rid, count in unclassified:
+            print(f"      {name:22s} restriction {rid}, {count} terrains permitted")
+    if unresolved:
+        print(f"  not in the object namespace  : {len(unresolved)} — {', '.join(str(n) for n in unresolved)}")
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(updated), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # 6. Main
 # ---------------------------------------------------------------------------
 
@@ -702,10 +1096,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Where to write game-constants.json (default: reference/data/game-constants.json)")
     parser.add_argument("--ids-only", action="store_true", help="Skip empires2_x2_p1.dat entirely — only fill in constId from random_map.def. Use this if genieutils-py isn't installed or the .dat parse fails on your DE version.")
     parser.add_argument("--colors-only", action="store_true", help="Update ONLY previewColor on terrain entries, from each terrain's existing deTextureFile. Reads no .dat and rewrites no other field — use this to refresh colours without re-extracting everything.")
+    parser.add_argument("--habitat-only", action="store_true", help="Update ONLY habitat on object entries, derived from the engine's own terrain table in empires2_x2_p1.dat (preview-design Sec.15 item 23). Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
+    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --habitat-only to see the diff before taking it.")
     args = parser.parse_args()
 
-    if args.ids_only and args.colors_only:
-        print("--ids-only and --colors-only are mutually exclusive.", file=sys.stderr)
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.habitat_only)]) > 1:
+        print("--ids-only, --colors-only and --habitat-only are mutually exclusive.", file=sys.stderr)
         return 1
 
     install_path = args.install_path or guess_install_path()
@@ -766,6 +1162,9 @@ def main() -> int:
                 print(f"No {field} resolved (left unchanged): {', '.join(missing)}")
         print("\nNext: run `npm run validate:reference` from the repo root and review the diff before committing.")
         return 0
+
+    if args.habitat_only:
+        return run_habitat_only(install_path, args.output, load_dat(), args.dry_run)
 
     def_matches = find_file(install_path, "random_map.def")
     if not def_matches:

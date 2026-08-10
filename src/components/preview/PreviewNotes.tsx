@@ -102,6 +102,19 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
 
       {openSection === "legend" && (
         <>
+          {/*
+            Shown only when there is at least one on the map. A key entry for a
+            glyph that is not on screen teaches the reader to look for
+            something that is not there.
+          */}
+          {result.failureMarks.length > 0 && (
+            <p className={styles.legendNote}>
+              A red ▲ marks a land the engine could not place where the script asked, so it sits at
+              the map centre instead. Hover the marker for the detail. Lands that merely grew
+              smaller than they asked for carry no marker: that is the usual outcome of land_percent
+              and the map is showing their real size.
+            </p>
+          )}
           <p className={styles.legendNote}>{COLOR_MODE_NOTES[palette.mode]}</p>
           <ul className={styles.legend}>
             {terrainsInUse.map((id) => {

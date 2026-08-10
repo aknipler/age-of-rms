@@ -1,3 +1,16 @@
+/* A non-scrolling frame around the scrolling panel, added purely so the
+   hidden-objects shading has something still to sit on. An inset box-shadow
+   painted on the scroll container itself moves with the content in Chromium,
+   so the band would slide up out of view as soon as the table was scrolled —
+   the overlay has to live on an element that does not scroll. */
+.section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -6,6 +19,34 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+}
+
+/* The 10px band inside the section's edge, shown while any object is unticked
+   in the Preview Obj. List. A pseudo-element rather than a background on
+   .section, because the table scrolls underneath it and the band has to stay
+   on top; `pointer-events: none` keeps it from eating clicks on the row it
+   overlaps. */
+.sectionWarned::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 10px rgba(240, 180, 20, 0.22);
+}
+
+/* Spacing is a margin rather than the panel's own `gap`: this button sits
+   inside the HelpTip wrapper alongside the table, not as a direct child of
+   the flex column, so the column's gap never reaches it. */
+.showAll {
+  margin-bottom: 0.4rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+.hiddenWarning {
+  margin-left: 0.25rem;
+  color: #b8860b;
 }
 
 .radioRow {
@@ -45,4 +86,11 @@
 .note {
   font-size: 0.7rem;
   color: #777;
+}
+
+/* An object the script asked for and the generator never placed. Muted rather
+   than red: it is usually a real restriction doing its job, not an error. */
+.zeroCount {
+  color: #b8860b;
+  font-weight: 600;
 }

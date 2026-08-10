@@ -13,16 +13,18 @@ interface CommandPickerProps {
 // docs/breakdown-design.md Sec.3.2 — a searchable list of every command,
 // filtered to the active tab's section by default with a "show all
 // sections" toggle. This is a pure convenience filter, never a hard
-// restriction: cross-section placement still draws no diagnostic.
+// restriction: cross-section placement draws a diagnostic for two commands and
+// nothing for the other 39.
 //
-// The reason changed even though the behaviour did not. validate() has since
-// shipped, but its wrong-section check (RMS0304) is deliberately unbuilt —
-// `CommandDef.section` records where the guide *documents* a command, not
-// where the engine accepts one, and 52 of the 53 corpus hits were shipped,
-// working maps (docs/build-log.md, validate() tuning table). So the filter
-// stays advisory until an in-game session settles which commands are
-// genuinely section-locked. Each entry shows name + one-line description
-// + a verified/unverified chip.
+// The reason has now changed twice, and the filter has stayed advisory through
+// both. RMS0304 shipped 2026-08-10, but it fires only where `sectionLocked` is
+// set — two commands, `create_terrain` and `create_object`, the only two the
+// engine has been measured on. `CommandDef.section`, which is what this filter
+// reads, records where the guide *documents* a command, and 52 of the 53
+// corpus hits a `section`-driven check produces are shipped, working maps. So
+// the filter is a convenience over documentation and the diagnostic is a claim
+// about the engine, and they are deliberately not the same set. Each entry
+// shows name + one-line description + a verified/unverified chip.
 export function CommandPicker({ defaultSection, onPick, onClose }: CommandPickerProps) {
   const { lang } = useBreakdownContext();
   const [query, setQuery] = useState("");

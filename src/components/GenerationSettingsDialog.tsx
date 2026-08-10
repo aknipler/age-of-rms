@@ -2,14 +2,17 @@ import { useGenerationSettings } from "../generationSettings/GenerationSettingsC
 import { MAP_SIZES, MAX_PLAYER_COUNT, MIN_PLAYER_COUNT } from "../generationSettings/generationSettingsConstants";
 import { HelpTip } from "./HelpTip";
 import { TeamSection } from "./TeamSection";
-import styles from "./PreferencesDialog.module.css";
+import styles from "./dialog.module.css";
 
 interface GenerationSettingsDialogProps {
   onClose: () => void;
 }
 
-// Mirrors PreferencesDialog's shape (overlay + fixed box, reuses its CSS
-// module — same look, no need for a near-duplicate stylesheet). Map
+// Mirrors SettingsDialog's shape (overlay + fixed box, reuses the shared
+// dialog.module.css — same look, no need for a near-duplicate
+// stylesheet). Deliberately still its own dialog rather than a Settings
+// tab: these are properties of the script being written, not preferences
+// about the app, which is why they open from the status bar. Map
 // size + player count feed the status-bar resource totals now
 // (playerCount only) and the approximate
 // preview / consistency checker later (PLAN.md).

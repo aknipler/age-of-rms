@@ -86,6 +86,39 @@
 //    command keeps every command's candidate pool independent of processing
 //    order, which every other stage in this codebase already assumes.
 //
+// IGNORE_TERRAIN_RESTRICTIONS has TWO engine rules this file read wrong until
+// 2026-08-10, both measured in game that day and both stated in the guide the
+// whole time:
+//
+//   a. **It is not a standalone flag.** guide:2509 carries a `Requires:` line
+//      — `set_place_for_every_player` or `place_on_specific_land_id` — and the
+//      engine's answer when neither is present is that the command places
+//      NOTHING. Not "the restrictions apply after all", nothing at all. This
+//      is a whole-command gate, in `applyObjects` beside the `set_gaia_object_only`
+//      one, and it is why `AK_Namatjira.rms` has no shore fish in game while
+//      this preview drew 232.
+//
+//      **UNSETTLED, and the code claims more than the observation.** Namatjira
+//      cannot separate "the command is voided" from "the flag is inert, so the
+//      shore habitat re-applies and contradicts the command's own
+//      `terrain_to_place_on DLC_MANGROVESHALLOW`" — both give zero fish there.
+//      `find_closest` carries the identical `Requires:` line and appears 71
+//      times frameless across working corpus maps, which argues the line alone
+//      does not void a command. RMSTEST_42 is written and unrun; if it comes
+//      back inert, this gate becomes a habitat re-application instead.
+//   b. **The shore class is exempt from what it lifts.** Most objects really
+//      do go anywhere under the flag (guide:2513 puts SALMON on grass). Shore
+//      fish and box turtles do not: they still need a beach beside them and
+//      still cannot stand on dry land, and what the flag buys them is the
+//      SHALLOWS. Modelled in `shoreMask`'s `relaxed` band rather than at the
+//      call site, so "the flag changes which tiles qualify" cannot decay back
+//      into "the flag switches the habitat off".
+//
+// The generalisable half is (a)'s shape, and it is the third time this file
+// has paid for it: a guide line that reads like documentation of an attribute
+// ("Requires:", "Minimum (NOT maximum)") is a RULE, and an attribute nobody
+// has written a test for is where they hide.
+//
 // REQUIRE_PATH: `docs/preview-design.md` describes a numeric `dev` argument
 // ("dev 0 = any path, 1 = path length <= 1.3x straight-line..."), but
 // `language.json`'s own entry declares an optional `pathType` (otherConstant)
@@ -121,6 +154,7 @@ import type {
 } from "./types";
 import { createSubstream, nextInt, type Rng } from "./rng";
 import {
+  DEPTH_LAND,
   DEPTH_WATER,
   UNREACHABLE,
   distanceTransformFromMask,
@@ -192,17 +226,72 @@ export interface ObjectConstant {
   habitat?: string;
 }
 
-function objectEntry(objectRef: string, constants: readonly ObjectConstant[]): ObjectConstant | undefined {
-  return constants.find((c) => c.category === "object" && c.rmsConstant === objectRef);
+/**
+ * An object slot's written value -> its reference-data row. The object-side
+ * sibling of `grid.ts`'s `resolveTerrainId`, and it exists for the same
+ * reason that one does: **a resolver that only accepts one spelling of a name
+ * is a false-negative factory** (CLAUDE.md, established for terrains and not
+ * carried across to objects until now).
+ *
+ * Two forms, in this order, matching `resolveTerrainId`'s and for its reason:
+ *
+ * 1. **A built-in constant** (`create_object SHORE_FISH`), matched by name.
+ * 2. **A script's own `#const`** (`#const ONGRID_PLACEHOLDER_NAVAL 1546` …
+ *    `create_object ONGRID_PLACEHOLDER_NAVAL`), resolved through the symbol
+ *    table to a unit id and then matched by `constId`. LAST, because the
+ *    engine loads `random_map.def` before the script and `#const` is
+ *    first-definition-wins, so a script redefining a built-in name does not
+ *    take effect in game and must not take effect here.
+ *
+ * **This is the larger half of the object-habitat gap, not a tidy-up.**
+ * Measured over the 56 corpus maps: 397 distinct names reach `create_object`,
+ * and 216 of them are script `#const`s rather than DE names. `AD4 - Pag -
+ * v1.2.rms`'s naval placeholder is one, and no amount of completeness in
+ * `game-constants.json` could ever have resolved it by name — unit 1546 has
+ * no `#const` in `random_map.def` at all, so the id is the only handle that
+ * exists.
+ *
+ * It resolves nothing today that the data does not carry a row for, which is
+ * the point of separating the two halves: this closes the lookup, and the
+ * extraction closes the coverage.
+ */
+function objectEntry(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): ObjectConstant | undefined {
+  const byName = constants.find((c) => c.category === "object" && c.rmsConstant === objectRef);
+  if (byName !== undefined) return byName;
+  const id = symbols?.get(objectRef);
+  if (id === undefined) return undefined;
+  return constants.find((c) => c.category === "object" && c.constId === id);
 }
 
 /** Sec.12 item 3's fallback: an object carrying any resourceAmounts is treated as a must-be-gaia resource. Mis-handles SHEEP by design — see file header note 2. */
-export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectConstant[]): boolean {
-  const amounts = objectEntry(objectRef, constants)?.resourceAmounts;
+export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): boolean {
+  const amounts = objectEntry(objectRef, constants, symbols)?.resourceAmounts;
   return amounts !== undefined && Object.keys(amounts).length > 0;
 }
 
-export type Habitat = "land" | "water" | "shore" | "any";
+/**
+ * The five coarse classes the preview maps the engine's terrain table onto.
+ *
+ * **`water` and `amphibious` are two classes, not one, and the split is
+ * measured** — `empires2_x2_p1.dat`'s restriction 19 (every ordinary fish)
+ * permits 15 terrains with NO shallow and NO beach among them, while
+ * restrictions 13, 3 and 15 (the great fish, OYSTERS, TRANSPORT_SHIP) permit
+ * 38 including every shallow and every beach. A fish genuinely cannot stand on
+ * a shallow.
+ *
+ * The corpus looks like it disagrees and does not. `Menindee_AUS_v2.3.rms`
+ * puts fish all over its shallows, and the way it does so is
+ * `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW ...
+ * second_object FISH }` — the placeholder is unit 647, terrain restriction 0,
+ * all 131 terrains permitted, and the fish rides in as the second object.
+ * guide:2211 recommends exactly this as the way to "bypass terrain
+ * restrictions by using an invisible placeholder object as the main object".
+ * **So the maps that appear to place fish on shallows are evidence that they
+ * cannot be placed there directly**, which is the opposite of how it reads,
+ * and it is why the `second_object` path must never re-check the second
+ * object's own habitat. It does not, and a test pins that.
+ */
+export type Habitat = "land" | "water" | "amphibious" | "shore" | "any";
 
 /**
  * Where an object is allowed to stand — the preview's coarse stand-in for the
@@ -248,15 +337,25 @@ export type Habitat = "land" | "water" | "shore" | "any";
  * can read the terrain table out of the dat (see its README), and every entry
  * that gains a real `habitat` stops depending on this fallback.
  */
-export function objectHabitat(objectRef: string, constants: readonly ObjectConstant[]): Habitat {
-  const declared = objectEntry(objectRef, constants)?.habitat;
-  if (declared === "land" || declared === "water" || declared === "shore" || declared === "any") return declared;
+export function objectHabitat(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): Habitat {
+  const declared = objectEntry(objectRef, constants, symbols)?.habitat;
+  if (declared === "land" || declared === "water" || declared === "amphibious" || declared === "shore" || declared === "any") return declared;
   return "land";
 }
 
+/**
+ * Did the habitat above come from the reference DATA, or from the `land`
+ * fallback? The distinction decides one thing and it is worth its own
+ * function: whether an author's `terrain_to_place_on` can switch the habitat
+ * check off (see `buildCandidates` step 3).
+ */
+export function objectHabitatIsDeclared(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): boolean {
+  return objectEntry(objectRef, constants, symbols)?.habitat !== undefined;
+}
+
 /** Sec.12 item 8's fallback (no real category data exists yet): resource sub-class from resourceAmounts, else a generic bucket. */
-export function objectCategory(objectRef: string, constants: readonly ObjectConstant[]): string {
-  const amounts = objectEntry(objectRef, constants)?.resourceAmounts;
+export function objectCategory(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): string {
+  const amounts = objectEntry(objectRef, constants, symbols)?.resourceAmounts;
   if (amounts?.gold) return "resource-gold";
   if (amounts?.stone) return "resource-stone";
   if (amounts?.food) return "resource-food";
@@ -504,7 +603,7 @@ function reachabilityFromPoint(dim: number, startX: number, startY: number, pass
  */
 interface ObjectStageCaches {
   water: Uint8Array;
-  habitatMask(habitat: Habitat, invert: boolean): Uint8Array | undefined;
+  habitatMask(habitat: Habitat, invert: boolean, ignoreRestrictions?: boolean): Uint8Array | undefined;
   forestMask(): Uint8Array;
   forestDistance(): Uint16Array;
   cliffDistance(): Uint16Array;
@@ -525,17 +624,43 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
   let forestDist: Uint16Array | undefined;
   let cliffDist: Uint16Array | undefined;
 
-  function habitatMask(habitat: Habitat, invert: boolean): Uint8Array | undefined {
+  function habitatMask(habitat: Habitat, invert: boolean, ignoreRestrictions = false): Uint8Array | undefined {
     if (habitat === "any") return undefined; // nothing to restrict
-    const key = `${habitat}|${invert}`;
+    // `ignore_terrain_restrictions` lifts the terrain table outright for every
+    // habitat EXCEPT `shore`, which keeps its beach anchor and only gains the
+    // shallows — see `shoreMask`. Returning undefined here rather than at the
+    // call sites keeps the one exception in one place.
+    if (ignoreRestrictions && habitat !== "shore") return undefined;
+    const key = `${habitat}|${invert}|${ignoreRestrictions}`;
     const cached = habitatMasks.get(key);
     if (cached) return cached;
     const out = new Uint8Array(n);
     // "shore" is OPEN WATER TOUCHING A BEACH — see shoreMask.
-    const shoreBand = habitat === "shore" ? shoreMask() : undefined;
+    const shoreBand = habitat === "shore" ? shoreMask(ignoreRestrictions) : undefined;
+    // The other three all read the depth scale, so take it once.
+    const { depth } = shoreBand ? { depth: undefined } : depthMask();
     for (let i = 0; i < n; i++) {
-      const isWater = water[i] !== 0;
-      const permitted = shoreBand ? shoreBand[i] !== 0 : habitat === "water" ? isWater : !isWater;
+      let permitted: boolean;
+      if (shoreBand) {
+        permitted = shoreBand[i] !== 0;
+      } else if (habitat === "water") {
+        // Open water ONLY. A shallow is walkable ground and restriction 19
+        // excludes it outright — see the Habitat docstring for why the corpus
+        // looks like it says otherwise.
+        permitted = depth![i] === DEPTH_WATER;
+      } else if (habitat === "amphibious") {
+        // Water, shallows and the sand between them: anything that is not
+        // plain dry land. Restrictions 13/3/15 permit exactly this shape.
+        permitted = depth![i] !== DEPTH_LAND || isBeachById(grid.terrain[i]);
+      } else {
+        // "land" — deliberately still `!isWater` and NOT `depth === LAND`.
+        // The two differ on the three shallows the water flag calls dry
+        // (DLC_MANGROVESHALLOW, Ice Navigable, DLC_MANGROVEFOREST), and
+        // whether a land object may stand on those is unmeasured. Changing it
+        // here would be a second, unasked-for behaviour change riding along
+        // with the water split.
+        permitted = water[i] === 0;
+      }
       out[i] = (invert ? !permitted : permitted) ? 1 : 0;
     }
     habitatMasks.set(key, out);
@@ -543,6 +668,7 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
   }
 
   let shore: Uint8Array | undefined;
+  let shoreRelaxed: Uint8Array | undefined;
   /**
    * The `shore` habitat: **a tile of OPEN WATER orthogonally adjacent to a
    * beach.** Three exclusions, each of which was wrong in the previous
@@ -568,15 +694,32 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
    *
    * Adjacency is 4-connected, matching the beach rule that put the sand
    * there. A diagonal-only touch is not a shore.
+   *
+   * **`relaxed` is the shore class under `ignore_terrain_restrictions`, and
+   * it widens the water rather than removing the anchor.** Measured in game
+   * 2026-08-10: the flag does NOT let a shore fish or a box turtle onto dry
+   * land the way it lets a salmon onto grass (guide:2513's own example). They
+   * still have to sit beside a beach; what they gain is the shallows. So the
+   * relaxed band is "anything that is not dry land, orthogonally adjacent to
+   * a beach", which is the strict band plus DEPTH_HYBRID.
+   *
+   * The beach tile itself stays excluded in BOTH modes — it is dry land, and
+   * "not on land" is the half of the rule the flag does not touch. This is
+   * why the exception lives inside the mask rather than at the call site: the
+   * flag changes which tiles qualify, it does not switch the habitat off, and
+   * a caller that skipped the mask entirely would beach the fish again.
    */
-  function shoreMask(): Uint8Array {
-    if (shore) return shore;
+  function shoreMask(relaxed: boolean): Uint8Array {
+    const cached = relaxed ? shoreRelaxed : shore;
+    if (cached) return cached;
     const beach = new Uint8Array(n);
     for (let i = 0; i < n; i++) beach[i] = isBeachById(grid.terrain[i]) ? 1 : 0;
     const { depth } = depthMask();
-    shore = new Uint8Array(n);
+    const out = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
-      if (depth[i] !== DEPTH_WATER) continue;
+      // Strict: open water only. Relaxed: open water OR a shallow, never dry
+      // land (and a beach is dry land, so it is excluded by this test too).
+      if (relaxed ? depth[i] === DEPTH_LAND : depth[i] !== DEPTH_WATER) continue;
       const x = i % dim;
       const y = (i - x) / dim;
       if (
@@ -585,10 +728,12 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
         (y > 0 && beach[i - dim] !== 0) ||
         (y < dim - 1 && beach[i + dim] !== 0)
       ) {
-        shore[i] = 1;
+        out[i] = 1;
       }
     }
-    return shore;
+    if (relaxed) shoreRelaxed = out;
+    else shore = out;
+    return out;
   }
 
   // Memoised per DISTINCT terrain id: `isBeachTerrain` scans the constants
@@ -661,6 +806,8 @@ interface CandidateContext {
   constants: readonly ObjectConstant[];
   cmd: InstantiatedCommand;
   habitat: Habitat;
+  /** True when `habitat` came from a reference-data row rather than the `land` fallback. Decides whether `terrain_to_place_on` can switch the habitat check off — see step 3. */
+  habitatIsData: boolean;
   frame: ObjectFrame;
   playerOrigins: readonly LandOrigin[];
   forcePlacement: boolean;
@@ -673,7 +820,7 @@ interface CandidateContext {
 
 /** Returns undefined when `actor_area_to_place_in` names an id with no areas yet (Sec.6.6: "referencing a never-created id -> actorAreaMissing", a command-level miss handled by the caller before this returns predicates). */
 function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] | undefined {
-  const { grid, constants, cmd, habitat, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols } = ctx;
+  const { grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols } = ctx;
   const { dim } = grid;
   const predicates: AttributedPredicate[] = [];
 
@@ -716,15 +863,42 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     // water terrain that a later `terrain_mask 2` command laid down, and the
     // habitat check that would have caught it never ran.
     //
-    // `terrain_to_place_on` IS an exception, and deliberately: it names the
-    // GROUND, which is the same thing habitat is guessing at, and the author
-    // saying so outranks our guess. That matters because `habitat` falls back
-    // to "land" for any object the reference data does not know, and the
-    // normal way to place an unknown water object is exactly
-    // `terrain_to_place_on SHALLOW` (`Menindee_AUS_v2.3.rms` does this for
-    // every one of its fish). A layer carries no such claim about the ground.
-    if (terrainId === undefined && !ignoreTerrain) {
-      const permitted = caches.habitatMask(habitat, false);
+    // **`terrain_to_place_on` was an exception and is not one any more
+    // (corrected 2026-08-08). It does NOT lift the engine's terrain table.**
+    // The old reading was that it "names the GROUND, which is the same thing
+    // habitat is guessing at, so the author saying so outranks our guess",
+    // and it left `AK_Hourglass_v2.0.rms`'s
+    // `create_object SHORE_FISH { terrain_to_place_on WATER … }` with no
+    // shore constraint at all — 200000 shore fish spread over open sea.
+    //
+    // **What refutes it is the placeholder idiom, from the other side.** If
+    // `terrain_to_place_on SHALLOW` were enough to put a fish on a shallow,
+    // `Menindee_AUS_v2.3.rms` would write `create_object FISH
+    // { terrain_to_place_on SHALLOW }` and be done. It instead pays for
+    // `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW …
+    // second_object FISH }`, where the placeholder is unit 647 with terrain
+    // restriction 0. Nobody buys an unrestricted carrier object if naming the
+    // terrain already worked. guide:2510 names the actual override, and it is
+    // `ignore_terrain_restrictions`, which is why that one still gates here.
+    //
+    // **The old carve-out is kept for exactly the case it was written for and
+    // no wider: an UNDECLARED habitat, which is a guess rather than data.**
+    // The reference data covers a few dozen objects of several hundred, so an
+    // unknown water object falls back to `land`, and an author writing
+    // `terrain_to_place_on SHALLOW` for one is the only signal there is —
+    // narrowing by a guessed `land` would place nothing at all and read as
+    // the object failing. Where the habitat came from the dat's own
+    // restriction table, there is no guess to defer to and the two narrow
+    // each other, exactly as `layer_to_place_on` does above.
+    //
+    // **`ignoreTerrain` is no longer a gate here, it is an argument.** It used
+    // to skip this block outright, which is right for every habitat but one:
+    // the shore class keeps its beach anchor under the flag and only gains the
+    // shallows (measured in game 2026-08-10 — see `shoreMask`). `habitatMask`
+    // returns undefined for the cases the flag really does lift, so the shape
+    // of the decision stays in the mask rather than being duplicated here.
+    if (terrainId === undefined || habitatIsData) {
+      const permitted = caches.habitatMask(habitat, false, ignoreTerrain);
       if (permitted !== undefined) predicates.push({ bucket: "terrainAbsent", test: (i) => permitted[i] !== 0 });
     }
   }
@@ -806,15 +980,38 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
       },
     });
   }
-  if (cmd.attributes.has("max_distance_to_other_zones") && (habitat === "land" || habitat === "water")) {
+  if (cmd.attributes.has("max_distance_to_other_zones") && (habitat === "land" || habitat === "water" || habitat === "amphibious")) {
+    // **MINIMUM distance, despite the name — guide:2527 says so in its own
+    // capitals: "Minimum (NOT maximum) distance, in tiles, that objects will
+    // stay away from terrains that they are restricted from being placed on",
+    // and guide:2528's example is "deep fish away from beaches".** This
+    // shipped as `dist <= d`, a maximum, which is the reading the attribute's
+    // NAME invites and the reason the guide shouts. It confined
+    // `QS_Three_Bays_v1.1.rms`'s "tuna everywhere" command
+    // (`max_distance_to_other_zones 4`, no terrain_to_place_on) to a 4-tile
+    // ribbon along the shoreline instead of pushing it 4 tiles off the shore
+    // into open sea — the exact inverse of what the line is for. Both halves
+    // were inverted: UNREACHABLE means no restricted terrain exists anywhere,
+    // so the constraint is vacuously satisfied and must PASS, not fail.
+    //
+    // The two sibling predicates immediately above (`avoid_forest_zone`,
+    // `avoid_cliff_zone`) already carry the correct shape; this one sat
+    // between them reading the other way.
+    //
     // Sec.6.6: "inert for objects with no terrain restrictions at all" -- our
-    // "shore"/"any" fallback IS "no restrictions", so this only fires for
-    // land/water habitat objects, matching the spec's own downgrade of the
-    // unrestricted case to a [tune] note rather than a warning.
+    // "any" fallback IS "no restrictions", so this only fires for the three
+    // classes that name a real region. "shore" is excluded for a DIFFERENT
+    // reason, and it is a judgment call rather than a reading of the guide: a
+    // shore tile is adjacent to a beach by construction and a beach is
+    // restricted terrain for it, so its distance is always 1 and any `d >= 2`
+    // would place nothing at all. Whether the engine resolves that
+    // contradiction by placing nothing or by ignoring the attribute is
+    // unmeasured; no corpus command combines the two, so this picks the
+    // outcome that is not silently empty and flags it here.
     const d = numAttr(cmd, "max_distance_to_other_zones", 0, 0);
     const dist = caches.restrictedDistance(habitat);
     if (dist) {
-      predicates.push({ bucket: "spacingConflict", test: (i) => dist[i] !== UNREACHABLE && dist[i] <= d });
+      predicates.push({ bucket: "spacingConflict", test: (i) => dist[i] === UNREACHABLE || dist[i] >= d });
     }
   }
 
@@ -1059,6 +1256,10 @@ export function applyObjects(
   masterSeed: number,
 ): ObjectsResult {
   const commands = instantiated.sections.get("OBJECTS_GENERATION") ?? [];
+  // The script's own `#const`s. Every reference-data lookup in this stage takes
+  // them, because 216 of the 397 distinct object names the corpus writes are
+  // script constants rather than DE ones — see `objectEntry`.
+  const symbols = instantiated.symbols;
   const { dim } = grid;
   const playerOrigins = origins.filter((o) => o.player !== undefined);
   const players: PlayerMarker[] = playerOrigins.map((o) => ({ player: o.player!, x: o.x, y: o.y }));
@@ -1118,13 +1319,41 @@ export function applyObjects(
     }
 
     const gaiaOnly = cmd.attributes.has("set_gaia_object_only");
-    if (frameKind !== "none" && !isObjectGroup && !gaiaOnly && requiresGaiaOnly(typeName, constants)) {
+    if (frameKind !== "none" && !isObjectGroup && !gaiaOnly && requiresGaiaOnly(typeName, constants, symbols)) {
       pushFailure(failures, {
         bucket: "gaiaOnlyRequired",
         commandSpan: cmd.span,
         stage: "S6",
         entity: typeName,
         detail: `${typeName} must be marked set_gaia_object_only to be placed for every player/on a specific land — without it the engine places nothing.`,
+      });
+      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      continue;
+    }
+
+    // guide:2509's own REQUIRES line, and the engine's answer when it is not
+    // met is not "the restrictions apply after all" — the command places
+    // NOTHING. Confirmed in game 2026-08-10 against `AK_Namatjira.rms`, whose
+    // single `create_object SHORE_FISH` carries the flag with neither partner
+    // attribute: no shore fish spawn on that map at all, where this preview
+    // was drawing 232 of them.
+    //
+    // Read the ATTRIBUTE NAMES, not `frameKind`. `place_on_specific_land_id
+    // -11` is "a random position on the map" (guide:2288) and resolves to the
+    // frameless kind, but the author did write the attribute, which is what
+    // the requirement is stated in terms of. Testing `frameKind !== "none"`
+    // would silently empty those commands too.
+    if (
+      cmd.attributes.has("ignore_terrain_restrictions") &&
+      !cmd.attributes.has("set_place_for_every_player") &&
+      !cmd.attributes.has("place_on_specific_land_id")
+    ) {
+      pushFailure(failures, {
+        bucket: "attributePrerequisite",
+        commandSpan: cmd.span,
+        stage: "S6",
+        entity: typeName,
+        detail: `ignore_terrain_restrictions requires set_place_for_every_player or place_on_specific_land_id in the same command — without one of them the engine places nothing at all (guide:2509).`,
       });
       reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
       continue;
@@ -1194,7 +1423,10 @@ export function applyObjects(
     const groupRadius = optionalNumAttr(cmd, "group_placement_radius", DEFAULT_GROUP_PLACEMENT_RADIUS) ?? DEFAULT_GROUP_PLACEMENT_RADIUS;
     const forcePlacement = cmd.attributes.has("force_placement") && !cmd.attributes.has("set_loose_grouping"); // guide:2739
     const ignoreTerrain = cmd.attributes.has("ignore_terrain_restrictions");
-    const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants); // group commands: candidate filtering can't commit to one member's habitat (see file header)
+    const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants, symbols); // group commands: candidate filtering can't commit to one member's habitat (see file header)
+    // A group's "any" is not data either — there is no single member to have a
+    // row — so it takes the same deference `land` does.
+    const habitatIsData = !isObjectGroup && objectHabitatIsDeclared(typeName, constants, symbols);
     const selectionMode = resolveSelectionMode(cmd);
     const spacingDistance = optionalNumAttr(cmd, "temp_min_distance_group_placement", 0) ?? optionalNumAttr(cmd, "min_distance_group_placement", 0);
 
@@ -1210,7 +1442,7 @@ export function applyObjects(
     const spacing = createSpacingIndex(dim, spacingDistance ?? 0, "chebyshev");
 
     frameLoop: for (const frame of frames) {
-      const predicates = buildCandidatePredicates({ grid, constants, cmd, habitat, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols: instantiated.symbols });
+      const predicates = buildCandidatePredicates({ grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols });
       if (predicates === undefined) {
         const areaAttr = cmd.attributes.get("actor_area_to_place_in")?.[0];
         const id = areaAttr?.args[0]?.value;
@@ -1263,7 +1495,12 @@ export function applyObjects(
       /** guide:2205: every placement of the main object gets one. Same tile, same owner. */
       function emitSecondObject(x: number, y: number, player: number | undefined, groupId: number | undefined): void {
         if (secondObjectRef === undefined) return;
-        objects.push({ objectRef: secondObjectRef, x, y, player, category: objectCategory(secondObjectRef, constants), groupId });
+        // NO habitat check here, and it is load-bearing rather than an
+        // omission: guide:2211's placeholder idiom exists precisely to bypass
+        // the second object's own terrain restriction, and since fish cannot
+        // stand on a shallow this is the ONLY way they reach one. Adding a
+        // check costs `Menindee_AUS_v2.3.rms` every pond fish, silently.
+        objects.push({ objectRef: secondObjectRef, x, y, player, category: objectCategory(secondObjectRef, constants, symbols), groupId });
       }
 
       function commitPlacement(tile: number, groupId: number | undefined): void {
@@ -1272,7 +1509,7 @@ export function applyObjects(
         if (!forcePlacement) grid.occupied[tile] = 1;
         spacing.add(x, y);
         const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
-        objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants), groupId });
+        objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols), groupId });
         placed++;
         emitSecondObject(x, y, frame.player, groupId);
       }
@@ -1310,12 +1547,12 @@ export function applyObjects(
         if (tight) {
           commitPlacement(anchor, groupId);
           if (target > 1) {
-            const filled = floodFillGroup(dim, anchor, target, grid.occupied, ignoreTerrain ? undefined : caches.habitatMask(habitat, false));
+            const filled = floodFillGroup(dim, anchor, target, grid.occupied, caches.habitatMask(habitat, false, ignoreTerrain));
             for (const tile of filled.slice(1)) {
               const x = tile % dim;
               const y = (tile - x) / dim;
               const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
-              objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants), groupId });
+              objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols), groupId });
               placed++;
               emitSecondObject(x, y, frame.player, groupId);
             }
@@ -1367,7 +1604,7 @@ export function applyObjects(
             const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
             if (!forcePlacement) grid.occupied[tile] = 1;
             spacing.add(x, y);
-            objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants), groupId });
+            objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols), groupId });
             placed++;
             filledCount++;
             emitSecondObject(x, y, frame.player, groupId);

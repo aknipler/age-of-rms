@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { usePreviewView } from "./PreviewViewContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import { createTerrainPalette, type TerrainConstant } from "../../preview/render/palette";
 import { usePreviewResultContext } from "../../PreviewResultContext";
+import type { TilePoint } from "../../preview/render/projection";
 import { HelpTip } from "../HelpTip";
-import { PreviewCanvas, type HoveredTile } from "./PreviewCanvas";
-import type { PlacedObject } from "../../preview/generator/types";
+import { ScriptName } from "../ScriptName";
+import { PreviewCanvas } from "./PreviewCanvas";
+import { describeTile, indexMarksByTile, indexObjectsByTile, tallyObjects, type TileInfo } from "./tileInfo";
 import { PreviewNotes } from "./PreviewNotes";
 import styles from "./PreviewPane.module.css";
 
@@ -16,22 +18,83 @@ import styles from "./PreviewPane.module.css";
 const terrainConstants = (gameConstantsRaw as unknown as { constants: TerrainConstant[] }).constants;
 
 /**
- * The objects on one tile, as a readout fragment: `GOLD x4`, or
- * `BOAR (P3), DEER` where they differ.
+ * One labelled line of the tile readout.
  *
- * Grouped by (objectRef, player) rather than listed one per line, because
- * the common case for a stacked tile is several of the same thing — a tight
- * group of four gold, say — and "GOLD, GOLD, GOLD, GOLD" is noise. Player
- * ownership is shown only where an object has one: most of what a script
- * places is Gaia, and "(Gaia)" on every row would bury the cases that matter.
+ * The readout is a two-column grid rather than one run of text: a tile with
+ * four objects on it used to overflow the column and get cut off by an
+ * ellipsis, which hid exactly the interesting cases (a stacked tile is the
+ * one you clicked BECAUSE something odd is on it). Splitting by kind also
+ * means the eye can find "elevation" without reading the terrain first.
  */
-function describeObjects(objects: readonly PlacedObject[]): string {
-  const counts = new Map<string, number>();
-  for (const object of objects) {
-    const label = object.player === undefined ? object.objectRef : `${object.objectRef} (P${object.player})`;
-    counts.set(label, (counts.get(label) ?? 0) + 1);
-  }
-  return [...counts].map(([label, count]) => (count > 1 ? `${label} x${count}` : label)).join(", ");
+function ReadoutRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <>
+      <dt className={styles.readoutLabel}>{label}</dt>
+      <dd className={styles.readoutValue}>{children}</dd>
+    </>
+  );
+}
+
+/**
+ * The objects on one tile: `GOLD ×4`, or `BOAR (P3), DEER` where they differ.
+ *
+ * Player ownership is shown only where an object has one — most of what a
+ * script places is Gaia, and "(Gaia)" on every entry would bury the cases
+ * that matter.
+ */
+function ObjectList({ objects }: { objects: TileInfo["objects"] }) {
+  const tallies = tallyObjects(objects);
+  return (
+    <>
+      {tallies.map((tally, index) => (
+        <Fragment key={`${tally.objectRef}-${tally.player ?? ""}`}>
+          {index > 0 && ", "}
+          <ScriptName name={tally.objectRef} />
+          {tally.player !== undefined && ` (P${tally.player})`}
+          {tally.count > 1 && ` ×${tally.count}`}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/** The terrain/layer/elevation/objects rows for one tile. */
+function TileReadout({ tile }: { tile: TileInfo }) {
+  return (
+    <dl className={styles.readoutGrid}>
+      <ReadoutRow label="Tile">
+        ({tile.x}, {tile.y})
+      </ReadoutRow>
+      <ReadoutRow label="Terrain">
+        {tile.terrainName ?? `terrain ${tile.terrain}`}
+        {/* The layer is what a terrain_mask or base_layer painted on top. It
+            is often the thing you are actually LOOKING at — the tile is drawn
+            as a heavy blend of the two — so a readout naming only the terrain
+            reads as a colour bug. */}
+        {tile.layer !== null && ` + ${tile.layerName ?? `terrain ${tile.layer}`} layer`}
+      </ReadoutRow>
+      <ReadoutRow label="Elevation">
+        {tile.elevation}
+        {tile.cliff && " · cliff"}
+      </ReadoutRow>
+      {tile.objects.length > 0 && (
+        <ReadoutRow label="Objects">
+          <ObjectList objects={tile.objects} />
+        </ReadoutRow>
+      )}
+      {/*
+        The other half of the marker. A red triangle on the map says something
+        is wrong HERE; only this row says what, and it is the reason the marks
+        need no legend entry beyond naming the glyph — the explanation is one
+        hover away rather than in a key the reader has to hold in their head.
+      */}
+      {tile.marks.map((mark) => (
+        <ReadoutRow key={`${mark.kind}-${mark.commandSpan.start}`} label="Problem">
+          <span className={styles.readoutProblem}>{mark.label}</span>
+        </ReadoutRow>
+      ))}
+    </dl>
+  );
 }
 
 /**
@@ -54,8 +117,22 @@ export function PreviewPane() {
   // Everything durable comes from context, not local state: this pane
   // unmounts on every tab switch and none of it may (PreviewViewContext for
   // the controls, PreviewResultContext for the generated map itself).
-  const { view, setView, seed, setSeed, colorMode, setColorMode } = usePreviewView();
-  const [hovered, setHovered] = useState<HoveredTile | null>(null);
+  const {
+    view,
+    setView,
+    seed,
+    setSeed,
+    colorMode,
+    setColorMode,
+    selectedTile,
+    toggleSelectedTile,
+    clearSelectedTile,
+    hiddenObjects,
+  } = usePreviewView();
+  // Hover is local because it dies with the pane and should: a pointer
+  // position means nothing once you have switched tabs. The SELECTION lives in
+  // the context above the tab switch, for the same reason the seed does.
+  const [hovered, setHovered] = useState<TilePoint | null>(null);
 
   const result = usePreviewResultContext();
 
@@ -79,6 +156,32 @@ export function PreviewPane() {
     for (const id of snapshot.terrain) seen.add(id);
     return [...seen].sort((a, b) => a - b);
   }, [snapshot]);
+
+  // Built here rather than in PreviewCanvas so hover and selection read the
+  // same index; the canvas no longer describes tiles at all (tileInfo.ts).
+  const objectsByTile = useMemo(
+    () => indexObjectsByTile(result?.objects ?? [], result?.dim ?? 0),
+    [result?.objects, result?.dim],
+  );
+  const marksByTile = useMemo(
+    () => indexMarksByTile(result?.failureMarks ?? [], result?.dim ?? 0),
+    [result?.failureMarks, result?.dim],
+  );
+
+  // The tile whose details are on screen. Selection wins over hover for as
+  // long as it is set: the whole point of clicking is to keep a tile's details
+  // still while you move the pointer somewhere else.
+  //
+  // Guarded against a dim change (a re-roll at a different map size, or
+  // override_map_size) leaving the selection off the new grid — reading past
+  // the end of a typed array yields undefined, which would render as "terrain
+  // undefined" rather than throwing.
+  const shown = selectedTile ?? hovered;
+  const tile = useMemo(() => {
+    if (snapshot === undefined || shown === null) return null;
+    if (shown.x < 0 || shown.y < 0 || shown.x >= snapshot.dim || shown.y >= snapshot.dim) return null;
+    return describeTile(snapshot, palette, objectsByTile, marksByTile, shown.x, shown.y);
+  }, [snapshot, palette, objectsByTile, marksByTile, shown]);
 
   // null while the very first generation is still in flight (debounce +
   // worker turnaround, ~300ms+) -- after that, `result` holds the last
@@ -189,25 +292,32 @@ export function PreviewPane() {
         snapshot={snapshot}
         palette={palette}
         onHoverTile={setHovered}
+        selected={selectedTile}
+        onTileClick={toggleSelectedTile}
+        hiddenObjects={hiddenObjects}
       />
 
       <div className={styles.readout}>
-        {hovered === null ? (
+        {tile === null ? (
           <span className={styles.readoutHint}>
-            {dim}×{dim} · drag to pan · wheel to zoom · double-click to fit
+            {dim}×{dim} · click a tile to pin it · drag to pan · wheel to zoom · double-click to fit
           </span>
         ) : (
-          <span>
-            ({hovered.x}, {hovered.y}) {hovered.terrainName ?? `terrain ${hovered.terrain}`}
-            {/* The layer is what a terrain_mask or base_layer painted on top.
-                It is often the thing you are actually LOOKING at -- the tile
-                is drawn as a heavy blend of the two -- so a readout naming
-                only the terrain reads as a colour bug. */}
-            {hovered.layer !== null ? ` + ${hovered.layerName ?? `terrain ${hovered.layer}`} layer` : ""}
-            {hovered.elevation > 0 ? ` · elev ${hovered.elevation}` : ""}
-            {hovered.cliff ? " · cliff" : ""}
-            {hovered.objects.length > 0 && <> · {describeObjects(hovered.objects)}</>}
-          </span>
+          <>
+            <div className={styles.readoutHeader}>
+              <span className={selectedTile !== null ? styles.readoutPinned : styles.readoutHint}>
+                {selectedTile !== null ? "Selected tile" : "Hovered tile"}
+              </span>
+              {selectedTile !== null && (
+                <HelpTip id="preview.clearSelection">
+                  <button type="button" className={styles.clearSelection} onClick={clearSelectedTile}>
+                    Clear
+                  </button>
+                </HelpTip>
+              )}
+            </div>
+            <TileReadout tile={tile} />
+          </>
         )}
       </div>
 
@@ -215,4 +325,3 @@ export function PreviewPane() {
     </div>
   );
 }
-

@@ -1,9 +1,17 @@
 .panel {
   display: flex;
   flex-direction: column;
-  width: 18rem;
+  /* Width is set inline from SidePanelLayoutContext (CREATION_PLAN 4.4). It
+     used to be a fixed 18rem here; that number now lives in
+     sidePanelLayout.ts as DEFAULT_SIDE_PANEL_WIDTH. */
   flex-shrink: 0;
-  border-right: 1px solid #000;
+  /* The "leave room for the editor" rule, deliberately expressed here rather
+     than in the drag arithmetic. It has to hold when the WINDOW changes size,
+     which is not a drag and would never run that code — and CSS is the only
+     layer that sees a resize without being told about it. */
+  max-width: 70%;
   background: #fff;
   min-height: 0;
+  /* No border-right: the resizer strip beside it carries the dividing line
+     now, so the two do not draw two lines a pixel apart. */
 }

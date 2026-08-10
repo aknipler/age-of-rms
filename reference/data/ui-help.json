@@ -9,8 +9,8 @@
       "text": "Not implemented yet."
     },
     {
-      "id": "titleBar.preferences",
-      "text": "App settings, including how these help popups behave."
+      "id": "titleBar.settings",
+      "text": "App settings, grouped into tabs — General, Hotkeys, Theme, Breakdown, Code and Advanced Tools."
     },
     {
       "id": "titleBar.help",
@@ -65,8 +65,36 @@
       "text": "The map size this script targets. Not yet used by the resource totals — will feed the approximate preview and consistency checker in a later phase."
     },
     {
-      "id": "preferences.helpMode",
+      "id": "settings.helpMode",
       "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely."
+    },
+    {
+      "id": "settings.shortenLongNames",
+      "text": "Constant names in RMS run long, and readouts such as the preview's tile panel are narrow. With this on, a name over six characters is drawn as its first three letters followed by an ellipsis, and hovering it shows the whole name. Turn it off to always see names in full, at the cost of more wrapping."
+    },
+    {
+      "id": "settings.tab.general",
+      "text": "Settings that apply across the whole app, including how these help popups behave."
+    },
+    {
+      "id": "settings.tab.hotkeys",
+      "text": "Keyboard shortcuts. Nothing is rebindable yet."
+    },
+    {
+      "id": "settings.tab.theme",
+      "text": "Colours and fonts for the app and the code editor. Empty for now."
+    },
+    {
+      "id": "settings.tab.breakdown",
+      "text": "Settings for the Breakdown editor, like which sections start expanded. Empty for now."
+    },
+    {
+      "id": "settings.tab.code",
+      "text": "Settings for the code editor, like tab width and word wrap. Empty for now."
+    },
+    {
+      "id": "settings.tab.advancedTools",
+      "text": "Settings for the Advanced Tools pane, which hasn't been built yet."
     },
     {
       "id": "breakdown.tab.header",
@@ -270,7 +298,7 @@
     },
     {
       "id": "breakdown.sidePanel.referenceRadio",
-      "text": "Switches the reference table below between Terrain constants, Object constants, and Commands."
+      "text": "Switches the reference table below between Terrain constants, Object constants, Commands, and the Preview Obj. List — the objects your own script places, with a tick box for each one the map draws."
     },
     {
       "id": "breakdown.sidePanel.referenceTable",
@@ -306,7 +334,11 @@
     },
     {
       "id": "preview.canvas",
-      "text": "The approximate map preview. Drag to pan, use the wheel to zoom around the pointer, double click to fit the whole map. Hovering a tile shows its terrain, elevation and anything placed on it underneath."
+      "text": "The approximate map preview. Drag to pan, use the wheel to zoom around the pointer, double click to fit the whole map. Hovering a tile shows its terrain, elevation and anything placed on it underneath. Clicking a tile pins that readout so it stays put while you move the pointer away; clicking the same tile again unpins it."
+    },
+    {
+      "id": "preview.clearSelection",
+      "text": "Unpins the selected tile, so the readout follows the pointer again. Clicking the selected tile on the map does the same thing."
     },
     {
       "id": "preview.approximateBadge",
@@ -347,6 +379,26 @@
     {
       "id": "preview.zoomFit",
       "text": "Fits the whole map back into the panel. Double clicking the map does the same thing."
+    },
+    {
+      "id": "sidePanel.resizer",
+      "text": "Drag this edge to make the map panel wider or narrower, or click the arrow to hide it and give the whole tab to the code. Dragging it well past its narrowest hides it too. Arrow keys resize it once it has focus. The width is shared by the Breakdown and Code tabs and is remembered between sessions."
+    },
+    {
+      "id": "sidePanel.reopen",
+      "text": "Brings the map panel back at the width you last left it."
+    },
+    {
+      "id": "preview.objectList",
+      "text": "Every object your script names, with how many of them this generation actually placed. A count of zero means the script asked and nothing could be placed, usually because no tile satisfied its terrain or distance rules."
+    },
+    {
+      "id": "preview.showAllObjects",
+      "text": "Re-ticks every object at once, so the map draws everything again. Shown only while something is hidden."
+    },
+    {
+      "id": "preview.objectVisibility",
+      "text": "Untick to hide this object from the map above, which is the quickest way to see what is underneath a few thousand trees. It only changes the drawing: the objects are still placed, still counted in this table, and still listed when you click their tile. A warning triangle appears beside Preview Obj. List while anything is hidden."
     }
   ]
 }

@@ -159,7 +159,12 @@
         },
         "section": {
           "type": "string",
-          "description": "One of the top-level sections[] entries, e.g. \"LAND_GENERATION\"."
+          "description": "One of the top-level sections[] entries, e.g. \"LAND_GENERATION\". This records where the GUIDE DOCUMENTS the command, which is not the same as where the engine accepts one — see sectionLocked. Never enforce a diagnostic off this field alone."
+        },
+        "sectionLocked": {
+          "type": "boolean",
+          "description": "True only when the engine has been MEASURED to discard this command outside its `section`. Drives validate()'s RMS0304 (docs/parser-design.md Sec.10); absent means unknown and RMS0304 reports nothing, which is the default for all but the measured few. It is a separate field from `section` on purpose: `section` is a documentation fact and this is an engine fact, and enforcing the former as if it were the latter warned 53 times on the corpus with 52 of those on shipped working maps (`effect_amount` outside <PLAYER_SETUP>), the false-positive class BUG-002 and BUG-005 already cost this project three rounds. Set it only alongside a `notes` entry naming the run that measured it.",
+          "default": false
         },
         "kind": {
           "type": "string",
@@ -233,7 +238,18 @@
           "type": "number",
           "description": "Caps the 'add another' affordance for a repeatable attribute. Do not add without re-checking DE patch notes (Update 153015) per docs/parser-design.md Sec.8. None is sourced today."
         },
-        "requiresSection": {
+        "requiresOneOf": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "Attribute names, at least one of which must appear in the SAME block for this attribute to do anything. Transcribes a guide 'Requires:' line, and the failure is silent: ignore_terrain_restrictions without set_place_for_every_player or place_on_specific_land_id makes the whole create_object place nothing at all (guide:2509, confirmed in game 2026-08-10 on AK_Namatjira.rms). validate() raises RMS0315. Set it only where the guide states the requirement AND the consequence is known, the same bar requiresSection carries."
+  },
+  "requiresNote": {
+   "type": "string",
+   "description": "What actually happens when a requiresOneOf requirement is unmet, in the author's terms. Appended to RMS0315's message. Sibling of mutexNote and set for the same reason: the consequence differs per attribute and belongs in the data, not in a name check inside validate.ts."
+  },
+  "requiresSection": {
           "type": "string",
           "description": "A top-level sections[] name that must be present somewhere in the script for this attribute to do anything. validate() raises RMS0311 when the attribute is used and the section is absent. The only entry today is base_elevation, which needs <ELEVATION_GENERATION>: without it the map still generates and looks correct, but the slopes never take effect. Set this only for engine-verified cases — it is the one error-severity semantic check."
         },

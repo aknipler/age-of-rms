@@ -1,0 +1,8 @@
+/* A shortened name has to LOOK shortened, or it reads as a data bug rather
+   than as a display choice. The dotted underline is the browser's own
+   convention for <abbr title> and doubles as the "there is more here" cue. */
+.abbreviated {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+  cursor: help;
+}

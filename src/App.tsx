@@ -6,12 +6,14 @@ import { PlaceholderPane } from "./components/PlaceholderPane";
 import { CodePane } from "./components/CodePane";
 import { BreakdownPane } from "./breakdown/BreakdownPane";
 import { StatusBar } from "./components/StatusBar";
-import { PreferencesDialog } from "./components/PreferencesDialog";
+import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
+import { AppSettingsProvider } from "./settings/AppSettingsContext";
 import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
 import { PreviewViewProvider, PreviewViewportProvider } from "./components/preview/PreviewViewContext";
+import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
 import { useDocument } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useParsedDocument } from "./useParsedDocument";
@@ -23,12 +25,12 @@ import "./App.css";
 
 // Split out from App so it can call useGenerationSettings — the hook
 // needs to run below GenerationSettingsProvider in the tree, same reason
-// PreferencesDialog/HelpTip call useHelpSettings rather than App itself.
+// SettingsDialog/HelpTip call useHelpSettings rather than App itself.
 function AppContent() {
   // activeTab is "lifted" here because both TabBar (which sets it) and
   // the panes below (which read it) need access to the same value.
   const [activeTab, setActiveTab] = useState<TabId>("breakdown");
-  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [generationSettingsOpen, setGenerationSettingsOpen] = useState(false);
   const doc = useDocument();
   const { playerCount } = useGenerationSettings();
@@ -50,7 +52,7 @@ function AppContent() {
         onOpen={doc.openFile}
         onSave={doc.saveFile}
         onSaveAs={doc.saveFileAs}
-        onOpenPreferences={() => setPreferencesOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
@@ -95,7 +97,7 @@ function AppContent() {
         neutral={parsed.resourceTotals.neutral}
         onOpenGenerationSettings={() => setGenerationSettingsOpen(true)}
       />
-      {preferencesOpen && <PreferencesDialog onClose={() => setPreferencesOpen(false)} />}
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       {/* Rendered only while a close-or-open attempt is waiting on the user.
           The hook owns the pending promise; this just collects the answer. */}
       {doc.unsavedAction !== null && (
@@ -115,18 +117,31 @@ function AppContent() {
 function App() {
   return (
     <HelpSettingsProvider>
-      <GenerationSettingsProvider>
-        {/* Above AppContent, so the preview's seed/view/colour and its
-            canvas zoom/pan survive the tab switch that unmounts the pane
-            holding them. Two providers, not one context, so a drag or wheel
-            tick (which changes viewport on every frame) doesn't re-render
-            the seed/colour-mode controls — see PreviewViewContext.tsx. */}
-        <PreviewViewProvider>
-          <PreviewViewportProvider>
-            <AppContent />
-          </PreviewViewportProvider>
-        </PreviewViewProvider>
-      </GenerationSettingsProvider>
+      {/* Display preferences that aren't any one subsystem's — read by the
+          Settings dialog and by every place a script-written constant name is
+          rendered, so it has to sit above both. */}
+      <AppSettingsProvider>
+        <GenerationSettingsProvider>
+          {/* Above AppContent, so the preview's seed/view/colour and its
+              canvas zoom/pan survive the tab switch that unmounts the pane
+              holding them. Two providers, not one context, so a drag or wheel
+              tick (which changes viewport on every frame) doesn't re-render
+              the seed/colour-mode controls — see PreviewViewContext.tsx. */}
+          <PreviewViewProvider>
+            <PreviewViewportProvider>
+              {/* Also above the tab switch, and for the same reason: both tabs
+                  render their own MapSidePanel and the inactive one is
+                  unmounted, so a width held inside it would be two widths that
+                  reset on every switch (CREATION_PLAN 4.4). Unlike the two
+                  above, this one IS persisted — a layout choice should still be
+                  there tomorrow, where a seed should not. */}
+              <SidePanelLayoutProvider>
+                <AppContent />
+              </SidePanelLayoutProvider>
+            </PreviewViewportProvider>
+          </PreviewViewProvider>
+        </GenerationSettingsProvider>
+      </AppSettingsProvider>
     </HelpSettingsProvider>
   );
 }

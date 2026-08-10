@@ -347,6 +347,7 @@ export type FailureBucket =
   | "borderBlocked" // border constraint rejected a single placement
   | "playerOriginAvoidance" // seed set emptied by player-origin avoidance (Sec.6.2/6.4)
   | "gaiaOnlyRequired" // frame-referenced create_object of a non-ownable object without set_gaia_object_only
+  | "attributePrerequisite" // an attribute's documented "Requires:" partner is absent, so the engine places nothing
   | "iterationCapped" // Sec.11 per-command iteration cap hit — truncated, not blocked
   | "notSimulated"; // feature in Sec.9's list — placement skipped, honesty bucket
 
@@ -418,6 +419,68 @@ export interface PlayerMarker {
   y: number;
 }
 
+/**
+ * A generation failure that has a PLACE, so the renderer can point at the tile
+ * instead of only counting it in the drawer (Sec.15 item 5).
+ *
+ * WHY THIS IS NOT A `PlacementFailure` WITH COORDINATES ADDED. Failures are
+ * coalesced by bucket per command (`pushFailure`), which is what makes a
+ * quarter of a million object misses affordable — and coalescing throws away
+ * exactly the per-instance position a marker needs. One `create_player_lands`
+ * makes eight lands; if six of them fail, the report keeps one record with
+ * `occurrences: 6`, and drawing that record's position would put a single
+ * marker on player 1's land while saying nothing about the other five. So the
+ * report stays the aggregate (5.2 reads it) and this is the per-instance
+ * rendering fact. It is affordable for the same reason coalescing was needed
+ * elsewhere: marks come only from LANDS, of which a script has tens.
+ *
+ * WHY ONLY ONE KIND. Three candidates were measured over the corpus at seed 7
+ * on Normal before choosing, and two of them lost:
+ *
+ * - `growthShortfall` fires **230 times across 35 of the ~52 maps**, median
+ *   fill 12% of target. It is the NORMAL outcome, not an exception, because
+ *   `land_percent 100` declares a target of the whole map and several lands
+ *   declare it at once — the target is an aspiration the engine never promised
+ *   to meet. Marking it would put a warning triangle on almost every land of
+ *   almost every map, which is the "speckle the canvas" objection Sec.15
+ *   item 5 raised, now with a number on it.
+ * - A land that ended with **zero tiles** looked like the strong case: not
+ *   smaller than asked but ABSENT, and `Fortress.rms` has one asking for
+ *   34,000 tiles. Then all **15** corpus instances were triaged and every
+ *   single one has the same cause — the land's origin square was entirely
+ *   overwritten by a LATER land's stamp, so growth began with no tile to grow
+ *   from. That is a limit of OUR growth model (the frontier is defined from
+ *   owned tiles, and this land owns none), not a defect anybody could fix in
+ *   the script. A red triangle on it would blame the author for our
+ *   approximation. It reports as a `SimulationNote` instead — the surface
+ *   Sec.9 already provides for exactly this — and Sec.15 item 30 records the
+ *   model gap.
+ * - `originFallbackCenter` fires **6 times, on 2 maps**, and models the
+ *   ENGINE's own documented give-up behaviour. The land really is somewhere
+ *   the script did not choose, in the preview and in the game.
+ *
+ * The line that falls out of the measurement, and it is the rule to keep: the
+ * canvas marks a place where the SCRIPT's own outcome is not what it reads
+ * like; the drawer carries both what merely came up short and what WE could
+ * not simulate. A land drawn at 60% of its target is drawn honestly. A land
+ * missing because our model could not grow it is our problem to admit, not the
+ * author's to be warned about.
+ */
+export interface FailureMark {
+  x: number;
+  y: number;
+  /**
+   * A union with one member on purpose: the shape is right for a second kind
+   * and the measurement above is why there isn't one yet. Adding one is a
+   * word here plus an emitter, not a refactor.
+   */
+  kind: "landAtMapCenter";
+  /** Click-through to the command that asked for it, same span the report carries. */
+  commandSpan: Span;
+  /** Beginner-first sentence, shown in the tile readout. */
+  label: string;
+}
+
 export interface PreviewResult {
   /** Post-override_map_size (Sec.3.8), so this can differ from the lobby size's dim. */
   dim: number;
@@ -427,6 +490,8 @@ export interface PreviewResult {
   objects: PlacedObject[];
   players: PlayerMarker[];
   reports: CommandReport[];
+  /** Failures with a tile to point at (Sec.15 item 5). Bounded by land count, so no cap. */
+  failureMarks: FailureMark[];
   notes: SimulationNote[];
 }
 

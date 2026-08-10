@@ -1,0 +1,103 @@
+/* Settings-specific layout only. The overlay/box/close-button chrome
+   comes from ../dialog.module.css, which every dialog shares. */
+
+/* Widened and given a fixed height on purpose: a settings dialog that
+   resizes as you move between tabs makes the tab strip jump around under
+   the cursor, so the box is sized once for its largest panel and the
+   panel scrolls inside it. */
+.settingsDialog {
+  width: 44rem;
+  max-width: 92vw;
+  height: 26rem;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0; /* lets .panel actually scroll instead of stretching .body */
+  border: 1px solid #000;
+}
+
+.tabList {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 11rem;
+  border-right: 1px solid #000;
+  background: #fff;
+  overflow-y: auto;
+}
+
+/* Mirrors TabBar.module.css's flat black-bordered look, turned on its
+   side — borders sit on the bottom edge so the strip reads as a stack. */
+.tabButton {
+  border: none;
+  border-bottom: 1px solid #000;
+  background: #fff;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.tabButton:hover {
+  background: #f0f0f0;
+}
+
+.tabButtonActive,
+.tabButtonActive:hover {
+  background: #b3b3b3;
+}
+
+/* HelpTip always renders a <span> wrapper (see HelpTip.tsx), so the span
+   is the flex item here, not the button — without this the buttons would
+   shrink to their text width instead of filling the strip. */
+.tabList > span {
+  display: block;
+}
+
+.panel {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+}
+
+.panelTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+
+.legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* Matches PlaceholderPane's italic grey, so an unbuilt settings tab reads
+   the same way an unbuilt pane does. */
+.placeholder {
+  font-style: italic;
+  color: #555;
+}
+
+.placeholderList {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: #555;
+  font-size: 0.9rem;
+}

@@ -97,7 +97,7 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // shipped, working maps. Which commands are genuinely section-locked is an
   // in-game question (spec Sec.11), and until it's answered this check can't
   // tell a real mistake from a documentation artifact.
-  RMS0304: { severity: "warning", summary: "Command sits in a section it doesn't belong to (unbuilt — needs engine verification)" },
+  RMS0304: { severity: "warning", summary: "Command sits in a section the engine will not run it from" },
   RMS0305: { severity: "info", summary: "No <PLAYER_SETUP> section" },
   RMS0306: { severity: "info", summary: "Non-repeatable attribute given more than once — the engine uses the last" },
   RMS0307: { severity: "warning", summary: "Mutually exclusive attributes in the same block" },
@@ -130,6 +130,15 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // the conditional ones — and because a shared code makes the two
   // indistinguishable in a corpus measurement.
   RMS0314: { severity: "warning", summary: "#const is shadowed by an earlier one whose conditions this line also requires" },
+  // Added 2026-08-10. A guide "Requires:" line, which reads like documentation
+  // of an attribute and is a rule about the whole block: without a partner
+  // attribute the command places NOTHING, silently, while the rest of the map
+  // generates normally. Same argument for reporting it as RMS0304 — an author
+  // cannot find this by looking at their map. The only entry today is
+  // ignore_terrain_restrictions, confirmed in game rather than reasoned from
+  // the guide alone, and the check reads `requiresOneOf` from the data so a
+  // second entry needs no code change.
+  RMS0315: { severity: "warning", summary: "Attribute needs a partner attribute in the same block, and there is none" },
 };
 
 function toSpan(token: Token): Span {
@@ -712,6 +721,28 @@ export function mutuallyExclusive(
   return makeDiagnostic("RMS0307", note ? `${base} ${note}` : `${base} Keep the one you want.`, toSpan(token));
 }
 
+/**
+ * RMS0315 — an attribute whose guide "Requires:" partner is nowhere in the block.
+ *
+ * The message leads with the CONSEQUENCE for the same reason RMS0304's does:
+ * "this attribute requires that one" reads as a syntax rule and earns a shrug,
+ * while "this command places nothing" is the thing the author would want to
+ * know and cannot observe. The engine reports no error, the map generates, and
+ * the objects are simply absent.
+ *
+ * `note` is the entry's own `requiresNote` and carries what unmet actually
+ * looks like. Data-driven for `mutuallyExclusive`'s reason: the consequence
+ * differs per attribute and hardcoding it here would put vocabulary in code.
+ *
+ * `options` comes from the data too, so the message names the real partners
+ * without this function knowing any of them.
+ */
+export function missingRequiredPartner(token: Token, options: readonly string[], note?: string): Diagnostic {
+  const list = options.length === 1 ? `"${options[0]}"` : options.map((o) => `"${o}"`).join(" or ");
+  const base = `"${token.text}" only does anything when ${list} is in the same block, and neither this block nor any branch inside it has one.`;
+  return makeDiagnostic("RMS0315", note ? `${base} ${note}` : `${base} Add one of them, or remove this line.`, toSpan(token));
+}
+
 export type ChanceLintKind = "unreachable" | "under99" | "zeroFirst" | "reversedRange" | "constantRange";
 
 // Both cumulative thresholds are 99. The guide says only the first 99% of a
@@ -741,6 +772,27 @@ export function chanceLint(kind: ChanceLintKind, at: Span): Diagnostic {
 /** `guidance` is the def's own `deprecated` string — the data says what to do instead. */
 export function deprecatedCommand(token: Token, guidance: string): Diagnostic {
   return makeDiagnostic("RMS0309", `"${token.text}" is obsolete — ${guidance}. It still runs, so this is safe to leave.`, toSpan(token));
+}
+
+/**
+ * RMS0304 — a `sectionLocked` command sitting where the engine discards it.
+ *
+ * The message states the CONSEQUENCE rather than the rule, because the rule
+ * ("commands belong to sections") reads as a style convention and earns a
+ * shrug. What makes this worth a warning is that the line does nothing at all,
+ * silently, while the rest of the map generates normally — which is precisely
+ * what RMSTEST_33a/33b measured, three runs each. An author cannot find this by
+ * looking at their map, and that is the whole argument for reporting it.
+ *
+ * Deliberately not phrased as "move it to the end of the file": the right home
+ * is the named section, which may well already exist further down.
+ */
+export function wrongSection(token: Token, belongsIn: string, foundIn: string): Diagnostic {
+  return makeDiagnostic(
+    "RMS0304",
+    `"${token.text}" only works inside <${belongsIn}>, but this one is in <${foundIn}> — the engine skips it, and the rest of the map generates as though the line were not there. Move it into <${belongsIn}>.`,
+    toSpan(token),
+  );
 }
 
 /**

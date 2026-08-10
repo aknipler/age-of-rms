@@ -2,7 +2,7 @@ import { useState } from "react";
 import { HelpTip } from "./HelpTip";
 import styles from "./TitleBar.module.css";
 
-// Edit/Help are still stubs — no menus wired up yet. Preferences is
+// Edit/Help are still stubs — no menus wired up yet. Settings is
 // special-cased below since it needs its own onClick.
 const STATIC_MENUS = ["Edit", "Help"] as const;
 
@@ -10,10 +10,10 @@ interface TitleBarProps {
   onOpen: () => void;
   onSave: () => void;
   onSaveAs: () => void;
-  onOpenPreferences: () => void;
+  onOpenSettings: () => void;
 }
 
-export function TitleBar({ onOpen, onSave, onSaveAs, onOpenPreferences }: TitleBarProps) {
+export function TitleBar({ onOpen, onSave, onSaveAs, onOpenSettings }: TitleBarProps) {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
 
   return (
@@ -75,9 +75,9 @@ export function TitleBar({ onOpen, onSave, onSaveAs, onOpenPreferences }: TitleB
           </button>
         </HelpTip>
       ))}
-      <HelpTip id="titleBar.preferences">
-        <button type="button" className={styles.menuItem} onClick={onOpenPreferences}>
-          Preferences
+      <HelpTip id="titleBar.settings">
+        <button type="button" className={styles.menuItem} onClick={onOpenSettings}>
+          Settings
         </button>
       </HelpTip>
     </div>

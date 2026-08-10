@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PlacedObject, PreviewResult, StageSnapshot } from "../../preview/generator/types";
-import { NO_LAYER } from "../../preview/generator/grid";
+import type { PreviewResult, StageSnapshot } from "../../preview/generator/types";
 import { createBitmapCanvas, drawPreview } from "../../preview/render/drawPreview";
 import { buildTerrainBitmap } from "../../preview/render/terrainBitmap";
 import type { TerrainPalette } from "../../preview/render/palette";
@@ -19,31 +18,46 @@ import styles from "./PreviewCanvas.module.css";
 
 const ZOOM_STEP = 1.18;
 
-/** Shared empty array for tiles with nothing on them — a fresh `[]` per hover would make every readout a new object and re-render for no change. */
-const EMPTY_OBJECTS: readonly PlacedObject[] = [];
-
-export interface HoveredTile {
-  x: number;
-  y: number;
-  terrain: number;
-  terrainName: string | null;
-  elevation: number;
-  cliff: boolean;
-  /** The visual mask on this tile (`base_layer` / `terrain_mask`), or null when nothing is layered. */
-  layerName: string | null;
-  layer: number | null;
-  /** Everything S6 placed on this exact tile, in placement order. Usually empty; more than one only where `force_placement` let objects stack. */
-  objects: readonly PlacedObject[];
-}
+/**
+ * How far the pointer may travel between press and release and still count as
+ * a click rather than a pan. Zero would make selection nearly impossible —
+ * a mouse almost always moves a pixel or two during a click — and a large
+ * value would select a tile at the end of a deliberate short drag.
+ */
+const CLICK_SLOP_PX = 4;
 
 interface PreviewCanvasProps {
   result: PreviewResult;
   snapshot: StageSnapshot;
   palette: TerrainPalette;
-  onHoverTile: (tile: HoveredTile | null) => void;
+  /**
+   * The tile under the pointer, as COORDINATES. The canvas deliberately does
+   * not describe the tile — see tileInfo.ts for why the pane derives that
+   * instead.
+   */
+  onHoverTile: (tile: TilePoint | null) => void;
+  /** The currently selected tile, drawn with its own outline. */
+  selected: TilePoint | null;
+  /** A click that wasn't a pan. The parent decides whether that selects or deselects. */
+  onTileClick: (tile: TilePoint) => void;
+  /**
+   * Object names to leave undrawn. A prop rather than another
+   * `usePreviewView()` call here: the pane already reads that context, and
+   * subscribing the canvas to it as well would re-render the canvas on every
+   * seed keystroke and colour-mode click for a value it does not use.
+   */
+  hiddenObjects: ReadonlySet<string>;
 }
 
-export function PreviewCanvas({ result, snapshot, palette, onHoverTile }: PreviewCanvasProps) {
+export function PreviewCanvas({
+  result,
+  snapshot,
+  palette,
+  onHoverTile,
+  selected,
+  onTileClick,
+  hiddenObjects,
+}: PreviewCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Held above the tab switch (PreviewViewContext.tsx) so zoom/pan survive
@@ -84,21 +98,6 @@ export function PreviewCanvas({ result, snapshot, palette, onHoverTile }: Previe
     () => createBitmapCanvas(buildTerrainBitmap(snapshot, palette)),
     [snapshot, palette],
   );
-
-  // Objects indexed by tile, for the hover readout. Built once per result
-  // rather than filtering `result.objects` on every pointer move: a map can
-  // carry tens of thousands of objects and the pointer fires continuously,
-  // so the scan would be O(objects) per mouse event.
-  const objectsByTile = useMemo(() => {
-    const index = new Map<number, PlacedObject[]>();
-    for (const object of result.objects) {
-      const key = object.y * snapshot.dim + object.x;
-      const bucket = index.get(key);
-      if (bucket) bucket.push(object);
-      else index.set(key, [object]);
-    }
-    return index;
-  }, [result.objects, snapshot.dim]);
 
   // --- Sizing -------------------------------------------------------------
 
@@ -163,8 +162,15 @@ export function PreviewCanvas({ result, snapshot, palette, onHoverTile }: Previe
     // The base transform: everything downstream then works in CSS pixels and
     // drawPreview composes its projection on top with `transform`.
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    drawPreview(ctx, viewport, { result, snapshot, terrain, highlight });
-  }, [viewport, result, snapshot, terrain, highlight]);
+    drawPreview(ctx, viewport, {
+      result,
+      snapshot,
+      terrain,
+      highlight,
+      selection: selected,
+      hiddenObjects,
+    });
+  }, [viewport, result, snapshot, terrain, highlight, selected, hiddenObjects]);
 
   // --- Zoom ---------------------------------------------------------------
 
@@ -192,40 +198,37 @@ export function PreviewCanvas({ result, snapshot, palette, onHoverTile }: Previe
 
   // --- Pan and hover ------------------------------------------------------
 
-  const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  // `travel` accumulates the ABSOLUTE distance moved since the press, which is
+  // what separates a click from a pan. Distance from the press point would not
+  // do: a drag that wanders out and comes back would register as a click.
+  const dragRef = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    travel: number;
+  } | null>(null);
 
   const readTile = useCallback(
-    (clientX: number, clientY: number): { point: TilePoint; hovered: HoveredTile } | null => {
+    (clientX: number, clientY: number): TilePoint | null => {
       const canvas = canvasRef.current;
       if (canvas === null || viewport === null) return null;
       const rect = canvas.getBoundingClientRect();
       const point = screenToTile(viewport, clientX - rect.left, clientY - rect.top);
       if (!isOnMap(point, snapshot.dim)) return null;
-      const x = Math.floor(point.x);
-      const y = Math.floor(point.y);
-      const index = y * snapshot.dim + x;
-      return {
-        point: { x, y },
-        hovered: {
-          x,
-          y,
-          terrain: snapshot.terrain[index],
-          terrainName: palette.nameFor(snapshot.terrain[index]),
-          layer: snapshot.layer[index] === NO_LAYER ? null : snapshot.layer[index],
-          layerName: snapshot.layer[index] === NO_LAYER ? null : palette.nameFor(snapshot.layer[index]),
-          elevation: snapshot.elevation[index],
-          cliff: snapshot.cliff[index] !== 0,
-          objects: objectsByTile.get(index) ?? EMPTY_OBJECTS,
-        },
-      };
+      return { x: Math.floor(point.x), y: Math.floor(point.y) };
     },
-    [viewport, snapshot, palette, objectsByTile],
+    [viewport, snapshot.dim],
   );
 
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    dragRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      travel: 0,
+    };
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -233,23 +236,38 @@ export function PreviewCanvas({ result, snapshot, palette, onHoverTile }: Previe
     if (drag !== null && drag.pointerId === event.pointerId) {
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
-      dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+      dragRef.current = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        travel: drag.travel + Math.abs(dx) + Math.abs(dy),
+      };
       markUserFramed();
       setViewport((previous) =>
         previous === null ? previous : clampToCanvas(panBy(previous, dx, dy), snapshot.dim),
       );
       return;
     }
-    const read = readTile(event.clientX, event.clientY);
-    setHighlight(read?.point ?? null);
-    onHoverTile(read?.hovered ?? null);
+    const point = readTile(event.clientX, event.clientY);
+    setHighlight(point);
+    onHoverTile(point);
   };
 
-  const endDrag = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-      dragRef.current = null;
-    }
+  const endDrag = (event: React.PointerEvent<HTMLCanvasElement>, clicked: boolean) => {
+    const drag = dragRef.current;
+    if (drag?.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    dragRef.current = null;
+    // A press-and-release that never really moved is a click. Handled here
+    // rather than with a separate onClick because the pan handler already
+    // owns the pointer via setPointerCapture, and an onClick would fire at
+    // the end of a drag too — there is no way to tell them apart without the
+    // travel this handler is already tracking. `clicked` is false on
+    // pointercancel, where the gesture was taken away from us rather than
+    // completed by the user.
+    if (!clicked || drag.travel > CLICK_SLOP_PX) return;
+    const point = readTile(event.clientX, event.clientY);
+    if (point !== null) onTileClick(point);
   };
 
   const onPointerLeave = () => {
@@ -266,8 +284,8 @@ export function PreviewCanvas({ result, snapshot, palette, onHoverTile }: Previe
           style={{ width: "100%", height: "100%" }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
+          onPointerUp={(event) => endDrag(event, true)}
+          onPointerCancel={(event) => endDrag(event, false)}
           onPointerLeave={onPointerLeave}
           onDoubleClick={resetView}
         />
