@@ -1249,6 +1249,11 @@ CONSTANT_KEY_ORDER = [
     "classId",
     "memberIds",
     "writesStorageSlot",
+    # Written only when true, and only by --roster: something in the roster dies
+    # or bleeds into this unit, so the Objects tab hides it unless asked. Guarded
+    # on having no RMS constant, because FORAGE (59) is referenced as a corpse
+    # and is also a bush scripts place on purpose.
+    "isCorpse",
     "isTree",
     "previewColor",
     "minimapColor",
@@ -1776,6 +1781,325 @@ def run_classes(install_path: Path, output: Path, dat: "DatExtraction | None", d
 
 
 # ---------------------------------------------------------------------------
+# 5d. Roster run (CREATION_PLAN 4.10)
+# ---------------------------------------------------------------------------
+
+#: DE's own display text, keyed by the string id `Unit.language_dll_name` holds.
+#: Every other mode in this file fills FIELDS on rows that already exist, so
+#: none of them ever needed a name for a unit nobody had written down.
+DISPLAY_STRINGS_RELATIVE = Path("resources") / "en" / "strings" / "key-value" / "key-value-strings-utf8.txt"
+
+#: `<id> "<text>"`, one per line, with comment lines and blanks between them.
+_DISPLAY_STRING_RE = re.compile(r'^\s*(\d+)\s+"(.*)"\s*$')
+
+
+def parse_display_strings(text: str) -> dict[int, str]:
+    """Pure half of `load_display_strings`, so it is testable without an install."""
+    out: dict[int, str] = {}
+    for line in text.splitlines():
+        match = _DISPLAY_STRING_RE.match(line)
+        if match:
+            out[int(match.group(1))] = match.group(2)
+    return out
+
+
+def load_display_strings(install_path: Path) -> dict[int, str]:
+    """DE's English display strings, or an empty dict if the file is missing.
+
+    **Missing is not fatal and must not be.** Every row this mode writes can
+    still be named from `Unit.name`; losing the strings file costs 1327 rows a
+    friendlier name and costs nothing else, so a run that aborts here would be
+    refusing to do the 4.10 work over a cosmetic field.
+
+    `utf-8-sig` because the file carries a BOM, and `errors="replace"` for the
+    same reason every other read in this script does: a mangled character in one
+    campaign string is not a reason to fail an extraction.
+    """
+    path = install_path / DISPLAY_STRINGS_RELATIVE
+    if not path.is_file():
+        return {}
+    return parse_display_strings(path.read_text(encoding="utf-8-sig", errors="replace"))
+
+
+def corpse_unit_ids(units: dict[int, object]) -> set[int]:
+    """Units that some other unit turns into when it dies or bleeds.
+
+    **This is the only data-driven answer to "would anyone place this on a map",
+    and it took two wrong ones to find.** `Unit.name.endswith("_D")` is a name
+    pattern, which this project resists for the reason `objectHabitat` records:
+    a pattern is a claim about every name nobody has looked at. `Unit.type` was
+    the obvious data alternative and it does not work either — 329 of the 336
+    `*_D` units are type 30, and so are `DEER`, `SHEEP`, `WOLF` and 13 other
+    rows already in the file, so the enum cannot tell a carcass from the animal
+    that leaves it. There are no type-50 projectiles in the gaia roster at all.
+
+    `dead_unit_id`/`blood_unit_id` is a LINK rather than a label: a unit is a
+    corpse because something dies into it, which is a fact the dat states. It
+    catches 292 of the 336, so it under-reaches, which is the right direction —
+    the caller hides these by default and a row wrongly left visible is a row in
+    a list, while a row wrongly hidden is a unit an author cannot find.
+    """
+    corpses: set[int] = set()
+    for unit in units.values():
+        for field_name in ("dead_unit_id", "blood_unit_id"):
+            value = getattr(unit, field_name, None)
+            if value is not None and int(value) >= 0:
+                corpses.add(int(value))
+    return corpses & set(units)
+
+
+def roster_descriptive_name(unit, strings: dict[int, str]) -> tuple[str, str]:
+    """`(name, source)` for one unit, DE's display text first and its internal
+    code second.
+
+    **The strings file is trusted because it reproduces the hand-written rows**,
+    which is the same check `--terrain-table` put its derived habitats through:
+    against the 31 comparable object rows written by hand it scores 14 exact, 17
+    differing and 0 missing, and all 17 differences are DE being more specific
+    (`Wolf` -> `Grey Wolf`, `Tuna` -> `Fish (Tuna)`).
+
+    `Unit.name` is an internal code — `FISHS`, `GOLDM`, `PLACEHOLDER (NAVAL)` —
+    and 1315 units have nothing else. It is written VERBATIM. Paraphrasing it
+    into something friendlier would be a thousand claims nobody checked, which
+    is the objection CREATION_PLAN 4.10 raises against doing exactly that.
+    """
+    string_id = int(getattr(unit, "language_dll_name", 0) or 0)
+    text = strings.get(string_id)
+    if text:
+        return text, "strings"
+    return str(unit.name), "unitName"
+
+
+def build_roster_entry(
+    const_id: int,
+    rms_constant: str | None,
+    unit,
+    dat: "DatExtraction",
+    strings: dict[int, str],
+    terrain_flags: dict[int, dict],
+    corpses: set[int],
+    run_date: str,
+) -> tuple[dict, str]:
+    """One object row plus where its name came from, with every field the narrow
+    modes write already on it.
+
+    The name source is RETURNED rather than left for the caller to read back off
+    the finished row. The first version of this had the reporter counting rows
+    whose `notes` contained "display string", which the fallback note also
+    contains in the words "no display string" — so a run that named 1315 rows
+    from `Unit.name` reported naming none that way, and the number looked
+    plausible enough to print.
+
+    The narrow modes (`--terrain-table`, `--storages`, `--classes`) were never
+    missing anything except rows to write onto, so this reuses each of their
+    readers rather than re-deriving a single field.
+    """
+    name, name_source = roster_descriptive_name(unit, strings)
+    # `deTextureFile` is deliberately absent rather than null. It is a terrain
+    # field; the 33 hand-written object rows carry an explicit null only because
+    # they were written before the file had any other category. 2639 more nulls
+    # is 56 KB spent restating that objects have no texture.
+    entry: dict = {
+        "constId": const_id,
+        "idSource": "extracted",
+        "rmsConstant": rms_constant,
+        "descriptiveName": name,
+        "category": "object",
+    }
+
+    # `isCorpse` is written only when true, the way `writesStorageSlot` is.
+    # Absent means "not a corpse" on a row this mode wrote; 2642 explicit
+    # `false`s would be ~40 KB spent saying nothing.
+    if rms_constant is None and const_id in corpses:
+        entry["isCorpse"] = True
+
+    placement = dat.placement(const_id)
+    fit = None
+    if placement is not None:
+        fit = derive_habitat(placement.allowed_terrains, placement.side_terrains, terrain_flags)
+        entry["terrainRestrictionId"] = placement.restriction_id
+        # **`allowedTerrains` is NOT written on a roster row, and the id it is
+        # derived from always is.** The expansion is a pure function of the
+        # restriction id, and the whole roster references only 33 distinct ids,
+        # so writing the array per row stores 33 real answers 2672 times — 1.33
+        # MB of a 3.5 MB file, in a file every consumer imports whole. Nothing
+        # in src/ reads the field today. `--terrain-table` re-expands it onto
+        # any row on demand, so the measurement is one command away rather than
+        # lost, and the id is what makes that possible.
+        if placement.side_terrains != [-1, -1]:
+            # Six entries in the whole object namespace carry a real "must sit
+            # beside" pair. Writing (-1, -1) on the other 2633 says nothing that
+            # its absence does not.
+            entry["placementSideTerrain"] = placement.side_terrains
+        if fit is not None:
+            entry["habitat"] = fit.habitat
+
+    class_id = dat.unit_class_of(const_id)
+    # Class -1 is skipped, not written. `--classes` gives it no `objectClass`
+    # row on purpose — no constant names it — and `validate:reference` checks
+    # that every `classId` on an object resolves to a row, so writing it here
+    # fails the gate 116 times. Absent is the honest value: this unit is in no
+    # class an RMS author can name.
+    if class_id is not None and class_id >= 0:
+        entry["classId"] = class_id
+
+    extracted = dat.object(const_id)
+    if extracted is not None:
+        # `resource` is OMITTED rather than null when the slot is not one of the
+        # four, matching --storages: absent means population, a decay timer, or
+        # one of the unread types. See its comment for why that distinction
+        # matters to an ATTR_STORAGE_VALUE consumer.
+        entry["resourceStorages"] = [
+            {"type": t, "amount": a, **({"resource": RESOURCE_TYPE_INDEX[t]} if t in RESOURCE_TYPE_INDEX else {})}
+            for t, a in extracted.storages
+        ]
+        if extracted.resource_amounts:
+            entry["resourceAmounts"] = extracted.resource_amounts
+
+    # **The note is one clause, not a paragraph.** The long-form provenance every
+    # other mode writes costs ~400 bytes, which over 2639 rows is 1 MB of near
+    # identical text in a file the app imports whole. What actually varies per
+    # row is where the NAME came from, since that is the one field a bulk pass
+    # can get from two places; the rest of the provenance is the same sentence
+    # for every row and belongs in the mode's docstring and the schema, where it
+    # is written once and can be read. `--roster` in the note is the pointer.
+    entry["verified"] = True
+    entry["notes"] = (
+        f"Gaia roster row, tools/extract-constants --roster {run_date}; "
+        + ("name is DE's own display string." if name_source == "strings" else "name is the dat's internal Unit.name verbatim (no display string, no RMS constant).")
+    )
+    return entry, name_source
+
+
+def run_roster(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """CREATE an object row for every live gaia unit, rather than filling fields
+    on the rows that happen to exist.
+
+    **What the gap costs is measured in the item, not asserted.** 33 object rows
+    against 2642 live units means `AD4 - Pag - v1.2.rms`'s `ONGRID_PLACEHOLDER_NAVAL`
+    (unit 1546, terrain restriction 6, water) takes `objectHabitat`'s `land`
+    default and grows 111 naval placeholders in a desert; 397 distinct object
+    names across the corpus have 11 habitat rows between them; and
+    `resourceTotals.ts` resolves 365 of 374 `ATTR_STORAGE_VALUE` lines and hits
+    nothing it counts.
+
+    **Rows are keyed by `constId` and there is one per NAME, not one per id.**
+    A name-keyed table can never reach unit 1546, which has no `#const` in
+    `random_map.def` at all. But 618 object names cover only 590 ids — `FISH`
+    and `FISH_PERCH` are both id 53, and six more pairs like it — and those
+    rows already exist in the file, so collapsing them would delete a spelling
+    a script may have written. Named units therefore get a row per name, unnamed
+    ids get one row with `rmsConstant: null`, matching the shape the 53 unnamed
+    terrains and 32 unnamed classes already use.
+
+    **Existing rows are never overwritten, and the disagreement report is the
+    point** — the same rule `--terrain-table` established. Every hand-written
+    `descriptiveName` this run disagrees with is printed and left alone, because
+    two of the disagreements lose information rather than gaining precision:
+    `KING` is `King (Regicide)` by hand and `King` in DE's strings, and
+    `MARLIN1`/`MARLIN2` both resolve to `Great Fish (Marlin)`. Settle those row
+    by row and edit them deliberately; do not let a bulk pass decide them.
+    """
+    import json
+
+    if dat is None:
+        print("Cannot build the roster without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    def_matches = find_file(install_path, "random_map.def")
+    if not def_matches:
+        print("random_map.def not found.", file=sys.stderr)
+        return 1
+    objects = object_constants(def_matches[0].read_text(encoding="utf-8", errors="replace"))
+    names_by_id: dict[int, list[str]] = {}
+    for name, const_id in sorted(objects.items()):
+        names_by_id.setdefault(const_id, []).append(name)
+
+    strings = load_display_strings(install_path)
+    if not strings:
+        print(f"WARNING: no display strings at {install_path / DISPLAY_STRINGS_RELATIVE} — every new row will be named from Unit.name.", file=sys.stderr)
+
+    units = dat._units_by_id
+    corpses = corpse_unit_ids(units)
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    constants = existing["constants"]
+    terrain_flags = {
+        entry["constId"]: entry
+        for entry in constants
+        if entry.get("category") == "terrain" and entry.get("constId") is not None
+    }
+    run_date = date.today().isoformat()
+
+    # (constId, rmsConstant) is the identity of a row here, because seven ids
+    # legitimately carry two rows each. Keying on constId alone would read
+    # FISH_PERCH as a duplicate of FISH and skip it.
+    covered = {(e.get("constId"), e.get("rmsConstant")) for e in constants if e.get("category") == "object"}
+
+    # The name check runs over the rows that already exist, and writes nothing.
+    agree, differ, no_string = [], [], []
+    for entry in constants:
+        if entry.get("category") != "object" or entry.get("constId") is None:
+            continue
+        unit = units.get(entry["constId"])
+        if unit is None:
+            continue
+        name, source = roster_descriptive_name(unit, strings)
+        if source != "strings":
+            no_string.append((entry.get("rmsConstant"), entry.get("descriptiveName"), name))
+        elif name == entry.get("descriptiveName"):
+            agree.append(entry.get("rmsConstant"))
+        else:
+            differ.append((entry.get("rmsConstant"), entry.get("descriptiveName"), name))
+
+    created: list[dict] = []
+    from_strings = 0
+    for const_id, unit in sorted(units.items()):
+        for rms_constant in names_by_id.get(const_id, [None]):
+            if (const_id, rms_constant) in covered:
+                continue
+            entry, name_source = build_roster_entry(const_id, rms_constant, unit, dat, strings, terrain_flags, corpses, run_date)
+            created.append(entry)
+            from_strings += name_source == "strings"
+
+    # New rows go immediately after the last existing object row.
+    # `format_game_constants` starts a new block every time the category
+    # changes, so appending at the end of the array would split the object rows
+    # into two blocks with a blank line down the middle of the file.
+    last_object = max((i for i, e in enumerate(constants) if e.get("category") == "object"), default=len(constants) - 1)
+    updated = constants[: last_object + 1] + created + constants[last_object + 1 :]
+
+    named_created = sum(1 for e in created if e["rmsConstant"] is not None)
+    print(f"\nLive gaia units: {len(units)}   object constants in random_map.def: {len(objects)} names over {len(names_by_id)} ids")
+    print(f"Object rows in {output.name}: {len(covered)} before, {len(covered) + len(created)} after")
+    print(f"  rows created                 : {len(created)}")
+    print(f"      with an RMS constant     : {named_created}")
+    print(f"      unnamed (id-only)        : {len(created) - named_created}")
+    print(f"  descriptiveName from DE text : {from_strings}")
+    print(f"  descriptiveName from Unit.name: {len(created) - from_strings}")
+    print(f"  marked isCorpse (hidden by default in the Objects tab): {sum(1 for e in created if e.get('isCorpse'))}")
+    print(f"  no habitat could be derived  : {sum(1 for e in created if 'habitat' not in e)}")
+
+    print(f"\nExisting rows checked against DE's display strings: {len(agree)} agree, {len(differ)} differ, {len(no_string)} have no string")
+    if differ:
+        print("  DIFFERS — left alone, settle each one deliberately (CREATION_PLAN 4.10 decision 1):")
+        for name, hand, de_text in differ:
+            print(f"      {str(name):22s} file={hand!r:30} DE={de_text!r}")
+    if no_string:
+        print("  no display string, file's name kept:")
+        for name, hand, fallback in no_string:
+            print(f"      {str(name):22s} file={hand!r:30} Unit.name={fallback!r}")
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(updated), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root, then the before/after corpus diff — the habitat fallback stops firing for hundreds of objects and the preview is expected to MOVE.")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # 6. Main
 # ---------------------------------------------------------------------------
 
@@ -1792,11 +2116,12 @@ def main() -> int:
     parser.add_argument("--storages", action="store_true", help="Update ONLY the resource-storage data on object entries, read from empires2_x2_p1.dat: the raw resourceStorages slots plus a refreshed resourceAmounts derived from them. Rewrites no other field. This is what tells a consumer whether an effect_amount ATTR_STORAGE_VALUE line changes a resource, a population count or a decay timer.")
     parser.add_argument("--attributes", action="store_true", help="Update ONLY the effect_amount attribute selectors (ATTR_*), read from random_map.def's own Attribute Constants section. Needs no dat file. Rewrites no other field.")
     parser.add_argument("--classes", action="store_true", help="Update ONLY the unit-class data, read from empires2_x2_p1.dat: one objectClass row per genie unit class (with the unit ids in it) plus a classId on every object entry. Rewrites no other field. Verifies the class-to-constant offset against random_map.def first and refuses to write if it disagrees.")
-    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table or --classes to see the diff before taking it.")
+    parser.add_argument("--roster", action="store_true", help="CREATE an object row for every live gaia unit, read from empires2_x2_p1.dat (CREATION_PLAN 4.10) — the only mode that adds rows rather than filling fields on rows that already exist. Rows are keyed by constId with rmsConstant null where the unit has no name, since unit 1546 has no #const at all. Never overwrites an existing row, and prints every descriptiveName where DE's own display text disagrees with what the file says.")
+    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --classes or --roster to see the diff before taking it.")
     args = parser.parse_args()
 
-    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.classes), bool(args.storages), bool(args.attributes)]) > 1:
-        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --classes, --storages, --attributes) are mutually exclusive.", file=sys.stderr)
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster)]) > 1:
+        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --classes, --storages, --attributes, --roster) are mutually exclusive.", file=sys.stderr)
         return 1
 
     install_path = args.install_path or guess_install_path()
@@ -1869,6 +2194,9 @@ def main() -> int:
 
     if args.attributes:
         return run_attributes(install_path, args.output, args.dry_run)
+
+    if args.roster:
+        return run_roster(install_path, args.output, load_dat(), args.dry_run)
 
     def_matches = find_file(install_path, "random_map.def")
     if not def_matches:

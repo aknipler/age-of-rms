@@ -14,6 +14,10 @@ import { AppSettingsProvider } from "./settings/AppSettingsContext";
 import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
 import { PreviewViewProvider, PreviewViewportProvider } from "./components/preview/PreviewViewContext";
 import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
+import { UpdatePrompt } from "./components/UpdatePrompt";
+import { useUpdateCheck } from "./update/useUpdateCheck";
+import { buildBugReportUrl } from "./bugReport";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useDocument } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useParsedDocument } from "./useParsedDocument";
@@ -46,6 +50,34 @@ function AppContent() {
   // lifted here (rather than living inside BreakdownPane, which unmounts
   // on every tab switch) specifically so it survives Breakdown <-> Code.
   const selection = useSharedSelection(parsed.source, parsed.parseResult);
+  // Checks GitHub once on mount. Silent when offline or already current, so
+  // most starts render nothing for this.
+  const update = useUpdateCheck();
+
+  // Opens a prefilled issue in the user's own browser, the same way the DE RMS
+  // guide link does (TitleBar.tsx explains why an external page does not belong
+  // in a Tauri webview). Counting the diagnostics here rather than in
+  // bugReport.ts keeps that module free of the parser's types, so it stays
+  // testable without constructing a ParseResult.
+  function reportBug() {
+    const counts = { errors: 0, warnings: 0, infos: 0 };
+    for (const diagnostic of parsed.diagnostics) {
+      if (diagnostic.severity === "error") counts.errors++;
+      else if (diagnostic.severity === "warning") counts.warnings++;
+      else counts.infos++;
+    }
+
+    const url = buildBugReportUrl({
+      appVersion: __APP_VERSION__,
+      userAgent: navigator.userAgent,
+      diagnostics: doc.filePath === null ? null : counts,
+      hasFileOpen: doc.filePath !== null,
+    });
+
+    openUrl(url).catch((error: unknown) => {
+      console.error("Failed to open the bug report form", error);
+    });
+  }
 
   return (
     <div className={styles.app}>
@@ -101,12 +133,16 @@ function AppContent() {
           </PreviewResultProvider>
         </PreviewCutProvider>
       </ParsedDocumentProvider>
+      {/* Directly above the status bar, so an offer to restart the app sits
+          next to the rest of the app's chrome rather than over the work. */}
+      <UpdatePrompt state={update.state} onInstall={update.install} onDismiss={update.dismiss} />
       <StatusBar
         diagnostics={parsed.diagnostics}
         total={parsed.resourceTotals.total}
         player={parsed.resourceTotals.player}
         neutral={parsed.resourceTotals.neutral}
         onOpenGenerationSettings={() => setGenerationSettingsOpen(true)}
+        onReportBug={reportBug}
       />
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       {/* Rendered only while a close-or-open attempt is waiting on the user.

@@ -10,6 +10,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseRms } from "../parser";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
+import type { Item, ParseResult } from "../types";
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -19,6 +20,33 @@ function walk(dir: string): string[] {
     else if (entry.endsWith(".rms")) out.push(p);
   }
   return out;
+}
+
+/** Every Item in the tree, in source order, blocks and branches included. */
+function* allItems(items: readonly Item[]): Generator<Item> {
+  for (const item of items) {
+    yield item;
+    switch (item.kind) {
+      case "command":
+        if (item.block) yield* allItems(item.block.items);
+        break;
+      case "orphanBlock":
+        yield* allItems(item.block.items);
+        break;
+      case "if":
+        for (const b of item.branches) yield* allItems(b.items);
+        break;
+      case "random":
+        yield* allItems(item.preamble);
+        for (const b of item.branches) yield* allItems(b.items);
+        break;
+    }
+  }
+}
+
+function* scriptItems(parse: ParseResult): Generator<Item> {
+  yield* allItems(parse.script.preamble);
+  for (const s of parse.script.sections) yield* allItems(s.items);
 }
 
 describe("RMS0200 corpus split (BUG-005 piece 1)", () => {
@@ -48,6 +76,29 @@ describe("RMS0200 corpus split (BUG-005 piece 1)", () => {
     console.log(`  without (now reports observation only):      ${without}`);
     console.log("top names:");
     for (const [name, n] of top) console.log(`  ${String(n).padStart(4)}  ${name}`);
+
+    // The RMSTEST_63 population, reported separately because it is a DIFFERENT
+    // question from the wording split above. 61/62 produced a model in which an
+    // unrecognised word's block MERGES into the command before it, silently
+    // rewriting it. Only a word that OPENS A BLOCK can do that, so the sites at
+    // risk are exactly the unknown commands carrying one — a strict subset of
+    // RMS0200, and the number that says whether the merge matters on real maps.
+    // Split by name, since resolving an alias removes it from this population
+    // without touching the merge question at all.
+    const blockOpeners = new Map<string, number>();
+    for (const f of files) {
+      const parse = parseRms(readFileSync(f, "utf8"), lang);
+      for (const item of scriptItems(parse)) {
+        if (item.kind !== "command" || item.def !== undefined || !item.block) continue;
+        const name = parse.tokens[item.name].text;
+        blockOpeners.set(name, (blockOpeners.get(name) ?? 0) + 1);
+      }
+    }
+    const openerTotal = [...blockOpeners.values()].reduce((a, b) => a + b, 0);
+    console.log(`\nunknown commands that OPEN A BLOCK (the RMSTEST_63 population): ${openerTotal}`);
+    for (const [name, n] of [...blockOpeners.entries()].sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${String(n).padStart(4)}  ${name}`);
+    }
 
     // The only real invariant: the split must be exhaustive. Deliberately
     // `>= 0` and not `> 0`, matching the three sibling reporters. A count is a

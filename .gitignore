@@ -27,6 +27,17 @@ dist-ssr
 __pycache__/
 *.pyc
 
+# Secrets. The updater's minisign private key belongs in GitHub repository
+# secrets and in an offline backup, never in the tree. These patterns are a
+# backstop for a stray copy, not the place the key is meant to live, and they
+# cannot save a file that is force-added.
+*.key
+*.pem
+*.p12
+*.pfx
+.env
+.env.*
+
 tools/scenario-probe/generated-tests
 
 test-maps/local

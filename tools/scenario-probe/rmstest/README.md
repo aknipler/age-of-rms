@@ -86,6 +86,18 @@ Map** → **Menu ▸ Save As**. Output appears in the watcher a second or two la
 The watcher prints the default histograms. For the per-script reading, run
 `probe_scenario.py` directly with the flags named in that script's header.
 
+**Saved scenarios do NOT land in the install.** DE writes them under the user
+profile, in the Steam-id folder rather than the `0` one beside it:
+
+```
+C:/Users/<you>/Games/Age of Empires 2 DE/<steam-id>/resources/_common/scenario/
+```
+
+The scripts go in the install (`resources/_common/random-map-scripts/`) and the
+exports come out of the profile, which is the one path pair worth writing down.
+A probe invocation that "cannot find the file" is nearly always this and not a
+bad export, so list that directory by modified time before debugging anything.
+
 ## Batch 1 (RUN, 2026-08-01) — items 1, 2, 3
 
 | Script | Sec.15 | Generate at | Runs | Reads with |
@@ -258,7 +270,7 @@ Batch 4 closed item 14. **Item 16 is now the largest open question in Phase 4**
 
 | Script | Settles | Generate at | Runs | Reads with |
 |---|---|---|---|---|
-| `RMSTEST_38_clumpsweep` | item 16 | **Giant (252), any player count** | 3 | `--patches` once per terrain (six of them) |
+| `RMSTEST_38_clumpsweep` | item 16 | **Giant (252), any player count** — but the exports on disk are all dim 480, see the map's own header | 3 | `--patches` once per terrain (six of them) |
 
 Three generations, not eighteen. The script puts **six lands on one map**, one per
 `clumping_factor` value, each with its own terrain, spaced 76–101 tiles apart on
@@ -591,6 +603,63 @@ while the probe output was byte-identical. `51` is twenty runs of a map whose
 whole content is one small patch, and it is the likeliest place for that mistake
 to recur.
 
+### Batch 12 (2026-08-12) — one id, and it did not come back as expected
+
+| Script | Feeds | Size | Runs | Read with |
+|---|---|---|---|---|
+| `RMSTEST_61_commandalias` | `docs/known-issues.md` BUG-005 piece 2, CREATION_PLAN A.2 | Normal, any players | 1 | default histogram | **RUN 2026-08-12** |
+| `RMSTEST_62_commandalias_swap` | 61's confound | Normal, any players | 1 | default histogram | **RUN 2026-08-12** |
+| `RMSTEST_63_unknownblockmerge` | whether an unknown command's block merges into the previous one | Normal, any players | 1 | default histogram + land POSITION | **NOT RUN — low priority, blocks nothing** |
+
+**Answer: 32 is `create_land`.** 61 came back `DIRT 6063, DESERT 6233, no SNOW`,
+which reads as "33 is create_land and 32 is inert" — and 62, the same file with
+the aliased arms swapped in id and terrain, came back `SNOW 6043, DESERT 6191, no
+DIRT`, where 32 made a land. Loading `24hr_Petra.rms` in the DE editor closes it
+from outside the instrument: no `create_land`, no `create_player_lands`, lands
+generate, so `L` is making them.
+
+**61 could not have answered on its own** — its aliased arms differed in id AND
+position, so two models predicted its histogram. That is the standing vary-one-
+thing rule, broken in the arms under test while being followed for the control.
+
+**The pair yields a second finding**, which is what 63 is for: both
+runs made exactly two lands of ~15%, and one model names which terrain goes
+missing in each — **an unrecognised word's block merges into the command before
+it**, later value winning. The rival is a buried origin (Sec.15 item 30), which
+loses a land but does not predict which. 63 is the case that separates them.
+
+**63 was DOWNGRADED 2026-08-13, and 63's own arms were rewritten.** It was called
+the larger finding on the strength of reaching "every unrecognised command in a
+real script, including the 457 misspelled `set_loose grouping` lines in the
+Battle Royale maps". Those lines sit INSIDE a `create_object { … }` block with no
+braces of their own, so the merge model — which acts only on a word that opens a
+block — cannot touch them. Measured: after BUG-005 piece 2 resolved `L`, the
+corpus holds **zero** unknown commands carrying a block, and a sweep of all 292
+install files finds only `L` in Petra plus this batch's own `AL`/`AX`. Run it for
+the beginner typo an expert corpus does not contain (`create_lands {`), not for
+any shipped map. **The arms changed too**: as first written, 63's merge read-off
+("SNOW, no DIRT") is also what a buried origin produces, so it could not separate
+the models it names — the same fault that cost 61 and 62 a run each. Both origins
+now carry `land_position` at opposite corners, which makes burial impossible by
+construction and adds a second read-off, since under the merge the surviving land
+sits at the UNKNOWN word's position rather than `create_land`'s.
+
+**This is not the equivalencies-sheet import, and finding that out is most of the
+value.** BUG-005 piece 2 was deferred until the sheet lands, on the reading that
+the 581 unknown-command warnings need a token-id table. They do not. All 581 are
+one idiom in two maps, `#const L 32` used as a land command in `24hr_Petra.rms`
+and `24hr_Holler.rms`, and a sweep of every `#const` in the corpus finds no
+second word used as a command. **One verified id closes the bug.** The sheet
+still matters for the general case and is no longer what this is blocked on.
+
+What the run settles is that the id is what the author's comment says it is.
+Sec.2.1's shared-id model is measured (`RMSTEST_56a`/`57`, the comment
+collision), but the value 32 has never been checked against anything except that
+comment, and a resolver built on it would be reference data sourced from a claim.
+Three land commands, one real and two aliased, distinguished by terrain. Read
+the header for the four outcomes; the one that matters is snow present and desert
+absent.
+
 ### Two design notes worth reading before running
 
 **`45` is three files rather than three arms on one map, and Sec.15 item 17(b)
@@ -604,11 +673,14 @@ elevation command filtered on a terrain painted in `<TERRAIN_GENERATION>` would
 match nothing at all and the run would read as "repetition does nothing" under
 either model. The first draft of that script had exactly this bug.
 
-## Batch 7's scripts are missing from this directory
+## Batch 7's scripts — RECOVERED 2026-08-12
 
-`RMSTEST_40a/40b/40c` ran — the elevation study cites all three at four runs
-each, and batch 8's entire design is built on what they refuted — but the files
-exist only in the DE install they were run from. This directory's own rule is
-that the scripts are tracked here, not only where they run, and a header
-carrying a read-off table is most of what a run leaves behind. Recover them from
-the install and commit them.
+`RMSTEST_40a/40b/40c` were run but existed only in the DE install for a while,
+which meant the elevation study cited three measurements whose scripts — and so
+whose predictions and read-off tables — were nowhere in the repo. They are back
+in this directory and tracked.
+
+**Keep the rule that failed here: a script is tracked here, not only where it is
+run.** The headers are most of what a run leaves behind, since they record what
+was predicted *before* the generation and what would have refuted it. An export
+without its script is a number without a question.

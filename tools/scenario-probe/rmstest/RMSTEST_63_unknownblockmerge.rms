@@ -1,0 +1,118 @@
+#const AX 33
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type DIRT
+    land_percent 15
+    base_size 6
+    land_position 25 25
+  }
+
+  AX
+  {
+    terrain_type SNOW
+    land_percent 15
+    base_size 6
+    land_position 75 75
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_63 - does an unrecognised command's block merge into the command before it?
+Feeds: docs/known-issues.md BUG-005 piece 2, parser-design Sec.2.1,
+preview-design Sec.6.1
+Run 61 and 62 first. This is the arm that makes their answer decisive.
+
+WHAT 61 AND 62 RETURNED, AT NORMAL, SAME SETTINGS
+
+  61  create_land DIRT, AL(32) SNOW, AX(33) DESERT  ->  DIRT 6063, DESERT 6233
+  62  create_land DIRT, AX(33) SNOW, AL(32) DESERT  ->  SNOW 6043, DESERT 6191
+
+Both runs produced exactly TWO lands of about 15 percent, and in each the missing
+terrain is the one a single model names in advance.
+
+  32 IS create_land. 33 is NOT a command. An unrecognised word's block MERGES
+  into the command before it, and the later value of a repeated attribute wins.
+
+61 under that model: create_land makes the DIRT land; AL is a real create_land
+and makes the SNOW land; AX is not a command, so its block folds into the SNOW
+land and rewrites the terrain to DESERT. DIRT plus DESERT, which is what came
+back. 62: create_land starts the DIRT land, AX folds into it and rewrites it to
+SNOW, AL makes the DESERT land. SNOW plus DESERT, which is also what came back.
+
+The model that 61 alone suggested - that create_land is 33 and 32 is inert - is
+refuted by 62, where 32 made a land.
+
+WHY THIS RUN EXISTS
+Two histograms fitting one model is agreement, not a measurement. The rival story
+is ordinary engine behaviour already recorded in this project: a land whose
+origin is buried by a later stamp before it grows is lost outright, which also
+produces "one of my three lands is missing" and varies with the seed. It has to
+be ruled out by constructing the case where the two disagree rather than by
+preferring the tidier explanation.
+
+METHOD
+Two land commands only. A real create_land carrying DIRT at land_position 25 25,
+then AX aliased to 33 carrying SNOW at land_position 75 75. Nothing else changes.
+
+The positions are the whole reason this run can answer, and they were added
+2026-08-13 after the first draft could not. Pinning both origins at opposite
+corners makes a buried origin IMPOSSIBLE - the rival model needs one stamp to
+land on the other's origin, and these are half a map apart. It also buys a
+second, independent read-off: land_position is a repeated attribute, so under
+the merge the surviving land sits where AX asked, not where create_land did.
+Terrain and position are then two readings of one model, and they must agree.
+
+READ-OFF
+
+  SNOW about 6000, NO DIRT, and the land sits BOTTOM-RIGHT
+      The merge is real. One land was created and both its terrain and its
+      position were rewritten by a block belonging to a word the engine does not
+      know. Later value wins on a repeated attribute, as 61 and 62 modelled.
+  SNOW about 6000, NO DIRT, but the land sits TOP-LEFT
+      A PARTIAL merge - the block is read, but not every attribute overrides.
+      Interesting in its own right and it needs its own run per attribute; do not
+      fold it into the simple model.
+  DIRT about 6000 top-left AND SNOW about 6000 bottom-right
+      No merge. 33 is a land command in its own right, and 61 and 62 were each
+      losing a land some other way.
+  DIRT about 6000 top-left only, no SNOW
+      No merge and 33 is not a command - the block is simply discarded.
+  Neither terrain
+      Something ate the first command. Rerun before reading anything.
+
+WHY THE ANSWER MATTERS, AND WHAT IT DOES NOT REACH
+Corrected 2026-08-13. This run was originally justified by the 457 misspelled
+set_loose grouping lines in DE's Battle Royale maps. It does not reach them:
+those sit INSIDE a create_object block with no braces of their own, so they are
+misspelled attributes already inside the command they would supposedly merge
+into, and the merge model only acts on a word that OPENS a block. Measured after
+BUG-005 piece 2 landed, the corpus contains ZERO unknown commands carrying a
+block, and all 292 install files contain only L in Petra plus this batch's AL/AX.
+
+What it does reach is the population an expert corpus cannot show: a beginner
+writing create_lands { by mistake in this very editor. If the merge holds, the
+warning on a block-opening unknown command should say the block is being folded
+into the command above, which is a far more useful thing to tell an author than
+that the name is unrecognised. Nothing is blocked on this run.
+
+GENERATE AT NORMAL (200), any player count, ONE RUN. Same settings as 61 and 62
+or the comparison is void. Read with --bbox or --patches, not the histogram
+alone, since position is half the answer.
+*/

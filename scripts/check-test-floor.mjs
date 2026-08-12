@@ -45,7 +45,9 @@ const TESTS_PER_LOCAL_MAP = 4;
 // Everything not attributable to a corpus map, including `broken/`, which is
 // tracked and therefore always present. 1387 - 399 (32 top-level maps) - 84
 // (19 local maps) = 904.
-const BASE_TESTS = 904;
+// Raised 904 -> 911 on 2026-08-13: bugReport.test.ts added 7 tests that touch
+// no corpus map, so they belong in the base rather than in either coefficient.
+const BASE_TESTS = 911;
 
 // File count does NOT depend on the corpus — a gitignored map removes tests,
 // never a test file — so this one stays a written-down number. 44 files live
@@ -53,7 +55,8 @@ const BASE_TESTS = 904;
 // exist to print a corpus census and are legitimate to delete: a guard that
 // goes red when someone removes a scratch harness is a guard that gets
 // switched off. Raise it deliberately as suites land.
-const MIN_FILES = 40;
+// 46 files live (2026-08-13), minus the same four scratch harnesses, so 42.
+const MIN_FILES = 42;
 
 const MAPS_DIR = join(process.cwd(), "test-maps");
 const LOCAL_CORPUS_DIR = join(MAPS_DIR, "local");

@@ -32,6 +32,23 @@ export interface ArgumentDef {
   // docs/parser-design.md Sec.10.
   cautionBelow?: number;
   cautionMessage?: string; // required alongside cautionBelow; user-facing text
+  /**
+   * Suppresses the known-name half of Sec.6's stop set for THIS slot only.
+   *
+   * The stop set exists so a command missing its arguments cannot swallow the
+   * next command as one, which is what keeps a single typo from eating the rest
+   * of the file. It is right everywhere except where a known name is the whole
+   * point: `#const`'s value slot, where Sec.2.1 says a script may alias any
+   * name, so `#const restricted_terrain_distance max_distance_to_other_zones`
+   * is correct RMS and stopping on it reported the author's own line twice.
+   *
+   * Deliberately a flag rather than a rule derived from `type`, even though
+   * every alias target is an `otherConstant`: 15 other slots share that type,
+   * and on `effect_amount.attribute` or `assign_to.target` a known name really
+   * is a mangled line that must still stop. The narrow exception is the safe
+   * one, since this stop set is the parser's main error-recovery lever.
+   */
+  acceptsKnownName?: boolean;
 }
 
 export interface CommandDef {
@@ -55,6 +72,22 @@ export interface CommandDef {
    * three rounds of work.
    */
   sectionLocked?: boolean;
+  /**
+   * The engine's own internal token id for this name, set only where a run has
+   * measured it. Sec.2.1: the engine resolves every word to one integer and
+   * constants share that space with commands, so a script's `#const L 32` makes
+   * `L` indistinguishable from whichever command holds 32. Read by the parser's
+   * alias resolution and by nothing else; absent means unknown, and unknown
+   * resolves nothing.
+   *
+   * Same species as `sectionLocked` above — an engine fact on a type whose
+   * other fields are mostly documentation facts — and the sibling of `constId`
+   * in game-constants.json, which records the same integer space for constants.
+   * The id space is flat and it collides across categories: 69 is at once
+   * SHORE_FISH, ATTR_PROJECTILE_ARC and the engine's own `/*` (validate.ts's
+   * COMMENT_OPEN_ID, RMS0111).
+   */
+  tokenId?: number;
   kind: "standalone" | "block";
   description?: string;
   arguments?: ArgumentDef[];
@@ -200,6 +233,12 @@ export interface LanguageIndex {
   controlKeywords: ReadonlySet<string>;
   /** Union of command + attribute names — the "known name" stop set (spec Sec.6). */
   knownNames: ReadonlySet<string>;
+  /**
+   * Reverse index over `CommandDef.tokenId`, for resolving a script's own
+   * `#const NAME <id>` back to the command that id names (Sec.2.1). Empty but
+   * for the ids a run has measured, which today is one.
+   */
+  commandsByTokenId: ReadonlyMap<number, CommandDef>;
 }
 
 export function buildLanguageIndex(data: LanguageData): LanguageIndex {
@@ -211,6 +250,16 @@ export function buildLanguageIndex(data: LanguageData): LanguageIndex {
   for (const d of data.directives) directivesByName.set(d.name, d);
   const controlKeywords = new Set<string>(data.controlKeywords.map((k) => k.name));
   const knownNames = new Set<string>([...commandsByName.keys(), ...attributesByName.keys()]);
+  // First writer wins, so a duplicate id cannot silently change which command a
+  // map renders as depending on array order. `validate:reference` rejects the
+  // duplicate outright; this is the belt to that braces, since the index is
+  // also built from data the app loads at runtime.
+  const commandsByTokenId = new Map<number, CommandDef>();
+  for (const c of data.commands) {
+    if (typeof c.tokenId === "number" && !commandsByTokenId.has(c.tokenId)) {
+      commandsByTokenId.set(c.tokenId, c);
+    }
+  }
   return {
     data,
     sections: new Set(data.sections),
@@ -219,5 +268,6 @@ export function buildLanguageIndex(data: LanguageData): LanguageIndex {
     directivesByName,
     controlKeywords,
     knownNames,
+    commandsByTokenId,
   };
 }

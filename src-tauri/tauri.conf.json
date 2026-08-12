@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Age of RMS",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "com.aorms.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -29,7 +29,8 @@
     "longDescription": "A community built, open-source program to lower the barrier of entry for newcomers (via a block-based breakdown view) and centralise RMS tools for experienced creators alongside a full code editor with advanced debugging.",
     "shortDescription": "RMS editor for Age of Empires II: DE",
     "publisher": "Ash Knipler",
-    "targets": ["nsis", "msi", "deb", "appimage", "dmg"],
+    "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -37,5 +38,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE2QjlDQkRCQjM1NUY1NDkKUldSSjlWV3oyOHU1RmxwV25JdFZzeHJ1cnRiMHQxWnh0MDBOVEoxL0Q1NHFEMTR5TnB1NmpzOUoK",
+      "endpoints": ["https://github.com/aknipler/age-of-rms/releases/latest/download/latest.json"]
+    }
   }
 }

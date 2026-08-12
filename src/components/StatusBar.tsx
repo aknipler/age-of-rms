@@ -13,6 +13,8 @@ interface StatusBarProps {
   player?: ResourceRange;
   neutral?: ResourceRange;
   onOpenGenerationSettings?: () => void;
+  /** Opens a prefilled GitHub issue in the user's browser (src/bugReport.ts). */
+  onReportBug?: () => void;
 }
 
 const ZERO_RANGE: ResourceRange = {
@@ -56,6 +58,7 @@ export function StatusBar({
   player = ZERO_RANGE,
   neutral = ZERO_RANGE,
   onOpenGenerationSettings,
+  onReportBug,
 }: StatusBarProps) {
   return (
     <div className={styles.statusBar}>
@@ -77,6 +80,16 @@ export function StatusBar({
           only pushes it right when help mode is off (HelpTip renders no
           wrapper then, so the button WAS the flex item). */}
       <span className={styles.cogSlot}>
+        <HelpTip id="statusBar.reportBug">
+          <button
+            type="button"
+            className={styles.settingsCog}
+            onClick={onReportBug}
+            aria-label="Report a bug"
+          >
+            🐞
+          </button>
+        </HelpTip>
         <HelpTip id="statusBar.generationSettings">
           <button
             type="button"

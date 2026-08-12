@@ -1368,6 +1368,7 @@
       "name": "create_land",
       "section": "LAND_GENERATION",
       "kind": "block",
+      "tokenId": 32,
       "description": "Creates one land mass (typically non-player territory — islands, center land, etc). Takes the same attribute set as create_player_lands.",
       "attributes": [
         "terrain_type",
@@ -1395,7 +1396,8 @@
         "min_placement_distance",
         "land_id"
       ],
-      "verified": true
+      "verified": true,
+      "notes": "tokenId 32 measured by RMSTEST_62_commandalias_swap (2026-08-12): an arm aliased to 32 made a land, and 24hr_Petra.rms generates lands in the DE editor while containing no create_land and no create_player_lands, so its `#const L 32` is the only thing that can be making them. RMSTEST_61 alone read the other way and could not decide, because its two aliased arms differed in id AND position."
     },
     {
       "name": "create_elevation",
@@ -2924,7 +2926,8 @@
         },
         {
           "name": "value",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "acceptsKnownName": true
         }
       ],
       "description": "Assigns a label to a numeric ID. The value may be a literal number, a math expression, an rnd(), or another constant — everything in the game is a number internally, so constants resolve to their numeric value.",

@@ -1,0 +1,184 @@
+name: Release
+
+# Tags are the trigger. `npm version <x.y.z>` writes package.json and creates
+# the matching `v<x.y.z>` tag in one step, and tauri.conf.json reads its version
+# straight out of package.json, so the tag and the installer can never disagree
+# about what was built.
+#
+# workflow_dispatch builds the same artifacts without releasing anything, which
+# is how to test a change to this file without minting a throwaway tag.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# tauri-action needs this to create the release and upload to it.
+permissions:
+  contents: write
+
+jobs:
+  # The JS gates run ONCE, on the cheapest runner, rather than inside each
+  # matrix leg. They are platform independent, so running them per platform
+  # would pay for the same answer twice and slow the release down.
+  #
+  # These are the same four gates ci.yml runs, deliberately repeated rather
+  # than assumed. ci.yml fires on pull requests and pushes to main; a tag can
+  # be placed on any commit, including one that went through neither.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Validate reference data
+        run: npm run validate:reference
+
+  build:
+    needs: verify
+    strategy:
+      # One platform failing should not cancel the other. A Linux packaging
+      # problem is not a reason to lose a working Windows installer.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            # NSIS only. The MSI that "all" would also produce on Windows is
+            # not the updater's target and would just be a second confusing
+            # download on the release page.
+            bundles: nsis
+          # NOT ubuntu-22.04, which starts its deprecation brownouts in
+          # September 2026 and fails builds during them. The cost of 24.04 is a
+          # higher glibc floor, so the AppImage will not run on genuinely old
+          # distributions. Revisit if a tester reports exactly that.
+          - platform: ubuntu-24.04
+            # AppImage is the updatable one, so it is what latest.json points
+            # at on Linux. The .deb is there for people who would rather have a
+            # system package, and it is deliberately NOT self-updating.
+            bundles: appimage,deb
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # A cold build of the Rust host costs several minutes. The cache keys off
+      # Cargo.lock, so that is only paid when a dependency actually changes.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+          # Without this the two legs would fight over one cache entry.
+          key: ${{ matrix.platform }}
+
+      # Tauri renders through the system webview, which on Linux means GTK and
+      # WebKitGTK have to be present as build-time headers. patchelf is what
+      # rewrites the interpreter path when the AppImage is assembled.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Tagged run. Both legs pass the SAME tagName, which is what makes
+      # tauri-action append to one release rather than create two.
+      #
+      # THE DRAFT MUST BE PUBLISHED or the updater sees nothing. Its endpoint
+      # resolves through /releases/latest/, which ignores drafts entirely.
+      - name: Build and draft release
+        if: github.ref_type == 'tag'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the update payload so an installed client will accept it.
+          # This is minisign and has nothing to do with OS code signing; it
+          # authenticates the update, it does not quiet SmartScreen. Losing
+          # this key means never being able to update an installed client
+          # again, so it lives in repository secrets and in a backup.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Age of RMS ${{ github.ref_name }}
+          releaseBody: |
+            Alpha build for Windows and Linux.
+
+            **Windows**: download the `-setup.exe`. It is not code signed, so
+            SmartScreen will show "Windows protected your PC" the first time you
+            run it. Choose "More info", then "Run anyway". It installs for the
+            current user only, into %LOCALAPPDATA%, with no administrator
+            prompt.
+
+            **Linux**: the `.AppImage` needs no install, just `chmod +x` it and
+            run. The `.deb` is for Debian and Ubuntu, and unlike the AppImage it
+            will not update itself.
+
+            **macOS**: no build yet. The app has no Windows-specific code, so it
+            can be built from source. See the README.
+
+            Bug reports and feedback are welcome in the issue tracker.
+          releaseDraft: true
+          # NOT a prerelease, and that is a constraint rather than a preference.
+          # GitHub's /releases/latest/ excludes prereleases as well as drafts,
+          # so marking these would leave the updater endpoint resolving to
+          # nothing while every build still looked fine. The 0.x version number
+          # is what says "alpha", along with the release notes.
+          prerelease: false
+          # Publishes latest.json beside the installers. This is the file the
+          # updater endpoint in tauri.conf.json points at, and it carries one
+          # entry per platform, so both legs contribute to the same manifest.
+          uploadUpdaterJson: true
+          args: --bundles ${{ matrix.bundles }}
+
+      # Manual run. Same build, no release. Artifacts land on the workflow run
+      # so this file can be changed and proven without a tag.
+      - name: Build only
+        if: github.ref_type != 'tag'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Needed even though nothing is released. createUpdaterArtifacts is on
+          # in tauri.conf.json, and a build that finds a public key with no
+          # private key to match it fails outright rather than skipping the
+          # signature.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          uploadWorkflowArtifacts: true
+          uploadUpdaterJson: false
+          args: --bundles ${{ matrix.bundles }}

@@ -1,0 +1,104 @@
+#const AL 32
+#const AX 33
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type DIRT
+    land_percent 15
+    base_size 6
+  }
+
+  AL
+  {
+    terrain_type SNOW
+    land_percent 15
+    base_size 6
+  }
+
+  AX
+  {
+    terrain_type DESERT
+    land_percent 15
+    base_size 6
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_61 - does a #const aliased to 32 really act as create_land?
+Feeds: docs/known-issues.md BUG-005 piece 2, CREATION_PLAN A.2, parser-design
+Sec.2.1 (verify #7)
+
+WHY THIS IS ONE ID AND NOT A TABLE
+BUG-005's largest input is 581 unknown-command warnings, every one of them the
+same idiom in two maps. 24hr_Petra.rms:6 and 24hr_Holler.rms:248 both write
+
+    #const L 32 /* Defining Land Creation Command */
+
+and then use L as a land command, 384 and 197 times. Those 581 are the whole of
+the corpus's aliasing population - a sweep of every #const in the corpus finds no
+second word used as a command - so the fix needs ONE verified id, not the whole
+equivalencies sheet the plan has been waiting on. The sheet is still worth
+importing for the general case; it is not what this bug is blocked on.
+
+WHAT IS ONLY INFERRED TODAY
+That 32 is create_land at all. The single source is the map author's own comment
+on that line. Sec.2.1's id-space model came from the community equivalencies
+data and is supported by measurement in one place only - RMSTEST_56a/57 settled
+that the comment-opening token is 69 - so the MODEL is measured and this
+particular VALUE is not. Shipping a resolver on an author's comment would be
+reference data sourced from a claim nobody checked.
+
+METHOD
+Three land commands, identical but for the terrain, in one file.
+
+  create_land -> DIRT    the control that proves the script ran at all
+  AL (32)     -> SNOW    the hypothesis
+  AX (33)     -> DESERT  the orthogonal reading, expected to be boring
+
+AX exists because "32 is create_land" and "any smallish number is create_land"
+predict the same snow. It is deliberately LAST, so if an unknown command
+swallows the block that follows it, the thing it swallows is the control arm
+rather than the hypothesis.
+
+READ-OFF, from probe_scenario.py's terrain histogram
+
+  DIRT present, SNOW present, DESERT absent
+      32 IS create_land. Write the one row, build the resolver, and BUG-005
+      piece 2 closes at 581 warnings to zero.
+  DIRT present, SNOW absent
+      32 is not create_land, or a #const cannot reach command space at all. The
+      author's comment is wrong and the whole tier-2 premise needs the sheet
+      before anything is built. Note this reading also says those two maps do
+      not generate the lands they appear to ask for.
+  DIRT present, SNOW present, DESERT present
+      The id is not what selects the command. Stop and rebuild the model; do not
+      write a table on it.
+  DIRT absent
+      The run says nothing. Something ate the first command. Rerun before
+      reading anything into the other two arms.
+
+GENERATE AT NORMAL (200), any player count, ONE RUN. The three arms are
+independent and the reading is presence or absence, not proportion, so a second
+seed adds nothing.
+
+WHAT THIS STILL DOES NOT SETTLE
+Only the one id. Every other alias in the equivalencies sheet stays unverified,
+which is fine for BUG-005 and not fine for CREATION_PLAN A.2 - a general import
+needs its own spot-checks, and this file is the pattern to copy for them.
+*/

@@ -235,6 +235,121 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     });
   });
 
+  // BUG-005 piece 2. Sec.2.1: the engine resolves every word to one integer, so
+  // `#const L 32` makes `L` the same word as the command holding tokenId 32.
+  // 581 corpus warnings were this one idiom in two maps, and all 581 were on a
+  // construct that works — 24hr_Petra.rms has no create_land and no
+  // create_player_lands, and its lands generate.
+  describe("RMS0200: a #const aliased to a command's token id resolves (BUG-005 piece 2)", () => {
+    const aliased = "#const L 32\n<LAND_GENERATION>\nL { terrain_type SNOW land_percent 15 }";
+
+    it("resolves to the real command and stops warning", () => {
+      const r = parse(aliased);
+      expect(codes(r)).not.toContain("RMS0200");
+      const node = r.script.sections[0].items[0] as CommandNode;
+      expect(node.def?.name).toBe("create_land");
+    });
+
+    it("keeps the author's own token, so nothing re-prints the code", () => {
+      const r = parse(aliased);
+      const node = r.script.sections[0].items[0] as CommandNode;
+      // The def says create_land; the SOURCE still says L. Breakdown renders a
+      // real editable card off the def while every span still points at what
+      // the author wrote (CLAUDE.md: code is the only source of truth).
+      //
+      // Both halves are asserted together on purpose. An unknown command ALSO
+      // keeps its token and ALSO gets its block, so the token check alone
+      // passes whether or not the resolver exists — it was vacuous when first
+      // written and a mutant that deleted the resolver left it green.
+      expect(node.def?.name).toBe("create_land");
+      expect(r.tokens[node.name].text).toBe("L");
+      expect(node.block?.items).toHaveLength(2);
+    });
+
+    it("does not resolve an id no command claims", () => {
+      // 33 was the other arm of RMSTEST_61/62 and made no land in either.
+      const r = parse("#const AX 33\n<LAND_GENERATION>\nAX { terrain_type SNOW }");
+      expect(codes(r)).toContain("RMS0200");
+      expect((r.script.sections[0].items[0] as CommandNode).def).toBeUndefined();
+    });
+
+    it("cannot shadow a real command name, because no such alias is recordable", () => {
+      // Two mutants were spent finding out that the `??` order in
+      // parseNamedOrRun is NOT what protects this, and a test asserting it
+      // could not be made to fail. The real guard sits one slot earlier:
+      // `#const`'s NAME operand keeps the known-name stop, so `#const
+      // create_elevation 32` consumes nothing and records no symbol at all.
+      // With no symbol there is no alias, and the lookup order is unobservable.
+      //
+      // This asserts the reachability property instead, which is the thing that
+      // actually holds. Give the name slot `acceptsKnownName` and this goes red
+      // — which is the moment the lookup order starts mattering and someone has
+      // to think about it.
+      const r = parse("#const create_elevation 32\n<ELEVATION_GENERATION>\ncreate_elevation 5 { }");
+      expect(r.symbols).toHaveLength(0);
+      expect(codes(r)).toContain("RMS0201");
+      expect((r.script.sections[0].items[0] as CommandNode).def?.name).toBe("create_elevation");
+    });
+
+    it("does not reach backwards: a #const below a use cannot reinterpret it", () => {
+      // Single-pass, like the engine. A later definition changing what an
+      // earlier line meant would also make the parse order-dependent.
+      const r = parse("<LAND_GENERATION>\nL { terrain_type SNOW }\n#const L 32");
+      expect(codes(r)).toContain("RMS0200");
+    });
+
+    it("declines an expression value rather than evaluating one", () => {
+      // SymbolInfo carries the value's TOKEN, and evaluating it here would be
+      // inventing engine behaviour nobody has measured. Same call validate.ts
+      // makes for RMS0111's id 69.
+      const r = parse("#const L (30 + 2)\n<LAND_GENERATION>\nL { terrain_type SNOW }");
+      expect(codes(r)).toContain("RMS0200");
+    });
+
+    it("declines anything that is not a plain decimal integer", () => {
+      // This pins the /^\d+$/ specifically, and the expression case above
+      // cannot: `Number("(30")` is NaN, so that test stays green however loose
+      // the check gets. `Number` is the trap here — it accepts hex, a leading
+      // `+`, surrounding whitespace, and turns "" into 0 — so a laxer guard
+      // would read 0x20 as 32 and silently render this as create_land.
+      const r = parse("#const L 0x20\n<LAND_GENERATION>\nL { terrain_type SNOW }");
+      expect(codes(r)).toContain("RMS0200");
+    });
+  });
+
+  // The other half of the same Sec.2.1 ruling: a #const may alias a name, not
+  // only an id. `24hr_Battle Lines 1.0.rms:93` writes exactly this under its own
+  // `/* parameter renames */` comment, and we reported the author's correct line
+  // twice — once for too-few-arguments, once for the orphaned attribute left
+  // behind. Parked on BUG-005 from BUG-003's triage.
+  describe("#const may take a known name as its value (BUG-003's two parked sites)", () => {
+    it("consumes the known name as the value and says nothing", () => {
+      const r = parse("#const restricted_terrain_distance max_distance_to_other_zones\n<LAND_GENERATION>\n");
+      expect(r.diagnostics.filter((d) => d.code === "RMS0201")).toHaveLength(0);
+      expect(codes(r)).not.toContain("RMS0207");
+      expect(r.symbols[0].name).toBe("restricted_terrain_distance");
+      expect(r.tokens[r.symbols[0].valueToken as number].text).toBe("max_distance_to_other_zones");
+    });
+
+    it("still stops on structure, so a valueless #const cannot eat the file", () => {
+      // Only the known-name half of the stop set yields. If the structural half
+      // ever followed it, this #const would swallow the section header and the
+      // rest of the script would parse as the preamble of a directive.
+      const r = parse("#const SIZE\n<LAND_GENERATION>\ncreate_land { land_percent 5 }");
+      expect(codes(r)).toContain("RMS0201");
+      expect(r.script.sections).toHaveLength(1);
+      expect(r.script.sections[0].items).toHaveLength(1);
+    });
+
+    it("leaves the known-name stop in place for every other slot", () => {
+      // assign_to.target is an otherConstant too, and there a known name really
+      // is a mangled line. Deriving the exception from `type` would have taken
+      // this with it.
+      const r = parse("<LAND_GENERATION>\ncreate_land { assign_to land_percent 5 }");
+      expect(codes(r)).toContain("RMS0201");
+    });
+  });
+
   it("did-you-mean: prefix match on a truncated name", () => {
     // A half-typed name is unreachable by edit distance once the missing tail
     // runs past two characters, which is most of RMS's longer attributes.

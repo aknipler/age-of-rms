@@ -1,6 +1,6 @@
 # Age of RMS
 
-A free, open-source Windows desktop app that lowers the barrier of entry to Age of Empires II: Definitive Edition Random Map Script (RMS) creation, and aims to be a single home for community-made RMS tools.
+A free, open-source desktop app that lowers the barrier of entry to Age of Empires II: Definitive Edition Random Map Script (RMS) creation, and aims to be a single home for community-made RMS tools.
 
 ## What it does
 
@@ -18,6 +18,18 @@ The preview is an approximation and can always be improved. It reproduces the en
 ## Status
 
 In development, and usable. The editor, the parser and the map preview (not 100% perfect, feedback always welcome) are all built. Advanced Tools is the remaining pane.
+
+## Installing
+
+Builds live on the [releases page](https://github.com/aknipler/age-of-rms/releases).
+
+**Windows.** Download the `-setup.exe`. It is not code signed yet, so SmartScreen will show "Windows protected your PC" the first time you run it. Choose "More info", then "Run anyway". It installs for the current user only and never asks for administrator rights.
+
+**Linux.** The `.AppImage` needs no installation, just make it executable and run it. There is also a `.deb` for Debian and Ubuntu. The AppImage updates itself, the `.deb` does not.
+
+The app checks for a new version when it starts and offers to update. It never installs anything without being asked.
+
+**macOS.** There is no Mac build yet, because notarising one needs a paid Apple Developer account. Nothing in the app is Windows-specific though, so you can build your own. Install the [prerequisites](https://v2.tauri.app/start/prerequisites/), clone this repository, then run `npm install` and `npm run tauri build`. No config change is needed, since `bundle.targets` is already `"all"` and each platform builds whatever it supports. The `.dmg` and `.app` land in `src-tauri/target/release/bundle/`. macOS refuses to open an app it cannot verify, so right click and choose Open the first time rather than double clicking. Reports on whether this works are welcome in the issue tracker, and a signed build follows if there is demand.
 
 ## Tech stack
 
@@ -43,7 +55,15 @@ npm run validate:reference  # schema and integrity checks on reference/data
 
 ## License
 
-GPL-3.0. See `LICENSE`.
+The code is GPL-3.0. See `LICENSE`.
+
+The reference data in `reference/data/game-constants.json` is a separate matter. It is derived from Age of Empires II: Definitive Edition's own data files, and the object and terrain names in it are Microsoft's text rather than ours. Those rows are included under Microsoft's Game Content Usage Rules, a license that is personal and cannot be passed on, so you hold it yourself by owning the game. The GPL-3.0 grant over this repository does not reach them. `NOTICE` sets out what the data is, where each part came from and what it asks of contributors.
+
+Two things follow that are worth stating plainly. Age of RMS stays free, with no advertising and no paid tier, because the Game Content Usage Rules require it. And art, audio, binary game files and Microsoft's own written documentation stay out of this repository.
+
+## Attribution
+
+Age of Empires II © Microsoft Corporation. Age of RMS was created under Microsoft's 'Game Content Usage Rules' using assets from Age of Empires II, and it is not endorsed by or affiliated with Microsoft.
 
 ## Contributing
 

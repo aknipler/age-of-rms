@@ -1,0 +1,105 @@
+#const AL 32
+#const AX 33
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type DIRT
+    land_percent 15
+    base_size 6
+  }
+
+  AX
+  {
+    terrain_type SNOW
+    land_percent 15
+    base_size 6
+  }
+
+  AL
+  {
+    terrain_type DESERT
+    land_percent 15
+    base_size 6
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_62 - is it the ID that makes a land, or the POSITION?
+Feeds: docs/known-issues.md BUG-005 piece 2, CREATION_PLAN A.2
+Run 61 first. This file only means something against 61's histogram.
+
+WHAT 61 RETURNED
+Three arms, read at Normal on 2026-08-12:
+
+    create_land -> DIRT     6063     the control ran
+    AL (32)     -> SNOW     absent
+    AX (33)     -> DESERT   6233
+
+Read literally that says `create_land` is token 33 on this build and 32 is
+inert, which would mean the `#const L 32` idiom in `24hr_Petra.rms` and
+`24hr_Holler.rms` does nothing in game. Those two maps contain NO other land
+command - no `create_land`, no `create_player_lands` - so under that reading they
+generate no lands at all, which is a strong claim to rest on one generation.
+
+THE CONFOUND, AND IT IS MINE
+61's two aliased arms differed in id AND in position. `AL` was the second land
+command and `AX` was the third. So two models predict 61's exact histogram:
+
+  A. The ID selects the command. 33 is create_land, 32 is not.
+  B. POSITION decides. An unrecognised word leaves its block to be absorbed by
+     whatever the engine is doing next, so the middle arm dies whatever its id
+     is, and the last arm runs whatever its id is.
+
+Nothing in 61 separates them, which is a design fault in 61 rather than a
+surprise in the engine.
+
+METHOD
+Identical file, with the two aliased arms SWAPPED in both id and terrain. `AX`
+(33) is now the middle arm and carries SNOW; `AL` (32) is now the last arm and
+carries DESERT. The control is untouched and still first.
+
+READ-OFF
+
+  DIRT + SNOW, no DESERT
+      Model A. The id is what selects the command and create_land is 33. The
+      author's 32 is wrong on this build, BUG-005's 581 warnings are TRUE
+      positives, and the alias table is written against 33.
+  DIRT + DESERT, no SNOW
+      Model B. Position decides, both 61 and this run are artefacts of block
+      association, and nothing has been learned about any id. Stop; the
+      mechanism needs a different instrument.
+  DIRT + SNOW + DESERT
+      Both aliases work, so 61's missing snow was something else entirely -
+      most likely the middle-arm absorption of model B happening only in 61's
+      ordering. Rerun 61 before reading further.
+  DIRT only
+      Neither alias works in either position. 32 and 33 are both inert and
+      create_land is a third id.
+
+IF MODEL A HOLDS, THE LIKELY STORY IS VERSION DRIFT, and it is worth saying
+before anyone calls those maps sloppy. The equivalencies data is from the AoK/HD
+era and both maps predate DE. One command inserted into the engine's token table
+shifts every later id by one, which is exactly the 32-against-33 shape seen here.
+It also predicts something checkable without any new script: generate
+`24hr_Petra.rms` in DE and look for lands. No lands confirms the drift and turns
+this into a finding about the maps rather than about our parser.
+
+GENERATE AT NORMAL (200), any player count, ONE RUN, same settings as 61. The
+comparison is only valid against 61's own histogram, so do not change the size.
+*/

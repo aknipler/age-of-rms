@@ -105,6 +105,41 @@ if (languageData) {
     console.log("✓ language.json: all mutexWith / requiresOneOf references resolve");
   }
 
+  // `tokenId` uniqueness. The parser resolves an aliased `#const` by asking
+  // which command holds an id, so two commands claiming one id makes that
+  // question ambiguous and the answer arbitrary — a map would silently render
+  // as whichever entry the index happened to keep. The schema types the field
+  // but cannot see across entries, which is the same gap the min/max check
+  // below exists for.
+  const commandsByTokenId = new Map();
+  let tokenIdsOk = true;
+  for (const command of languageData.commands) {
+    if (typeof command.tokenId !== "number") continue;
+    const owner = commandsByTokenId.get(command.tokenId);
+    if (owner !== undefined) {
+      hadError = true;
+      tokenIdsOk = false;
+      console.error(
+        `✗ language.json: tokenId ${command.tokenId} is claimed by both "${owner}" and "${command.name}"`,
+      );
+      continue;
+    }
+    commandsByTokenId.set(command.tokenId, command.name);
+    // The field is only ever set from a run, and `notes` is where the run is
+    // named. Enforced rather than trusted, because an id transcribed from a map
+    // author's comment is exactly what BUG-005 spent three rounds refusing.
+    if (!command.notes) {
+      hadError = true;
+      tokenIdsOk = false;
+      console.error(
+        `✗ language.json: command "${command.name}" declares tokenId ${command.tokenId} with no notes naming the run that measured it`,
+      );
+    }
+  }
+  if (tokenIdsOk) {
+    console.log(`✓ language.json: ${commandsByTokenId.size} command tokenId(s), unique and each citing a run`);
+  }
+
   // Internal consistency: a numeric `default` must satisfy the `min`/`max` the
   // same argument declares. Schema alone cannot express this — it can type all
   // three fields correctly while they contradict each other.

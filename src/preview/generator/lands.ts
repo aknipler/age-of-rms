@@ -1103,6 +1103,18 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
  * corpus generation time, because a Set of numbers boxes and hashes every
  * member. The typed array brought that to about 3%.
  *
+ * WHEN IT IS EVALUATED, which is a real limit and not a detail. Once, at
+ * growth start, against a grid holding only origin STAMPS — so a wall that
+ * only exists after a neighbouring land has grown is invisible here, and a
+ * seed can still land behind one. It does not bite on the map above because
+ * that ellipse is 120 stamps and is therefore already sealed at this moment,
+ * and the mangrove strips never become walls at all now that they cannot
+ * teleport: they lose the race for their own rows to the flood and end at
+ * 5-21 tiles, against the 403 they reach when grown alone. Re-checking at
+ * draw time would cost a BFS per draw, and the behaviour it would change is
+ * measured stable (2026-08-12: 40 consecutive seeds, every map size), so this
+ * is left as a known bound rather than closed on an argument.
+ *
  * Returns `undefined` when the land can reach nothing at all, so the caller
  * can skip sampling entirely rather than spin through its attempt budget.
  */

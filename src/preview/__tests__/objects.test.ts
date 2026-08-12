@@ -609,9 +609,25 @@ describe("objectCategory (Sec.12 item 8 fallback)", () => {
     // Cosmetic only, and the reason it is a name pattern is in
     // TREE_NAME_PATTERN's own doc: the alternative is the near-white unknown
     // colour, which buries forest terrain under white dots.
-    for (const name of ["OLIVE_TREE", "CYPRESS_TREE", "ITALIAN_PINETREE", "DLC_DRAGONTREE", "FORAGE_BUSH", "PLANT_RAINFOREST"]) {
+    //
+    // The first four now answer from DATA (the roster gave them wood 100) and
+    // PLANT_RAINFOREST from the PATTERN, since it has no row. Keep one of each:
+    // drop the last and this test stops covering the fallback it is named after.
+    for (const name of ["OLIVE_TREE", "CYPRESS_TREE", "ITALIAN_PINETREE", "DLC_DRAGONTREE", "PLANT_RAINFOREST"]) {
       expect(objectCategory(name, constants)).toBe("resource-wood");
     }
+  });
+
+  it("lets a real yield outrank the tree name pattern", () => {
+    // FORAGE_BUSH matches /BUSH/ and is unit 59, the same forage bush FORAGE
+    // resolves to, carrying 125 food. Until CREATION_PLAN 4.10 wrote the roster
+    // only FORAGE had a row, so the two spellings of ONE unit answered
+    // differently and the pattern was never contradicted by data. It is now,
+    // and the data wins by TREE_NAME_PATTERN's own rule ("resourceAmounts.wood
+    // would be the real signal and takes precedence wherever the reference data
+    // has it") — a forage bush is a food source that happens to be shrub-shaped.
+    expect(objectCategory("FORAGE_BUSH", constants)).toBe("resource-food");
+    expect(objectCategory("FORAGE", constants)).toBe("resource-food");
   });
 
   it("does not call a non-tree a tree", () => {

@@ -38,3 +38,7 @@ Be respectful. This is a hobby/community project — assume good faith, and reme
 ## Licensing note
 
 By contributing, you agree your contribution is licensed under this project's GPL-3.0 license (see `LICENSE`).
+
+That license covers the code. It does not cover the game data in `reference/data/game-constants.json`, which comes out of Age of Empires II: Definitive Edition's own files and is included under Microsoft's Game Content Usage Rules. Read `NOTICE` before touching it.
+
+The practical rule for a PR is short. Facts about the game and the names of things are in scope, so ids, terrain restrictions, resource amounts and constant names are all fine. Art, audio, binary game files and Microsoft's own written documentation are not. In particular, do not paste prose out of the scripting guide DE ships in its `Docs` folder into `doc-strings.json` or `ui-help.json`. Help text is written by hand, in your own words.

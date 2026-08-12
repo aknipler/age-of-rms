@@ -258,12 +258,49 @@ export interface ObjectConstant {
  * the point of separating the two halves: this closes the lookup, and the
  * extraction closes the coverage.
  */
+/**
+ * Two indexes over the object rows, built once per constants array.
+ *
+ * **This is a WeakMap keyed on the ARRAY, not a module-level Map.** The array is
+ * a module-level import in the app and a different literal in every test, so
+ * keying on its identity gives the app one shared index and each test its own,
+ * with no cache-invalidation rule to get wrong — the reference data is frozen
+ * for the lifetime of the array, so an index built from it can never go stale.
+ * Weak so a test's array and its index are collected together.
+ *
+ * It exists because `objectCategory` is called PER PLACED OBJECT. That was a
+ * 372-row scan when the reference data held 33 objects and became a 3011-row
+ * scan when CREATION_PLAN 4.10 wrote the whole gaia roster, which is ~465
+ * million comparisons over the corpus for a lookup whose answer never changes.
+ * Same shape as the `CandidatePool` fix in this file: the work was not wrong,
+ * it was repeated.
+ */
+const OBJECT_INDEX = new WeakMap<readonly ObjectConstant[], { byName: Map<string, ObjectConstant>; byId: Map<number, ObjectConstant> }>();
+
+function objectIndex(constants: readonly ObjectConstant[]) {
+  let index = OBJECT_INDEX.get(constants);
+  if (index === undefined) {
+    index = { byName: new Map(), byId: new Map() };
+    for (const c of constants) {
+      if (c.category !== "object") continue;
+      // FIRST wins, matching what `.find()` did: seven ids carry two rows each
+      // (FISH and FISH_PERCH are both unit 53), and the id index has to answer
+      // with the same one the scan used to return.
+      if (c.rmsConstant !== null && c.rmsConstant !== undefined && !index.byName.has(c.rmsConstant)) index.byName.set(c.rmsConstant, c);
+      if (c.constId !== null && c.constId !== undefined && !index.byId.has(c.constId)) index.byId.set(c.constId, c);
+    }
+    OBJECT_INDEX.set(constants, index);
+  }
+  return index;
+}
+
 function objectEntry(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): ObjectConstant | undefined {
-  const byName = constants.find((c) => c.category === "object" && c.rmsConstant === objectRef);
+  const index = objectIndex(constants);
+  const byName = index.byName.get(objectRef);
   if (byName !== undefined) return byName;
   const id = symbols?.get(objectRef);
   if (id === undefined) return undefined;
-  return constants.find((c) => c.category === "object" && c.constId === id);
+  return index.byId.get(id);
 }
 
 /** Sec.12 item 3's fallback: an object carrying any resourceAmounts is treated as a must-be-gaia resource. Mis-handles SHEEP by design — see file header note 2. */

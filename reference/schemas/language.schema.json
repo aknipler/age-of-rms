@@ -145,6 +145,10 @@
         "cautionMessage": {
           "type": "string",
           "description": "User-facing warning shown (live diagnostic RMS0217, and in hover) when a value trips cautionBelow. Should explicitly say the value is valid RMS, not an error, then explain the risk and the recommended mitigation."
+        },
+        "acceptsKnownName": {
+          "type": "boolean",
+          "description": "Suppresses the known-name half of the Sec.6 stop set for this slot only, so a command or attribute name written here is consumed as the value instead of ending the argument list. Set it only where a known name is the POINT rather than a mangled line — today that is #const's value slot alone, because Sec.2.1 lets a script alias any name and `#const restricted_terrain_distance max_distance_to_other_zones` is correct RMS. Not derivable from `type`: 15 other otherConstant slots exist and on those a known name really is a mistake worth stopping on."
         }
       }
     },
@@ -165,6 +169,11 @@
           "type": "boolean",
           "description": "True only when the engine has been MEASURED to discard this command outside its `section`. Drives validate()'s RMS0304 (docs/parser-design.md Sec.10); absent means unknown and RMS0304 reports nothing, which is the default for all but the measured few. It is a separate field from `section` on purpose: `section` is a documentation fact and this is an engine fact, and enforcing the former as if it were the latter warned 53 times on the corpus with 52 of those on shipped working maps (`effect_amount` outside <PLAYER_SETUP>), the false-positive class BUG-002 and BUG-005 already cost this project three rounds. Set it only alongside a `notes` entry naming the run that measured it.",
           "default": false
+        },
+        "tokenId": {
+          "type": "integer",
+          "description": "The engine's own internal token id for this command name, and ONLY when a run has measured it. Per docs/parser-design.md Sec.2.1 the engine resolves every word to one integer and constants share that space with commands, so a script writing `#const L 32` makes `L` indistinguishable from the command holding id 32. Drives the parser's alias resolution; absent means unknown and a `#const` to that value resolves to nothing, which is the default for all but the measured few. Same species of field as `sectionLocked` and same discipline: it is an ENGINE fact, never transcribed from a map author's comment, and it is set only alongside a `notes` entry naming the run. Sibling of `constId` in game-constants.json, which records the same integer space for constants.",
+          "minimum": 0
         },
         "kind": {
           "type": "string",

@@ -662,7 +662,12 @@ class Parser {
 
     // Sec.4 pinned lookup order: block → attribute first; statement → command first.
     const asAttribute = this.lang.attributesByName.get(nameTok.text);
-    const asCommand = this.lang.commandsByName.get(nameTok.text);
+    // Sec.2.1 aliasing: a name the vocabulary does not carry may still BE a
+    // command, because the script defined it as one. Resolved after the direct
+    // lookup so a real command name can never be shadowed by a `#const`, and
+    // fed into `asCommand` rather than handled separately so an alias inherits
+    // every rule that follows — wrong-context (RMS0207), block opening, arity.
+    const asCommand = this.lang.commandsByName.get(nameTok.text) ?? this.aliasedCommand(nameTok.text);
     const primary = inBlock ? asAttribute : asCommand;
     const crossCategory = inBlock ? asCommand : asAttribute;
 
@@ -915,7 +920,7 @@ class Parser {
     const args: ArgNode[] = [];
     for (let i = 0; i < argDefs.length; i++) {
       const argDef = argDefs[i];
-      const stopped = this.stopSetAt(this.p);
+      const stopped = this.stopSetAt(this.p, argDef.acceptsKnownName);
       if (stopped) {
         if (!argDef.optional) {
           this.diagnostics.push(d.tooFewArguments(nameTok, argDefs.length, args.length, unverified));
@@ -930,7 +935,7 @@ class Parser {
       }
       args.push(arg);
       if (argDef.variadic) {
-        while (!this.stopSetAt(this.p)) {
+        while (!this.stopSetAt(this.p, argDef.acceptsKnownName)) {
           const more = this.consumeOneArg(argDef, unverified, quoteAssembly);
           if (more === undefined) break;
           args.push(more);
@@ -940,8 +945,18 @@ class Parser {
     return args;
   }
 
-  /** True when the token at nt-position `pos` must never be consumed as an argument. */
-  stopSetAt(pos: number): boolean {
+  /**
+   * True when the token at nt-position `pos` must never be consumed as an
+   * argument.
+   *
+   * `acceptsKnownName` drops ONLY the known-name half, for a slot whose own
+   * `ArgumentDef` declares that a command or attribute name belongs there —
+   * `#const`'s value, per Sec.2.1's aliasing. The structural half never yields:
+   * a brace, section header, directive or control keyword ends the list
+   * whatever the slot says, or a `#const` missing its value would swallow the
+   * section header after it and take the rest of the file with it.
+   */
+  stopSetAt(pos: number, acceptsKnownName = false): boolean {
     if (pos >= this.nt.length) return true;
     const tok = this.tokAt(pos);
     if (
@@ -956,7 +971,7 @@ class Parser {
       if (this.lang.controlKeywords.has(tok.text)) return true;
       // Context-symmetric known-name stop (rev 4): any known command OR
       // attribute name, in either context.
-      if (this.lang.knownNames.has(tok.text)) return true;
+      if (!acceptsKnownName && this.lang.knownNames.has(tok.text)) return true;
     }
     return false;
   }
@@ -1062,6 +1077,54 @@ class Parser {
       if (symbol.name === name) return true;
     }
     return false;
+  }
+
+  /**
+   * Sec.2.1's aliasing, for the case the corpus actually contains: a `#const`
+   * naming a command's own token id, which makes the two words the same word to
+   * the engine. `24hr_Petra.rms:6` writes `#const L 32` and then uses `L { … }`
+   * 384 times; `24hr_Holler.rms` does the same 197 times. Those 581 sites were
+   * 68% of RMS0200's entire corpus output and every one of them is a construct
+   * that WORKS in game — Petra contains no `create_land` and no
+   * `create_player_lands`, and its lands generate.
+   *
+   * Only the caller's `def` changes. `CommandNode.name` stays the author's own
+   * token index, so the source keeps saying `L`, Breakdown renders a real
+   * editable card, and nothing re-prints code (CLAUDE.md: code is the only
+   * source of truth).
+   *
+   * Three deliberate narrowings, each of which is the conservative direction:
+   *
+   * - **`#const` only, never `#define`.** A `#define` carries no value, so it
+   *   can name no id.
+   * - **First definition wins**, matching the engine, so a redefinition cannot
+   *   retroactively change what earlier lines meant.
+   * - **Plain integer literals only.** `SymbolInfo` carries the value's TOKEN
+   *   rather than a number, because a `#const` value can be an expression, and
+   *   evaluating one here would be inventing engine behaviour we have not
+   *   measured. Same call `validate.ts` makes for RMS0111's id 69, and the
+   *   literal case is the one the corpus is made of.
+   *
+   * Single-pass by construction: `this.symbols` holds only the directives read
+   * so far, so a `#const` BELOW a use cannot reach back and reinterpret it.
+   * That matches the engine, which is also single-pass.
+   *
+   * Linear scan, same as `isDefinedSymbol` above and for the same reason —
+   * symbol counts are tens per map. It runs only for a word that resolved as
+   * neither command nor attribute, which on this corpus is rare enough that the
+   * relative-cost benchmark in `corpus.test.ts` does not move; re-time it there
+   * before reaching for an index.
+   */
+  private aliasedCommand(name: string): CommandDef | undefined {
+    if (this.lang.commandsByTokenId.size === 0) return undefined;
+    for (const symbol of this.symbols) {
+      if (symbol.name !== name) continue;
+      if (symbol.directiveKind !== "const" || symbol.valueToken === undefined) return undefined;
+      const text = this.tokens[symbol.valueToken]?.text ?? "";
+      if (!/^\d+$/.test(text)) return undefined;
+      return this.lang.commandsByTokenId.get(Number(text));
+    }
+    return undefined;
   }
 
   /**
@@ -1239,8 +1302,13 @@ class Parser {
     if (!def) return; // unknown `#` token — parseDirective consumes no args either
 
     const operands: { firstToken: number; text: string; quoted: boolean }[] = [];
-    for (let i = 0; i < (def.arguments ?? []).length; i++) {
-      const operand = this.takeRawOperand();
+    const argDefs = def.arguments ?? [];
+    for (let i = 0; i < argDefs.length; i++) {
+      // Same stop rule as parseDirective's, `acceptsKnownName` included, or a
+      // `#const` aliasing a known name would record a different value inside a
+      // degraded region than outside one — and Sec.5.3's whole promise is that
+      // symbols survive degradation unchanged.
+      const operand = this.takeRawOperand(argDefs[i].acceptsKnownName);
       if (operand === undefined) break;
       operands.push(operand);
     }
@@ -1282,8 +1350,8 @@ class Parser {
    * unclosed quote ends the list — the caller stops asking for operands and the
    * scan's own brace/conditional counting picks the token up as normal.
    */
-  takeRawOperand(): { firstToken: number; text: string; quoted: boolean } | undefined {
-    if (this.stopSetAt(this.p)) return undefined;
+  takeRawOperand(acceptsKnownName = false): { firstToken: number; text: string; quoted: boolean } | undefined {
+    if (this.stopSetAt(this.p, acceptsKnownName)) return undefined;
     const firstIdx = this.nt[this.p];
     const first = this.tokens[firstIdx];
     this.p++;

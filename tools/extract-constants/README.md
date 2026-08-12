@@ -503,6 +503,103 @@ guide's own annotation for attribute 21 is "population support, tree wood
 amount, decay time". A unit's `resource_storages` says which resource it holds
 and is readable in the same pass whenever that work starts.
 
+## The gaia roster (`--roster`)
+
+```bash
+python extract_constants.py --roster --dry-run   # report only
+python extract_constants.py --roster             # take it
+```
+
+Every other mode fills fields on rows that already exist. This one CREATES
+rows, one per live gaia unit, and it is the mode to re-run after a DE patch adds
+units. It took the object table from 33 rows to 2672.
+
+Why it exists. With 33 rows against a roster of 2642 live units, almost every
+object a real script places has no entry, so the preview falls back to a `land`
+habitat for all of them. `AD4 - Pag - v1.2.rms` defines
+`#const ONGRID_PLACEHOLDER_NAVAL 1546`, which is a water unit, and grew 116 of
+them in a desert with a stranded fish on each. That is the case the mode was
+written for.
+
+### One row per name, not one per id
+
+Rows are keyed by `constId`, with `rmsConstant: null` where the unit has no
+name, which is the shape the 53 unnamed terrains and 32 unnamed classes already
+use. A name-keyed table can never reach unit 1546, because it has no `#const` in
+`random_map.def` at all.
+
+Pure id-keying is not available either. 618 object names cover 590 ids, since
+`FISH` and `FISH_PERCH` are both unit 53 and six more pairs behave the same way,
+and both spellings are ones a script may have written. So a named unit gets a row
+per name and an unnamed unit gets a single row. `objectEntry` in
+`src/preview/generator/objects.ts` resolves a written name first and a resolved
+id second, so both forms keep working.
+
+### Where a name comes from
+
+DE ships its own display text in
+`resources/en/strings/key-value/key-value-strings-utf8.txt`, 19,377 entries,
+joined to a unit by `Unit.language_dll_name`. That is the first source, 1324
+rows. A unit with no display string falls back to the dat's internal `Unit.name`
+verbatim, 1315 rows, which is why the file contains entries like
+`PLACEHOLDER (NAVAL)` and `ARCHR_D`. The internal code is the game's own text
+rather than an invention, so it is written as it stands. Do not paraphrase one
+into something friendlier, because that would be a claim about a unit nobody has
+looked at.
+
+Put through the same check `--terrain-table` uses, DE's strings reproduce 14 of
+the 31 comparable hand-written names exactly and disagree on 17, every
+disagreement being DE saying something more specific such as `Grey Wolf` for
+`Wolf` and `Fish (Tuna)` for `Tuna`.
+
+**Existing rows are never overwritten and the disagreement report is the point.**
+Each run prints the 17 and leaves them alone. Two of them lose information rather
+than gaining precision, `King (Regicide)` becoming `King` and both Marlins
+collapsing onto `Great Fish (Marlin)`, so `descriptiveName` is no longer unique
+and these are settled one row at a time by hand.
+
+### `isCorpse`, and the two derivations that do not work
+
+336 of the units are death variants, and a reference table offering them beside
+DEER is a list nobody can read, so the app hides them behind a toggle. Two
+obvious rules were tried and rejected before the one that shipped.
+
+- The `*_D` name suffix is a pattern, so it is a claim about every name nobody
+  has read, which is the same trap the habitat classes avoid.
+- `Unit.type` looks like the data answer and is not. 329 of the 336 carry type
+  30, and so do DEER, SHEEP, WOLF and 13 other rows already in the file.
+
+What works is a LINK rather than a label. A unit named by some other unit's
+`dead_unit_id` or `blood_unit_id` is a carcass, guarded by the row carrying no
+RMS constant, because 5 of the 506 referenced units do carry one and `FORAGE`
+(59) is among them. 501 rows are marked. It under-reaches by about 44 units,
+which is the safe direction, since a row wrongly visible is a row in a list and a
+row wrongly hidden is a unit an author cannot find.
+
+### What a roster row deliberately leaves out
+
+A field that is a pure function of another field is not data, it is file size.
+The first write came out at 3.5 MB and two fields were 2.4 MB of it.
+
+| left out | why |
+|---|---|
+| `allowedTerrains` | A pure expansion of `terrainRestrictionId`, and the whole roster references only 33 distinct restriction ids. Nothing in `src/` reads it. Run `--terrain-table` when the expansion is wanted. |
+| `deTextureFile: null` | Terrain field, never populated on an object row. |
+| `placementSideTerrain: [-1, -1]` | The "must sit beside" pair, absent on all but three units. |
+| per-row `notes` boilerplate | Replaced by one clause naming the mode and the run date. |
+
+The result is 1.33 MB for 2639 new rows, which is roughly 400 bytes each and
+about the floor for a self-describing JSON row.
+
+### One thing to watch on a re-run
+
+`validate:reference` is the gate that caught the only real defect here, 116 times
+over. Roster rows were writing `classId: -1` for units in the dat's unnamed
+class, which `--classes` deliberately gives no `objectClass` row, so referential
+integrity failed. Class -1 is skipped rather than written, because absent is the
+honest value for a unit in no class an author can name. Run
+`npm run validate:reference` after taking a roster run.
+
 ## If the dat parse breaks: the Advanced Genie Editor
 
 DE ships the **Advanced Genie Editor** under `Tools_Builds/` in the

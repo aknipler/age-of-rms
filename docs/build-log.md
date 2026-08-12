@@ -5028,3 +5028,801 @@ hardcoded, keeping the lexer a pure splitter and honouring the no-RMS-vocabulary
 rule. Script `#const NAME 69` is the same pass. **The real cost is re-deriving
 every corpus diagnostic baseline**, because two maps lose half their tokens to
 trivia — budget that, not the edit.
+
+## CREATION_PLAN 4.10 — the object roster (2026-08-12)
+
+`game-constants.json` carried **33 object rows against 2642 live gaia units**,
+and three finished features were starved by that one gap: the `land` habitat
+fallback in `objects.ts`, the `#const`-by-id resolver beside it, and
+`resourceTotals.ts`'s override modelling, which resolved 365 of the corpus's 374
+`ATTR_STORAGE_VALUE` lines and hit nothing it counts. `tools/extract-constants`
+gained a `--roster` mode, the first that CREATES rows rather than filling fields
+on rows that already exist. **Object rows: 33 → 2672. Objects carrying a
+resource yield: 16 → 170.**
+
+**The scope fork was decided at its widest**, every live gaia unit, and the four
+questions the item said to settle first were settled by measurement against the
+install rather than by argument.
+
+**`descriptiveName` had a third source nobody had looked for.** DE ships
+`resources/en/strings/key-value/key-value-strings-utf8.txt`, 19,377 entries,
+joined by `Unit.language_dll_name`. Put through the same
+reproduce-the-hand-assignments check `--terrain-table` used, it scores **14
+exact, 17 differing, 0 missing** against the 31 comparable hand-written rows, and
+all 17 differences are DE being more specific (`Wolf` → `Grey Wolf`, `Tuna` →
+`Fish (Tuna)`). Source order is the strings file (1324 new rows), else
+`Unit.name` verbatim (1315). **The 17 are printed and left alone**, because two
+of them lose information rather than gaining precision: `KING` is
+`King (Regicide)` by hand and `King` in DE's text, and `MARLIN1`/`MARLIN2` both
+resolve to `Great Fish (Marlin)`, so **`descriptiveName` is no longer unique**.
+Rows are keyed by `constId`, so that is a display concern and not a data one.
+
+**`verified` needed no decision and the item's premise was wrong.** The schema
+already defines it as "hasn't been checked against the game's actual data files
+yet", which is a claim about the source and never about a human, and the 152
+attribute rows have shipped `verified: true` out of a bulk pass since 4.0.
+
+**One question the item never asked, found while shaping the rows: seven
+`constId`s already carry two rows each** (`FISH`/`FISH_PERCH`,
+`MARLIN1`/`GREAT_FISH_MARLIN`, five more). The file is name-keyed with duplicate
+ids while the item prescribes constId-keying, and 618 object names cover 590
+ids. Resolved as one row per name for named units plus one per unnamed id, 2672
+rows, no schema change, and `objectEntry` already resolves name first and id
+second so both spellings keep working.
+
+**`isCorpse` is new, and the two obvious ways to derive it are both wrong.**
+336 of the 2642 units are death variants and a roster listing that offers them
+beside DEER is unreadable, so the Objects tab hides them behind a toggle. The
+`*_D` name suffix is a pattern, which is the thing `objectHabitat` records as a
+claim about every name nobody has looked at. **`Unit.type` looks like the data
+answer and is not: 329 of the 336 are type 30, and so are `DEER`, `SHEEP`,
+`WOLF` and 13 other rows already in the file** — the enum cannot tell a carcass
+from the animal that leaves it, and there are no type-50 projectiles in the gaia
+roster at all. `dead_unit_id`/`blood_unit_id` is a LINK rather than a label and
+does work, with one guard: 5 of the 506 referenced units carry an RMS constant,
+`FORAGE` (59) among them, so the rule is **referenced as a corpse AND carrying no
+RMS constant**. 501 rows. It under-reaches by ~44, which is the safe direction.
+
+**The corpus barely moved in total and moved decisively where it matters, and
+reporting only the first number would have been the mistake.** Seed 7, Normal,
+32 maps: object placements **154,508 → 154,572, +0.0%**, with 14 maps changing
+and the largest deltas `AD4 - Pag - v1.2.rms` −4.2%, `TL Grand Bara.rms` −3.0%
+and `Chaotic_Straitv0.99.rms` +2.0%. The flat total is real — most corpus object
+placement is land decoration the `land` fallback was already right about. The
+observable the item was actually written about tells the other half:
+
+| `AD4 - Pag - v1.2.rms`, seed 7 | on water | on land |
+|---|---|---|
+| `ONGRID_PLACEHOLDER_NAVAL` before | 0 | 116 |
+| `ONGRID_PLACEHOLDER_NAVAL` after | 76 | 0 |
+| `FISH_PERCH` (its `second_object`) before | 0 | 116 |
+| `FISH_PERCH` after | 76 | 0 |
+
+116 naval placeholders grew in a desert, each carrying a fish onto dry ground;
+now 76 sit in water with their fish. **A corpus total is not a corpus
+measurement** — the fix this item exists for is invisible in the +0.0% and
+unmistakable in the table.
+
+**The size estimate in the item was wrong by 4.9× and the first write proved
+it.** The scope table promised +705 KB for the full roster; the first pass wrote
+**3.5 MB**, and two fields were 2.4 MB of it. `allowedTerrains` is a pure
+function of `terrainRestrictionId`, the whole roster references only **33
+distinct restriction ids**, and nothing in `src/` reads the field — so writing
+the expansion per row stored 33 real answers 2672 times, 1.33 MB. The per-row
+`notes` boilerplate every other mode writes was another 1.05 MB of near
+identical text. Roster rows now carry the restriction id and not its expansion
+(`--terrain-table` re-expands it on demand), a one-clause note, no
+`deTextureFile` null, and no `(-1, -1)` `placementSideTerrain`. **Final file 1.33
+MB**, still 1.9× the estimate, because ~400 bytes per self-describing JSON row is
+the floor for 2639 of them.
+
+**`validate:reference` caught the one real defect, 116 times.** Roster rows were
+stamping `classId: -1` on units in the dat's unnamed class, which `--classes`
+gives no `objectClass` row on purpose, so referential integrity failed. Class -1
+is now skipped rather than written: absent is the honest value for a unit in no
+class an author can name.
+
+Three mutants confirmed red and restored (`corpse_unit_ids` without its live-unit
+intersection, `roster_descriptive_name` treating an empty display string as a
+name, and a loosened display-string regex), 9 new Python tests, 114 total in the
+extraction tool's suite.
+
+**The TypeScript suite found one thing the extraction pass could not, and it is
+the roster contradicting a name heuristic for the first time.** `objects.test.ts`
+went red on `FORAGE_BUSH`, which matches `TREE_NAME_PATTERN`'s `/BUSH/` and is
+unit **59, the same forage bush `FORAGE` resolves to, carrying 125 food**. Two
+spellings of one unit had been answering `objectCategory` differently for months
+and nothing could see it, because only `FORAGE` had a row and the pattern was
+never contradicted by data. The data wins, by the rule `TREE_NAME_PATTERN`'s own
+doc already stated: a forage bush is a food source that happens to be
+shrub-shaped, and it now draws in the food colour. The test that asserted the old
+answer is split in two rather than edited — one keeps a name the roster does NOT
+cover (`PLANT_RAINFOREST`) so the pattern fallback stays covered, the other pins
+the supersession itself and goes red under a mutant that moves the pattern check
+above the yield check. **This is what a name heuristic costs when data arrives
+underneath it, and the roster will keep finding them**: every remaining pattern
+in this file (`TREE_NAME_PATTERN`, `WALL_NAME_PATTERN`) is now a claim about
+names the reference data can answer for, and each one is worth re-reading against
+a roster row before it is trusted again.
+
+**Found while closing this item and unrelated to it: `npm run lint` was RED on a
+committed file.** `src/parser/types.ts` documents the comment-nesting collision,
+and writing the closing comment marker inside a block comment ends that comment,
+so the 4.8b pass held it apart with a **zero-width space** — which ESLint's
+`no-irregular-whitespace` reports as an ERROR, not a warning. It shipped in
+`40f36fa`, and lint is one of the four things CI runs. The fix is to describe the
+token instead of spelling it. **An invisible character is not an escape**: it
+survives review because nobody can see it, and the gate that catches it names a
+rule rather than the reason, so a future reader reaches for a config exception
+before reaching for the sentence. One error, zero warnings changed, and worth the
+grep — a sweep for U+200B/U+200C/U+200D/U+FEFF/U+00A0 across `src/` found only
+this and a harmless BOM.
+
+**Still open, and it is a decision rather than work:** the 17 `descriptiveName`
+disagreements are printed by every `--roster` run and settled one at a time.
+
+## BUG-005 piece 2 re-scoped, and RMSTEST_61 written (2026-08-12)
+
+**A deferral held for a week on a premise that took one grep to check.** Piece 2
+covers the 581 `L` warnings, and the 2026-08-05 decision was to build nothing
+until `token-aliases.json` lands, which waits on the community equivalencies
+sheet, which is JS-rendered and has failed to fetch since the spec was written.
+The chain is sound and its first link is false: **all 581 are one idiom in two
+files** (`#const L 32` in `24hr_Petra.rms:6` and `24hr_Holler.rms:248`), and a
+sweep of every `#const NAME <number>` in the corpus finds **no second word used
+as a command**. The population the sheet was going to serve is one alias. The
+sheet is now CREATION_PLAN A.2's general case rather than this bug's prerequisite,
+and the plan entry is corrected in that direction too.
+
+**What stayed true is the part that was always the real blocker: the value 32 is
+unverified.** Its only source is the map author's own comment. The shared-id
+MODEL is measured — `RMSTEST_56a`/`57` settled the comment collision at 69 — and
+a measured model does not verify a particular value. `RMSTEST_61_commandalias.rms`
+settles it in one generation: three land commands identical but for terrain, one
+real (`DIRT`, the control that proves the script ran), one aliased to 32 (`SNOW`,
+the hypothesis) and one aliased to 33 (`DESERT`, the reading expected to be
+boring, and placed last so an unknown command that swallows a block swallows the
+control rather than the hypothesis).
+
+**Two local sources were checked before concluding the data is external**, so
+nobody repeats the search: `random_map.def` is sectioned by constant category
+(terrains, cliffs, seasons, water, civs, assign types, objects, attributes) and
+carries **no command-token section**, and `reference-docs/Definitive Constants
+List.xlsx` has nine sheets, all of them constants. The guide has no token table
+either.
+
+**SETTLED THE SAME EVENING: 32 is `create_land`, and the run that said otherwise
+was the one with the design fault.** `RMSTEST_62` swapped 61's two aliased arms
+in id and terrain and came back `SNOW 6043, DESERT 6191, no DIRT` — so 32 made a
+land there, which refutes the "33 is create_land, 32 is inert" reading 61
+suggested. Loading `24hr_Petra.rms` in the DE editor settles it from outside the
+instrument: that map has **no** `create_land` and **no** `create_player_lands`,
+its lands generate, and `L` is the only thing that can be making them. The
+author's comment on line 6 was right all along.
+
+**The two histograms then yield a second finding, and it is the larger one.**
+Both runs produced exactly two lands of ~15% and one model names which terrain
+goes missing in each: **an unrecognised word's block MERGES into the command
+before it**, later value winning on a repeated attribute. 61 folds `AX`'s DESERT
+onto the SNOW land; 62 folds `AX`'s SNOW onto the DIRT land. The rival
+explanation — a land lost because its origin was buried, already measured on this
+engine as Sec.15 item 30 — predicts one missing land but not *which*, so
+`RMSTEST_63_unknownblockmerge.rms` constructs the case that separates them (one
+real `create_land`→DIRT, one `AX`(33)→SNOW; the merge predicts a single SNOW land
+and no DIRT). **If it holds, every unrecognised command in a real script silently
+rewrites the command above it**, which reaches far past this bug: the 457
+misspelled `set_loose grouping` lines in DE's Battle Royale maps would each be
+editing a neighbour, and the preview would be generating a different map from the
+engine.
+
+**The methodological cost is worth recording, because two runs were spent on it.**
+61 varied id and position together, so its histogram had two explanations and
+neither could be ruled out; 62 was written only to separate them. The rule this
+project already carries — add the orthogonal reading, vary one thing — was
+followed for the control arm and broken for the two arms under test.
+
+**RMSTEST_61 ran the same evening and came back the other way, with a confound
+that is ours.** Normal, 40,000 tiles: `DIRT 6063` (the control ran), `DESERT
+6233` (the arm aliased to **33** made a land), and **no `SNOW`** (the arm aliased
+to 32 did nothing). Read literally, `create_land` is token 33 on this build, 32
+is inert, and the 581 `L` warnings are TRUE positives — which would mean
+`24hr_Petra.rms` and `24hr_Holler.rms` generate **no lands at all**, since
+neither contains a single `create_land` or `create_player_lands`. That is a large
+claim to hang on one generation, and 61 cannot support it: **its two aliased arms
+differ in id AND in position**, so "the id selects the command" and "an
+unrecognised word leaves its block to be absorbed, killing the middle arm
+whatever its id" predict the same histogram. `RMSTEST_62_commandalias_swap.rms`
+swaps the two arms in both id and terrain and separates the models in one run.
+
+**Two things checked before writing 62, so neither gets re-checked.** `AL` and
+`AX` are not predefined in `random_map.def`, so first-definition-wins did not
+quietly discard either `#const`; and the arms each landed close to their declared
+15% of the map (6063 and 6233 against 6000), so the two blocks that did run were
+read whole rather than merged.
+
+**If the id reading survives, the likely story is version drift and it is
+checkable without a script.** The equivalencies data is AoK/HD era and both maps
+predate DE; one command inserted into the engine's token table shifts every later
+id by one, which is exactly the 32-against-33 shape. Generating `24hr_Petra.rms`
+in DE and finding no lands would confirm it and turn this into a finding about
+those maps rather than about our parser.
+
+**Worth knowing before the run comes back, because it makes the code half
+small:** `CommandNode.name` is a token INDEX and `def` is the resolved
+`CommandDef`, so an aliased command keeps the author's own `L` token and carries
+`create_land`'s def. Source fidelity holds by construction, Breakdown renders a
+real editable card, and RMS0200 never fires. The work is one lookup at
+`parser.ts:665` plus growing the alias type: `aliasTable` is implemented as a
+post-lex `kind` overwrite (`parser.ts:117`) and cannot express "this word is that
+command".
+
+## PLAN.md open question 2 settled, and the notices that follow (2026-08-12)
+
+The legal posture on redistributing extracted game data is decided. **Ship it,
+under Microsoft's Game Content Usage Rules, with the repository's licensing
+scoped so it stops claiming what it cannot grant.** PLAN.md carries the full
+reasoning and a new locked-decisions row.
+
+**The question had changed shape underneath itself, which is why it was worth
+re-asking rather than closing on the old note's "constants are shallow".** It
+was written when `game-constants.json` held 31 rows. 4.10 took it to 3011, and
+the roster's 2639 object rows take their `descriptiveName` verbatim from DE,
+1324 from the game's English display strings and 1315 from the dat's internal
+unit names. Ids, terrain restriction rows, resource amounts, class membership
+and texture filenames are facts. Those names are Microsoft's expression, and
+they are the only part of the file the answer actually had to cover.
+
+**Three things settled it, none of them "the community does it".**
+
+- The EULA the game ships (`Docs/All/Age Empires II EULA - eng.docx`) says
+  nothing about mods, user content or game data. It is the legacy retail AoK
+  agreement, and its only relevant clauses bar reverse engineering **the
+  software**, working around technical limitations in it, and republishing it.
+- Nothing is circumvented to read the data. `random_map.def` is plain text DE
+  includes into every script, and DE ships the Advanced Genie Editor in its own
+  `Tools_Builds` directory to read and edit the dat that `genieutils-py` parses.
+  The capability is the publisher's, not something this project broke in for.
+- The precedent is specific. `aoe2techtree` (SiegeEngineers) commits a 926 KB
+  `data.json` from the same library, plus DE's display strings in 18 languages,
+  public and MIT, carrying the notice, unchallenged for years.
+
+**The finding was not the Microsoft risk, it was ours.** A grep over the whole
+repository returned exactly one mention of the Game Content Usage Rules, in
+`tools/extract-constants/README.md`, and zero occurrences of the required
+disclaimer. `LICENSE` is the stock GPL-3.0 text with no scoping ahead of it, so
+the repository was telling downstream forks they may freely redistribute and
+modify 2639 rows nobody here has the right to license. The GCUR grant is
+personal and non-sublicenseable, so it cannot be passed on at all. That is a
+license-integrity defect affecting anyone who forks, and it existed independently
+of whether Microsoft ever cared.
+
+**`LICENSE` is deliberately untouched.** The GPL document says changing it is not
+allowed, so the scoping went into a new root `NOTICE` plus README and
+CONTRIBUTING sections, which is the usual arrangement.
+
+Landed: `NOTICE` at the repo root (what the data is, where each part came from,
+what it asks of contributors); README `## License` rewritten and a `## Attribution`
+section added; CONTRIBUTING's licensing note extended with the in-scope line for a
+PR; and the in-app surface in `CreditsSettings.tsx`, which already existed as a tab
+and whose own header comment had already argued against a separate About dialog.
+New `.legalNotice` class in `SettingsDialog.module.css`.
+
+**One constraint is now permanent rather than a preference.** The app stays free,
+with no advertising and no paid tier, because GCUR's free-app clause is what the
+whole posture rests on. It binds the tool registry too, so no paid marketplace.
+
+**One boundary is new and was not written down anywhere before.** Do not paste
+prose out of the scripting guide DE ships in `Docs/` into `doc-strings.json` or
+`ui-help.json`. The EULA's DOCUMENTATION clause permits internal reference use
+only. Educational content stays hand-written, seeded from Zetnus's guide per
+open question 1.
+
+No test or reference-data change, so no suite movement. `npm run typecheck` and
+`npm run lint` both clean (0 errors, the same 15 pre-existing react-refresh
+warnings). Not visually verified, the usual Tauri-host reason. Confirm with
+`npm run tauri dev` and open Settings, Credits.
+
+## 2026-08-12 — Sec.15 item 27 re-measured, and the fix finally gets a test
+
+**The report was that `AK_Six_Points_v1.4.rms`'s flood land still fills
+inconsistently across seeds. It does not, and has not since 2026-08-10.** The
+measurement, wider than the three seeds that closed it: the flood claims its
+whole sealed interior as **one** 4-connected piece with **zero** free ground
+reachable from it, on **40 consecutive seeds** at the app's defaults, and at
+every one of the seven map sizes crossed with 2/4/6/8 players. Across five
+seeds the owned-tile SET is byte-identical at Tiny through Large (symmetric
+difference 0) and moves by 11-18 tiles of ~40,000 at Huge and Giant. No other
+land on the map varies by more than 7 tiles, and the final terrain histogram
+moves by under 1% per class.
+
+**Where the report came from is worth naming, because it was ours.** Two
+sentences in this repo still asserted the symptom: CLAUDE.md's Phase 4 cell
+said "that map's ellipse still fills inconsistently and the cause is still
+unidentified" and, separately, "**Still owed**: `AK_Six_Points_v1.4.rms`'s
+seed-dependent flood land, whose mechanism is not yet identified". Both were
+written on 2026-08-10, hours before the reachability fix landed the same day,
+and neither was revisited when it did. A status cell that survives the work it
+describes reads as a live defect for as long as anyone trusts it. Both
+corrected.
+
+**The Huge/Giant residue is the script meeting a size it was not written for.**
+The ring is 120 stamps at fixed PERCENT positions, so at dim 240 and 252 they
+sit far enough apart in TILES to leave gaps; the flood spills through and stops
+on its tile target instead of on the wall, which is why its boundary is
+seed-shaped there and exact everywhere else. The map's own header says 4v4.
+Not a defect and deliberately not designed around.
+
+**The real gap was coverage, not behaviour.** The fix shipped with two
+synthetic fixtures pinning the rule and nothing at all pinning the map that
+produced it — "a correct spec does not protect code that is never tested
+against it", in its usual shape. `lands.test.ts` now asserts the structural
+claim on `AK_Six_Points_v1.4.rms` itself: one component, zero reachable-unowned,
+equal owned count across seeds. Deliberately NOT the measured 14,201, because
+that number also moves if an unrelated land's rules change and BUG-009's
+border-relative cross is still unapplied on this very map.
+
+**Mutation-tested both ways, and the second mutant is the interesting one.**
+Disabling the reachability filter turns the new test red (2 pieces). Widening
+the seed radius back to map-wide does **not** — with the ellipse sealed, every
+tile the window reaches is already inside it. The two halves of the fix own
+different failures: the radius owns the open-map teleport, the filter owns the
+walled map, and each has the test that catches it. A single test would have
+looked like coverage and been half of it.
+
+**One bound on the shipped fix, recorded rather than closed.** Reachability is
+computed once, at growth start, against a grid holding only origin stamps, so a
+wall that forms later is invisible to it. It does not bite here because the
+ellipse is already sealed at that moment and the mangrove strips never become
+walls at all now that they cannot teleport — they lose the race for their own
+rows to the flood and finish at 5-21 tiles, against the 403 they reach when
+grown alone. Re-checking at draw time costs a BFS per draw, and the behaviour
+it would change is measured stable, so changing it on an argument is what this
+project's own rules forbid.
+
+**Two pre-existing wall-clock failures fixed in passing, same file, same
+lesson as `terrainBitmap.test.ts`.** `never claims a tile outside its own
+border bounds (f=100)` ran four `expect()`s per owned tile (~57,000 calls,
+1.27s) and `leaves every unclaimed tile on the base fill` ran one per unclaimed
+tile (~39,800 calls, 0.78s) — both against vitest's 5s default on a machine
+whose load factor reaches 3.7x, so both went red under a full-suite run and
+neither had anything to do with the code it tested. Scanned first, asserted
+once, reporting the first offender by coordinate: **1273ms to 19ms and 777ms to
+7ms**. Mutation-tested both rewrites (fringe-tile acceptance under f=100;
+painting unclaimed tiles), each confirmed red then restored — a rewrite that
+makes a check faster is exactly where a check quietly stops checking. Relieving
+that worker also took the whole suite from 12-13 load-dependent timeout
+failures to **1436/1436 green**, so the other three files' failures were
+collateral, not their own bugs.
+
+**One process note.** The restore-side uniqueness assert earned its keep: the
+first paint-loop mutation matched `if (landIndex < 0) continue;` in three
+places and the script refused rather than relocating a bound into two innocent
+functions, which is the 2026-08-07 lesson that cost ten red tests.
+
+Gates: `npm run typecheck` clean, `npm run lint` clean on both touched files,
+`npm test` **1436/1436, floor 45 files / 1436 tests**. Nothing rendered, so no
+visual verification — this is generator and test-side only.
+
+### Same session — item 27's confirmation run had already been run
+
+**The open half closed on a read, not a generation, and the data had been on
+disk since the day before.** This entry said the confirmation needed a run in
+the real DE install. It did not: `tools/scenario-probe/generated-tests/` holds
+six `RMSTEST_38_extracted*.aoe2scenario` files dated 2026-08-11, and the
+missing step was pointing `--patches` at them and computing centroid distances.
+**Five distinct generations, not six** — `_2` and `_3` have different file
+hashes but identical terrain to 0.1 of a tile across all six lands, so they are
+one map exported twice, and counting them separately would have been the
+`avoidance_distance` mistake in miniature.
+
+The read, per land, 4-connected pieces and each centroid's distance from that
+land's own `land_position`:
+
+| `clumping_factor` | pieces | farthest piece centroid |
+|---|---|---|
+| −20 | 6–10 | 60.6 |
+| 0 | 1–5 | 25.0 |
+| 8 | 1–2 | 20.4 |
+| 20 | 1 | 15.7 |
+| 40 | 1 | 11.3 |
+| 100 | 1 | 13.2 |
+
+**Fragments are LOCAL.** The maps are dim 480, so a map-wide draw reaches 240+
+and the entire table sits inside a quarter of it.
+
+**The radius is measured, not merely permitted.** `max(12, 0.12·dim)` = 58 at
+dim 480 against a measured maximum of 60.6, and a piece's centroid legitimately
+sits slightly beyond its own seed because the piece grows around it. That was
+not the expected outcome — `RESERVOIR_RADIUS_OF_DIM` was chosen as a plausible
+fraction and this item was open because nothing had checked it.
+
+**Two free readings.** Piece counts reproduce RMSTEST_38's original column, so
+the calibration is undisturbed exactly as predicted. And the spread falls
+monotonically with `cf`, collapsing at `cf ≥ 20` to 11–16 tiles — the land's own
+body radius, no detached pieces left — which re-measures
+`reservoirSize(cf ≥ 20) = 0` from a quantity it was never fitted against. Add
+the reading you expect to be boring.
+
+**One fixture error found on the way, and it is the dangerous kind.**
+`RMSTEST_38_clumpsweep.rms`'s header says "Generated at Giant (252) = 63504
+tiles". Every export is **dim 480** (LudiKRIS, 230,400 tiles). Anyone
+re-deriving a dim-scaled constant from these runs against 252 gets 0.24·dim
+instead of 0.12·dim — a clean 2x error, and this project has already shipped
+precisely that mistake once on the cross's reference length. Corrected in the
+map's own header and flagged in the run sheet.
+
+**The process lesson.** The item sat open five days after the data that closes
+it existed, because it was written as "the run" and nobody asked whether the run
+had already happened. **Before scheduling an RMSTEST generation, list
+`generated-tests/`.** Same shape as the standing rule that a pass which can read
+an artefact for the first time should be run over the artefacts that predate it.
+
+No code change — the measurement confirms what shipped. Suite unchanged at
+1436/1436.
+
+## Release pipeline for the alpha (2026-08-13)
+
+Groundwork for shipping an installer to alpha testers. No updater yet, and
+deliberately **no code signing** for now.
+
+**`src-tauri/tauri.conf.json` bundle targets cut to `["nsis"]`** from
+`["nsis", "msi", "deb", "appimage", "dmg"]`. The last three only build on their
+own platforms so they were already silently skipped, and NSIS is the one the
+updater will drive when it lands. NSIS installs per user into `%LOCALAPPDATA%`
+with no administrator prompt, which is the right default for a tester who is
+doing someone a favour.
+
+**Version is single-sourced from `package.json`**, via
+`"version": "../package.json"`. It was already that way by the time this session
+went to make the edit, from a parallel session working the same file minutes
+earlier, so the edit landed as a no-op and is recorded here only because the
+consequence matters. `npm version <x.y.z>` now writes package.json and creates
+the matching tag in one step, and the tag can no longer disagree with the
+installer about what was built. `src-tauri/Cargo.toml` still carries its own
+`version = "0.1.0"`, which is now decorative for bundling purposes since
+tauri.conf.json names a source. Do not read it as the app version.
+
+**New `.github/workflows/release.yml`.** Tag-triggered on `v*`, plus a
+`workflow_dispatch` that runs the same build and uploads the installer as a
+workflow artifact instead of releasing, so this file can be changed and proven
+without minting a throwaway tag. Windows runner, `tauri-apps/tauri-action@v1`
+(the v1.0.0 line, released June 2026), Rust toolchain and a `Cargo.lock`-keyed
+cache.
+
+**It re-runs all four `ci.yml` gates before building, and that repetition is the
+point.** `ci.yml` fires on pull requests and pushes to main. A tag can be placed
+on any commit, including one that went through neither, so without repeating
+them a release could be cut from code that has never passed. Cheap insurance
+against the one build that actually reaches users.
+
+The release is created as a **draft prerelease**. Notes get written before
+anyone can download it, and publishing stays a deliberate manual step. Worth
+knowing before the updater lands: **the updater cannot read a draft release**, so
+at that point publishing stops being optional and the endpoint depends on it.
+
+**Unsigned, on purpose, and the release body says so.** Every tester will hit
+SmartScreen's "Windows protected your PC" and needs to click through More info
+then Run anyway. The alternative is Azure Artifact Signing at $9.99/month, whose
+individual tier is still limited to the US and Canada, or an OV certificate at
+roughly $200-400/year that no longer confers instant SmartScreen reputation
+anyway. Revisit once the alpha says whether the app is worth it.
+
+Validated by parsing `tauri.conf.json` as JSON and `release.yml` with a real
+YAML parser (structure, triggers, both `if` guards, eleven steps). Nothing here
+runs until a tag is pushed, so the first real proof is a `workflow_dispatch` run.
+
+## Updater, bug reporting, and the release pipeline finished (2026-08-13)
+
+Everything the alpha needs except code signing, which stays off deliberately.
+
+### The updater
+
+`tauri-plugin-updater` and `tauri-plugin-process` added, a minisign keypair
+generated to `~/.tauri/age-of-rms-updater.key` (OUTSIDE the repo, so it cannot
+be committed by accident), public key in `tauri.conf.json`,
+`createUpdaterArtifacts: true`, endpoint pointed at
+`releases/latest/download/latest.json`.
+
+**`prerelease` had to go back to false, and that is the finding.** The previous
+session set the release to draft AND prerelease, both for reviewability. Drafts
+are fine, since publishing is a manual gate. Prerelease is not:
+**GitHub's `/releases/latest/` excludes prereleases as well as drafts**, so
+every build would have looked correct while the updater endpoint quietly
+resolved to nothing. The 0.x version number carries the "this is alpha" signal
+instead. The draft still has to be published for updates to be seen, which the
+workflow now says in capitals.
+
+`process:allow-restart` had to be added to `capabilities/desktop.json` by hand.
+`tauri add process` wires the plugin into `lib.rs` and installs both packages
+but does **not** add the permission, unlike `tauri add updater` which does. A
+missing capability fails at runtime, not at build, so this is the kind of gap
+that ships.
+
+`useUpdateCheck` checks once on mount and is **silent on failure by design**.
+The common reason `check()` rejects is being offline, and a startup error toast
+for that trains people to dismiss the app's notifications. A failed check leaves
+`idle`, which renders nothing, so an offline start is indistinguishable from an
+up-to-date one. Install failures do surface, because by then the user asked for
+something. Two separate refs guard it, and they are different concerns worth
+keeping apart: `startedRef` stops StrictMode's deliberate double-invoke hitting
+the network twice, `cancelled` stops a resolved promise calling setState into an
+unmounted tree.
+
+### Bug reporting
+
+A 🐞 button in the status bar beside the generation-settings cog, opening a
+prefilled GitHub issue through the same `openUrl` path the DE RMS guide link
+uses, plus `.github/ISSUE_TEMPLATE/bug_report.yml`.
+
+**`src/bugReport.ts` is pure and takes every fact as an argument**, including the
+version and the user agent. Reading `__APP_VERSION__` or `navigator` directly
+would have made the module testable only by faking two globals; passing them in
+costs one line at the call site and leaves every branch reachable from
+plain-Node Vitest. Same trade `src/parser/**` already makes.
+
+**The script is never attached, and the test asserts that as a whitelist**
+(`keys().sort()` equals exactly the three expected) rather than as "the URL does
+not contain the source". The negative form passes for any script that happens
+not to appear in a short URL, which is most of them, so it would have been a
+check that could only ever pass.
+
+**A coupling worth knowing before renaming anything**: the issue form's field
+`id`s double as URL query parameters. Renaming `environment` in the YAML leaves
+`bugReport.ts` building a URL whose parameter GitHub silently ignores, and the
+form just opens with an empty box. Both files carry the warning.
+
+### Version, and where it now lives
+
+`__APP_VERSION__` is substituted at build time by `vite.config.ts` from
+package.json, which `tauri.conf.json` already reads, so a bug report and an
+installer cannot disagree about what was running. Needed `resolveJsonModule` in
+`tsconfig.node.json` (vite.config.ts is covered by that config, not the root
+one) and an ambient `declare const` in `src/vite-env.d.ts`.
+
+**`src-tauri/Cargo.toml`'s `version` can simply be deleted.** It is optional
+since Rust 1.75, defaults to `0.0.0`, and is only required for publishing to a
+registry, which this binary crate never does. Nothing reads `CARGO_PKG_VERSION`
+anywhere in `src-tauri/`, and Tauri only falls back to it when
+`tauri.conf.json` names no version, which it now does. Left in place this
+session rather than touched while a parallel session was active in the same
+tree.
+
+### Gates
+
+`validate:reference` passes with three new `ui-help.json` entries (108 total).
+Typecheck clean. `bugReport.test.ts` is 7 new tests in a new file. Not visually
+verified, the usual Tauri-host reason, and the updater specifically cannot be
+verified at all until a published release exists to check against.
+
+## Linux added, macOS documented, floor raised (2026-08-13)
+
+### Linux
+
+`bundle.targets` is now `"all"` rather than `["nsis"]`, and each matrix leg
+passes `--bundles` explicitly. `"all"` means "everything this platform can
+make", so it is safe by construction, whereas naming a foreign target in the
+config is what produces a build error. The CI flag is what actually decides the
+output, so the config value only governs a local `tauri build`.
+
+`release.yml` is now two jobs. **The four JS gates run ONCE, in a `verify` job
+the build matrix `needs:`**, rather than inside each leg. They are platform
+independent, so running them per platform pays twice for the same answer.
+
+Windows produces NSIS alone. The MSI that `"all"` would also make there is not
+the updater's target and would be a second confusing download.
+Linux produces AppImage and deb, and **only the AppImage is updatable**, so it
+is what `latest.json` points at. The deb is deliberately not self-updating and
+the release notes say so.
+
+**The Ubuntu runner is 24.04, not 22.04, and that is a dated decision.**
+ubuntu-22.04 begins deprecation brownouts in September 2026 and those brownouts
+FAIL builds, so pinning to it would have broken releases within a month. The
+cost is a higher glibc floor, so the AppImage will not run on genuinely old
+distributions. Revisit only if a tester reports exactly that.
+
+Linux needs an apt step for WebKitGTK and GTK headers plus `patchelf`, guarded
+on `runner.os == 'Linux'`. The Rust cache is keyed by platform, or the two legs
+would fight over one entry.
+
+### macOS
+
+Not built. Notarising needs a paid Apple Developer account, and an unsigned Mac
+app is refused outright rather than click-through warned, so shipping one would
+be worse than shipping none. The README now carries build-from-source
+instructions and asks for reports, which is the cheap way to find out whether
+there is demand before spending the 99 dollars a year.
+
+Worth recording that this cost nothing in code: a grep for platform assumptions
+across `src/` found only `useDocument.ts`'s path split, which already handles
+both separators. The Rust host is fs, dialogs, store, opener, updater and
+process, all cross-platform. **The app was portable before anyone tried**, and
+the entire cost of going cross-platform is distribution.
+
+### Test floor raised
+
+`MIN_FILES` 40 to 42 (46 files live, minus the four `*.measure.test.ts` scratch
+harnesses, which is the rule the constant's own comment sets) and `BASE_TESTS`
+904 to 911, since `bugReport.test.ts`'s 7 tests touch no corpus map and so
+belong in the base rather than in either per-map coefficient. Both were nudged
+by the script itself.
+
+### Cargo version
+
+`version` removed from `src-tauri/Cargo.toml`. Confirmed by `cargo metadata`,
+which now reports `0.0.0`, the documented default. Nothing regressed because
+nothing read it, and Tauri takes its version from package.json.
+
+## BUG-005 piece 2 shipped, and the question it was holding turned out to be empty (2026-08-13)
+
+**RMS0200 858 to 277 on the corpus, all 21 true positives unchanged; RMS0201 22
+to 20.** The 581 `L` warnings are gone, `L { … }` renders as a real editable
+`create_land` card, and BUG-005 is CLOSED. Suite 46 files / 1453 tests green,
+`npm test` floor passed, typecheck and lint clean.
+
+### The fork was decided, not improvised, and the deciding argument was a precedent
+
+Where `create_land = 32` lives was left UNDECIDED on purpose on 2026-08-12,
+because both candidates conflict with something: `tokenId` on `CommandDef`
+deviates from parser-design Sec.2.1 and CREATION_PLAN A.2, and CLAUDE.md's first
+hard rule says a spec deviation is escalated rather than improvised;
+`token-aliases.json` is what the spec prescribes and costs a file, a schema, a
+loader and a join to hold one row.
+
+Escalated and decided: **`tokenId` on `CommandDef`**, with both specs amended in
+the same pass. The argument that settled it was not in either column of the
+table the entry had built. `game-constants.json` already stores this exact engine
+integer as `constId` **on the constant row**, and `validate.ts` reads it that way
+for RMS0111's id 69 — the same flat namespace, since 69 is at once SHORE_FISH,
+ATTR_PROJECTILE_ARC and the engine's own `/*`. So the id is an attribute of the
+thing it names, this repo has already chosen that shape once for the constant
+half, and putting the command half in a join table would have split one namespace
+across two kinds of data. `CommandDef` also already carries `sectionLocked`, an
+optional engine-MEASURED field under a cite-the-run discipline, so the shape had
+a precedent on the exact type in question.
+
+The general form, worth keeping: **when a fork looks like a tie, look for the
+same fact already stored somewhere in the repo and match it.** Consistency with
+an existing decision beats a fresh weighing of abstract pros and cons, and it is
+checkable rather than arguable.
+
+### The code is smaller than the entry implied, and `aliasTable` was never on the path
+
+`CommandNode.name` is a token INDEX and `def` is the resolved `CommandDef`, so an
+aliased command keeps the author's own `L` token and carries `create_land`'s def.
+Source fidelity holds by construction and nothing re-prints. The whole resolver
+is one `??` in `parseNamedOrRun` plus `aliasedCommand()`, which walks the symbol
+table the parser already builds. `ParseOptions.aliasTable` — flagged across three
+documents as the thing that would have to grow a second shape — turned out not to
+be involved at all: resolution needs the script's own `#const`s, not a caller
+option, so the option keeps its original structural scope untouched.
+
+Feeding the alias into `asCommand` rather than handling it as its own branch is
+what keeps it honest: an aliased command then inherits wrong-context (RMS0207),
+block opening and arity checking for free, with no parallel path to drift.
+
+### The other half of the same ruling, closed with it
+
+`24hr_Battle Lines 1.0.rms:93` writes `#const restricted_terrain_distance
+max_distance_to_other_zones` under its own `/* parameter renames */` comment.
+Sec.6's stop set halted `#const`'s value consumption on the known name, so the
+author's correct line drew a too-few-arguments warning AND an orphaned-attribute
+diagnostic. New optional `ArgumentDef.acceptsKnownName` drops the known-name half
+of the stop set for that one slot. The structural half never yields, or a
+valueless `#const` would swallow the section header after it.
+
+**Deliberately a per-argument flag rather than a rule keyed on `type:
+"otherConstant"`.** Every alias target has that type, which makes the derivation
+tempting, and 15 other slots share it — on `effect_amount.attribute` or
+`assign_to.target` a known name really is a mangled line that must still stop.
+The stop set is the parser's main error-recovery lever and the narrow exception
+is the safe one. `recordDirectiveInRawScan` passes the same flag, or a `#const`
+inside a degraded region would record a different value than outside one, and
+Sec.5.3's whole promise is that symbols survive degradation unchanged.
+
+### Three mutants found three bad tests, which is the session's most reusable result
+
+Every new line was mutation-tested. Three of the mutants survived, and each
+exposed a test asserting something true in both worlds rather than the mechanism
+it named:
+
+- **"keeps the author's own token"** checked the token text and the block, and an
+  UNKNOWN command also keeps its token and also gets its block. It stayed green
+  with the resolver deleted. Fixed by asserting the def alongside the token,
+  which is the pairing the test is actually about.
+- **"never lets a #const shadow a real command name"** used `#const create_land
+  99`, and 99 is an id no command claims, so the lookup falls through to the
+  right answer whichever order it runs in. Rewriting it to alias one real command
+  to another real command's id did not help either, and chasing that down found
+  the real guard: `#const`'s NAME operand keeps the known-name stop, so `#const
+  create_elevation 32` consumes nothing and records no symbol at all. **There is
+  no alias to shadow with, so the `??` order is unobservable and no test can pin
+  it.** The test now asserts the reachability property instead, and goes red if
+  the name slot ever gains `acceptsKnownName` — which is exactly when the order
+  starts to matter.
+- **"declines an expression value"** was meant to pin `/^\d+$/` and cannot:
+  `Number("(30")` is NaN, so it stays green however loose the check gets. A
+  separate test using `0x20` pins it, because `Number` accepts hex, a leading
+  `+`, surrounding whitespace, and turns `""` into 0 — a laxer guard reads
+  `0x20` as 32 and silently renders the map as `create_land`.
+
+The pattern in all three: **a test whose fixture cannot produce the wrong answer
+is not a weak test, it is not a test.** The first two were written by reasoning
+about what the code does; only the mutant asked whether the fixture could
+distinguish. Same family as `lands.ts`'s `bucketWeights` finding and
+`elevation.ts`'s locally-reimplemented ring clamp.
+
+### The merge question was priced, and it is empty
+
+BUG-005 carried `RMSTEST_63` as "the bigger one", on the reading that if an
+unrecognised word's block merges into the command above it, then every misspelled
+command in a real script silently rewrites its neighbour — "including the 457
+misspelled `set_loose grouping` lines in DE's own Battle Royale maps".
+
+**Measured instead of assumed, and the 457 cannot be affected.**
+`BR_FallofRome.rms:3624` has `set_loose grouping` INSIDE a `create_object { … }`
+block with no braces of its own. They are misspelled attributes already sitting
+in the command they would supposedly merge into, and the merge model acts only on
+a word that OPENS a block. `rms0200.measure.test.ts` now counts that population
+directly: **581 before the fix, every one of them `L`, and 0 after.** A sweep of
+all 292 install files finds `L` in Petra (384) plus this batch's own `AL`/`AX`
+and nothing else.
+
+Third time this exact instrument error has been caught in this file — piece 3's
+own correction named the wrong files for the same reason. **The mechanism sounded
+right and nobody checked which construct the lines were.** A claim of the form
+"this reaches N sites" is checkable in one grep and should never survive a
+review unchecked.
+
+`RMSTEST_63` stays worth one generation for a population the corpus structurally
+cannot contain: this is an authoring tool for beginners, and a beginner writing
+`create_lands {` is the block-opening typo 52 expert maps have none of. It blocks
+nothing and it is no longer the bigger question.
+
+### 63's own arms could not have answered, and were rewritten before being run
+
+As written, 63's merge read-off was "SNOW ~6000, no DIRT" — which is also what a
+buried origin produces, the very rival it exists to exclude. That is the fault
+that already cost 61 and 62 a run each, recurring in the run written to fix it.
+Both origins now carry `land_position` at opposite corners, which makes burial
+impossible by construction rather than improbable, and adds a second orthogonal
+read-off: `land_position` is a repeated attribute, so under the merge the
+surviving land sits at the UNKNOWN word's position, not `create_land`'s. Terrain
+and position become two readings of one model that have to agree, and a partial
+merge — block read, not every attribute overriding — now has its own outcome row
+instead of being invisible.
+
+### Data gates
+
+`validate:reference` grew a `tokenId` check: ids must be unique across commands,
+and a `tokenId` must come with a `notes` entry naming the run that measured it.
+The second half is the one that matters — an id transcribed from a map author's
+comment is exactly what this bug spent three rounds refusing to accept, and
+`create_land`'s note names `RMSTEST_62` plus the Petra editor observation. Both
+halves confirmed red then restored.
+
+### The raised floor, checked against CI rather than against this mount
+
+Raising a floor is only safe if it still passes on a FRESH CLONE, and this mount
+has 32 top-level corpus maps against the 11 that are tracked, plus 19 local maps
+against zero. The floor's own header records the last time that went wrong (CI
+running ~1061 tests against a floor of 1250, which could never have gone green).
+
+So it was measured rather than assumed. Every corpus test names its map in its
+own title, which makes the attribution mechanical: take a JSON report, count the
+tests naming a map that is absent from `git ls-files`, and subtract.
+
+| | this mount | CI (11 maps, 0 local) |
+|---|---|---|
+| tests | 1453 | ~1124 |
+| floor | 1339 | 1032 |
+| margin | 114 | **92** |
+| files | 46 | 46, floor 42 |
+
+**No test file empties out on a clone**, which is what the file floor depends on
+and is not obvious. The two that come closest are `corpus.test.ts` (47 of 133
+survive) and `patch.property.test.ts` (12 of 52), and both keep enough to
+appear. Had either dropped to zero, `testResults.length` would have fallen and
+the file floor would have failed for a reason that looks nothing like its cause.
+
+The method is the reusable part. Re-run it before raising these constants again
+rather than reading the number off a maintainer's machine.

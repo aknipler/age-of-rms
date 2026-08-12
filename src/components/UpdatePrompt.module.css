@@ -1,0 +1,32 @@
+/* Sits directly above the status bar, full width. Border on top only, so it
+   reads as attached to the bar rather than as a floating card. */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid #000;
+  background: #f4f4f4;
+  font-size: 0.85rem;
+}
+
+.message {
+  margin-right: auto;
+}
+
+.button {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #f0f0f0;
+}
+
+.primary {
+  composes: button;
+  font-weight: 600;
+}

@@ -1,0 +1,55 @@
+NOTICE
+======
+
+Age of RMS is free software under GPL-3.0. That license covers the code in
+this repository. It does not cover the game data in
+`reference/data/game-constants.json`, which this file exists to explain.
+
+Where that data comes from
+--------------------------
+
+`tools/extract-constants/` generates the file from a maintainer's own
+installation of Age of Empires II: Definitive Edition. Two sources feed it.
+
+* `random_map.def`, a plain text file DE includes into every random map
+  script, which supplies the RMS constant names and their numeric ids.
+* `empires2_x2_p1.dat`, the compiled game data file, read with genieutils-py.
+  DE ships the Advanced Genie Editor in its own `Tools_Builds` directory to
+  read and edit that same file.
+
+Most of what comes out is factual. Numeric ids, terrain restriction rows,
+resource amounts, class membership and texture filenames are facts about how
+the game is configured, and the two colour fields are measurements this
+project took by averaging a texture's pixels.
+
+The `descriptiveName` field is different. The 2639 object rows written by the
+roster extraction take their names verbatim from DE, 1324 of them from the
+game's English display strings and 1315 from the internal unit names in the
+dat. That text is Microsoft's, not ours.
+
+What that means for you
+-----------------------
+
+Those rows are included under Microsoft's Game Content Usage Rules, published
+at https://www.xbox.com/en-us/developers/rules. That license is personal and
+non-sublicenseable, so this project cannot pass it on to you. You hold it
+yourself by owning the game. Nothing in the GPL-3.0 grant over this repository
+should be read as granting rights over Microsoft's content, because this
+project has none to grant.
+
+The Game Content Usage Rules also require that anything built under them stays
+free. Age of RMS is free, carries no advertising and has no paid tier, and
+that applies to any future tool registry as well.
+
+Contributors should keep the line where it currently sits. Facts about the
+game and the names of things are in scope. Art, audio, binary game files and
+Microsoft's own written documentation are not, so do not copy prose out of the
+scripting guide DE ships in its `Docs` directory into this project's help
+text. Educational content is written by hand.
+
+Attribution
+-----------
+
+Age of Empires II © Microsoft Corporation. Age of RMS was created under
+Microsoft's 'Game Content Usage Rules' using assets from Age of Empires II,
+and it is not endorsed by or affiliated with Microsoft.

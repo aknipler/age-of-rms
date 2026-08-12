@@ -213,6 +213,16 @@ export function ReferenceTable() {
   // tab with a live filter is how you ask "is this name a terrain or an
   // object?", and per-tab state would answer it by silently clearing.
   const [query, setQuery] = useState("");
+  // The Objects tab holds one row per live gaia unit as of CREATION_PLAN 4.10,
+  // and 501 of them are carcasses and blood decals — units something else in
+  // the roster dies into, per the dat's own dead_unit_id/blood_unit_id links.
+  // They are real, a script CAN name one by id, and offering them beside DEER
+  // in the default listing makes the roster unreadable. Hidden unless asked.
+  //
+  // State, not a constant, because "unless asked" is the whole point: nothing
+  // here is deleted, and the count in the label is what tells a user the toggle
+  // is worth flipping.
+  const [showCorpses, setShowCorpses] = useState(false);
   const { hiddenObjects } = usePreviewView();
   // Something is being withheld from the canvas. Worth saying on the OUTSIDE
   // of this panel, because the effect (objects missing from the map) shows up
@@ -233,11 +243,23 @@ export function ReferenceTable() {
     const columns = COLUMNS_BY_MODE[mode];
     return gameConstants.constants
       .filter((c) => c.category === CATEGORY_BY_MODE[mode])
+      // `isCorpse` is absent on a row that is not one, so this is a positive
+      // test rather than a default. Applied BEFORE the search filter on
+      // purpose: a hidden row must stay hidden when a query matches it, or
+      // Find silently reintroduces exactly what the toggle is holding back.
+      .filter((c) => showCorpses || !c.isCorpse)
       .sort(compareConstantRows)
       // Search runs the same `cell` functions the renderer does, so it always
       // covers exactly the columns on screen and nothing else.
       .filter((c) => matchesQuery(query, columns.map((col) => col.cell(c))));
-  }, [mode, query]);
+  }, [mode, query, showCorpses]);
+
+  // Counted over the whole category rather than over what is on screen, so the
+  // label reads the same whatever the search box holds.
+  const corpseCount = useMemo(
+    () => (mode === "objects" ? gameConstants.constants.filter((c) => c.category === "object" && c.isCorpse).length : 0),
+    [mode],
+  );
 
   const commandRows = useMemo(
     () =>
@@ -291,6 +313,15 @@ export function ReferenceTable() {
             />
           </div>
         </HelpTip>
+
+        {mode === "objects" && corpseCount > 0 && (
+          <HelpTip id="breakdown.sidePanel.referenceCorpses">
+            <label className={styles.findRow}>
+              <input type="checkbox" checked={showCorpses} onChange={(e) => setShowCorpses(e.target.checked)} />
+              Show {corpseCount} carcasses and decals
+            </label>
+          </HelpTip>
+        )}
 
         {mode === "previewObjects" ? (
           <HelpTip id="preview.objectList">

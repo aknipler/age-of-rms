@@ -72,6 +72,36 @@ function ownedCount(grid: TileGrid, landIndex: number): number {
   return n;
 }
 
+/**
+ * How many unowned tiles this land could still have walked to, 4-connected,
+ * starting from the tiles it finished with. Zero means growth stopped because
+ * it ran out of GROUND rather than because it ran out of turns, which is the
+ * only way to state "it filled its wall exactly" without hardcoding the
+ * wall's size. Ignores every rejection rule growth itself applies (borders,
+ * zone avoidance) — it is a question about the map, not about the land.
+ */
+function reachableUnowned(grid: TileGrid, landIndex: number): number {
+  const { dim } = grid;
+  const visited = new Uint8Array(dim * dim);
+  const queue: number[] = [];
+  for (let i = 0; i < dim * dim; i++) if (grid.landId[i] === landIndex) queue.push(i);
+  let found = 0;
+  let head = 0;
+  while (head < queue.length) {
+    const i = queue[head++];
+    const x = i % dim;
+    const y = (i - x) / dim;
+    const neighbors = [x > 0 ? i - 1 : -1, x < dim - 1 ? i + 1 : -1, y > 0 ? i - dim : -1, y < dim - 1 ? i + dim : -1];
+    for (const n of neighbors) {
+      if (n < 0 || visited[n] || grid.landId[n] !== -1) continue;
+      visited[n] = 1;
+      found++;
+      queue.push(n);
+    }
+  }
+  return found;
+}
+
 /** 4-connected component count for one land's owned tiles — the same connectivity RMSTEST_38 measured against. */
 function countComponents(grid: TileGrid, landIndex: number): number {
   const { dim } = grid;
@@ -637,6 +667,52 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
       expect(east).toBe(0);
     }
   });
+
+  it("AK_Six_Points' walled flood claims its whole sealed interior, on every seed", () => {
+    // The two tests above pin the RULE on fixtures built to isolate it. This
+    // one pins the MAP that produced the rule, which neither of them can: the
+    // real ellipse is 120 stamps, four `DLC_MANGROVESHALLOW` strips cut across
+    // it, and the flood's origin sits closer to all three kinds of wall than
+    // the 24-tile seed radius. The fix was confirmed by measurement on this
+    // map in 2026-08-10 and then left with nothing guarding it.
+    //
+    // WHAT IS ASSERTED, and why it is not the measured tile count. The claim
+    // is structural: after growth the land is ONE 4-connected piece and there
+    // is no free ground left that it could still have walked to. Those two
+    // together say the land is exactly the free region its origin sits in,
+    // which the fixed `land_position`s determine — so they pin seed-identity
+    // without hardcoding 14,201, a number that would also move if an
+    // unrelated land's rules changed (BUG-009's border-relative cross is
+    // still unapplied and touches this map).
+    //
+    // WHAT IT CATCHES. Both halves of item 27's failure. A seed over a wall
+    // grows its own blob, which shows up as a second component; a seed
+    // OUTSIDE the ellipse escapes into the open sea, and the reachable-unowned
+    // count then runs to the thousands the sea holds. The pre-fix numbers were
+    // 7,741 / 7,897 / 10,855 tiles across three seeds — one clean region, one
+    // plus a stranded blob, one escaped.
+    //
+    // Normal only, deliberately: at Huge and Giant the same percent positions
+    // sit far enough apart in TILES that the ring develops gaps, the flood
+    // spills through them and stops on its tile target instead of on the wall.
+    // That is the script meeting a map size it was not written for (its own
+    // header says 4v4), not a defect, and asserting a sealed wall there would
+    // pin an artefact.
+    const source = readFileSync(join(REPO_ROOT, "test-maps", "AK_Six_Points_v1.4.rms"), "utf8");
+    const ownedPerSeed: number[] = [];
+    for (const seed of [1, 7, 13]) {
+      const { grid, dim, origins } = placeAndGrow(source, seed);
+      // The flood is the `zone 2` land at `land_position 90 49`.
+      const flood = origins.findIndex((o) => o.zone === 2 && o.x === Math.round(dim * 0.9) && o.y === Math.round(dim * 0.49));
+      expect(flood).toBeGreaterThanOrEqual(0);
+
+      expect(countComponents(grid, flood)).toBe(1);
+      expect(reachableUnowned(grid, flood)).toBe(0);
+      ownedPerSeed.push(ownedCount(grid, flood));
+    }
+    expect(ownedPerSeed[1]).toBe(ownedPerSeed[0]);
+    expect(ownedPerSeed[2]).toBe(ownedPerSeed[0]);
+  }, 20000);
 });
 
 describe("bucketWeights / reservoirSize (Sec.6.1's two growth knobs, isolated from the full pipeline)", () => {
@@ -699,18 +775,26 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
         "}",
       ].join("\n"),
     );
-    let sawOwned = false;
+    // Scan first, assert once. The land here is ~14k tiles and the earlier
+    // form ran four `expect()`s inside the loop, ~57,000 calls, which is a
+    // wall clock rather than a check — the same shape `terrainBitmap.test.ts`
+    // was rewritten out of (3.97s -> 73ms). It cost ~1.3s standalone against
+    // vitest's 5s default, so it went red under load on a machine whose load
+    // factor reaches 3.7x. Reporting the first offender by coordinate also
+    // makes the failure readable, which 57,000 anonymous assertions did not.
+    const lo = Math.round(0.2 * dim);
+    const hi = dim - Math.round(0.2 * dim);
+    let owned = 0;
+    let firstOutside: { x: number; y: number } | undefined;
     for (let y = 0; y < dim; y++) {
       for (let x = 0; x < dim; x++) {
         if (grid.landId[tileIndex(grid, x, y)] !== 0) continue;
-        sawOwned = true;
-        expect(x).toBeGreaterThanOrEqual(Math.round(0.2 * dim));
-        expect(x).toBeLessThan(dim - Math.round(0.2 * dim));
-        expect(y).toBeGreaterThanOrEqual(Math.round(0.2 * dim));
-        expect(y).toBeLessThan(dim - Math.round(0.2 * dim));
+        owned++;
+        if (firstOutside === undefined && (x < lo || x >= hi || y < lo || y >= hi)) firstOutside = { x, y };
       }
     }
-    expect(sawOwned).toBe(true);
+    expect(firstOutside).toBeUndefined();
+    expect(owned).toBeGreaterThan(0);
   });
 
   it("border_fuzziness 0 disables the border entirely — a heavily bordered land still grows well past what the bordered region alone could hold", () => {
@@ -860,9 +944,17 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
   it("leaves every unclaimed tile on the base fill", () => {
     const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\nterrain_type WATER\n}\n";
     const { grid } = placeGrowPaint(source);
+    // Same rewrite as the f=100 border test above: a 200-tile land leaves
+    // ~39,800 unclaimed tiles, so the assertion-per-tile form was ~39,800
+    // `expect()` calls and about a second of wall clock for one claim.
+    let firstRepainted: number | undefined;
     for (let i = 0; i < grid.landId.length; i++) {
-      if (grid.landId[i] === -1) expect(grid.terrain[i]).toBe(GRASS);
+      if (grid.landId[i] === -1 && grid.terrain[i] !== GRASS) {
+        firstRepainted = i;
+        break;
+      }
     }
+    expect(firstRepainted).toBeUndefined();
   });
 
   // The three reference forms, one test each. Before 2026-08-07 the first

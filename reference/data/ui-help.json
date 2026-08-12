@@ -61,6 +61,18 @@
       "text": "Opens Generation Settings — map size and player count, used to compute the resource totals shown here."
     },
     {
+      "id": "statusBar.reportBug",
+      "text": "Opens a prefilled bug report on the project's GitHub issue tracker in your browser. It carries the app version, your system and the current problem counts. Your script is never attached, so paste any part of it you can share into the form yourself."
+    },
+    {
+      "id": "update.install",
+      "text": "Downloads the new version and restarts the app. Save your work first, the restart is immediate once the download finishes."
+    },
+    {
+      "id": "update.dismiss",
+      "text": "Hides this until the next time the app starts. Nothing is downloaded and the current version keeps running."
+    },
+    {
       "id": "generationSettings.playerCount",
       "text": "How many players this map is generated for. Scales resources placed with set_place_for_every_player in the totals above."
     },
@@ -311,6 +323,10 @@
     {
       "id": "breakdown.sidePanel.referenceFind",
       "text": "Filters the table below to rows containing what you type, matching anywhere in any column the table shows. The text carries across the four tabs, so you can type a name once and check whether it is a terrain or an object. Escape clears it."
+    },
+    {
+      "id": "breakdown.sidePanel.referenceCorpses",
+      "text": "The Objects tab lists every unit in the game's gaia roster, and about 500 of those are carcasses and blood decals — what a unit turns into when it dies, rather than something a script places. They are hidden until you tick this. Nothing is removed: a script can still reach one by its ID number, and the search box finds it once the rows are showing."
     },
     {
       "id": "breakdown.sidePanel.referenceTable",

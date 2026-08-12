@@ -1,0 +1,80 @@
+name: Bug report
+description: Something in Age of RMS behaved wrongly, crashed, or misread a script.
+title: "[Bug] "
+labels: ["bug"]
+
+# The `id` of every field below doubles as a URL query parameter, which is how
+# the in-app Report a Bug button arrives with boxes already filled. src/bugReport.ts
+# builds that URL and names `environment`. Renaming a field here silently stops
+# the button prefilling it, so rename it there in the same commit.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If you got here from the app's Report a Bug button,
+        the environment box is already filled in and you can skip it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did the app do instead?
+      placeholder: The preview showed no water even though the script creates a water land.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you clicked or typed, in order. A screenshot helps a lot.
+      placeholder: |
+        1. Open the attached script
+        2. Switch to the Breakdown tab
+        3. Expand the first create_land block
+    validations:
+      required: true
+
+  - type: textarea
+    id: script
+    attributes:
+      label: The script, or the part of it that matters
+      description: >
+        Optional, and never collected automatically. Paste the smallest piece
+        that still shows the problem if you are happy to share it. If the map is
+        unreleased and you would rather not post it, describe the commands
+        involved instead.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Filled in automatically by the app's Report a Bug button.
+      placeholder: |
+        Age of RMS: 0.1.0
+        System: Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...
+        File open: yes
+        Diagnostics: 2 errors, 5 warnings, 1 info
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app
+      options:
+        - Not sure
+        - Breakdown editor
+        - Code editor
+        - Map preview
+        - Reference panel
+        - Problems and diagnostics
+        - Resource totals
+        - Opening or saving files
+        - Installer or updater
+    validations:
+      required: false

@@ -57,8 +57,12 @@ export interface LexOptions {
    *
    * The engine resolves every word to an internal token id and `/*` is 69, so
    * a word whose constant value is 69 opens a NESTED comment. Comments nest,
-   * so the author's `*​/` closes only the inner one and the rest of the file is
-   * invisible to the engine. Measured 2026-08-11/12, parser-design Sec.2.1
+   * so the author's own closing marker shuts only the inner one and the rest of
+   * the file is invisible to the engine. (Naming that marker here would end this
+   * very comment, and the zero-width space that used to hold it apart was an
+   * ESLint `no-irregular-whitespace` ERROR, so the lint gate was red on a
+   * committed file. Describe the token, do not spell it.) Measured
+   * 2026-08-11/12, parser-design Sec.2.1
    * amendment: `SHORE_FISH` (object 69) and `ATTR_PROJECTILE_ARC` (attribute
    * 69) both do it, the bare literal `69` does not.
    *

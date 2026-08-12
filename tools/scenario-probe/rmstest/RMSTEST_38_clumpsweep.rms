@@ -44,7 +44,15 @@ old ones rather than being a fresh baseline.
   DIRT3   cf  40    high
   GRASS3  cf 100    corpus uses this 18 times, above the community's stated 99
 
-Generated at Giant (252) = 63504 tiles, so six 400-tile lands occupy under 4% of
+SIZE CORRECTION (2026-08-12): the six exports in generated-tests/ are all
+dim 480 (LudiKRIS, 230400 tiles), NOT the Giant 252 this header asked for.
+Anyone re-deriving a dim-scaled constant from these runs must divide by 480 -
+against 252 the seed radius comes out 0.24*dim instead of 0.12*dim, a clean 2x
+error, and this project has already shipped exactly that mistake once on the
+cross's reference length. The read below is unaffected: it needs the six lands
+separated and far apart, which a larger map only helps.
+
+Asked for Giant (252) = 63504 tiles, so six 400-tile lands occupy under 4% of
 the map. Positions are on a 3 x 2 grid 76 and 101 tiles apart; a compact 400-tile
 land has a radius near 11 tiles and even a badly spindly one should not span
 half that separation. **Check this rather than assume it** - the read-off below

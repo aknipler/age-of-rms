@@ -107,6 +107,18 @@
   line-height: 1.4;
 }
 
+/* The Microsoft attribution. Smaller and greyer than .creditThanks because it
+   is a required legal notice rather than something to read, but deliberately
+   not hidden behind a disclosure, since the rules ask for it wherever the app
+   is distributed. */
+.legalNotice {
+  margin: 0.75rem 0 0;
+  max-width: 34rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #555;
+}
+
 /* Matches PlaceholderPane's italic grey, so an unbuilt settings tab reads
    the same way an unbuilt pane does. */
 .placeholder {

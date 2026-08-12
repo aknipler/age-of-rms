@@ -23,6 +23,9 @@ from extract_constants import (
     class_constants,
     class_descriptive_name,
     clean_dat_filename,
+    corpse_unit_ids,
+    parse_display_strings,
+    roster_descriptive_name,
     storage_note,
     derive_habitat,
     format_constant,
@@ -994,3 +997,94 @@ class TestStorageNote(unittest.TestCase):
     def test_handles_a_unit_with_no_storage_at_all(self):
         note = storage_note(None, [], 70, "2026-08-10")
         self.assertIn("raw slots none", note)
+
+
+# ---------------------------------------------------------------------------
+# Roster mode (CREATION_PLAN 4.10)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class FakeRosterUnit:
+    """The four `Unit` fields the roster mode reads. Same stand-in idea as
+    FakeUnit above, and the same caveat applies: these tests pin what the
+    functions do, never that reading `dead_unit_id` was the right question —
+    that part is measured against the real install, not here."""
+
+    id: int
+    name: str = ""
+    language_dll_name: int = 0
+    dead_unit_id: int = -1
+    blood_unit_id: int = -1
+
+
+class TestParseDisplayStrings(unittest.TestCase):
+    SAMPLE = '\n'.join([
+        '// a comment line DE ships in this file',
+        '',
+        '5400 "Gold Mine"',
+        '  5072 "Fish (Perch)"  ',
+        '5332 "Dolphin"',
+        'not a string line at all',
+        '9999 ""',
+    ])
+
+    def test_reads_id_and_text(self):
+        strings = parse_display_strings(self.SAMPLE)
+        self.assertEqual(strings[5400], "Gold Mine")
+        self.assertEqual(strings[5072], "Fish (Perch)")
+
+    def test_skips_comments_and_junk(self):
+        strings = parse_display_strings(self.SAMPLE)
+        self.assertEqual(len(strings), 4)
+
+    def test_keeps_an_empty_string_as_an_entry(self):
+        # Present but empty is a real state, and `roster_descriptive_name`
+        # falls through it to Unit.name rather than naming a row "".
+        self.assertEqual(parse_display_strings(self.SAMPLE)[9999], "")
+
+
+class TestRosterDescriptiveName(unittest.TestCase):
+    STRINGS = {5400: "Gold Mine", 9999: ""}
+
+    def test_prefers_des_own_display_text(self):
+        unit = FakeRosterUnit(id=66, name="GOLDM", language_dll_name=5400)
+        self.assertEqual(roster_descriptive_name(unit, self.STRINGS), ("Gold Mine", "strings"))
+
+    def test_falls_back_to_the_internal_code_verbatim(self):
+        # Unit 1546 is the case CREATION_PLAN 4.10 was written about: no
+        # display string, no RMS constant, and the dat's internal code is the
+        # only name there is. It is written AS IS — paraphrasing it would be
+        # thousands of claims nobody checked.
+        unit = FakeRosterUnit(id=1546, name="PLACEHOLDER (NAVAL)")
+        self.assertEqual(roster_descriptive_name(unit, self.STRINGS), ("PLACEHOLDER (NAVAL)", "unitName"))
+
+    def test_an_empty_display_string_is_not_a_name(self):
+        unit = FakeRosterUnit(id=7, name="MONKX_S_D", language_dll_name=9999)
+        self.assertEqual(roster_descriptive_name(unit, self.STRINGS), ("MONKX_S_D", "unitName"))
+
+
+class TestCorpseUnitIds(unittest.TestCase):
+    def test_a_unit_something_dies_into_is_a_corpse(self):
+        units = {
+            10: FakeRosterUnit(id=10, name="DEERX", dead_unit_id=11),
+            11: FakeRosterUnit(id=11, name="DEERX_D"),
+        }
+        self.assertEqual(corpse_unit_ids(units), {11})
+
+    def test_blood_units_count_too(self):
+        units = {20: FakeRosterUnit(id=20, blood_unit_id=21), 21: FakeRosterUnit(id=21)}
+        self.assertEqual(corpse_unit_ids(units), {21})
+
+    def test_minus_one_is_not_a_link(self):
+        # -1 is the dat's "no such unit", and treating it as an id would mark
+        # whatever happens to sit at that index.
+        units = {30: FakeRosterUnit(id=30, dead_unit_id=-1, blood_unit_id=-1)}
+        self.assertEqual(corpse_unit_ids(units), set())
+
+    def test_a_dangling_link_names_nothing(self):
+        # A referenced id with no live unit behind it must not enter the set:
+        # the caller intersects rows against it, and a phantom id would be a
+        # claim about a row that does not exist.
+        units = {40: FakeRosterUnit(id=40, dead_unit_id=999)}
+        self.assertEqual(corpse_unit_ids(units), set())
