@@ -1,0 +1,38 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_54b - the control for RMSTEST_54a.
+
+This file is 54a with the map-type declaration line DELETED and nothing else
+changed. Read 54a's header for the question.
+
+It must come out SNOW. If it does not, the pair says nothing and the map needs
+fixing before 54a can be read at all - a blank result in 54a only means the
+declaration ate the section header if this file proves the section header
+otherwise works.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN.
+
+Keep these two byte-identical apart from the one line. If either is edited, edit
+both.
+*/

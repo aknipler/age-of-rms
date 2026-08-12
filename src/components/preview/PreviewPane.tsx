@@ -3,6 +3,7 @@ import { usePreviewView } from "./PreviewViewContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import { createTerrainPalette, type TerrainConstant } from "../../preview/render/palette";
 import { usePreviewResultContext } from "../../PreviewResultContext";
+import { usePreviewCut } from "../../PreviewCutContext";
 import type { TilePoint } from "../../preview/render/projection";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
@@ -98,6 +99,56 @@ function TileReadout({ tile }: { tile: TileInfo }) {
 }
 
 /**
+ * The Current cut point (Sec.5's pin).
+ *
+ * Two states, one button. Unpinned, Current follows the caret and the button
+ * offers to hold it where it is; pinned, the same button lets go. A separate
+ * "unpin" control would spend a second slot in a narrow row on a state that
+ * is already visible in the label.
+ *
+ * The label says a LINE while the cut itself is a character offset (Sec.5).
+ * That is deliberate: "line 34" is the only address the user shares with the
+ * gutter, and "offset 812" would be true and useless. The shading in the code
+ * is what shows the exact point. 1-based here, 0-based everywhere below,
+ * converted once — in the two `+ 1`s in this component.
+ *
+ * Rendered only in Current. In Final the cut has no effect at all, and a
+ * control that changes nothing is worse than no control — the same reasoning
+ * that kept this toggle honest while the pin did not exist.
+ */
+function PinControl() {
+  const { cursorLine, pinnedLine, pinCursor, unpin } = usePreviewCut();
+
+  if (pinnedLine !== null) {
+    return (
+      <HelpTip id="preview.pinLine">
+        <button type="button" className={`${styles.pin} ${styles.pinActive}`} onClick={unpin}>
+          Pinned line {pinnedLine + 1} ✕
+        </button>
+      </HelpTip>
+    );
+  }
+
+  return (
+    <HelpTip id="preview.pinLine">
+      {/* Disabled rather than hidden when nothing is selected: the row would
+          otherwise lose a control every time the user cleared their selection,
+          and a button that comes and goes reads as a glitch. HelpTip's own
+          wrapper span carries the hover, so the explanation still works while
+          the button itself is inert. */}
+      <button
+        type="button"
+        className={styles.pin}
+        onClick={pinCursor}
+        disabled={cursorLine === null}
+      >
+        {cursorLine === null ? "Pin line" : `Pin line ${cursorLine + 1}`}
+      </button>
+    </HelpTip>
+  );
+}
+
+/**
  * The approximate map preview (CREATION_PLAN 4.2/4.3, docs/preview-design.md).
  *
  * Runs the real `generatePreview()` in a dedicated worker (`usePreviewResult`,
@@ -105,13 +156,12 @@ function TileReadout({ tile }: { tile: TileInfo }) {
  * against through 4.2 (`src/preview/fixture.ts`) is gone; CREATION_PLAN 4.3's
  * last line was "swaps the fixture for the worker" and this is that swap.
  *
- * Current vs Final (Sec.5): both toggle positions currently drive the
- * IDENTICAL result. Real Current semantics need `truncateAst()` and a
- * pin-line UI control (see `PreviewViewContext.tsx`'s `PreviewViewMode`
- * doc) — neither exists yet, no CREATION_PLAN step currently owns building
- * them, and shipping a toggle that silently does nothing would be worse
- * than shipping one that's honest about it (`breakdown.sidePanel
- * .previewToggle`'s HelpTip copy says so).
+ * Current vs Final (Sec.5, CREATION_PLAN 4.6): Final draws the whole script,
+ * Current draws the script truncated at the cut point — the pin, or the caret
+ * while nothing is pinned. The truncation and the second generation happen in
+ * `PreviewResultContext`; the code the cut leaves out is dimmed by `CodePane`
+ * and `ItemCard`; this pane owns only the pin control, which reads and writes
+ * `PreviewCutContext`.
  */
 export function PreviewPane() {
   // Everything durable comes from context, not local state: this pane
@@ -225,6 +275,7 @@ export function PreviewPane() {
             </label>
           </span>
         </HelpTip>
+        {view === "current" && <PinControl />}
       </div>
 
       <div className={styles.controls}>

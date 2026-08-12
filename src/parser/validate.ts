@@ -103,6 +103,37 @@ const CONSTANT_SLOT_CATEGORY: Partial<Record<ArgumentType, string>> = {
  */
 const RANDOM_BRANCH_PREFIX = "\u0000rnd";
 
+/**
+ * The engine's own token id for the opening comment marker, inferred from four
+ * in-game runs (parser-design Sec.2.1 amendment). Drives RMS0111. The id for
+ * the CLOSING marker is still unknown, so the words that would close a comment
+ * early are unenumerated and this check is deliberately one-sided.
+ */
+export const COMMENT_OPEN_ID = 69;
+
+/**
+ * The words the lexer must treat as `/*` when it meets them INSIDE a comment,
+ * built from reference data so no RMS vocabulary is hardcoded. Feed the result
+ * to `ParseOptions.commentOpenAliases`.
+ *
+ * Engine-defined names only. A script's own `#const NAME 69` is caught by
+ * RMS0111 but is NOT modelled, because deciding it needs the directive stream
+ * the lexer deliberately does not read — see the note on `checkCommentOpeningWords`.
+ */
+export function commentOpenAliases(
+  // Structurally typed to the two fields it reads, and both slots accept null
+  // AND undefined: the JSON carries null, `ValidateConstant` models the same
+  // absence as optional, and a parameter narrower than either caller is a
+  // compile error rather than a bug — which is how this signature was found.
+  constants: readonly { rmsConstant?: string | null; constId?: number | null }[],
+): ReadonlySet<string> {
+  const names = new Set<string>();
+  for (const c of constants) {
+    if (c.constId === COMMENT_OPEN_ID && c.rmsConstant) names.add(c.rmsConstant);
+  }
+  return names;
+}
+
 /** One `#const`, with the conditions that have to hold for it to run. */
 interface GuardedDefinition {
   symbol: SymbolInfo;
@@ -238,6 +269,7 @@ class Validator {
   // ---- entry point ------------------------------------------------------
 
   run(): void {
+    this.checkCommentOpeningWords();
     this.checkDefinitions();
     this.checkMissingPlayerSetup();
 
@@ -264,6 +296,50 @@ class Validator {
   }
 
   // ---- file-level checks ------------------------------------------------
+
+  /**
+   * RMS0111 — a word inside a comment that the engine resolves to **69**, its
+   * own id for `/*`. Measured (parser-design Sec.2.1 amendment): a leading
+   * comment containing `SHORE_FISH` (object 69) or `ATTR_PROJECTILE_ARC`
+   * (attribute 69) blanked the map, while the bare literal `69` did not —
+   * numeric literals are lexed as numbers and never reach the symbol table, so
+   * **it is the value, carried by a word**, and the namespace is irrelevant.
+   *
+   * **Reported, not modelled — decided 2026-08-11, do not re-open.** Treating
+   * the rest of the file as commented would match the engine and would hand
+   * the author an empty Breakdown for a file full of content, as a consequence
+   * of the bug they are hunting. The AST below the offending comment is
+   * therefore deliberately NOT what the engine produces, and nothing
+   * downstream may read a clean parse there as evidence the script works.
+   *
+   * **Only the FIRST hit is reported.** Everything after it is inside the
+   * engine's nested comment, so a second one is not a second bug — and the
+   * message's whole claim is "everything below here is gone".
+   *
+   * Resolution is positive-only, per this module's standing rule: engine
+   * constants by name, then the script's own `#const`s. The engine-defined set
+   * is exactly two names in `random_map.def`, and both are in our data with
+   * `constId` 69, so nothing is hardcoded here.
+   */
+  private checkCommentOpeningWords(): void {
+    for (const token of this.tokens) {
+      if (!token.isTrivia || token.kind !== "word") continue;
+      const constant = this.constantsByName.get(token.text);
+      if (constant?.constId === COMMENT_OPEN_ID) {
+        this.diagnostics.push(d.commentOpensNestedComment(token, `the game's own ${constant.category} constant`));
+        return;
+      }
+      // A script `#const NAME 69` reaches the same table the engine's names do.
+      // `SymbolInfo` carries the value's TOKEN rather than a number, since a
+      // `#const` value can be an expression — so the literal case is the one
+      // that can be answered here, and it is the one that matters.
+      const symbols = this.symbolsByName.get(token.text);
+      if (symbols?.some((s) => s.valueToken !== undefined && this.tokens[s.valueToken]?.text === String(COMMENT_OPEN_ID))) {
+        this.diagnostics.push(d.commentOpensNestedComment(token, "this script defines it as 69"));
+        return;
+      }
+    }
+  }
 
   /** RMS0301 duplicate definition + RMS0302/RMS0312 redefining an engine name. */
   private checkDefinitions(): void {

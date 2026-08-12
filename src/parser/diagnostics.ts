@@ -18,7 +18,12 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   RMS0004: { severity: "warning", summary: "Non-standard space character (NBSP etc.) inside a token" },
   RMS0005: { severity: "info", summary: "Leading byte-order mark (emitted as a trivia token; has no effect)" },
   RMS0100: { severity: "warning", summary: "Unknown section header" },
-  RMS0101: { severity: "error", summary: "Unclosed { at EOF" },
+  // Warning, not error: DE GENERATES `test-maps/broken/BCC2-Rekawa.rms`, which
+  // reaches EOF at brace depth 1 through its glued `}8050`, with no visible
+  // problem (measured 2026-08-11 by loading the map; BUG-006, Sec.13 item 6).
+  // Sec.1 goal 5 reserves error for constructs "we are confident the engine
+  // rejects or mangles", and the rejection half is refuted.
+  RMS0101: { severity: "warning", summary: "Unclosed { at EOF" },
   RMS0102: { severity: "warning", summary: "{ with nothing to attach to (OrphanBlockNode)" },
   RMS0103: { severity: "error", summary: "Section header while { open — block force-closed" },
   RMS0104: { severity: "warning", summary: "Stray }" },
@@ -28,6 +33,10 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   RMS0110: {
     severity: "info",
     summary: "Conditional interleaves with command/block/section structure — shown as raw code (valid RMS)",
+  },
+  RMS0111: {
+    severity: "error",
+    summary: "A word inside a comment resolves to 69, which the engine reads as an opening comment marker — everything below it is invisible to the game",
   },
   RMS0200: { severity: "warning", summary: "Unrecognised command/attribute name, with did-you-mean" },
   RMS0201: { severity: "warning", summary: "Too few arguments (incl. stop-set/assembly early termination)" },
@@ -292,6 +301,30 @@ export function degradedToRaw(first: Token, last: Token, unclosedAtEof = false):
     ? "This code mixes if/random with command structure in a way that must be shown as raw code — it is valid RMS. This region runs all the way to the end of the file, which usually means the if/start_random it starts with is missing its endif/end_random."
     : "This code mixes if/random with command structure in a way that must be shown as raw code — it is valid RMS.";
   return makeDiagnostic("RMS0110", message, spanBetween(first, last));
+}
+
+/**
+ * RMS0111 — a word inside a comment whose value is 69, which is the engine's
+ * own id for `/*`. The engine resolves constants inside comments, comments
+ * nest, and the script's closing marker then shuts only the inner one: every
+ * line below is invisible to the game (parser-design Sec.2.1 amendment,
+ * measured by `RMSTEST_55/56a/57/60`).
+ *
+ * **The wording is part of the fix.** This failure is completely invisible in
+ * play — no crash, no error, a map that generates and looks plausible — so the
+ * diagnostic is the author's only route to it. It names the token (the comment
+ * may be long), states that everything below is gone (which is what justifies
+ * error severity), says the map still generates (or the author hunts for a
+ * crash that never comes), and offers advice that can actually be followed:
+ * "rename the constant" is impossible when the word is describing the constant
+ * it names.
+ */
+export function commentOpensNestedComment(token: Token, source: string): Diagnostic {
+  return makeDiagnostic(
+    "RMS0111",
+    `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That opens a second comment, the next */ closes only that one, and every line below here is invisible to the game — the map still generates, silently missing everything after this point. Split the word, or move this comment below the rest of the script.`,
+    toSpan(token),
+  );
 }
 
 export function sharedBlock(openToken: Token): Diagnostic {

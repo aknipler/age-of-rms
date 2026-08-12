@@ -1,0 +1,150 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain DIRT
+
+  /* The snow half. Made here so that it exists before elevation runs. */
+  create_land
+  {
+    terrain_type SNOW
+    land_percent 45
+    base_size 10
+    left_border 55
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+  /* The dirt half. ONE command. */
+  create_elevation 7
+  {
+    base_terrain DIRT
+    number_of_clumps 40
+    number_of_tiles 4000
+  }
+
+  /* The snow half. The SAME command, five times. */
+  create_elevation 7
+  {
+    base_terrain SNOW
+    number_of_clumps 40
+    number_of_tiles 4000
+  }
+
+  create_elevation 7
+  {
+    base_terrain SNOW
+    number_of_clumps 40
+    number_of_tiles 4000
+  }
+
+  create_elevation 7
+  {
+    base_terrain SNOW
+    number_of_clumps 40
+    number_of_tiles 4000
+  }
+
+  create_elevation 7
+  {
+    base_terrain SNOW
+    number_of_clumps 40
+    number_of_tiles 4000
+  }
+
+  create_elevation 7
+  {
+    base_terrain SNOW
+    number_of_clumps 40
+    number_of_tiles 4000
+  }
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_50 - do repeated elevation commands STACK, or does each one raise to its
+own height and stop?
+Feeds: preview-design Sec.6.2, elevation.ts, Sec.15 item 25
+
+QUESTION
+Sec.6.2 said elevation heights "add onto whatever elevation is already there",
+and the implementation read that as summing across commands. A corpus map then
+writes the same flood-the-map elevation command five times over one region, plus
+a smaller one - summed, that is a height of 37 on a scale that ceilings at 16 -
+and the preview came out at the ceiling on 36,877 of 40,000 tiles for a map
+whose author asked for 7.
+
+It is now modelled as: each command raises a tile to its own target and takes
+the higher of that and what is already there, so writing a command five times is
+a COVERAGE idiom - exactly what repetition means for terrain - rather than a
+height multiplier. The maximum reading was reached by asking what would stop the
+bad output, which is the weaker way to reach a rule, so it is worth one run.
+
+The related pin is NOT in question here and should not be disturbed: a land's
+own base elevation still adds, so a land at base 3 under a command asking for 7
+reaches 10. That half was measured. This test is only about repetition.
+
+METHOD
+One map, two halves of different terrain, and elevation commands restricted to a
+terrain by the elevation command's own base-terrain attribute. The two halves
+differ ONLY in how many times the same command is written.
+
+THE TWO HALVES ARE MADE AT LAND GENERATION, NOT AT TERRAIN GENERATION, AND THAT
+IS NOT A STYLE CHOICE. The engine runs its sections in a fixed order - land,
+elevation, cliffs, terrain, connections, objects - regardless of the order they
+appear in the file. Elevation therefore runs BEFORE terrain generation, so a
+terrain painted there does not exist yet when the elevation commands look for
+it, and every one of them would match nothing. A land carries its own terrain
+and is laid before elevation, which is why the split is a second land here.
+
+  dirt half  - the command once.
+  snow half  - the identical command five times.
+
+  maximum model -> both halves peak at the same height. Repetition changed
+                   coverage, not altitude.
+  summing model -> the snow half runs far higher than the dirt half and pins at
+                   the ceiling, while the dirt half sits at the asked-for height.
+
+This is a single-map discriminator, which matters: the two halves see the same
+seed, the same map size and the same land, so nothing but the repetition differs.
+
+PREDICTION, WRITTEN BEFORE THE RUN
+Maximum. The corpus map that prompted this makes no sense under summing - an
+author does not write a height-7 command five times intending 35 - and terrain
+already treats repetition as coverage. If the run says summing, then the
+corpus map really is asking for the ceiling and Sec.6.2's original text was
+right, and the fix shipped on 2026-08-07 needs reverting rather than refining.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --rows ELEVATION --bands 20
+  python probe_scenario.py "<scenario>" --patches SNOW
+  python probe_scenario.py "<scenario>" --patches DIRT
+  The reading is the MAXIMUM height on each half and the height histogram within
+  each half, not the mean - a coverage difference moves the mean under both
+  models and only the peak separates them.
+
+Read the coverage too, because it is the other half of the claim. Under the
+maximum model the snow half should be MORE COVERED than the dirt half at the
+same peak height, which is what "repetition is a coverage idiom" actually
+predicts. Equal peaks with equal coverage would mean the extra four commands did
+nothing at all, which is a third outcome and is not what either model says.
+*/

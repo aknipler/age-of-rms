@@ -162,12 +162,13 @@ interface Span { start: number; end: number }
 
 AST nodes reference tokens by index (`firstToken`/`lastToken`) and carry a derived `span`. Invariant: a node's span is exactly the range from its first to last token, including interior trivia, excluding exterior trivia.
 
-**Rev 6 — read this before Sec.4's sketches.** Sec.4 below is a *shape* sketch and disagrees with the shipped types in four ways, all deliberate and all recorded in `src/parser/types.ts:63-71`. Under "do not deviate from this spec" the sketches would otherwise read as instructions to undo shipped work.
+**Rev 6 — read this before Sec.4's sketches.** Sec.4 below is a *shape* sketch and disagrees with the shipped types in five ways, all deliberate and all recorded in `src/parser/types.ts`. Under "do not deviate from this spec" the sketches would otherwise read as instructions to undo shipped work.
 
 1. **Every token reference is an index, never a `Token` object.** Sec.4 writes `name: Token`, `header: Token`, `open: Token`, `close?: Token`, `keyword`, `condition`, `endif`, `start`, `end`, `hash` — all of them are `number` in the code. Indices are what Sec.12's ownership property and the Phase-3.3 patch engine need, the sentence directly above already said "reference tokens by index", and rev 5's own `ArgNode` uses them. The `Token` is one array lookup away.
 2. **Every node extends a `NodeBase`** carrying `firstToken`/`lastToken`/`span`, rather than `ArgNode` and `RawNode` declaring them individually.
 3. **`BlockNode` and `SectionNode` carry `kind` discriminants** like every other node, so the union stays uniformly discriminable.
 4. **`Diagnostic` has gained `suggestion?: string`** (`types.ts:37-43`), populated by RMS0200's did-you-mean and consumed by the Breakdown raw-card quick-fix (`breakdown-design.md` Sec.3.7).
+5. **Fifteen of the types below take two defaulted type parameters** (`<N = number, D extends NoDefs = DefSlots>`), landed 2026-08-11 — see the amendment at the end of this section. The sketches show the *default* instantiation, which is what every existing call site means when it writes a bare `ParseResult`. Nothing in `src/` outside the parser names either parameter.
 
 ## 4. AST shape
 
@@ -235,6 +236,25 @@ interface RawNode { kind: "raw"; reason: string; /* + firstToken/lastToken/span 
 **Name lookup order (pinned):** inside a `BlockNode` → attribute lookup first, then command; at statement level → command first, then attribute. A cross-category hit parses normally as its actual category and gets warning `RMS0207` with a beginner-first message ("`number_of_tiles` is an attribute — it belongs inside a `{ }` block"). Dual-use names (`base_terrain`, `base_layer`) resolve to the context-native category silently — no RMS0207.
 
 Directive surface (matching the guide's Non-Functional Syntax appendix and 100% of corpus usage): the *functional* directives are exactly `#define`, `#const`, `#include_drs`, `#includeXS`. `#undefine` and `#include` exist as engine strings but **do nothing** — they parse as known DirectiveNodes whose defs are flagged non-functional (Sec.13 item 2), with an info diagnostic ("#undefine has no effect in DE — the flag stays defined"). The `#ifdef` family does not exist in DE (not in the guide, not in the exe string dump) — **remove those entries from language.json** (Sec.13 item 2); after removal they naturally hit RMS0206 like any unknown directive.
+
+**Amendment — the AST tree takes two defaulted type parameters. ACCEPTED AND LANDED 2026-08-11**, on request from `tools-api-design.md` rev 7; it was that document's to ask and this one's to decide. The tools contract publishes a `.d.ts` that must describe the *external wire* form of a `ParseResult`, which differs from the in-process one in two ways: `±Infinity` is sentinel-encoded (JSON cannot carry it) and `def` is stripped (JSON has no back-references, so a shared `CommandDef` is re-emitted at every node pointing at it — 41% of a 13 MB payload). Both differences have to be visible to the compiler, or a portable tool silently reads `undefined`. The edit is two defaulted type parameters threaded through the fifteen types that carry them — `ArgValue`, `ArgNode`, `CommandNode`, `BlockNode`, `AttributeNode`, `DirectiveNode`, `IfBranch`, `IfNode`, `RandomBranch`, `RandomNode`, `OrphanBlockNode`, `Item`, `SectionNode`, `ScriptNode`, `ParseResult`:
+
+```ts
+export type ArgValue<N = number> = N | { rnd: [N, N] } | { expr: { tokens: number[] } } | string;
+// `expr.tokens` are token INDICES and stay number[]; rnd bounds are a numeric position
+// and do take the parameter (parseRndValue is Number() over an unbounded digit run).
+export interface DefSlots { arg: ArgumentDef; command: CommandDef; attribute: AttributeDef; directive: DirectiveDef }
+export interface NoDefs   { arg: unknown; command: unknown; attribute: unknown; directive: unknown }
+// each def site becomes `def?: D["command"]` etc., with `D extends NoDefs = DefSlots`.
+```
+
+**No call site is edited — that is what the defaults are for** — and the wire form is then `ParseResult<number | { inf: 1 | -1 }, NoDefs>`. Indexed access is load-bearing: a conditional property type on a mode parameter makes TypeScript's variance measurement give up and the two instantiations stop being assignable on the type argument alone, and `def?: never` breaks assignability outright. Both were checked against `tsc --strict` on 2026-08-11; tools-api-design Sec.4 carries the write-up.
+
+**What landing it measured, rather than argued (2026-08-11).** The "no call site is edited" claim is the one that decided acceptance and it was verified rather than trusted: `npm run typecheck` passes over the whole repo with zero edits outside `src/parser/types.ts`. So does `npm run lint`, and the suite is unchanged at 44 files / 1391 tests, which is what a type-only edit should produce.
+
+`src/parser/__tests__/wireTypes.test-d.ts` is the standing gate. It is **not a Vitest suite** — the `.test-d.ts` extension does not match Vitest's default include, so it never enters the test floor; `npm run typecheck` checks it, and CI runs that. Half its assertions are `@ts-expect-error`, and TypeScript reports an *unused* `@ts-expect-error` as an error of its own, so **every negative claim in it fails in both directions** and cannot decay into a vacuous pass — the usual objection to a check that has only ever been green, and one this project has been bitten by. It pins: a real `ParseResult` flows into the wire form (including one level down, where the `BlockNode → Item → CommandNode → BlockNode` cycle makes variance measurement fall back to a structural walk); the wire form does not flow back; `node.def?.name` is an error on the wire and fine in-process; both numeric positions force a decode while `expr.tokens` stays a plain `number`; and the two rejected mechanisms, kept executable so the reason for the chosen one cannot decay into folklore.
+
+Four mutants, all confirmed red then reverted. Two are worth recording because of *where* they went red rather than that they did: narrowing `NoDefs`' slots to `never` fails at the **constraint** (`DefSlots` no longer satisfies `D extends NoDefs`) rather than at the assignability claim it was aimed at — the design fails fast, but that mutant does not exercise what it looks like it exercises. And flipping `ParseResult`'s `D` default from `DefSlots` to `NoDefs` goes red across **real app code** (`truncateAst.ts`, `instantiate.ts`), not only in the type test: the default direction is load-bearing enough that the application enforces it on its own.
 
 ## 5. Parsing strategy
 
@@ -412,7 +432,7 @@ Lexing one linear scan; parsing one linear pass, amortized linear including Sec.
 | RMS0004 | warning | Non-standard space character (NBSP etc.) inside a token |
 | RMS0005 | info | Leading byte-order mark (emitted as a trivia token; has no effect) |
 | RMS0100 | warning | Unknown section header |
-| RMS0101 | error | Unclosed `{` at EOF (⚠ verify #6 — live corpus specimen suggests downgrade) |
+| RMS0101 | warning | Unclosed `{` at EOF — **downgraded from error 2026-08-12** (BUG-006, verify #6 answered: DE generates `BCC2-Rekawa.rms`, which ends at brace depth 1, with no visible problem) |
 | RMS0102 | warning | `{` with nothing to attach to (OrphanBlockNode) |
 | RMS0103 | error | Section header while `{` open — block force-closed (⚠ verify #9) |
 | RMS0104 | warning | Stray `}` |
@@ -420,6 +440,7 @@ Lexing one linear scan; parsing one linear pass, amortized linear including Sec.
 | RMS0106 | warning | Control keyword in wrong context / tokens before first `percent_chance` |
 | RMS0107 | warning | Nesting deeper than maxNestingDepth — shown as raw code |
 | RMS0110 | info | Conditional interleaves with command/block/section structure — shown as raw code (valid RMS) |
+| RMS0111 | **error** | A word inside a comment resolves to 69, which the engine reads as `/*`. It opens a nested comment and **everything after it is invisible to the engine** (Sec.2.1 amendment, 2026-08-11; BUILT 2026-08-12 in `validate.ts`, which is where the game constants and the script's own `#const`s both are — only the FIRST hit is reported, since everything below it is inside the engine's nested comment) |
 | RMS0200 | warning | Unknown command/attribute name, with did-you-mean (below) |
 | RMS0201 | warning/info† | Too few arguments (incl. stop-set/assembly early termination) |
 | RMS0202 | warning/info† | Argument type mismatch |
@@ -496,7 +517,7 @@ Sec.8's wrong-section suppression rule (skip everything between a Sec.5.3 degrad
 
 **Three silences, each a refusal to claim past the measurement.** The preamble (what was measured is a command in the *wrong* section, never one in *no* section); an unrecognised section header (what the engine does with a header it does not know is unmeasured); and everything after a degraded region in the same section. That last is the revived suppression rule, and it is deliberately triggered by **any** `RawNode` rather than only the recovery reasons that can absorb a header — the two directions are not symmetric, since over-suppressing loses a true positive in an already-broken file while under-suppressing invents warnings out of the parser's own recovery.
 
-**RMS0315 — a guide "Requires:" line is a rule, and this is the first one enforced (added 2026-08-10).** `ignore_terrain_restrictions` carries `Requires: set_place_for_every_player or place_on_specific_land_id` at guide:2509, and what happens when the requirement is unmet was measured in game rather than inferred: the whole `create_object` places **nothing at all**. Not the object on its normal terrain, nothing. `AK_Namatjira.rms` has one shore-fish command of exactly that shape and spawns no shore fish, while the preview was drawing 232 of them.
+**RMS0315 — a guide "Requires:" line is a rule, and this is the first one enforced (added 2026-08-10, consequence corrected 2026-08-12).** `ignore_terrain_restrictions` carries `Requires: set_place_for_every_player or place_on_specific_land_id` at guide:2509. Unmet, **the attribute does nothing and the command places in full** — MEASURED, `RMSTEST_42`, four runs, 2026-08-11: 60 salmon across a flagged and an unflagged command, all 60 in water, plus 30 flagged olive trees on grass. So the check flags a **dead line**, not a dead command.
 
 Three things about its shape are deliberate.
 
@@ -506,9 +527,9 @@ Three things about its shape are deliberate.
 
 **It errs toward the false negative and says so.** A partner supplied only inside one branch is still a bug on every other path, and this check stays quiet about it.
 
-**Corpus: 56 sites across 12 maps** (`src/parser/__tests__/rms0315.measure.test.ts`, a permanent reporter in the RMS0200/0201/0304 family). Unlike RMS0304's expected zero, this one has plenty to say, and the largest clusters are real: `Chaotic_Straitv0.99` 16, `QS_Three_Bays_v1.1` 15, `Menindee_AUS_v2.3` 12. The clearest single find is `AK_Vanguard_v1.2.rms:1508-1510`, three identical `create_object STONE` lines carrying the flag with no partner, sitting directly above four `create_object GOLD` lines of the same shape without it. The author believed the flag was doing something; all three commands place nothing, and nothing in game would ever have told them.
+**Corpus: 56 sites across 12 maps** (`src/parser/__tests__/rms0315.measure.test.ts`, a permanent reporter in the RMS0200/0201/0304 family). Unlike RMS0304's expected zero, this one has plenty to say, and the largest clusters are real: `Chaotic_Straitv0.99` 16, `QS_Three_Bays_v1.1` 15, `Menindee_AUS_v2.3` 12. The clearest single find is `AK_Vanguard_v1.2.rms:1508-1510`, three identical `create_object STONE` lines carrying the flag with no partner, sitting directly above four `create_object GOLD` lines of the same shape without it. The author believed the flag was doing something; it does nothing, the two groups of commands behave identically, and nothing in game would ever have told them.
 
-**One thing RMS0315 claims that is not yet measured, flagged rather than left implicit.** The message says the command places nothing, and Namatjira cannot distinguish that from the weaker "the flag is inert and the object's own restriction re-applies" — both predict the zero that was observed there. `find_closest` carries the identical `Requires:` line and appears 71 times frameless in working corpus maps, which argues the line alone does not void a command. `RMSTEST_42_ignoreterrain_frameless.rms` is written and unrun; if it comes back inert, this check keeps its trigger and loses its consequence clause. Nothing about `requiresOneOf` should be extended to the other six attributes carrying that guide line until each is measured on its own.
+**The consequence clause was wrong for two days, and the flag saying so is what made it cheap to fix.** The original message said the whole command places nothing, inferred from `AK_Namatjira.rms` spawning no shore fish. That map cannot discriminate — its command also names a shallow a shore-habitat fish cannot occupy, so "inert" predicts zero there too, and **a map that produces zero is consistent with every model that produces zero**. The counter-evidence was already written into `RMSTEST_42`'s own header before it was run (`find_closest` carries the identical `Requires:` line and appears 71 times frameless in working maps) and was not weighed against the gate. The check kept its trigger and lost its consequence clause, exactly as this paragraph predicted it would have to. Nothing about `requiresOneOf` should be extended to the other six attributes carrying that guide line until each is measured on its own.
 
 **Reporter caveat, and it applies to all four measure files.** Vitest 4 intercepts console output under this repo's config, so every one of these reporters prints nothing and still exits 0 — which reads exactly like a check that found nothing. Run them with `--disableConsoleIntercept`.
 
@@ -520,7 +541,7 @@ Three things about its shape are deliberate.
 
 **Candidate ranking (same amendment).** Containment matches are ranked by *whether the enclosing block's command accepts the attribute* first and by length second. Length alone fails the case that motivated the change: inside `create_object`, `min_distance` matches both `min_distance_cliffs` (19 chars, a terrain attribute that cannot appear there) and `min_distance_to_players` (23), and shortest-wins returns the impossible one. `CommandDef.attributes` is used to RANK only, never to reject — an attribute missing from a command's list is a reference-data gap, not evidence about the author (the positive-resolver rule).
 
-Messages must be beginner-first: what's wrong *and what to do*. Error severity is a strong claim (goal #5): RMS0101 and RMS0103 carry it, both pinned to verify items, and RMS0311 — whose condition (elevation silently does nothing without the section) is engine-verified even though the reported crash is second-hand.
+Messages must be beginner-first: what's wrong *and what to do*. Error severity is a strong claim (goal #5): RMS0103 carries it (pinned to a verify item), RMS0111 carries it (measured), RMS0101 carried it and was downgraded to warning on 2026-08-12 when verify #6 refuted the rejection half, and RMS0311 — whose condition (elevation silently does nothing without the section) is engine-verified even though the reported crash is second-hand.
 
 ## 11. Verify-in-game checklist
 
@@ -540,10 +561,54 @@ Two items carry unusual leverage and are worth naming here rather than leaving t
 
 **Open:**
 
-4. `rnd(a,b)` in every numeric slot — narrowed: `percent_chance rnd(…)` is the case worth testing (guide doesn't enumerate).
-6. **Unclosed `{` at EOF — TOP PRIORITY, and still open**: does BCC2 (live specimen, brace depth 1 at EOF via `}8050`) actually generate? If yes, RMS0101 → warning. **Moving the file to `test-maps/broken/` on 2026-08-05 is not a resolution and must not be read as one.** That README's claim ("the diagnostic is right: the brace really is glued") answers whether the *glue* is real, which was never in question. What decides RMS0101's **error** severity is whether DE generates a file that reaches EOF at brace depth 1, and that is unmeasured. This item has been TOP PRIORITY across three revisions without ever being scheduled.
-7. Sec.2.1 aliasing in DE (`create_object 32` → Monastery? MILL closes a block?) — gates `token-aliases.json` import.
-8. Conditionals spanning section headers — engine accepts? (Grounds Sec.5.1 dispatch item 1.) ~~zero corpus occurrences~~ — **a live DE-official specimen now exists, 2026-08-01.** `Continental.rms` has 9 `if` against 8 `endif`; `if INFINITE_RESOURCES` at line 280 opens an `else` at 281 that is never closed, and it spans `<ELEVATION_GENERATION>` (363), `<CLIFF_GENERATION>` (371) and `<CONNECTION_GENERATION>` (386) to EOF. So the question is no longer hypothetical, and it has a **binary observable that needs no instrument**: play Continental with Infinite Resources selected and look for cliffs. If conditional state does not reset at a section header, a shipped official map silently loses three whole sections under one lobby setting. Promote to the same tier as #6.
+~~4.~~ **ANSWERED 2026-08-11 — `percent_chance rnd(a,b)` is evaluated normally.** `RMSTEST_55` ran two mirrored random blocks, one with `rnd(100,100)` against a literal 0 and one with `rnd(0,0)` against a literal 100, so an unevaluated percentage that always fires and one that never fires give different, recognisable outcomes. Result: the `rnd(100,100)` branch fired and the `rnd(0,0)` branch did not, which is correct evaluation and neither failure mode. The slot's numeric type in `language.json` is confirmed and the parser needs no change.
+~~6.~~ **ANSWERED 2026-08-11 — BCC2 GENERATES. RMS0101 must drop from error to warning.** The question carried across three revisions as TOP PRIORITY and was settled by loading the map: `BCC2-Rekawa.rms`, the live specimen that reaches EOF at brace depth 1 via its glued `}8050`, generates successfully with no visible problem. Sec.1 goal 5 reserves **error** severity for constructs "we are confident the engine rejects or mangles", and rejection is now refuted, so the severity is unsupported as it stands.
+
+    **One residual, and it is the difference between the two verbs.** "Generates" refutes *rejects*; it does not refute *mangles*. An unclosed block swallows everything after it as attributes, so the commands following BCC2's glued brace may be silently inert in a map that still looks fine — which is precisely the failure mode CLAUDE.md's "a shipped map is not a specification" rule describes, and it is not visible by eye. The downgrade to warning is correct either way (a warning is what "this probably does not do what you meant" is for), but **do not record this as "the construct is harmless"** — record it as "the engine does not reject it", which is what was observed. Whether the tail is inert is a separate run: put a distinguishable object command after the glued brace and count.
+
+    Also note what this does NOT license. `test-maps/broken/`'s README states that the glue is real, which was never in question and is still true; the file stays where it is and remains the RMS0101 fixture.
+~~7.~~ **THE DESTRUCTIVE HALF IS CLOSED 2026-08-11. A WORD resolving to 69 opens a nested comment and hides the rest of the file from the engine.** Three runs settled it:
+
+    | run | leading comment contains | map |
+    |---|---|---|
+    | `RMSTEST_56b` | nothing (control) | **snow** — the script ran |
+    | `RMSTEST_56a` | `SHORE_FISH` (object 69) | **blank grass** |
+    | `RMSTEST_57` | the bare literal `69` | **snow** — literals do not participate |
+    | `RMSTEST_60` | `ATTR_PROJECTILE_ARC` (attribute 69) | **blank grass** |
+
+    So it is the **value**, carried by a **word**. Numeric literals are lexed as numbers and never reach the symbol table; the namespace the constant belongs to is irrelevant, which `60` establishes by using an attribute constant against `56a`'s object one. Comments nest, so the closing `*/` shuts only the inner comment and everything after it is invisible to the engine.
+
+    **The complete engine-defined set is two names.** `random_map.def` — loose in the install at `resources/_common/drs/gamedata_x2/`, no DRS extraction — has exactly two constants valued 69: `SHORE_FISH` (line 263) and `ATTR_PROJECTILE_ARC` (line 1117). Add any script-level `#const NAME 69`, which the parser already tracks. **This is a two-entry lookup plus a symbol-table check, not the Equivalencies sheet import this item has been blocked on for several revisions.**
+
+    **What is still open is the other marker.** Nothing in `random_map.def` defines `/*` or `*/` — they appear there only as ordinary comments — so the comment-marker IDs live in the engine's internal token table. `/*` is now known to be 69 by inference from these four runs. **The `*/` ID is unknown, so the words that would *close* a comment early are unenumerated.** That failure is less destructive (the file still runs, with prose parsed as commands) and it is the only part of this item that still wants the sheet.
+
+    **The parser is wrong about this today and it is filed as BUG-012.** It treats comments as a token-stream construct and resolves no constants inside them, so it reports a comment where the engine reports the end of the file — a silent wrong answer about how much of the file exists. It has already cost one run in this repo, and an author writing `/* place SHORE_FISH here */` loses the rest of their map with no error anywhere.
+
+    **DECIDED 2026-08-12: MODEL IT, AND DIAGNOSE IT. This reverses the previous day's decision, and the reversal is right.** A word resolving to 69 inside a comment opens a nested comment in our lexer exactly as `/*` does, so the remainder of the file becomes trivia and the AST matches what the engine sees. **RMS0111** fires at the offending token, error severity.
+
+    **What changed the call is the corpus.** Two tracked maps already contain this, and both are the same idiom — a commented-out `create_object SHORE_FISH { … }` block, which is simply what an author writes when disabling a command:
+
+    | map | offending line | the engine loses |
+    |---|---|---|
+    | `Chaotic_Straitv0.99.rms` | 547 of 1110 | 563 lines, 51% |
+    | `test-maps/broken/BCC2-Rekawa.rms` | 933 of 1993 | 1060 lines, 53% |
+
+    Half of each map is dead in game. **Not modelling means the preview draws a map neither DE nor the author will ever see, on real files, today** — and the preview's whole purpose is to show what the engine will do. A diagnostic alone leaves every downstream stage computing against a script the engine discarded.
+
+    **The argument previously made against modelling was overstated and should not be revived.** It said the author would "lose their entire outline". Source fidelity is preserved and the parser never re-prints, so the Code tab shows every line exactly as written; only Breakdown thins to fewer cards, which is the correct depiction of a file the engine has truncated. The cost is real and much smaller than claimed.
+
+    Two consequences that follow from the decision and should not be re-litigated in implementation. **The AST below the offending comment is now empty by construction, and that is the point** — a downstream stage seeing nothing there is seeing what the engine sees. And `unclosedComment` will fire alongside RMS0111 on these files, since depth never returns to zero; that is a true statement, but **RMS0111 must be the one that reads first**, because "unclosed comment" describes the symptom and names nothing an author can act on.
+
+    **This raises the priority of the import and lowers its cost.** The blocker has been that the Equivalencies sheet is JS-rendered; the whole sheet is not needed for this. **The set of constants equal to the `/*` and `*/` IDs is a handful of names and is enough for a real diagnostic** — which the parser currently cannot produce at all, since it treats comments as a token-stream construct and resolves no constants inside them, and so reports a comment where the engine reports the end of the file. That is a silent wrong answer about how much of the file exists, which is the worst shape a parser bug can take.
+~~8.~~ **ANSWERED 2026-08-11 — CONDITIONAL STATE DOES NOT RESET AT A SECTION HEADER, and a shipped official map loses most of itself because of it.** `Continental.rms` has 9 `if` against 8 `endif`; `if INFINITE_RESOURCES` at line 280 opens an `else` at 281 that is never closed, and that `else` runs to EOF across `<ELEVATION_GENERATION>` (363), `<CLIFF_GENERATION>` (371) and `<CONNECTION_GENERATION>` (386). Played with Infinite Resources selected — so the `if` branch is live and the unterminated `else` is the branch being deleted — the map came back with **no cliffs and almost no resources: forests, a few whales, a few relics, and essentially nothing else.**
+
+    **Both halves of that reading matter.** The missing cliffs are the predicted observable and they confirm the mechanism: the token stream really does carry conditional state straight through a section header, so everything from line 281 to EOF was deleted. The missing *resources* are the part nobody predicted, and they locate the `if` — it sits inside `<OBJECTS_GENERATION>`, which in that file precedes the three sections named above, so the deleted range takes most of the object commands with it as well. What survives is what the deletion could not reach: forest terrain (painted in `<TERRAIN_GENERATION>`, which runs earlier and auto-places its own trees), and the handful of object commands written above line 281.
+
+    **This grounds Sec.5.1 dispatch item 1 and it is now a measurement rather than an assumption.** It also means the split-command idiom's tolerance is broader than the grammar-shaped AST models: an unterminated conditional is not a local defect, it is a truncation of the rest of the file, and our parser currently reports it as a warning (RMS0105) with no statement about scope.
+
+    **The durable lesson is about the observable, not the engine.** The run was set up to look for cliffs, because cliffs were what the reasoning predicted. The resources are what actually showed how far the deletion reached, and they were noticed only because the whole map was looked at rather than the one thing the prediction named. Same shape as the `mean x` finding already in CLAUDE.md — record the reading you did not ask for.
+
+    Follow-on, not yet scheduled: this is a genuine defect in a shipped official map under one lobby setting, and it belongs in `de-official-map-issues.md` rather than only in a parser design note.
 9. `{` block left open across a section header — engine behavior? (Grounds RMS0103's error severity.)
 10. NBSP/unicode spaces and BOM — engine tokenization?
 12. Unclosed `if`/`start_random` at EOF — silently fine? (Grounds RMS0105 warning.)
@@ -552,7 +617,7 @@ Two items carry unusual leverage and are worth naming here rather than leaving t
 15. Expression edges: unclosed `(A +` at EOF; spaced operands `( A + 1 )`; glued operator `(A+1)`; **the engine's own close-detection rule** — interior `rnd(1,5)`, interior `(5)`, multi-close `2))`, comment inside parens. (Grounds RMS0208/0210 severities and Sec.2.2's terminator pin.)
 16. Quoted `#include_drs` path with spaces works? `#includeXS` genuinely rejects quotes? (Grounds RMS0209/0211.)
 17. Does `rnd(0.5,1.5)` (float bounds) work post-141935? (Pins the rnd token regex; if yes, widen it — currently float bounds lex as `word` and would draw a false RMS0202/0214.)
-18. Negative-float modulo: is `%` truncation-toward-zero for all operand signs? (Grounds Sec.2.2's semantics pin — the guide's floor-vs-truncate wording is internally inconsistent; the preview generator implements whatever this test shows.)
+~~18.~~ **ANSWERED 2026-08-11 — truncation toward zero for all operand signs.** `RMSTEST_47` computed `-7 % 2`, `7 % -2` and `-7 % -2` into three object counts and returned 90 / 110 / 90 against predictions of 90 / 110 / 90, reproduced on a second run. The third arm exists to separate a genuine sign rule from an always-positive remainder, which predicts 110 there and did not occur. Sec.2.2's pin is now a measurement, `mathEval.ts` needs no change, and the guide's `(-5.9 % -inf + 10)` → 5 idiom is explained rather than merely consistent. This item had been phrased as an open question across several revisions with no answer anywhere in the build log.
 
 **Items 19–24 were raised by the 2026-08-01 scan of the installed DE script set** (276 files under `resources/_common/drs/gamedata_x2`, write-up in `../../de-official-map-issues.md`). Each one blocks a claim that scan wanted to make, and each has a live official specimen rather than a constructed one — which is what makes them cheap to test and expensive to keep guessing at.
 

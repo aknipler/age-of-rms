@@ -1,6 +1,8 @@
 import type { AttributeNode, CommandNode, DirectiveNode, IfNode, Item, OrphanBlockNode, RandomNode, RawNode } from "../../parser/types";
 import { cardKindForItem } from "../cardKind";
 import { useBreakdownContext } from "../BreakdownContext";
+import { usePreviewCut } from "../../PreviewCutContext";
+import { usePreviewView } from "../../components/preview/PreviewViewContext";
 import { CommandCard } from "./CommandCard";
 import { DirectiveCard } from "./DirectiveCard";
 import { ConditionalCard } from "./ConditionalCard";
@@ -46,10 +48,24 @@ function renderInner(item: Item) {
  */
 export function ItemCard({ item }: { item: Item }) {
   const { isSelected, selectCard } = useBreakdownContext();
+  const { cutOffset } = usePreviewCut();
+  const { view } = usePreviewView();
   const selected = isSelected(item.span);
+  // The Breakdown half of the Current cut point's shading (preview-design
+  // Sec.5): a card the preview is ignoring is dimmed, so "the map stops
+  // here" is visible on this tab too and not only in the code.
+  //
+  // Nested cards get this for free, and correctly — BlockList renders
+  // ItemCard recursively, so a `create_land` whose block was cut in half
+  // stays lit while the attributes below the cut dim inside it. That is
+  // exactly what the generator did to it.
+  const ignoredByPreview =
+    view === "current" && cutOffset !== null && item.span.start >= cutOffset;
   return (
     <div
-      className={`${styles.selectable} ${selected ? styles.selected : ""}`}
+      className={`${styles.selectable} ${selected ? styles.selected : ""} ${
+        ignoredByPreview ? styles.ignoredByPreview : ""
+      }`}
       // Cross-tab sync (post-3.9 follow-up) scrolls a specific card into
       // view by querying for this exact attribute — see BreakdownPane's
       // mount-sync effect. The offset (span.start) is the same value used

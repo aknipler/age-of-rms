@@ -2,11 +2,19 @@
 RMSTEST_42 - what does ignore_terrain_restrictions do with NO frame attribute
 Feeds: objects.ts's whole-command gate, validate()'s RMS0315, preview-design:542
 
+THIS HEADER ONCE VOIDED ITS OWN RUN. The shore-fish constant was written out in
+full below and the map generated blank. The reason is one number: /* resolves to
+token id 69 and that object is 69, so the word opens a nested comment and the
+rest of the file is never read. See RMSTEST_56 and parser-design Sec.2.1.
+
+The other constants in this header - the salmon, the olive tree, the mangrove
+shallow - are fine, and not merely by observation: their numbers are not 69.
+
 QUESTION
 Namatjira was run in game on 2026-08-10 and its one shore-fish command spawns
 nothing. That command is
 
-  create_object SHORE_FISH {
+  create_object SHORE _FISH {
     terrain_to_place_on DLC_MANGROVESHALLOW
     ignore_terrain_restrictions
     ...                       <- no set_place_for_every_player,
@@ -23,7 +31,7 @@ the zero that was observed.
             else the command says.
   Model B - the FLAG is merely INERT (which is what preview-design:542 already
             says for this whole attribute family). The flag does nothing, so
-            SHORE_FISH keeps its shore habitat, which is open water beside a
+            the fish keeps its shore habitat, which is open water beside a
             beach. The command also says terrain_to_place_on
             DLC_MANGROVESHALLOW, and a shallow is never open water. The two
             constraints contradict, and zero fish place for that reason instead.

@@ -31,7 +31,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
@@ -46,7 +46,42 @@ DEFAULT_OUTPUT = REPO_ROOT / "reference" / "data" / "game-constants.json"
 # should show gold, STONE should show stone, ...) after every run; if
 # that ever looks wrong after a DE patch, fix this map, not the rest of
 # the script.
-RESOURCE_TYPE_INDEX = {0: "food", 1: "wood", 2: "stone", 3: "gold"}
+# 17 is FISH FOOD and was missing until 2026-08-10, which is why FISH and
+# SHORE_FISH carried `verified: false` and a "CONTRADICTION — the dat reports no
+# resource storage" note from the first real run onward. The dat reports 200 for
+# unit 69 perfectly clearly; this table simply had nowhere to put type 17, so it
+# was dropped and the absence read as a contradiction.
+#
+# Two independent readings agree it is food, on two different numbers. guide:4999
+# states "FISH_A: a type of standard fish (225 food)", and the dat's FISH1-FISH5
+# (units 455-459) carry type 17 amount 225. The hand-written entries in
+# game-constants.json claim 200 food for FISH and SHORE_FISH, and the dat carries
+# type 17 amount 200 for units 53 and 69. Sixteen units use the type and every one
+# is a fish, a whale, a marlin, a turtle or a fish trap.
+RESOURCE_TYPE_INDEX = {0: "food", 1: "wood", 2: "stone", 3: "gold", 17: "food"}
+
+# Slot-0 storage types measured across the roster 2026-08-10, with the counts
+# that back each reading. Only the five that are player-gatherable resources are
+# in RESOURCE_TYPE_INDEX above; the rest are here because `ATTR_STORAGE_VALUE`
+# (effect attribute 21) writes slot 0 whatever it holds, so a consumer asking
+# "did that line change a resource" needs to know what else it can be.
+#
+#     0  food            89 units   BOARX 340, FORAG 125, DEERX 140
+#     1  wood            53 units   TREETD 125, BUSH 100
+#     2  stone            3 units   STONM 350
+#     3  gold             7 units   GOLDM 800
+#     4  population     807 units   HOUS 5 (provides), LEGION -1 (consumes)
+#     9  unread           6 units   SDOC 600 — docks; not investigated
+#    12  decay time     533 units   every *_D dead-unit record, 300
+#    14  unread           2 units   INDESTRUCT 1
+#    17  fish food       16 units   FISH1-5 225, FISHS 200, WHAL1 200
+#    56  unread           2 units   OREMN 400
+#   508  unread           1 unit
+#   514  unread           2 units
+#
+# guide:3599 annotates the attribute as "population support, tree wood amount,
+# decay time", which is types 4, 1 and 12 — the guide is describing the slot's
+# type varying, not three unrelated meanings.
 RESOURCE_KEY_ORDER = ["food", "wood", "gold", "stone"]
 
 COMMON_WINDOWS_INSTALL_PATHS = [
@@ -150,6 +185,243 @@ def parse_random_map_def_sections(text: str) -> dict[str, list[tuple[str, int]]]
     return sections
 
 
+#: The offset between a genie unit CLASS id and the `#const` an RMS author
+#: writes for it. Measured, not assumed — see `class_constants`.
+CLASS_CONST_BASE = 900
+
+
+def class_constants(text: str) -> dict[str, int]:
+    """The `*_CLASS` names of `random_map.def`: name -> the id an author writes.
+
+    `object_constants` deliberately throws these 24 names away, and its reason
+    was right and its conclusion half wrong. They are not unit ids, so joining
+    them against the unit roster gave `ARCHERY_CLASS` a terrain habitat off unit
+    0 — but they are not junk either. They are genie UNIT CLASS ids offset by
+    900, and that offset is the whole reason the engine can tell a class target
+    from a unit target in `effect_amount SET_ATTRIBUTE <target> ...`.
+
+    **The offset is measured rather than assumed.** Four names in this file can
+    be checked against a unit whose own `class_` field is known, and all four
+    agree: BUILDING_CLASS 903 against HOUSE (unit 70, class 3), VILLAGER_CLASS
+    904 against VILLAGER (83, class 4), OCEAN_FISH_CLASS 905 against FISH_TUNA
+    (457, class 5), SHORE_FISH_CLASS 933 against SHORE_FISH (69, class 33). No
+    counter-example exists in the file. `verify_class_offset` re-runs that check
+    on every real extraction rather than trusting this paragraph.
+
+    Kept separate from `object_constants` rather than folded into it, because
+    the two answer different questions about the same file and a caller that
+    conflates them is the bug this docstring exists to prevent.
+    """
+    sections = parse_random_map_def_sections(text)
+    result: dict[str, int] = {}
+    for title in OBJECT_SECTIONS:
+        for name, value in sections.get(title, []):
+            if name.endswith("_CLASS"):
+                result[name] = value
+    return result
+
+
+#: The section of `random_map.def` holding `effect_amount`'s third argument.
+#: Its own header, not a guess: `parse_random_map_def_sections` returns 152
+#: names under this title on the current DE build.
+ATTRIBUTE_SECTION = "Attribute Constants"
+
+#: Attribute name -> the resource-storage SLOT it writes.
+#:
+#: The app must not hardcode RMS vocabulary (CLAUDE.md), so it cannot ask for
+#: "ATTR_STORAGE_VALUE" by name — it asks the data which attribute writes a
+#: storage slot, and this is where that claim is made and sourced. The genie
+#: effect-attribute list puts 21 at "amount of the FIRST resource storage", and
+#: guide:3599 annotates it "population support, tree wood amount, decay time",
+#: which are three different slot-0 TYPES rather than three attributes.
+#:
+#: Only the one is listed because only the one is established. Attributes 22+
+#: address later slots in some genie builds and nothing here has measured that.
+ATTRIBUTE_STORAGE_SLOTS = {"ATTR_STORAGE_VALUE": 0}
+
+
+def attribute_constants(text: str) -> dict[str, int]:
+    """`ATTR_*` name -> id, from `random_map.def`'s own Attribute Constants
+    section.
+
+    A FOURTH namespace, and it collides with the other three exactly the way
+    they collide with each other — `ATTR_BLAST_DEFENSE` is 45 and so is `DOCK`.
+    Reading it from the section rather than by name prefix is what keeps that
+    straight, the same argument `object_constants` makes.
+
+    These are `effect_amount`'s attribute selector, and the one that matters
+    today is `ATTR_STORAGE_VALUE` (21), which `resourceTotals.ts` needs in order
+    to tell "this line changes what an object yields" from the 151 corpus uses
+    of `ATTR_TERRAIN_ID` and the 86 of `ATTR_HITPOINTS`. Extracting all 152
+    rather than the one keeps that check data-driven, and `ATTR_TERRAIN_ID` is
+    already known to have a second consumer waiting (preview-design records
+    scripts mutating the terrain table at run time, which no static extraction
+    can otherwise see).
+    """
+    sections = parse_random_map_def_sections(text)
+    return {name: value for name, value in sections.get(ATTRIBUTE_SECTION, [])}
+
+
+def build_attribute_entries(attributes: dict[str, int], run_date: str) -> list[dict]:
+    """One `category: attribute` row per name, id order then name order.
+
+    `descriptiveName` is the name un-shouted rather than an explanation of what
+    the attribute does: the dat carries no text for these, and writing "the
+    amount held in the unit's first resource slot" for 152 of them would be 152
+    claims nobody checked. The one that has a documented meaning carries it in
+    `notes` instead, sourced.
+    """
+    entries: list[dict] = []
+    for name, value in sorted(attributes.items(), key=lambda kv: (kv[1], kv[0])):
+        words = name[len("ATTR_") :].replace("_", " ").title() if name.startswith("ATTR_") else name
+        entries.append(
+            {
+                "constId": value,
+                "idSource": "extracted",
+                "rmsConstant": name,
+                "descriptiveName": words,
+                "category": "attribute",
+                **({"writesStorageSlot": ATTRIBUTE_STORAGE_SLOTS[name]} if name in ATTRIBUTE_STORAGE_SLOTS else {}),
+                "verified": True,
+                "notes": (
+                    f"effect_amount attribute selector, read from random_map.def's "
+                    f"'{ATTRIBUTE_SECTION}' section {run_date} by tools/extract-constants --attributes. "
+                    "Ids are per-namespace and collide with the terrain, object and class spaces."
+                ),
+            }
+        )
+    return entries
+
+
+def verify_class_offset(
+    named_classes: dict[str, int],
+    classes: dict[int, list[int]],
+    objects: dict[str, int],
+    class_of_unit,
+) -> tuple[list[str], list[str], list[str]]:
+    """Check `CLASS_CONST_BASE` against the data. Returns (confirmed,
+    coincidental, contradicted).
+
+    **Name-stem cross-check, the strong one.** `SHORE_FISH_CLASS` has
+    `SHORE_FISH` sitting in the same file as an object constant, so the class id
+    derived from the constant (933 - 900 = 33) can be compared against the class
+    the UNIT actually carries (unit 69, `class_` 33). Two independent readings of
+    one fact, one from `random_map.def` and one from the dat, with nothing
+    hardcoded — the link is the shared name stem.
+
+    **A shared stem can still be a coincidence, and the first real run found
+    one.** `MONASTERY_CLASS` is 918, so it derives class 18 — which holds MONKX,
+    HFRIAR and PRIEST, the monk class. The object constant `MONASTERY` is unit
+    104, the BUILDING, class 3. Both readings are correct and they are about
+    different things; the stem is the only thing they share. Seven other stems
+    agree, so treating this as a failed check would have blocked the extraction
+    over a pun.
+
+    **What separates the two, and it is measurable rather than a judgement call.**
+    A wrong offset is a CONSTANT shift: every derived id moves by the same
+    amount, so every stem check fails at once and most derived ids land on class
+    numbers no unit is in. A name coincidence is one row while its neighbours
+    agree. So a coincidence is reported and tolerated, a derived id that matches
+    no class at all is fatal, and zero confirmations out of a non-empty stem set
+    is fatal too — that last one is what a shifted offset actually looks like.
+    """
+    confirmed: list[str] = []
+    coincidental: list[str] = []
+    contradicted: list[str] = []
+    for name, declared in sorted(named_classes.items()):
+        derived = declared - CLASS_CONST_BASE
+        stem = name[: -len("_CLASS")]
+        unit_id = objects.get(stem)
+        actual = class_of_unit(unit_id) if unit_id is not None else None
+        if actual is not None and actual == derived:
+            confirmed.append(f"{name} {declared} -> class {derived}, and {stem} (unit {unit_id}) carries class {actual}")
+        elif derived not in classes:
+            contradicted.append(f"{name} {declared} -> class {derived}, which no unit is in")
+        elif actual is not None:
+            coincidental.append(
+                f"{name} {declared} -> class {derived} ({len(classes[derived])} units), but the object constant "
+                f"{stem} (unit {unit_id}) is class {actual} — same name, different thing"
+            )
+        else:
+            confirmed.append(f"{name} {declared} -> class {derived}, which exists ({len(classes[derived])} units)")
+    return confirmed, coincidental, contradicted
+
+
+def class_descriptive_name(rms_constant: str | None, class_id: int) -> str:
+    """`descriptiveName` for a class row. The schema requires one and the dat
+    has none to give — a class is a field, not a record, so there is no name
+    field anywhere to read.
+
+    So it is derived from the RMS constant where one exists (`TREE_CLASS` ->
+    `Tree class`) and is otherwise the id stated plainly. Deliberately NOT a
+    guess at what the class contains: 33 of the 57 have no constant, and naming
+    one "Trees and bushes" from a glance at its members is the kind of
+    confident invention this file's other docstrings keep warning about.
+    """
+    if rms_constant is None:
+        return f"Unit class {class_id}"
+    words = rms_constant[: -len("_CLASS")].replace("_", " ").title()
+    return f"{words} class"
+
+
+def build_class_entries(
+    classes: dict[int, list[int]],
+    named_classes: dict[str, int],
+    run_date: str,
+) -> list[dict]:
+    """One `category: objectClass` row per class the roster contains.
+
+    **Why these are rows in `constants` rather than a new top-level array.** A
+    class IS an RMS constant — `TREE_CLASS` is defined in `random_map.def` like
+    any other — so it belongs in the same array under the same shape, and every
+    consumer that resolves a written name against `constants` picks it up for
+    free. The 33 classes with no constant carry `rmsConstant: null`, which is
+    the shape the 53 unnamed terrains already established. A separate array
+    would have meant a second schema, a second resolver and a second thing to
+    keep in sync, for data of exactly the same kind.
+
+    `memberIds` is the payload and it is the whole roster, not the 33 objects
+    `game-constants.json` happens to have rows for. That is deliberate: the
+    thing a caller needs to answer is "does the object this script places belong
+    to the class this script named", and an object with no row of its own is
+    exactly the case that question gets asked about.
+    """
+    by_id = {declared - CLASS_CONST_BASE: name for name, declared in named_classes.items()}
+    entries: list[dict] = []
+    for class_id in sorted(classes):
+        # **Negative class ids are dropped, and the first run found 116 units in
+        # class -1.** A negative class is the dat's "no class", not a class with
+        # a negative number, so there is nothing for a constant to name: writing
+        # it would mint `constId 899` for a name no author can write and no
+        # engine lookup would reach. Reported by the caller rather than silently
+        # skipped, since a jump in the count means a DE patch reclassified
+        # something.
+        if class_id < 0:
+            continue
+        members = classes[class_id]
+        name = by_id.get(class_id)
+        entries.append(
+            {
+                "constId": CLASS_CONST_BASE + class_id,
+                "idSource": "extracted",
+                "rmsConstant": name,
+                "descriptiveName": class_descriptive_name(name, class_id),
+                "category": "objectClass",
+                "classId": class_id,
+                "memberIds": members,
+                "verified": True,
+                "notes": (
+                    f"Genie unit class {class_id}, holding {len(members)} unit ids. "
+                    f"constId is classId + {CLASS_CONST_BASE}, the offset an RMS author writes "
+                    f"(effect_amount SET_ATTRIBUTE <class> ...); the offset is what lets the engine "
+                    f"tell a class target from a unit target, and it is re-verified against "
+                    f"random_map.def on every run. Extracted {run_date} by tools/extract-constants."
+                ),
+            }
+        )
+    return entries
+
+
 def object_constants(text: str) -> dict[str, int]:
     """The object namespace of `random_map.def`: name -> unit id.
 
@@ -216,6 +488,13 @@ class ExtractedTerrain:
 @dataclass
 class ExtractedObject:
     resource_amounts: dict[str, float]
+    #: Slot 0 first, non-empty slots only, raw `(type, amount)` straight off the
+    #: dat. The MEASUREMENT that `resource_amounts` is a reading of, kept
+    #: because `ATTR_STORAGE_VALUE` (effect attribute 21) writes slot 0
+    #: whatever it holds — so a consumer has to know the slot's TYPE, and
+    #: `resource_amounts` has already thrown it away by keying on our own
+    #: four-resource vocabulary.
+    storages: list[tuple[int, float]] = field(default_factory=list)
 
 
 @dataclass
@@ -378,7 +657,7 @@ def habitat_note(existing: str | None, fit: "HabitatFit", placement: "ExtractedP
     )
     if fit.side_terrain_unmodelled:
         detail += f"; NOTE placement_side_terrain {placement.side_terrains} is not expressible as a habitat class"
-    return f"{head}{HABITAT_NOTE_SEPARATOR}{detail}. Derived {run_date} by tools/extract-constants --habitat-only."
+    return f"{head}{HABITAT_NOTE_SEPARATOR}{detail}. Derived {run_date} by tools/extract-constants --terrain-table."
 
 
 # ---------------------------------------------------------------------------
@@ -664,17 +943,46 @@ class DatExtraction:
             side_terrains=[int(s) for s in unit.placement_side_terrain],
         )
 
+    def unit_classes(self) -> dict[int, list[int]]:
+        """Genie unit class id -> the unit ids in it, ascending.
+
+        One pass over Gaia's roster reading `Unit.class_`, which is the whole
+        extraction. There is no class TABLE in the dat to read — a class is not
+        a record, it is a field every unit carries — so the mapping only exists
+        as a groupby, and that is why nothing could look a class up before this.
+
+        Sparse slots are skipped by `build_unit_lookup`, so an empty slot never
+        joins a class. Measured on the current DE build: 2642 live units across
+        57 classes.
+        """
+        classes: dict[int, list[int]] = {}
+        for const_id, unit in sorted(self._units_by_id.items()):
+            classes.setdefault(unit.class_, []).append(const_id)
+        return classes
+
+    def unit_class_of(self, const_id: int) -> int | None:
+        """One unit's class, for stamping `classId` onto an object row."""
+        unit = self._units_by_id.get(const_id)
+        return None if unit is None else int(unit.class_)
+
     def object(self, const_id: int) -> ExtractedObject | None:
         unit = self._units_by_id.get(const_id)
         if unit is None:
             return None
         amounts: dict[str, float] = {}
+        storages: list[tuple[int, float]] = []
         for storage in unit.resource_storages:
+            # An empty slot is type -1. Amount 0 is NOT empty — it is a real
+            # zero, and `effect_amount ... ATTR_STORAGE_VALUE 0` is exactly how
+            # a script turns a resource off, so the slot has to survive into
+            # the raw list even though the derived dict drops it.
+            if storage.type >= 0:
+                storages.append((int(storage.type), float(storage.amount)))
             key = RESOURCE_TYPE_INDEX.get(storage.type)
             if key is None or storage.amount == 0:
                 continue
-            amounts[key] = storage.amount
-        return ExtractedObject(resource_amounts=amounts)
+            amounts[key] = amounts.get(key, 0) + storage.amount
+        return ExtractedObject(resource_amounts=amounts, storages=storages)
 
 
 # ---------------------------------------------------------------------------
@@ -738,6 +1046,40 @@ def merge_terrain_colors(entry: dict, textures, minimaps, run_date: str) -> dict
     existing_notes = _COLOR_NOTE_RE.sub("", updated.get("notes", "")).strip()
     note = color_note(updated.get("previewColor"), updated.get("minimapColor"), entry.get("deTextureFile"), run_date)
     updated["notes"] = f"{existing_notes} {note}" if existing_notes else note
+    return updated
+
+
+def merge_terrain_table(entry: dict, placement: "ExtractedPlacement", fit: "HabitatFit | None", run_date: str) -> dict:
+    """Writes the engine's terrain table for one object onto its entry, plus the
+    coarse `habitat` derived from it when a class fits.
+
+    This is the `--terrain-table` path, pure and separate from `merge_entry` for
+    exactly the reason `merge_terrain_colors` is: a full run recomputes
+    `verified` and rewrites `notes` wholesale, which is right when re-extracting
+    everything and wrong when adding fields to a working tree that normally
+    carries weeks of uncommitted reference-data edits.
+
+    **The transcription does not depend on the derivation, and the fields are
+    written in the order that says so.** A row no class fits — a tie, or a shape
+    a future patch introduces — still gets `terrainRestrictionId`,
+    `allowedTerrains` and `placementSideTerrain`, because those are what the
+    engine says and `habitat` is only our reading of it. Skipping the raw fields
+    whenever `fit` is None would drop the measurement precisely where the
+    five-value vocabulary is known to be inadequate, which is the case the raw
+    fields exist for.
+
+    `notes` is only touched when a habitat is derived: the restriction id in
+    that sentence is now also a field, but the fit it records (how far the class
+    is from the row, and what the runner-up was) is not, and that is the half
+    that says whether the class is trustworthy here.
+    """
+    updated = dict(entry)
+    updated["terrainRestrictionId"] = placement.restriction_id
+    updated["allowedTerrains"] = list(placement.allowed_terrains)
+    updated["placementSideTerrain"] = list(placement.side_terrains)
+    if fit is not None:
+        updated["habitat"] = fit.habitat
+        updated["notes"] = habitat_note(entry.get("notes"), fit, placement, run_date)
     return updated
 
 
@@ -893,10 +1235,26 @@ CONSTANT_KEY_ORDER = [
     "isHybrid",
     "isBeach",
     "beachTerrain",
+    # The engine's own terrain table, then our five-value reading of it. Order
+    # is the argument: the measurement comes first and the approximation second,
+    # so a reader who wants the real answer never has to know `habitat` exists.
+    "terrainRestrictionId",
+    "allowedTerrains",
+    "placementSideTerrain",
     "habitat",
+    # Unit classes, both directions. `classId` sits on an object row and
+    # `classId`/`memberIds` on an objectClass row, so the two share a key name
+    # by design — an object says which class it is in, a class says the same
+    # thing about itself and then lists its members.
+    "classId",
+    "memberIds",
+    "writesStorageSlot",
     "isTree",
     "previewColor",
     "minimapColor",
+    # Measurement then reading, the order the terrain table established: the raw
+    # slots first, our four-resource view of them second.
+    "resourceStorages",
     "resourceAmounts",
     "verified",
     "notes",
@@ -967,13 +1325,15 @@ def format_game_constants(constants: list[dict]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 5b. Habitat derivation run (preview-design Sec.15 item 23)
+# 5b. Terrain-table run (preview-design Sec.15 item 23, CREATION_PLAN 4.7)
 # ---------------------------------------------------------------------------
 
 
-def run_habitat_only(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
-    """Derive `habitat` for every object entry from the engine's own terrain
-    table, and report every disagreement with what the file already says.
+def run_terrain_table(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Write the engine's own terrain table onto every object entry — the
+    restriction id, the terrains that row permits, and the two-slot
+    `placement_side_terrain` — plus the coarse `habitat` derived from it, and
+    report every disagreement with what the file already says.
 
     **The report is the point, not the write.** Every habitat in the file
     today was assigned by hand on 2026-08-08 from a handful of restriction
@@ -981,6 +1341,10 @@ def run_habitat_only(install_path: Path, output: Path, dat: "DatExtraction | Non
     that it scales — it is mostly that the automated answer can be checked
     against the hand answer on the entries where both exist. A run that
     silently overwrote them would throw that away.
+
+    The mode was called `--habitat-only` while the derived class was all it
+    wrote, which is where the build log's 2026-08-10 entry meets it. It writes
+    the measurement as well as the reading now, so the name would be false.
     """
     import json
 
@@ -1009,6 +1373,11 @@ def run_habitat_only(install_path: Path, output: Path, dat: "DatExtraction | Non
 
     run_date = date.today().isoformat()
     unchanged, changed, unresolved, unclassified, loose, side_notes = [], [], [], [], [], []
+    # Entries whose RAW table this run wrote or rewrote, tracked separately from
+    # the habitat counts because the two answer different questions: a habitat
+    # that agrees with the file is a confirmation, while a restriction row that
+    # disagrees with the file is a DE patch having moved something under us.
+    tabled, table_moved = [], []
     updated: list[dict] = []
     for entry in constants:
         if entry.get("category") != "object":
@@ -1023,29 +1392,39 @@ def run_habitat_only(install_path: Path, output: Path, dat: "DatExtraction | Non
             continue
         fit = derive_habitat(placement.allowed_terrains, placement.side_terrains, terrain_flags)
         if fit is None:
+            # No class fits, and the raw table is still written below. That is
+            # the whole reason the raw fields exist — see merge_terrain_table.
             unclassified.append((name, placement.restriction_id, len(placement.allowed_terrains)))
-            updated.append(entry)
-            continue
-        current = entry.get("habitat")
-        if current == fit.habitat:
-            unchanged.append(name)
         else:
-            changed.append((name, current, fit, placement.restriction_id))
-        # Every fit worth a second look is collected, whether or not it changed
-        # the value: a habitat that AGREES with the hand assignment and fits its
-        # row badly is exactly as interesting as one that disagrees, and the
-        # first version of this report could not say so.
-        if fit.mismatch > 0:
-            loose.append((name, fit, placement.restriction_id, len(placement.allowed_terrains)))
-        if fit.side_terrain_unmodelled:
-            side_notes.append((name, fit.habitat, placement.side_terrains))
-        replacement = dict(entry)
-        replacement["habitat"] = fit.habitat
-        replacement["notes"] = habitat_note(entry.get("notes"), fit, placement, run_date)
-        updated.append(replacement)
+            current = entry.get("habitat")
+            if current == fit.habitat:
+                unchanged.append(name)
+            else:
+                changed.append((name, current, fit, placement.restriction_id))
+            # Every fit worth a second look is collected, whether or not it
+            # changed the value: a habitat that AGREES with the hand assignment
+            # and fits its row badly is exactly as interesting as one that
+            # disagrees, and the first version of this report could not say so.
+            if fit.mismatch > 0:
+                loose.append((name, fit, placement.restriction_id, len(placement.allowed_terrains)))
+            if fit.side_terrain_unmodelled:
+                side_notes.append((name, fit.habitat, placement.side_terrains))
+        tabled.append(name)
+        prior_restriction = entry.get("terrainRestrictionId")
+        if prior_restriction is not None and prior_restriction != placement.restriction_id:
+            table_moved.append((name, prior_restriction, placement.restriction_id))
+        updated.append(merge_terrain_table(entry, placement, fit, run_date))
 
     print(f"\nObject namespace from random_map.def: {len(objects)} names")
     print(f"Object entries in {output.name}: {sum(1 for c in constants if c.get('category') == 'object')}")
+    print(f"  terrain table written        : {len(tabled)}")
+    if table_moved:
+        # A restriction id that moved is the one result in this report that
+        # cannot be a mistake of ours: the engine changed. Printed loudly
+        # because it invalidates whatever the preview assumed about that object.
+        print(f"  RESTRICTION ID MOVED         : {len(table_moved)} — the dat disagrees with the file")
+        for name, was, now in table_moved:
+            print(f"      {name:22s} restriction {was} -> {now}")
     print(f"  habitat agrees with the file : {len(unchanged)}")
     print(f"  habitat CHANGED by this run  : {len(changed)}")
     for name, current, fit, rid in changed:
@@ -1068,11 +1447,324 @@ def run_habitat_only(install_path: Path, output: Path, dat: "DatExtraction | Non
         for name, habitat, sides in side_notes:
             print(f"      {name:22s} {habitat:12s} must sit beside terrain {sides} — no class expresses this")
     if unclassified:
-        print(f"  no class fits (left alone)   : {len(unclassified)}")
+        print(f"  no class fits (habitat left alone, table still written): {len(unclassified)}")
         for name, rid, count in unclassified:
             print(f"      {name:22s} restriction {rid}, {count} terrains permitted")
     if unresolved:
         print(f"  not in the object namespace  : {len(unresolved)} — {', '.join(str(n) for n in unresolved)}")
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(updated), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# 5bb. Resource-storage run
+# ---------------------------------------------------------------------------
+
+
+#: The contradiction sentence `merge_entry` wrote whenever the dat appeared to
+#: report no storage for an object that claims a yield. It fired on exactly two
+#: entries, FISH and SHORE_FISH, and its own text guessed the cause correctly
+#: ("suspect this script's Gaia-roster lookup before the placeholder"). The
+#: cause was neither: `RESOURCE_TYPE_INDEX` had no entry for type 17. Matched
+#: here so the run that resolves it can retract it rather than leave a false
+#: sentence sitting in the data.
+#:
+#: The dash is matched as EITHER a real em dash or its UTF-8 bytes decoded as
+#: latin-1 ("â"), because one entry in the file carries the
+#: mojibake form. Found here on 2026-08-10 by this very regex failing to match
+#: SHORE_FISH while matching FISH: one round-trip through the wrong encoding,
+#: somewhere in this file's history, corrupted a single character in a single
+#: note. Retracting the sentence removes the corruption with it.
+_CONTRADICTION_NOTE_RE = re.compile(
+    "CONTRADICTION (?:—|â) "
+    r"empires2_x2_p1\.dat reports no resource storage for unit \d+, "
+    r"but this entry claims .*?\(suspect this script's Gaia-roster lookup before the placeholder\)"
+)
+
+_STORAGE_NOTE_RE = re.compile(r"\s*\| storage: .*?(?=\s*\||$)")
+
+
+def storage_note(existing: str | None, storages: list[tuple[int, float]], const_id: int, run_date: str) -> str:
+    """Append (or replace) one sentence recording the raw slots, and retract the
+    contradiction sentence if this entry carries one.
+
+    Idempotent for the reason every note helper in this file is: a tool meant to
+    be re-run after each DE patch that stacks a second copy of its own sentence
+    is a tool nobody re-runs.
+    """
+    note = existing or ""
+    resolved = _CONTRADICTION_NOTE_RE.search(note)
+    if resolved:
+        slot_text = ", ".join(f"type {t} amount {a:g}" for t, a in storages) or "no non-empty slot"
+        note = _CONTRADICTION_NOTE_RE.sub(
+            f"resourceAmounts CONFIRMED against empires2_x2_p1.dat on {run_date}: unit {const_id} stores "
+            f"{slot_text}, and type 17 is fish food (guide:4999 puts standard fish at 225 food; the dat's "
+            f"FISH1-FISH5 carry type 17 amount 225). The earlier CONTRADICTION here was this script's own "
+            f"gap — RESOURCE_TYPE_INDEX mapped only types 0-3 — which is what that note suspected",
+            note,
+        )
+    note = _STORAGE_NOTE_RE.sub("", note).rstrip()
+    slots = ", ".join(f"[{t}]={a:g}" for t, a in storages) or "none"
+    addition = f"| storage: raw slots {slots} read {run_date} by tools/extract-constants --storages."
+    return f"{note} {addition}".strip() if note else addition
+
+
+def run_storages(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Write each object's RAW resource-storage slots, and refresh the derived
+    `resourceAmounts` from the same read.
+
+    **Why the raw slots are worth their own field when `resourceAmounts` exists.**
+    `effect_amount SET_ATTRIBUTE <target> ATTR_STORAGE_VALUE <n>` writes SLOT 0,
+    whatever that slot holds, and the corpus does it 374 times. Whether that
+    line changes a map's food total depends entirely on the slot's TYPE — wood
+    for a tree, population for a house, decay time for a corpse, all through the
+    same attribute. `resourceAmounts` has already thrown the type away by keying
+    on our own four-resource vocabulary, and it drops a zero amount outright,
+    which is exactly the value a script writes to switch a resource off.
+
+    So this writes the measurement beside the reading, the same order the
+    terrain table uses: `resourceStorages` is what the dat says, and
+    `resourceAmounts` stays the four-resource view a status bar wants.
+    """
+    import json
+
+    if dat is None:
+        print("Cannot read resource storages without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    def_matches = find_file(install_path, "random_map.def")
+    if not def_matches:
+        print("random_map.def not found.", file=sys.stderr)
+        return 1
+    objects = object_constants(def_matches[0].read_text(encoding="utf-8", errors="replace"))
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    constants = existing["constants"]
+    run_date = date.today().isoformat()
+
+    written, unresolved, amount_changed, retracted = [], [], [], []
+    updated: list[dict] = []
+    for entry in constants:
+        if entry.get("category") != "object":
+            updated.append(entry)
+            continue
+        name = entry.get("rmsConstant")
+        const_id = objects.get(name, entry.get("constId"))
+        obj = dat.object(const_id) if const_id is not None else None
+        if obj is None:
+            unresolved.append(name)
+            updated.append(entry)
+            continue
+        replacement = dict(entry)
+        # `resource` resolves the type through RESOURCE_TYPE_INDEX right here,
+        # so no consumer has to carry a second copy of the engine's resource
+        # convention. Absent means "this slot is not one of the four" —
+        # population, decay time, or one of the unread types — which is exactly
+        # what a caller needs to know before assuming an ATTR_STORAGE_VALUE
+        # line moved a resource total.
+        replacement["resourceStorages"] = [
+            {"type": t, "amount": a, **({"resource": RESOURCE_TYPE_INDEX[t]} if t in RESOURCE_TYPE_INDEX else {})}
+            for t, a in obj.storages
+        ]
+        before = entry.get("resourceAmounts")
+        after = {k: v for k, v in obj.resource_amounts.items()} or None
+        if after is None:
+            replacement.pop("resourceAmounts", None)
+        else:
+            replacement["resourceAmounts"] = after
+        if before != after:
+            amount_changed.append((name, before, after))
+        note = storage_note(entry.get("notes"), obj.storages, const_id, run_date)
+        if _CONTRADICTION_NOTE_RE.search(entry.get("notes") or ""):
+            retracted.append(name)
+        replacement["notes"] = note
+        written.append(name)
+        updated.append(replacement)
+
+    print(f"\nObject entries in {output.name}: {sum(1 for c in constants if c.get('category') == 'object')}")
+    print(f"  resourceStorages written     : {len(written)}")
+    if amount_changed:
+        print(f"  resourceAmounts CHANGED      : {len(amount_changed)}")
+        for name, before, after in amount_changed:
+            print(f"      {name:22s} {before!r} -> {after!r}")
+    if retracted:
+        # The loudest line in this report. A note that asserted a contradiction
+        # for two weeks was wrong, and the entries it sat on can now be marked
+        # verified by hand — this run deliberately does not flip that flag,
+        # since `verified` is a claim about the WHOLE entry.
+        print(f"  CONTRADICTION note retracted : {len(retracted)} — {', '.join(retracted)}")
+        print("      these entries still read verified: false purely because of that note. Review and flip by hand.")
+    if unresolved:
+        print(f"  not a live unit              : {len(unresolved)} — {', '.join(str(n) for n in unresolved)}")
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(updated), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+def run_attributes(install_path: Path, output: Path, dry_run: bool) -> int:
+    """Write one `attribute` row per `effect_amount` attribute selector.
+
+    Needs no dat: `random_map.def` is a text file and this is a text scan, so
+    it works on an install genieutils cannot parse. Rows are rebuilt wholesale,
+    since the file is the only source and there is nothing of ours to preserve.
+    """
+    import json
+
+    def_matches = find_file(install_path, "random_map.def")
+    if not def_matches:
+        print("random_map.def not found.", file=sys.stderr)
+        return 1
+    attributes = attribute_constants(def_matches[0].read_text(encoding="utf-8", errors="replace"))
+    if not attributes:
+        print(
+            f"No names found under random_map.def's '{ATTRIBUTE_SECTION}' section. The section header may "
+            "have been renamed by a patch — check before assuming the attributes are gone.",
+            file=sys.stderr,
+        )
+        return 1
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    kept = [entry for entry in existing["constants"] if entry.get("category") != "attribute"]
+    run_date = date.today().isoformat()
+    entries = build_attribute_entries(attributes, run_date)
+
+    print(f"\nAttribute constants in random_map.def: {len(attributes)}")
+    print(f"  rows written                 : {len(entries)}")
+    storage = attributes.get("ATTR_STORAGE_VALUE")
+    print(f"  ATTR_STORAGE_VALUE           : {storage if storage is not None else 'ABSENT — resourceTotals cannot resolve it'}")
+    if storage is None:
+        return 1
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(kept + entries), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# 5c. Unit-class run
+# ---------------------------------------------------------------------------
+
+
+def run_classes(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Write one `objectClass` row per genie unit class, and stamp `classId`
+    onto every object entry that resolves to a live unit.
+
+    **What this is for.** A script can aim `effect_amount SET_ATTRIBUTE` at a
+    CLASS rather than a unit, and 374 of the corpus's uses do — `TREE_CLASS`
+    alone covers 51 unit types. Nothing in the reference data could resolve one,
+    so a consumer asking "did that line change the object I am about to place"
+    had no way to answer. `src/parser/resourceTotals.ts` is the first caller
+    that needs it (`ATTR_STORAGE_VALUE` rewrites what an object yields, and the
+    status bar currently reports the base value regardless).
+
+    **The offset is verified before anything is written, and a disagreement
+    aborts.** If DE moved `CLASS_CONST_BASE`, every `memberIds` list this would
+    emit is attached to the wrong constant, and a file that is confidently wrong
+    is worse than one that is missing the field.
+
+    Both directions of the mapping are written on purpose. `memberIds` answers
+    "which units does this class name cover" and is complete over the roster;
+    `classId` answers "which class is this object in" and only exists for the
+    few dozen objects that have rows. They cannot drift — one run writes both
+    from one read — and `npm run validate:reference` pins that they agree.
+    """
+    import json
+
+    if dat is None:
+        print("Cannot read unit classes without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    def_matches = find_file(install_path, "random_map.def")
+    if not def_matches:
+        print("random_map.def not found.", file=sys.stderr)
+        return 1
+    def_text = def_matches[0].read_text(encoding="utf-8", errors="replace")
+    objects = object_constants(def_text)
+    named_classes = class_constants(def_text)
+    classes = dat.unit_classes()
+
+    confirmed, coincidental, contradicted = verify_class_offset(named_classes, classes, objects, dat.unit_class_of)
+    print(f"\nUnit classes in the roster: {len(classes)} across {sum(len(m) for m in classes.values())} live units")
+    print(f"Named *_CLASS constants in random_map.def: {len(named_classes)}")
+    print(f"  offset {CLASS_CONST_BASE} confirmed by : {len(confirmed)}")
+    for line in confirmed:
+        print(f"      {line}")
+    if coincidental:
+        # Reported every run rather than suppressed. It is a live warning about
+        # reading these names as if they described their stem — see
+        # verify_class_offset for why it is not a failure.
+        print(f"  name coincidences (not failures): {len(coincidental)}")
+        for line in coincidental:
+            print(f"      {line}")
+    if contradicted or (named_classes and not confirmed):
+        print(f"  offset {CLASS_CONST_BASE} CONTRADICTED by: {len(contradicted)}", file=sys.stderr)
+        for line in contradicted:
+            print(f"      {line}", file=sys.stderr)
+        if not confirmed:
+            print("      no named class constant confirms the offset at all", file=sys.stderr)
+        print(
+            "\nRefusing to write. The class-to-constant offset is the one assumption every\n"
+            "memberIds list rests on, so a contradiction means the rows would be attached to\n"
+            "the wrong constants. Re-derive CLASS_CONST_BASE before re-running.",
+            file=sys.stderr,
+        )
+        return 1
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    constants = existing["constants"]
+    run_date = date.today().isoformat()
+
+    # Object rows first, so `classId` lands beside the data it describes.
+    stamped, unresolved = [], []
+    updated: list[dict] = []
+    for entry in constants:
+        if entry.get("category") == "objectClass":
+            continue  # rebuilt wholesale below — this mode owns them
+        if entry.get("category") != "object":
+            updated.append(entry)
+            continue
+        name = entry.get("rmsConstant")
+        const_id = objects.get(name, entry.get("constId"))
+        class_id = dat.unit_class_of(const_id) if const_id is not None else None
+        if class_id is None:
+            unresolved.append(name)
+            updated.append(entry)
+            continue
+        stamped.append((name, class_id))
+        updated.append({**entry, "classId": class_id})
+
+    class_entries = build_class_entries(classes, named_classes, run_date)
+    updated.extend(class_entries)
+
+    print(f"\nObject entries in {output.name}: {sum(1 for c in constants if c.get('category') == 'object')}")
+    print(f"  classId stamped              : {len(stamped)}")
+    if unresolved:
+        print(f"  not a live unit              : {len(unresolved)} — {', '.join(str(n) for n in unresolved)}")
+    unclassed = sum(len(members) for class_id, members in classes.items() if class_id < 0)
+    if unclassed:
+        print(f"  units with NO class (dropped): {unclassed} — the dat's class -1, which no constant names")
+    print(f"  objectClass rows written     : {len(class_entries)}")
+    named_rows = [e for e in class_entries if e["rmsConstant"] is not None]
+    print(f"      with an RMS constant     : {len(named_rows)}")
+    print(f"      unnamed (id-only)        : {len(class_entries) - len(named_rows)}")
+    for entry in sorted(class_entries, key=lambda e: -len(e["memberIds"]))[:8]:
+        label = entry["rmsConstant"] or f"(class {entry['classId']})"
+        print(f"      {label:24s} constId {entry['constId']}: {len(entry['memberIds'])} units")
 
     if dry_run:
         print("\n--dry-run: nothing written.")
@@ -1096,12 +1788,15 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Where to write game-constants.json (default: reference/data/game-constants.json)")
     parser.add_argument("--ids-only", action="store_true", help="Skip empires2_x2_p1.dat entirely — only fill in constId from random_map.def. Use this if genieutils-py isn't installed or the .dat parse fails on your DE version.")
     parser.add_argument("--colors-only", action="store_true", help="Update ONLY previewColor on terrain entries, from each terrain's existing deTextureFile. Reads no .dat and rewrites no other field — use this to refresh colours without re-extracting everything.")
-    parser.add_argument("--habitat-only", action="store_true", help="Update ONLY habitat on object entries, derived from the engine's own terrain table in empires2_x2_p1.dat (preview-design Sec.15 item 23). Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
-    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --habitat-only to see the diff before taking it.")
+    parser.add_argument("--terrain-table", action="store_true", help="Update ONLY the engine's terrain table on object entries, read from empires2_x2_p1.dat (preview-design Sec.15 item 23): terrainRestrictionId, allowedTerrains, placementSideTerrain, and the coarse habitat derived from them. Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
+    parser.add_argument("--storages", action="store_true", help="Update ONLY the resource-storage data on object entries, read from empires2_x2_p1.dat: the raw resourceStorages slots plus a refreshed resourceAmounts derived from them. Rewrites no other field. This is what tells a consumer whether an effect_amount ATTR_STORAGE_VALUE line changes a resource, a population count or a decay timer.")
+    parser.add_argument("--attributes", action="store_true", help="Update ONLY the effect_amount attribute selectors (ATTR_*), read from random_map.def's own Attribute Constants section. Needs no dat file. Rewrites no other field.")
+    parser.add_argument("--classes", action="store_true", help="Update ONLY the unit-class data, read from empires2_x2_p1.dat: one objectClass row per genie unit class (with the unit ids in it) plus a classId on every object entry. Rewrites no other field. Verifies the class-to-constant offset against random_map.def first and refuses to write if it disagrees.")
+    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table or --classes to see the diff before taking it.")
     args = parser.parse_args()
 
-    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.habitat_only)]) > 1:
-        print("--ids-only, --colors-only and --habitat-only are mutually exclusive.", file=sys.stderr)
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.classes), bool(args.storages), bool(args.attributes)]) > 1:
+        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --classes, --storages, --attributes) are mutually exclusive.", file=sys.stderr)
         return 1
 
     install_path = args.install_path or guess_install_path()
@@ -1163,8 +1858,17 @@ def main() -> int:
         print("\nNext: run `npm run validate:reference` from the repo root and review the diff before committing.")
         return 0
 
-    if args.habitat_only:
-        return run_habitat_only(install_path, args.output, load_dat(), args.dry_run)
+    if args.terrain_table:
+        return run_terrain_table(install_path, args.output, load_dat(), args.dry_run)
+
+    if args.classes:
+        return run_classes(install_path, args.output, load_dat(), args.dry_run)
+
+    if args.storages:
+        return run_storages(install_path, args.output, load_dat(), args.dry_run)
+
+    if args.attributes:
+        return run_attributes(install_path, args.output, args.dry_run)
 
     def_matches = find_file(install_path, "random_map.def")
     if not def_matches:

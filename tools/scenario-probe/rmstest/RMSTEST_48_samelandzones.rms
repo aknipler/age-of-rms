@@ -1,0 +1,136 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain WATER
+
+  /* Neutral island A. Default zone. */
+  create_land
+  {
+    terrain_type GRASS
+    land_percent 8
+    base_size 6
+    land_position 15 50
+  }
+
+  /* Neutral island B. Same default zone as A, so the zone model predicts a
+     connection between exactly these two. */
+  create_land
+  {
+    terrain_type GRASS
+    land_percent 8
+    base_size 6
+    land_position 85 50
+  }
+
+  /* The player island. Its own zone, so the zone model predicts it connects to
+     nothing at all. */
+  create_player_lands
+  {
+    terrain_type DIRT
+    land_percent 8
+    base_size 6
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+  create_connect_same_land_zones
+  {
+    replace_terrain WATER ROAD
+    terrain_cost WATER 8
+    terrain_cost GRASS 1
+    terrain_cost DIRT 1
+    terrain_size ROAD 1 0
+  }
+
+/*
+RMSTEST_48 - does the same-land-zones connection command really group by zone?
+Feeds: preview-design Sec.6.5, connections.ts, Sec.15 item 21
+
+QUESTION
+The connection command named for same land zones shipped modelled as an exact
+synonym for the connect-all-lands command - every land origin, every pair. A
+review caught that the same session it landed, and the corrected model is: group
+the lands by their zone, connect every pair WITHIN each zone, never across
+zones. That is the shape the connect-team-lands command already has, one level
+down.
+
+The correction is right on its face - a synonym would not need its own command -
+but it comes from two independent community references rather than from the
+guide this section otherwise cites, and it has never been put to the engine.
+
+WHAT MAKES THE TWO MODELS SEPARABLE
+On an unmodified script, neutral lands all share one default zone and each
+player land gets a zone of its own. So:
+
+  same-zone model  - the two neutral lands connect to each other and NOTHING
+                     connects to the player land. One path.
+  all-lands model  - all three pairs connect. Three paths.
+
+That is a factor of three in road tiles and a completely different picture, so
+it does not need a subtle instrument.
+
+METHOD
+Deep water base with three separated islands, so a connection has to cross water
+and is drawn as a visible road. The two neutral lands are pinned by position at
+opposite ends of the middle row; the player land is not pinnable by attribute
+and lands wherever the default ring puts it, which is far enough from both to be
+told apart by geometry.
+
+The water cost is set high and the road replacement explicit, so every path is a
+road ribbon on water and the road tile count is close to proportional to the
+number of connections made.
+
+PREDICTIONS, WRITTEN BEFORE THE RUN
+  One road, running roughly along the middle row between the two pinned islands,
+  and no road touching the player island
+      -> the corrected zone-grouping model is right. Strike the verify marker on
+         Sec.6.5 and record it as engine-confirmed rather than community-sourced.
+
+  Three roads, one of them reaching the player island
+      -> the original reading was right after all, the command IS a synonym, and
+         connections.ts needs its zone grouping reverted. Note this would also
+         mean the corrected model was adopted on community sources against a
+         plainer reading, which is worth writing down as a process result and
+         not only as a code fix.
+
+  No roads at all
+      -> the map is wrong, not the model. Most likely the water cost made every
+         path unaffordable. Raise the cost or shorten the gaps and rerun; do not
+         read this as evidence for either model.
+
+GENERATE AT NORMAL (200), ONE PLAYER. Three runs.
+
+One player is deliberate. It gives exactly one player land, so the zone count is
+two and the arithmetic above is as simple as it can be. More players multiply
+the pairs under the all-lands model and make the two predictions differ by more,
+but they also crowd the map and make the geometry harder to attribute.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches ROAD
+  Count road patches and read their bounding boxes. The geometry is the answer,
+  not the tile total - one long road and three short ones can total the same.
+
+THREE RUNS because path length varies with where the ring puts the player land,
+and because a single generation where the player island happens to sit next to a
+neutral one is ambiguous under both models.
+*/

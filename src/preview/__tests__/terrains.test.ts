@@ -470,10 +470,14 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
 
   // ---- three depths: land / shallows / open water -------------------------
   //
-  // The engine edges every boundary between two DIFFERENT depths, not only the
-  // outer one, so a shallows band running from a coast out to sea reads sand,
-  // shallow, sand, sea. `bands()` builds exactly that cross-section as vertical
-  // columns and the assertions read one row of it.
+  // Depth decides which side of a boundary is LAND, and only the landward
+  // boundary is edged: a shallows band running from a coast out to sea reads
+  // sand, shallow, shallow, sea. `bands()` builds that cross-section as
+  // vertical columns and the assertions read one row of it.
+  //
+  // The seaward half was shipped on 2026-08-08 and withdrawn on 2026-08-12
+  // after RMSTEST_52 measured 3 and 2 tiles on the shallows/water boundary
+  // against 336/312 and 30/90 on the other two (BUG-010).
 
   const SHALLOW = constants.find((c) => c.rmsConstant === "SHALLOW")!.constId!;
   const DEEP_WATER = constants.find((c) => c.rmsConstant === "DEEP_WATER")!.constId!;
@@ -490,13 +494,13 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
     return { grid, row: () => Array.from(grid.terrain.slice(2 * dim, 3 * dim)) };
   }
 
-  it("beaches BOTH boundaries of a shallows band: land/shallows and shallows/water", () => {
+  it("beaches the LANDWARD boundary of a shallows band and leaves the seaward one bare (BUG-010)", () => {
     const { grid, row } = bands([GRASS, GRASS, SHALLOW, SHALLOW, DEEP_WATER, DEEP_WATER]);
     applyAutomaticBeach(grid, constants);
-    // The land tile touching the shallows, and the shallow tile touching the
-    // deep — the middle shallow survives because it faces land on one side and
-    // its own depth on the other.
-    expect(row()).toEqual([GRASS, BEACH, SHALLOW, BEACH, DEEP_WATER, DEEP_WATER]);
+    // The land tile touching the shallows takes sand. The shallow touching the
+    // deep does NOT — that is the half the engine turned out not to do, and
+    // this row is the assertion that was inverted to say so.
+    expect(row()).toEqual([GRASS, BEACH, SHALLOW, SHALLOW, DEEP_WATER, DEEP_WATER]);
   });
 
   it("leaves a shallow alone where it only ever faces land", () => {
@@ -518,22 +522,23 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
     expect(row()).toEqual(settled);
   });
 
-  it("edges a hybrid the water flag calls dry land — the two flags are orthogonal", () => {
+  it("edges land against a hybrid the water flag calls DRY — which is why the depth mask survives BUG-010", () => {
     // DLC_MANGROVESHALLOW is `isWater: false` (it is buildable, walkable
-    // ground) and the community table still calls it a shallow. Before
-    // `isHybrid` existed it read as ordinary land, so neither of its two
-    // boundaries was edged.
+    // ground) and the community table still calls it a shallow. Under an
+    // `isWater`-only test this coast gets no beach at all, which is the gap the
+    // depth model was introduced to close and the reason dropping the seaward
+    // half is not the same as reverting to two values.
     const { grid, row } = bands([GRASS, GRASS, MANGROVESHALLOW, MANGROVESHALLOW, DEEP_WATER, DEEP_WATER]);
     applyAutomaticBeach(grid, constants);
-    expect(row()).toEqual([GRASS, BEACH, MANGROVESHALLOW, BEACH, DEEP_WATER, DEEP_WATER]);
+    expect(row()).toEqual([GRASS, BEACH, MANGROVESHALLOW, MANGROVESHALLOW, DEEP_WATER, DEEP_WATER]);
   });
 
-  it("a hybrid grows its OWN beach: navigable ice gets ICYSHORE", () => {
-    // Same per-terrain rule the snow case above proves for land, now on the
-    // shallows/water boundary.
+  it("the beach a boundary grows is the LAND side's own: snow against navigable ice gets ICYSHORE", () => {
+    // Same per-terrain rule the snow case above proves against open water, now
+    // against a hybrid — the beach terrain comes from the tile it lands on.
     const { grid, row } = bands([SNOW, SNOW, ICE_NAVIGABLE, ICE_NAVIGABLE, DEEP_WATER, DEEP_WATER]);
     applyAutomaticBeach(grid, constants);
-    expect(row()).toEqual([SNOW, ICYSHORE, ICE_NAVIGABLE, ICYSHORE, DEEP_WATER, DEEP_WATER]);
+    expect(row()).toEqual([SNOW, ICYSHORE, ICE_NAVIGABLE, ICE_NAVIGABLE, DEEP_WATER, DEEP_WATER]);
   });
 
   it("does not edge one open water against another, however different their depths look", () => {

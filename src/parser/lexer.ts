@@ -108,7 +108,7 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
     tokens.push({ text, start, end: cursor, kind: classify(text), isTrivia: false });
   }
 
-  markComments(tokens, nestedComments, diagnostics);
+  markComments(tokens, nestedComments, opts.commentOpenAliases, diagnostics);
   lintTokens(tokens, diagnostics);
 
   return { tokens, lineOffsets: computeLineOffsets(source), diagnostics };
@@ -124,8 +124,22 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
  * already inside a comment does not open a new level (depth stays at 1)
  * — so the *next* closer closes the whole thing, emulating non-nesting
  * behavior without a separate code path.
+ *
+ * `commentOpenAliases` holds words the engine reads as `/*` — constants
+ * whose value is 69, its own id for that marker (Sec.2.1 amendment,
+ * measured 2026-08-12). They are treated as openers ONLY once already
+ * inside a comment, which is not a simplification but the rule: these
+ * are ordinary constants in ordinary positions, and a map naming one in
+ * a live `create_object` is not commented out. Classifying them
+ * globally — the `aliasTable` route — would truncate every map that
+ * places a shore fish.
  */
-function markComments(tokens: Token[], nestedComments: boolean, diagnostics: Diagnostic[]): void {
+function markComments(
+  tokens: Token[],
+  nestedComments: boolean,
+  commentOpenAliases: ReadonlySet<string> | undefined,
+  diagnostics: Diagnostic[],
+): void {
   let depth = 0;
   let openerIndex = -1;
 
@@ -150,6 +164,14 @@ function markComments(tokens: Token[], nestedComments: boolean, diagnostics: Dia
       continue;
     }
     if (depth > 0) {
+      // A word the engine reads as `/*`. Same branch as a literal opener,
+      // deliberately: the opener bookkeeping (`openerIndex`) stays on the
+      // OUTERMOST marker, so an unclosed-at-EOF diagnostic still points at
+      // the comment the author opened rather than at the word that
+      // swallowed the file — RMS0111 is what names the word.
+      if (token.kind === "word" && commentOpenAliases?.has(token.text)) {
+        if (nestedComments) depth++;
+      }
       token.isTrivia = true;
     }
   }

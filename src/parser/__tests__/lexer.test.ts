@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -15,9 +15,33 @@ const NBSP = String.fromCharCode(0x00a0);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_MAPS_DIR = resolve(__dirname, "../../../test-maps");
+const BROKEN_DIR = resolve(TEST_MAPS_DIR, "broken");
 
 function readCorpusFile(name: string): string {
   return readFileSync(resolve(TEST_MAPS_DIR, name), "utf-8");
+}
+
+function listRms(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".rms"))
+    .map((e) => e.name);
+}
+
+/**
+ * The N biggest maps present, largest first. DERIVED, never named: most of
+ * test-maps/ is gitignored, so a hardcoded filename is a test that passes on a
+ * maintainer's machine and ENOENTs on a fresh clone — which is exactly how
+ * `Pa_Site_v1.1.rms` in this file broke CI on 2026-08-10. Sorting by size
+ * picks up the most tokens per file it reads; the name tiebreak keeps the
+ * selection deterministic when two maps are the same size.
+ */
+function largestCorpusFiles(n: number): string[] {
+  return listRms(TEST_MAPS_DIR)
+    .map((name) => ({ name, size: statSync(resolve(TEST_MAPS_DIR, name)).size }))
+    .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name))
+    .slice(0, n)
+    .map((e) => e.name);
 }
 
 function kindsOf(tokens: Token[]): TokenKind[] {
@@ -99,22 +123,18 @@ describe("tokenize — offsets", () => {
     // Collected into a list and asserted ONCE, the way testUtils.checkProperties
     // does, rather than per token. That is a harness decision, not a weaker
     // check — the comparison is identical and every failure still names its
-    // file and token. But these five files carry 76,534 tokens, and an
+    // file and token. But these files carry tens of thousands of tokens, and an
     // `expect()` per token costs ~7.6s of assertion-object construction against
     // ~0.07s of actual comparison, which pushed a gate that tests a 0.4s
     // workload past the 5s default timeout on a loaded machine. A
     // non-negotiable gate that fails on machine speed stops being a gate.
-    // BCC2-Rekawa moved to test-maps/broken/ on 2026-08-05 (its RMS0101 fires
-    // by design), so it carries a subdirectory here. It is deliberately kept in
-    // this list: offset exactness must hold on malformed content too, which is
-    // precisely what a known-defective file is for.
-    const files = [
-      "sample.rms",
-      "AK_Vanguard_v1.2.rms",
-      "broken/BCC2-Rekawa.rms",
-      "Pa_Site_v1.1.rms",
-      "AK_Six_Points_v1.4.rms",
-    ];
+    //
+    // Everything in test-maps/broken/ is always included on top of the four
+    // biggest: offset exactness must hold on malformed content too, which is
+    // precisely what a known-defective file is for (BCC2's glued "}8050" fires
+    // RMS0101 by design).
+    const files = [...largestCorpusFiles(4), ...listRms(BROKEN_DIR).map((n) => `broken/${n}`)];
+    expect(files.length).toBeGreaterThan(0);
     const mismatches: string[] = [];
     for (const file of files) {
       const source = readCorpusFile(file);
@@ -295,5 +315,71 @@ describe("tokenize — degenerate inputs", () => {
   it("never throws on binary-garbage-ish input", () => {
     const source = "\x00\x01\x02 create_land \x1f\x1f { } \x00";
     expect(() => tokenize(source)).not.toThrow();
+  });
+});
+
+describe("comment-opening aliases (Sec.2.1 amendment — a word the engine reads as `/*`)", () => {
+  // The engine resolves every word to a token id and `/*` is 69, so a constant
+  // valued 69 opens a NESTED comment. Comments nest, so the author's closer
+  // shuts only the inner one and the rest of the file is gone. Measured
+  // 2026-08-11/12 by RMSTEST_56a/56b/57/60.
+  const ALIASES = new Set(["SHORE_FISH", "ATTR_PROJECTILE_ARC"]);
+
+  const live = (src: string, opts = {}) =>
+    tokenize(src, opts)
+      .tokens.filter((t) => !t.isTrivia)
+      .map((t) => t.text);
+
+  it("swallows the rest of the file when an alias appears inside a comment", () => {
+    const src = "/* place SHORE_FISH here */ base_terrain SNOW";
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual([]);
+  });
+
+  it("leaves the file alone when the same comment holds no alias", () => {
+    // RMSTEST_56b, the control. Without this the test above proves nothing
+    // about the WORD as opposed to the comment.
+    const src = "/* place a fish here */ base_terrain SNOW";
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual(["base_terrain", "SNOW"]);
+  });
+
+  it("is not triggered by the bare number, which the engine lexes as a number", () => {
+    // RMSTEST_57 came back with a normal map. This is the negative case that
+    // makes the rule precise rather than superstitious.
+    const src = "/* 69 */ base_terrain SNOW";
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual(["base_terrain", "SNOW"]);
+  });
+
+  it("applies to any namespace, not just object constants", () => {
+    // RMSTEST_60 used the attribute constant precisely to show the namespace
+    // is irrelevant and only the value matters.
+    const src = "/* tweak ATTR_PROJECTILE_ARC later */ base_terrain SNOW";
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual([]);
+  });
+
+  it("DOES NOT touch the same word outside a comment", () => {
+    // The whole safety of this feature. These are ordinary constants in
+    // ordinary positions; treating them as comment openers globally would
+    // truncate every map that places a shore fish.
+    const src = "create_object SHORE_FISH { number_of_objects 5 }";
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual([
+      "create_object",
+      "SHORE_FISH",
+      "{",
+      "number_of_objects",
+      "5",
+      "}",
+    ]);
+  });
+
+  it("does nothing when no alias set is supplied", () => {
+    // The lexer holds no RMS vocabulary of its own, so an un-configured parse
+    // must behave exactly as it did before this feature existed.
+    const src = "/* place SHORE_FISH here */ base_terrain SNOW";
+    expect(live(src)).toEqual(["base_terrain", "SNOW"]);
+  });
+
+  it("needs one closer per alias, since the alias opened a real level", () => {
+    const src = "/* SHORE_FISH */ */ base_terrain SNOW";
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual(["base_terrain", "SNOW"]);
   });
 });

@@ -80,9 +80,12 @@ export interface AttributeDef {
   mutexNote?: string;
   // Attribute names, at least one of which must be in the SAME block for this
   // attribute to do anything. A guide "Requires:" line, and the failure is
-  // silent — the whole command places nothing. Drives RMS0315. Same bar as
-  // requiresSection: the guide must state the requirement AND the consequence
-  // must be known, which for the only entry today means measured in game.
+  // silent — the attribute is simply inert, and the command runs on without
+  // it (MEASURED, RMSTEST_42; an earlier reading had the command placing
+  // nothing at all, which was inferred from a map that could not tell the two
+  // apart). Drives RMS0315. Same bar as requiresSection: the guide must state
+  // the requirement AND the consequence must be known, which for the only
+  // entry today means measured in game.
   requiresOneOf?: string[];
   // What unmet looks like to the author. RMS0315 appends it. Sibling of
   // mutexNote, and data rather than code for the same reason.

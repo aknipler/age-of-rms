@@ -100,9 +100,17 @@ export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, help
         />
         {listId && (
           <datalist id={listId}>
-            {options.map((o, i) => (
-              <option key={i} value={"rmsConstant" in o ? o.rmsConstant : ""} />
-            ))}
+            {/* A constant with no name is reached by bare id and cannot be
+                typed here, so it is dropped rather than offered as a blank
+                option. `rmsConstant` became `string | null` on 2026-08-11 to
+                match the data; before that these rows were already blank
+                options, the type just hid it. */}
+            {options
+              .map((o) => ("rmsConstant" in o ? o.rmsConstant : null))
+              .filter((name): name is string => name !== null && name !== "")
+              .map((name) => (
+                <option key={name} value={name} />
+              ))}
           </datalist>
         )}
         {error && <span className={styles.inlineError}>{error}</span>}

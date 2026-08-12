@@ -1,0 +1,100 @@
+/* ATTR_PROJECTILE_ARC */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_60 - does a DIFFERENT word with the same value open a comment, or is the
+shore fish a special case?
+Feeds: parser-design Sec.2.1 and Sec.13 item 7, the token-alias import
+
+THIS HEADER IS AT THE BOTTOM. The test is the first line.
+
+WHAT IS ALREADY MEASURED, IN ORDER
+  RMSTEST_56a  the shore-fish constant alone in a leading comment -> blank map.
+               The word opens a nested comment; comments nest, so the closing
+               marker shuts only the inner one and the file is never read.
+  RMSTEST_56b  the same file with an empty comment -> snow. The control.
+  RMSTEST_57   the bare literal 69 in a leading comment -> SNOW. So it is NOT
+               "any token whose value is 69". Numeric literals are lexed as
+               numbers and never reach the symbol table.
+
+So the path is words. What is not known is whether it is words IN GENERAL that
+carry the value, or that one name.
+
+THE TWO NAMES, AND WHY THIS PAIR
+Both are #const lines in the engine's own random_map.def, and both are 69. The
+file is readable straight from the install, no archive extraction needed:
+
+  <install>/resources/_common/drs/gamedata_x2/random_map.def
+
+  line  263:  #const  SHORE_FISH          69     object constants section
+  line 1117:  #const  ATTR_PROJECTILE_ARC 69     attribute constants section
+
+Those are the ONLY two. The file was searched for every constant with that
+value, so this run is not a sample of a class - it is the whole of the remaining
+candidate set. If it blanks, the complete list of engine-defined words that can
+destroy a file from inside a comment is those two, plus whatever a script
+#const's for itself, which the parser already tracks.
+
+The same file also shows where /* does NOT get its number: nothing defines it
+there, and the markers appear only as ordinary comments. So the comment-marker
+ids live in the engine's internal token table, and the id for */ is still
+unknown - that half needs the equivalencies sheet and this run does not.
+
+Ids in that file are per-namespace and collide freely - 45 is DOCK and CUSTOM
+and CIVILIZATION_GEORGIANS and ATTR_BLAST_DEFENSE. That collision is normally a
+nuisance. Here it is the instrument: two words the engine defines as the same
+number, from two different namespaces, so the run separates the VALUE from the
+namespace.
+
+  BLANK or grass map -> a word valued 69 opens a comment, whatever kind of
+                        constant it is. The rule is about the number, the fix is
+                        a lookup keyed on it, and the useful output of the
+                        token-alias import is the set of names equal to the /*
+                        and */ ids rather than the whole sheet.
+  SNOW map           -> the value alone is not sufficient for words either. Then
+                        either the object namespace is privileged in this
+                        position, or the shore fish is special for a reason not
+                        yet identified, and Sec.13 item 7 needs rethinking
+                        rather than finishing.
+
+RMSTEST_56b is already the control for this file - same script, empty comment,
+snow - so no new control is needed. If this comes back blank, 56b is what proves
+the blankness came from the word.
+
+WHY IT IS WORTH ONE GENERATION
+It is the difference between a two-entry lookup and a hard-coded exception. A
+parser diagnostic for this currently cannot exist at all: the parser treats
+comments as a token-stream construct and resolves no constants inside them, so it
+reports a comment where the engine reports the end of the file. That is a silent
+wrong answer about how much of the file exists, which is the worst shape a parser
+bug can take, and it has already cost one run in this directory.
+
+A NOTE ON HOW THIS FINDING HAS GONE SO FAR, BECAUSE IT IS THE THIRD ATTEMPT
+The first write-up said "an object constant in a comment can delete the script" -
+a class of names, generalised from one observation. The second said "it is one
+number, /* is 69 and so is the fish" - right about the shape, wrong about the
+scope, and written into four documents before RMSTEST_57 refuted the literal half
+of it. Each step was reasonable and two of three were wrong. This file exists so
+the third does not go the same way.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN. Binary.
+
+READ IT WITH
+  Look at the map. Snow or not snow is the whole reading.
+*/

@@ -80,7 +80,12 @@ def report_bbox(tiles, terrain_names: dict[int, str], want: str, dim: int) -> No
     inset from each map edge, because border attributes are specified as an
     inset and comparing them directly is what avoids off-by-one mistakes.
     """
-    lookup = {name.upper(): cid for cid, name in terrain_names.items()}
+    # Skip unnamed rows. Reference data is a POSITIVE resolver: a row can
+    # legitimately carry a null constant name (most of the 131 terrains have no
+    # callable constant), and an unnamed row must make this lookup smaller,
+    # never raise. Without the guard every --bbox/--patches/--clusters read
+    # crashed on any map containing one.
+    lookup = {name.upper(): cid for cid, name in terrain_names.items() if name}
     tid = lookup.get(want.upper())
     if tid is None:
         try:
@@ -155,7 +160,12 @@ def connected_components(pts: set, diagonal: bool) -> list[list]:
 
 
 def resolve_terrain(terrain_names: dict[int, str], want: str) -> int | None:
-    lookup = {name.upper(): cid for cid, name in terrain_names.items()}
+    # Skip unnamed rows. Reference data is a POSITIVE resolver: a row can
+    # legitimately carry a null constant name (most of the 131 terrains have no
+    # callable constant), and an unnamed row must make this lookup smaller,
+    # never raise. Without the guard every --bbox/--patches/--clusters read
+    # crashed on any map containing one.
+    lookup = {name.upper(): cid for cid, name in terrain_names.items() if name}
     tid = lookup.get(want.upper())
     if tid is not None:
         return tid
@@ -288,7 +298,9 @@ def report_clusters(units, object_names: dict[int, str], want: str) -> None:
     still one group) and reports the gap in Chebyshev distance, since the
     engine's distance constraints are square by default (guide:2652).
     """
-    lookup = {name.upper(): cid for cid, name in object_names.items()}
+    # See the note in report_bbox: an unnamed row must shrink the lookup, not
+    # raise. Objects hit this more often than terrains do.
+    lookup = {name.upper(): cid for cid, name in object_names.items() if name}
     cid = lookup.get(want.upper())
     if cid is None:
         try:

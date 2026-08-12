@@ -51,6 +51,29 @@ export function shiftSingleAnchor(anchor: number | null, edit: OffsetEdit): numb
 }
 
 /**
+ * The same shift for an anchor that must NOT vanish: an anchor caught inside
+ * a replaced range collapses to the start of that range instead of dropping.
+ *
+ * The preview's Current cut point (`PreviewCutContext`) is the caller. A
+ * dropped selection is harmless — nothing is selected, and the user can see
+ * that. A dropped pin is not: it silently reverts Current to following the
+ * caret and the map jumps, with no control showing what changed.
+ *
+ * THE NULL CHECK IS THE WHOLE REASON THIS IS A FUNCTION AND NOT
+ * `shiftSingleAnchor(...) ?? edit.start` AT THE CALL SITE, which is what it
+ * was until 2026-08-11. `shiftSingleAnchor` returns null for two unrelated
+ * reasons — the anchor was dropped, and there was no anchor to begin with —
+ * so `??` cannot tell them apart and MANUFACTURES an anchor out of "none" on
+ * the first edit that arrives. The preview came up reading "Pinned line 1"
+ * with the button never clicked, because the document's own initial content
+ * change is an edit at offset 0. Absent stays absent.
+ */
+export function shiftCollapsingAnchor(anchor: number | null, edit: OffsetEdit): number | null {
+  if (anchor === null) return null;
+  return shiftSingleAnchor(anchor, edit) ?? edit.start;
+}
+
+/**
  * Rebases a freshly-computed edit's [start, end) range through a chain of
  * PRIOR edits that have already been pushed onto the shared model but
  * whose matching reparse hasn't landed yet (BreakdownPane's

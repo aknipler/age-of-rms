@@ -241,7 +241,14 @@ describe("generatePreview: failure marks (Sec.15 item 5)", () => {
 
 describe("generatePreview: determinism (Sec.13 bedrock)", () => {
   const corpusDir = join(REPO_ROOT, "test-maps");
-  const sampleMaps = ["13_Rings_v1.2.rms", "24hr_A Heart Map.rms", "AK_Namatjira.rms"];
+  // Taken from disk, never named. Half of test-maps/ is gitignored, so a
+  // hardcoded filename is a test that passes here and ENOENTs on a fresh
+  // clone — `24hr_A Heart Map.rms` broke CI that way on 2026-08-10. Same
+  // selection the corpus gate below already uses.
+  const sampleMaps = readdirSync(corpusDir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".rms"))
+    .map((e) => e.name)
+    .slice(0, 3);
 
   for (const name of sampleMaps) {
     for (const seed of [1, 2, 3]) {

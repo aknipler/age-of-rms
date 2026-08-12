@@ -9,3 +9,11 @@
   border-left-color: #2a6df4;
   background: rgba(42, 109, 244, 0.06);
 }
+
+/* Below the Current preview's cut point — the card is still fully
+   interactive, it just isn't in the map beside it. Opacity only: greying the
+   text would fight the card's own severity colours, and a card the preview
+   ignores is still a card you can edit. */
+.ignoredByPreview {
+  opacity: 0.45;
+}

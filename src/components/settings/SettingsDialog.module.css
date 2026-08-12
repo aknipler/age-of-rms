@@ -88,6 +88,25 @@
   color: #555;
 }
 
+/* Credits: a label/value line, not a control, so it borrows the fieldset's
+   bold label weight rather than the legend element itself. */
+.creditRow {
+  margin: 0 0 0.75rem;
+}
+
+.creditLabel {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* Deliberately not .hint: a thank-you is content, not a footnote about a
+   control, so it keeps the body font size. */
+.creditThanks {
+  margin: 0;
+  max-width: 34rem;
+  line-height: 1.4;
+}
+
 /* Matches PlaceholderPane's italic grey, so an unbuilt settings tab reads
    the same way an unbuilt pane does. */
 .placeholder {

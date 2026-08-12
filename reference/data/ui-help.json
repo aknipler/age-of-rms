@@ -10,11 +10,15 @@
     },
     {
       "id": "titleBar.settings",
-      "text": "App settings, grouped into tabs — General, Hotkeys, Theme, Breakdown, Code and Advanced Tools."
+      "text": "App settings, grouped into tabs — General, Hotkeys, Theme, Breakdown, Code, Advanced Tools and Credits."
     },
     {
       "id": "titleBar.help",
-      "text": "Not implemented yet."
+      "text": "Links out to reference material for writing random map scripts."
+    },
+    {
+      "id": "titleBar.help.deRmsGuide",
+      "text": "Opens Zetnus's guide to the DE random map scripting language in your browser — the reference this app's own command and attribute docs are drawn from."
     },
     {
       "id": "mapHeader.mapName",
@@ -95,6 +99,10 @@
     {
       "id": "settings.tab.advancedTools",
       "text": "Settings for the Advanced Tools pane, which hasn't been built yet."
+    },
+    {
+      "id": "settings.tab.credits",
+      "text": "Who maintains this app, and who its reference material comes from."
     },
     {
       "id": "breakdown.tab.header",
@@ -294,11 +302,15 @@
     },
     {
       "id": "breakdown.sidePanel.previewToggle",
-      "text": "Switches the map preview between Current and Final. Final draws the whole script. Current is meant to draw only what the script has built up to a line you pin, so you can see what a half written script produces — that pinning isn't built yet, so both positions currently draw the same full-script result. The preview draws your actual script, generated in the background as you edit."
+      "text": "Switches the map preview between Current and Final. Final draws the whole script. Current draws only what the script has built up to your cursor, so you can see what a half written script produces — the code it leaves out is dimmed, and the pin button beside this holds the cut point still while you edit elsewhere. The preview draws your actual script, generated in the background as you edit."
     },
     {
       "id": "breakdown.sidePanel.referenceRadio",
       "text": "Switches the reference table below between Terrain constants, Object constants, Commands, and the Preview Obj. List — the objects your own script places, with a tick box for each one the map draws."
+    },
+    {
+      "id": "breakdown.sidePanel.referenceFind",
+      "text": "Filters the table below to rows containing what you type, matching anywhere in any column the table shows. The text carries across the four tabs, so you can type a name once and check whether it is a terrain or an object. Escape clears it."
     },
     {
       "id": "breakdown.sidePanel.referenceTable",
@@ -339,6 +351,10 @@
     {
       "id": "preview.clearSelection",
       "text": "Unpins the selected tile, so the readout follows the pointer again. Clicking the selected tile on the map does the same thing."
+    },
+    {
+      "id": "preview.pinLine",
+      "text": "Sets the point Current stops at. Put your cursor where you want the map to stop, then click this to hold the preview there while you keep editing and moving around; click it again to let go, and Current follows your cursor instead. Everything after that point is dimmed in the code and left out of the map, down to the individual attribute — so you can watch a land take shape as you add lines to it. A pin sticks to the code it was set in, so edits above it move it along with them."
     },
     {
       "id": "preview.approximateBadge",

@@ -1,0 +1,100 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  /* Small, non-growing, hard-edged, and confined to the top-left square by the
+     same two borders the corpus map uses. */
+  create_land
+  {
+    terrain_type SNOW
+    base_size 3
+    land_percent 0
+    right_border 60
+    bottom_border 60
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_51 - is the cross-shaped origin region absolute, or relative to what the
+borders leave?
+Feeds: preview-design Sec.6.1, lands.ts, Sec.15 item 26
+
+QUESTION
+An earlier batch measured where a neutral land's origin is allowed to fall and
+found a cross-shaped region: a candidate is rejected only when it is far from
+the centre on BOTH axes at once, so the four corners are excluded and the four
+arms are not. Sec.6.1 applies that unconditionally.
+
+Every land measured for that rule had NO borders. This test asks what happens
+when borders have already confined the land somewhere the cross does not like.
+
+WHY IT IS NOT ACADEMIC
+A corpus map carries islands with a right and a bottom border of 60, which on a
+200 map allows the origin anywhere in the top-left square of side 80. The cross
+rejects anything more than about 34 tiles from the centre on both axes at once.
+Intersect the two and what is left is an L-shaped sliver hugging the inner edges
+of the border box: the islands always crowd toward the middle of the map and
+never reach the outer corner. That is visible on the render and it is what a
+reader notices and reports as a bug.
+
+Nothing is implemented wrongly. The question is whether the engine's restriction
+is absolute in map coordinates, as modelled, or relative to the region the
+borders leave - in which case a bordered land scatters evenly across its box and
+the corpus map's islands should reach the corner.
+
+METHOD
+One land, small, with the same two borders as the corpus map that raised this,
+and a terrain nothing else on the map uses so the patch centroid IS the origin.
+Twenty generations. Plot the twenty centroids.
+
+  clustered along an L, hugging the inner edges of the box, corner empty
+      -> ABSOLUTE. The current model is right, the corpus map's islands are
+         faithful, and the answer to the reader is that the engine does this.
+
+  scattered evenly over the whole box, corner as populated as anywhere else
+      -> RELATIVE. Sec.6.1 needs the cross re-expressed against the allowed
+         region rather than the map, and every bordered land on every map moves.
+
+  something else - a band, a centre bias, an even scatter with a soft corner
+      -> record the twenty points and fit nothing yet. Two models is the number
+         of models anyone has thought of, not the number that exist, and this
+         project has already spent several sittings on questions where the true
+         answer was a third shape.
+
+Twenty runs is the cost and it is the point. One origin is a sample of a
+distribution and this whole question is about the shape of that distribution -
+the same mistake would be to run three and see a pattern.
+
+The land is tiny and does not grow, so each generation costs almost nothing and
+the patch is unambiguous. Border fuzziness is off so the box edges are hard.
+
+GENERATE AT NORMAL (200), any player count. TWENTY RUNS.
+
+Regenerate between saves and check the centroid actually moves. An earlier batch
+exported the same generated map three times without noticing: the file hashes
+differed, because a scenario embeds its own filename, while the probe output was
+identical. Twenty identical centroids would be that mistake, not a result.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  Take the patch centroid from each of the twenty exports and plot them. The
+  shape of the scatter is the whole reading; no single export says anything.
+*/

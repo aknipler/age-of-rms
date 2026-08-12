@@ -1,0 +1,91 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   A token resolving to 69 in a leading comment opens a nested comment and
+   swallows the rest of the file - see RMSTEST_56 and 57. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* One compact patch, small relative to the placement radius on purpose. */
+  create_terrain SNOW
+  {
+    base_terrain GRASS
+    number_of_clumps 1
+    number_of_tiles 150
+    clumping_factor 40
+  }
+
+<OBJECTS_GENERATION>
+
+  /* THE ONLY OBJECT COMMAND IN THIS FILE. That is the whole design. */
+  create_object OLIVE_TREE
+  {
+    number_of_objects 8
+    number_of_groups 12
+    group_placement_radius 6
+    terrain_to_place_on SNOW
+    set_gaia_object_only
+    set_tight_grouping
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_46b - grouping mode: TIGHT, stated. Reference point.
+Feeds: preview-design Sec.6.6, objects.ts, Sec.15 item 17(c)
+
+This file states tight explicitly. Expect heavy spill off the patch - an
+earlier test measured a tight group spill 25 of 25 members onto illegal ground.
+
+WHY THIS IS THREE FILES AND NOT THREE COMMANDS ON ONE MAP
+RMSTEST_46 put all three modes on one map, distinguished only by which object
+each command placed, and ran twice. THE TWO SITTINGS DISAGREED ABOUT WHICH
+COMMAND SPILLED, and the disagreement cannot be resolved from the exports,
+because a scenario records objects and positions and does NOT record which
+command placed them. Attribution by object id looked free and was not.
+
+The only change between the two sittings was a correction to a DIFFERENT
+command's constant, which cannot alter an earlier command's behaviour - so the
+attribution is what was wrong, not the engine. Both readings are withdrawn.
+
+One command per file makes the reading unambiguous by construction. It costs two
+extra generations.
+
+THE QUESTION
+Tight grouping checks the ANCHOR only and fills the rest of the group unchecked;
+loose checks EVERY member. That is measured and is Sec.6.6. What has never been
+tested is which applies when a command sets a group placement radius and states
+no mode. The spec has said tight since an early revision.
+
+It is not a remainder: 498 of the corpus's 964 grouped object commands declare
+neither mode, so guessing wrong flips every constraint check for the majority of
+grouped placements.
+
+THE READING
+Count how many objects sit OFF the patch. The three files share one patch size,
+one radius and one group count, so the three off-patch fractions compare
+directly.
+
+  46b (tight) must spill and 46c (loose) must not. That pair is the calibration
+  - if it fails, the instrument is broken and 46a cannot be read.
+
+  46a matching 46b -> the default is TIGHT. The spec stands.
+  46a matching 46c -> the default is LOOSE. The spec is wrong and half the
+                      corpus's grouped placements change.
+
+GENERATE AT NORMAL (200), any player count. THREE RUNS EACH, because the
+off-patch fraction is a proportion.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  Then count objects on and off the patch. Absolute counts are not the reading -
+  a group anchored near a patch edge spills more than one anchored centrally,
+  which is why all three files share one patch and one radius.
+*/

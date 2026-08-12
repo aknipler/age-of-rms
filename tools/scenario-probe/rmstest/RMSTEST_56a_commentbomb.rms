@@ -1,0 +1,88 @@
+/* SHORE_FISH */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_56a - does an object name inside a comment open a nested comment, or
+close the one it is in?
+Feeds: parser-design Sec.2.1 and Sec.13 item 7, the token-alias import,
+       and every script in this directory
+
+THIS HEADER IS AT THE BOTTOM OF THE FILE ON PURPOSE. The test is the first line,
+and anything above it would change what is being measured.
+
+WHERE THIS CAME FROM
+RMSTEST_42 generated a blank grass map on its first run. The cause was not in
+its script at all: the shore-fish constant appears in its explanatory header
+comment, and removing it - by putting a space in the middle of the word - made
+the same file run correctly. So a word inside a comment ended the comment early,
+or started a new one, and either way the engine stopped reading the file as its
+author wrote it.
+
+That is the aliasing question this project has carried as an open item for
+several revisions, and it now has a live specimen. Sec.2.1 says words and
+numbers can alias structural tokens because the engine resolves every token
+through one symbol table, and the comment markers are ordinary tokens in that
+table. What was never established is that a CONSTANT can alias a COMMENT MARKER,
+which is worse than aliasing a brace: it changes how much of the file exists.
+
+WHICH MARKER, AND WHY IT MATTERS WHICH
+  If it OPENS a comment, comments nest, so the closing marker on the same line
+  closes only the inner one and THE REST OF THE FILE STAYS COMMENTED OUT. The
+  script is never read. A blank map.
+
+  If it CLOSES a comment, the comment ends at the word, everything after it on
+  those lines becomes live script, and the closing marker at the end is a stray
+  token. The script still runs, but with a stretch of English prose parsed as
+  commands first.
+
+The blank map that RMSTEST_42 produced fits OPENING much better than closing.
+Under the closing reading, 42's real sections would still have been reached and
+it would have generated its water and grass map with a pile of junk diagnostics,
+not a blank one. But that is an inference from one accident and this file
+measures it directly.
+
+METHOD
+The first line of this file is a comment containing nothing but the word. The
+script below it paints the whole map snow, which nothing else could produce by
+accident.
+
+  BLANK or grass map -> the word OPENS a comment. The rest of the file was never
+                        read. This is the destructive reading.
+  SNOW map           -> the word CLOSES the comment. The stray marker was
+                        harmless and the script ran.
+
+56b is this file with the word removed from the comment. It must come out snow.
+If it does not, the pair says nothing.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN EACH. Binary.
+
+WHAT TO DO WITH THE ANSWER, EITHER WAY
+This directory's scripts carry long explanatory headers by design, and that
+design has now silently voided one run. The house rule adopted from RMSTEST_44
+onward is that no header comment contains a constant in full uppercase. Confirm
+or refine that rule here.
+
+Then sweep, because one name is not a set. The engine's own constant file is on
+disk and the token-alias import has been blocked on exactly this question - the
+useful output is the LIST of constants whose value collides with a comment
+marker, not just this one. That list also decides whether the parser should
+report the collision, which it currently cannot: it treats comments as a
+token-stream construct and resolves no constants inside them, so it sees a
+comment where the engine sees the end of the file.
+*/

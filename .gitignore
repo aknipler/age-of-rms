@@ -27,6 +27,8 @@ dist-ssr
 __pycache__/
 *.pyc
 
+tools/scenario-probe/generated-tests
+
 test-maps/local
 test-maps/*
 !test-maps/sample.rms
@@ -34,6 +36,6 @@ test-maps/*
 !test-maps/AK_*.rms
 !test-maps/AD4 - Ra.rms
 !test-maps/BCC2-Rekawa.rms
-!test-maps/Chaotic_straitv0.99.rms
+!test-maps/Chaotic_Straitv0.99.rms
 !test-maps/Menindee_AUS_v2.3.rms
 !test-maps/TC2 - Comeer v1.4.rms

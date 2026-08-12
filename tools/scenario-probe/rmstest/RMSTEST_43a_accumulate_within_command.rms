@@ -1,0 +1,111 @@
+/*
+RMSTEST_43a - does accumulate_connections accumulate WITHIN one command
+Feeds: preview-design Sec.15 item 22, CREATION_PLAN 4.8 (S5's all-pairs A*)
+Run 43b as well. Neither file means anything on its own.
+
+QUESTION
+S5 is the preview's remaining hot spot. `create_connect_all_lands` over L lands
+runs one A* search per PAIR, so ~25 lands is 300 searches and one corpus map
+spends 2.8s of its 3.8s there. The known fix is one multi-source Dijkstra per
+SOURCE land, C(L,2) searches down to L.
+
+It is not implemented because of one line in connections.ts:
+
+    const terrainOf = accumulating ? grid.terrain : startOfS5Terrain;
+
+`grid.terrain` is a live reference and paths paint immediately, so under
+accumulate_connections pair 2's search sees the terrain pair 1 laid down.
+Batching per source land would compute every path against one frozen grid. That
+is a behaviour change, Sec.6.5 specifies the accumulating behaviour, and
+CLAUDE.md says specs are authoritative - so it needs agreeing, not improvising.
+
+Sec.15 item 22 offers two ways out and the first one is WRONG. It says to batch
+only when accumulate_connections is off, "and both slow corpus maps qualify".
+`24hr_Caverns.rms` - the 2.8s map, the one that motivated the whole item -
+turns accumulate_connections ON at line 463 and writes its
+create_connect_all_lands at line 517. So the conditional fix would leave the
+worst map exactly as slow as it is now. Only 2 of 57 corpus maps use the toggle
+at all and the expensive one is not the one that qualifies.
+
+THE THIRD OPTION, WHICH IS WHAT THIS RUN IS FOR
+Our implementation makes the flag mean live reads INCLUDING pair to pair inside
+a single command. Nobody measured that. The flag's documented job is to carry
+painted terrain forward, and "forward" could just as well mean to the next
+COMMAND. If the engine only accumulates between commands, then batching per
+source land is correct unconditionally, the deviation disappears, and 4.8 stops
+being a spec question and becomes an afternoon.
+
+METHOD
+Six small lands in a line, placed by land_position so the layout is the same in
+both files. One create_connect_all_lands, which is 15 pairs. Grass is expensive
+and road is cheap, by a factor of 20, so a path will happily detour a long way
+onto existing road rather than cut across grass.
+
+  A path that can see earlier paths' road reuses it. One that cannot pays full
+  grass every time and lays fresh road along its own straight line.
+
+So the whole reading is ONE NUMBER: how many tiles of ROAD exist at the end.
+
+43a has accumulate_connections. 43b is byte-identical without that line. The
+script has exactly one connection command on purpose, so the flag has no
+between-command effect available to it and anything it changes is within-command
+by construction.
+
+GENERATE BOTH AT NORMAL (200), any player count, and read them the same way.
+
+PREDICTIONS, RECORDED BEFORE THE RUN
+1. 43a road count clearly BELOW 43b. The engine accumulates within a command.
+   Item 22's batching is a real deviation; implement it only when the flag is
+   off, and accept that Caverns stays slow, or find a third design.
+2. 43a and 43b road counts equal within run-to-run noise. The engine does NOT
+   accumulate within a command. Batch per source land unconditionally, and
+   correct connections.ts's per-pair live read while you are there, since it
+   would then be modelling something the engine does not do.
+3. Either file comes back with almost no road at all. The cost setup did not
+   bite - most likely terrain_cost is being read from the wrong terrain, or the
+   lands are too close for a detour to ever pay. Fix the fixture, not the
+   question.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"
+  The terrain histogram is the whole reading. Compare ROAD between the two.
+
+RUN EACH THREE TIMES. Land growth is random even with land_position fixed, so a
+single pair of numbers is not a difference. Prediction 1 expects a gap far
+larger than that spread; if the gap is the same size as the spread, that is
+prediction 2.
+*/
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land { terrain_type GRASS land_position 15 50 base_size 4 number_of_tiles 40 }
+  create_land { terrain_type GRASS land_position 30 50 base_size 4 number_of_tiles 40 }
+  create_land { terrain_type GRASS land_position 45 50 base_size 4 number_of_tiles 40 }
+  create_land { terrain_type GRASS land_position 60 50 base_size 4 number_of_tiles 40 }
+  create_land { terrain_type GRASS land_position 75 50 base_size 4 number_of_tiles 40 }
+  create_land { terrain_type GRASS land_position 90 50 base_size 4 number_of_tiles 40 }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  /* THE TEST. 43b is this file without this one line. */
+  accumulate_connections
+
+  create_connect_all_lands
+  {
+    replace_terrain GRASS ROAD
+    terrain_cost GRASS 20
+    terrain_cost ROAD 1
+  }

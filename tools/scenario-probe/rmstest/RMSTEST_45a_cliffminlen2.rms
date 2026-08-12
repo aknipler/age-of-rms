@@ -1,0 +1,66 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<CLIFF_GENERATION>
+  min_number_of_cliffs 20
+  max_number_of_cliffs 20
+  min_length_of_cliff 2
+  max_length_of_cliff 2
+  cliff_curliness 10
+  min_distance_cliffs 4
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* Control. Proves the map generated at all, so that zero cliffs can be read
+     as a cliff result rather than as a broken script. */
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_45a - arm 1 of 3. Minimum cliff length BELOW the documented floor.
+Feeds: preview-design Sec.6.3, cliffs.ts, Sec.15 item 17(b)
+
+READ RMSTEST_45b's HEADER FIRST. It carries the full question, the three
+predictions and the reading rule for all three arms. This file is arm 1 and its
+header is deliberately short so the three scripts stay byte-comparable.
+
+THIS ARM: minimum 2, maximum 2. Both below the documented floor of 3.
+
+WHY THREE FILES RATHER THAN THREE ARMS ON ONE MAP
+The cliff section holds no block command. It is a bare list of standalone
+attributes sitting directly in the section, and the last one written wins, so a
+single map can only ever express ONE cliff configuration. Sec.15 item 17(b) asks
+for "three arms on one map" and that is not constructible. Three scripts,
+identical apart from the two length lines, is the same experiment.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --clusters
+  Count cliff units. Two runs because the count is a distribution and only the
+  zero-versus-nonzero distinction is binary.
+
+BEFORE RUNNING ANY OF THE THREE, LOAD THE COMMUNITY MAP WHOSE NAME CLAIMS
+CLIFFS AND WHOSE SCRIPT SETS A SUB-3 MINIMUM. It is either the counter-example
+that kills the rule outright or the strongest confirmation available, and it
+costs nothing.
+*/

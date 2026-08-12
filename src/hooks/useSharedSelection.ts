@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getDocumentModel } from "./useDocument";
-import { shiftSingleAnchor, type OffsetEdit } from "../breakdown/ephemeralAnchors";
+import { useCallback, useMemo } from "react";
+import { useShiftedAnchor } from "./useShiftedAnchor";
 import { findItemAtOffsetInScript } from "../breakdown/selectionResolve";
 import type { Item, ParseResult, Span } from "../parser/types";
 
@@ -24,65 +23,32 @@ import type { Item, ParseResult, Span } from "../parser/types";
  * actually landed, never eagerly, so Breakdown's card selection can't
  * flash onto the wrong card for a frame after an edit made from the Code
  * tab.
+ *
+ * That whole mechanism — the model subscription, the pending queue, the
+ * shift — moved to `useShiftedAnchor` (2026-08-10) when the preview's Current
+ * cut point gained a pin, which is a second offset with exactly the same
+ * problem. One implementation, two instances; the alternative was a second
+ * copy of the BUG-001 ordering rule maintained by hand.
  */
 export function useSharedSelection(source: string, parseResult: ParseResult | null) {
-  const [selectedAnchor, setSelectedAnchor] = useState<number | null>(null);
-
-  const pendingRef = useRef<{ edits: OffsetEdit[]; expectedSource: string }[]>([]);
-
-  useEffect(() => {
-    const model = getDocumentModel();
-    const subscription = model.onDidChangeContent((e) => {
-      // Multiple simultaneous changes (e.g. multi-cursor typing) are each
-      // expressed relative to the ORIGINAL pre-event text — applying them
-      // highest-offset-first keeps every later (lower-offset) shift's
-      // comparison valid, since a higher-offset edit's delta never changes
-      // whether the anchor was originally before a lower-offset edit's
-      // range. The overwhelmingly common case is exactly one change
-      // (a keystroke, or a single pushEditOperations call), where this
-      // ordering is moot.
-      const edits: OffsetEdit[] = e.changes
-        .map((c) => ({ start: c.rangeOffset, end: c.rangeOffset + c.rangeLength, newText: c.text }))
-        .sort((a, b) => b.start - a.start);
-      // model.getValue() here is the text AFTER this exact change (the
-      // event fires post-apply) — no manual string surgery needed to
-      // compute what we're waiting for, unlike Sec.3.9's original
-      // applyEdit-side queueing.
-      pendingRef.current.push({ edits, expectedSource: model.getValue() });
-    });
-    return () => subscription.dispose();
-  }, []);
-
-  useEffect(() => {
-    const pending = pendingRef.current;
-    if (pending.length === 0) return;
-    const matchedUpTo = pending.findIndex((p) => p.expectedSource === source);
-    if (matchedUpTo === -1) {
-      // Nothing in the queue matches the parse that just landed — some
-      // other change superseded it. Drop rather than wait forever (same
-      // trade-off Sec.3.9's original queue made).
-      pendingRef.current = [];
-      return;
-    }
-    const toApply = pending.slice(0, matchedUpTo + 1);
-    pendingRef.current = pending.slice(matchedUpTo + 1);
-    setSelectedAnchor((prev) => {
-      let next = prev;
-      for (const { edits } of toApply) {
-        for (const edit of edits) next = shiftSingleAnchor(next, edit);
-      }
-      return next;
-    });
-  }, [source]);
+  // Default shift policy: an anchor caught inside a replaced range is
+  // DROPPED (ephemeralAnchors.ts's rev-4 rule), so a selection can't dangle
+  // onto whatever text now occupies those offsets.
+  const [selectedAnchor, setSelectedAnchor] = useShiftedAnchor(source);
 
   const isSelected = useCallback(
     (span: Span) => selectedAnchor !== null && selectedAnchor >= span.start && selectedAnchor < span.end,
     [selectedAnchor],
   );
-  const selectCard = useCallback((span: Span) => setSelectedAnchor(span.start), []);
-  const clearSelection = useCallback(() => setSelectedAnchor(null), []);
+  // `setSelectedAnchor` is now listed as a dependency where it used to be
+  // omitted: it is still React's own `useState` setter and still stable, but
+  // it arrives through a custom hook's return value, where the lint rule can
+  // no longer prove that. Listing it costs nothing (a stable value never
+  // invalidates the memo) and keeps the rule honest.
+  const selectCard = useCallback((span: Span) => setSelectedAnchor(span.start), [setSelectedAnchor]);
+  const clearSelection = useCallback(() => setSelectedAnchor(null), [setSelectedAnchor]);
   /** Code tab's cursor-tracking calls this directly with an arbitrary offset (not necessarily a card's span.start). */
-  const setAnchor = useCallback((offset: number | null) => setSelectedAnchor(offset), []);
+  const setAnchor = useCallback((offset: number | null) => setSelectedAnchor(offset), [setSelectedAnchor]);
 
   const selectedItem: Item | undefined = useMemo(() => {
     if (selectedAnchor === null || !parseResult) return undefined;

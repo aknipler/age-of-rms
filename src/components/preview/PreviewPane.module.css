@@ -26,6 +26,28 @@
   gap: 0.15rem;
 }
 
+/* The Current cut point. Sized like .reroll — it sits in the same kind of
+   row and should not read as a different class of control. */
+.pin {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pin:disabled {
+  cursor: default;
+  color: #777;
+}
+
+/* Same amber as .readoutPinned, and for the same reason: a pinned thing has
+   to say it is pinned, or a preview that stops following the caret reads as
+   a frozen pane. */
+.pinActive {
+  font-weight: 600;
+  color: #7a4a00;
+}
+
 .seed {
   display: inline-flex;
   align-items: center;

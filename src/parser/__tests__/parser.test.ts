@@ -364,16 +364,20 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
       expect(rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { require_path }")).toEqual([]);
     });
 
-    it("ai_info_map_type: the three-argument form still warns — UNDETERMINED, not settled", () => {
-      // Deliberately pinned as-is. showType was briefly marked optional on the
-      // strength of 52 three-argument uses in the installed DE script set, then
-      // reverted: guide:475 lists showType Not functional on DE, so writing it
-      // and omitting it are indistinguishable in game and NO shipped script
-      // could ever have shown which form is correct. The 52 are independent
-      // (52 files, 20+ map types), which rules out copy-paste but not a
-      // silently-tolerated error. Change this test only from a game
-      // measurement, never from a recount of shipped maps.
-      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type ARABIA 0 0")).toHaveLength(1);
+    it("ai_info_map_type: the three-argument form is legal — SETTLED by a game measurement", () => {
+      // `RMSTEST_54a` put the three-token form immediately before
+      // `<LAND_GENERATION>`: an engine expecting a fourth argument would have
+      // swallowed the section header and left the map blank. It came back
+      // fully snow, as did `54b` without the line, so the arity is three.
+      //
+      // This is the same conclusion a 2026-08-05 attempt reached and had
+      // reverted, and the difference is the evidence, not the answer: that
+      // attempt counted 52 independent three-argument shipped uses, and
+      // guide:475 lists showType NOT FUNCTIONAL on DE, so no shipped script
+      // could ever have distinguished the two forms in play. **Change this
+      // test only from a game measurement, never from a recount of shipped
+      // maps** — the rule that killed the first attempt is untouched.
+      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type ARABIA 0 0")).toEqual([]);
     });
 
     it("ai_info_map_type: the full four-argument form is fine", () => {
@@ -578,9 +582,15 @@ describe("Sec.5.3 degradation", () => {
 });
 
 describe("unclosed constructs at EOF (Sec.5.2)", () => {
-  it("unclosed { at EOF → RMS0101 error", () => {
+  it("unclosed { at EOF → RMS0101 WARNING, not error", () => {
+    // Downgraded 2026-08-11 (BUG-006): `BCC2-Rekawa.rms` reaches EOF at brace
+    // depth 1 and DE generates it with no visible problem, which refutes the
+    // "the engine rejects or mangles this" half of goal 5's error bar. The
+    // severity is asserted in both directions here, because the check has only
+    // ever fired at error and a downgrade nothing pins can drift back.
     const r = parse("<LAND_GENERATION>\ncreate_land { terrain_type GRASS");
-    expect(errorCodes(r)).toContain("RMS0101");
+    expect(codes(r)).toContain("RMS0101");
+    expect(errorCodes(r)).toEqual([]);
   });
 
   it("unclosed if at EOF → RMS0105 warning (not error)", () => {
@@ -688,7 +698,7 @@ describe("cascade suppression (Sec.5.1, BCC2 shape)", () => {
       "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }8050 create_object STONE { number_of_objects 3 } create_object BOAR { number_of_objects 2 } create_object DEER { number_of_objects 1 }",
     );
     expect(codes(r)).toContain("RMS0003");
-    expect(errorCodes(r)).toContain("RMS0101"); // outer block never closes
+    expect(codes(r)).toContain("RMS0101"); // outer block never closes (a warning since BUG-006)
     const wrongContext = r.diagnostics.filter((d) => d.code === "RMS0207");
     expect(wrongContext.length).toBeLessThanOrEqual(2); // first + summary
   });

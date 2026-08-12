@@ -14,11 +14,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from extract_constants import (
+    CLASS_CONST_BASE,
     ExtractedObject,
     ExtractedPlacement,
     ExtractedTerrain,
+    build_class_entries,
     build_unit_lookup,
+    class_constants,
+    class_descriptive_name,
     clean_dat_filename,
+    storage_note,
     derive_habitat,
     format_constant,
     format_game_constants,
@@ -27,11 +32,13 @@ from extract_constants import (
     habitat_note,
     merge_entry,
     merge_terrain_colors,
+    merge_terrain_table,
     object_constants,
     parse_jasc_palette,
     parse_random_map_def,
     parse_random_map_def_sections,
     strip_rms_comments,
+    verify_class_offset,
 )
 
 REPO_GAME_CONSTANTS = Path(__file__).resolve().parents[2] / "reference" / "data" / "game-constants.json"
@@ -485,7 +492,7 @@ SAMPLE_DEF = """\
 
 /* UNITS */
 #const VILLAGER  83
-#const OCEAN_FISH_CLASS  5
+#const OCEAN_FISH_CLASS  905
 
 /* EXPORTED FROM THE DATABASE */
 #const OYSTERS   2170
@@ -501,7 +508,7 @@ class TestParseRandomMapDefSections(unittest.TestCase):
     def test_splits_on_section_headers(self):
         sections = parse_random_map_def_sections(SAMPLE_DEF)
         self.assertEqual(sections["GAIA"], [("GOLD", 66), ("DEER", 65), ("WOLF", 126)])
-        self.assertEqual(sections["UNITS"], [("VILLAGER", 83), ("OCEAN_FISH_CLASS", 5)])
+        self.assertEqual(sections["UNITS"], [("VILLAGER", 83), ("OCEAN_FISH_CLASS", 905)])
         self.assertEqual(sections["TERRAIN CONSTANTS"], [("GRASS", 0), ("WATER", 1)])
 
     def test_content_before_the_first_header_is_kept(self):
@@ -700,5 +707,290 @@ class TestHabitatNote(unittest.TestCase):
         self.assertIn("placement_side_terrain", habitat_note("", fit, placement, "2026-08-10"))
 
 
+class TestMergeTerrainTable(unittest.TestCase):
+    """The `--terrain-table` write path (CREATION_PLAN 4.7): the engine's own
+    row goes into the file, and the coarse class is derived beside it."""
+
+    def setUp(self):
+        self.entry = {
+            "constId": 53,
+            "rmsConstant": "FISH",
+            "descriptiveName": "Fish (generic)",
+            "category": "object",
+            "verified": True,
+            "notes": "constId 53 confirmed. Extracted 2026-07-30.",
+        }
+        self.placement = ExtractedPlacement(restriction_id=19, allowed_terrains=FISH_ROW, side_terrains=NO_SIDE)
+        self.fit = derive_habitat(FISH_ROW, NO_SIDE, HABITAT_TERRAINS)
+
+    def test_writes_the_engine_row_not_only_the_class(self):
+        updated = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        self.assertEqual(updated["terrainRestrictionId"], 19)
+        self.assertEqual(updated["allowedTerrains"], FISH_ROW)
+        self.assertEqual(updated["habitat"], "water")
+
+    def test_writes_the_raw_table_even_when_no_class_fits(self):
+        """The point of the raw fields, and the shape of the mistake they exist
+        to survive: a row nothing classifies is exactly the row worth keeping.
+
+        The habitat derivation returns None on a tie or an unrecognisable shape,
+        and an implementation that returned the entry untouched in that case
+        would drop the measurement precisely where the five-value vocabulary is
+        known to be inadequate.
+        """
+        entry = dict(self.entry, habitat="water")
+        updated = merge_terrain_table(entry, self.placement, None, "2026-08-10")
+        self.assertEqual(updated["terrainRestrictionId"], 19)
+        self.assertEqual(updated["allowedTerrains"], FISH_ROW)
+        # …and the unclassifiable row leaves the existing reading alone rather
+        # than clearing it: no class fitting is not evidence the old one is wrong.
+        self.assertEqual(updated["habitat"], "water")
+        self.assertEqual(updated["notes"], self.entry["notes"])
+
+    def test_no_side_requirement_is_written_explicitly(self):
+        """`[-1, -1]` is data, not a default worth omitting.
+
+        Absence has to keep meaning "never extracted", which is a different
+        claim from "measured, and the engine asks for nothing" — the same
+        distinction isBeach's schema note makes for the terrain rows.
+        """
+        updated = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        self.assertEqual(updated["placementSideTerrain"], [-1, -1])
+
+    def test_carries_a_real_side_requirement_through(self):
+        placement = ExtractedPlacement(restriction_id=19, allowed_terrains=FISH_ROW, side_terrains=BESIDE_BEACH)
+        fit = derive_habitat(FISH_ROW, BESIDE_BEACH, HABITAT_TERRAINS)
+        updated = merge_terrain_table(self.entry, placement, fit, "2026-08-10")
+        self.assertEqual(updated["placementSideTerrain"], [2, 35])
+        self.assertEqual(updated["habitat"], "shore")
+
+    def test_records_the_fit_in_notes_beside_the_field(self):
+        updated = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        self.assertIn("runner-up amphibious", updated["notes"])
+        self.assertTrue(updated["notes"].startswith("constId 53 confirmed."))
+
+    def test_touches_no_other_field(self):
+        updated = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        self.assertEqual(updated["constId"], 53)
+        self.assertEqual(updated["verified"], True)
+        self.assertEqual(updated["descriptiveName"], "Fish (generic)")
+
+    def test_is_idempotent_across_runs(self):
+        once = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        twice = merge_terrain_table(once, self.placement, self.fit, "2026-08-10")
+        self.assertEqual(once, twice)
+
+    def test_does_not_mutate_input_entry(self):
+        merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        self.assertNotIn("terrainRestrictionId", self.entry)
+
+    def test_does_not_alias_the_extracted_lists(self):
+        # A shared list would let a later entry's edit reach back into this one,
+        # and the run holds every entry until it writes.
+        updated = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        self.assertIsNot(updated["allowedTerrains"], self.placement.allowed_terrains)
+
+    def test_formats_in_key_order_and_round_trips(self):
+        updated = merge_terrain_table(self.entry, self.placement, self.fit, "2026-08-10")
+        text = format_constant(updated)
+        json.loads(text)
+        self.assertIn('"allowedTerrains": [1, 22, 23, 57, 26]', text)
+        # The measurement precedes our reading of it, and both precede verified.
+        self.assertLess(text.index("terrainRestrictionId"), text.index("allowedTerrains"))
+        self.assertLess(text.index("placementSideTerrain"), text.index("habitat"))
+        self.assertLess(text.index("habitat"), text.index("verified"))
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClassConstants(unittest.TestCase):
+    def test_keeps_only_the_class_names(self):
+        self.assertEqual(class_constants(SAMPLE_DEF), {"OCEAN_FISH_CLASS": 905})
+
+    def test_partitions_cleanly_against_object_constants(self):
+        # The two readers split one file and must not both claim a name.
+        # `object_constants` drops the class names because they are not unit
+        # ids; this one exists because they are not junk either.
+        objects = object_constants(SAMPLE_DEF)
+        classes = class_constants(SAMPLE_DEF)
+        self.assertEqual(set(objects) & set(classes), set())
+
+    def test_ignores_class_names_outside_the_object_sections(self):
+        text = SAMPLE_DEF + "\n/* Attribute Constants */\n#const ATTR_SIZE_CLASS 163\n"
+        self.assertNotIn("ATTR_SIZE_CLASS", class_constants(text))
+
+
+class TestClassDescriptiveName(unittest.TestCase):
+    def test_derives_from_the_constant(self):
+        self.assertEqual(class_descriptive_name("OCEAN_FISH_CLASS", 5), "Ocean Fish class")
+
+    def test_states_the_id_when_there_is_no_constant(self):
+        # 32 of the 56 classes have no constant. Naming one from a glance at
+        # its members would be invention, so it says what is known and no more.
+        self.assertEqual(class_descriptive_name(None, 41), "Unit class 41")
+
+
+class TestVerifyClassOffset(unittest.TestCase):
+    """The offset is the one assumption every memberIds list rests on."""
+
+    NAMED = {"OCEAN_FISH_CLASS": 905, "TREE_CLASS": 915}
+    CLASSES = {5: [53, 457], 15: [349, 350]}
+    OBJECTS = {"OCEAN_FISH": 53}
+
+    def class_of(self, unit_id):
+        return {53: 5, 457: 5, 349: 15, 104: 3}.get(unit_id)
+
+    def test_a_matching_stem_confirms(self):
+        confirmed, coincidental, contradicted = verify_class_offset(
+            self.NAMED, self.CLASSES, self.OBJECTS, self.class_of
+        )
+        self.assertEqual(len(contradicted), 0)
+        self.assertEqual(len(coincidental), 0)
+        # OCEAN_FISH_CLASS by stem, TREE_CLASS by existence.
+        self.assertEqual(len(confirmed), 2)
+
+    def test_a_stem_that_means_something_else_is_a_coincidence_not_a_failure(self):
+        """The MONASTERY finding, in miniature.
+
+        `MONASTERY_CLASS` is 918, so it derives class 18 — the monk class. The
+        object constant `MONASTERY` is the BUILDING, class 3. Both readings are
+        right and they are about different things. Treating a shared name stem
+        as proof would have aborted the first real run over a pun.
+        """
+        named = {**self.NAMED, "MONASTERY_CLASS": 918}
+        classes = {**self.CLASSES, 18: [125, 775]}
+        objects = {**self.OBJECTS, "MONASTERY": 104}
+        confirmed, coincidental, contradicted = verify_class_offset(named, classes, objects, self.class_of)
+        self.assertEqual(len(contradicted), 0)
+        self.assertEqual(len(coincidental), 1)
+        self.assertIn("MONASTERY_CLASS", coincidental[0])
+        self.assertIn("same name, different thing", coincidental[0])
+
+    def test_a_derived_class_no_unit_is_in_is_fatal(self):
+        confirmed, coincidental, contradicted = verify_class_offset(
+            {"WARSHIP_CLASS": 922}, self.CLASSES, {}, self.class_of
+        )
+        self.assertEqual(len(contradicted), 1)
+        self.assertEqual(len(confirmed), 0)
+
+    def test_a_shifted_offset_reads_as_contradiction_not_coincidence(self):
+        """What separates the two, and why one bad row is tolerated and this is
+        not: a wrong offset moves EVERY constant by the same amount, so the
+        confirmations vanish together rather than one at a time."""
+        shifted = {name: value + 7 for name, value in self.NAMED.items()}
+        confirmed, coincidental, contradicted = verify_class_offset(
+            shifted, self.CLASSES, self.OBJECTS, self.class_of
+        )
+        self.assertEqual(len(confirmed), 0)
+        self.assertEqual(len(contradicted), 2)
+
+
+class TestBuildClassEntries(unittest.TestCase):
+    CLASSES = {-1: [900, 901], 5: [53, 457], 41: [1200]}
+    NAMED = {"OCEAN_FISH_CLASS": 905}
+
+    def entries(self):
+        return build_class_entries(self.CLASSES, self.NAMED, "2026-08-10")
+
+    def test_constid_is_the_class_plus_the_offset(self):
+        by_class = {e["classId"]: e for e in self.entries()}
+        self.assertEqual(by_class[5]["constId"], 5 + CLASS_CONST_BASE)
+        self.assertEqual(by_class[41]["constId"], 41 + CLASS_CONST_BASE)
+
+    def test_drops_the_no_class_bucket(self):
+        # class -1 is the dat's "no class", 116 units on the real roster. It has
+        # no constant to name it, so a row would mint constId 899 for something
+        # no author can write.
+        self.assertNotIn(-1, {e["classId"] for e in self.entries()})
+
+    def test_an_unnamed_class_still_gets_a_row(self):
+        by_class = {e["classId"]: e for e in self.entries()}
+        self.assertIsNone(by_class[41]["rmsConstant"])
+        self.assertEqual(by_class[41]["descriptiveName"], "Unit class 41")
+
+    def test_members_are_the_whole_roster_not_only_known_objects(self):
+        by_class = {e["classId"]: e for e in self.entries()}
+        self.assertEqual(by_class[5]["memberIds"], [53, 457])
+
+    def test_the_new_keys_survive_the_writer(self):
+        """The `beachTerrain` defect, pre-empted.
+
+        `format_constant` walks CONSTANT_KEY_ORDER and SILENTLY DROPS any key
+        missing from it, which is how 131 beachTerrain values nearly went out
+        of the file. Both new keys are checked through the real writer rather
+        than trusted to have been added.
+        """
+        rendered = format_constant(self.entries()[0])
+        self.assertIn('"classId"', rendered)
+        self.assertIn('"memberIds"', rendered)
+        self.assertIn('"category": "objectClass"', rendered)
+
+
+class TestStorageNote(unittest.TestCase):
+    """The note helper for `--storages`, including the retraction."""
+
+    STORAGES = [(17, 200.0)]
+
+    #: The sentence `merge_entry` wrote on the first real run, with the real em
+    #: dash. FISH carried this form.
+    CONTRADICTION = (
+        "constId 53 confirmed via random_map.def; CONTRADICTION \u2014 empires2_x2_p1.dat reports no "
+        "resource storage for unit 53, but this entry claims {'food': 200}; prior value carried through, "
+        "still UNVERIFIED (suspect this script's Gaia-roster lookup before the placeholder). "
+        "Extracted 2026-07-30 by tools/extract-constants (Phase 4.0)."
+    )
+
+    #: The SAME sentence as it actually sat in game-constants.json for SHORE_FISH:
+    #: the em dash's UTF-8 bytes stored as three latin-1 characters. One round
+    #: trip through the wrong encoding, one entry, and it defeated the first
+    #: version of the retraction regex while its twin matched.
+    CONTRADICTION_MOJIBAKE = CONTRADICTION.replace("\u2014", "\u00e2\u0080\u0094")
+
+    def test_appends_the_raw_slots(self):
+        note = storage_note("Existing text.", self.STORAGES, 53, "2026-08-10")
+        self.assertIn("Existing text.", note)
+        self.assertIn("raw slots [17]=200", note)
+
+    def test_is_idempotent(self):
+        once = storage_note("Existing text.", self.STORAGES, 53, "2026-08-10")
+        twice = storage_note(once, self.STORAGES, 53, "2026-08-10")
+        self.assertEqual(once, twice)
+        self.assertEqual(twice.count("raw slots"), 1)
+
+    def test_rewrites_the_slots_when_the_dat_changes(self):
+        once = storage_note("Existing text.", self.STORAGES, 53, "2026-08-10")
+        after = storage_note(once, [(17, 250.0)], 53, "2026-08-11")
+        self.assertIn("[17]=250", after)
+        self.assertNotIn("[17]=200", after)
+
+    def test_retracts_the_contradiction(self):
+        note = storage_note(self.CONTRADICTION, self.STORAGES, 53, "2026-08-10")
+        # The FALSE CLAIM is what has to go, not the word. The replacement
+        # deliberately still says "the earlier CONTRADICTION here was this
+        # script's own gap", because a note that silently swaps one assertion
+        # for its opposite teaches the next reader nothing.
+        self.assertNotIn("reports no resource storage", note)
+        self.assertNotIn("still UNVERIFIED", note)
+        self.assertIn("CONFIRMED against empires2_x2_p1.dat", note)
+        # The surrounding sentences survive — this replaces one clause, it does
+        # not rewrite the note wholesale the way a full run does.
+        self.assertIn("constId 53 confirmed via random_map.def", note)
+        self.assertIn("Extracted 2026-07-30", note)
+
+    def test_retracts_the_mojibake_form_too(self):
+        note = storage_note(self.CONTRADICTION_MOJIBAKE, self.STORAGES, 69, "2026-08-10")
+        self.assertNotIn("reports no resource storage", note)
+        # And the corruption leaves with the sentence that carried it, which is
+        # how the one bad character in the whole reference data got swept out.
+        self.assertNotIn("\u00e2\u0080\u0094", note)
+
+    def test_leaves_a_note_with_no_contradiction_alone(self):
+        note = storage_note("Plain note.", self.STORAGES, 66, "2026-08-10")
+        self.assertNotIn("CONFIRMED against", note)
+        self.assertTrue(note.startswith("Plain note."))
+
+    def test_handles_a_unit_with_no_storage_at_all(self):
+        note = storage_note(None, [], 70, "2026-08-10")
+        self.assertIn("raw slots none", note)

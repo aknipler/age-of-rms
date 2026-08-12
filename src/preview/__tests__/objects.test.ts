@@ -118,9 +118,13 @@ describe("isGrouped (Sec.6.6: four independent triggers)", () => {
   });
 });
 
-describe("isTightGrouping (Sec.15 item 17c: tight is the current default when undeclared)", () => {
-  it("true when neither mode stated", () => {
-    expect(isTightGrouping(objectCommand("<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_groups 2 }"))).toBe(true);
+describe("isTightGrouping (Sec.15 item 17c, MEASURED: tight is opt-in, the default is loose)", () => {
+  it("FALSE when neither mode stated — RMSTEST_46c measured 0% spill unstated, against 22-35% for tight", () => {
+    expect(isTightGrouping(objectCommand("<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_groups 2 }"))).toBe(false);
+  });
+
+  it("false when both are stated: an explicit loose still wins", () => {
+    expect(isTightGrouping(objectCommand("<OBJECTS_GENERATION>\ncreate_object GOLD { set_tight_grouping set_loose_grouping }"))).toBe(false);
   });
   it("true when set_tight_grouping stated", () => {
     expect(isTightGrouping(objectCommand("<OBJECTS_GENERATION>\ncreate_object GOLD { set_tight_grouping }"))).toBe(true);
@@ -459,6 +463,18 @@ describe("terrain restrictions (the engine's terrain table, applied end to end)"
     expect(placeOnColumns(script(body + "ignore_terrain_restrictions\n}\n"), [GRASS]).objects.length).toBeGreaterThan(0);
   });
 
+  it("and a FRAMELESS flag lifts nothing at all — the case that separates inert from fatal (RMSTEST_42)", () => {
+    // Same all-grass fixture, partner attribute removed. The command still
+    // runs (that half is asserted in the attributePrerequisite group), and
+    // TUNA's own water habitat still excludes every tile — so an inert flag
+    // places zero here while a fatal one also places zero, and it is the
+    // command-level count next to this that tells them apart.
+    const body = "TUNA {\nnumber_of_objects 50\nignore_terrain_restrictions\n";
+    expect(placeOnColumns(script(body + "}\n"), [GRASS]).objects).toHaveLength(0);
+    // Adding only the partner attribute turns the same command into placements.
+    expect(placeOnColumns(script(body + "place_on_specific_land_id -11\n}\n"), [GRASS]).objects.length).toBeGreaterThan(0);
+  });
+
   // ---- max_distance_to_other_zones: a MINIMUM, despite the name ----------
   //
   // guide:2527 in its own capitals: "Minimum (NOT maximum) distance, in tiles,
@@ -557,6 +573,29 @@ describe("terrain restrictions (the engine's terrain table, applied end to end)"
     const { grid, objects } = placeOnSplitMap(script("GOLD {\nnumber_of_objects 7\nnumber_of_groups 20\nset_tight_grouping\n}\n"));
     expect(objects.length).toBeGreaterThan(20);
     expect(objects.filter((o) => onWater(grid, o))).toHaveLength(0);
+  });
+
+  // ---- the default grouping mode is LOOSE (BUG-011, RMSTEST_46a/46b/46c) ---
+  //
+  // The same shape as the measurement: a group confined to a narrow
+  // `terrain_to_place_on` patch, with and without a stated mode. Off-patch
+  // fraction measured 22-35% for tight and 0% for both explicit loose and
+  // unstated, which is what makes the unstated command per-member checked.
+
+  const DIRT_ID = constants.find((c) => c.rmsConstant === "DIRT")!.constId!;
+  const groupOnPatch = (mode: string) =>
+    script(`GOLD {\nnumber_of_objects 7\nnumber_of_groups 12\ngroup_placement_radius 3\nterrain_to_place_on DIRT\n${mode}}\n`);
+
+  it("an UNSTATED grouping mode checks every member, so nothing spills off the patch", () => {
+    const { objects } = placeOnColumns(groupOnPatch(""), [GRASS, DIRT_ID, GRASS]);
+    expect(objects.length).toBeGreaterThan(0);
+    for (const o of objects) expect(o.x).toBe(1);
+  });
+
+  it("set_tight_grouping is the contrast: its fill is anchor-checked, so members do spill", () => {
+    const { objects } = placeOnColumns(groupOnPatch("set_tight_grouping\n"), [GRASS, DIRT_ID, GRASS]);
+    expect(objects.length).toBeGreaterThan(0);
+    expect(objects.some((o) => o.x !== 1)).toBe(true);
   });
 });
 
@@ -679,14 +718,16 @@ describe("applyObjects: FailureBucket instrumentation", () => {
     expect(report?.placed).toBeGreaterThan(0);
   });
 
-  it("attributePrerequisite: ignore_terrain_restrictions with neither partner attribute places nothing", () => {
-    // guide:2509's Requires line, confirmed in game 2026-08-10 on
-    // `AK_Namatjira.rms` — whose one shore-fish command is exactly this shape,
-    // and which spawns no shore fish at all while this preview drew 232.
-    const { reports, objects } = bare("<OBJECTS_GENERATION>\ncreate_object HOUSE { number_of_objects 10 ignore_terrain_restrictions }");
-    expect(reports[0].failures[0].bucket).toBe("attributePrerequisite");
-    expect(reports[0].placed).toBe(0);
-    expect(objects).toHaveLength(0);
+  it("a frameless ignore_terrain_restrictions is INERT, not fatal: the command places in full (RMSTEST_42)", () => {
+    // guide:2509's Requires line. Unmet, the ATTRIBUTE does nothing; the
+    // command is untouched. This replaced a whole-command gate inferred from
+    // `AK_Namatjira.rms`, which cannot separate the two models — its command
+    // also names a shallow its shore fish cannot occupy, so both predict zero.
+    const { reports, objects, notes } = bare("<OBJECTS_GENERATION>\ncreate_object HOUSE { number_of_objects 10 ignore_terrain_restrictions }");
+    expect(reports[0].failures.some((f) => f.bucket === "attributePrerequisite")).toBe(false);
+    expect(reports[0].placed).toBe(10);
+    expect(objects).toHaveLength(10);
+    expect(notes.some((n) => n.key.startsWith("ignoreTerrainRestrictionsInert"))).toBe(true);
   });
 
   it("no attributePrerequisite failure once set_place_for_every_player is added", () => {

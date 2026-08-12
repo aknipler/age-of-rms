@@ -55,6 +55,22 @@
   font-size: 0.8rem;
 }
 
+/* The HelpTip wrapper around the input is an inline-block that shrink-wraps,
+   so a bare `width: 100%` on the input would size against the wrapper rather
+   than the panel. The row is what stretches; the input fills it. */
+.findRow {
+  display: flex;
+  width: 100%;
+}
+
+.findInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid #ccc;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -72,6 +88,15 @@
   background: #f0f0f0;
   position: sticky;
   top: 0;
+  /* Without this the Preview Obj. List's checkboxes scroll OVER the header
+     row instead of under it. `position: sticky` makes a th a positioned
+     element, and so does HelpTip's `position: relative` wrapper — which every
+     checkbox in that table sits inside. Positioned elements at `z-index:
+     auto` paint in DOM order, and a body row comes after the thead, so the
+     wrapped checkbox wins by default. The header's opaque background hides
+     the plain text of the other tables, which is why only the checkbox column
+     showed the bug. */
+  z-index: 1;
 }
 
 .unverifiedChip {

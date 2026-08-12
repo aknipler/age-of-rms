@@ -1,0 +1,111 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  /* Land 1. Tiny origin, large ask, pinned at the centre. */
+  create_land
+  {
+    terrain_type SNOW
+    base_size 1
+    land_percent 30
+    land_position 50 50
+    border_fuzziness 0
+  }
+
+  /* Land 2. Declared after, pinned at the SAME place, with a stamp large enough
+     to bury land 1's square completely, and almost no ask of its own. */
+  create_land
+  {
+    terrain_type DIRT
+    base_size 8
+    land_percent 1
+    land_position 50 50
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_53 - what does the engine do with a land whose starting square is
+covered by a later land before it grows?
+Feeds: preview-design Sec.6.1, lands.ts, Sec.15 item 30, and item 27
+
+QUESTION
+Sec.6.1 stamps every land origin first and grows every land afterwards, and
+growth's frontier is defined as tiles next to ones the land already owns. A
+later land's stamp can cover an earlier land's square completely, and that
+earlier land then owns nothing, has no frontier, and grows nothing at all.
+
+This is not hypothetical. It is the cause of ALL FIFTEEN empty lands on the
+corpus, found while measuring something else. One official map lays a forest
+ring four tiles apart at a base size that makes the stamps overlap by design -
+the ring looks perfect and nothing is missing from the picture - and another
+loses a land declaring thirty-four thousand tiles this way.
+
+The preview currently says so out loud with a note rather than marking anything
+on the canvas, because a marker there would blame the author for our
+approximation.
+
+THREE MODELS FIT AND NOTHING SEPARATES THEM YET
+  (a) The engine behaves as we do and the land is genuinely lost. The note is
+      over-cautious but harmless and Sec.6.1 stands.
+  (b) The engine grows from the origin POSITION rather than from owned tiles, so
+      a covered land expands out from under its neighbour and appears as a ring
+      or a crescent around it.
+  (c) The engine grows lands IN SEQUENCE rather than stamping all origins first.
+      Then the earlier land is already fully grown before the later one is
+      stamped, and the question does not arise in this form - what needs
+      correcting is the stamp order in Sec.6.1, not the growth rule.
+
+(c) WOULD ALSO BEAR ON ITEM 27, which is why this run is worth more than its own
+question. That item is about where a fragmented land's detached seeds are
+allowed to land, and a sequential pipeline changes what "already occupied" means
+for every land after the first.
+
+METHOD
+Two lands at the same pinned position. The first asks for a large share of the
+map from a tiny origin. The second is declared after it and has a stamp big
+enough to bury the first one's square completely, but asks for almost no growth
+of its own.
+
+  (a) -> NO snow anywhere. Only the dirt stamp, roughly the size it was stamped.
+  (b) -> Snow appears as a ring or crescent AROUND the dirt, growing outward
+         from under it. Snow area well short of the asked-for share.
+  (c) -> A LARGE snow region, close to the asked-for share, with a dirt patch
+         sitting on top of its middle.
+
+The three outcomes differ in snow area by roughly nothing, a little, and
+everything, so this does not need a careful instrument.
+
+WHY THE FIRST LAND ASKS FOR SO MUCH
+So that (c) is unmistakable. If both lands asked for similar shares, (b) and (c)
+would both give "some snow" and the reading would turn on a proportion. A large
+ask makes (c) fill much of the map and (b) fill a collar.
+
+GENERATE AT NORMAL (200), any player count. THREE RUNS. Three because (b) and
+(c) both produce a snow region and the DISTINCTION is its size relative to the
+ask, which varies run to run with what the growth happens to do.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  python probe_scenario.py "<scenario>" --patches DIRT
+  Snow area against the declared share is the reading. Also check whether the
+  snow is a connected region containing the dirt, or a collar around it, or
+  absent - the shape separates (b) from (c) even when the areas are close.
+*/

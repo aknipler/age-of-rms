@@ -1,0 +1,144 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   A token resolving to 69 in a leading comment opens a nested comment and
+   swallows the rest of the file - see RMSTEST_56 and 57. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+
+  /* THE READING. The whole map takes one of three colours. */
+  if PLAYER1_TEAM1
+    base_terrain SNOW
+  elseif PLAYER1_TEAM2
+    base_terrain DESERT
+  else
+    base_terrain GRASS
+  endif
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* THE SECOND READING, present or absent. A big dark blob in the middle,
+     which cannot be confused with the base colour whichever one it is. */
+  if TEAM1_SIZE1
+    create_terrain WATER
+    {
+      base_terrain SNOW
+      number_of_clumps 1
+      number_of_tiles 3000
+      clumping_factor 80
+    }
+    create_terrain WATER
+    {
+      base_terrain DESERT
+      number_of_clumps 1
+      number_of_tiles 3000
+      clumping_factor 80
+    }
+    create_terrain WATER
+    {
+      base_terrain GRASS
+      number_of_clumps 1
+      number_of_tiles 3000
+      clumping_factor 80
+    }
+  endif
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_44 - is canonical team numbering by lowest player number, or by
+ascending selected team number?
+Feeds: preview-design Sec.3.1 step 3, src/generationSettings/teamModel.ts,
+       Sec.15 item 17(a)
+
+THIS SCRIPT WAS REWRITTEN 2026-08-11 AFTER TWO WASTED RUNS AND ONE UNREADABLE
+ONE. The question never changed; the way it is read did, and the reasons are
+worth more than the answer.
+
+  Attempt 1 - editor, object counts. Wasted: the lobby was the habitual
+              odd-versus-even split, under which BOTH models predict the same
+              label. A setup that cannot discriminate does not announce itself -
+              it generates cleanly and returns a confident number.
+  Attempt 2 - editor again. Wasted for a different reason: THE EDITOR CANNOT SET
+              TEAM NUMBERS AT ALL. It sets who is allied with whom, and the
+              alliance can even be one-sided. A team NUMBER is a lobby concept,
+              and this question is entirely about which number wins.
+  Attempt 3 - lobby, saved game. Unreadable: a saved game is not a scenario. It
+              decompresses (raw deflate, ~14 MB) but it is game state, not the
+              scenario format the probe reads. Byte-counting the object id in
+              the decompressed blob is not a substitute - it returned 22 for an
+              object placed exactly 25 times, so the error is the same size as
+              the effect.
+
+SO THE OBSERVABLE HAS TO BE VISIBLE IN A RUNNING GAME, WITH NO EXPORT AND NO
+TOOL. That is what this rewrite is. There is nothing to save and nothing to
+probe: start the game, look at the minimap, quit.
+
+THE QUESTION
+Sec.3.1 step 3 says the canonical team number comes from the LOWEST PLAYER
+NUMBER on each team - the team holding the lowest-numbered player becomes team
+1. teamModel.ts implements that. The rival reading is ASCENDING SELECTED NUMBER:
+the team whose picked number is smallest becomes canonical 1, whoever is on it.
+
+THE LOBBY. THIS IS THE WHOLE COST OF THE TEST AND IT HAS BEEN GOT WRONG TWICE.
+
+  THE INVARIANT: the lowest-numbered PLAYER must not be on the lowest-numbered
+  TEAM.
+
+Four players:
+
+  player 1 -> team 2
+  player 2 -> team 2
+  player 3 -> team 1
+  player 4 -> team 1
+
+The groupings are the habitual two-versus-two. Only the numbers are swapped, and
+the numbers are the entire question. Left at the default, player 1 sits on team
+1, both models agree, and the run says nothing again.
+
+WHAT YOU WILL SEE
+
+  WHITE map (snow)    -> player 1 is in canonical team 1 -> LOWEST PLAYER
+                         NUMBER. Sec.3.1 stands, teamModel.ts is correct.
+  YELLOW map (desert) -> player 1 is in canonical team 2 -> ASCENDING SELECTED
+                         NUMBER. Sec.3.1 step 3 is wrong and teamModel.ts
+                         mislabels the environment on every team game.
+  GREEN map (grass)   -> NEITHER label is defined. Not a null result: it would
+                         mean the labels do not fire the way both models assume
+                         and the derivation needs rebuilding.
+
+SECOND CONFIGURATION, AND IT IS NOT RESOLVED
+Five players, player 1 ALONE on their own team, players 2 to 5 together.
+
+  A large WATER blob in the middle -> the size-1 label fires, so a solo player
+                                      DOES carry a team of one.
+  NO blob                          -> it does not, agreeing with this project's
+                                      "a team of one is not a team" rule.
+
+An editor run on 2026-08-11 produced the equivalent of the blob - the label
+fired - AND the equivalent of a green map, neither player-in-team label defined.
+Those two together fit neither candidate model. But that run was made in the
+EDITOR, which has no team numbers, so what it was testing is unclear and it
+cannot stand as an answer. Run this configuration from the lobby too.
+
+Both configurations read off the same two features: base colour, and blob.
+
+GENERATE AT TINY (120) FROM A REAL GAME LOBBY. ONE GAME PER CONFIGURATION.
+
+Nothing needs saving. If you want a record, a screenshot of the minimap is a
+better artefact than a save file, for the reason attempt 3 records.
+
+WHY THE BLOB IS WRITTEN THREE TIMES
+create_terrain matches on a base terrain, and the base here is whichever of the
+three the branch above chose. Three commands, one per possible base, so exactly
+one matches and the blob appears regardless of which colour won. Writing it once
+against a guessed base would make the second reading silently depend on the
+first.
+*/

@@ -1,0 +1,79 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+  ai_info_map_type ARABIA 0 0
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_54a - does the map-type declaration take three arguments or four?
+Feeds: reference/data/language.json, parser diagnostic RMS0201,
+       docs/known-issues.md BUG-003's one remaining undetermined row
+
+QUESTION
+The declaration that tells the computer players what kind of map this is takes a
+name and two flags, and the guide documents a THIRD trailing flag with a default
+of zero. Ten corpus maps, eight of them official, write only three tokens.
+
+The parser warns on all ten. The warning is deliberately kept, because this
+project's rule is that the guide licenses an omissible argument with a SENTENCE,
+never with a default notation, and there is no such sentence here.
+
+It cannot be settled from shipped maps, and that is not a matter of sample size.
+The trailing flag is documented as non-functional in this edition, so the two
+forms are indistinguishable in play and NO shipped script could ever have
+revealed which is correct. Fifty-two independent uses were once read as evidence
+and reverted the same day for exactly this reason.
+
+So the only thing that can answer it is whether the ENGINE EATS THE NEXT TOKEN.
+
+METHOD
+Put the three-token form at the very end of the player setup section, with the
+land generation header immediately after it, and nothing else between.
+
+  arity three -> the header survives, the land section opens, the base terrain
+                 line runs, and the map comes out SNOW.
+  arity four  -> the header is swallowed as the missing flag. The land section
+                 never opens, the base terrain line is orphaned, and the map
+                 comes out as a blank default.
+
+A blank default map is the same signature as any other fatal script error, which
+is why 54b exists: it is this file with the declaration line deleted and nothing
+else changed. Run both.
+
+  54a snow, 54b snow  -> arity three. Mark the argument optional in
+                         language.json, stop warning on ten maps, close the last
+                         undetermined row in BUG-003.
+  54a blank, 54b snow -> arity four. The warning is a true positive on all ten
+                         maps, including eight official ones, and it stays.
+  both blank          -> something unrelated is wrong with the pair. Fix the map
+                         before reading either.
+
+Using a section header as the swallowed token is deliberate. Any ordinary
+statement would be swallowed too, but the consequence would be one missing
+command and a map that still looks plausible. Swallowing a section header takes
+the whole rest of the script with it, which is an outcome nobody can misread as
+a near miss.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN EACH.
+
+READ IT WITH
+  Look at the map. Snow or not snow is the entire reading and it does not need
+  the probe. Export anyway if you want the count on record.
+*/

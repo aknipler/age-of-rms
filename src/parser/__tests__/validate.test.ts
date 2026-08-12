@@ -520,16 +520,20 @@ describe("RMS0307 — mutually exclusive attributes", () => {
 });
 
 describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", () => {
-  // guide:2509 carries the Requires line, and the consequence was measured in
-  // game 2026-08-10 rather than reasoned from it: `AK_Namatjira.rms`'s single
-  // `create_object SHORE_FISH { ... ignore_terrain_restrictions }` has neither
-  // partner and spawns no shore fish at all. The attribute reads like a flag
-  // that weakens a rule; on its own it silently empties the command.
+  // guide:2509 carries the Requires line, and what an unmet requirement DOES
+  // was measured by RMSTEST_42 (2026-08-11, four runs): the attribute is inert
+  // and the command places in full. The check keeps its trigger and lost its
+  // consequence clause — it warned that the command placed nothing at all,
+  // which was inferred from `AK_Namatjira.rms` spawning no shore fish, on a
+  // command that also names a shallow its fish cannot occupy and so predicts
+  // zero under either model.
   it("flags ignore_terrain_restrictions written on its own", () => {
     const found = only("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 10 ignore_terrain_restrictions }\n", "RMS0315");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
-    expect(found[0].message).toContain("places nothing at all");
+    expect(found[0].message).toContain("this line does nothing");
+    // The consequence clause the measurement removed: the objects still place.
+    expect(found[0].message).not.toContain("places nothing at all");
   });
 
   it("stays quiet with set_place_for_every_player", () => {
@@ -742,5 +746,43 @@ describe("pass-level guarantees", () => {
       "",
     ].join("\n");
     expect(check(source)).toEqual([]);
+  });
+});
+
+describe("RMS0111 — a word inside a comment that the engine reads as an opening comment marker", () => {
+  // Measured by RMSTEST_55/56a/57/60 (parser-design Sec.2.1 amendment): a
+  // leading comment containing a word valued 69 blanks the map, while the bare
+  // literal 69 does not. Reported rather than modelled — decided 2026-08-11.
+  it("flags an object constant valued 69", () => {
+    const found = only("/* place SHORE_FISH here */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("error");
+    expect(found[0].message).toContain("SHORE_FISH");
+    expect(found[0].message).toContain("invisible to the game");
+  });
+
+  it("flags an ATTRIBUTE constant valued 69 too — the namespace is irrelevant, the VALUE is the rule", () => {
+    const found = only("/* tweak ATTR_PROJECTILE_ARC later */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
+    expect(found).toHaveLength(1);
+  });
+
+  it("stays silent on the bare literal 69 — RMSTEST_57 generated a normal map", () => {
+    // Numeric literals are lexed as numbers and never reach the symbol table.
+    expect(codes("/* about 69 tiles */\n<PLAYER_SETUP>\nrandom_placement\n")).not.toContain("RMS0111");
+  });
+
+  it("stays silent when the same word is real code rather than a comment", () => {
+    expect(codes("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 5 }\n")).not.toContain("RMS0111");
+  });
+
+  it("flags the script's own #const valued 69", () => {
+    const found = only("#const MY_FISH 69\n/* MY_FISH goes in the bay */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("this script defines it as 69");
+  });
+
+  it("reports only the FIRST hit — everything after it is inside the engine's nested comment", () => {
+    const source = "/* SHORE_FISH here */\n/* and ATTR_PROJECTILE_ARC there */\n<PLAYER_SETUP>\nrandom_placement\n";
+    expect(only(source, "RMS0111")).toHaveLength(1);
   });
 });

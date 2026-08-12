@@ -1,0 +1,100 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* The layer. The mask keeps the base terrain underneath as grass. */
+  create_terrain DESERT
+  {
+    base_terrain GRASS
+    terrain_mask 1
+    land_percent 20
+    number_of_clumps 8
+  }
+
+  /* THE MEASUREMENT. Asks for the whole map, matching a base AND a layer. */
+  create_terrain SNOW
+  {
+    base_terrain GRASS
+    base_layer DESERT
+    land_percent 100
+    number_of_clumps 400
+  }
+
+<OBJECTS_GENERATION>
+
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_49 - base terrain plus base layer: conjunction or disjunction?
+Feeds: preview-design Sec.6.4, terrains.ts, Sec.15 item 24
+
+QUESTION
+Two guide lines disagree. The base-layer entry says a command applies only where
+BOTH the base terrain and the layer match. An aside in the land-percent entry
+says the appropriate base terrain OR base layer. Sec.6.4 follows the first, on
+the reasoning that an attribute's own entry outranks an aside elsewhere, and
+terrains.ts implements the conjunction.
+
+The reasoning is sound and it is still reasoning. This project's own rule is to
+prefer an observable, and this one is cheap.
+
+It also re-tests a claim made by an earlier revision, which adopted the
+disjunction to avoid the conjunction "under-filling every clump". If the
+conjunction is correct, that under-fill is the engine's own behaviour and not a
+defect to design around.
+
+METHOD
+Three layers of paint on one map.
+
+  1. The whole map is grass.
+  2. A desert LAYER over about a fifth of it. The mask makes it a layer rather
+     than an ownership change, so the base terrain underneath stays grass
+     everywhere - which is what makes the two models separable at all.
+  3. A snow command asking for the whole map, matching base terrain grass AND
+     base layer desert.
+
+  conjunction -> snow appears ONLY where the desert layer is. Snow area is at
+                 most the desert area, roughly a fifth of the map, and the two
+                 patches coincide.
+  disjunction -> snow covers essentially the whole map, because every tile
+                 matches grass.
+
+There is no middle outcome to worry about: the two predictions differ by a
+factor of five in area and by everything in shape.
+
+The clump count on the snow command is high on purpose. A low count could
+under-fill for ordinary reasons and make a conjunction result look like a
+disjunction that merely failed, which is exactly the confusion the earlier
+revision's under-fill claim came out of.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  python probe_scenario.py "<scenario>" --patches DESERT
+  Compare the two areas and the two bounding boxes. Coincident patches are the
+  conjunction; snow covering the map is the disjunction.
+
+Watch for one trap the earlier batches hit twice. This map is all land and
+carries no water, no beach, no forest and no leaves, deliberately, because the
+engine paints terrain of its own at a land and water boundary and around forest,
+and an auto-generated band reads as a format error rather than as a result.
+*/

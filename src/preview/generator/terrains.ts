@@ -94,7 +94,7 @@ import type {
 } from "./types";
 import { createSubstream, nextFloat01, nextInt, type Rng } from "./rng";
 import {
-  DEPTH_WATER,
+  DEPTH_LAND,
   NO_LAYER,
   UNREACHABLE,
   beachTerrainFor,
@@ -519,21 +519,32 @@ export interface AutomaticBeachOptions {
  * made the per-command step conditional on `beach_terrain` specifically to
  * stop the "undo", which protected the no-op case and broke the real one.
  *
- * THREE DEPTHS, NOT TWO, and this is what the rule is really about. The map
- * has land, shallows (`isHybrid` — terrain both land units and ships cross)
- * and open water, and the engine edges every boundary between two of them, not
- * only the outer one. So a beach appears where land meets shallows, where land
- * meets open water, AND where shallows meet open water — a shallow band
- * running from a coast out to sea comes out sand, shallow, sand, sea rather
- * than as one unbroken strip against the deep. `grid.ts`'s `terrainDepth`
- * defines the ordering and says why it is a separate flag from `isWater`
- * rather than a rereading of it.
+ * THREE DEPTHS ARE READ AND ONLY THE LANDWARD BOUNDARY IS EDGED — corrected
+ * 2026-08-12, and the correction is exactly half of what shipped on
+ * 2026-08-08. The map has land, shallows (`isHybrid` — terrain both land units
+ * and ships cross) and open water. A beach appears where land meets shallows
+ * and where land meets open water; where SHALLOWS meet open water the engine
+ * lays none (`RMSTEST_52`, BUG-010: 3 and 2 tiles against 336/312 and 30/90 on
+ * the other two boundaries — a triple junction, not a boundary).
  *
- * The beach always lands on the SHALLOWER of the two tiles, which generalises
- * "on the land side only" rather than replacing it: land takes the beach
- * against a shallow, and the shallow takes it against open water. A beach
- * terrain's own row carries `beachTerrain: null`, so the tile it lands on
- * stops there instead of eating another tile inward on the next pass.
+ * **The three-value depth mask stays and is not an artefact of the withdrawn
+ * half.** `isWater` alone cannot express the landward boundary either: the
+ * table calls `DLC_MANGROVESHALLOW` and the navigable ice family shallows while
+ * `isWater` calls them dry, so an `isWater`-only test left those coasts with no
+ * beach at all, which is what motivated the depth model in the first place.
+ * Land beside a DRY shallow still beaches because it is bordering something
+ * deeper than itself. `grid.ts`'s `terrainDepth` defines the ordering and says
+ * why it is a separate flag from `isWater` rather than a rereading of it.
+ *
+ * The beach lands on the LAND side of the boundary. A beach terrain's own row
+ * carries `beachTerrain: null`, so the tile it lands on stops there instead of
+ * eating another tile inward on the next pass.
+ *
+ * **What the withdrawn half was argued from, since the argument was the
+ * mistake.** A `terrain_state` line about "thinner blending of shallows and
+ * beach terrain" was read as evidence the two are adjacent by default; it
+ * describes an adjacency the author supplies. A guide sentence that a construct
+ * CAN be configured is not a statement that the engine does it unasked.
  *
  * Depth is read from a mask taken BEFORE any write, so a beach laid on one
  * tile can never make its neighbour think it is shallower than it was.
@@ -571,8 +582,13 @@ export function applyAutomaticBeach(grid: TileGrid, constants: readonly TerrainC
 
   for (let i = 0; i < n; i++) {
     const own = depth[i];
-    // Open water is the floor of the scale — nothing is deeper for it to face.
-    if (own === DEPTH_WATER) continue;
+    // ONLY DRY LAND TAKES A BEACH. A shallow facing open water does not, even
+    // though it is the shallower of the two — MEASURED, `RMSTEST_52`, two runs
+    // (BUG-010): land/shallows/open water in a known order gave 336 and 312
+    // beach tiles on the grass/water boundary, 30 and 90 on grass/shallow, and
+    // **3 and 2** where shallow meets water, which is a triple junction rather
+    // than a boundary. See the header for what survives of the depth model.
+    if (own !== DEPTH_LAND) continue;
     const x = i % dim;
     const y = (i - x) / dim;
     const bordersDeeper =

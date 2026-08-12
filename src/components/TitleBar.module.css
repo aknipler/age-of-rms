@@ -40,6 +40,16 @@
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
+  width: 100%;
+}
+
+/* HelpTip always renders a <span> wrapper (see HelpTip.tsx), so for a
+   wrapped item the span is the flex item, not the button — without this
+   pair a wrapped item would sit at its text width while the unwrapped
+   File items fill the menu. Same fix as SettingsDialog.module.css's
+   .tabList > span. */
+.dropdown > span {
+  display: block;
 }
 
 .dropdownItem:hover {

@@ -59,8 +59,52 @@ const DEFAULT_RING_RADIUS_PCT = 40;
 const DEFAULT_RING_VARIANCE_PCT = 10;
 const DEFAULT_RING_JITTER_DEG = 7;
 
-/** Sec.6.1: "reject candidates where both |x-center| and |y-center| exceed 0.35*(dim/2)" — MEASURED RMSTEST_25. */
+/** Sec.6.1: "reject candidates where both |x-center| and |y-center| exceed 0.35*(half the reference span)" — MEASURED RMSTEST_25. */
 const CROSS_SHAPE_COEFFICIENT = 0.35;
+
+/**
+ * The cross-shaped origin region, in the frame the engine measures it in:
+ * **the rectangle the BORDERS leave, not the map** (BUG-009, `RMSTEST_51`,
+ * nineteen generations).
+ *
+ * A small land with `right_border 60 bottom_border 60` on a 200 map put 16 of
+ * 19 origins inside the region the map-frame model forbids, and 0 of 19 in the
+ * ~43% of the box that the box-frame model forbids, against ~8 expected from a
+ * uniform scatter. So the cross is real and it is measured against the allowed
+ * region. With no borders the two frames coincide exactly — `spanX` is `dim`
+ * and the centre is `dim / 2` — which is what preserves `RMSTEST_25`'s original
+ * unbordered measurement, and is pinned by its own test rather than left to be
+ * noticed.
+ *
+ * **Judgment call, flagged rather than hidden:** the two axes take their own
+ * spans, so a non-square border box gets an anisotropic cross. `RMSTEST_51`'s
+ * box is square and cannot distinguish that from a single reference length
+ * taken off one axis. Per-axis is the reading that degenerates to the measured
+ * unbordered case on both axes at once.
+ */
+interface CrossRegion {
+  centerX: number;
+  centerY: number;
+  halfX: number;
+  halfY: number;
+}
+
+/** Built from the INCLUSIVE sampling rectangle — `[minX, maxX]`, so an unbordered map passes `0` and `dim - 1`. */
+function crossRegion(minX: number, maxX: number, minY: number, maxY: number): CrossRegion {
+  const spanX = maxX - minX + 1;
+  const spanY = maxY - minY + 1;
+  return {
+    centerX: minX + spanX / 2,
+    centerY: minY + spanY / 2,
+    halfX: CROSS_SHAPE_COEFFICIENT * (spanX / 2),
+    halfY: CROSS_SHAPE_COEFFICIENT * (spanY / 2),
+  };
+}
+
+/** A candidate is in the cross unless it is outside the band on BOTH axes — i.e. in one of the four corners. */
+function insideCross(cross: CrossRegion, x: number, y: number): boolean {
+  return Math.abs(x - cross.centerX) <= cross.halfX || Math.abs(y - cross.centerY) <= cross.halfY;
+}
 
 /** Sec.6.1: "K = 100 [tune] attempts" before falling back to map center. */
 const ORIGIN_ATTEMPTS = 100;
@@ -369,9 +413,7 @@ function neutralOrigin(
 
   const baseSize = numAttr(cmd, "base_size", 0, DEFAULT_BASE_SIZE);
   const generateMode = numAttr(cmd, "generate_mode", 0, 0);
-  const crossHalf = CROSS_SHAPE_COEFFICIENT * (dim / 2);
-  const centerX = dim / 2;
-  const centerY = dim / 2;
+  const cross = crossRegion(minX, maxX, minY, maxY);
   const minPlacementDistance = numAttr(
     cmd,
     "min_placement_distance",
@@ -382,7 +424,7 @@ function neutralOrigin(
   for (let attempt = 0; attempt < ORIGIN_ATTEMPTS; attempt++) {
     const x = nextInt(rng, minX, maxX);
     const y = nextInt(rng, minY, maxY);
-    if (generateMode !== 1 && Math.abs(x - centerX) > crossHalf && Math.abs(y - centerY) > crossHalf) continue; // corner, rejected
+    if (generateMode !== 1 && !insideCross(cross, x, y)) continue; // corner of the border box, rejected
     if (x < baseSize || x > dim - 1 - baseSize || y < baseSize || y > dim - 1 - baseSize) continue; // too close to the true map edge
     let tooClose = false;
     for (const prior of priorOrigins) {
@@ -995,8 +1037,16 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   const minY = Math.max(0, bounds.minY, state.origin.y - radius);
   const maxY = Math.min(dim - 1, bounds.maxY - 1, state.origin.y + radius);
   if (minX > maxX || minY > maxY) return;
-  const center = dim / 2;
-  const crossHalf = CROSS_SHAPE_COEFFICIENT * (dim / 2);
+  // The cross is measured against what the BORDERS leave (BUG-009), which is
+  // not the box sampled from here — that one is additionally narrowed to a
+  // neighbourhood of the origin, and taking the cross off it would move the
+  // region with the land instead of with the borders.
+  const cross = crossRegion(
+    Math.max(0, bounds.minX),
+    Math.min(dim - 1, bounds.maxX - 1),
+    Math.max(0, bounds.minY),
+    Math.min(dim - 1, bounds.maxY - 1),
+  );
   // A seed must be somewhere this land could have GROWN to. See
   // reachableWithinWindow: without this a seed crosses walls the land itself
   // cannot cross, which is Sec.15 item 27's whole mechanism.
@@ -1008,7 +1058,7 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   for (let attempt = 0; attempt < maxAttempts && state.reservoir.length < count; attempt++) {
     const x = nextInt(rng, minX, maxX);
     const y = nextInt(rng, minY, maxY);
-    if (state.origin.generateMode !== 1 && Math.abs(x - center) > crossHalf && Math.abs(y - center) > crossHalf) continue;
+    if (state.origin.generateMode !== 1 && !insideCross(cross, x, y)) continue;
     const idx = tileIndex(grid, x, y);
     if (grid.landId[idx] !== -1 || seen.has(idx)) continue;
     if (reachable[(y - minY) * windowWidth + (x - minX)] === 0) continue;

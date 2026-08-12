@@ -10,6 +10,18 @@
   min-width: 0;
 }
 
+/* Everything the Current preview is ignoring: from the cut point to the end
+   of the document. Applied as a Monaco inline decoration, so this class lands
+   on the editor's own text spans rather than on anything React renders — the
+   hashed CSS-module name travels through `inlineClassName` unchanged.
+
+   Opacity rather than a colour, deliberately: the RMS theme already spends
+   colour on token kinds, and dimming keeps that highlighting readable while
+   still reading as "not counted". */
+.cutIgnored {
+  opacity: 0.4;
+}
+
 /* Was `.codePane`. The margin and border used to sit on the tab's whole
    content area; they belong to the editor box specifically now that something
    else shares the row. */

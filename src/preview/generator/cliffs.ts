@@ -62,7 +62,7 @@ const DEFAULT_MIN_TERRAIN_DISTANCE = 2;
 /** guide value, Sec.6.3: "Start tiles: >=22 tiles from every land origin". Flat tile distance, not the x3 scaling the other two spacing constraints use. */
 const LAND_ORIGIN_MIN_DISTANCE = 22;
 
-/** guide: "minimum must be at least 3 for cliffs to appear" (Sec.6.3, language.json's own pinned min). */
+/** guide: "minimum must be at least 3 for cliffs to appear" (Sec.6.3, language.json's own pinned min). The guide states the THRESHOLD correctly and not its scope: it applies to each rolled length, not to the section (BUG-008, RMSTEST_45a/b/c). */
 const MIN_LENGTH_FOR_CLIFFS_TO_APPEAR = 3;
 
 const ZERO_SPAN = { start: 0, end: 0 };
@@ -263,9 +263,10 @@ export interface CliffsResult {
 /**
  * Sec.6.3: `<CLIFF_GENERATION>` -> cliffs. Mutates `grid.cliff`; returns one
  * CommandReport for the whole section (there is no per-cliff command to
- * report against — see the file header) plus any SimulationNotes for the
- * two documented zero-cliff cases (min > max "crashes the engine"; a
- * sub-3 `min_length_of_cliff` "produces no cliffs at all").
+ * report against — see the file header) plus SimulationNotes for the
+ * documented failure cases: min > max "crashes the engine", and a sub-3
+ * `min_length_of_cliff`, which drops the individual draws that roll below 3
+ * (`attempted` therefore exceeds `placed` — see the note beside it).
  */
 export function applyCliffs(
   instantiated: InstantiatedScript,
@@ -297,15 +298,30 @@ export function applyCliffs(
     return { reports: [zeroCliffReport()], notes };
   }
 
+  // A sub-3 `min_length_of_cliff` is a PER-DRAW YIELD, not a section switch —
+  // MEASURED, `RMSTEST_45a/45b/45c`, two runs per arm, twenty cliffs requested
+  // (BUG-008). `min 2 / max 2` gave 0 cliff units, `min 3 / max 3` gave 66, and
+  // `min 2 / max 4` gave 36. A section gate predicts 0 in that third arm and a
+  // clamp predicts the first two matching; neither holds, and a length rolled
+  // below 3 simply draws nothing. The zero case is still reached, through every
+  // roll dying rather than through the section being switched off — which is
+  // the whole distinction the third arm exists to measure.
+  //
+  // **The 36-against-66 is deliberately NOT fitted to a rate.** Cliff UNITS are
+  // not cliff COUNT: a longer cliff carries more units, so that ratio conflates
+  // yield with length. Counting components with `--clusters` is what a rate
+  // would need.
   if (settings.minLength < MIN_LENGTH_FOR_CLIFFS_TO_APPEAR) {
     notes.push({
       key: `cliffsLengthSuppressed:${settings.minLengthCmd!.span.start}`,
       prominence: "drawer",
       stage: "S3",
       span: settings.minLengthCmd!.span,
-      text: "min_length_of_cliff below 3 produces no cliffs at all in the real game, so this section has no visible effect.",
+      text:
+        settings.maxLength < MIN_LENGTH_FOR_CLIFFS_TO_APPEAR
+          ? "Every cliff length this section can roll is below 3, and a cliff shorter than 3 draws nothing in the real game — so this section produces no cliffs at all."
+          : "min_length_of_cliff is below 3, and any cliff whose length rolls below 3 draws nothing in the real game — so this section produces fewer cliffs than it asks for.",
     });
-    return { reports: [zeroCliffReport()], notes };
   }
 
   const countRng = nextSubstream();
@@ -334,6 +350,7 @@ export function applyCliffs(
 
     const lengthRng = nextSubstream();
     const len = nextInt(lengthRng, settings.minLength, Math.max(settings.minLength, settings.maxLength));
+    if (len < MIN_LENGTH_FOR_CLIFFS_TO_APPEAR) continue; // this draw yields nothing — see the note above
 
     const walkRng = nextSubstream();
     walkCliff(grid, water, start, len, settings.curliness, walkRng);

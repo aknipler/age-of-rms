@@ -58,8 +58,11 @@
           "type": "string",
           "enum": [
             "terrain",
-            "object"
-          ]
+            "object",
+            "objectClass",
+            "attribute"
+          ],
+          "description": "objectClass rows are genie unit classes, which an RMS author can target directly (effect_amount SET_ATTRIBUTE TREE_CLASS ...). They live in this array rather than a separate one because a class IS an RMS constant, so every consumer that resolves a written name against constants[] picks them up unchanged."
         },
         "deTextureFile": {
           "type": [
@@ -114,6 +117,29 @@
             "maximum": 255
           }
         },
+        "terrainRestrictionId": {
+          "type": "integer",
+          "description": "Object entries only. The dat's own Unit.terrain_restriction — the index of the row in DatFile.terrain_restrictions that decides which terrains this object may stand on. It is a KEY INTO THE GAME'S OWN TABLE and resolves to nothing outside an install, which is why allowedTerrains carries the row itself beside it; the id is here so two objects sharing a restriction are visibly the same claim rather than two coincidentally equal lists (every ordinary fish is restriction 19, most land objects are restriction 7). Written by tools/extract-constants --terrain-table. Absent means the object was never read out of a dat, which is different from an object the engine leaves unrestricted (that is restriction 0, written explicitly).",
+          "minimum": 0
+        },
+        "allowedTerrains": {
+          "type": "array",
+          "description": "Object entries only. The terrain ids this object's restriction row permits, expanded from that row's passable_buildable_dmg_multiplier (131 floats, > 0 meaning permitted). This is the engine's real answer to 'where may this object stand', and habitat is a five-value approximation of it — the two are kept side by side deliberately, so the cost of the vocabulary can be measured rather than argued: restriction 8 (GOLD/STONE/FORAGE) permits 83 terrains while the 'land' class covers 110, so 27 terrains the engine refuses are terrain the preview still uses. NOTHING READS THIS FIELD TODAY. It exists so that whoever retires the coarse classes does it on evidence, and so the Generation Consistency Checker can answer terrain questions exactly rather than approximately. Absent means the object was never read out of a dat; an empty array would mean a row permitting nothing, which no shipped row does.",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "placementSideTerrain": {
+          "type": "array",
+          "description": "Object entries only. The dat's Unit.placement_side_terrain, a two-slot 'must sit BESIDE one of these terrains' requirement. -1 in a slot means no requirement, so [-1, -1] is the ordinary case and is written EXPLICITLY rather than omitted — absence has to keep meaning 'never extracted', because a silently missing requirement and a measured absence of one are different claims. Exactly three families in the object namespace carry a real value and all carry [2, 35] (Beach or Ice): SHORE_FISH, DLC_BOXTURTLE and DOCK. This field plus a water-shaped allowedTerrains IS the preview's 'shore' habitat rather than an approximation of it. The DOCK family carries the same pair over an amphibious-shaped row, which no habitat class can express; --terrain-table reports that case instead of widening the class to fit.",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": -1
+          }
+        },
         "habitat": {
           "type": "string",
           "enum": [
@@ -147,6 +173,45 @@
               "type": "number"
             }
           }
+        },
+        "resourceStorages": {
+          "type": "array",
+          "description": "Object rows: the unit's raw resource-storage slots straight off empires2_x2_p1.dat, slot 0 first, empty slots (type -1) omitted. This is the MEASUREMENT that resourceAmounts is a four-resource reading of, and it is kept because effect_amount SET_ATTRIBUTE <target> ATTR_STORAGE_VALUE <n> writes SLOT 0 whatever that slot holds — wood for a tree, population for a house, decay time for a corpse — so whether such a line changes a map's resource totals depends on the slot's type, which resourceAmounts has already discarded. Measured slot-0 types across the roster: 0 food, 1 wood, 2 stone, 3 gold, 4 population, 12 decay time, 17 fish food, plus four small unread ones.",
+          "items": {
+            "type": "object",
+            "required": ["type", "amount"],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "integer",
+                "description": "The genie resource-type index. Not a label read from the dat — a fixed engine convention, verified per run by the sanity-check table the script prints."
+              },
+              "amount": {
+                "type": "number",
+                "description": "The slot's base value. Zero is a real value, not an empty slot, and is exactly what a script writes to switch a resource off."
+              },
+              "resource": {
+                "type": "string",
+                "enum": ["food", "wood", "stone", "gold"],
+                "description": "Which of the four the slot's type resolves to, resolved at extraction so no consumer carries a second copy of the engine's resource convention. ABSENT means the slot is not a player-gatherable resource (population, decay time, or one of the unread types), which is what a caller checks before assuming an effect_amount ATTR_STORAGE_VALUE line moved a resource total."
+              }
+            }
+          }
+        },
+        "writesStorageSlot": {
+          "type": "integer",
+          "description": "attribute rows only: this effect_amount attribute writes that index of the target unit's resourceStorages. Present so a consumer can ask the data which attribute changes what an object yields instead of hardcoding the RMS name. Only ATTR_STORAGE_VALUE (slot 0) carries it, because only that one is established."
+        },
+        "classId": {
+          "type": "integer",
+          "description": "The genie unit class. On an object row it says which class that object belongs to; on an objectClass row it is that row's own class. constId is always this plus 900, the offset an RMS author writes and the one the engine uses to tell a class target from a unit target. The offset is re-verified against random_map.def on every extraction run and a disagreement aborts the run."
+        },
+        "memberIds": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "objectClass rows only: every unit id in this class, ascending, over the WHOLE gaia roster rather than only the objects that have their own row here. That is the point of the field — the question it answers is whether an object the script places belongs to a class the script named, and an object with no row of its own is exactly the case that gets asked about."
         },
         "verified": {
           "type": "boolean",

@@ -90,22 +90,25 @@
 // 2026-08-10, both measured in game that day and both stated in the guide the
 // whole time:
 //
-//   a. **It is not a standalone flag.** guide:2509 carries a `Requires:` line
-//      — `set_place_for_every_player` or `place_on_specific_land_id` — and the
-//      engine's answer when neither is present is that the command places
-//      NOTHING. Not "the restrictions apply after all", nothing at all. This
-//      is a whole-command gate, in `applyObjects` beside the `set_gaia_object_only`
-//      one, and it is why `AK_Namatjira.rms` has no shore fish in game while
-//      this preview drew 232.
+//   a. **It is not a standalone flag, and an unmet `Requires:` makes the
+//      ATTRIBUTE inert rather than the COMMAND dead.** guide:2509 carries a
+//      `Requires:` line — `set_place_for_every_player` or
+//      `place_on_specific_land_id`. Without one, the flag simply does nothing
+//      and the command places its full count under the terrain rules it would
+//      have had anyway. **MEASURED, RMSTEST_42, four runs, 2026-08-11**: three
+//      commands on one half-land half-water map gave 60 salmon (flagged and
+//      unflagged alike, all 60 in water) and 30 olive trees on grass — so the
+//      flagged commands were not voided, and the flagged fish kept its own
+//      water restriction.
 //
-//      **UNSETTLED, and the code claims more than the observation.** Namatjira
-//      cannot separate "the command is voided" from "the flag is inert, so the
-//      shore habitat re-applies and contradicts the command's own
-//      `terrain_to_place_on DLC_MANGROVESHALLOW`" — both give zero fish there.
+//      **This file shipped the other reading for a day and it was a whole-
+//      command gate.** It was inferred from `AK_Namatjira.rms` placing zero
+//      shore fish, and that map cannot discriminate: its command also names a
+//      shallow, which a shore-habitat fish cannot occupy, so "inert" predicts
+//      zero there too. A map that produces zero is consistent with every model
+//      that produces zero. The counter-evidence was in hand and unweighed —
 //      `find_closest` carries the identical `Requires:` line and appears 71
-//      times frameless across working corpus maps, which argues the line alone
-//      does not void a command. RMSTEST_42 is written and unrun; if it comes
-//      back inert, this gate becomes a habitat re-application instead.
+//      times frameless in working maps.
 //   b. **The shore class is exempt from what it lifts.** Most objects really
 //      do go anywhere under the flag (guide:2513 puts SALMON on grass). Shore
 //      fish and box turtles do not: they still need a beach beside them and
@@ -407,14 +410,30 @@ export function isGrouped(cmd: InstantiatedCommand): boolean {
 }
 
 /**
- * Sec.15 item 17c: OPEN, unverified in-game. Tight is the current best model
- * for "grouped but neither mode stated" per Sec.6.6's own reasoning
- * (group_placement_radius's wording describes a cohesive cluster; loose
- * reads as the opt-in) — implemented as the default rather than left
- * unhandled, but flagged here exactly where the spec flags it.
+ * **Tight is OPT-IN: a grouped command that states neither mode is LOOSE.**
+ * MEASURED, `RMSTEST_46a/46b/46c`, one mode per file and three runs each
+ * (Sec.15 item 17c, BUG-011): off-patch fraction against a
+ * `terrain_to_place_on` patch came out **22–35% for tight, 0% for explicit
+ * loose, and 0% for unstated**. So an unstated command is checked per member,
+ * which is what loose means.
+ *
+ * The opposite default shipped from S6's first draft until 2026-08-12, reasoned
+ * from `group_placement_radius`'s wording describing a cohesive cluster. It
+ * governs **498 of the corpus's 964 grouped commands**, and it is not a
+ * one-line behaviour: under tight a group's fill skips the habitat and spacing
+ * checks entirely, so the flip trades more objects in illegal positions for
+ * fewer in legal ones.
+ *
+ * Explicit `set_loose_grouping` still beats an explicit `set_tight_grouping`,
+ * unchanged and untested by the run above.
+ *
+ * **Deliberately NOT extended to `force_placement`.** guide:2739 states that
+ * one against the `set_loose_grouping` ATTRIBUTE, and whether the engine also
+ * makes it inert under an unstated-but-loose command is a second question
+ * nothing has measured.
  */
 export function isTightGrouping(cmd: InstantiatedCommand): boolean {
-  return !cmd.attributes.has("set_loose_grouping");
+  return cmd.attributes.has("set_tight_grouping") && !cmd.attributes.has("set_loose_grouping");
 }
 
 // ---------------------------------------------------------------------------
@@ -1331,32 +1350,28 @@ export function applyObjects(
       continue;
     }
 
-    // guide:2509's own REQUIRES line, and the engine's answer when it is not
-    // met is not "the restrictions apply after all" — the command places
-    // NOTHING. Confirmed in game 2026-08-10 against `AK_Namatjira.rms`, whose
-    // single `create_object SHORE_FISH` carries the flag with neither partner
-    // attribute: no shore fish spawn on that map at all, where this preview
-    // was drawing 232 of them.
+    // guide:2509's own REQUIRES line. Unmet, the ATTRIBUTE does nothing and
+    // the command places normally under the restrictions it would have had
+    // anyway (RMSTEST_42 — see this file's header, and note this replaced a
+    // whole-command gate that emptied 47 corpus commands).
     //
     // Read the ATTRIBUTE NAMES, not `frameKind`. `place_on_specific_land_id
     // -11` is "a random position on the map" (guide:2288) and resolves to the
     // frameless kind, but the author did write the attribute, which is what
     // the requirement is stated in terms of. Testing `frameKind !== "none"`
-    // would silently empty those commands too.
-    if (
+    // would make the flag inert in those commands too.
+    const ignoreTerrainInert =
       cmd.attributes.has("ignore_terrain_restrictions") &&
       !cmd.attributes.has("set_place_for_every_player") &&
-      !cmd.attributes.has("place_on_specific_land_id")
-    ) {
-      pushFailure(failures, {
-        bucket: "attributePrerequisite",
-        commandSpan: cmd.span,
+      !cmd.attributes.has("place_on_specific_land_id");
+    if (ignoreTerrainInert) {
+      notes.push({
+        key: `ignoreTerrainRestrictionsInert:${cmd.span.start}`,
+        prominence: "drawer",
         stage: "S6",
-        entity: typeName,
-        detail: `ignore_terrain_restrictions requires set_place_for_every_player or place_on_specific_land_id in the same command — without one of them the engine places nothing at all (guide:2509).`,
+        span: cmd.span,
+        text: "ignore_terrain_restrictions needs set_place_for_every_player or place_on_specific_land_id in the same command (guide:2509). Without one, the attribute does nothing and this command's objects are placed under their normal terrain restrictions.",
       });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
-      continue;
     }
 
     const minDist = optionalNumAttr(cmd, "min_distance_to_players", 0);
@@ -1422,7 +1437,7 @@ export function applyObjects(
     const tight = grouped && isTightGrouping(cmd);
     const groupRadius = optionalNumAttr(cmd, "group_placement_radius", DEFAULT_GROUP_PLACEMENT_RADIUS) ?? DEFAULT_GROUP_PLACEMENT_RADIUS;
     const forcePlacement = cmd.attributes.has("force_placement") && !cmd.attributes.has("set_loose_grouping"); // guide:2739
-    const ignoreTerrain = cmd.attributes.has("ignore_terrain_restrictions");
+    const ignoreTerrain = cmd.attributes.has("ignore_terrain_restrictions") && !ignoreTerrainInert;
     const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants, symbols); // group commands: candidate filtering can't commit to one member's habitat (see file header)
     // A group's "any" is not data either — there is no single member to have a
     // row — so it takes the same deference `land` does.

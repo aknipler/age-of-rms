@@ -1,0 +1,91 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   A token resolving to 69 in a leading comment opens a nested comment and
+   swallows the rest of the file - see RMSTEST_56 and 57. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+
+  /* Branch on PLAYER THREE, not player one. That is the entire point of this
+     file - see the header. */
+  if PLAYER3_TEAM1
+    base_terrain DESERT
+  elseif PLAYER3_TEAM2
+    base_terrain SNOW
+  else
+    base_terrain GRASS
+  endif
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_59 - confirm canonical team numbering on a player who is NOT player one
+Feeds: preview-design Sec.3.1 step 3, src/generationSettings/teamModel.ts,
+       Sec.15 item 17(a)
+
+WHY THIS EXISTS WHEN 17(a) IS ALREADY CLOSED
+RMSTEST_44 refuted the rival model across three discriminating lobbies, and that
+is what decided the code. But it cannot confirm the surviving one, and the reason
+is structural rather than a gap in how it was run.
+
+Under lowest-player-number, player one is BY DEFINITION the lowest-numbered
+player, so their team is always canonical team 1 and PLAYER1_TEAM1 is a
+tautology. A script branching on that label returns the same answer under the
+real rule and under "this label is simply always defined". 44 cannot tell those
+apart and neither can any number of extra lobbies run through it.
+
+Player three carries no such guarantee. The two models put them on DIFFERENT
+canonical teams, and neither prediction is trivially true.
+
+THE LOBBY
+Four players, lobby order as listed:
+
+  player 1 -> team 2
+  player 2 -> team 2
+  player 3 -> team 1
+  player 4 -> team 1
+
+This is RMSTEST_44's first discriminating configuration, unchanged, so the two
+runs are directly comparable and the pair reads as one experiment.
+
+  lowest player number      - player 1's team is canonical 1, so player 3's team
+                              is canonical 2 -> PLAYER3_TEAM2 -> SNOW
+  ascending selected number - selected team 1 holds players 3 and 4 and sorts
+                              first, so it is canonical 1 -> PLAYER3_TEAM1 ->
+                              DESERT
+
+WHAT YOU WILL SEE
+
+  WHITE map (snow)    -> PLAYER3_TEAM2. Lowest-player-number CONFIRMED on a
+                         non-tautological label. Sec.3.1 step 3 is measured
+                         rather than merely unrefuted, and 17(a) needs nothing
+                         further.
+  YELLOW map (desert) -> PLAYER3_TEAM1. That contradicts RMSTEST_44's three runs
+                         and means the numbering is not one rule applied to all
+                         players. Do not patch teamModel.ts against it - the
+                         derivation would need rebuilding from both results.
+  GREEN map (grass)   -> neither label defined. Then the player-in-team family
+                         does not fire the way both models assume, which is the
+                         outcome 44's own header named and never saw.
+
+Note the colours mean the OPPOSITE of what they mean in 44, because the label
+that indicates the surviving model is TEAM2 here and TEAM1 there. That is
+deliberate and it is stated in both files: a matched colour scheme would make
+the confirming run look like a repeat of the refuting one.
+
+GENERATE AT TINY (120) FROM A REAL GAME LOBBY. ONE GAME.
+
+Nothing to save and nothing to probe. The editor cannot set team numbers, and a
+lobby save is game state rather than a scenario, so the reading is the minimap.
+Screenshot it if a record is wanted.
+*/

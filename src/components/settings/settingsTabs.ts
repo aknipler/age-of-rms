@@ -5,6 +5,7 @@ import { ThemeSettings } from "./ThemeSettings";
 import { BreakdownSettings } from "./BreakdownSettings";
 import { CodeSettings } from "./CodeSettings";
 import { AdvancedToolsSettings } from "./AdvancedToolsSettings";
+import { CreditsSettings } from "./CreditsSettings";
 
 export type SettingsTabId =
   | "general"
@@ -12,7 +13,8 @@ export type SettingsTabId =
   | "theme"
   | "breakdown"
   | "code"
-  | "advanced-tools";
+  | "advanced-tools"
+  | "credits";
 
 interface SettingsTab {
   id: SettingsTabId;
@@ -43,6 +45,9 @@ export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
     helpId: "settings.tab.advancedTools",
     Panel: AdvancedToolsSettings,
   },
+  // Last in the strip: it's the one tab nothing is configured from, so it
+  // shouldn't sit between two that are.
+  { id: "credits", label: "Credits", helpId: "settings.tab.credits", Panel: CreditsSettings },
 ];
 
 export const DEFAULT_SETTINGS_TAB: SettingsTabId = "general";

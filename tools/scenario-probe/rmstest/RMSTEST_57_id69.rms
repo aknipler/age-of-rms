@@ -1,0 +1,73 @@
+/* 69 */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_57 - is the comment-opening token really the NUMBER 69?
+Feeds: parser-design Sec.2.1 and Sec.13 item 7, the token-alias import
+
+THIS HEADER IS AT THE BOTTOM. The test is the first line.
+
+WHAT IS ALREADY MEASURED
+RMSTEST_56a put the shore-fish constant alone in a leading comment and the map
+came back blank; 56b without it came back snow. So that word opens a nested
+comment, comments nest, and the rest of the file is never read.
+
+WHAT IS ONLY INFERRED
+That the mechanism is the NUMBER. Sec.2.1 records the community equivalencies
+result - the engine resolves every word to an internal integer token id, and
+constants, raw numbers and structural tokens share one id space - and our own
+reference data puts that fish at 69. So the reading is that the comment-open
+token is 69 and any token resolving to 69 opens a comment.
+
+That is a chain of two steps and only the first is measured. It matters because
+it decides whether the fix is "enumerate a handful of constants sharing two
+known ids", which is cheap and precise, or something broader.
+
+METHOD
+The first line of this file is a comment containing nothing but the bare literal
+69. If the number is the mechanism, the literal is enough - no constant needed.
+
+  BLANK or grass map -> the number is the mechanism. The inference holds, and the
+                        fix is a lookup on two ids.
+  SNOW map           -> the number is NOT sufficient, so the fish is doing
+                        something a bare literal does not. Then the equivalencies
+                        reading is incomplete and the sweep has to be run over
+                        names rather than values.
+
+RMSTEST_56b is already the control for this - same script, comment containing
+nothing at all, and it produced snow. No new control needed.
+
+SECOND ARM, WORTH ONE MORE GENERATION
+Our reference data lists a second entry at 69, an attribute constant rather than
+an object. Copy this file, replace the 69 in the comment with that name, and
+generate. A blank map confirms the value is what matters and the category is
+not, which is the claim the cheap fix rests on. A snow map means only that one
+fish is special and the whole story needs rebuilding.
+
+STILL NOT COVERED BY EITHER ARM
+The id for the comment-CLOSING token is unknown, so the constants that would end
+a comment early are unenumerated. That failure is less destructive - the file
+still runs, with a stretch of prose parsed as commands - but noisier, and it
+needs the sheet or a search.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN. Binary.
+
+READ IT WITH
+  Look at the map. Snow or not snow is the whole reading.
+*/

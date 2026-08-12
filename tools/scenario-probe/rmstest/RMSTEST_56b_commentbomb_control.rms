@@ -1,0 +1,33 @@
+/* */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain SNOW
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_56b - the control for RMSTEST_56a.
+
+This file is 56a with the word removed from the opening comment and nothing else
+changed. Read 56a's bottom header for the question.
+
+It must come out SNOW. If it does not, then something other than the word is
+wrong with the pair and 56a's result means nothing.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN.
+
+Keep these two identical apart from that one word. If either is edited, edit
+both.
+*/

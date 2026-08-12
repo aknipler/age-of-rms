@@ -7,7 +7,12 @@
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { parseRms } from "../parser/parser";
-import { validate, type GameConstantsForValidate, type ValidateReferenceDb } from "../parser/validate";
+import {
+  commentOpenAliases,
+  validate,
+  type GameConstantsForValidate,
+  type ValidateReferenceDb,
+} from "../parser/validate";
 import { computeResourceTotals, type GameConstantsForTotals, type ResourceTotals } from "../parser/resourceTotals";
 import type { LanguageData } from "../parser/language";
 import type { Diagnostic, ParseResult } from "../parser/types";
@@ -32,6 +37,12 @@ const validateRefDb: ValidateReferenceDb = {
   language: languageData,
   gameConstants: gameConstantsRaw as unknown as GameConstantsForValidate,
 };
+
+// Computed ONCE at module scope, not per parse. The worker is long-lived and
+// this walks the whole constants table to find the two names in it valued 69.
+const COMMENT_OPEN_ALIASES = commentOpenAliases(
+  (gameConstantsRaw as unknown as GameConstantsForValidate).constants,
+);
 
 export interface ParseRequestMessage {
   requestId: number;
@@ -63,7 +74,11 @@ export interface ParseResponseMessage {
 self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   const { requestId, source, playerCount } = event.data;
   const startedAt = performance.now();
-  const result = parseRms(source, languageData);
+  // The lexer needs this to model the truncation, not merely report it: a word
+  // valued 69 inside a comment opens a nested one in the engine, so everything
+  // after it is invisible and the AST has to say so. Built from reference data
+  // here rather than inside the parser, which holds no RMS vocabulary.
+  const result = parseRms(source, languageData, { commentOpenAliases: COMMENT_OPEN_ALIASES });
   // The semantic pass (docs/parser-design.md Sec.8) runs here, in the worker,
   // for the same reason the parse does: it's another whole-file walk, and the
   // UI thread should never do one. Its diagnostics are ADDITIVE — the parser's

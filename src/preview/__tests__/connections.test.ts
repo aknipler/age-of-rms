@@ -13,9 +13,10 @@ import { applyTerrains } from "../generator/terrains";
 import {
   applyConnections,
   applyTerrainAlongPath,
-  computeLandBoundingBoxes,
+  buildConnectivityIndex,
   crossPairs,
-  findConnectionPath,
+  findConnectionPaths,
+  landsCanConnect,
   landZonePairs,
   MinHeap,
   readReplacementRules,
@@ -152,42 +153,24 @@ describe("MinHeap (Sec.11: 'A* uses a binary heap')", () => {
   });
 });
 
-describe("computeLandBoundingBoxes", () => {
-  it("computes a tight box per land, from grid.landId alone", () => {
-    const grid = createTileGrid(20, GRASS);
-    stampLand(grid, 0, 2, 3, 5, 6);
-    stampLand(grid, 1, 15, 15, 15, 15);
-    const boxes = computeLandBoundingBoxes(grid, 2);
-    expect(boxes[0]).toEqual({ minX: 2, maxX: 5, minY: 3, maxY: 6 });
-    expect(boxes[1]).toEqual({ minX: 15, maxX: 15, minY: 15, maxY: 15 });
-  });
-
-  it("gives an empty (inverted) box for a land with no tiles at all", () => {
-    const grid = createTileGrid(10, GRASS);
-    const boxes = computeLandBoundingBoxes(grid, 1);
-    expect(boxes[0].minX).toBeGreaterThan(boxes[0].maxX);
-  });
-});
-
-describe("findConnectionPath (multi-source, multi-goal A*)", () => {
+describe("findConnectionPaths (one multi-source Dijkstra per source land)", () => {
   it("finds a straight path across uniform-cost terrain", () => {
     const grid = createTileGrid(20, GRASS);
     stampLand(grid, 0, 2, 10, 2, 10);
     stampLand(grid, 1, 17, 10, 17, 10);
-    const path = findConnectionPath(grid, grid.terrain, () => 1, 0, 1, computeLandBoundingBoxes(grid, 2)[1]);
+    const path = findConnectionPaths(grid, grid.terrain, () => 1, 0, [1]).get(1);
     expect(path).toBeDefined();
     expect(path![0]).toBe(tileIndex(grid, 2, 10));
     expect(path![path!.length - 1]).toBe(tileIndex(grid, 17, 10));
   });
 
-  it("returns undefined when a cost-0 (impassable) moat fully separates the two lands", () => {
+  it("omits a target entirely when a cost-0 (impassable) moat fully separates the two lands", () => {
     const grid = createTileGrid(20, GRASS);
     stampLand(grid, 0, 0, 0, 4, 19);
     stampLand(grid, 1, 15, 0, 19, 19);
     for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER; // a full-height wall
     const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
-    const path = findConnectionPath(grid, grid.terrain, costOf, 0, 1, computeLandBoundingBoxes(grid, 2)[1]);
-    expect(path).toBeUndefined();
+    expect(findConnectionPaths(grid, grid.terrain, costOf, 0, [1]).has(1)).toBe(false);
   });
 
   it("prefers the cheaper route over the shorter one when costs differ", () => {
@@ -198,7 +181,7 @@ describe("findConnectionPath (multi-source, multi-goal A*)", () => {
     // A short but expensive strip directly between them; everywhere else stays cheap.
     for (let x = 1; x < 19; x++) grid.terrain[tileIndex(grid, x, 9)] = WATER;
     const costOf = (terrainId: number): number => (terrainId === WATER ? 50 : 1);
-    const path = findConnectionPath(grid, grid.terrain, costOf, 0, 1, computeLandBoundingBoxes(grid, 2)[1]);
+    const path = findConnectionPaths(grid, grid.terrain, costOf, 0, [1]).get(1);
     expect(path).toBeDefined();
     // The cheap detour is longer in TILE COUNT than the direct route across
     // the expensive strip (18 tiles) would have been, which is exactly what
@@ -212,11 +195,94 @@ describe("findConnectionPath (multi-source, multi-goal A*)", () => {
     const grid = createTileGrid(dim, GRASS);
     stampLand(grid, 0, 0, 0, 0, 19); // a whole west column
     stampLand(grid, 1, 19, 0, 19, 19); // a whole east column
-    const path = findConnectionPath(grid, grid.terrain, () => 1, 0, 1, computeLandBoundingBoxes(grid, 2)[1]);
+    const path = findConnectionPaths(grid, grid.terrain, () => 1, 0, [1]).get(1);
     expect(path).toBeDefined();
     // x=0 through x=19 inclusive is 20 tiles -- not routed via some
     // arbitrary single "origin" tile of either land.
     expect(path!.length).toBe(20);
+  });
+
+  it("answers several targets from ONE search, each with the path a per-pair search would have found", () => {
+    const grid = createTileGrid(30, GRASS);
+    stampLand(grid, 0, 15, 15, 15, 15); // source in the middle
+    stampLand(grid, 1, 15, 5, 15, 5); // north
+    stampLand(grid, 2, 25, 15, 25, 15); // east
+    stampLand(grid, 3, 15, 25, 15, 25); // south
+    const batched = findConnectionPaths(grid, grid.terrain, () => 1, 0, [1, 2, 3]);
+    expect([...batched.keys()].sort()).toEqual([1, 2, 3]);
+    // Each is the same optimal path a search run for that target alone finds.
+    for (const target of [1, 2, 3]) {
+      const alone = findConnectionPaths(grid, grid.terrain, () => 1, 0, [target]).get(target);
+      expect(batched.get(target)).toEqual(alone);
+    }
+    expect(batched.get(1)!.length).toBe(11); // y=15 down to y=5 inclusive
+  });
+
+  it("reaches a target lying BEYOND another target — recording a land does not stop the search expanding through it", () => {
+    const grid = createTileGrid(30, GRASS);
+    stampLand(grid, 0, 2, 15, 2, 15);
+    stampLand(grid, 1, 14, 15, 14, 15); // directly in the way
+    stampLand(grid, 2, 27, 15, 27, 15); // further along the same row
+    const paths = findConnectionPaths(grid, grid.terrain, () => 1, 0, [1, 2]);
+    expect(paths.get(1)!.length).toBe(13); // x=2..14
+    expect(paths.get(2)!.length).toBe(26); // x=2..27, straight through land 1's tile
+  });
+
+  it("returns an unreachable target absent while still answering its reachable siblings", () => {
+    const grid = createTileGrid(20, GRASS);
+    stampLand(grid, 0, 0, 10, 0, 10);
+    stampLand(grid, 1, 5, 10, 5, 10);
+    stampLand(grid, 2, 19, 10, 19, 10); // behind the wall
+    for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER;
+    const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
+    const paths = findConnectionPaths(grid, grid.terrain, costOf, 0, [1, 2]);
+    expect(paths.has(1)).toBe(true);
+    expect(paths.has(2)).toBe(false);
+  });
+
+  it("drops the source land from its own target set rather than pathing to itself", () => {
+    const grid = createTileGrid(20, GRASS);
+    stampLand(grid, 0, 2, 10, 2, 10);
+    expect(findConnectionPaths(grid, grid.terrain, () => 1, 0, [0]).size).toBe(0);
+  });
+});
+
+describe("buildConnectivityIndex / landsCanConnect (the pre-search reachability answer)", () => {
+  const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
+
+  it("agrees with the search on both answers, either side of an impassable wall", () => {
+    const grid = createTileGrid(20, GRASS);
+    stampLand(grid, 0, 0, 10, 0, 10);
+    stampLand(grid, 1, 5, 10, 5, 10);
+    stampLand(grid, 2, 19, 10, 19, 10);
+    for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER;
+    const index = buildConnectivityIndex(grid, grid.terrain, costOf, 3);
+    expect(landsCanConnect(index, 0, 1)).toBe(true);
+    expect(landsCanConnect(index, 0, 2)).toBe(false);
+    // The search's own verdict, which this is standing in for.
+    const paths = findConnectionPaths(grid, grid.terrain, costOf, 0, [1, 2]);
+    expect(paths.has(1)).toBe(true);
+    expect(paths.has(2)).toBe(false);
+  });
+
+  it("a land made of impassable terrain still DEPARTS — source tiles are seeded whatever they cost", () => {
+    const grid = createTileGrid(20, GRASS);
+    stampLand(grid, 0, 2, 10, 2, 10);
+    stampLand(grid, 1, 17, 10, 17, 10);
+    grid.terrain[tileIndex(grid, 2, 10)] = WATER; // the source land itself is impassable
+    const index = buildConnectivityIndex(grid, grid.terrain, costOf, 2);
+    expect(landsCanConnect(index, 0, 1)).toBe(true);
+    expect(findConnectionPaths(grid, grid.terrain, costOf, 0, [1]).has(1)).toBe(true);
+  });
+
+  it("a land made of impassable terrain cannot be ARRIVED AT — a target is entered by relaxing into it", () => {
+    const grid = createTileGrid(20, GRASS);
+    stampLand(grid, 0, 2, 10, 2, 10);
+    stampLand(grid, 1, 17, 10, 17, 10);
+    grid.terrain[tileIndex(grid, 17, 10)] = WATER; // the target land itself is impassable
+    const index = buildConnectivityIndex(grid, grid.terrain, costOf, 2);
+    expect(landsCanConnect(index, 0, 1)).toBe(false);
+    expect(findConnectionPaths(grid, grid.terrain, costOf, 0, [1]).has(1)).toBe(false);
   });
 });
 
@@ -409,7 +475,10 @@ describe("applyConnections (Sec.6.5 end to end)", () => {
     expect(result.notes).toEqual([]);
   });
 
-  it("create_connect_all_players_land connects every player pair and paints terrain along the path", () => {
+  // Named for what it asserts: the command declares no `replace_terrain`, so
+  // there is no painting here to check (`applyTerrainAlongPath`'s own describe
+  // block covers that half).
+  it("create_connect_all_players_land pairs the PLAYER lands only, never the neutral one", () => {
     const { instantiated, grid } = bareGrid("<CONNECTION_GENERATION>\ncreate_connect_all_players_land {\n}\n", 1, { mapSize: "Tiny" });
     const origins = [fabricateOrigin(2, 2, 1), fabricateOrigin(27, 27, 2), fabricateOrigin(5, 27, undefined)];
     stampLand(grid, 0, 1, 1, 3, 3);
@@ -553,6 +622,87 @@ describe("applyConnections (Sec.6.5 end to end)", () => {
     // too, cost 0, and it was the only route -- blocked.
     expect(result.reports[1]).toMatchObject({ placed: 0 });
     expect(result.reports[1].failures[0].bucket).toBe("connectionBlocked");
+  });
+
+  it("accumulate_connections: even WITH it, pairs inside ONE command never see each other's paint (RMSTEST_43a/43b)", () => {
+    const source = [
+      "<CONNECTION_GENERATION>",
+      "accumulate_connections",
+      "create_connect_all_players_land {\nterrain_cost WATER 0\nreplace_terrain GRASS WATER\n}",
+    ].join("\n");
+    const { instantiated, grid } = bareGrid(source, 5, { mapSize: "Tiny" });
+    const dim = grid.dim;
+    const midY = Math.floor(dim / 2);
+    const wallX = Math.floor(dim / 2);
+    // Two lands west and one east, so BOTH west->east pairs must cross the
+    // wall's single gap -- and they have different source lands, so they are
+    // separate searches even after batching. The first of them paints that
+    // gap to WATER, which this command's own `terrain_cost WATER 0` calls
+    // impassable: a live read would block the second pair, a per-command
+    // snapshot does not.
+    const origins = [fabricateOrigin(4, midY - 6, 1), fabricateOrigin(4, midY + 6, 2), fabricateOrigin(dim - 5, midY, 3)];
+    stampLand(grid, 0, 3, midY - 7, 5, midY - 5);
+    stampLand(grid, 1, 3, midY + 5, 5, midY + 7);
+    stampLand(grid, 2, dim - 6, midY - 1, dim - 4, midY + 1);
+    for (let y = 0; y < dim; y++) {
+      if (y === midY) continue; // the single gap
+      grid.terrain[tileIndex(grid, wallX, y)] = WATER;
+    }
+    const result = applyConnections(instantiated, grid, constants, origins, 5);
+    expect(result.reports[0]).toMatchObject({ attempted: 3, placed: 3 });
+  });
+
+  it("replacement rules never cascade inside one command: a tile this command painted is not re-read as its new terrain", () => {
+    // GRASS -> DIRT and DIRT -> WATER in the same command. Consecutive path
+    // tiles' radius-1 discs overlap, so every overlap tile is painted twice;
+    // reading `terrainOf` live would find DIRT there the second time and take
+    // it to WATER. Frozen, it reads GRASS both times and stops at DIRT. This
+    // is also exactly the property `PaintCoverage`'s dedup relies on.
+    const source = [
+      "<CONNECTION_GENERATION>",
+      "create_connect_all_players_land {\nreplace_terrain GRASS DIRT\nreplace_terrain DIRT WATER\n}",
+    ].join("\n");
+    const { instantiated, grid } = bareGrid(source, 3, { mapSize: "Tiny" });
+    const dim = grid.dim;
+    const origins = [fabricateOrigin(4, 10, 1), fabricateOrigin(dim - 5, 10, 2)];
+    stampLand(grid, 0, 3, 9, 5, 11);
+    stampLand(grid, 1, dim - 6, 9, dim - 4, 11);
+    const result = applyConnections(instantiated, grid, constants, origins, 3);
+    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 1 });
+    expect(grid.terrain).toContain(DIRT);
+    expect(grid.terrain).not.toContain(WATER);
+  });
+
+  it("accumulate_connections: a path tile's terrain_size is looked up in the command's OWN starting terrain, not in what the command has painted so far", () => {
+    // The sharpest observable the per-command snapshot has, now that every
+    // search runs before any painting: `terrain_size` is keyed on the path
+    // tile's terrain, so a live read would size disc N+1 from the terrain
+    // disc N just painted onto it. GRASS is radius 1 and DIRT radius 5, and
+    // the command paints GRASS to DIRT — so a live read widens the band from
+    // the second path tile onwards.
+    const source = [
+      "<CONNECTION_GENERATION>",
+      "accumulate_connections",
+      "create_connect_all_players_land {\nreplace_terrain GRASS DIRT\nterrain_size GRASS 1 0\nterrain_size DIRT 5 0\n}",
+    ].join("\n");
+    const { instantiated, grid } = bareGrid(source, 3, { mapSize: "Tiny" });
+    const dim = grid.dim;
+    // One row apart on uniform-cost terrain, so the cheapest path is exactly
+    // the straight row between them and the band's width is the whole story.
+    const origins = [fabricateOrigin(4, 10, 1), fabricateOrigin(dim - 5, 10, 2)];
+    stampLand(grid, 0, 3, 9, 5, 11);
+    stampLand(grid, 1, dim - 6, 9, dim - 4, 11);
+    const result = applyConnections(instantiated, grid, constants, origins, 3);
+    expect(result.reports[0]).toMatchObject({ attempted: 1, placed: 1 });
+    let dirt = 0;
+    for (let y = 0; y < dim; y++) {
+      for (let x = 0; x < dim; x++) {
+        if (grid.terrain[tileIndex(grid, x, y)] !== DIRT) continue;
+        dirt++;
+        expect(Math.abs(y - 10)).toBeLessThanOrEqual(1);
+      }
+    }
+    expect(dirt).toBeGreaterThan(0);
   });
 
   it("full pipeline (S1-S5) never throws on a plain script", () => {

@@ -66,6 +66,17 @@ fills in `constId`) if genieutils-py can't parse your DE version's dat
 file — file format assumptions get out of date; this keeps half the
 tool useful even then.
 
+Five narrow modes exist alongside the full run, each rewriting only its own
+fields. They are mutually exclusive, and each takes `--dry-run`.
+
+| mode | writes | section below |
+|---|---|---|
+| `--ids-only` | `constId` only, no dat needed | above |
+| `--colors-only` | `previewColor`, `minimapColor` | The two terrain colours |
+| `--terrain-table` | `terrainRestrictionId`, `allowedTerrains`, `placementSideTerrain`, `habitat` | The terrain restriction table |
+| `--classes` | `classId`, and the `objectClass` rows | Unit classes |
+| `--storages` | `resourceStorages`, and a refreshed `resourceAmounts` | Resource storage |
+
 Add `--colors-only` to refresh **just** the two terrain colour fields
 and leave every other field, and the rest of each entry's `notes`,
 exactly as they were:
@@ -101,19 +112,22 @@ reference-data edits. Both modes are idempotent — re-running replaces the
 previous colour sentence in `notes` rather than stacking another copy,
 which is pinned by `test_is_idempotent_across_runs`.
 
-Add `--habitat-only` to refresh **just** the `habitat` field on object entries
-from the engine's own terrain table, leaving every other field alone. Pair it
-with `--dry-run` first — see "The terrain restriction table" below, which is
-where that mode is documented in full.
+Add `--terrain-table` to refresh **just** the engine's terrain table on object
+entries, and the `habitat` derived from it, leaving every other field alone.
+Pair it with `--dry-run` first — see "The terrain restriction table" below,
+which is where that mode is documented in full.
 
 ```bash
-python extract_constants.py --habitat-only --dry-run
+python extract_constants.py --terrain-table --dry-run
 ```
 
-The three narrow modes are mutually exclusive, and each one exists for the same
-reason: a full run recomputes `verified` and rewrites `notes` wholesale, which
-is right when re-extracting everything and wrong when adding one field to a
-working tree carrying uncommitted reference-data edits.
+It was called `--habitat-only` while the derived class was all it wrote, which
+is the name the 2026-08-10 build-log entry uses.
+
+They are mutually exclusive, and each one exists for the same reason: a full run
+recomputes `verified` and rewrites `notes` wholesale, which is right when
+re-extracting everything and wrong when adding one field to a working tree
+carrying uncommitted reference-data edits.
 
 ## The two terrain colours, and why there are two
 
@@ -150,16 +164,35 @@ npm run validate:reference   # from the repo root
 then review the `git diff` on `reference/data/game-constants.json`
 before committing, same as any other reference-data change.
 
-## The terrain restriction table — `--habitat-only`
+## The terrain restriction table — `--terrain-table`
 
 The dat stores a per-object `terrain_restriction_id` indexing a per-restriction
 row of allowed terrains — the "terrain table" — and it decides where every
-object may stand. It is now read, and the run that reads it writes `habitat`:
+object may stand. It is now read, and the run that reads it writes four fields:
+
+| field | what it is |
+|---|---|
+| `terrainRestrictionId` | the dat's own `Unit.terrain_restriction`, a key into the game's table |
+| `allowedTerrains` | that row expanded to the terrain ids it permits |
+| `placementSideTerrain` | the two-slot "must sit beside" requirement, `[-1, -1]` when there is none |
+| `habitat` | our five-value reading of the three above |
 
 ```bash
-python extract_constants.py --habitat-only --dry-run   # report only
-python extract_constants.py --habitat-only             # take it
+python extract_constants.py --terrain-table --dry-run   # report only
+python extract_constants.py --terrain-table             # take it
 ```
+
+**The first three are a transcription and the fourth is a reading, which is why
+all four are written.** The restriction id alone would be a key that resolves
+to nothing outside an install, so the row travels with it; and `habitat` is a
+five-value approximation whose cost is only visible next to what it
+approximates. The order in the file says the same thing: the measurement
+precedes our reading of it.
+
+A row that no class fits still gets its first three fields. That case is
+exactly where a five-value vocabulary is known to be inadequate, so it is the
+last place to drop the measurement — pinned by
+`TestMergeTerrainTable.test_writes_the_raw_table_even_when_no_class_fits`.
 
 **Run `--dry-run` first and read the report, every time.** The report is the
 point of this mode rather than a courtesy. Every `habitat` in the file was
@@ -214,13 +247,17 @@ restriction 8 (GOLD/STONE/FORAGE) permits 83 of the 110 terrains `land` covers,
 so there are 27 terrains where the engine says no and the preview will still
 place. That is the cost of a five-value vocabulary, not an error in the join,
 and `land` still wins by a wide margin. Whether the classes should be retired
-for the raw 131-terrain mask is the open question; `allowed_terrains` is
-already there for whoever takes it on.
+for the raw 131-terrain mask is the open question, and `allowedTerrains` is now
+in the file rather than only in this process, so whoever takes it on starts
+from a diff rather than from an argument. Nothing reads that field today:
+retiring the classes changes `objects.ts`'s placement rules and belongs to
+whoever measures what that does to the corpus.
 
 Two more things the mode reports rather than acts on. A row it cannot
-classify — an empty row, or a tie between the best two classes — is **left
-alone**, because picking one of a tie is a coin flip wearing a measurement's
-clothes. And a `placement_side_terrain` that the chosen class cannot express is
+classify — an empty row, or a tie between the best two classes — keeps
+whatever `habitat` the file already had, because picking one of a tie is a coin
+flip wearing a measurement's clothes and no class fitting is not evidence that
+the old reading is wrong. And a `placement_side_terrain` that the chosen class cannot express is
 flagged: `shore` is `water` plus "must sit beside a beach", so the rule applies
 cleanly to restriction 19, but the DOCK family carries the same `(2, 35)`
 requirement over an `amphibious`-shaped row (restriction 6) and no class says
@@ -229,7 +266,15 @@ nothing.
 
 The mode is idempotent: it replaces the habitat clause in `notes` rather than
 stacking another copy, pinned by `TestHabitatNote.test_is_idempotent` and
-confirmed against the real file (a second run is byte-identical).
+`TestMergeTerrainTable.test_is_idempotent_across_runs`, and confirmed against
+the real file (a second run is byte-identical).
+
+The report gained one line worth reading before the rest: **`RESTRICTION ID
+MOVED`**, printed when the dat's restriction id for an object differs from the
+one already in the file. It is the only result in the report that cannot be a
+mistake of ours — a DE patch moved an object into a different row, and
+everything the preview assumed about where that object stands is stale. It is
+silent today because every id agrees.
 
 ### The namespace split, which was the actual blocker
 
@@ -288,6 +333,176 @@ Note the table is also mutable at run time from inside a script, via
 `effect_amount SET_ATTRIBUTE <object> ATTR_TERRAIN_ID <n>`, which no static
 extraction can capture. `Menindee_AUS_v2.3.rms` uses it ten times.
 
+## Resource storage — `--storages`
+
+```bash
+python extract_constants.py --storages          # add --dry-run to see the report first
+```
+
+This is the other half of what `src/parser/resourceTotals.ts` needs, the first
+half being `--classes`.
+
+**Why a raw field when `resourceAmounts` already exists.**
+`effect_amount SET_ATTRIBUTE <target> ATTR_STORAGE_VALUE <n>` writes **slot 0**,
+whatever that slot happens to hold, and the corpus does it 374 times across 16
+maps. Whether such a line changes a map's food total depends entirely on the
+slot's TYPE, and `resourceAmounts` has already thrown the type away by keying on
+our own four-resource vocabulary. It also drops a zero amount, which is exactly
+the value a script writes to switch a resource off (`24hr_Caverns.rms` and
+`24hr_Holler.rms` both do).
+
+So `resourceStorages` is the measurement and `resourceAmounts` stays the reading,
+the same order the terrain table uses.
+
+### What slot 0 actually holds, measured across the roster
+
+| type | units | meaning | examples |
+|---|---|---|---|
+| 0 | 89 | food | BOARX 340, FORAG 125, DEERX 140 |
+| 1 | 53 | wood | TREETD 125, BUSH 100 |
+| 2 | 3 | stone | STONM 350 |
+| 3 | 7 | gold | GOLDM 800 |
+| 4 | 807 | population | HOUS 5 provides, LEGION -1 consumes |
+| 12 | 533 | decay time | every `*_D` dead-unit record, 300 |
+| 17 | 16 | fish food | FISH1-5 225, FISHS 200, WHAL1 200 |
+| 9, 14, 56, 508, 514 | 11 | unread | SDOC 600, OREMN 400 |
+
+guide:3599 annotates the attribute as "population support, tree wood amount,
+decay time", which is types 4, 1 and 12. **The guide is describing the slot's
+type varying, not three unrelated meanings**, and reading it that way is what
+makes the attribute tractable at all.
+
+### Type 17 was missing, and that is why FISH and SHORE_FISH were unverified
+
+`RESOURCE_TYPE_INDEX` mapped only 0-3. Fish store their food under type **17**,
+so the extraction dropped the value, read the absence as "the dat reports no
+resource storage", and wrote a `CONTRADICTION` sentence into both entries along
+with `verified: false`. That note has sat in the data since 2026-07-30, and its
+own text guessed the cause correctly: *"suspect this script's Gaia-roster lookup
+before the placeholder"*. The lookup was fine; this table had nowhere to put the
+type.
+
+Two independent readings confirm 17 is food, on two different numbers:
+
+- guide:4999 says "FISH_A: a type of standard fish (225 food)", and the dat's
+  FISH1-FISH5 (units 455-459) carry type 17 amount **225**.
+- The hand-written entries claimed 200 food for FISH and SHORE_FISH, and the dat
+  carries type 17 amount **200** for units 53 and 69.
+
+All sixteen users of the type are a fish, a whale, a marlin, a turtle or a fish
+trap. The run retracts the contradiction sentence in place rather than rewriting
+the note wholesale, and prints which entries it retracted — it deliberately does
+**not** flip `verified`, since that flag is a claim about the whole entry and
+belongs to a human.
+
+Effect on the file: 15 entries gained a `resourceAmounts` they never had, the
+whole ocean-fish family plus DLC_BOXTURTLE, and OYSTERS turns out to be gold 450
+rather than a food source.
+
+### One character of collateral damage, found by accident
+
+The retraction regex matched FISH and not SHORE_FISH, which made no sense until
+the two notes were compared as codepoints. SHORE_FISH's em dash was stored as
+`â` + `` + `` — the character's UTF-8 bytes decoded as latin-1, one
+round trip through the wrong encoding somewhere in this file's history. It was
+the only occurrence in all four reference data files, it survives every existing
+gate (the schema types the field `string`, and a corrupted string is still a
+string), and it left with the sentence that carried it.
+
+`npm run validate:reference` now refuses double-encoded text anywhere in
+`reference/data`, so a repeat is caught rather than waiting for the next regex
+to trip over it.
+
+## Unit classes — `--classes`
+
+```bash
+python extract_constants.py --classes            # add --dry-run to see the report first
+```
+
+An RMS author can aim `effect_amount SET_ATTRIBUTE` at a **class** rather than a
+unit, and 374 of the corpus's uses do. `TREE_CLASS` alone covers 51 unit types.
+Nothing in the reference data could resolve one, so a consumer asking "did that
+line change the object I am about to place" had no way to answer at all.
+
+**There is no class table in the dat to read.** A class is not a record, it is a
+field every unit carries (`Unit.class_`), so the mapping exists only as a
+groupby over Gaia's roster. That is why nothing could look a class up before,
+and it is the whole of the extraction: 2642 live units, 57 classes.
+
+The run writes both directions.
+
+| field | on | what it is |
+|---|---|---|
+| `classId` | object rows | which class this object is in |
+| `classId` + `memberIds` | new `objectClass` rows | the class, and every unit id in it |
+
+`memberIds` covers the **whole roster**, not just the objects that have their
+own row. That is the point of the field: the question is whether an object the
+script places belongs to a class the script named, and an object with no row of
+its own is exactly the case that gets asked about.
+
+### Where the rows live, and why not in a file of their own
+
+They are rows in `constants[]` with `category: "objectClass"`. A class IS an RMS
+constant — `TREE_CLASS` is defined in `random_map.def` like anything else — so
+it belongs in the same array under the same shape, and every consumer that
+resolves a written name against `constants[]` picks it up for free. The 32
+classes with no constant carry `rmsConstant: null`, which is the shape the 53
+unnamed terrains already established. A separate array would have meant a second
+schema, a second resolver and a second thing to keep in sync, for data of
+exactly the same kind.
+
+### The offset, and why the run refuses to write without it
+
+`constId` is `classId + 900`. That offset is what lets the engine tell a class
+target from a unit target, and every `memberIds` list is attached to a constant
+by it — so if DE ever moves it, the output is confidently wrong rather than
+missing. The run therefore verifies it first and **aborts on a contradiction**.
+
+Verification is two checks and neither hardcodes anything:
+
+- **Name stem.** `SHORE_FISH_CLASS` is 933, deriving class 33, and the object
+  constant `SHORE_FISH` in the same file is unit 69 whose `class_` is 33. Two
+  independent readings of one fact, linked only by the shared stem. Eight names
+  can be checked this way.
+- **Existence**, for the rest: the derived id must be a class some unit is in.
+
+**A shared stem can still be a coincidence, and the first real run found one.**
+`MONASTERY_CLASS` is 918, so it derives class 18 — which holds MONKX, HFRIAR and
+PRIEST, the monk class. The object constant `MONASTERY` is unit 104, the
+building, class 3. Both readings are right and they are about different things.
+Aborting there would have blocked the extraction over a pun.
+
+What separates a coincidence from a real offset error is measurable rather than
+a judgement call: **a wrong offset is a constant shift, so every check fails at
+once**. Confirmed by monkeypatching the base — at 900 the run writes with 23
+confirmations, at 901 it aborts with 3 contradictions, at 0 it aborts with 24
+and no confirmations at all. So one disagreeing row among agreeing neighbours is
+reported and tolerated; a derived id no unit is in, or zero confirmations, is
+fatal.
+
+### Two things the run reports that are not errors
+
+**116 units are in class -1** and are dropped. A negative class is the dat's "no
+class", not a class with a negative number, so there is nothing for a constant to
+name — writing it would mint `constId 899` for a name no author can write. The
+count is printed because a jump in it means a DE patch reclassified something.
+
+**DOLPHIN and PERCH take no `classId`.** Both deliberately carry `constId: null`
+(the id was never needed and guessing it would have been a second claim), so
+there is no unit to look up. That is the existing decision showing through, not
+a new gap.
+
+### What this does not finish
+
+`src/parser/resourceTotals.ts` is the caller that wants this — `ATTR_STORAGE_VALUE`
+rewrites what an object yields and the status bar reports the base value
+regardless — and classes are only half of what it needs. The other half is
+knowing which meaning `ATTR_STORAGE_VALUE` carries for a given unit, since the
+guide's own annotation for attribute 21 is "population support, tree wood
+amount, decay time". A unit's `resource_storages` says which resource it holds
+and is readable in the same pass whenever that work starts.
+
 ## If the dat parse breaks: the Advanced Genie Editor
 
 DE ships the **Advanced Genie Editor** under `Tools_Builds/` in the
@@ -305,7 +520,15 @@ data change apart from a format-parsing regression.
 
 ## Testing status — read before trusting a run
 
-**No AoE2:DE install was available to test against while writing this**. Everything independently testable
+**No AoE2:DE install was available to test against while writing this**, which
+is why the section reads as it does. Four real runs have happened since and
+each corrected something the unit tests could not see: the first (2026-07-30)
+found the terrain→texture join crossing two id spaces, `--colors-only`
+(2026-08-05) found `Terrain.colors` to be a 12-value legacy class,
+`--terrain-table`'s habitat half (2026-08-10) refuted its own derivation on the
+fish row, and its raw half (same day) confirmed every restriction id already in
+the file. **The `DatExtraction` caveats below still stand** — none of those runs
+is a test, and none of them runs in CI. Everything independently testable
 without one *is* tested — `test_extract_constants.py` covers the
 `random_map.def` parser and the JSON merge/formatting logic (including a
 byte-identical round-trip regression test against the real, current
@@ -338,6 +561,19 @@ RMS scripts can override an object's resource amount at generation time via
 effect/resource-delta style commands. What this script (and `game-constants.json`) 
 records is the **unmodified base value from the game's data files** — the number 
 a plain `create_object GOLD` gets before any such script-level modifier.
-`src/parser/resourceTotals.ts` (Phase 2.5) does not currently account
+`src/parser/resourceTotals.ts` does not currently account
 for those modifiers when computing the status-bar totals — tracked as
 known debt in `CLAUDE.md`, not something this script's scope covers.
+
+**The data side of that debt is now closed, and the consumer side is not.**
+`--classes` answers "which objects does this line target" when the target is a
+class, and `--storages` answers "does slot 0 hold a resource, and which one".
+Between them a consumer can resolve
+`effect_amount SET_ATTRIBUTE TREE_CLASS ATTR_STORAGE_VALUE 200` down to a set of
+unit ids and a resource bucket. Nothing reads either field yet. What remains is
+in `resourceTotals.ts` itself: walk `<PLAYER_SETUP>`'s `effect_amount`
+commands, resolve each target through the game constants, the script's own
+`#const`s and the class rows, and apply the override before summing. Note the
+ownership split (`SET_ATTRIBUTE` against `GAIA_SET_ATTRIBUTE`) and
+`GAIA_UPGRADE_UNIT`, which changes yields by replacing one unit type with
+another, are both still unmodelled.

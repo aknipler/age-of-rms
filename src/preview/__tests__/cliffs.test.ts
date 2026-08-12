@@ -324,12 +324,40 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
     expect(result.notes.some((n) => n.key === "cliffsMinExceedsMax")).toBe(true);
   });
 
-  it("min_length_of_cliff below 3: zero cliffs plus a note (guide: 'minimum must be at least 3 for cliffs to appear')", () => {
-    const source = "<CLIFF_GENERATION>\nmin_length_of_cliff 2\n";
+  // A sub-3 `min_length_of_cliff` drops the individual DRAWS that roll below
+  // 3; it does not switch the section off (BUG-008, RMSTEST_45a/45b/45c). The
+  // three cases below are that measurement's three arms, and the third is the
+  // one that separates a per-draw yield from a section gate — a gate predicts
+  // zero there, and the engine produced cliffs.
+  const twentyCliffs = "min_number_of_cliffs 20\nmax_number_of_cliffs 21\n";
+
+  it("min 2 / max 2: every roll dies, so the section produces nothing — reached through the rolls, not a gate", () => {
+    const source = `<CLIFF_GENERATION>\n${twentyCliffs}min_length_of_cliff 2\nmax_length_of_cliff 2\n`;
     const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
     const result = applyCliffs(instantiated, grid, constants, [], 1);
-    expect(result.reports[0]).toMatchObject({ attempted: 0, placed: 0 });
+    expect(result.reports[0].placed).toBe(0);
     expect(cliffTileCount(grid)).toBe(0);
+    // The section still tried: `attempted` is the cliff count it rolled.
+    expect(result.reports[0].attempted).toBe(20);
+    expect(result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed"))).toBe(true);
+  });
+
+  it("min 3 / max 3: the control arm, cliffs appear normally and no note fires", () => {
+    const source = `<CLIFF_GENERATION>\n${twentyCliffs}min_length_of_cliff 3\nmax_length_of_cliff 3\n`;
+    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
+    const result = applyCliffs(instantiated, grid, constants, [], 1);
+    expect(result.reports[0].placed).toBe(20);
+    expect(cliffTileCount(grid)).toBeGreaterThan(0);
+    expect(result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed"))).toBe(false);
+  });
+
+  it("min 2 / max 4: SOME cliffs appear — the arm a section gate cannot produce", () => {
+    const source = `<CLIFF_GENERATION>\n${twentyCliffs}min_length_of_cliff 2\nmax_length_of_cliff 4\n`;
+    const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
+    const result = applyCliffs(instantiated, grid, constants, [], 1);
+    expect(result.reports[0].placed).toBeGreaterThan(0);
+    expect(result.reports[0].placed).toBeLessThan(result.reports[0].attempted);
+    expect(cliffTileCount(grid)).toBeGreaterThan(0);
     expect(result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed"))).toBe(true);
   });
 

@@ -19,20 +19,57 @@
 // grows (the script prints a nudge when you are well above the floor).
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-// Live: 19 files / 446 tests (2026-08-05, after BUG-003's four parser
-// assertions and `rms0201.measure.test.ts`). Floor sits below live on purpose:
-// there are now TWO self-described scratch harnesses that may be deleted
-// (`rms0200.measure.test.ts`, `rms0201.measure.test.ts`), which would take live
-// to 17/444, and a guard that goes red when someone removes a scratch harness
-// is a guard that gets switched off.
-const MIN_FILES = 17;
-const MIN_TESTS = 442;
-// Nudge to raise the floors once the suite has grown past it by this much.
-const NUDGE_SLACK = 25;
+// THE FLOOR MUST PASS ON A FRESH CLONE, and how much of the suite a clone even
+// has to run is DECIDED BY THE CORPUS ON DISK. So the test floor is computed
+// from the corpus rather than written down (2026-08-11).
+//
+// It used to be two constants — one for a clone, one for a maintainer with
+// `test-maps/local/` mounted — and both were wrong, because the measurement
+// behind them assumed all 32 top-level maps were tracked. Eleven are. The
+// other 21 are gitignored exactly like `local/` is, so CI ran ~1061 tests
+// against a floor of 1250 and could never have gone green; the failure read as
+// a skipped suite, which is the one thing this guard exists to distinguish.
+//
+// The coefficients below are exact minima, not averages, measured out of a
+// full JSON report on 2026-08-11 (43 files / 1387 tests, everything mounted):
+// every test that walks the corpus names its map in its own title, so each
+// map's contribution is countable. Top-level maps contributed 11-19 tests
+// each, `local/` maps 4-8. Taking the minimum of each range makes this a floor
+// in the same sense the totals are: adding maps or tests never fails it.
+const TESTS_PER_CORPUS_MAP = 11;
+const TESTS_PER_LOCAL_MAP = 4;
+// Everything not attributable to a corpus map, including `broken/`, which is
+// tracked and therefore always present. 1387 - 399 (32 top-level maps) - 84
+// (19 local maps) = 904.
+const BASE_TESTS = 904;
+
+// File count does NOT depend on the corpus — a gitignored map removes tests,
+// never a test file — so this one stays a written-down number. 44 files live
+// (2026-08-11), minus the four `*.measure.test.ts` scratch harnesses, which
+// exist to print a corpus census and are legitimate to delete: a guard that
+// goes red when someone removes a scratch harness is a guard that gets
+// switched off. Raise it deliberately as suites land.
+const MIN_FILES = 40;
+
+const MAPS_DIR = join(process.cwd(), "test-maps");
+const LOCAL_CORPUS_DIR = join(MAPS_DIR, "local");
+
+function countRms(dir) {
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir, { withFileTypes: true }).filter(
+    (e) => e.isFile() && e.name.toLowerCase().endsWith(".rms"),
+  ).length;
+}
+// Nudge to raise the floors once the suite has grown past them by this much.
+// Sized so it is SILENT at the moment the floors are set and speaks only after
+// real growth: a nudge that fires on the day you set the number is a nudge
+// people learn to scroll past, which is how the floor got 900 tests stale.
+const NUDGE_SLACK = 120;
+const NUDGE_FILE_SLACK = 6;
 
 const passthrough = process.argv.slice(2);
 const isFiltered = passthrough.length > 0;
@@ -78,10 +115,15 @@ rmSync(reportPath, { force: true });
 const files = report.testResults.length;
 const tests = report.numTotalTests;
 
+const corpusMaps = countRms(MAPS_DIR);
+const localMaps = countRms(LOCAL_CORPUS_DIR);
+const minTests =
+  BASE_TESTS + corpusMaps * TESTS_PER_CORPUS_MAP + localMaps * TESTS_PER_LOCAL_MAP;
+
 const problems = [];
 if (status !== 0) problems.push(`Vitest exited ${status}`);
 if (files < MIN_FILES) problems.push(`only ${files} test files ran, expected at least ${MIN_FILES}`);
-if (tests < MIN_TESTS) problems.push(`only ${tests} tests ran, expected at least ${MIN_TESTS}`);
+if (tests < minTests) problems.push(`only ${tests} tests ran, expected at least ${minTests}`);
 
 if (problems.length > 0) {
   console.error(`\n✗ test floor FAILED — ${problems.join("; ")}.`);
@@ -89,10 +131,16 @@ if (problems.length > 0) {
     "  A partial run can still exit 0 (see this script's header). Re-run before investigating:\n" +
       "  the 2026-08-01 case was load-dependent and a clean re-run passed on identical code.",
   );
+  console.error(
+    `  The test floor is computed from the corpus on disk: ${corpusMaps} maps in test-maps/ and\n` +
+      `  ${localMaps} in test-maps/local/. If a map was ADDED without its tests running, that is the\n` +
+      "  shortfall and not a skipped suite.",
+  );
   process.exit(1);
 }
 
-console.log(`\n✓ test floor: ${files} files / ${tests} tests (floor ${MIN_FILES}/${MIN_TESTS})`);
-if (files >= MIN_FILES + 2 || tests >= MIN_TESTS + NUDGE_SLACK) {
+const corpusNote = `${corpusMaps} maps + ${localMaps} local`;
+console.log(`\n✓ test floor: ${files} files / ${tests} tests (floor ${MIN_FILES}/${minTests}, ${corpusNote})`);
+if (files >= MIN_FILES + NUDGE_FILE_SLACK || tests >= minTests + NUDGE_SLACK) {
   console.log(`  Suite has grown — consider raising the floors in ${"scripts/check-test-floor.mjs"}.`);
 }

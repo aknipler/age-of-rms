@@ -1,7 +1,9 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { ParseResult } from "./parser/types";
 import type { PreviewResult } from "./preview/generator/types";
+import { truncateAst } from "./preview/generator/truncateAst";
 import { usePreviewResult } from "./usePreviewResult";
+import { usePreviewCut } from "./PreviewCutContext";
 import { useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
 import { usePreviewView } from "./components/preview/PreviewViewContext";
 
@@ -49,9 +51,36 @@ export function PreviewResultProvider({
   // Seed comes from PreviewViewContext, which is already above the tab
   // switch — so a re-roll and the generation it triggers now live at the
   // same level, instead of the control outliving the result it produces.
-  const { seed } = usePreviewView();
+  const { seed, view } = usePreviewView();
+  const { cutOffset } = usePreviewCut();
+
+  /*
+   * Current vs Final (preview-design Sec.5), and the ONLY place the two
+   * differ. Sec.5: Current is `generatePreview(truncateAst(parse,
+   * pinnedLine), …)` — the same generator, the same settings, the same seed,
+   * over a shorter script. Final is the whole parse. There is no mode
+   * parameter anywhere below this line, which is why `generatePreview` and
+   * `worker.ts` needed no change at all to ship this.
+   *
+   * `useMemo` is not an optimisation here, it is the correctness condition:
+   * `usePreviewResult`'s debounce effect keys on the parse's REFERENCE, so an
+   * unmemoised `truncateAst(...)` would hand it a fresh object on every
+   * render — every keystroke, every hover — and restart the 300ms timer
+   * without the script having changed, which is a preview that never settles.
+   *
+   * The cost Sec.5 accepts is one extra generation per cursor move while
+   * Current is on and unpinned; the debounce is what makes that liveable, and
+   * `truncateAst` returning the parse unchanged when the cut drops nothing is
+   * what makes a pin at the end of the file free.
+   */
+  const generatedFrom = useMemo(() => {
+    if (parseResult === null) return null;
+    if (view !== "current" || cutOffset === null) return parseResult;
+    return truncateAst(parseResult, cutOffset);
+  }, [parseResult, view, cutOffset]);
+
   const { result } = usePreviewResult(
-    parseResult,
+    generatedFrom,
     playerCount,
     mapSize,
     teams,

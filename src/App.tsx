@@ -18,6 +18,7 @@ import { useDocument } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useParsedDocument } from "./useParsedDocument";
 import { ParsedDocumentProvider } from "./ParsedDocumentContext";
+import { PreviewCutProvider } from "./PreviewCutContext";
 import { PreviewResultProvider } from "./PreviewResultContext";
 import type { TabId } from "./types";
 import styles from "./App.module.css";
@@ -56,39 +57,49 @@ function AppContent() {
       />
       <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
-      {/* Both providers sit above the tab switch so what they hold survives
-          it. ParsedDocumentProvider makes parsed.parseResult reachable from
-          inside MapSidePanel without threading a prop through it
-          (ParsedDocumentContext.tsx); PreviewResultProvider owns the preview
+      {/* All three providers sit above the tab switch so what they hold
+          survives it. ParsedDocumentProvider makes parsed.parseResult
+          reachable from inside MapSidePanel without threading a prop through
+          it (ParsedDocumentContext.tsx); PreviewCutProvider turns the shared
+          selection anchor into the line Current cuts at, and owns the pin
+          (PreviewCutContext.tsx); PreviewResultProvider owns the preview
           worker and its last result, which used to die with PreviewPane on
-          every Breakdown/Code switch (PreviewResultContext.tsx). */}
+          every Breakdown/Code switch (PreviewResultContext.tsx). The cut
+          provider is OUTSIDE the result provider because the result provider
+          reads it — Current generates over a truncated parse. */}
       <ParsedDocumentProvider parseResult={parsed.parseResult}>
-        <PreviewResultProvider parseResult={parsed.parseResult}>
-          <main className={styles.main}>
-            {activeTab === "breakdown" && (
-              <BreakdownPane
-                hasFile={doc.filePath !== null}
-                source={parsed.source}
-                parseResult={parsed.parseResult}
-                applyTextEdit={doc.applyTextEdit}
-                reparseNow={parsed.reparseNow}
-                selection={selection}
-              />
-            )}
-            {activeTab === "code" && (
-              <CodePane
-                hasFile={doc.filePath !== null}
-                source={parsed.source}
-                diagnostics={parsed.diagnostics}
-                selectedItem={selection.selectedItem}
-                onCursorOffsetChange={selection.setAnchor}
-              />
-            )}
-            {activeTab === "advanced-tools" && (
-              <PlaceholderPane description="Advanced Tools pane — arrives in Phase 5." />
-            )}
-          </main>
-        </PreviewResultProvider>
+        <PreviewCutProvider
+          cursorOffset={selection.selectedAnchor}
+          source={parsed.source}
+          parseResult={parsed.parseResult}
+        >
+          <PreviewResultProvider parseResult={parsed.parseResult}>
+            <main className={styles.main}>
+              {activeTab === "breakdown" && (
+                <BreakdownPane
+                  hasFile={doc.filePath !== null}
+                  source={parsed.source}
+                  parseResult={parsed.parseResult}
+                  applyTextEdit={doc.applyTextEdit}
+                  reparseNow={parsed.reparseNow}
+                  selection={selection}
+                />
+              )}
+              {activeTab === "code" && (
+                <CodePane
+                  hasFile={doc.filePath !== null}
+                  source={parsed.source}
+                  diagnostics={parsed.diagnostics}
+                  selectedItem={selection.selectedItem}
+                  onCursorOffsetChange={selection.setAnchor}
+                />
+              )}
+              {activeTab === "advanced-tools" && (
+                <PlaceholderPane description="Advanced Tools pane — arrives in Phase 5." />
+              )}
+            </main>
+          </PreviewResultProvider>
+        </PreviewCutProvider>
       </ParsedDocumentProvider>
       <StatusBar
         diagnostics={parsed.diagnostics}

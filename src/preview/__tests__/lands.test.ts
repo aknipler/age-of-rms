@@ -113,6 +113,10 @@ describe("neutral (unassigned) create_land origin", () => {
     expect(origins[0].y).toBe(dim - 1);
   });
 
+  // BUG-009's named regression risk: with no borders the border box IS the
+  // map, so the border-relative cross has to reproduce RMSTEST_25's original
+  // map-frame numbers exactly. This test is that pin — it computes the cross
+  // the old map-frame way on purpose, and must keep passing.
   it("a random-sampled origin always lands inside the border bounds and the cross-shape region", () => {
     for (let seed = 1; seed <= 20; seed++) {
       const { origins, dim } = place("<LAND_GENERATION>\ncreate_land {\nbase_size 3\n}\n", seed);
@@ -125,6 +129,36 @@ describe("neutral (unassigned) create_land origin", () => {
       const cornered = Math.abs(origin.x - center) > crossHalf && Math.abs(origin.y - center) > crossHalf;
       expect(cornered).toBe(false);
     }
+  });
+
+  it("with borders, the cross is measured against the BORDER BOX, so origins reach the box's own middle (BUG-009)", () => {
+    // `right_border 60 bottom_border 60` leaves x,y in [0, 0.4*dim - 1]. The
+    // map-frame cross forbids that whole square except an L-shaped sliver
+    // along its outer edges, which is the crowding RMSTEST_51 refuted: 16 of
+    // 19 measured origins sat inside the forbidden part.
+    const source = "<LAND_GENERATION>\ncreate_land {\nbase_size 3\nright_border 60\nbottom_border 60\n}\n";
+    let sawMapFrameForbidden = false;
+    for (let seed = 1; seed <= 40; seed++) {
+      const { origins, dim } = place(source, seed);
+      const origin = origins[0];
+      expect(origin.fromOriginFallback).toBe(false);
+      const boxMax = dim - Math.round(0.6 * dim) - 1;
+      expect(origin.x).toBeLessThanOrEqual(boxMax);
+      expect(origin.y).toBeLessThanOrEqual(boxMax);
+
+      // Inside the box-frame cross — the rule as it now stands.
+      const boxCenter = (boxMax + 1) / 2;
+      const boxHalf = 0.35 * ((boxMax + 1) / 2);
+      const outsideBoxCross = Math.abs(origin.x - boxCenter) > boxHalf && Math.abs(origin.y - boxCenter) > boxHalf;
+      expect(outsideBoxCross).toBe(false);
+
+      // And at least one origin lands where the map-frame model could never
+      // have put it, which is what separates the two frames.
+      const mapCenter = dim / 2;
+      const mapHalf = 0.35 * (dim / 2);
+      if (Math.abs(origin.x - mapCenter) > mapHalf && Math.abs(origin.y - mapCenter) > mapHalf) sawMapFrameForbidden = true;
+    }
+    expect(sawMapFrameForbidden).toBe(true);
   });
 
   it("generate_mode 1 disables the cross-shape restriction (corners become reachable across enough seeds)", () => {

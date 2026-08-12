@@ -6,6 +6,164 @@ Entry format: symptom → reproduction → root cause (with file:line) → presc
 
 ---
 
+## BUG-012 — a word valued 69 inside a comment hides the rest of the file from the engine, and the parser cannot see it
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 7). **Area:** `src/parser/validate.ts` (not the lexer — see below), `src/parser/diagnostics.ts`, `docs/parser-design.md` Sec.2.1 and Sec.13 item 7. **Found:** 2026-08-11, `RMSTEST_56a/56b/57/60`.
+
+**What landed, and the one deviation from the prescription.** The check is `checkCommentOpeningWords` in **`validate.ts`, not `lexer.ts`**: resolving a word to a value needs the game constants and the script own `#const` table, and `parseRms(source, lang)` has neither — the lexer would have had to grow a reference-data parameter to answer a question the semantic pass already has everything for. The code number stays RMS0111 (the RMS01xx range describes what the diagnostic is about, not which file emits it). The lexer already tokenizes comment interiors and only marks them `isTrivia`, so nothing needed re-scanning.
+
+**Only the FIRST hit in a file is reported**, since everything below it is inside the engine own nested comment and the message claim is that everything below is gone. Five tests including both negative cases (the bare literal `69`, and the same word as real code), plus the script-level `#const NAME 69` route. Three mutants red: the check disabled, the trivia guard dropped (fires on real code), and this entry own prescribed one — resolving only object-category constants, which turns the `ATTR_PROJECTILE_ARC` case red and is the reading this project held for most of a day. **The corpus is clean of it**, so the new error changes no gate.
+
+**Symptom.** The engine resolves words inside comments through its shared token table. `/*` is token 69, so a word whose constant value is 69 **opens a nested comment**; comments nest, so the author's closing `*/` shuts only the inner one and **everything after it is invisible to the engine**. The map still generates — as a blank default — and nothing reports an error.
+
+**Reproduction.** `/* SHORE_FISH */` followed by any script. Measured four ways: empty comment → script runs; `SHORE_FISH` → blank; bare literal `69` → runs (literals are lexed as numbers, never resolved); `ATTR_PROJECTILE_ARC` → blank (so it is the value, not the namespace).
+
+**Scope.** `random_map.def` defines exactly two constants at 69: `SHORE_FISH` (line 263) and `ATTR_PROJECTILE_ARC` (line 1117). Plus any script-level `#const NAME 69`, which the parser already tracks. The file is loose in the install at `resources/_common/drs/gamedata_x2/random_map.def`.
+
+**Prescribed fix.** While scanning a comment, resolve each word against game constants and the script's own `#const` table; if one resolves to 69, emit **RMS0111** at that token, severity **error**.
+
+**The message is part of the fix, because this failure is invisible in game and the user has no other way to learn about it.** It must say what happened, where the damage starts, and what to do. Something in this shape:
+
+> `SHORE_FISH` inside a comment. The engine reads this word as `/*`, so the comment never ends — **everything below this line is invisible to the game** and the map will generate blank. Rename it, split it (`SHORE _FISH`), or move this comment below your script.
+
+Requirements on the wording, each of which a shorter message would fail: it names **the token**, since the comment may be long; it says **the rest of the file is gone**, which is the consequence and the reason for error severity; it says **the map still generates**, because otherwise the author looks for a crash that never comes; and it gives a **fix that works**, since "rename the constant" is impossible when the word is describing the constant it names.
+
+**RESOLVED 2026-08-12 — MODEL IT AND DIAGNOSE IT** (reversing the previous day's call). The lexer treats a word resolving to 69 inside a comment exactly as it treats `/*`: depth increments, the remainder becomes trivia, and the AST matches what the engine sees. RMS0111 fires at the offending token, error severity.
+
+**The corpus decided it.** Two tracked maps already contain this and both are the same idiom — a commented-out `create_object SHORE_FISH { … }` block, which is simply what an author writes when disabling a command. `Chaotic_Straitv0.99.rms` loses 563 of its 1110 lines; `test-maps/broken/BCC2-Rekawa.rms` loses 1060 of 1993. **Diagnosing without modelling leaves the preview drawing a map neither the engine nor the author will ever see, on real files, today.**
+
+The earlier argument against modelling — that the author loses their outline — was overstated and should not be revived. Source fidelity is preserved and the parser never re-prints, so the Code tab shows every line exactly as written; only Breakdown thins to fewer cards, which is the correct depiction of a file the engine has truncated.
+
+**Implementation shape, because it is smaller than it sounds.** `markComments` (`src/parser/lexer.ts:128`) is already a single left-to-right pass with a nesting-depth counter. The change is: when `depth > 0` and a word resolves to 69, do what the `commentOpen` branch does — about four lines. **The names must not be hardcoded**: CLAUDE.md forbids RMS vocabulary in `src/` and the lexer is deliberately a pure splitter, so add `commentOpenAliases?: ReadonlySet<string>` to `LexOptions` and let the caller supply it from reference data. The lexer receives a `Set<string>`, not a constants DB. Script-level `#const NAME 69` is the same pass: track `#const` triples at depth 0 and add them to the live set as encountered, which is causal in the order the engine reads them.
+
+**The real work is re-baselining, not the edit.** Two tracked maps lose about half their tokens to trivia, so the corpus diagnostic counts move — the RMS0200 / RMS0201 / RMS0304 / RMS0315 measure tests and the corpus totals all need re-deriving. Neither map is in `ZERO_ERROR_ALLOWLIST`, so that gate is unaffected. Budget the re-derivation.
+
+**And `unclosedComment` will now fire on both maps**, since depth never returns to zero. That is a true statement and should stay, but **RMS0111 must read first** — "unclosed comment" describes the symptom and names nothing the author can act on.
+
+Two things follow and are part of the fix, not optional polish. The AST below the comment is deliberately **not** what the engine sees, so nothing downstream may read a clean parse there as evidence the script works — RMS0111 is the authority. And the preview will render a map the engine never would; acceptable only because the error is on screen, which is why the severity is error and not warning.
+
+**Verification.** A lexer test per measured row above, including the two negative cases (`69` as a literal, and an empty comment) — those are what make the rule precise rather than superstitious. Assert the corpus effect directly on the two real maps: token counts before and after the offending line. Mutation-test by resolving only object-category constants and confirming the `ATTR_PROJECTILE_ARC` case goes red; that mutant encodes the reading this project held for most of a day.
+
+**Why an error rather than a curiosity.** It cost a run in this repo — `RMSTEST_42` blanked and read as a failed experiment — and an author writing `/* place SHORE_FISH here */` in a working map loses everything below that line with no feedback from the game at all. This is precisely the class of silent failure the app exists to surface.
+
+---
+
+## BUG-011 — the default grouping mode is implemented as tight; measured, it is loose
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 5). **Area:** `src/preview/generator/objects.ts`, `docs/preview-design.md` Sec.6.6 and Sec.15 item 17(c). **Found:** 2026-08-11, `RMSTEST_46a/46b/46c`.
+
+**What landed.** `isTightGrouping` now requires an explicit `set_tight_grouping`; an explicit `set_loose_grouping` still beats it. **Corpus delta, seed 7 on Normal: 13 of 32 maps change, every one of them downward, 159,732 → 141,281 placements (−11.6%)** — the two large movers are `OWWC1Tewaipounamu` 11,068 → 2,336 and `24hr_Mont Saint Michel` 9,899 → 1,946, both maps whose grouped commands had been filling straight through terrain their objects cannot occupy. New behavioural pair (a group confined to a one-column `terrain_to_place_on` patch, unstated versus tight), mutation-tested by restoring the tight default (2 red). **`force_placement`'s guide:2739 exclusion was deliberately left keyed on the `set_loose_grouping` ATTRIBUTE** rather than extended to an unstated-but-loose command, which is a second question nothing has measured.
+
+**Symptom.** A `create_object` that sets `group_placement_radius` and states neither `set_tight_grouping` nor `set_loose_grouping` is treated as tight — anchor checked, fill unchecked. **498 of the corpus's 964 grouped commands declare neither mode**, so this governs the majority of grouped placements.
+
+**Measurement.** One mode per file, three runs each, identical otherwise. Off-patch fraction against a `terrain_to_place_on` patch: tight **22–35%**, loose **0%**, unstated **0%**. The unstated command is checked per member.
+
+**Prescribed fix.** Default to loose in `objects.ts`. Note the blast radius is larger than the line changed: under tight, a group's fill skips the habitat and spacing checks, so flipping the default makes hundreds of corpus commands place fewer objects in legal positions instead of more objects in illegal ones. Re-measure the corpus before and after and put the delta in the build log.
+
+**Verification.** A test with a group restricted to a small patch and no mode stated, asserting every member lands on the patch; the existing tight test stays as the contrast. Mutation-test by restoring the tight default and confirming the new test goes red.
+
+**Recorded and deliberately NOT fixed: the placement counts differ.** Explicit loose placed exactly 24 in all three runs; unstated placed 32, 32 and 40. Zero spill in both makes them identical on the rule this bug is about, but a consistent count difference means they are not the same code path. Do not tune to it — construct the run that separates a cap from a rejection rate if it starts to matter.
+
+**Process note worth keeping with the bug.** The first version of this test put all three modes on one map, distinguished only by object id, and produced two contradictory readings across two sittings before being thrown away. A scenario records objects and positions, not which command placed them. **When a test's arms share a map, ask what in the export tells them apart** — the redesign cost two generations and removed the ambiguity entirely.
+
+---
+
+## BUG-010 — the beach pass edges the shallows/open-water boundary; measured, the engine does not
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 3). **Area:** `src/preview/generator/grid.ts` (`terrainDepth`/`waterDepthMask`), the beach pass in `terrains.ts`, `docs/preview-design.md` Sec.6.4 and Sec.15 item 29. **Found:** 2026-08-11, `RMSTEST_52`, two runs.
+
+**What landed.** One line: the beach pass skips every tile that is not `DEPTH_LAND`, where it used to skip only open water. `terrainDepth`, `waterDepthMask`, `isHybrid` and the `beachTerrain` rows are all untouched, and the test that pins why they survive is the dry hybrid — land beside `DLC_MANGROVESHALLOW` still beaches, which an `isWater`-only test cannot express. Two `bands()` expectations inverted, mutation-tested by restoring the seaward skip (2 red). **Corpus re-measured at seed 7 on Normal: 6 of 32 maps change, beach 8984 → 7577** (`W4 - Immersion` 1752 → 1016, `TL Tres Leches` 1045 → 678, `AK_Hourglass` 568 → 380, `Chaotic_Strait` −71, `Three_Bays` −46, `AK_Six_Points` +1 through a downstream cascade). So the withdrawn half was producing about a sixth of all the sand on the corpus.
+
+**Symptom.** The 2026-08-08 three-depth rule ("a tile takes its own beach where it borders anything strictly deeper than itself") produces sand on BOTH sides of a shallows shelf. The engine produces it only on the landward side.
+
+**Measurement.** Land / shallows / open water in a known order. Beach tiles bordering **shallow and water**: **3** and **2**, against 336/312 bordering grass-and-water and 30/90 bordering grass-and-shallow. Two or three tiles at a triple junction is incidental, not a boundary.
+
+**Prescribed fix.** Restore shallows to counting as water for the beach comparison — land against water is the rule — while keeping the part of the 2026-08-08 change that was right: the dry hybrids (`DLC_MANGROVESHALLOW` and the navigable ice family) must still take a beach against land, which is what the old `isWater`-only test missed and what motivated the depth model. The `isHybrid` flag and `beachTerrain` rows stay; only the seaward comparison goes.
+
+**Verification.** `terrains.test.ts` already has a `bands()` cross-section covering both boundaries — invert the expectation on the seaward one. Re-measure the nine maps the 2026-08-08 change moved; S1 beach should stay at or above its pre-change value on all of them, which is the property that change was justified on.
+
+**The lesson.** The far edge was argued from a `terrain_state` line about "thinner blending of shallows and beach terrain", read as evidence the two are adjacent by default. It evidently describes an author-supplied adjacency. **A guide sentence that a construct *can* be configured is not a statement that the engine does it unasked** — and the entry itself named the corpus map that could not distinguish the two readings, which was the signal to run this before shipping the rule rather than after.
+
+---
+
+## BUG-009 — the land-origin cross is applied in map coordinates; measured, it is relative to the borders
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 1). **Area:** `src/preview/generator/lands.ts` (neutral origin rejection sampling), `docs/preview-design.md` Sec.6.1 and Sec.15 item 26. **Found:** 2026-08-11, `RMSTEST_51`, nineteen generations.
+
+**What landed.** `crossRegion`/`insideCross` compute the centre and both half-widths from the inclusive border rectangle; `neutralOrigin` and `sampleReservoir` share them, the second deliberately taking the BORDER box rather than the origin-neighbourhood box it samples from, or the region would follow the land instead of the borders. The unbordered case is preserved by construction and pinned by the pre-existing test, which computes the cross the old map-frame way on purpose. New bordered test asserts origins reach the box's middle and that at least one lands where the map frame forbids; mutation-tested by passing map coordinates, confirmed red, reverted.
+
+**Symptom.** A `create_land` carrying borders has its origin drawn from an L-shaped sliver hugging the inner edges of its border box, so bordered islands crowd toward the middle of the map and never reach the outer corner. Visible on `AD4 - Pag - v1.2.rms` and reported as a rendering bug.
+
+**Measurement.** One small non-growing land, `right_border 60 bottom_border 60` on a 200 map, origin read as the snow patch centroid. The absolute model forbids `x < 65.8 && y < 65.8`; **16 of 19 centroids are inside that forbidden region.** Against the box's own centre the same cross forbids about 43% of the box (its four corners) and **0 of 19 centroids fall there**, against ~8 expected if the scatter were merely uniform. So the cross exists and is measured against the allowed region.
+
+**Prescribed fix.** Compute the cross's centre and reference length from the border-allowed rectangle rather than from the map. Where no borders are set the two coincide, so `RMSTEST_25`'s original unbordered measurement is preserved by construction — check that explicitly, since it is the regression this change most easily breaks.
+
+**Verification.** A test with borders asserting origins reach all four quadrants of the box; a test without borders asserting the existing measured cross is unchanged. Mutation-test by reverting to map coordinates and confirming the first goes red.
+
+**The lesson this one carries.** The symptom was correctly diagnosed on 2026-08-07 as two individually-correct rules composing into a wrong result, and the right response was recorded then: work out the intersection and write down the run that decides the open half, rather than softening a measured rule because its consequence looks odd. That run is this one, and the composition turned out to be the wrong half — the rule itself was mis-scoped.
+
+---
+
+## BUG-008 — a sub-3 `min_length_of_cliff` suppresses the whole section; measured, it is a per-draw yield
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 4). **Area:** `src/preview/generator/cliffs.ts`, `docs/preview-design.md` Sec.6.3 and Sec.15 item 17(b). **Found:** 2026-08-11, `RMSTEST_45a/45b/45c`.
+
+**What landed.** The section-level early return is gone; each cliff's rolled length is dropped below 3, so `attempted` exceeds `placed` and the six official maps that write a sub-3 minimum with a workable maximum now render cliffs. The note splits in two — "no cliffs at all" only when the maximum is also below 3, "fewer than it asks for" otherwise. Tests are the measurement's own three arms at twenty cliffs, including the `min 2 / max 4` arm a section gate cannot produce; mutation-tested by deleting the per-draw drop (2 red). **No rate was fitted from 36-against-66, per this entry's own warning.**
+
+**Symptom.** `cliffs.ts` emits zero cliffs plus a note whenever `min_length_of_cliff < 3`, following the guide. Six official maps write 1 or 2 with a maximum of 3 or more, so all six get no cliffs at all.
+
+**Measurement.** Two runs per arm, twenty cliffs requested, everything else identical. `min 2 / max 2` → **0** cliff units. `min 3 / max 3` → **66**. `min 2 / max 4` → **36**. Suppression predicts 0 in the third arm; a clamp predicts arms one and two matching. Neither holds.
+
+**Prescribed fix.** Roll each cliff's length in `[min, max]` and drop the rolls below 3, rather than gating the section. The current behaviour stays correct where `max < 3` (every roll dies) but must reach that outcome through the roll, not through a section gate — the distinction is exactly what the third arm measures.
+
+**Do NOT fit a constant from these numbers.** Cliff UNITS are not cliff COUNT: a longer cliff carries more units, so 36-against-66 conflates yield with length. If a rate is wanted, re-read with `--clusters` and count components.
+
+---
+
+## BUG-007 — a frameless `ignore_terrain_restrictions` empties the whole command; measured, it does nothing at all
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 2). **Area:** `src/preview/generator/objects.ts` (the whole-command gate), `src/parser/validate.ts` (RMS0315), `docs/preview-design.md` Sec.6.6. **Found:** 2026-08-11, `RMSTEST_42`, four runs.
+
+**What landed.** The gate is gone: `ignoreTerrainInert` now only suppresses the flag's own effect and emits a drawer note, so the command runs with the restrictions it would have had anyway. RMS0315's consequence clause moved from "places nothing at all" to "this line does nothing" (the wording lives in `language.json`'s `requiresNote`, so no code changed), and both `language.ts`'s doc comment and the census file's header were corrected — the census re-derives the count on every run and reports **56 sites across 12 maps**, so the build log's 47-command figure is withdrawn rather than left to age. Two mutants, both red: the frameless flag still lifting restrictions, and the whole-command gate restored.
+
+**Symptom.** A `create_object` carrying `ignore_terrain_restrictions` with no `set_place_for_every_player` and no `place_on_specific_land_id` is treated as placing **nothing**, and RMS0315 warns that the command is dead. It affects **47 commands across 11 corpus maps**.
+
+**Measurement.** Three commands on one half-land half-water map, differing only in the flag and in the object's own restriction. Flagged salmon 30, unflagged control salmon 30, flagged olive trees 30. Result, identical across four runs: **60 salmon, all 60 in water; 30 olive trees on grass.** So the flagged commands placed in full (the command is not voided) and the flagged fish kept its own water restriction (the flag did not bypass anything). **The attribute is inert without a frame. The command is untouched.**
+
+**Root cause.** The gate was inferred from `AK_Namatjira.rms` placing zero shore fish, and that map cannot discriminate: its command also names a shallow, which a shore-habitat fish cannot occupy, so the inert reading predicts zero there too. A map that produces zero is consistent with every model that produces zero. The corpus counter-argument was already written into `RMSTEST_42`'s header before the run — `find_closest` carries the identical `Requires:` line and appears 71 times frameless in working maps — and was not weighed against the gate.
+
+**Prescribed fix.**
+1. `objects.ts`: delete the whole-command gate. A frameless flag becomes a no-op plus the existing `SimulationNote`, which is what Sec.6.6's frame list already prescribes for every other member of that family.
+2. RMS0315: re-scope from "this command places nothing" to "this attribute does nothing here", and drop the severity accordingly.
+3. `src/parser/__tests__/rms0315.measure.test.ts` re-derives the corpus count; the 47-command figure in the build log becomes wrong and should be struck rather than left to age.
+4. Add the discriminating test to `objects.test.ts`: a flagged command on an object whose own habitat excludes the target terrain must place its full count on legal ground.
+
+**Verification.** Mutation-test the new no-op: re-enable the gate and confirm the new test goes red. The old behaviour had a test asserting it, so this is a case where a green suite asserted the defect.
+
+**The durable lesson, and it is about the document rather than the engine.** Sec.6.6 listed this flag among the frameless-inert attributes and, forty lines later, said the bypass applies anyway. The implementation picked a third reading neither sentence contained. **When a spec states a rule twice, check the two statements agree before implementing either** — and when an attribute's behaviour is inferred from one shipped map, name what else would produce the same observation.
+
+---
+
+## BUG-006 — RMS0101's error severity is now unsupported: DE generates a file with an unclosed `{` at EOF
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 8). **Area:** `src/parser/diagnostics.ts` (RMS0101), `docs/parser-design.md` Sec.10 and Sec.13 item 6. **Found:** 2026-08-11, by loading the map.
+
+**What landed.** Severity error → warning, with the measurement written beside it in the meta table. **The allowlist arithmetic this entry warned about turned out not to bind**: `ZERO_ERROR_ALLOWLIST` is an opt-in list of eleven named files and `BCC2-Rekawa.rms` is not on it (it lives in `test-maps/broken/`), so no gate was counting on this file to contribute an error, and the corpus suite is unchanged at 129 green. `lexer.test.ts` still reads the file for offset exactness, as the entry requires. `parser.test.ts` now asserts the severity in BOTH directions — the check had only ever fired at error, so a downgrade nothing pins can drift back — and the mutant restoring `error` turns it red.
+
+**Symptom.** RMS0101 fires at **error** severity when the token stream reaches EOF at brace depth 1. Sec.1 goal 5 reserves error for constructs "we are confident the engine rejects or mangles", and the rejection half is now refuted.
+
+**Reproduction.** `test-maps/broken/BCC2-Rekawa.rms`, the live specimen. Its glued `}8050` at line 891 is one unknown token rather than a closing brace, so the file really does end at depth 1. Parse it and read the severity.
+
+**Root cause.** The severity was assigned on an assumption that was recorded as an open question and carried across three revisions as TOP PRIORITY without ever being scheduled. It was settled by loading the map in DE: **it generates, with no visible problem.**
+
+**Prescribed fix.** RMS0101 error → warning, in `diagnostics.ts` and in Sec.10's code table. `lexer.test.ts`'s offset-exactness gate reads this file and must keep doing so; check whether any corpus gate asserts RMS0101's severity before changing it, since the zero-error allowlist's arithmetic changes if this file stops contributing an error.
+
+**Verification.** Mutation-test it: the check has only ever fired at error, so confirm the new severity is actually asserted somewhere and that the assertion goes red when reverted.
+
+**The residual, and do not lose it in the fix.** "Generates" refutes *rejects*. It does not refute *mangles* — an unclosed block swallows what follows as attributes, so BCC2's tail may be silently inert in a map that still looks correct, which is exactly the shape of CLAUDE.md's "a shipped map is not a specification" rule. Warning is the right severity under either reading, but the note attached to the code must say "the engine does not reject this", not "this is harmless". **The run that would settle the second half:** put a distinguishable object command after the glued brace and count.
+
+---
+
 ## BUG-005 — RMS0200 asserts engine behaviour from absence in our own data
 
 **Status:** open — **piece 1 (wording) is DONE and decided; pieces 2 and 3 remain**, and both are spec/severity calls rather than wording. **Area:** `src/parser/diagnostics.ts:315` (`unknownName`), `docs/parser-design.md` Sec.10. **Found:** 2026-07-31 parser audit. **Instrument:** `src/parser/__tests__/rms0200.measure.test.ts` re-derives every number in this entry; run it rather than quoting them.
@@ -62,9 +220,9 @@ So roughly 2.5% of the volume is the signal the check exists for. **That 2.5% is
 
 ## BUG-003 — False RMS0201 on attributes that are legal with no argument
 
-**Status: CLOSED 2026-08-05 at a regression baseline of 32**, the same shape BUG-002 closed in. Corpus RMS0201 went **69 → 35 → 32**. All 35 remaining warnings were triaged individually **against the guide**; **20 are true positives**, 10 are **UNDETERMINED and deliberately still warn**, and 2 are a *different* defect (Sec.6 stop set meeting Sec.2.1 aliasing), parked on the BUG-005 piece 2 decision rather than fixed here. Only 3 turned out to be genuine false positives, and all three were in our own fixture. **Area:** `reference/data/language.json` (data, not code) — though in the end no `language.json` change survived. **Instrument:** `src/parser/__tests__/rms0201.measure.test.ts` re-derives every number below — run it rather than quoting them.
+**Status: CLOSED 2026-08-05 at a regression baseline of 32, RE-BASELINED TO 22 on 2026-08-12** when row 10 below was settled in game and `showType` became `optional: true` (CREATION_PLAN 4.8b item 6). Corpus RMS0201 went **69 → 35 → 32 → 22**. All 35 remaining warnings were triaged individually **against the guide**; **20 are true positives**, 10 are **UNDETERMINED and deliberately still warn**, and 2 are a *different* defect (Sec.6 stop set meeting Sec.2.1 aliasing), parked on the BUG-005 piece 2 decision rather than fixed here. Only 3 turned out to be genuine false positives, and all three were in our own fixture. **Area:** `reference/data/language.json` (data, not code) — though in the end no `language.json` change survived. **Instrument:** `src/parser/__tests__/rms0201.measure.test.ts` re-derives every number below — run it rather than quoting them.
 
-**The baseline is 32, not 0.** A change that takes corpus RMS0201 below 32 without a written verdict per site has started suppressing real map bugs, which is exactly the failure mode this entry and BUG-002 both walked into from the other direction.
+**The baseline is 22, not 0.** A change that takes corpus RMS0201 below 22 without a written verdict per site has started suppressing real map bugs, which is exactly the failure mode this entry and BUG-002 both walked into from the other direction. It moved 32 → 22 exactly once, and only because a run in the game settled a site the triage had deliberately left warning.
 
 **Read this before touching the data: the first attempt at closing this bug got it wrong, and the way it got it wrong is the whole lesson.** `ai_info_map_type.showType` was marked `optional: true` on 2026-08-05 and reverted the same day. The evidence was 52 three-argument uses across 52 distinct DE-official files with 20+ distinct map types — genuinely independent, not a copy-paste artefact, and it still did not survive. **Official DE maps contain bugged lines; the engine passes them silently, the affected code never takes effect, and nobody finds out.** guide:475 lists `showType` **not functional on DE**, so writing it and omitting it are indistinguishable in game, and no shipped script could ever have revealed which form is correct. A frequency count only counts when a wrong answer could have been *observed*. Both halves are now CLAUDE.md Hard rules.
 
@@ -72,7 +230,7 @@ So roughly 2.5% of the volume is the signal the check exists for. **That 2.5% is
 
 | Count | Name | Site | Verdict |
 |---:|---|---|---|
-| 10 | `ai_info_map_type` | 10 maps, 8 of them DE-official | **UNDETERMINED — still warns, deliberately.** Trailing `showType`. The guide gives `default: 0` but never says it may be omitted, unlike the five attributes fixed on 2026-07-31 which each carry explicit prose. Settle it with an RMSTEST that puts a distinguishable token after a three-argument call and checks whether the engine eats it. **Do not re-derive this from shipped maps.** |
+| 10 | `ai_info_map_type` | 10 maps, 8 of them DE-official | **SETTLED 2026-08-11 — the argument IS omissible. Arity is THREE.** `RMSTEST_54a` put the three-token form immediately before `<LAND_GENERATION>`, so a fourth-argument engine would swallow the section header and leave the map blank; `54b` is the same file without the line. **Both came back fully snow**, so the header survived and nothing was eaten. **APPLIED 2026-08-12**: `showType` carries `optional: true`, the warning is gone on all 10 maps, and the corpus census re-measures at **22** (`.rms`) plus 3 (`.rms2`). `parser.test.ts`'s pin was inverted from "still warns" to "is legal" with the measurement written into it. **Note this reaches the same conclusion the 2026-08-05 attempt did, by evidence that attempt could not have had** — the rule that killed it (no shipped script could distinguish the two forms, because the argument is non-functional in play) is exactly why an in-game *token-consumption* test was needed rather than another headcount. The Hard rules stand; the data changes. |
 | 2 | `create_terrain` | `sample.rms:50,56` | **OUR OWN FIXTURE WAS WRONG — FIXED.** guide:1437's signature is `create_terrain TerrainType { Attributes }`; the fixture also used `terrain_type` (a land-generation attribute absent from the terrain-generation list) where `base_terrain` belongs. |
 | 1 | `create_elevation` | `sample.rms:41` | **OUR OWN FIXTURE WAS WRONG — FIXED.** guide:1174's signature is `create_elevation MaxHeight { Attributes }`. Note the fix stands on the fixture being a no-op demo, not on a claim that the bare form is illegal — `MaxHeight` carries `(default: 0 - not elevated)` and is untested either way. |
 | 15 | `#const` | `24hr_Mont Saint Michel.rms:93-107` | **TRUE POSITIVE, keep.** `#const SIZE` carries no value: the line reads `#const SIZE<tab>#const MAPSIZE 80`. One copy-pasted pattern repeated 15 times, so it is *one* observation. |

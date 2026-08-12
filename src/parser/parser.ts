@@ -103,7 +103,13 @@ class Parser {
     this.lang = buildLanguageIndex(langData);
     this.maxNesting = opts.maxNestingDepth ?? DEFAULT_MAX_NESTING;
 
-    const lex = tokenize(source, { nestedComments: opts.nestedComments });
+    const lex = tokenize(source, {
+      nestedComments: opts.nestedComments,
+      // Goes into the lexer's own comment pass rather than the post-lex alias
+      // fixup below, because it has to affect comment NESTING — see the note
+      // on that fixup, which named this exact gap.
+      commentOpenAliases: opts.commentOpenAliases,
+    });
     this.tokens = lex.tokens;
     this.lineOffsets = lex.lineOffsets;
     this.diagnostics = [...lex.diagnostics];

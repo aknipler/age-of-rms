@@ -1037,8 +1037,9 @@
       "name": "nomad_resources",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
-      "description": "Grants players a nomad-style starting resource/unit set instead of a fixed base.",
-      "verified": true
+      "description": "Adds the cost of a town center to every player's starting resources, so a nomad start can build one without gathering wood first. Grants no units and replaces nothing.",
+      "verified": true,
+      "notes": "guide:379-383. 275 wood and 100 stone on UP/HD; on DE the amount is the player's own civilization's town centre cost, so Incas get 85 extra stone. The previous description ('a nomad-style starting resource/unit set instead of a fixed base') described the nomad GAME MODE rather than this command, and was the only wrong description in this array not already flagged by verified: false."
     },
     {
       "name": "force_nomad_treaty",
@@ -1118,11 +1119,12 @@
         {
           "name": "showType",
           "type": "flag",
-          "description": "0 or 1. UP only - not functional on DE."
+          "optional": true,
+          "description": "0 or 1. UP only - not functional on DE. May be omitted: the engine's arity is three."
         }
       ],
       "verified": true,
-      "notes": "Exact behavior differs slightly per game version per the source guide. showType was marked optional on 2026-08-05 and REVERTED the same day - omissibility is UNDETERMINED, not established. The guide (guide:459) gives it default 0 but never says it may be omitted, unlike the five attributes fixed on 2026-07-31 which each carry explicit prose to that effect. The only positive evidence was 52 three-argument uses in the installed DE script set against 284 four-argument ones, and that evidence cannot bear the weight: guide:475 lists showType Not functional on DE, so writing it and omitting it are indistinguishable in game, and no shipped script could ever have revealed which form is correct. Same shape as avoidance_distance. The 52 uses are independent (52 files, 20+ distinct map types), which rules out a copy-paste artefact but not a silently-tolerated author error. Settle it with an RMSTEST that puts a distinguishable token after a three-argument call and checks whether the engine consumes it."
+      "notes": "Exact behavior differs slightly per game version per the source guide. showType is OMISSIBLE and the engine's arity is THREE - measured 2026-08-11 by RMSTEST_54a/54b. 54a put the three-token form immediately before <LAND_GENERATION>, so an engine expecting a fourth argument would have swallowed the section header and left the map blank; 54b is the same file without the line. Both generated fully snow, so the header survived and nothing was eaten. This reaches the same conclusion as a 2026-08-05 attempt that was reverted the same day, by evidence that attempt could not have had: the flag was marked optional on 52 independent three-argument shipped uses, and reverted because guide:475 lists showType Not functional on DE, so writing it and omitting it are indistinguishable in play and no shipped script could ever have revealed which form is correct. A token-consumption test in game is what settles it, not a headcount. The Hard rules that killed the first attempt stand unchanged."
     },
     {
       "name": "effect_amount",
@@ -1211,7 +1213,7 @@
       "name": "terrain_state",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
-      "description": "Legacy terrain-state configuration.",
+      "description": "Sets a UserPatch terrain state. The guide documents it for UP only, so it has no documented effect on DE.",
       "arguments": [
         {
           "name": "mode",
@@ -1236,14 +1238,14 @@
           "default": 0
         }
       ],
-      "verified": false,
-      "notes": "Marked UP-only (pre-DE) in the source guide; behavior in DE unconfirmed."
+      "verified": true,
+      "notes": "guide:594-612, Game versions: UP only. Arguments and the 0-7 flags range are transcribed from that entry, which is what `verified` records. Whether DE does anything with the command is a SEPARATE and still open question, deliberately kept out of the flag: the guide is silent and nobody has measured it, so the description says only what the guide says. There is no CommandDef field for the guide's per-command `Game versions:` line, which is why this fact has to live in prose."
     },
     {
       "name": "weather_type",
       "section": "PLAYER_SETUP",
       "kind": "standalone",
-      "description": "Sets visual weather/lighting parameters.",
+      "description": "Sets precipitation and terrain colour tinting on UserPatch. The guide documents it for UP only and points DE authors at color_correction and water_definition instead.",
       "arguments": [
         {
           "name": "precipitationStyle",
@@ -1270,8 +1272,8 @@
           "max": 1
         }
       ],
-      "verified": false,
-      "notes": "Marked UP-only (pre-DE) in the source guide; DE support unconfirmed."
+      "verified": true,
+      "notes": "guide:613-637, Game versions: UP only. Precipitation 0 none / 2 rain / 3 thunderstorm / 4 snow, negative reversing the west-to-east direction; liveColor and fogColor are palette indices, 0 meaning no tint. Same split as terrain_state: the argument ranges are verified against the guide, DE behaviour is unmeasured and stays out of the flag."
     },
     {
       "name": "water_definition",
@@ -1517,43 +1519,45 @@
       "name": "min_distance_cliffs",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
-      "description": "Minimum distance between separate cliff formations.",
+      "description": "Minimum distance between separate cliffs, measured in cliff units of 3 tiles. 0 is 0 tiles, 1 is 3 tiles, 2 is 6 tiles.",
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "default": 2
         }
       ],
-      "verified": false,
-      "notes": "Name confirmed via the guide's syntax skeleton only — argument shape and default not reached before the source fetch was cut off. Re-verify before relying on the argument type."
+      "verified": true,
+      "notes": "guide:1388-1393. The cliff-unit scale and the default of 2 were both already hardcoded in src/preview/generator/cliffs.ts (DEFAULT_MIN_DISTANCE_CLIFFS, and the `* 3` at the spacing check) while this entry carried neither, which is the vocabulary-in-code case CLAUDE.md rules out. No `optional` flag: the guide states a default and never states that the command may be omitted from a script that needs it, and a `default:` notation alone does not license omissibility (BUG-003)."
     },
     {
       "name": "min_terrain_distance",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
-      "description": "Minimum distance a cliff must keep from certain terrain.",
+      "description": "Minimum distance cliffs keep from water, measured in cliff units of 3 tiles. Only water placed in <LAND_GENERATION> counts, since terrain generation runs after cliffs.",
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "default": 2
         }
       ],
-      "verified": false,
-      "notes": "Name confirmed via the guide's syntax skeleton only — same caveat as min_distance_cliffs."
+      "verified": true,
+      "notes": "guide:1400-1406. The old description said 'certain terrain', which reads as any terrain; the guide says water specifically, and says so twice. The <LAND_GENERATION>-only clause is the guide's own and matters, because a script that paints water in <TERRAIN_GENERATION> gets no cliff avoidance from it at all."
     },
     {
       "name": "color_correction",
       "section": "TERRAIN_GENERATION",
       "kind": "standalone",
-      "description": "Applies a color-correction preset to terrain rendering.",
+      "description": "Applies a colour correction preset to the map's lighting. Not visible when the Map Lighting game setting is off, and water is controlled separately by water_definition. DE only.",
       "arguments": [
         {
           "name": "type",
           "type": "otherConstant"
         }
       ],
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton — full documentation for TERRAIN_GENERATION wasn't reached before the source fetch was cut off. Verify before trusting the argument shape."
+      "verified": true,
+      "notes": "guide:1424-1436, Game versions: DE only. The argument is a colour correction constant from the guide's Season Types list, with no correction applied when the command is absent."
     },
     {
       "name": "create_terrain",
@@ -1591,57 +1595,57 @@
       "name": "accumulate_connections",
       "section": "CONNECTION_GENERATION",
       "kind": "standalone",
-      "description": "Enables connection accumulation mode for subsequent connection commands.",
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton — full CONNECTION_GENERATION documentation wasn't reached before the source fetch was cut off."
+      "description": "Lets later connection commands see and replace terrain that earlier connections created. Without it every connection reads the terrain as it stood before connection generation began. DE only.",
+      "verified": true,
+      "notes": "guide:1735-1745, Game versions: DE only. It reverts a DE behaviour change rather than adding one, which is why the default is the frozen-snapshot reading. Modelled in src/preview/generator/connections.ts as a stream-state toggle."
     },
     {
       "name": "create_connect_all_players_land",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
-      "description": "Connects all players' lands to each other.",
+      "description": "Connects the origins of every player land, and of every land assigned to a player. Connections may pass through neutral lands where the terrain cost is favourable.",
       "attributes": [
         "default_terrain_replacement",
         "replace_terrain",
         "terrain_cost",
         "terrain_size"
       ],
-      "verified": false,
-      "notes": "Name only, confirmed spelled with singular \"land\" (not \"lands\") in the guide's syntax skeleton — correcting an earlier unverified assumption used in src/editor/aoe2RmsLanguage.ts that had the plural. Recheck the aoe2RmsLanguage.ts COMMANDS list against this file."
+      "verified": true,
+      "notes": "guide:1757-1770. Spelled with the singular \"land\", unlike its five siblings. The old note asked for a recheck of src/editor/aoe2RmsLanguage.ts's COMMANDS list; that list now derives from this array (aoe2RmsLanguage.ts:18), so the drift it warned about can no longer happen and the action item is closed."
     },
     {
       "name": "create_connect_teams_lands",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
-      "description": "Connects each team's lands to each other, but not to other teams.",
+      "description": "Connects the origins of player lands belonging to members of the same team, and not across teams. Connections may still pass through neutral or enemy land where the terrain cost is favourable.",
       "attributes": [
         "default_terrain_replacement",
         "replace_terrain",
         "terrain_cost",
         "terrain_size"
       ],
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton."
+      "verified": true,
+      "notes": "guide:1772-1788. Worth knowing when testing: every player is on their own team in the scenario editor by default, so this command looks like it does nothing there unless the diplomacy tab is used to simulate a team setup."
     },
     {
       "name": "create_connect_all_lands",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
-      "description": "Connects every land on the map to every other land, player or not.",
+      "description": "Connects the origins of every land on the map to every other, player and neutral alike.",
       "attributes": [
         "default_terrain_replacement",
         "replace_terrain",
         "terrain_cost",
         "terrain_size"
       ],
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton."
+      "verified": true,
+      "notes": "guide:1790-1813."
     },
     {
       "name": "create_connect_same_land_zones",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
-      "description": "Connects lands that share the same zone.",
+      "description": "Groups lands by zone and connects every pair within each zone, leaving zones unconnected to each other. On a script that sets no zones this reaches only the neutral lands, which all share the default zone, and leaves the player lands alone.",
       "attributes": [
         "default_terrain_replacement",
         "replace_terrain",
@@ -1649,21 +1653,23 @@
         "terrain_size"
       ],
       "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton."
+      "notes": "guide:1815-1818 says only \"Behaves identically to create_connect_all_lands\", and this entry DELIBERATELY departs from it. The zone-grouping model above came from two independent community RMS references on 2026-08-06 and is consistent with this project's own measured zone defaults; the guide's reading would make the command a pure synonym, which is not what the name or the community docs describe. `verified` stays false for exactly that reason — it is the one entry in this array whose description is not a transcription of the guide. docs/preview-design.md Sec.15 item 21 holds the RMSTEST that would settle it; implemented as `sameZonePairs` in src/preview/generator/connections.ts."
     },
     {
       "name": "create_connect_land_zones",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
-      "description": "Connects two specific zones to each other.",
+      "description": "Connects every land belonging to the first zone to every land belonging to the second. DE only.",
       "arguments": [
         {
           "name": "zoneA",
-          "type": "integer"
+          "type": "integer",
+          "max": 245
         },
         {
           "name": "zoneB",
-          "type": "integer"
+          "type": "integer",
+          "max": 245
         }
       ],
       "attributes": [
@@ -1672,22 +1678,22 @@
         "terrain_cost",
         "terrain_size"
       ],
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton."
+      "verified": true,
+      "notes": "guide:1820-1826, Game versions: DE only. The 245 maximum is the guide's own stated ceiling on a zone ID. The old description said \"two specific zones\", which understates it: this is every land in one zone against every land in the other, not one connection between them."
     },
     {
       "name": "create_connect_to_nonplayer_land",
       "section": "CONNECTION_GENERATION",
       "kind": "block",
-      "description": "Connects player lands to a specific non-player land.",
+      "description": "Connects every player land to every neutral land, without connecting players to each other directly. Carries a known engine bug: once used, it blocks all later connection generation. DE only.",
       "attributes": [
         "default_terrain_replacement",
         "replace_terrain",
         "terrain_cost",
         "terrain_size"
       ],
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton."
+      "verified": true,
+      "notes": "guide:1858-1878, Game versions: DE only. The old description said \"a specific non-player land\", which the command has no argument to express; it is all of them. Two bugs are documented and neither is a transcription of ours: it blocks all future connection generation, and used after create_connect_teams_lands it also blocks team connections except those involving player 1. The first is emulated in src/preview/generator/connections.ts with a SimulationNote per blocked command."
     },
     {
       "name": "create_actor_area",
@@ -1723,18 +1729,18 @@
       "name": "create_object_group",
       "section": "OBJECTS_GENERATION",
       "kind": "block",
-      "description": "Places a themed group of objects (e.g. a mixed forage/relic cluster) as a unit.",
+      "description": "Defines a named pool of object types. It places nothing itself. A later create_object naming the pool draws one member at random for each object it places, so a group of cow variants gives a mixed herd rather than a themed cluster.",
       "arguments": [
         {
-          "name": "type",
-          "type": "objectConstant"
+          "name": "groupName",
+          "type": "string"
         }
       ],
       "attributes": [
         "add_object"
       ],
-      "verified": false,
-      "notes": "Name only, from the guide's syntax skeleton."
+      "verified": true,
+      "notes": "guide:2013-2040, Game versions: DE only. The old description ('places a themed group of objects as a unit') had it backwards in both halves: nothing is placed here, and members are randomised INDIVIDUALLY, so a group must not mix objects with different resource amounts or gameplay effects. Argument retyped objectConstant -> string, matching #const/#define's own name slots: this is a DEFINITION SITE for a name the author invents (the guide calls it text and allows any characters), not a reference to an existing object constant, so RMS0204's 'use a named object constant' and RMS0205's cross-category check were both aimed at the wrong thing. `string` rather than `otherConstant` on purpose - otherConstant is a numeric slot in instantiate.ts, so a group whose name collided with a #const would resolve to a number and silently stop matching the create_object that referenced it."
     },
     {
       "name": "create_object",
@@ -1847,13 +1853,15 @@
         },
         {
           "name": "percent",
-          "type": "percent"
+          "type": "percent",
+          "min": 0,
+          "max": 99
         }
       ],
-      "description": "Adds an object type to an object group, weighted by percent chance.",
+      "description": "Adds an object type to the enclosing object group. The weight is currently inverted in game, so a lower number makes the object MORE likely, and duplicating a line is the reliable way to make a member commoner.",
       "repeatable": true,
-      "verified": false,
-      "notes": "Name only — full OBJECTS_GENERATION docs weren't reached in the source fetch. repeatable set from corpus evidence: stacking add_object lines is the entire mechanism of create_object_group (one line per member type, percentages summing across them), and 43 blocks across the 57-map corpus repeat it. Without the flag validate()'s RMS0306 false-warns on every object group."
+      "verified": true,
+      "notes": "guide:2013-2040, Game versions: DE only. The 0-99 range is the guide's. The weight is the interesting part and the old description had it as an ordinary percent chance: the guide records the % first not working at all (all members equally likely) and then working as an INVERSE, and flags that it might still be a bug. src/preview/generator/objects.ts reads the weights and deliberately never consults them, which matches. repeatable set from corpus evidence: stacking add_object lines is the entire mechanism of create_object_group (one line per member type), and 43 blocks across the 57-map corpus repeat it. Without the flag validate()'s RMS0306 false-warns on every object group."
     },
     {
       "name": "assign_to",
@@ -2215,9 +2223,9 @@
       "name": "ignore_terrain_restrictions",
       "description": "Bypasses normal terrain-placement rules for this object. Only works alongside set_place_for_every_player or place_on_specific_land_id.",
       "requiresOneOf": ["set_place_for_every_player", "place_on_specific_land_id"],
-      "requiresNote": "Without one of them the engine places nothing at all from this command — not the object on its normal terrain, nothing.",
+      "requiresNote": "Without one of them this line does nothing — the objects are still placed, under the terrain restrictions they would have had anyway.",
       "verified": true,
-      "notes": "The requirement is guide:2509's own \"Requires:\" line and it was confirmed in game 2026-08-10: AK_Namatjira.rms's single create_object SHORE_FISH carries the flag with neither partner and spawns no shore fish whatsoever. The flag also does not lift everything it appears to — shore fish and box turtles keep their beach anchor under it and only gain the shallows (same measurement), which is modelled in src/preview/generator/objects.ts rather than here."
+      "notes": "The requirement is guide:2509's own \"Requires:\" line. What an unmet requirement DOES was measured by RMSTEST_42 on 2026-08-11, four runs: the attribute is inert and the command places in full (60 salmon across a flagged and an unflagged command, all in water; 30 flagged olive trees on grass). This corrects a reading held 2026-08-10 to 2026-08-11 that the whole command placed nothing, which was inferred from AK_Namatjira.rms spawning no shore fish — that map's command also names a shallow its fish cannot occupy, so it predicts zero under either model. The flag also does not lift everything it appears to — shore fish and box turtles keep their beach anchor under it and only gain the shallows (2026-08-10 measurement), which is modelled in src/preview/generator/objects.ts rather than here."
     },
     {
       "name": "land_conformity",

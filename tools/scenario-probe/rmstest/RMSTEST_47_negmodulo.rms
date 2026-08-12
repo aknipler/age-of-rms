@@ -1,0 +1,120 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* Control. Must come back at exactly 100. */
+  create_object FORAGE
+  {
+    number_of_objects 100
+    set_gaia_object_only
+  }
+
+  /* minus seven mod two. 90 truncated, 110 floored. */
+  create_object OLIVE_TREE
+  {
+    number_of_objects (0 - 7 % 2 * 10 + 100)
+    set_gaia_object_only
+  }
+
+  /* seven mod minus two. 110 truncated, 90 floored. */
+  create_object GOLD
+  {
+    number_of_objects (7 % -2 * 10 + 100)
+    set_gaia_object_only
+  }
+
+  /* minus seven mod minus two. 90 under both sign models, 110 only if the
+     engine always returns a positive remainder. */
+  create_object STONE
+  {
+    number_of_objects (0 - 7 % -2 * 10 + 100)
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_47 - which way does the modulo operator round for negative operands?
+Feeds: preview-design Sec.3.6, src/preview/generator/mathEval.ts,
+       parser-design Sec.13 item 18, Sec.15 item 19
+
+QUESTION
+The math evaluator implements truncation toward zero for the remainder operator,
+and the spec now states that as the default rather than as a measurement. It was
+inherited from a parser-design question that has been phrased as open across
+several revisions with no answer anywhere in the build log. The preview's own
+spec previously told implementers to "implement whatever the in-game test
+showed", which under a do-not-deviate banner points at nothing at all.
+
+The two candidate semantics disagree whenever exactly one operand is negative:
+
+                        truncated    floored
+  minus seven mod two      -1           1
+  seven mod minus two       1          -1
+  minus seven mod minus two -1         -1
+
+The third row agrees under both, which is why it is here: it separates a genuine
+sign rule from an "always return a positive remainder" implementation, which
+would give 1 on all three.
+
+METHOD
+Three object commands whose counts are computed rather than written. Each
+expression multiplies the remainder by ten and adds a hundred, so the two models
+land 20 apart instead of 2 apart and a single failed placement cannot flip the
+reading.
+
+  expression                       truncated   floored   always-positive
+  (0 - 7 % 2 * 10 + 100)               90        110          110
+  (7 % -2 * 10 + 100)                 110         90          110
+  (0 - 7 % -2 * 10 + 100)              90         90          110
+
+Note the arithmetic is strictly LEFT TO RIGHT with no operator precedence, which
+is the language's own documented rule and is what makes these expressions read
+as intended. (0 - 7 % 2 * 10 + 100) evaluates as (((( 0 - 7 ) % 2 ) * 10 ) + 100),
+not as the schoolbook grouping.
+
+That rule is also why the first negative is written as a subtraction from zero
+and the second is written as a literal. Reaching the second operand by
+subtraction does not work: in (7 % 0 - 2 ...) the remainder is taken against
+zero and evaluated before the subtraction ever happens, so the expression tests
+division by zero - a rule this project has already traced through the guide's
+own worked examples - instead of a negative divisor. A leading minus on a
+literal is ordinary in this language (negative clumping factors and circle radii
+are both live in the corpus), so the literal form is the safe one here and the
+zero-subtraction form is the safe one for the left operand.
+
+The fourth command is a fixed control at 100. If it does not come back at 100
+the map is too crowded to place reliably and the other three counts are floors
+rather than measurements - in that case rerun on a larger map before reading.
+
+WHAT TO DO WITH THE ANSWER
+Truncated confirms the shipped default and the verify marker comes off both
+Sec.3.6 and the parser-design item. Floored means mathEval.ts is wrong for every
+expression with a negative operand, and its worked-example tests need
+re-deriving rather than patching - the guide's own examples were reproduced
+exactly under the truncated model, so a floored answer means those examples were
+being read wrongly too.
+
+GENERATE AT NORMAL (200), any player count. ONE RUN. The expressions are
+deterministic; only placement is random, and the control guards that.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"
+  The default histogram is the whole reading. Four counts, three of which are
+  the answer.
+*/

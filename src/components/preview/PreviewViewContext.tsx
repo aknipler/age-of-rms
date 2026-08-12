@@ -18,10 +18,11 @@ import type { TilePoint, Viewport } from "../../preview/render/projection";
  * fixture concept, just borrowed that file because nowhere else existed yet.
  *
  * Sec.5's real semantics — Current is a SECOND generatePreview run over the
- * script truncated at a pinned line, not a stage snapshot — need
- * `truncateAst()` and a pin-line UI control, neither of which exist yet (no
- * CREATION_PLAN step currently owns building them). Until then both toggle
- * positions drive the identical real result; see PreviewPane.tsx.
+ * script truncated at a pinned line, not a stage snapshot — are live as of
+ * CREATION_PLAN 4.6. The cut line itself is NOT here: it lives in
+ * `PreviewCutContext`, which has to render below `AppContent` to read the
+ * shared selection anchor, while this provider sits above it. This flag
+ * decides only WHICH of the two runs is generated (PreviewResultContext).
  */
 export type PreviewViewMode = "current" | "final";
 

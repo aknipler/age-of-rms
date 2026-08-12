@@ -1,0 +1,110 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain WATER
+
+  /* The land. Left quarter of the map, hard edged. */
+  create_land
+  {
+    terrain_type GRASS
+    land_percent 22
+    base_size 12
+    right_border 70
+    border_fuzziness 0
+  }
+
+  /* The shelf. Immediately seaward of the land, so the three depths run
+     land, shallows, open water from left to right. */
+  create_land
+  {
+    terrain_type SHALLOW
+    land_percent 18
+    base_size 10
+    left_border 28
+    right_border 50
+    border_fuzziness 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_52 - is the shallows and open-water boundary edged with sand, or only
+the land and shallows one?
+Feeds: preview-design Sec.6.4, terrains.ts, grid.ts, Sec.15 item 29
+
+QUESTION
+The engine paints its own sand at a boundary, with no command asking for it.
+Sec.6.4 now treats shallows as their OWN DEPTH rather than as water, so the rule
+is that a tile takes its beach wherever it borders anything strictly deeper than
+itself, and sand lands on the shallower side. That produces two edges around a
+shallows shelf running out to sea: sand between the land and the shelf, and sand
+between the shelf and the open water.
+
+The near edge is not in doubt. Shallows already read as water before this change
+and that boundary was already being edged - incidentally, and for the wrong
+reason, which is how the shallows the terrain table calls dry ended up with no
+beach at all.
+
+THE FAR EDGE IS THE CLAIM AND IT IS UNMEASURED.
+
+What supports it: the terrain-state entry documents a flag for "thinner blending
+of shallows and beach terrain", which is a statement that the two are adjacent
+by default rather than only when an author puts them together. And a shelf whose
+seaward edge is bare looks wrong beside one whose landward edge is not.
+
+What is NOT evidence, and was checked: a corpus map paints its own beach terrain
+over every shallow it owns with a cosmetic mask. That could be an author
+supplying a beach the engine does not, or an author choosing a different beach
+from the one it does. The file cannot distinguish them, which is the whole
+reason this needs a run.
+
+METHOD
+Open water base, a grass land on the left, and a shallows band laid as its own
+land immediately to its right so the three depths sit in a known left-to-right
+order: land, shallows, open water. Read the two boundaries.
+
+The shallows band is a LAND rather than a terrain command on purpose. A terrain
+command would scatter shallows wherever it found water and might not touch the
+land at all, and the whole reading depends on the three depths being adjacent in
+a known order.
+
+  sand on BOTH boundaries -> the shipped model is right. Strike the marker.
+  sand only against the land -> the far half is wrong. The fix is one flag, not
+                                a rebuild: shallows stop being their own depth
+                                for the seaward comparison and the near edge
+                                keeps working as it already did.
+  sand on neither -> the map is wrong, not the model. Most likely the two lands
+                     did not end up adjacent. Check the bounding boxes before
+                     concluding anything.
+
+Also read WHICH sand. The shipped answer is each shallow's own beach terrain -
+ordinary sand for the ordinary shallows, the icy variant for navigable ice -
+matching the per-terrain rule already measured on the land side. If both edges
+come back with the same sand regardless of the shallow, that is a separate
+finding and it is worth more than the boundary question.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches BEACH
+  python probe_scenario.py "<scenario>" --patches SHALLOW
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Read the bounding boxes and compare the sand strips against the two known
+  boundaries. A strip on the land side only is the refutation; strips on both is
+  the model.
+*/

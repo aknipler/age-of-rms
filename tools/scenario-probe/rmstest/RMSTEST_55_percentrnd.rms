@@ -1,0 +1,114 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* Control, outside both blocks. */
+  create_object WILD_BOAR
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+  /* Block 1. A range pinned at a hundred against a literal zero. */
+  start_random
+    percent_chance rnd(100,100)
+      create_object OLIVE_TREE
+      {
+        number_of_objects 40
+        set_gaia_object_only
+      }
+    percent_chance 0
+      create_object GOLD
+      {
+        number_of_objects 40
+        set_gaia_object_only
+      }
+  end_random
+
+  /* Block 2. The mirror. A range pinned at zero against a literal hundred. */
+  start_random
+    percent_chance rnd(0,0)
+      create_object FORAGE
+      {
+        number_of_objects 40
+        set_gaia_object_only
+      }
+    percent_chance 100
+      create_object STONE
+      {
+        number_of_objects 40
+        set_gaia_object_only
+      }
+  end_random
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_55 - does a random chance branch accept a random-range expression as its
+percentage?
+Feeds: parser-design Sec.13 item 4, language.json's argument types
+
+QUESTION
+The random-range form is documented as usable in numeric slots generally, and
+the guide does not enumerate whether the percentage on a random branch is one of
+them. The parser accepts it because the slot is typed numeric; nothing has ever
+checked that the engine does.
+
+If the engine does NOT evaluate it there, the likely failures are that the
+branch never fires, that it always fires, or that the whole random block is
+malformed and the script dies - and the parser is currently silent about all
+three.
+
+METHOD
+Two independent random blocks, each with two branches, each deciding between two
+objects. In both blocks the outcome is forced, so nothing here is a coin toss.
+
+  Block 1: a range whose ends are both a hundred, against a literal zero.
+           Evaluated -> always the first branch -> 40 trees, no gold.
+           Not evaluated as a number -> whatever the engine does with a
+           malformed percentage, which is the finding.
+
+  Block 2: a range whose ends are both zero, against a literal hundred.
+           Evaluated -> always the SECOND branch -> 40 stone, no bushes.
+
+The two blocks are mirror images on purpose. A single block cannot distinguish
+"the range evaluated correctly" from "an unparsed percentage defaults to always
+firing", because both give the first branch. Reading the two together does: an
+unparsed percentage that always fires gives trees AND bushes, while a correct
+evaluation gives trees and stone.
+
+  40 trees + 40 stone      -> the range is evaluated. Confirm the slot type and
+                              close the item.
+  40 trees + 40 bushes     -> an unparsed percentage always fires. The range is
+                              not evaluated and the first branch wins by default.
+  40 gold + 40 bushes      -> an unparsed percentage never fires.
+  a blank or broken map    -> the construct is fatal, which is the strongest
+                              possible reason for the parser to warn on it.
+
+The 25 boars are the control. They sit outside both blocks; if they are missing
+the map failed for an unrelated reason.
+
+GENERATE AT NORMAL (200), any player count. THREE RUNS. The outcomes above are
+forced rather than probabilistic, so three runs are not for statistics - they
+are to catch the case where the engine really is rolling a die and the first
+generation happened to look decisive.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"
+  The default histogram is the whole reading.
+*/

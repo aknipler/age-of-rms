@@ -6,6 +6,8 @@ import { MapSidePanel } from "./sidepanel/MapSidePanel";
 import { AOE2_RMS_THEME } from "../editor/aoe2RmsLanguage";
 import { diagnosticsToMarkers } from "../editor/diagnosticsToMarkers";
 import { DOCUMENT_MODEL_PATH, getDocumentModel } from "../hooks/useDocument";
+import { usePreviewCut } from "../PreviewCutContext";
+import { usePreviewView } from "./preview/PreviewViewContext";
 import type { Diagnostic, Item } from "../parser/types";
 import styles from "./CodePane.module.css";
 
@@ -80,6 +82,16 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
   onCursorOffsetChangeRef.current = onCursorOffsetChange;
   const cursorSubscriptionRef = useRef<Monaco.IDisposable | null>(null);
 
+  // The preview's Current cut point (docs/preview-design.md Sec.5). Read
+  // straight from context rather than threaded down as props: this pane
+  // already renders inside both providers, and the alternative is two more
+  // props through AppContent that only this one decoration wants.
+  const { cutOffset } = usePreviewCut();
+  const { view } = usePreviewView();
+  // Belongs to ONE editor instance and dies with it, so it is a ref that is
+  // reset on unmount rather than a value that outlives the mount.
+  const cutDecorationsRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+
   // Extracted so it can run from two places: the effect below (fires on
   // every new source/diagnostics while mounted, e.g. typing) AND
   // handleMount (fires once, right when the editor/monaco refs first
@@ -96,6 +108,49 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
     // the next (matching) result instead of showing something wrong.
     if (model.getValue() !== currentSource) return;
     monaco.editor.setModelMarkers(model, MARKER_OWNER, diagnosticsToMarkers(model, currentDiagnostics));
+  }, []);
+
+  /**
+   * Dims everything the Current preview is ignoring — from the cut point to
+   * the end of the document.
+   *
+   * Why it earns its keep: Current silently drops the rest of the script, and
+   * a map that is missing half its lands looks identical to a map whose
+   * lands failed. The shading is what makes "this is a prefix" visible
+   * instead of inferred, and it is the same information the pin button
+   * states in words.
+   *
+   * Only in Current: in Final nothing is ignored, so there is nothing to
+   * shade. Passing `null` clears rather than removing the collection, so the
+   * editor keeps one collection for its whole life instead of churning
+   * decorations on every toggle.
+   *
+   * Monaco tracks decoration ranges through edits on its own, which would
+   * leave the shading ending where the document used to end. Recomputing on
+   * every new `source` is what keeps the range anchored to the real cut.
+   */
+  const applyCutShading = useCallback((cut: number | null) => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+    if (cutDecorationsRef.current === null) {
+      cutDecorationsRef.current = editor.createDecorationsCollection();
+    }
+    const collection = cutDecorationsRef.current;
+    const model = getDocumentModel();
+    const length = model.getValueLength();
+    if (cut === null || cut >= length) {
+      collection.clear();
+      return;
+    }
+    const start = model.getPositionAt(cut);
+    const end = model.getPositionAt(length);
+    collection.set([
+      {
+        range: new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column),
+        options: { inlineClassName: styles.cutIgnored },
+      },
+    ]);
   }, []);
 
   const handleMount: OnMount = (editor, monaco) => {
@@ -124,6 +179,12 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
     // pointing at pre-edit diagnostics. Applying markers directly here,
     // once refs are actually ready, closes that gap.
     applyMarkers(source, diagnostics);
+    // Same mount-race as the markers above, and the same fix: the effect
+    // below has already run (and bailed) by the time these refs are set.
+    // A fresh editor means a fresh collection — the old one went with the
+    // editor that owned it.
+    cutDecorationsRef.current = null;
+    applyCutShading(view === "current" ? cutOffset : null);
 
     // Cross-tab sync, incoming half (Breakdown -> Code): a card was
     // selected before the user switched here, so land the caret there,
@@ -159,6 +220,13 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
     applyMarkers(source, diagnostics);
   }, [source, diagnostics, applyMarkers]);
 
+  // `source` is a dependency even though it is not read: a new parse means
+  // the text changed, and the shading has to be re-laid against the new end
+  // of the document.
+  useEffect(() => {
+    applyCutShading(view === "current" ? cutOffset : null);
+  }, [view, cutOffset, source, applyCutShading]);
+
   // Dispose the cursor-tracking subscription on unmount — the editor
   // instance itself is torn down by @monaco-editor/react when the Code
   // tab isn't active, which would dispose this anyway, but explicit
@@ -169,6 +237,9 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
     return () => {
       cursorSubscriptionRef.current?.dispose();
       cursorSubscriptionRef.current = null;
+      // The collection is owned by the editor being torn down; dropping the
+      // reference stops the next mount from writing into a dead one.
+      cutDecorationsRef.current = null;
     };
   }, []);
 

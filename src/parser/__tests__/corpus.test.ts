@@ -17,7 +17,12 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
-import { validate, type GameConstantsForValidate, type ValidateReferenceDb } from "../validate";
+import {
+  commentOpenAliases,
+  validate,
+  type GameConstantsForValidate,
+  type ValidateReferenceDb,
+} from "../validate";
 import { checkProperties, loadLanguage, REPO_ROOT } from "./testUtils";
 
 const lang = loadLanguage();
@@ -175,4 +180,66 @@ describe("corpus: benchmark sanity (Vanguard, ~50k tokens)", () => {
     const RATIO = 8;
     expect(perTokenFull).toBeLessThan(perTokenSmall * RATIO);
   });
+});
+
+/**
+ * The comment-alias truncation, measured on whatever real maps are on disk
+ * rather than on a fixture.
+ *
+ * This exists because the unit tests in `lexer.test.ts` pass with the feature
+ * switched OFF everywhere else: the corpus gates above call `parseRms` with no
+ * options, so a feature only the worker configures would never meet a real
+ * file. Two tracked maps do contain this — both a commented-out
+ * `create_object SHORE_FISH { … }` block, which is what an author writes when
+ * disabling a command — and each loses about half its lines in game.
+ *
+ * Selected from disk, never named: `.gitignore` whitelists only a handful of
+ * maps, so naming one that happens to be on a maintainer's machine passes here
+ * and ENOENTs on a clone. If no affected map is present the assertions are
+ * vacuous BY CONSTRUCTION, so the count is asserted separately and loudly.
+ */
+describe("corpus: a word valued 69 inside a comment truncates the file (Sec.2.1 amendment)", () => {
+  // Reuses the refDb already built above rather than re-reading the file, so
+  // the gate and the app cannot drift onto different constant tables.
+  const ALIASES = commentOpenAliases(refDb.gameConstants.constants);
+
+  const liveTokens = (src: string, aliases?: ReadonlySet<string>) =>
+    parseRms(src, lang, { commentOpenAliases: aliases }).tokens.filter((t) => !t.isTrivia).length;
+
+  const affected = allMaps.filter((m) => {
+    const src = readFileSync(m.path, "utf8");
+    return liveTokens(src, ALIASES) < liveTokens(src);
+  });
+
+  it("the alias set is exactly the constants valued 69, and is not empty", () => {
+    expect(ALIASES.size).toBeGreaterThan(0);
+    expect([...ALIASES].sort()).toEqual(["ATTR_PROJECTILE_ARC", "SHORE_FISH"]);
+  });
+
+  it("reports which maps the engine truncates", () => {
+    // Not a threshold — a census. It prints so the number is re-derived each
+    // run rather than quoted from a doc that ages.
+    console.log(
+      `[comment-alias] ${affected.length} of ${allMaps.length} corpus maps are truncated in game:`,
+      affected.map((m) => m.name),
+    );
+    // NOT >= 0. That would be vacuous, and vacuous is the specific failure this
+    // gate is exposed to: `affected` is computed, so a regression that stops the
+    // truncation empties the loop below and every per-map test silently
+    // disappears into a green run. `broken/BCC2-Rekawa.rms` is one of the dozen
+    // maps `.gitignore` whitelists, so at least one hit exists on any clone.
+    expect(affected.length).toBeGreaterThanOrEqual(1);
+  });
+
+  for (const map of affected) {
+    it(`${map.name} loses tokens the engine never sees`, () => {
+      const source = readFileSync(map.path, "utf8");
+      const withAliases = liveTokens(source, ALIASES);
+      const without = liveTokens(source);
+      expect(withAliases).toBeLessThan(without);
+      // The whole point is that a LOT is lost. A one-token difference would
+      // mean the alias landed at the very end and the map is fine in practice.
+      expect(withAliases).toBeLessThan(without * 0.9);
+    });
+  }
 });

@@ -1,0 +1,90 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   A token resolving to 69 in a leading comment opens a nested comment and
+   swallows the rest of the file - see RMSTEST_56 and 57. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* Paint water onto grass. The command owns ONLY the water tiles it converts.
+     Whether a beach appears on the grass NEXT to them is the question. */
+  create_terrain WATER
+  {
+    base_terrain GRASS
+    number_of_clumps 3
+    number_of_tiles 200
+    clumping_factor 60
+  }
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_58 - is the per-command beach step GRID-WIDE or confined to the
+command's own tiles?
+Feeds: preview-design Sec.6.4, terrains.ts, Sec.15 item 28
+
+THE QUESTION, AND IT IS NARROW
+DE paints its own beach at a land and water boundary with no command asking for
+it. The step runs at the end of land generation and again at the end of every
+create_terrain command. That much is pinned.
+
+What is open is the SCOPE of the per-command step. Grid-wide, as modelled, or
+confined to the tiles the command actually touched. The two differ in exactly
+one situation: where a command paints water beside land it never touched.
+
+  grid-wide      -> the step looks at the whole map, finds the new land/water
+                    boundary, and beaches the grass side of it.
+  command-scoped -> the step only considers tiles the command owns. It owns the
+                    WATER tiles. The beach belongs on the GRASS tiles beside
+                    them, which the command never touched, so no beach appears.
+
+METHOD
+An all-grass map with no water anywhere, then one command converting grass to
+water in a few compact blobs. Every water tile on the finished map came from
+that command, and every grass tile beside it did not.
+
+  BEACH PRESENT around the new water -> GRID-WIDE. The shipped model is right,
+                                        item 28 closes, nothing changes.
+  NO BEACH at all                    -> COMMAND-SCOPED. terrains.ts beaches
+                                        coastline the engine leaves bare, and
+                                        the per-command step needs a tile mask.
+
+There is no third outcome to worry about: the map contains no other land/water
+boundary, so any beach at all can only have come from this one.
+
+WHY THE MAP CARRIES NO WATER OF ITS OWN
+Deliberate, and it is the whole design. If the base terrain were water, the
+land-generation beach step would have already run and laid a waterline, and a
+beach found afterwards could not be attributed to the per-command step. This map
+gives the per-command step the only boundary on it.
+
+Clumping is high and the clump count low so the blobs are compact and their
+edges are easy to read. Nothing here uses forest or leaves, which auto-place
+objects, or shallows, which item 29 has just shown are edged on one side only.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS.
+
+Two rather than one because a beach could in principle appear on some boundaries
+and not others - a blob that happens to touch the map edge behaves differently
+from one in open grass - and a single generation cannot show that.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches BEACH
+  python probe_scenario.py "<scenario>" --patches WATER
+  Beach tile count is the answer. Zero is command-scoped; a ring roughly
+  proportional to the water perimeter is grid-wide.
+
+  If beach appears on SOME blobs and not others, do not average it - record
+  which blobs and look for what distinguishes them. That is a third model and it
+  would mean the step is neither of the two above.
+*/

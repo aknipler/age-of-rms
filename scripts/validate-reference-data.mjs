@@ -28,6 +28,7 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 
 let hadError = false;
 let languageData = null;
+let gameConstantsData = null;
 
 for (const { schema, data } of FILES) {
   const schemaPath = path.join("reference/schemas", schema);
@@ -59,6 +60,9 @@ for (const { schema, data } of FILES) {
 
   if (data === "language.json") {
     languageData = dataJson;
+  }
+  if (data === "game-constants.json") {
+    gameConstantsData = dataJson;
   }
 }
 
@@ -136,6 +140,87 @@ if (languageData) {
   }
 
   checkMapSizeJoin(languageData);
+}
+
+// Mojibake: a non-ASCII character that has been through the wrong encoding
+// once, so its UTF-8 bytes are now stored as separate latin-1 characters.
+// `game-constants.json` carried exactly one — an em dash in SHORE_FISH's
+// notes, found on 2026-08-10 only because a regex written to match that
+// sentence matched FISH and not SHORE_FISH. It survives every existing gate:
+// the schema types the field `string` and a corrupted string is still a
+// string, and nothing else reads notes prose. Cheap to catch, and it points
+// at whichever tool or editor pass did it.
+const MOJIBAKE = /â[]|Ã[-¿]/;
+let encodingOk = true;
+for (const { data } of FILES) {
+  let json;
+  try {
+    json = readJson(path.join("reference/data", data));
+  } catch {
+    continue; // already reported above
+  }
+  const walk = (node, trail) => {
+    if (typeof node === "string") {
+      if (MOJIBAKE.test(node)) {
+        hadError = true;
+        encodingOk = false;
+        console.error(`✗ ${data}: double-encoded text at ${trail} — "${node.slice(0, 60)}..."`);
+      }
+    } else if (Array.isArray(node)) {
+      node.forEach((v, i) => walk(v, `${trail}[${i}]`));
+    } else if (node && typeof node === "object") {
+      for (const [k, v] of Object.entries(node)) walk(v, `${trail}/${k}`);
+    }
+  };
+  walk(json, data);
+}
+if (encodingOk) {
+  console.log("✓ reference data: no double-encoded text");
+}
+
+
+
+// Unit classes, both directions. `classId` on an object row and `memberIds`
+// on an objectClass row are two views of one read, so they cannot drift on
+// their own — but a hand edit to either, or a half-finished extraction run,
+// would leave them saying different things, and the failure is silent: a
+// consumer asking "is this object in that class" would get one answer from
+// each. Two checks, both cheap.
+if (gameConstantsData) {
+  const rows = gameConstantsData.constants;
+  const classRows = rows.filter((c) => c.category === "objectClass");
+  const membersByClass = new Map(classRows.map((c) => [c.classId, new Set(c.memberIds ?? [])]));
+  let classesOk = true;
+  for (const row of classRows) {
+    // constId is classId + 900 by definition — the offset is the whole reason
+    // an author can target a class at all. Extraction verifies it against
+    // random_map.def; this pins that the file kept it.
+    if (row.constId !== row.classId + 900) {
+      hadError = true;
+      classesOk = false;
+      console.error(
+        `✗ game-constants.json: objectClass ${row.rmsConstant ?? row.classId} has constId ${row.constId}, expected ${row.classId + 900}`,
+      );
+    }
+  }
+  for (const row of rows) {
+    if (row.category !== "object" || row.classId === undefined || row.constId === null) continue;
+    const members = membersByClass.get(row.classId);
+    if (members === undefined) {
+      hadError = true;
+      classesOk = false;
+      console.error(`✗ game-constants.json: object "${row.rmsConstant}" is in class ${row.classId}, which has no objectClass row`);
+    } else if (!members.has(row.constId)) {
+      hadError = true;
+      classesOk = false;
+      console.error(
+        `✗ game-constants.json: object "${row.rmsConstant}" (${row.constId}) claims class ${row.classId}, but that class's memberIds does not list it`,
+      );
+    }
+  }
+  if (classesOk && classRows.length > 0) {
+    console.log(`✓ game-constants.json: ${classRows.length} objectClass rows, constId offset and memberIds agree with every classId`);
+  }
 }
 
 // `MAP_SIZES` (TypeScript) ⟷ `predefinedLabels` (JSON): the join that carries

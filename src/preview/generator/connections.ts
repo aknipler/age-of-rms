@@ -24,17 +24,20 @@
 // matters for something load-bearing. `preview-design.md` Sec.6.5 itself
 // still has the wrong reading and should be corrected to match.
 //
-// PATHFINDING: A* with a binary heap (Sec.11), multi-source (every tile of
-// the source land) and multi-goal (any tile of the target land), heuristic
-// = Manhattan distance from a candidate tile to the target land's bounding
-// box (admissible: minimum passable terrain cost is 1, guide's own "cost
-// <=0 means impassable", so true path cost can never be cheaper than a
-// 4-connected step count, and box-distance never overestimates the true
-// distance to the nearest tile actually in the region). `grid.terrain`
-// already holds the terrain UNDER any cliff (cliffs.ts never writes to
-// `terrain`, only to `cliff`), which is exactly Sec.9 item 7's own
-// resolution of "what does the pathfinder see under a cliff" — no special
-// cliff handling is needed here, the grid already reads that way for free.
+// PATHFINDING: ONE multi-source Dijkstra per SOURCE land, with a binary
+// heap (Sec.11), yielding the cheapest path to every one of that source's
+// targets from a single search (`findConnectionPaths`). Multi-source
+// because every tile of the source land starts at cost 0, multi-goal
+// because a target is reached at whichever of its tiles the search closes
+// first. A pair-at-a-time A* ran C(L,2) searches where this runs L, which
+// on ~25 lands is 12x fewer (Sec.15 item 22). There is no heuristic: A*'s
+// admissibility guarantee covers only the FIRST goal popped out of a goal
+// set, so a heuristic aimed at the nearest remaining target would return
+// non-optimal paths to the rest. `grid.terrain` already holds the terrain
+// UNDER any cliff (cliffs.ts never writes to `terrain`, only to `cliff`),
+// which is exactly Sec.9 item 7's own resolution of "what does the
+// pathfinder see under a cliff" — no special cliff handling is needed
+// here, the grid already reads that way for free.
 //
 // ACCUMULATE_CONNECTIONS is a standalone stream-state toggle sitting
 // directly in the section (`kind: "standalone"`, not an attribute of any
@@ -43,8 +46,20 @@
 // encountered in script order alongside the six `create_connect_*` block
 // commands. Once seen, every LATER command in the section reads terrain
 // state (for both `terrain_cost` and `replace_terrain`'s "from" matching)
-// from the LIVE grid rather than a snapshot frozen at the start of S5 —
-// "costs/replacements see prior connections' output" (Sec.6.5).
+// from the output of the commands before it rather than from the state
+// frozen at the start of S5 — "costs/replacements see prior connections'
+// output" (Sec.6.5).
+//
+// It accumulates BETWEEN commands and NOT WITHIN one, which is why the
+// read state is a per-command snapshot rather than the live grid.
+// `RMSTEST_43a`/`43b` measured the same map with the flag on and off, four
+// generations each: 456 road tiles in all eight, exactly, while a control
+// quantity that is random but irrelevant (automatic decoration objects)
+// varied normally across the same exports — so every export was a distinct
+// generation and the measured quantity had zero spread. Sec.15 item 22.
+// The earlier live-grid reading let pair N+1 of one command route over
+// pair N's paint; nothing observable depends on it, and freezing per
+// command is what makes batching a pure speedup rather than a deviation.
 //
 // TO_NONPLAYER_LAND'S DOCUMENTED BUG is emulated deliberately: once that
 // command runs, every `create_connect_*` command AFTER it in the section
@@ -245,51 +260,119 @@ export class MinHeap {
 }
 
 // ---------------------------------------------------------------------------
-// A* pathfinding
+// Pathfinding
 // ---------------------------------------------------------------------------
 
-export interface BoundingBox {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
+/**
+ * Which lands can possibly reach which, under ONE command's cost table.
+ *
+ * Batching the searches per source land is only a saving when a search can
+ * stop early, and one unreachable target denies that: the Dijkstra has to
+ * exhaust its whole component before it can conclude the target is not in
+ * it. `24hr_Caverns.rms` has 46 unreachable pairs out of 468, spread widely
+ * enough that nearly every source had one, so batching alone bought it 15%
+ * against Pag's 3.7x (measured 2026-08-11).
+ *
+ * So the unreachable pairs are answered before any search runs, by flooding
+ * the passable tiles once per command into connected components and asking
+ * whether the two lands share one. That is the same question the exhausted
+ * search was answering, at O(dim^2) for the whole command rather than per
+ * pair. Two sets per land, because a land is not symmetric in this:
+ *
+ * - `target[l]` — components of l's OWN passable tiles. A search enters a
+ *   target land by relaxing into one of its tiles, so an impassable land is
+ *   unreachable however close it sits.
+ * - `source[l]` — components l can set off INTO, which is `target[l]` plus
+ *   the components of every passable tile ADJACENT to l. Source tiles are
+ *   seeded at cost 0 whatever their own terrain costs, so a land made of
+ *   impassable terrain still departs normally.
+ */
+export interface ConnectivityIndex {
+  source: Array<Set<number>>;
+  target: Array<Set<number>>;
 }
 
-/** One bounding box per land, indexed the same way `grid.landId` is (an index into the `origins` array). Computed once per `applyConnections` call -- land regions are stable throughout S5 (connections paint terrain, never `landId`). */
-export function computeLandBoundingBoxes(grid: TileGrid, landCount: number): BoundingBox[] {
-  const boxes: BoundingBox[] = Array.from({ length: landCount }, () => ({
-    minX: Infinity,
-    maxX: -Infinity,
-    minY: Infinity,
-    maxY: -Infinity,
-  }));
+export function buildConnectivityIndex(
+  grid: TileGrid,
+  terrainOf: Uint16Array,
+  costOf: (terrainId: number) => number,
+  landCount: number,
+): ConnectivityIndex {
   const { dim } = grid;
-  for (let i = 0; i < grid.landId.length; i++) {
+  const n = dim * dim;
+  const component = new Int32Array(n).fill(-1);
+  const stack = new Int32Array(n);
+  let next = 0;
+
+  for (let start = 0; start < n; start++) {
+    if (component[start] !== -1 || costOf(terrainOf[start]) <= 0) continue;
+    const id = next++;
+    let top = 0;
+    stack[top++] = start;
+    component[start] = id;
+    while (top > 0) {
+      const tile = stack[--top];
+      const x = tile % dim;
+      const y = (tile - x) / dim;
+      if (x > 0) top = visit(tile - 1, id, top);
+      if (x < dim - 1) top = visit(tile + 1, id, top);
+      if (y > 0) top = visit(tile - dim, id, top);
+      if (y < dim - 1) top = visit(tile + dim, id, top);
+    }
+  }
+
+  const index: ConnectivityIndex = {
+    source: Array.from({ length: landCount }, () => new Set<number>()),
+    target: Array.from({ length: landCount }, () => new Set<number>()),
+  };
+  for (let i = 0; i < n; i++) {
     const land = grid.landId[i];
-    if (land < 0) continue;
+    if (land < 0 || land >= landCount) continue;
+    const own = component[i];
+    if (own !== -1) {
+      index.target[land].add(own);
+      index.source[land].add(own);
+    }
     const x = i % dim;
     const y = (i - x) / dim;
-    const box = boxes[land];
-    if (x < box.minX) box.minX = x;
-    if (x > box.maxX) box.maxX = x;
-    if (y < box.minY) box.minY = y;
-    if (y > box.maxY) box.maxY = y;
+    if (x > 0) addNeighbor(index.source[land], i - 1);
+    if (x < dim - 1) addNeighbor(index.source[land], i + 1);
+    if (y > 0) addNeighbor(index.source[land], i - dim);
+    if (y < dim - 1) addNeighbor(index.source[land], i + dim);
   }
-  return boxes;
+  return index;
+
+  function visit(tile: number, id: number, top: number): number {
+    if (component[tile] !== -1 || costOf(terrainOf[tile]) <= 0) return top;
+    component[tile] = id;
+    stack[top++] = tile;
+    return top;
+  }
+
+  function addNeighbor(into: Set<number>, tile: number): void {
+    const c = component[tile];
+    if (c !== -1) into.add(c);
+  }
 }
 
-function boxDistance(box: BoundingBox, x: number, y: number): number {
-  const dx = Math.max(box.minX - x, 0, x - box.maxX);
-  const dy = Math.max(box.minY - y, 0, y - box.maxY);
-  return dx + dy;
+/** Whether any route at all could exist from `source` to `target` — the cheap half of the question `findConnectionPaths` answers exactly. */
+export function landsCanConnect(index: ConnectivityIndex, source: number, target: number): boolean {
+  const from = index.source[source];
+  const to = index.target[target];
+  if (from === undefined || to === undefined) return false;
+  const [small, large] = from.size <= to.size ? [from, to] : [to, from];
+  for (const component of small) {
+    if (large.has(component)) return true;
+  }
+  return false;
 }
 
 /**
- * Reusable working arrays for `findConnectionPath`, allocated ONCE per
+ * Reusable working arrays for `findConnectionPaths`, allocated ONCE per
  * `applyConnections` call instead of once per search.
  *
- * The searches are per PAIR of lands, so a script with many lands runs
- * hundreds of them (`AD4 - Pag - v1.2.rms`: 27 lands x three
+ * The searches are per SOURCE LAND, so a script with many lands still runs
+ * dozens of them (`AD4 - Pag - v1.2.rms`: 27 lands x three
  * `create_connect_all_lands` commands). Each was allocating and then clearing
  * three `dim^2` arrays — about half a megabyte of churn and 120,000 writes
  * per search, before any pathfinding happened. `24hr_Caverns.rms` spent 3.0 s
@@ -337,23 +420,37 @@ function landTiles(grid: TileGrid, landCount: number): number[][] {
 }
 
 /**
- * Multi-source, multi-goal A*: every tile of `sourceLand` starts at cost 0;
- * the search ends the moment ANY tile of `targetLand` is reached. Returns
- * the path as tile indices (source to target, inclusive) or `undefined`
- * when no route exists — "impassable moat of cost-0 terrain, or
- * unreachable land" (Sec.6.5), which this treats identically: both simply
- * exhaust the open set without ever reaching a target-land tile.
+ * Multi-source, multi-goal Dijkstra: every tile of `sourceLand` starts at
+ * cost 0, and each land in `targetLands` is reached at whichever of its
+ * tiles the search closes first — which under Dijkstra is its cheapest.
+ * Returns one path per target that was reached, keyed by land index, as
+ * tile indices from source to target inclusive. A target simply ABSENT
+ * from the returned map has no route — "impassable moat of cost-0 terrain,
+ * or unreachable land" (Sec.6.5), which this treats identically: both
+ * exhaust the open set without ever closing a tile of that land.
+ *
+ * One search answers every pair sharing a source, which is the whole point
+ * (Sec.15 item 22). The search still expands THROUGH a target's tiles
+ * after recording it, since a further target may lie beyond it — the
+ * per-pair version did the same, having never looked at any land but its
+ * own target. It stops early once every target is accounted for, so a
+ * source whose targets are all nearby does not pay for the far side of the
+ * map; only an unreachable target forces the full component.
  */
-export function findConnectionPath(
+export function findConnectionPaths(
   grid: TileGrid,
   terrainOf: Uint16Array,
   costOf: (terrainId: number) => number,
   sourceLand: number,
-  targetLand: number,
-  targetBox: BoundingBox,
+  targetLands: readonly number[],
   scratch: PathScratch = createPathScratch(grid.dim),
   sourceTiles?: readonly number[],
-): number[] | undefined {
+): Map<number, number[]> {
+  const paths = new Map<number, number[]>();
+  const wanted = new Set(targetLands);
+  wanted.delete(sourceLand);
+  if (wanted.size === 0) return paths;
+
   const { dim } = grid;
   const n = dim * dim;
   const { gScore, gStamp, cameFrom, closedStamp, heap } = scratch;
@@ -361,32 +458,22 @@ export function findConnectionPath(
   heap.clear();
 
   // Seeded from a prebuilt tile list when the caller has one. Without it this
-  // is an O(dim^2) scan per search, and `create_connect_all_lands` runs one
-  // search per PAIR of lands — 27 lands is 351 pairs, three commands of them
-  // in `AD4 - Pag - v1.2.rms`.
+  // is an O(dim^2) scan per search.
   if (sourceTiles !== undefined) {
-    for (const i of sourceTiles) {
-      gScore[i] = 0;
-      gStamp[i] = gen;
-      cameFrom[i] = -1; // terminates the path walk; the array is reused, so a stale value here would run off the end of this search's own chain
-      const x = i % dim;
-      heap.push(i, boxDistance(targetBox, x, (i - x) / dim));
-    }
+    for (const i of sourceTiles) seed(i);
   } else {
     for (let i = 0; i < n; i++) {
-      if (grid.landId[i] !== sourceLand) continue;
-      gScore[i] = 0;
-      gStamp[i] = gen;
-      cameFrom[i] = -1; // terminates the path walk; the array is reused, so a stale value here would run off the end of this search's own chain
-      const x = i % dim;
-      heap.push(i, boxDistance(targetBox, x, (i - x) / dim));
+      if (grid.landId[i] === sourceLand) seed(i);
     }
   }
 
   while (heap.size > 0) {
     const current = heap.pop()!;
     if (closedStamp[current] === gen) continue;
-    if (grid.landId[current] === targetLand) {
+    closedStamp[current] = gen;
+
+    const land = grid.landId[current];
+    if (land >= 0 && wanted.has(land)) {
       const path: number[] = [];
       let t: number = current;
       // `cameFrom` needs no stamp of its own: every tile on this chain was
@@ -397,24 +484,30 @@ export function findConnectionPath(
         t = cameFrom[t];
       }
       path.reverse();
-      return path;
+      paths.set(land, path);
+      wanted.delete(land);
+      if (wanted.size === 0) break;
     }
-    closedStamp[current] = gen;
 
     const x = current % dim;
     const y = (current - x) / dim;
     // The four neighbours are visited inline rather than collected into an
     // array first. That array was allocated once per EXPANSION, and an
-    // expansion is per tile per search — `AD4 - Pag - v1.2.rms` runs several
-    // hundred searches over a 40,000-tile grid (27 lands, three
-    // `create_connect_all_lands` commands), so it was tens of millions of
+    // expansion is per tile per search, so it was tens of millions of
     // throwaway arrays for a fixed set of four numbers.
     if (x > 0) relax(current, current - 1);
     if (x < dim - 1) relax(current, current + 1);
     if (y > 0) relax(current, current - dim);
     if (y < dim - 1) relax(current, current + dim);
   }
-  return undefined;
+  return paths;
+
+  function seed(i: number): void {
+    gScore[i] = 0;
+    gStamp[i] = gen;
+    cameFrom[i] = -1; // terminates the path walk; the array is reused, so a stale value here would run off the end of this search's own chain
+    heap.push(i, 0);
+  }
 
   function relax(from: number, neighbor: number): void {
     if (closedStamp[neighbor] === gen) return;
@@ -427,9 +520,7 @@ export function findConnectionPath(
     gScore[neighbor] = tentativeG;
     gStamp[neighbor] = gen;
     cameFrom[neighbor] = from;
-    const nx = neighbor % dim;
-    const ny = (neighbor - nx) / dim;
-    heap.push(neighbor, tentativeG + boxDistance(targetBox, nx, ny));
+    heap.push(neighbor, tentativeG);
   }
 }
 
@@ -515,17 +606,44 @@ export function resolveReplacement(rules: readonly ReplacementRule[], terrainId:
 // ---------------------------------------------------------------------------
 
 /**
+ * Tiles this command has already painted, and how many of the grid's are
+ * left. Optional, and purely a saving: a tile's painted value is
+ * `resolveReplacement(rules, terrainOf[i])`, and within ONE command both
+ * `rules` and `terrainOf` are fixed — so a second disc covering a tile
+ * writes the value already there, and covering it a third time is the same
+ * no-op again.
+ *
+ * **This is only true because `terrainOf` is frozen for the command.** If
+ * anything ever restores the live-grid read that `accumulate_connections`
+ * used to imply, this dedup silently starts dropping real repaints; the
+ * two belong together.
+ *
+ * `24hr_Caverns.rms` is why it exists: `terrain_size DLC_RAINFOREST 420 0`
+ * on a 240-wide map is a disc larger than the map, and its
+ * `create_connect_all_lands` walks thousands of path tiles over rainforest,
+ * each one re-scanning all 57,600 tiles to write what the first already
+ * wrote — measured at 3010 ms of painting against 378 ms of searching.
+ */
+export interface PaintCoverage {
+  painted: Uint8Array;
+  remaining: number;
+}
+
+export function createPaintCoverage(dim: number): PaintCoverage {
+  return { painted: new Uint8Array(dim * dim), remaining: dim * dim };
+}
+
+/**
  * Per path tile: roll an effective radius (base +/- uniform variance,
  * looked up by the tile's OWN current terrain -- default radius 1,
  * variance 0 when that terrain has no `terrain_size` entry), skip entirely
  * on a negative roll ("negative effective radius -> replace nothing" --
  * guide:1965), else replace every terrain within that many tiles (a
  * Euclidean disc, squared-distance compared -- Sec.8 bans `Math.sqrt`) per
- * `rules`. Reads "from" terrain and radius terrain from `terrainOf`
- * (snapshot or live grid, per the caller's accumulate_connections
- * decision) but WRITES to `grid.terrain` directly and immediately, so a
- * later path tile's disc can overwrite an earlier one's where they overlap
- * -- the same order the path itself was walked in.
+ * `rules`. Reads "from" terrain and radius terrain from `terrainOf` (the
+ * caller's per-command snapshot) but WRITES to `grid.terrain` directly and
+ * immediately, so a later path tile's disc can overwrite an earlier one's
+ * where they overlap -- the same order the path itself was walked in.
  */
 export function applyTerrainAlongPath(
   grid: TileGrid,
@@ -534,9 +652,14 @@ export function applyTerrainAlongPath(
   sizes: ReadonlyMap<number, TerrainSize>,
   rules: readonly ReplacementRule[],
   rng: Rng,
+  coverage?: PaintCoverage,
 ): void {
   const { dim } = grid;
   for (const tile of path) {
+    // Every tile in the command is already at its final value, so the
+    // remaining discs — and the radius rolls that size them, which nothing
+    // outside this pair's own substream can observe — are all no-ops.
+    if (coverage !== undefined && coverage.remaining === 0) return;
     const terrainHere = terrainOf[tile];
     const size = sizes.get(terrainHere) ?? { radius: 1, variance: 0 };
     const roll = size.variance > 0 ? nextInt(rng, -size.variance, size.variance) : 0;
@@ -556,6 +679,11 @@ export function applyTerrainAlongPath(
         const dy = y - cy;
         if (dx * dx + dy * dy > r2) continue;
         const i = tileIndex(grid, x, y);
+        if (coverage !== undefined) {
+          if (coverage.painted[i] === 1) continue;
+          coverage.painted[i] = 1;
+          coverage.remaining--;
+        }
         const replacement = resolveReplacement(rules, terrainOf[i]);
         if (replacement !== undefined) grid.terrain[i] = replacement;
       }
@@ -633,8 +761,7 @@ export function applyConnections(
   let accumulating = false;
   let blocked = false;
   let sawTeamsCommand = false;
-  const landBoxes = computeLandBoundingBoxes(grid, origins.length);
-  // One set of working arrays for every A* search this stage runs — see PathScratch.
+  // One set of working arrays for every search this stage runs — see PathScratch.
   const pathScratch = createPathScratch(grid.dim);
 
   for (const cmd of commands) {
@@ -658,7 +785,12 @@ export function applyConnections(
       continue;
     }
 
-    const terrainOf = accumulating ? grid.terrain : startOfS5Terrain;
+    // Frozen for the whole command either way: at the start of S5 by
+    // default, at the start of THIS command once `accumulate_connections`
+    // has been seen. Accumulation is between commands only (see this file's
+    // header), so a snapshot is what the flag means — the copy costs one
+    // dim^2 read per accumulating command, and two corpus maps have one.
+    const terrainOf = accumulating ? grid.terrain.slice() : startOfS5Terrain;
     const costs = readTerrainCosts(cmd, constants, instantiated.symbols);
     const sizes = readTerrainSizes(cmd, constants, instantiated.symbols);
     const rules = readReplacementRules(cmd, constants, instantiated.symbols);
@@ -673,6 +805,7 @@ export function applyConnections(
 
     const pairs = resolvePairs(cmd, origins, instantiated.teams);
     const failures: PlacementFailure[] = [];
+    const coverage = createPaintCoverage(grid.dim); // per command, like `terrainOf` and for the same reason — see PaintCoverage
     let placed = 0;
 
     // Both rebuilt per command, not per pair, and not hoisted above the
@@ -682,8 +815,31 @@ export function applyConnections(
     // makes that a local fact rather than something to re-derive later.
     const tilesByLand = landTiles(grid, origins.length);
 
+    // One search per distinct SOURCE land rather than one per pair. The
+    // searches all run first, against the one frozen `terrainOf` above, and
+    // the painting then walks `pairs` in its original order — so the RNG
+    // substream a pair draws, and the order overlapping discs overwrite each
+    // other in, are exactly what the pair-at-a-time version produced.
+    const targetsBySource = new Map<number, number[]>();
     for (const [a, b] of pairs) {
-      const path = findConnectionPath(grid, terrainOf, costOf, a, b, landBoxes[b], pathScratch, tilesByLand[a]);
+      const targets = targetsBySource.get(a);
+      if (targets) targets.push(b);
+      else targetsBySource.set(a, [b]);
+    }
+    // Pairs with no route at all are answered from the component flood
+    // rather than by a search that exhausts its component to find out — see
+    // ConnectivityIndex. They still report `connectionBlocked` below, from
+    // the same "absent from the map" branch a failed search produces.
+    const connectivity = buildConnectivityIndex(grid, terrainOf, costOf, origins.length);
+    const pathsBySource = new Map<number, Map<number, number[]>>();
+    for (const [source, targets] of targetsBySource) {
+      const reachable = targets.filter((target) => landsCanConnect(connectivity, source, target));
+      if (reachable.length === 0) continue;
+      pathsBySource.set(source, findConnectionPaths(grid, terrainOf, costOf, source, reachable, pathScratch, tilesByLand[source]));
+    }
+
+    for (const [a, b] of pairs) {
+      const path = pathsBySource.get(a)?.get(b);
       if (path === undefined) {
         pushFailure(failures, {
           bucket: "connectionBlocked",
@@ -695,7 +851,7 @@ export function applyConnections(
         continue;
       }
       const pairRng = nextSubstream();
-      applyTerrainAlongPath(grid, path, terrainOf, sizes, rules, pairRng);
+      applyTerrainAlongPath(grid, path, terrainOf, sizes, rules, pairRng, coverage);
       placed++;
     }
 

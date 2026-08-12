@@ -1,0 +1,55 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<CLIFF_GENERATION>
+  min_number_of_cliffs 20
+  max_number_of_cliffs 20
+  min_length_of_cliff 2
+  max_length_of_cliff 4
+  cliff_curliness 10
+  min_distance_cliffs 4
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_45c - arm 3 of 3. Minimum below the floor, maximum above it.
+Feeds: preview-design Sec.6.3, cliffs.ts, Sec.15 item 17(b)
+
+READ RMSTEST_45b's HEADER FIRST. It carries the full question and the reading
+rule for all three arms.
+
+THIS ARM: minimum 2, maximum 4. It straddles the documented floor, which is the
+only arm that can distinguish a whole-section suppression from a per-draw yield.
+A partial count here - roughly a third to a half of 45b - is the per-draw
+reading, and it is the outcome that neither the guide nor the spec anticipates.
+
+This is also the shape the shipped map cited in the item actually writes: five
+to ten cliffs at length two to four.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --clusters
+*/

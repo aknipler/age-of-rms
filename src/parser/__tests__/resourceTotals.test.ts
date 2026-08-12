@@ -187,3 +187,221 @@ describe("robustness on real corpus files (smoke — must not throw, all-zero-sa
     expect(() => computeResourceTotals(result.script, result.tokens, GOLD_ONLY, 4)).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Script-level storage overrides — effect_amount ... ATTR_STORAGE_VALUE
+// ---------------------------------------------------------------------------
+//
+// The fixture mirrors the real reference data's shape rather than a convenient
+// one: object rows carry constId + resourceStorages (with the resolved
+// `resource`), the class row carries memberIds over the whole roster, and the
+// attribute row carries writesStorageSlot. Nothing here names ATTR_STORAGE_VALUE
+// in production code — the data says which attribute writes a storage slot.
+
+const WITH_OVERRIDES: GameConstantsForTotals = {
+  constants: [
+    {
+      rmsConstant: "GOLD",
+      category: "object",
+      constId: 66,
+      resourceAmounts: { gold: 800 },
+      resourceStorages: [{ type: 3, amount: 800, resource: "gold" }],
+    },
+    {
+      rmsConstant: "OAK_TREE",
+      category: "object",
+      constId: 349,
+      resourceAmounts: { wood: 100 },
+      resourceStorages: [{ type: 1, amount: 100, resource: "wood" }],
+    },
+    {
+      rmsConstant: "BIRCH_TREE",
+      category: "object",
+      constId: 350,
+      resourceAmounts: { wood: 100 },
+      resourceStorages: [{ type: 1, amount: 100, resource: "wood" }],
+    },
+    {
+      // Slot 0 is population, so ATTR_STORAGE_VALUE moves nothing countable.
+      rmsConstant: "HOUSE",
+      category: "object",
+      constId: 70,
+      resourceStorages: [{ type: 4, amount: 5 }],
+    },
+    {
+      // A DEAD HERO, and the shape that separates "slot 0 is not a resource"
+      // from "this object has no resources at all". 15 real units look like
+      // this (MONKX_S_D, EDWARD_D, ...): slot 0 is a decay timer and the gold
+      // lives in a LATER slot. ATTR_STORAGE_VALUE writes slot 0, so it changes
+      // how long the corpse lasts, not what it is worth.
+      rmsConstant: "DEAD_HERO",
+      category: "object",
+      constId: 412,
+      resourceAmounts: { gold: 33 },
+      resourceStorages: [
+        { type: 12, amount: 300 },
+        { type: 3, amount: 33, resource: "gold" },
+      ],
+    },
+    {
+      // No classId here on purpose: the real row carries one and this module
+      // never reads it, so the interface stays the minimal slice it claims.
+      rmsConstant: "TREE_CLASS",
+      category: "objectClass",
+      constId: 915,
+      memberIds: [349, 350],
+    },
+    { rmsConstant: "ATTR_STORAGE_VALUE", category: "attribute", constId: 21, writesStorageSlot: 0 },
+  ],
+};
+
+const OBJECTS = "<OBJECTS_GENERATION>\n";
+
+describe("effect_amount ATTR_STORAGE_VALUE overrides", () => {
+  it("an unconditional override REPLACES the base value", () => {
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD ATTR_STORAGE_VALUE 500\n" + OBJECTS + "create_object GOLD",
+      WITH_OVERRIDES,
+    );
+    // Always runs, so 800 is no longer reachable and this is not a range.
+    expect(t.total.min.gold).toBe(500);
+    expect(t.total.max.gold).toBe(500);
+  });
+
+  it("zero is a real value, not an absent one — the idiom for switching a resource off", () => {
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD ATTR_STORAGE_VALUE 0\n" + OBJECTS + "create_object GOLD",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.gold).toBe(0);
+  });
+
+  it("a CONDITIONAL override widens the range instead of replacing", () => {
+    // 353 of the corpus's 374 uses sit inside a conditional, so this is the
+    // common case rather than the exotic one. Both outcomes are possible, so
+    // both ends are reported.
+    const t = totalsFor(
+      "<PLAYER_SETUP>\nif REGICIDE\neffect_amount SET_ATTRIBUTE GOLD ATTR_STORAGE_VALUE 200\nendif\n" +
+        OBJECTS +
+        "create_object GOLD",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.min.gold).toBe(200);
+    expect(t.total.max.gold).toBe(800);
+  });
+
+  it("targets a CLASS, hitting every member", () => {
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount GAIA_SET_ATTRIBUTE TREE_CLASS ATTR_STORAGE_VALUE 250\n" +
+        OBJECTS +
+        "create_object OAK_TREE\ncreate_object BIRCH_TREE",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.wood).toBe(500); // both trees, 250 each
+  });
+
+  it("resolves a target written as the script's own #const", () => {
+    // The common shape: 216 of the corpus's 397 object names are script
+    // constants, and the unit often has no DE name at all.
+    const t = totalsFor(
+      "#const MY_TREE 349\n<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE MY_TREE ATTR_STORAGE_VALUE 25\n" +
+        OBJECTS +
+        "create_object OAK_TREE",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.wood).toBe(25);
+  });
+
+  it("resolves a target written as a bare unit id", () => {
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE 349 ATTR_STORAGE_VALUE 30\n" + OBJECTS + "create_object OAK_TREE",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.wood).toBe(30);
+  });
+
+  it("resolves the ATTRIBUTE by id too, since the data carries its constId", () => {
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD 21 500\n" + OBJECTS + "create_object GOLD",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.gold).toBe(500);
+  });
+
+  it("ignores an attribute that does not write a storage slot", () => {
+    // ATTR_HITPOINTS has 86 corpus uses and must not touch a resource total.
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD ATTR_HITPOINTS 5\n" + OBJECTS + "create_object GOLD",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.min.gold).toBe(800);
+    expect(t.total.max.gold).toBe(800);
+  });
+
+  it("changes nothing when slot 0 is not a resource at all", () => {
+    // A house's slot 0 is population support. The same attribute, the same
+    // syntax, and no effect on any total — which is why the slot carries a
+    // resolved `resource` and the code checks it.
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE HOUSE ATTR_STORAGE_VALUE 999\n" + OBJECTS + "create_object HOUSE",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max).toEqual({ food: 0, wood: 0, gold: 0, stone: 0 });
+  });
+
+  it("does not repoint a LATER slot's resource when slot 0 is not one", () => {
+    // The test above passes even with the `resource` check removed, because a
+    // house has no resourceAmounts to move and an earlier guard catches it.
+    // Found by mutation testing; this is the case that actually pins the check.
+    // A dead hero carries a decay timer in slot 0 and gold in slot 1, so an
+    // ATTR_STORAGE_VALUE line changes how long the corpse lasts. Its 33 gold
+    // must not become 7.
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE DEAD_HERO ATTR_STORAGE_VALUE 7\n" +
+        OBJECTS +
+        "create_object DEAD_HERO",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.min.gold).toBe(33);
+    expect(t.total.max.gold).toBe(33);
+  });
+
+  it("multiplies the overridden amount by the count, not the base", () => {
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD ATTR_STORAGE_VALUE 100\n" +
+        OBJECTS +
+        "create_object GOLD { number_of_objects 7 }",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.gold).toBe(700);
+  });
+
+  it("an override reaches an object placed as a second_object", () => {
+    // guide:2211's placeholder idiom: the carrier holds no resource and the
+    // second object is the one that matters, so the override has to follow it.
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD ATTR_STORAGE_VALUE 50\n" +
+        OBJECTS +
+        "create_object HOUSE { second_object GOLD }",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.max.gold).toBe(50);
+  });
+
+  it("leaves every total alone when the script writes no effect_amount", () => {
+    const t = totalsFor(OBJECTS + "create_object GOLD", WITH_OVERRIDES);
+    expect(t.total.min.gold).toBe(800);
+    expect(t.total.max.gold).toBe(800);
+  });
+
+  it("ignores an amount it cannot statically evaluate rather than guessing", () => {
+    // A guess here silently moves a number the user is reading off the status
+    // bar, which is worse than reporting the base value.
+    const t = totalsFor(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE GOLD ATTR_STORAGE_VALUE rnd(1,9)\n" + OBJECTS + "create_object GOLD",
+      WITH_OVERRIDES,
+    );
+    expect(t.total.min.gold).toBe(800);
+    expect(t.total.max.gold).toBe(800);
+  });
+});

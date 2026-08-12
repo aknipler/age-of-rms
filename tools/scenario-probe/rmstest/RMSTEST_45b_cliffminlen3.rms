@@ -1,0 +1,99 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<CLIFF_GENERATION>
+  min_number_of_cliffs 20
+  max_number_of_cliffs 20
+  min_length_of_cliff 3
+  max_length_of_cliff 3
+  cliff_curliness 10
+  min_distance_cliffs 4
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_45b - arm 2 of 3, and the arm carrying the full question.
+Feeds: preview-design Sec.6.3, cliffs.ts, Sec.15 item 17(b)
+
+THIS ARM: minimum 3, maximum 3. Exactly at the documented floor. This is the
+positive control - if this arm produces no cliffs either, the map is wrong and
+all three arms are void.
+
+QUESTION
+The guide states that a minimum cliff length below 3 produces no cliffs at all.
+cliffs.ts implements that as zero cliffs plus a note, never as a clamp, because
+the spec instructs it. But six official maps write a minimum of 1 or 2 in a live
+unconditional block, one of them asking for five to ten cliffs at length two to
+four. Under the shipped rule every one of those blocks is dead.
+
+The rule is the working model and there is a reason to keep it - the map most
+often cited is not remembered as having cliffs, which is the best observation
+available and agrees with the guide. But it is unmeasured, and it silently
+suppresses a whole section of six shipped maps. Verified, not assumed.
+
+THE THREE ARMS
+  45a  min 2 / max 2   both below the floor
+  45b  min 3 / max 3   at the floor, the positive control
+  45c  min 2 / max 4   straddling it
+
+Everything else in the three files is identical: twenty cliffs requested, the
+same curliness and spacing, the same flat grass map, the same control bushes.
+
+WHAT EACH OUTCOME MEANS
+  zero in 45a, normal in 45b, zero in 45c
+      The documented rule is exactly right. A sub-3 minimum suppresses the
+      section whatever the maximum says. cliffs.ts stands as written and the six
+      shipped blocks really are dead. Strike the verify marker.
+
+  45a about equal to 45b
+      It is a CLAMP, not a suppression. The engine raises the minimum to 3 and
+      carries on. cliffs.ts is wrong in the most consequential direction - it
+      draws nothing where the engine draws cliffs - and six maps get their
+      cliffs back.
+
+  zero in 45a, PARTIAL count in 45c
+      A per-draw yield. Each cliff rolls its own length in the declared band and
+      only the rolls landing at 3 or above survive. 45c should then come out at
+      roughly a third to a half of 45b. This is the outcome neither the guide
+      nor the spec anticipates, and it is the one that needs a new rule rather
+      than a corrected constant.
+
+  anything nonzero in 45a
+      The guide sentence is false as written and Sec.6.3 needs re-sourcing.
+
+GENERATE AT NORMAL (200), any player count. TWO RUNS PER ARM, six generations
+for the set. Two rather than one because the count is a distribution - the
+zero-versus-nonzero question is binary but the clamp-versus-yield question is
+not, and a single sample cannot separate a third from a half.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --clusters
+  Count cliff units. Compare the three arms against each other, never against an
+  absolute expectation - twenty declared cliffs is a request, not a promise.
+
+RUN THIS SET SECOND, AFTER LOADING THE COMMUNITY MAP NAMED FOR ITS CLIFFS THAT
+SETS A SUB-3 MINIMUM. If that map visibly has cliffs, arm 45a is already
+answered and the clamp reading wins before a single generation is spent.
+*/
