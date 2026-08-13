@@ -6232,3 +6232,207 @@ asserted against a grid it had built itself. The evidence was in hand a day
 early: Petra's land-less source is what settled BUG-005 in the first place.
 
 `docs/known-issues.md` is empty of open bugs.
+
+## 2026-08-13 — The canvas help tip covered the tile readout
+
+Reported from use: hovering the preview canvas pops the help tip over the tile
+information rows, exactly while those rows are being read.
+
+**The anchor was the whole map.** `PreviewCanvas.tsx` wraps the `<canvas>` in
+`HelpTip id="preview.canvas"`, and `PreviewCanvas.module.css` stretches the
+wrapper span to fill the container, so the anchor box is the entire preview.
+`place()` prefers below (`top = anchorBox.bottom + 4`), the anchor's bottom edge
+is the canvas's bottom edge, and `PreviewPane`'s readout begins immediately
+under it. The tip's four-sentence text at `max-width: 260px` lands on the rows.
+
+The flip logic could not save it: that only flips upward when there is no room
+below the VIEWPORT, and there is room — it is merely occupied.
+
+**Two properties separate this tip from every other one in the app, and they are
+the actual defect.** Every other anchor is a control crossed in well under
+`HOVER_DELAY_MS`, so the popup usually never opens; this anchor is a work
+surface the pointer rests inside for minutes, so the delay always elapses and
+the popup stays up for the whole time. `pointer-events: none` on `.popup` means
+it cannot be pushed aside either.
+
+**Fixed behaviourally rather than geometrically**, and the choice is the
+finding. Three candidates were weighed: re-anchor the tip to the small
+`≈ Approximate preview` badge (smallest change, loses "hover the map to learn
+about the map"); add a tall-anchor placement rule to `place()` (touches
+positioning every tip depends on, for a case only this call site has); or hide
+the popup once the user starts USING the anchor. The third is the only one that
+addresses why the tip is on screen at all — `preview.canvas` is orientation
+copy, worth reading once on arrival, and re-arming on every pause is the
+defect. Relocating it would have moved the same permanent popup onto something
+else the canvas overlays.
+
+New opt-in `dismissOnInteract` prop on `HelpTip`, set on the canvas and nowhere
+else. `pointerdown` and `wheel` dismiss unconditionally (neither happens by
+accident); a `pointermove` dismisses past a 6px slop measured from where the
+pointer was when the popup OPENED, not from the previous move event — drift
+from the previous event stays under any per-event threshold forever on a slow
+deliberate traverse. `pointerleave` re-arms, so dismissal is scoped to one
+visit rather than the session.
+
+Three smaller decisions worth carrying. `dismissed` is state and not a ref
+(the popup has to disappear when it flips, and a ref write schedules no render
+— the mirror image of `PreviewCanvas`'s `userFramedRef`, which is a ref
+precisely because nothing renders from it). The handlers are attached only when
+the prop is set, so no other HelpTip pays for a `pointermove` handler; this
+changes no DOM SHAPE, which is the invariant the file's long always-render-the-
+wrapper comment is about. And an ALT-hover popup can open with no pointer
+movement ever having happened inside the anchor, so a null move-origin adopts
+the first move's position instead of dismissing on it.
+
+**Not verified in a browser and could not be** — the app calls Tauri store APIs
+synchronously on mount, so the tree crashes outside the Tauri host (see
+CLAUDE.md's sandbox caveats). Typecheck and lint clean; there is no component
+test infrastructure in this repo, so no test file was added and the suite is
+untouched by this change. `npm run tauri dev` is the confirmation.
+
+## 2026-08-13 — `tools-api-design.md` rev 9 review round (no doc revision yet)
+
+Review only, run the same day rev 8 was folded in. Write-up in
+`docs/tools-api-design-rev9-review.md`. No blocking finding — every count rev 8
+carries reproduces to the unit, the first round in the series where none moved.
+Three standard findings: the published alias algorithm diverges from
+`Parser.aliasedCommand` in two expressible-but-latent cases (statement-level
+attribute-name alias; the scan stops at the first same-named symbol, so a
+`#define` blocks the alias) and item 11's fixtures catch neither; BUG-013's fix
+(`instantiate.ts:280`, def-resolved command identity) silently coupled the
+`override_map_size` window rule to the alias rule, and neither PROTOCOL.md rule
+names the other; rev 8 folded its own round's corrections selectively
+(`ui-help.json` 101 → 108 and two `useDocument.ts` citations left stale while
+their sibling corrections were taken). Five minor, mostly same-day citation
+drift from parallel sessions (`App.tsx`, `instantiate.ts`) — the elapsed-time
+thesis measured in hours: raw file:line decayed, symbol- and data-anchored
+claims did not. Nothing in the tree modified by the round.
+
+## 2026-08-13 — `tools-api-design.md` rev 9 folded in
+
+The rev-9 round's findings, folded. Doc header, preamble and changelog updated;
+no code changed. Every claim below was re-derived from the working tree before
+being written, not transcribed from the review — three of the review's own
+details did not survive that (see the last paragraph).
+
+**S1, the one that mattered: the alias algorithm rev 8 published is a
+paraphrase, and it diverges from `Parser.aliasedCommand` in two expressible
+cases.** Sec.4.2 now states the parser's rule exactly, as a block quote
+PROTOCOL.md is told to carry verbatim rather than re-paraphrase. Two changes.
+(1) The "resolves as neither command nor attribute" precondition is gone. The
+parser computes the alias as the fallback of the COMMAND lookup specifically
+(`parser.ts:681`, `commandsByName.get(name) ?? this.aliasedCommand(name)`),
+independently of the attribute lookup, with the block/statement context order
+applied afterwards — so `#const grouping 32` + `grouping { }` at statement
+level is a `create_land` to the host. For def RECONSTRUCTION the precondition
+is not merely wrong but unnecessary, since the host has already committed the
+node to a `CommandNode`: state it as "command lookup, alias as its fallback"
+and the divergence cannot arise. That framing is a correction to the review,
+which described the consequence as an external tool reading the word as an
+attribute — it cannot, the node kind is given. The consequence is an
+unrecovered def, which is the same silent failure B1 was about.
+(2) The scan stops at the FIRST symbol bearing the name whatever it is
+(`parser.ts:1129-1139` returns `undefined` the moment the first same-named
+symbol is not a bare-decimal `#const`), so a preceding `#define L` blocks the
+alias. Rev 8's "scan the symbols preceding it FOR a `#const`" reads as
+skip-until-match. Also added: "preceding" is free in-process because
+`this.symbols` is incremental, and is not free on the wire, where
+`parseResult.symbols` is complete and a tool must filter by `nameToken`.
+
+**Worth knowing for whoever touches the parser: `aliasedCommand`'s own
+docstring (`parser.ts:1123-1125`) says it "runs only for a word that resolved
+as neither command nor attribute", which is what rev 8 transcribed and is not
+what the code at `:681` does.** The comment is the origin of the spec defect.
+Not edited here — it is a code change in a file parallel sessions are writing
+to, and it is filed rather than done as a side effect of a doc fold.
+
+**S2: BUG-013 coupled two PROTOCOL.md rules that do not mention each other.**
+`instantiate.ts:280` now computes `node.def?.name ?? tokenText(node.name)` and
+`:322` tests `LAND_COMMAND_NAMES` against that, so an aliased `L { }`
+terminates the override window in the host. Sec.2's external override rule and
+Sec.8's PROTOCOL.md list both state the two rules independently; both now carry
+"a land command is identified AFTER the alias resolution". Sec.4.1's host-side
+residual scan inherits the same clause. Latent — `override_map_size` in 5 maps,
+the alias in 2, intersection empty. Recorded on the other side of the ledger:
+BUG-013's fix is in-repo precedent FOR the def-identity stance, since the app's
+own consumer now derives identity from `def` first.
+
+**S3: rev 8 folded its own round's corrections selectively.** `ui-help.json`
+101 → 108 (re-measured, 108) and the two `useDocument.ts` citations left stale
+while their siblings were taken. Both fixed. The process rule added to Sec.10.2
+is the durable half: take a finding's corrections as a unit or decline out
+loud, because a partial fold turns a consistent dated snapshot into a mixed one
+and after it the date no longer scopes the paragraph. Rev 8 knew how —
+Sec.10.1's "deliberate non-change" paragraph does exactly that.
+
+**Citations converted rather than refreshed.** `App.tsx:70/:76` (now
+`:102`/`:103`/`:108`, and there are THREE adjacent providers, not two —
+`PreviewCutProvider` mounts between them), the `override_map_size` branch, the
+`typeof v === "number"` list, `usePreviewResult.ts:22-30`, and the four
+`useDocument.ts` sites are all now cited by symbol. The doc's preamble carries
+the measurement that justifies it: rev 8 folded in the morning, and by evening
+every count still reproduced to the unit while three raw file:line citations
+had gone stale, all three into files a parallel session touched.
+
+**One substantive addition the review did not have.** The `typeof v ===
+"number"` list was five line numbers; `instantiate.ts` carries SEVEN such
+guards today — the two that held, the three that shifted, and two the list
+never had (`selectRandomBranch`'s `chance`, and `#const`'s resolved value into
+the symbol table). Both new ones are downstream of `resolveArg` and reachable
+by a sentinel. Replaced with the count and the grep that re-derives it. The
+lesson recorded with it: an enumeration of line numbers into an actively edited
+file decays in two directions, and the growing-set half reads as complete when
+it is not.
+
+**Sec.9 item 11 grew a fixture table** — the plain alias (rev 8's), a
+statement-level attribute-name alias, a `#define`-shadowed `#const`, and the
+alias-closes-the-override-window case. Each under ten lines of RMS, none
+corpus-driven: (b), (c) and (d) have zero instances even on a maintainer's
+disk, so a corpus assertion would be green-by-absence twice over. Sec.10.2
+gains the generalisation — nothing in this document diffs its own rules against
+EACH OTHER, and both standard findings live in that gap, so the fixture is the
+form the instruction should take rather than another paragraph.
+
+**Smaller.** M2: "the entire difference is 581" → "581 of the 582", with the
+reason the last key is now unrecoverable (the 4,599 baseline was measured by a
+rev-6-era parser). M3: "38-fold" / "38×" was cited to sections whose numbers
+are 41% and 49% and is derived nowhere in the doc. The review supplied a
+derivation (~5.8 MB of def re-expansion on the worst map against the defs
+`language.json` carries) and it does roughly reproduce — but **only against one
+choice of denominator**: ~41× against the file on disk, ~50× minified, ~97×
+against the command and attribute definitions alone. A 2.5× spread on the
+denominator is not a derivation, so the multiplier is dropped in favour of the
+measured 41% payload share, which is the quantity the section actually acts on. M4: the `settings.json` "FOUR unrelated families"
+count → a list shape that cannot decay, since a fifth candidate
+(`scriptFolder.ts`) arrived three days after the count was dated and the
+argument never needed the number. M5: `AdvancedToolsSettings.tsx` re-verified
+unchanged, fourth consecutive round.
+
+**Density re-measured and it is worse: 156 of 494 non-empty lines carry a
+"rev N" back-reference (24% → 27% → 32% across three revisions).** Declined
+again on the same risk ground, with the trend line written down and a
+deadline attached: schedule the de-changelogging as its own session BEFORE 5.1
+writes code, since the implementer is the reader this density is costing.
+
+**Independent checks run, beyond the review's.** `find src -name "*Context.tsx"`
+returns the recorded nine, no tenth. `src/preview/generator/` matches the
+modules the doc names. `language.json`: 41 commands, 94 attributes, zero
+variadic argument defs, `tokenId` exactly `create_land = 32`. `ui-help.json`
+108. `Parser.aliasedCommand` has exactly one call site. `truncateAst.ts` still
+273 lines, `PreviewResultContext.tsx:79` still holds the call.
+
+**One more measurement, taken while verifying the review's probe 4 rather than
+transcribing it.** No corpus map shadows a `#const` alias with a `#define`
+(confirmed), and `override_map_size` (5 maps) does not intersect the alias
+(2 maps) — both as the review reported. What the probe did not report: **twelve
+distinct names are `#const`-bound to 32 across those maps and only `L` is a
+command alias.** The other eleven are terrain and layer constants — `SNOW`,
+`BASE_TERRAIN`, `TERRAIN_MASK`, `NEUTRAL_TERRAIN`, `LAYER_D`,
+`SPAWN_TERRAIN`, `VILLAGER_TERRAIN` and four more — because 32 is an ordinary
+terrain id as well as `create_land`'s token id. None opens a block, so none
+aliases and the census stays 581 all-`L`, but it means the "opens a block"
+clause is load-bearing in a way the doc had not said: the alias fires on the
+name's POSITION, never on the binding. Sec.4.2's do-not-hardcode-32 bullet now
+carries it, with the rule that a tool reconstructs defs node by node from nodes
+the host already made commands, and never goes hunting for aliases in the
+symbol table — which on this corpus would be wrong eleven times in twelve.

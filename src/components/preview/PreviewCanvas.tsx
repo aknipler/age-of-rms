@@ -277,7 +277,11 @@ export function PreviewCanvas({
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <HelpTip id="preview.canvas">
+      {/* dismissOnInteract because this anchor is the whole map: the tip opens
+          off the canvas's bottom edge, straight onto the tile readout, and the
+          pointer lives inside the anchor for as long as you are reading it.
+          See the prop's own comment in HelpTip.tsx. */}
+      <HelpTip id="preview.canvas" dismissOnInteract>
         <canvas
           ref={canvasRef}
           className={styles.canvas}

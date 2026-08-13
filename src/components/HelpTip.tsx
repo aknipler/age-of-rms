@@ -11,6 +11,14 @@ const FALLBACK_TEXT = "No help written yet — contribute an entry to reference/
 const POPUP_GAP_PX = 4;
 const VIEWPORT_MARGIN_PX = 4;
 
+/**
+ * How far the pointer may drift after a `dismissOnInteract` popup opens before
+ * that counts as "the user has moved on". Small enough that deliberately
+ * moving to another tile dismisses immediately, large enough that the jitter
+ * of a hand resting on a mouse does not.
+ */
+const DISMISS_MOVE_SLOP_PX = 6;
+
 interface PopupPosition {
   top: number;
   left: number;
@@ -33,6 +41,31 @@ interface HelpTipProps {
    * itself undefined (e.g. no doc-string exists for this exact name).
    */
   text?: string;
+  /**
+   * Hide the popup as soon as the user starts USING the wrapped element, and
+   * do not show it again until the pointer leaves and comes back.
+   *
+   * Off by default, because for an ordinary control — a button, a radio, a
+   * chip — it changes nothing: you cross those in well under HOVER_DELAY_MS,
+   * so the popup rarely opens at all, and when it does it sits beside a
+   * 20px-tall anchor and covers nothing you were reading.
+   *
+   * It exists for the opposite case, a LARGE anchor that is also a work
+   * surface. The preview canvas is the whole of it today: the anchor box is
+   * the entire map, so the popup opens off the canvas's BOTTOM edge, which is
+   * exactly where the tile readout lives, and — unlike every other tip in the
+   * app — the pointer rests inside that anchor for minutes at a time, so the
+   * delay always elapses and the popup stays up for the whole time you are
+   * reading the rows it is covering. `pointer-events: none` on the popup means
+   * it cannot even be pushed out of the way.
+   *
+   * The fix is behavioural rather than geometric on purpose: this tip is
+   * ORIENTATION ("drag to pan, wheel to zoom"), which is worth reading once on
+   * arrival and never again in that session. Re-arming on every pause is the
+   * actual defect; moving where it opens would only relocate it onto something
+   * else the canvas overlays.
+   */
+  dismissOnInteract?: boolean;
 }
 
 // Wraps any interactive element to show a short explanation popup on
@@ -41,11 +74,17 @@ interface HelpTipProps {
 // feel naggy, "alt-hover" only shows while ALT is held, "off" disables
 // popups entirely. Every new interactive UI element should be wrapped in
 // this as it's built (see CLAUDE.md conventions).
-export function HelpTip({ id, children, text }: HelpTipProps) {
+export function HelpTip({ id, children, text, dismissOnInteract = false }: HelpTipProps) {
   const { mode, altHeld } = useHelpSettings();
   const [hovering, setHovering] = useState(false);
   const [delayElapsed, setDelayElapsed] = useState(false);
   const timeoutRef = useRef<number | undefined>(undefined);
+  // Set by an interaction, cleared on pointerleave. State rather than a ref
+  // because the popup has to disappear when it flips — a ref write schedules
+  // no render, so the popup would stay on screen until something else caused
+  // one. (The `userFramedRef` in PreviewCanvas is a ref for the mirror-image
+  // reason: nothing renders from it.)
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (!hovering || mode !== "hover") {
@@ -73,9 +112,49 @@ export function HelpTip({ id, children, text }: HelpTipProps) {
   // never shows a popup, just via an always-empty `visible` here instead
   // of skipping the wrapper entirely.
   const visible =
-    mode !== "off" && hovering && ((mode === "hover" && delayElapsed) || (mode === "alt-hover" && altHeld));
+    mode !== "off" &&
+    hovering &&
+    !dismissed &&
+    ((mode === "hover" && delayElapsed) || (mode === "alt-hover" && altHeld));
 
   const content = text ?? helpTextFor(id) ?? FALLBACK_TEXT;
+
+  // --- dismissOnInteract ----------------------------------------------------
+  //
+  // Both refs, not state: they are read inside event handlers and never
+  // rendered, so writing them must not schedule a render. `moveOrigin` is the
+  // pointer position at the moment the popup OPENED — drift is measured from
+  // there rather than from the previous move event, so a slow deliberate
+  // traverse across the map still dismisses instead of staying under the
+  // per-event threshold forever.
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const moveOriginRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (visible) moveOriginRef.current = pointerRef.current;
+  }, [visible]);
+
+  const handlePointerMove = (event: React.PointerEvent) => {
+    pointerRef.current = { x: event.clientX, y: event.clientY };
+    if (!dismissOnInteract || !visible) return;
+    const origin = moveOriginRef.current;
+    // No origin means the popup opened without the pointer ever having moved
+    // inside the anchor (ALT-hover fires on the keypress, not on a move).
+    // Adopt this position as the origin instead of dismissing on it.
+    if (origin === null) {
+      moveOriginRef.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
+    const travel = Math.abs(event.clientX - origin.x) + Math.abs(event.clientY - origin.y);
+    if (travel > DISMISS_MOVE_SLOP_PX) setDismissed(true);
+  };
+
+  // Click and wheel are unconditional: unlike a move, neither happens by
+  // accident, so there is no slop to allow for. pointerdown rather than click
+  // so the popup is gone by the time a drag starts, not when it ends.
+  const handleInteract = () => {
+    if (dismissOnInteract) setDismissed(true);
+  };
 
   // The popup renders through a PORTAL into document.body, positioned
   // `fixed` against the viewport, rather than absolutely inside the wrapper.
@@ -153,7 +232,24 @@ export function HelpTip({ id, children, text }: HelpTipProps) {
       ref={anchorRef}
       className={styles.wrapper}
       onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseLeave={() => {
+        setHovering(false);
+        // Leaving re-arms the tip. Dismissal is scoped to one visit, not to
+        // the session: coming back to the canvas later is a fair moment to be
+        // reminded what it does, and persisting the flag would need somewhere
+        // to persist it to.
+        setDismissed(false);
+        pointerRef.current = null;
+        moveOriginRef.current = null;
+      }}
+      // Attached only where the behaviour is opted into. Every HelpTip in the
+      // app wraps something, and a pointermove handler on all of them would be
+      // paying for a feature one call site uses. This does not change the DOM
+      // SHAPE the wrapper renders, which is the invariant the comment above
+      // is about.
+      onPointerMove={dismissOnInteract ? handlePointerMove : undefined}
+      onPointerDown={dismissOnInteract ? handleInteract : undefined}
+      onWheel={dismissOnInteract ? handleInteract : undefined}
     >
       {children}
       {visible &&
