@@ -35,6 +35,7 @@ import type {
 import type { ArgumentDef, AttributeDef, CommandDef, LanguageData, LanguageIndex } from "./language";
 import { buildLanguageIndex, NUMERIC_ARGUMENT_TYPES } from "./language";
 import * as d from "./diagnostics";
+import { lineNumberOfOffset } from "./lineIndex";
 
 const ASSEMBLY_CAP = 64; // shared by expression and quote assembly (spec Sec.2.2 / Sec.5.2)
 const DEFAULT_MAX_NESTING = 200;
@@ -140,6 +141,16 @@ class Parser {
 
   tokAt(pos: number): Token {
     return this.tokens[this.nt[pos]];
+  }
+
+  /**
+   * The 1-based line an offset falls on, for the one diagnostic here that
+   * points at a SECOND place in the file (RMS0103's still-open brace). The
+   * span it highlights stays an offset — only the prose names a line, since
+   * that is the part a person has to act on.
+   */
+  lineOf(offset: number): number {
+    return lineNumberOfOffset(this.lineOffsets, offset);
   }
 
   /** The item list new nodes are appended to, per the innermost open container. */
@@ -373,7 +384,7 @@ class Parser {
       while (this.frames.length > 0) {
         const top = this.frames[this.frames.length - 1];
         if (top.type !== "block") break;
-        this.diagnostics.push(d.sectionHeaderInBlock(headerTok, this.tokens[top.node.open]));
+        this.diagnostics.push(d.sectionHeaderInBlock(headerTok, this.lineOf(this.tokens[top.node.open].start)));
         this.closeBlockFrame(top, undefined);
         this.frames.pop();
       }
@@ -1442,7 +1453,7 @@ class Parser {
       if (tok.kind === "sectionHeader") {
         if (openBraces > 0) {
           // RMS0103 semantics: a block may not span a section header.
-          this.diagnostics.push(d.sectionHeaderInBlock(tok, this.tokens[rangeStartToken]));
+          this.diagnostics.push(d.sectionHeaderInBlock(tok, this.lineOf(this.tokens[rangeStartToken].start)));
           break;
         }
         // Only conditionals open → legal spanning; absorb the header.

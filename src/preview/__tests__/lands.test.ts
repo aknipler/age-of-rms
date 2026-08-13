@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../parser/parser";
@@ -223,6 +223,19 @@ describe("neutral (unassigned) create_land origin", () => {
     const { reports } = place("<LAND_GENERATION>\ncreate_land {\nland_position 50 50\n}\n");
     expect(reports).toHaveLength(1);
     expect(reports[0]).toMatchObject({ attempted: 1, placed: 1 });
+  });
+
+  // BUG-013 end to end. `#const L 32` + `L { … }` is how `24hr_Petra.rms`
+  // writes its 384 lands, and this stage reached them by comparing the written
+  // word, so the whole map generated blank with no diagnostic. The identity is
+  // resolved once in `instantiate.ts`; this is the proof it arrives here.
+  it("grows a land declared through a `#const` alias rather than the literal create_land", () => {
+    const source = "#const L 32\n<LAND_GENERATION>\nL {\nland_position 50 50\nland_percent 20\nnumber_of_tiles 500\n}\n";
+    const { origins, reports, grid, dim } = placeAndGrow(source);
+    expect(origins).toHaveLength(1);
+    expect(origins[0].x).toBe(Math.round(dim / 2));
+    expect(reports[0]).toMatchObject({ attempted: 1, placed: 1 });
+    expect(ownedCount(grid, 0)).toBeGreaterThan(100);
   });
 });
 
@@ -1112,4 +1125,25 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
       expect(() => applyBaseElevation(instantiated, result.origins, grid, constants)).not.toThrow();
     });
   }
+
+  // BUG-013's corpus half. Petra has no literal `create_land` in it — every
+  // one of its 384 land commands is a `#const L 32` alias — so it is the one
+  // map that goes to zero lands if command identity ever goes back to being
+  // the written word. It is NOT one of the whitelisted maps in `.gitignore`,
+  // so this is green-by-absence on a clone and `runIf` says so out loud
+  // rather than the test quietly not existing. The unit tests above are the
+  // real gate.
+  const petra = join(corpusDir, "24hr_Petra.rms");
+  it.runIf(existsSync(petra))("24hr_Petra.rms generates lands despite having no literal create_land (BUG-013)", () => {
+    const source = readFileSync(petra, "utf8");
+    expect(source).not.toMatch(/^\s*create_land\b/m);
+    const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(), 12345);
+    const grid = createTileGrid(instantiated.dim, GRASS);
+    const result = placeLandOrigins(instantiated, grid, constants, 12345);
+    growLands(result.origins, grid, result.reports, 12345);
+    expect(result.origins.length).toBeGreaterThan(0);
+    let owned = 0;
+    for (let i = 0; i < grid.landId.length; i++) if (grid.landId[i] >= 0) owned++;
+    expect(owned).toBeGreaterThan(0);
+  });
 });

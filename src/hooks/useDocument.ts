@@ -1,11 +1,68 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type { UnsavedAction, UnsavedChoice } from "../components/UnsavedChangesDialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { dirname } from "@tauri-apps/api/path";
+import { load } from "@tauri-apps/plugin-store";
 import * as monaco from "monaco-editor";
+import {
+  APP_SETTINGS_STORE_FILE,
+  findDeScriptsFolder,
+  LAST_SCRIPT_FOLDER_KEY,
+  type FolderProbe,
+} from "../settings/scriptFolder";
 
 const RMS_FILTERS = [{ name: "AoE2 Random Map Script", extensions: ["rms"] }];
+
+// The Tauri half of scriptFolder.ts's two filesystem questions. It is this
+// object, and not the module, that can't run in Vitest — which is the whole
+// reason the resolver takes it as a parameter.
+const TAURI_PROBE: FolderProbe = { exists, readTextFile };
+
+/**
+ * Which folder the Open / Save As dialog should start in.
+ *
+ * `undefined` means "pass no `defaultPath`", which hands the choice back to
+ * the Windows common dialog and its per-app MRU — the behaviour before this
+ * existed, and still the right answer once neither of the two better ones is
+ * available.
+ *
+ * The remembered folder is checked with `exists` rather than trusted: it is
+ * persisted across runs, so it outlives the drive it was on. A `defaultPath`
+ * pointing at a folder that has gone makes the dialog open somewhere
+ * arbitrary, which looks like the app losing your place.
+ */
+async function dialogStartFolder(): Promise<string | undefined> {
+  try {
+    const store = await load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} });
+    const remembered = await store.get<string>(LAST_SCRIPT_FOLDER_KEY);
+    if (remembered && (await exists(remembered))) return remembered;
+    return (await findDeScriptsFolder(TAURI_PROBE)) ?? undefined;
+  } catch {
+    // Every branch above is a nicety. A store that won't load or a probe that
+    // throws must not be able to stop someone opening a file.
+    return undefined;
+  }
+}
+
+/**
+ * Remember the folder a file was opened from or saved to, so the next dialog
+ * starts there.
+ *
+ * Ours rather than the shell's MRU on purpose: the shell keys its MRU on the
+ * executable, so it resets on a reinstall and differs between the dev build
+ * and the installed one — which is exactly how the release ended up opening
+ * on a folder from someone's development tree.
+ */
+async function rememberScriptFolder(filePath: string): Promise<void> {
+  try {
+    const store = await load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} });
+    await store.set(LAST_SCRIPT_FOLDER_KEY, await dirname(filePath));
+  } catch {
+    // Same reasoning as above — failing to remember must never fail the save.
+  }
+}
 
 // docs/breakdown-design.md Sec.6.4 — the persistent Monaco ITextModel is the
 // authoritative document buffer, created ONCE at module scope (not inside
@@ -110,6 +167,10 @@ export function useDocument() {
     setFilePath(path);
     setIsDirty(false);
     setLastSavedAt(new Date());
+    // Not awaited: the document is saved, the UI should say so now, and
+    // remembering the folder is a background nicety that cannot fail the
+    // save (rememberScriptFolder swallows its own errors).
+    void rememberScriptFolder(path);
   }, []);
 
   /**
@@ -134,7 +195,7 @@ export function useDocument() {
       if (choice === "discard") return true;
 
       if (!filePathRef.current) {
-        const target = await save({ filters: RMS_FILTERS });
+        const target = await save({ filters: RMS_FILTERS, defaultPath: await dialogStartFolder() });
         if (!target) return false; // backed out of the Save As picker
         await writeToPath(target);
       } else {
@@ -152,9 +213,10 @@ export function useDocument() {
     // before we touch the model.
     if (!(await ensureSavedBefore("open"))) return;
 
-    const selected = await open({ multiple: false, filters: RMS_FILTERS });
+    const selected = await open({ multiple: false, filters: RMS_FILTERS, defaultPath: await dialogStartFolder() });
     if (!selected) return;
     const text = await readTextFile(selected);
+    void rememberScriptFolder(selected);
     // setValue (not pushEditOperations) deliberately: opening a different
     // file is a new document buffer, so its undo history should NOT carry
     // over from whatever was previously open — this is the one place we
@@ -167,7 +229,10 @@ export function useDocument() {
   }, [ensureSavedBefore]);
 
   const saveFileAs = useCallback(async () => {
-    const target = await save({ filters: RMS_FILTERS, defaultPath: filePath ?? undefined });
+    // An open document's own path wins: Save As on a real file means "next to
+    // this one, under another name" far more often than it means "somewhere
+    // else entirely", and the dialog pre-fills the name from it too.
+    const target = await save({ filters: RMS_FILTERS, defaultPath: filePath ?? (await dialogStartFolder()) });
     if (!target) return;
     await writeToPath(target);
   }, [filePath, writeToPath]);

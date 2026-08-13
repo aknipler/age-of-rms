@@ -485,6 +485,84 @@ describe("RMS0306 — repeated non-repeatable attributes", () => {
   });
 });
 
+describe("messages that point at a second place in the file name a LINE", () => {
+  // Reported from a real script: `"max_distance_to_players" is already set at
+  // offset 86970`. A character offset is not a position any editor shows, so
+  // the one actionable fact in the message — go look at the other one — was
+  // unreachable. Spans stay offsets (Monaco and the ruler consume those); only
+  // the prose converts.
+  //
+  // Every fixture here puts the referenced occurrence on a line whose number
+  // differs from both its char offset and its 0-based index, so an offset
+  // leaking back through, or a dropped `+ 1`, fails rather than coincidentally
+  // matching.
+
+  it("RMS0306 names the line of the earlier attribute, and says which value survives", () => {
+    const source = [
+      "<OBJECTS_GENERATION>", // 1
+      "create_object SHEEP {", // 2
+      "  number_of_objects 4", // 3
+      "  max_distance_to_players 5", // 4
+      "  min_distance_to_players 2", // 5
+      "  max_distance_to_players 30", // 6
+      "}",
+      "",
+    ].join("\n");
+    const found = only(source, "RMS0306");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("already set on line 4");
+    expect(found[0].message).toContain("the value here (the last one)");
+    expect(found[0].message).not.toContain("offset");
+    // Raised on the LATER use — the one the engine keeps — so the reader is
+    // looking at the surviving value while the message names the dead one.
+    expect(source.slice(found[0].span.start, found[0].span.end)).toBe("max_distance_to_players");
+    expect(source.slice(0, found[0].span.start).split("\n")).toHaveLength(6);
+  });
+
+  it("RMS0301 names the line of the definition the engine keeps", () => {
+    const source = ["/* header */", "", "#const TREE_COUNT 10", "#const TREE_COUNT 40", ""].join("\n");
+    const found = only(source, "RMS0301");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("already defined on line 3");
+    expect(found[0].message).not.toContain("offset");
+  });
+
+  it("RMS0303 names the line the definition finally arrives on", () => {
+    const source = [
+      "<TERRAIN_GENERATION>", // 1
+      "create_terrain MY_TERRAIN", // 2
+      "{", // 3
+      "number_of_clumps 4", // 4
+      "}", // 5
+      "#const MY_TERRAIN 10", // 6
+      "",
+    ].join("\n");
+    const found = only(source, "RMS0303");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("isn't defined until line 6");
+    expect(found[0].message).not.toContain("offset");
+  });
+
+  it("RMS0313 names the line of the branch that already tested the label", () => {
+    const source = [
+      "#define ISLANDS", // 1
+      "<PLAYER_SETUP>", // 2
+      "if ISLANDS", // 3
+      "random_placement", // 4
+      "elseif DEATH_MATCH", // 5
+      "random_placement", // 6
+      "elseif ISLANDS", // 7
+      "random_placement", // 8
+      "endif",
+      "",
+    ].join("\n");
+    const found = only(source, "RMS0313");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("already tested on line 3");
+    expect(found[0].message).not.toContain("offset");
+  });
+});
+
 describe("RMS0307 — mutually exclusive attributes", () => {
   it("flags a mutex pair in one block, exactly once", () => {
     const found = only("<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 100 }\n", "RMS0307");

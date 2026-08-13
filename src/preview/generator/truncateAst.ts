@@ -32,33 +32,18 @@
 import type { IfBranch, Item, ParseResult, RandomBranch, SectionNode, Token } from "../../parser/types";
 
 /**
- * The 0-based line an offset falls on, given `ParseResult.lineOffsets`.
+ * Re-exported, not defined here. It moved to `src/parser/lineIndex.ts` when
+ * the RMS03xx messages started naming a line instead of a character offset —
+ * the parser needed the same conversion, and two binary searches over the
+ * same `lineOffsets` array is the "no parallel model" rule broken over a
+ * ten-line function. The export stays on this module because the pin-line UI
+ * and this file's own tests already import it from here.
  *
- * Only the UI reads this now — the cut itself is an offset. It is what turns
- * a pinned offset into the "Pinned line 34" the button prints, so it still
- * has to agree with the gutter exactly.
- *
- * Binary search rather than the linear scan the four `*.measure.test.ts`
- * reporters each hand-roll: this one runs per render, not once per diagnostic
- * in a batch job.
- *
- * `lineOffsets` is ascending and always starts at 0 (the lexer emits `[0]`
- * even for empty input), so the answer is the last index whose value is
- * `<= offset` and there is always at least one.
+ * Only the UI reads it — the cut itself is an offset. It is what turns a
+ * pinned offset into the "Pinned line 34" the button prints, so it still has
+ * to agree with the gutter exactly.
  */
-export function lineOfOffset(lineOffsets: readonly number[], offset: number): number {
-  let low = 0;
-  let high = lineOffsets.length - 1;
-  while (low < high) {
-    // +1 before halving, so `low = mid` always makes progress and the loop
-    // cannot spin forever on high === low + 1. The classic off-by-one in
-    // this variant of the search.
-    const mid = (low + high + 1) >> 1;
-    if (lineOffsets[mid] <= offset) low = mid;
-    else high = mid - 1;
-  }
-  return low;
-}
+export { lineOfOffset } from "../../parser/lineIndex";
 
 /**
  * Which offset Current actually cuts at, given the pin, the caret and the

@@ -5826,3 +5826,409 @@ the file floor would have failed for a reason that looks nothing like its cause.
 
 The method is the reusable part. Re-run it before raising these constants again
 rather than reading the number off a maintainer's machine.
+
+### v0.1.0 cut, and the pipeline is proven end to end (2026-08-13)
+
+Three runs, all green, in the order they were meant to happen.
+
+**CI on push settled the test-floor question**, which was the one raise made
+without a fresh-clone measurement to stand on: `46 files / 1140 tests (floor
+42/1032, 11 maps + 0 local)`. The prediction from the attribution method was
+~1124, so it under-counted by 16, which is the safe direction. 108 tests of
+margin on a clone.
+
+**A `workflow_dispatch` run built both platforms before any tag existed**, which
+is what that path was added for. It also proved the signing secret without
+anyone inspecting it: `createUpdaterArtifacts` makes a build that finds a public
+key with no private key fail outright, so a green build IS the check.
+
+**The `v0.1.0` tag produced the draft release**, seven assets, each installer
+with a matching `.sig`.
+
+`latest.json` was read rather than assumed, because it is the one artifact the
+dispatch path never produces (`uploadUpdaterJson: false` there) and the failure
+it can carry is silent. The generic **`linux-x86_64` key resolves to the
+AppImage**, not the deb. Had it pointed at the deb, Linux updates would fail
+with nothing to report it, since a deb cannot update in place.
+
+**Artifact sizes, worth knowing before a tester asks.** NSIS 4.8 MB, deb 7.6 MB,
+**AppImage 82 MB**. Windows uses the system WebView2 and adds nothing; an
+AppImage vendors the whole WebKitGTK runtime. So the AppImage is both the
+largest download and the only self-updating Linux format, and its users
+re-download 82 MB per update.
+
+Still unproven: **that the bundled app starts**. Everything above shows it
+builds. Nothing has launched it from an installer rather than `tauri dev`, and
+the likeliest failure is asset resolution under the packaged protocol, which dev
+mode cannot catch.
+
+---
+
+## Post-release feedback round 1 (2026-08-13) — the installed build's first two reports
+
+**The bundled app starts.** The entry above closed on "still unproven: that the
+bundled app starts", and the NSIS installer has now been run on a machine that
+also carries the dev tree. Both items below came out of using it, so the
+packaged-asset failure that entry named as the likeliest one did not happen.
+
+### The Open dialog started in the dev tree's `test-maps/`
+
+Reported as a fresh-install question, and the diagnosis is the more useful half:
+**it is not a fresh-install behaviour at all.** `openFile` passed no
+`defaultPath`, so the folder came from the **Windows common dialog's own
+per-app MRU**, which the shell keeps keyed on the executable. On this machine
+that MRU had been filled by opening corpus maps, so the installed build
+inherited a folder from the development tree. On a clean machine the same code
+lands wherever the shell defaults to, usually Documents, which is not where
+anybody's scripts are either. **The MRU was answering, and it was the only thing
+answering.**
+
+`src/settings/scriptFolder.ts` (pure, injected `FolderProbe`, 11 tests) now
+resolves a starting folder in three steps, and `useDocument.ts` passes it to
+Open and to Save As. **Last folder this app opened or saved in** — ours, in
+`settings.json`, not the shell's, so it survives a reinstall and does not differ
+between the dev build and the installed one, which is the exact mechanism that
+produced the report. Then **the DE scripts folder**, found by reading
+`libraryfolders.vdf` out of the two normal Steam roots (a game on a second drive
+is the ordinary case, and no hardcoded candidate list reaches `E:\`), with the
+Game Pass `C:\XboxGames\...\Content` path and the extraction tool's own fallback
+candidates behind it. Then **nothing**, which passes no `defaultPath` and hands
+the decision back to the dialog exactly as before.
+
+Three things worth carrying. A remembered folder is **re-checked with `exists`
+before it is used**, because it outlives the drive it was on and a
+`defaultPath` pointing at a folder that has gone makes the dialog open
+somewhere arbitrary, which reads as the app losing your place. `defaultPath`
+is only ever handed a path that has just been confirmed to exist, which is what
+makes the plugin's own `set_directory`-vs-`set_file_name` split behave
+predictably. And **every failure path returns `undefined` rather than throwing**
+— a store that will not load or a probe that trips must not be able to stop
+someone opening a file.
+
+The user-profile folder (`%USERPROFILE%\Games\Age of Empires 2 DE\<profile>\`)
+is deliberately **not** probed. It exists on this machine and holds no
+`random-map-scripts` directory; DE reads custom random maps out of the install,
+which is also where this project's own RMSTEST maps are copied to be run.
+Enumerating the numeric profile folders would also need `fs:allow-read-dir`
+added to the capability file, for a path that has not been observed to hold
+anything.
+
+### "already set at offset 86970"
+
+RMS0306 fired correctly on two `max_distance_to_players` in one `create_object`
+block and then named the earlier one by **character offset**, which is a
+position no editor displays. The one actionable fact in the message — go and
+look at the other one — was unreachable, on a file where the two lines are far
+enough apart that the offset was five digits.
+
+**Seven messages had the same defect** and all seven are fixed: RMS0103,
+RMS0301, RMS0303, RMS0306, RMS0307, RMS0313 and RMS0314. Every one of them
+points at a SECOND place in the file, which is exactly the set that needs a
+line, and every one now says "on line N".
+
+**Spans stay offsets.** Only the prose converts. A diagnostic carrying a line
+number as position data would go stale on the first edit above it, and Monaco,
+the Breakdown ruler and `shiftPointThroughEdits` all consume the offset.
+
+`lineOfOffset` moved out of `truncateAst.ts` into a new `src/parser/lineIndex.ts`
+and is re-exported from its old home so the pin-line UI and its tests are
+untouched; the parser needed the same conversion, and two binary searches over
+the same `lineOffsets` array is the no-parallel-model rule broken over a ten-line
+function. `lineNumberOfOffset` is a separate export rather than a flag, so the
+`+ 1` happens once instead of at every message site.
+
+RMS0306's wording also changed beyond the line number: it is raised on the
+**later** of the two, which is the one the engine keeps, so the message now says
+the engine "uses the value here (the last one)". The author's next question
+after "these are duplicated" is always which of the two numbers the map is
+using, and the old wording made them work it out from a rule.
+
+Four new tests in `validate.test.ts`, each fixture built so the referenced
+line's NUMBER differs from both its char offset and its 0-based index — an
+offset leaking back through, or a dropped `+ 1`, fails rather than
+coincidentally matching. Two mutants confirmed red and restored: dropping the
+`+ 1` in `lineNumberOfOffset` (4 red) and passing the raw offset at RMS0306's
+call site (1 red).
+
+### Status bar condensed, its controls pinned, and HelpTip's popup moved to a portal (2026-08-13)
+
+Seven items off a post-release pass on a local install build. Six are the status
+bar; the seventh is HelpTip and reaches every tip in the app.
+
+**The controls are pinned because the OVERFLOW MOVED ONE LEVEL IN.** The bar was
+`overflow-x: auto` on itself, so a wide total pushed the bug-report button, the
+settings button and the problem count off the right edge and behind a scrollbar
+the user had no reason to look for. Now only `.scrollArea` scrolls and `.pinned`
+sits outside it. The load-bearing line is `min-width: 0` on the scroller: a flex
+item's default minimum size is its CONTENT width, so without it the scroller
+refuses to shrink, the bar grows past the window, and the pinned group goes off
+screen exactly as before. Measured at a 730px window with 751px of content: the
+scroller overflows, the bar itself does not (`scrollWidth === clientWidth`), and
+the pinned group's right edge lands at 710.4.
+
+**The floor is worth writing down, because the pinned group cannot shrink by
+construction.** Re-measured with the widest realistic label ("12 errors, 40
+warnings, 7 info", 276px): the group survives down to a **~332px bar width**
+(276 + 40px padding + 16px gap), below which it clips against `.statusBar`'s
+`overflow: hidden`. `tauri.conf.json` sets a starting 800x600 and **no
+`minWidth`**, so nothing stops a user dragging under that floor — and the floor
+moves with the diagnostic counts, since a four-digit error count widens the
+label. Adding a window `minWidth` is the fix and was left alone as a product
+decision rather than made silently.
+
+**`formatK` is replaced by `formatCompact` in a new pure module
+(`src/components/statusFormat.ts`, tested — same split as `preview/tileInfo.ts`).**
+The old rule applied one decimal at every magnitude, which printed a
+two-million total as `2008.6k`: six digits, at a scale nobody reads at a glance.
+The rule is now per-scale rather than per-number, which is what makes it hold at
+every magnitude instead of only the one it was written for. Under 1000 whole,
+then `k`/`m`/`b` with one decimal below 100 of that scale and none at or above
+it. Two edges have tests because they are where a rounding rule usually leaks:
+the precision is chosen AFTER rounding to the printed precision, so 99,960 gives
+`100k` rather than `100.0k`; and a figure that rounds up into the next scale
+promotes rather than printing a four-digit mantissa, so 999,600 gives `1m`, not
+`1000k`.
+
+**"Problems:" is now a triangle whose colour is the readout.** Drawn as an
+inline SVG, not the ⚠ character, because a text ⚠ renders as a colour emoji on
+Windows in most fonts and ignores `color` entirely, which would leave the one
+thing the element exists to say untellable. Severity colours are
+`DiagnosticsRuler.module.css`'s, deliberately: the ruler and this indicator
+report the same diagnostics, and two palettes for one set of severities teach
+the user nothing. Verified per level in a browser: none `#9a9a9a`, info
+`#17a2b8`, warning `#e0a300`, error `#dc3545`.
+
+**The breakdown stays written out** — "4 warnings, 2 info", not a total. The
+first cut collapsed it to a count on the reasoning that the colour carried the
+severity and the hover carried the rest, which traded away the thing the row is
+FOR: a count of 6 says nothing about whether the script is broken, and the
+colour only reports the worst. Text is the detail, colour is the glance, and the
+triangle replaced the word "Problems:" rather than the content behind it. What
+was actually redundant was the count field, now dropped from `ProblemSummary`
+(it was `errors + warnings + infos`, and nothing rendered it once the label
+did).
+
+**Two hover surfaces, deliberately not one.** HelpTip wraps the bucket LABEL
+only, so hovering "Total" explains what the bucket counts and hovering a figure
+gives a native-`title` exact value with commas (`Total Wood: 42,365,273`). Had
+both landed on one element the two popups would fire over each other. The
+native title is the right tool for the figure specifically because it does NOT
+follow the help-mode setting: a user who turned help popups off did not ask to
+lose the exact number.
+
+**HelpTip's popup now renders through a PORTAL into document.body, positioned
+`fixed` from a measurement.** This is the seventh item and the only one that
+reaches beyond the status bar. Two independent defects, neither fixable at the
+call site: an absolutely-positioned popup is clipped by any ancestor with
+`overflow` (DiagnosticsRuler's 10px `.ruler` sets `overflow: hidden`
+deliberately, so those tips were being cut off), and `top: 100%` always opens
+DOWNWARD, which for the last row above the window's bottom edge means
+off-screen. A portal escapes every ancestor's overflow AND every ancestor's
+`transform` — the second one matters here and is easy to miss, because a
+transformed ancestor becomes the containing block for `position: fixed`
+descendants and `.tickWrapper` carries `transform: translateY(-2px)`, so a
+non-portalled fixed popup would have silently broken the ruler instead. The
+placement flips to whichever side has room and clamps horizontally.
+`useLayoutEffect`, not `useEffect`, because the popup is measured and then
+moved, and `useEffect` runs after paint — the user would see one frame at the
+top-left corner. Measured in a browser harness: portaled to body, `position:
+fixed`, opens downward with room below, upward when flush with the bottom
+(popup bottom 659 against an anchor top of 663), right edge clamped to 726 in a
+730px window, one popup at a time.
+
+**The ui-help.json lookup moved to `src/help/uiHelpText.ts`.** Fast Refresh only
+works on a module whose exports are all components, so a plain function
+exported from `HelpTip.tsx` costs that file its hot reload. It was extracted for
+a StatusBar caller that the written-out breakdown then made unnecessary; it
+stays split because the data has no business living in a component file either
+way. Same shape as `helpConstants.ts`.
+
+**On verification.** The app still cannot render outside the Tauri host, so this
+was checked with a throwaway Vite harness (deleted) that rendered the real
+`StatusBar` against a stubbed `HelpSettingsContext`. Everything asserted above
+is a browser measurement rather than a reading of the code. What the harness
+cannot check is how the emoji actually look at 0.85rem in the packaged app, and
+whether the scrollbar on `.scrollArea` costs the bar any height on Windows —
+both are for the local run.
+
+## 2026-08-13 — `tools-api-design.md` rev 8 review round (no doc revision yet)
+
+Review only. The critique round that will produce rev 8 is written up in
+`docs/tools-api-design-rev8-review.md`; `tools-api-design.md` itself is
+untouched and stays at rev 7. No code, data or test change, so `npm test` has
+no reason to have moved.
+
+**Rev 7's own fixes all landed where it said they would**, and its measurements
+survive a re-measurement in shape: stripping all four `def` sites still removes
+41.7% of the worst map's payload (13.97 MB to 8.14 MB, against the doc's 41%),
+25 of 32 maps still exceed 1 MB and 2 still exceed 8 MB, `AK_Vanguard`'s 2,304
+and `13_Rings`'s 763 undefined-valued keys reproduce to the unit, and the
+parser amendment is in `src/parser/types.ts` with `unknown` def slots and its
+two rejected mechanisms recorded.
+
+**One blocking finding, and it landed two days after rev 7 shipped.** BUG-005
+piece 2 made a command's `def` depend on the script's own symbol table:
+`#const L 32` resolves `L {` to `create_land` through the new
+`LanguageIndex.commandsByTokenId`. Sec.4.2 strips `def` from the wire and tells
+an external tool to recover it "by name", which returns nothing for **581
+command nodes** across `24hr_Petra.rms` (384) and `24hr_Holler.rms` (197), so a
+checker sees an unknown command where the host sees a land. Everything the
+recovery needs is already on the wire (`symbols`, `tokens`, and `CommandDef.tokenId`
+inside `referenceData.language`), so the fix is PROTOCOL.md text plus a fixture.
+
+Five standard findings. `read-reference` now ships a **1.37 MB** constant term
+the outbound analysis does not model (`game-constants.json` went 372 to 3011
+entries on 2026-08-12, 2137 of them with a null `rmsConstant`); Sec.10.1's
+`resourceTotals` bullet is false twice over, since the override pass shipped
+2026-08-11 and 4.10 then made it bite — **5 of the 27 corpus maps containing
+`effect_amount` now have different resource totals because of it**, Holler's
+wood by 285x; rev 7's own new standing instruction globs `src/*Context.tsx`,
+which finds three of this repo's nine context files and misses the seed chip it
+is calibrated on; the doc's "32 tracked maps" is not what tracked means here,
+and rev 7's prescribed sentinel fixture would land in a `.gitignore`d directory;
+and the 2026-08-13 line-versus-offset hard rule has no counterpart in the
+`OutputBlock` vocabulary, where tool prose naming a second location is exactly
+the shipped defect that rule came from.
+
+**Flagged out of scope, needs its own session:** the preview generator resolves
+command identity by token text (`instantiate.ts:269`, `lands.ts:732`/`:738`) and
+never consults `node.def`, so Petra's 384 lands and Holler's 197 are invisible to
+it. Same rule as the `validate()`-era one — when a session lands a rule, grep for
+the older code the rule now governs.
+
+## 2026-08-13 — `tools-api-design.md` rev 8 folded in
+
+The round above, verified and applied. The doc is at **rev 8**. No code changed;
+one bug was filed.
+
+**The review was checked before it was believed, and it held.** Its blocking
+finding was re-derived independently rather than transcribed: `aliasedCommand`
+(`parser.ts:1129`) and `commandsByTokenId` (`language.ts:241`) are where it says
+they are, and a fresh probe over the 32 maps counts **581 alias-resolved command
+nodes, 384 in Petra and 197 in Holler, all `L`** — the review's number to the
+unit. Its `game-constants.json` figures (3011 entries, 2137 null `rmsConstant`,
+170 `resourceAmounts`) reproduce exactly, as does the claim that
+`resourceTotals.ts` has modelled `effect_amount` since 2026-08-11. `git ls-files`
+and `git check-ignore` confirm the `.gitignore` finding and sharpen it: the
+whitelist line is `!test-maps/BCC2-Rekawa.rms`, which names the top-level path
+while the file sits in `broken/`, so that fixture is tracked only because it was
+force-added.
+
+**One defect in the review itself:** it says "the appendix carries the probes,
+so nothing here has to be taken on trust" and there is no appendix — every
+`probe N` reference is dangling. The numbers are right, which is the reason it
+matters rather than the reason it does not: a round that asks to be checked
+should ship the means.
+
+**Two departures from what the review prescribed.**
+
+*Declined:* the M5 de-changelogging. It is a real problem, correctly measured
+(108 of 404 lines carry a `rev N` back-reference, up from 86 of 354), and a
+whole-document rewrite of a 600-line spec is too risky to run as a side effect
+of folding in a round — the failure mode is deleting a pinned decision whose
+reason lives only in the sentence naming the revision that made it. Recorded in
+Sec.10.2 as owed work with the instruction to do it as a dedicated pass.
+
+*Narrowed:* the M2 refresh. Sec.10.1's own standing instruction is not to
+transcribe a fresh set of counts a fifth time, so only the figure whose **shape**
+changed was folded in (`resourceAmounts`, an order of magnitude) plus the two
+that **held** on re-measurement. The rest stay stale on purpose until item 10
+generates them, and the section now says so.
+
+**One thing added that the review did not have.** Its B1 fix is right but its
+stated reason — "the third rule of the same class" — is a resemblance, not an
+argument, and it skips the real asymmetry: unlike the `LanguageIndex` and
+`override_map_size` rules, here the host has already computed the answer and the
+wire discards it. The obvious alternative is to ship a side table of resolved
+names, so it was measured rather than argued: **11.8 KB across the whole corpus
+against a 43.4 MB payload, 0.027%**. Cost does not reject it. **Transport
+invariance does** — a side table is populated only over the wire, so a portable
+tool reading it gets nothing in-process and needs two code paths, which is the
+defect Goal 1 exists to prevent, while the scan-the-symbols algorithm reads
+`symbols`, `tokens` and `referenceData.language` and is identical on both
+transports. Written into Sec.4.2 with the measurement, because the cheap-and-wrong
+option is what the next round reaches for first and its cheapness is real.
+
+Also bounded, which the review left open: the alias path is **commands only**
+(`parser.ts:675` and `:420` still resolve attributes and directives by name
+alone) and the `#const` value must be a bare decimal.
+
+**Sec.9 gains item 11**, the review's one structural recommendation and the right
+one: reconstruct every stripped `def` from the wire form and assert it equals the
+in-process one. B1 is the first finding in this series that **no test this
+document prescribed could have caught**, because nothing asserted that a def was
+recoverable at all.
+
+**Two measurements disagreed and the disagreement is recorded rather than
+reconciled.** Two independent probes the same day agreed on the `def`-stripping
+**ratio** to a tenth of a percent (−49.1% corpus-wide) and differed on the
+**absolute** corpus total by 4.6% (85.4 MB against 89.5 MB) over nominally the
+same 32 files. Neither was re-run to convergence: the quantity the section acts
+on is the ratio, and the ratio is what reproduced. It is in the doc as one more
+instance of its own thesis — the derived quantity survived, the raw count did not.
+
+**Filed: BUG-013**, the review's out-of-scope flag, verified before filing.
+`instantiate.ts:269` sets `name = tokenText(node.name)` and `:315` carries
+`def: node.def` without ever consulting it for identity, so
+`LAND_COMMAND_NAMES.has(name)` (`:311`) and `lands.ts:738`'s
+`cmd.name !== "create_land"` both miss an aliased land. Petra's 384 and Holler's
+197 generate nothing, silently, with the suite green — every stage test builds
+its own fixture and none used an alias. Prescribed fix is one line at the point
+the name is computed (`node.def?.name ?? tokenText(node.name)`), not four fixes
+at the call sites, plus a sweep for the same `cmd.name === "…"` pattern in the
+other stages. `docs/known-issues.md` has one open bug again; CLAUDE.md's
+tracked-debt line is updated to say so.
+
+## BUG-013 fixed (2026-08-13) — command identity is the resolved def, not the written word
+
+One line in `instantiate.ts`, exactly where the known-issues entry prescribed it:
+
+```ts
+const name = node.def?.name ?? tokenText(node.name);
+```
+
+`#const L 32` plus `L { … }` is a `create_land` — 32 is the engine's token id for
+the command, and the parser has resolved it through `commandsByTokenId` since
+BUG-005 piece 2 landed the same day. The generator computed identity from the
+author's literal word instead, so four separate consumers missed an aliased land
+while `node.def` held the answer the whole time.
+
+**Measured on the two maps that write their lands this way** (seed 7, Normal,
+`placeLandOrigins` + `growLands`, land origins / owned tiles):
+
+| | before | after |
+|---|---|---|
+| `24hr_Petra.rms` | 0 / 0 | 384 / 30,926 |
+| `24hr_Holler.rms` | 0 / 0 | 197 / 25,339 |
+
+Both are local-only — neither is whitelisted in `.gitignore` — so the numbers do
+not reproduce on a clone and the unit tests are the gate.
+
+**The sweep the entry asked for came back clean, and the reason is the point of
+fixing it here.** `grep -n '\.name ===\|\.name !==' src/preview/` finds eleven
+sites across `lands.ts`, `terrains.ts`, `elevation.ts`, `objects.ts`,
+`connections.ts`, `cliffs.ts` and `index.ts`, and every one reads
+`InstantiatedCommand.name`, so all eleven are fixed by the single line above.
+Nothing was edited at a call site. `resolveAttribute` still uses `tokenText` and
+that is correct rather than an oversight: the parser's alias path is commands
+only (`aliasedCommand` looks up `commandsByTokenId`), so an attribute's def is
+always found by name and `def.name === tokenText(node.name)` identically.
+
+**Tests.** Three in `instantiate.test.ts` (an aliased block instantiating as
+`create_land` with its attributes intact; the `override_map_size` land gate
+firing on an aliased land, which is one of the four consumers; and the fallback
+half, an unknown command with no def still named by the written word) and two in
+`lands.test.ts` (the minimal script from the entry growing a real land, and a
+`runIf`-guarded Petra assertion that is visibly skipped rather than absent on a
+clone). Mutated back to `tokenText(node.name)`: three of the five go red,
+including the end-to-end one. The other two are the fallback and Petra — the
+fallback is green in both worlds by construction, which is what it is for.
+
+**The durable half is that a fixture cannot catch what it does not contain.**
+The whole suite stayed green through this because every stage test builds its own
+`InstantiatedScript` and not one of them used an alias — the same shape as the
+2026-08-07 finding that `lands.ts` never wrote `grid.terrain` while every stage
+asserted against a grid it had built itself. The evidence was in hand a day
+early: Petra's land-less source is what settled BUG-005 in the first place.
+
+`docs/known-issues.md` is empty of open bugs.

@@ -306,6 +306,36 @@ describe("Sec.3 rule 9: unknown commands and includes", () => {
   });
 });
 
+describe("command identity comes from the resolved def, not the written word (BUG-013)", () => {
+  // `#const L 32` makes `L { … }` a create_land: 32 is the engine's token id
+  // for the command, the parser resolves it through `commandsByTokenId` and
+  // writes the real def onto the node. `24hr_Petra.rms` builds its whole map
+  // this way — 384 commands, no literal `create_land` anywhere in the file.
+  it("names an aliased command by its def, so a `#const L 32` block instantiates as create_land", () => {
+    const source = "#const L 32\n<LAND_GENERATION>\nL {\nland_percent 20\nnumber_of_tiles 500\n}\n";
+    const result = run(source);
+    expect(commandNames(result)).toEqual(["create_land"]);
+    const land = result.sections.get("LAND_GENERATION")?.[0];
+    expect(land?.attributes.get("land_percent")?.[0].args[0].value).toBe(20);
+  });
+
+  it("treats an aliased land as a land command for the stream state that gates on one", () => {
+    // `override_map_size` is ignored once a land command has run (rule 8), and
+    // that gate is one of the four consumers that compared the written word.
+    const source = ["#const L 32", "<LAND_GENERATION>", "L {\nbase_size 3\n}", "override_map_size 300"].join("\n");
+    const result = run(source);
+    expect(result.dim).not.toBe(300);
+    expect(result.notes.some((n) => n.key.startsWith("overrideMapSizeLate:"))).toBe(true);
+  });
+
+  it("still uses the written word for a command language.json has no def for", () => {
+    // The fallback half. An unknown command has no def, so nothing else can
+    // supply its name — and rule 9 skips it by that name.
+    const source = "<PLAYER_SETUP>\ntotally_not_a_real_command 1\ndirect_placement\n";
+    expect(commandNames(run(source))).toEqual(["direct_placement"]);
+  });
+});
+
 describe("Sec.3 rule 10: duplicate attributes", () => {
   it("last-wins for a non-repeatable attribute", () => {
     const source = "<LAND_GENERATION>\ncreate_land {\nzone 1\nzone 2\n}\n";

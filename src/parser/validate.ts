@@ -32,6 +32,7 @@
 // legal maps) outranks coverage.
 
 import * as d from "./diagnostics";
+import { lineNumberOfOffset } from "./lineIndex";
 import { NUMERIC_ARGUMENT_TYPES } from "./language";
 import { editDistanceCapped } from "./parser";
 import type { ArgumentType, LanguageData, PredefinedLabel } from "./language";
@@ -266,6 +267,20 @@ class Validator {
     }
   }
 
+  /**
+   * The 1-based line an offset falls on, for the messages that point at a
+   * SECOND place in the file — the earlier definition, the branch that
+   * already ran, the other half of a mutex pair.
+   *
+   * Only the PROSE takes a line. Every `span` stays a character offset, which
+   * is what Monaco, the Breakdown ruler and `shiftPointThroughEdits` all
+   * consume; a diagnostic carrying a line number as position data would go
+   * stale on the first edit above it.
+   */
+  private lineOf(offset: number): number {
+    return lineNumberOfOffset(this.result.lineOffsets, offset);
+  }
+
   // ---- entry point ------------------------------------------------------
 
   run(): void {
@@ -488,7 +503,7 @@ class Validator {
         firstUse.set(token.text, token.start);
         continue;
       }
-      this.diagnostics.push(d.unreachableBranch(token, earlier));
+      this.diagnostics.push(d.unreachableBranch(token, this.lineOf(earlier)));
     }
   }
 
@@ -582,13 +597,16 @@ class Validator {
 
         if (samePath) {
           this.diagnostics.push(
-            d.duplicateDefinition(this.tokens[later.symbol.nameToken], this.tokens[samePath.symbol.nameToken]),
+            d.duplicateDefinition(
+              this.tokens[later.symbol.nameToken],
+              this.lineOf(this.tokens[samePath.symbol.nameToken].start),
+            ),
           );
         } else if (subsuming) {
           this.diagnostics.push(
             d.subsumedDefinition(
               this.tokens[later.symbol.nameToken],
-              this.tokens[subsuming.symbol.nameToken],
+              this.lineOf(this.tokens[subsuming.symbol.nameToken].start),
               subsuming.guards.filter((g) => !g.startsWith("!") && !g.startsWith(RANDOM_BRANCH_PREFIX)),
             ),
           );
@@ -808,7 +826,7 @@ class Validator {
       const above = definitions.filter((s) => s.nameToken < index);
       if (above.length === 0) {
         this.diagnostics.push(
-          d.usedBeforeDefinition(token, this.tokens[definitions[0].nameToken].start, this.includesPresent),
+          d.usedBeforeDefinition(token, this.lineOf(this.tokens[definitions[0].nameToken].start), this.includesPresent),
         );
       }
       // Sec.8 also asks for an info note when the only definitions sit inside
@@ -939,7 +957,7 @@ class Validator {
     if (!definitions) return;
     if (definitions.some((s) => s.nameToken < tokenIndex)) return;
     this.diagnostics.push(
-      d.usedBeforeDefinition(token, this.tokens[definitions[0].nameToken].start, this.includesPresent),
+      d.usedBeforeDefinition(token, this.lineOf(this.tokens[definitions[0].nameToken].start), this.includesPresent),
     );
   }
 
@@ -968,7 +986,9 @@ class Validator {
       // flag, never a name list (spec Sec.8, pinned) — five carry it today,
       // and without it this check false-warns on every connection block.
       if (item.def.repeatable === true) continue;
-      this.diagnostics.push(d.duplicateAttribute(this.tokens[item.name], this.tokens[previous.name]));
+      this.diagnostics.push(
+        d.duplicateAttribute(this.tokens[item.name], this.lineOf(this.tokens[previous.name].start)),
+      );
     }
 
     // RMS0315 — a guide "Requires:" partner that is nowhere in this block.
@@ -1011,7 +1031,7 @@ class Validator {
           d.mutuallyExclusive(
             this.tokens[later.name],
             this.tokens[earlier.name].text,
-            this.tokens[earlier.name].start,
+            this.lineOf(this.tokens[earlier.name].start),
             note,
           ),
         );

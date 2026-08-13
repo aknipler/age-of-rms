@@ -266,7 +266,18 @@ export function instantiateScript(
   // Rules 7, 8, 11, 12: command instantiation + stream-variable side effects.
   // -------------------------------------------------------------------
   function resolveCommand(node: CommandNode, sectionName: string): InstantiatedCommand {
-    const name = tokenText(node.name);
+    // `InstantiatedCommand.name` means "which command is this", NOT "what did
+    // the author type". `#const L 32` + `L { … }` is `create_land` (the parser
+    // resolves the alias through `commandsByTokenId` and writes the real def
+    // onto `node.def`), so identity has to come from the def and fall back to
+    // the written word only for commands language.json does not know.
+    // Resolving it HERE rather than at the four call sites that compare
+    // `cmd.name` is the point: every consumer — the land-command gate below,
+    // lands.ts, terrains.ts, elevation.ts, objects.ts, connections.ts — gets
+    // the answer without knowing the alias rule exists. See docs/known-issues.md
+    // BUG-013; the author's literal spelling belongs in a separate field if a
+    // message ever needs it.
+    const name = node.def?.name ?? tokenText(node.name);
     const args = node.args.map(resolveArg);
     const attributes = new Map<string, InstantiatedAttribute[]>();
     if (node.block) walkItems(node.block.items, sectionName, attributes, undefined);

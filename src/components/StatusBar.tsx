@@ -1,6 +1,12 @@
 import { HelpTip } from "./HelpTip";
 import type { Diagnostic } from "../parser/types";
 import type { ResourceAmounts, ResourceRange } from "../parser/resourceTotals";
+import {
+  formatCompactRange,
+  formatExactRange,
+  summariseProblems,
+  type ProblemLevel,
+} from "./statusFormat";
 import styles from "./StatusBar.module.css";
 
 interface StatusBarProps {
@@ -22,29 +28,78 @@ const ZERO_RANGE: ResourceRange = {
   max: { food: 0, wood: 0, gold: 0, stone: 0 },
 };
 
-// k-abbreviated decision: whole numbers under
-// 1000 shown as-is, 1000+ divided by 1000 with at most one decimal place
-// ("1.8k", "60k") — matches the mockup's "F: 1.8k W: 2.7k G: 5k" style.
-function formatK(n: number): string {
-  const rounded = Math.round(n);
-  if (Math.abs(rounded) < 1000) return String(rounded);
-  const k = rounded / 1000;
-  const fixed = k.toFixed(1);
-  return `${fixed.endsWith(".0") ? fixed.slice(0, -2) : fixed}k`;
+// Emoji stand in for the words "Food"/"Wood"/"Gold"/"Stone" — twelve
+// figures share this row with a problem count and two buttons, and the
+// labels were most of its width. The icon carries an `aria-label` with the
+// real word, so the saving is visual only: a screen reader still hears
+// "Food". Deliberately the everyday pictogram rather than the game's own
+// resource art, since these have to render in a system font at 0.85rem.
+const RESOURCES: readonly { key: keyof ResourceAmounts; name: string; icon: string }[] = [
+  { key: "food", name: "Food", icon: "🍖" },
+  { key: "wood", name: "Wood", icon: "🪵" },
+  { key: "gold", name: "Gold", icon: "🪙" },
+  { key: "stone", name: "Stone", icon: "🪨" },
+];
+
+// The colour IS the severity readout — there is no "Problems:" label any
+// more — so the triangle is drawn as an SVG rather than written as the ⚠
+// character. A text ⚠ renders as a colour emoji on Windows in most fonts
+// and ignores `color` entirely, which would leave the one thing this
+// element has to communicate untellable.
+function ProblemIcon() {
+  return (
+    <svg className={styles.problemIcon} viewBox="0 0 16 14" aria-hidden="true" focusable="false">
+      <path
+        d="M8 0.8 15.4 13.2 0.6 13.2 Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <rect x="7.1" y="4.4" width="1.8" height="4.8" rx="0.6" fill="#fff" />
+      <rect x="7.1" y="10.2" width="1.8" height="1.8" rx="0.6" fill="#fff" />
+    </svg>
+  );
 }
 
-// Range display ("keep track of options and
-// do a range, e.g. 10k-15k"): a hyphenated min-max span when if/random
-// blocks make the count generation-dependent, collapsing to a single
-// number when min === max (a script with no conditional placement, or a
-// resource no branch touches differently).
-function formatRange(min: number, max: number): string {
-  return min === max ? formatK(min) : `${formatK(min)}-${formatK(max)}`;
-}
-
-function formatBucket(range: ResourceRange, labels: Record<keyof ResourceAmounts, string>): string {
-  const keys: (keyof ResourceAmounts)[] = ["food", "wood", "gold", "stone"];
-  return keys.map((key) => `${labels[key]}: ${formatRange(range.min[key], range.max[key])}`).join(" ");
+function ResourceBucket({
+  helpId,
+  label,
+  range,
+}: {
+  helpId: string;
+  label: string;
+  range: ResourceRange;
+}) {
+  return (
+    <span className={styles.bucket}>
+      {/* HelpTip wraps the LABEL, not the whole bucket, so the two hover
+          readouts can't collide: hovering the word explains what the bucket
+          counts, hovering a figure gives that figure's exact value. */}
+      <HelpTip id={helpId}>
+        <span className={styles.bucketLabel}>{label}</span>
+      </HelpTip>
+      {RESOURCES.map((resource) => {
+        const min = range.min[resource.key];
+        const max = range.max[resource.key];
+        return (
+          <span
+            key={resource.key}
+            className={styles.resource}
+            // A native `title` rather than a HelpTip: the exact figure has
+            // to be reachable regardless of the help-popup setting, which a
+            // user who has turned help off has not asked to lose.
+            title={`${label} ${resource.name}: ${formatExactRange(min, max)}`}
+          >
+            <span className={styles.icon} role="img" aria-label={resource.name}>
+              {resource.icon}
+            </span>
+            {formatCompactRange(min, max)}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 // Resource totals (Phase 2.5): walks the AST for create_object of
@@ -60,26 +115,31 @@ export function StatusBar({
   onOpenGenerationSettings,
   onReportBug,
 }: StatusBarProps) {
+  const problems = summariseProblems(diagnostics);
+
   return (
     <div className={styles.statusBar}>
-      <HelpTip id="statusBar.total">
-        <span>(Total) {formatBucket(total, { food: "Food", wood: "Wood", gold: "Gold", stone: "Stone" })}</span>
-      </HelpTip>
-      <HelpTip id="statusBar.player">
-        <span>(Player) {formatBucket(player, { food: "F", wood: "W", gold: "G", stone: "S" })}</span>
-      </HelpTip>
-      <HelpTip id="statusBar.neutral">
-        <span>(Neutral) {formatBucket(neutral, { food: "F", wood: "W", gold: "G", stone: "S" })}</span>
-      </HelpTip>
-      <HelpTip id="statusBar.problems">
-        <span>{formatProblems(diagnostics)}</span>
-      </HelpTip>
-      {/* .cogSlot (not .settingsCog) carries margin-left: auto — see its
-          CSS comment: HelpTip's own wrapper span is the actual flex item
-          here once help mode is on, so a margin set on the button itself
-          only pushes it right when help mode is off (HelpTip renders no
-          wrapper then, so the button WAS the flex item). */}
-      <span className={styles.cogSlot}>
+      {/* Only the resource buckets scroll. The problem indicator and the two
+          buttons live outside this element (see .pinned), so nothing the
+          user needs to REACH — report a bug, open settings, see that the
+          script is broken — can be pushed out of sight by a wide total. */}
+      <div className={styles.scrollArea}>
+        <ResourceBucket helpId="statusBar.total" label="Total" range={total} />
+        <ResourceBucket helpId="statusBar.player" label="Player" range={player} />
+        <ResourceBucket helpId="statusBar.neutral" label="Neutral" range={neutral} />
+      </div>
+      <div className={styles.pinned}>
+        {/* The breakdown stays written out ("4 warnings, 2 info") rather than
+            collapsing to a total. The triangle replaces the word "Problems:"
+            — a label that never told the user anything the row's position
+            didn't — and its colour repeats the worst severity, so the text is
+            the detail and the colour is the glance. */}
+        <HelpTip id="statusBar.problems">
+          <span className={`${styles.problems} ${PROBLEM_LEVEL_CLASS[problems.level]}`}>
+            <ProblemIcon />
+            {problems.label}
+          </span>
+        </HelpTip>
         <HelpTip id="statusBar.reportBug">
           <button
             type="button"
@@ -100,26 +160,18 @@ export function StatusBar({
             ⚙
           </button>
         </HelpTip>
-      </span>
+      </div>
     </div>
   );
 }
 
-function formatProblems(diagnostics: Diagnostic[]): string {
-  if (diagnostics.length === 0) return "Problems: none";
-
-  let errors = 0;
-  let warnings = 0;
-  let infos = 0;
-  for (const diagnostic of diagnostics) {
-    if (diagnostic.severity === "error") errors++;
-    else if (diagnostic.severity === "warning") warnings++;
-    else infos++;
-  }
-
-  const parts: string[] = [];
-  if (errors > 0) parts.push(`${errors} error${errors === 1 ? "" : "s"}`);
-  if (warnings > 0) parts.push(`${warnings} warning${warnings === 1 ? "" : "s"}`);
-  if (infos > 0) parts.push(`${infos} info`);
-  return `Problems: ${parts.join(", ")}`;
-}
+// A lookup rather than a template string (`styles[`level-${level}`]`) so
+// TypeScript checks that every level has a class and that every class named
+// here exists — a template index silently yields `undefined` for a typo,
+// which renders as an uncoloured icon and looks like a CSS problem.
+const PROBLEM_LEVEL_CLASS: Record<ProblemLevel, string> = {
+  none: styles.levelNone,
+  info: styles.levelInfo,
+  warning: styles.levelWarning,
+  error: styles.levelError,
+};

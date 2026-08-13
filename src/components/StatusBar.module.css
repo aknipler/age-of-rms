@@ -1,27 +1,100 @@
+/* The bar itself no longer scrolls — .scrollArea does. Moving the overflow
+   one level in is what pins the problem indicator and the two buttons: they
+   sit outside the scroller, so a wide resource total scrolls under them
+   instead of pushing them past the right edge. */
 .statusBar {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
   border-top: 1px solid #000;
   padding: 0.35rem 1.25rem;
   font-size: 0.85rem;
   white-space: nowrap;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
-/* With Help Tips on, this button stopped sitting at the
-   far right and stuck right after the resource totals instead. Root
-   cause: margin-left: auto only affects the element it's set on when
-   THAT element is itself a flex item of .statusBar — but the button is
-   wrapped in <HelpTip>, whose own wrapper span becomes the real flex
-   item once help mode is on, leaving the button's own margin with
-   nothing left to push against. .cogSlot (the actual flex item,
-   StatusBar.tsx) carries the margin instead, so it holds regardless of
-   what HelpTip renders inside it. Same pattern as
-   AttributeRow.module.css's .labelSlot. */
-.cogSlot {
+.scrollArea {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  /* min-width: 0 is the load-bearing line. A flex item's default minimum
+     size is its CONTENT width, so without this the scroller refuses to
+     shrink, grows the bar past the window, and the pinned group goes off
+     screen anyway — the exact bug this layout exists to fix. */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+/* Never shrinks and never scrolls: whatever else happens to this row, the
+   bug-report button, the settings button and the problem count stay put. */
+.pinned {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
   margin-left: auto;
-  flex-shrink: 0;
+}
+
+.bucket {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bucketLabel {
+  color: #555;
+}
+
+.resource {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  /* `help` rather than `default`, so the dotted-cursor convention hints
+     that hovering a figure has something to show (the exact value). */
+  cursor: help;
+}
+
+.icon {
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+.problems {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: help;
+  /* The count inherits the level colour along with the icon, which uses
+     `currentColor` — one declaration per level, below. */
+  font-variant-numeric: tabular-nums;
+}
+
+.problemIcon {
+  width: 0.95rem;
+  height: 0.85rem;
+  display: block;
+}
+
+/* Severity colours are DiagnosticsRuler.module.css's, deliberately — the
+   ruler and this indicator report the same diagnostics, and two palettes
+   for one set of severities would teach the user nothing. */
+.levelNone {
+  color: #9a9a9a;
+}
+
+.levelInfo {
+  color: #17a2b8;
+}
+
+.levelWarning {
+  color: #e0a300;
+}
+
+.levelError {
+  color: #dc3545;
 }
 
 .settingsCog {

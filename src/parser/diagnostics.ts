@@ -256,10 +256,10 @@ export function orphanBlock(openToken: Token): Diagnostic {
   );
 }
 
-export function sectionHeaderInBlock(headerToken: Token, openToken: Token): Diagnostic {
+export function sectionHeaderInBlock(headerToken: Token, openLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0103",
-    `Section header ${headerToken.text} appears while the { at offset ${openToken.start} is still open — close the block with } before starting a new section.`,
+    `Section header ${headerToken.text} appears while the { on line ${openLine} is still open — close the block with } before starting a new section.`,
     toSpan(headerToken),
   );
 }
@@ -610,10 +610,10 @@ export function undefinedName(token: Token, suggestion: string, includesPresent:
   return softenForIncludes(diagnostic, includesPresent);
 }
 
-export function duplicateDefinition(token: Token, firstDefinition: Token): Diagnostic {
+export function duplicateDefinition(token: Token, firstDefinitionLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0301",
-    `"${token.text}" is already defined at offset ${firstDefinition.start}. The engine keeps the FIRST definition and ignores this one — the value here never takes effect.`,
+    `"${token.text}" is already defined on line ${firstDefinitionLine}. The engine keeps the FIRST definition and ignores this one — the value here never takes effect.`,
     toSpan(token),
   );
 }
@@ -631,11 +631,11 @@ export function duplicateDefinition(token: Token, firstDefinition: Token): Diagn
  * the message names the shared ones — that is the part the author has to see
  * to believe the claim, since the two lines can be hundreds of lines apart.
  */
-export function subsumedDefinition(token: Token, firstDefinition: Token, earlierConditions: string[]): Diagnostic {
+export function subsumedDefinition(token: Token, firstDefinitionLine: number, earlierConditions: string[]): Diagnostic {
   const message =
     earlierConditions.length === 0
-      ? `"${token.text}" is already set unconditionally at offset ${firstDefinition.start}, above this line. That one always runs, and the engine keeps the FIRST definition, so this value never applies. In RMS a default has to come AFTER the conditional versions of a constant, not before them.`
-      : `"${token.text}" is already set at offset ${firstDefinition.start} under ${earlierConditions.map((c) => `"${c}"`).join(" and ")}, which this line also requires. So whenever this line runs, that one has already run — and the engine keeps the FIRST definition, so this value never applies.`;
+      ? `"${token.text}" is already set unconditionally on line ${firstDefinitionLine}, above this line. That one always runs, and the engine keeps the FIRST definition, so this value never applies. In RMS a default has to come AFTER the conditional versions of a constant, not before them.`
+      : `"${token.text}" is already set on line ${firstDefinitionLine} under ${earlierConditions.map((c) => `"${c}"`).join(" and ")}, which this line also requires. So whenever this line runs, that one has already run — and the engine keeps the FIRST definition, so this value never applies.`;
   return makeDiagnostic("RMS0314", message, toSpan(token));
 }
 
@@ -689,11 +689,11 @@ export function overridesEngineCondition(token: Token): Diagnostic {
   );
 }
 
-export function usedBeforeDefinition(token: Token, definedAt: number, includesPresent: boolean): Diagnostic {
+export function usedBeforeDefinition(token: Token, definedOnLine: number, includesPresent: boolean): Diagnostic {
   return softenForIncludes(
     makeDiagnostic(
       "RMS0303",
-      `"${token.text}" isn't defined until offset ${definedAt}, below this line. Definitions only count higher up in the file, so the engine ignores this one — move the #define/#const above this line.`,
+      `"${token.text}" isn't defined until line ${definedOnLine}, below this line. Definitions only count higher up in the file, so the engine ignores this one — move the #define/#const above this line.`,
       toSpan(token),
     ),
     includesPresent,
@@ -716,18 +716,24 @@ export function missingPlayerSetup(at: Span): Diagnostic {
  * corpus specimen has 130 lines between them — so nothing about reading the
  * code locally reveals it.
  */
-export function unreachableBranch(token: Token, earlierAt: number): Diagnostic {
+export function unreachableBranch(token: Token, earlierLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0313",
-    `"${token.text}" is already tested at offset ${earlierAt} in this same if/elseif chain. If it were true, that earlier branch would have run instead — so this branch can never be reached and nothing inside it takes effect.`,
+    `"${token.text}" is already tested on line ${earlierLine} in this same if/elseif chain. If it were true, that earlier branch would have run instead — so this branch can never be reached and nothing inside it takes effect.`,
     toSpan(token),
   );
 }
 
-export function duplicateAttribute(token: Token, firstUse: Token): Diagnostic {
+/**
+ * Raised on the LATER of the two, which is the one that survives — so the
+ * message says which value the engine keeps rather than only that a rule was
+ * broken. The author's next question after "these are duplicated" is always
+ * "which of my two numbers is the map using".
+ */
+export function duplicateAttribute(token: Token, firstUseLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0306",
-    `"${token.text}" is already set at offset ${firstUse.start} in this block. This attribute doesn't stack, so the engine uses the last one and ignores the earlier.`,
+    `"${token.text}" is already set on line ${firstUseLine} in this block. This attribute doesn't stack, so the engine uses the value here (the last one) and ignores the earlier.`,
     toSpan(token),
   );
 }
@@ -747,10 +753,10 @@ export function duplicateAttribute(token: Token, firstUse: Token): Diagnostic {
 export function mutuallyExclusive(
   token: Token,
   otherName: string,
-  otherAt: number,
+  otherLine: number,
   note?: string,
 ): Diagnostic {
-  const base = `"${token.text}" and "${otherName}" (offset ${otherAt}) are documented as mutually exclusive, so using both in one block means at least one of them has no effect.`;
+  const base = `"${token.text}" and "${otherName}" (line ${otherLine}) are documented as mutually exclusive, so using both in one block means at least one of them has no effect.`;
   return makeDiagnostic("RMS0307", note ? `${base} ${note}` : `${base} Keep the one you want.`, toSpan(token));
 }
 

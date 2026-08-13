@@ -13,11 +13,13 @@
   vertical-align: middle;
 }
 
+/* `fixed`, not `absolute`, and rendered into document.body through a portal
+   — see the long comment in HelpTip.tsx for why (overflow clipping on two
+   different ancestors, and popups opening downward off the bottom of the
+   window). `top`/`left` are set inline from a measurement; nothing here may
+   set them, or the inline values would be fighting a stylesheet. */
 .popup {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 4px;
+  position: fixed;
   width: max-content;
   max-width: 260px;
   background: #fff;

@@ -42,7 +42,7 @@
     },
     {
       "id": "statusBar.total",
-      "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Shown as a min-max range when if/start_random blocks make the exact count generation-dependent."
+      "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Shown as a min-max range when if/start_random blocks make the exact count generation-dependent. Figures are abbreviated to fit the bar, so hover one to read the exact amount."
     },
     {
       "id": "statusBar.player",
@@ -54,7 +54,7 @@
     },
     {
       "id": "statusBar.problems",
-      "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. Click a squiggle in the editor to see the full message."
+      "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. The triangle is red when there is at least one error, yellow when the worst is a warning, and blue when there is only information. Click a squiggle in the editor to see the full message."
     },
     {
       "id": "statusBar.generationSettings",
