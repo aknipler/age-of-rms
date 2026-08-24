@@ -463,6 +463,7 @@ function commonFields(
   dim: number,
   constants: readonly TerrainConstantForMasks[],
   symbols: ReadonlyMap<string, number>,
+  aliases: ReadonlyMap<string, string>,
 ): {
   baseSize: number;
   circularBase: boolean;
@@ -485,7 +486,7 @@ function commonFields(
     baseSize: numAttr(cmd, "base_size", 0, DEFAULT_BASE_SIZE),
     circularBase: cmd.attributes.has("set_circular_base"),
     terrainType: typeof terrainTypeValue === "string" || typeof terrainTypeValue === "number" ? terrainTypeValue : undefined,
-    terrainId: resolveTerrainId(constants, terrainTypeValue, symbols),
+    terrainId: resolveTerrainId(constants, terrainTypeValue, symbols, aliases),
     baseElevation: typeof baseElevationValue === "number" ? baseElevationValue : undefined,
     clumpingFactor: numAttr(cmd, "clumping_factor", 0, DEFAULT_CLUMPING_FACTOR),
     borderFuzziness: numAttr(cmd, "border_fuzziness", 0, DEFAULT_BORDER_FUZZINESS),
@@ -505,8 +506,13 @@ function commonFields(
   };
 }
 
-/** Sec.6.1's size-target rule, before the (not-yet-built) growth phase's additive/included adjustment. */
-function declaredTargetTiles(cmd: InstantiatedCommand, dim: number, perPlayerDivisor: number): number {
+/**
+ * Sec.6.1's size-target rule, before the (not-yet-built) growth phase's
+ * additive/included adjustment. Exported for consistency-checker-design.md
+ * Sec.7.0 item 2 — Sec.3.1 sums it and it is pure, `(cmd, dim,
+ * perPlayerDivisor)`, so exporting costs nothing.
+ */
+export function declaredTargetTiles(cmd: InstantiatedCommand, dim: number, perPlayerDivisor: number): number {
   const explicitTiles = argValue(cmd, "number_of_tiles", 0);
   if (typeof explicitTiles === "number") return explicitTiles / perPlayerDivisor;
   const percent = numAttr(cmd, "land_percent", 0, 100); // default 100 (Sec.6.1)
@@ -680,7 +686,7 @@ export function placeLandOrigins(
     perPlayerDivisor: number,
     fromFallback: boolean,
   ): number {
-    const fields = commonFields(cmd, grid.dim, constants, instantiated.symbols);
+    const fields = commonFields(cmd, grid.dim, constants, instantiated.symbols, instantiated.aliases);
     const origin: LandOrigin = {
       commandSpan: cmd.span,
       x,

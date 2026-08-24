@@ -6436,3 +6436,2872 @@ name's POSITION, never on the binding. Sec.4.2's do-not-hardcode-32 bullet now
 carries it, with the rule that a tool reconstructs defs node by node from nodes
 the host already made commands, and never goes hunting for aliases in the
 symbol table — which on this corpus would be wrong eleven times in twelve.
+
+## 2026-08-14 — `tools-api-design.md` rev 10, the de-changelogging pass
+
+The session three revisions deferred and rev 9 gave a deadline: do it before 5.1
+writes code, as its own pass, with this log open. **Not a critique round and no
+normative statement changed** — anyone who read rev 9 has read every decision in
+rev 10. Doc only; no code, no data, no tests touched, so nothing had a reason to
+move and nothing was run.
+
+**The measurement it closes.** "rev N" back-references were **156 of 494
+non-empty lines** (32%), having gone 86/354 → 108/404 → 156/494 across three
+revisions while the document grew 39%. After: **4 of 487**, and all four are the
+title, the preamble paragraph explaining the pass, and the paragraph recording
+this measurement. The spec is 689 lines against 698, so the compression is
+almost entirely scaffolding rather than content — which is the result to want,
+since a big line-count drop here would have meant decisions went with it.
+
+**The rule applied, which rev 7 wrote and rev 9 restated: keep how a number was
+reached, move what a previous revision believed.** In practice three shapes:
+
+- *A rule with a live reason* loses its tag and keeps its reason.
+  "Rev 5 said X, rev 6 corrected it to Y because Z" became "Y, because Z", with
+  the failed alternative kept whenever it is the thing a reader would otherwise
+  reach for. The `def?: never` and mode-parameter mechanisms, the descending-sort
+  non-mechanism and the side-table rejection all survive in full for that reason.
+- *A count that decayed* keeps its whole sequence, because the sequence IS the
+  argument for building the reporter — Sec.2's `game-constants.json` paragraph
+  still carries all five numbers, just not the revisions that wrote them.
+- *A prescription that was wrong* keeps the correction and drops the attribution.
+  Sec.4.1's two deadline mistakes are now stated as the two mistakes available to
+  whoever re-derives the number next, which is what they were always for.
+
+**The safety check, since the named failure mode was deleting a pinned decision
+whose reason lived only in a sentence naming a revision.** A decision inventory
+was written from rev 9 BEFORE any edit — 160-odd entries across every section,
+with the seven "history is the argument" sites marked — and each one grepped for
+afterwards. Every entry survives. Structure was checked separately: 18 headings
+unchanged, 16 code fences still balanced across 8 blocks.
+
+**Two things worth carrying past this document.** First, **the sentences that
+were hardest to de-rev are the ones where the history was doing real work**, and
+they cluster in exactly one place: wherever a rule was reached by being wrong
+first. That is a usable signal for the next spec that needs this treatment —
+grep your own doc for "corrected", "withdrawn" and "reversed" before deciding
+how much of it is archaeology. Second, **a de-changelogging pass is the cheapest
+possible re-read of a spec**, because it forces every paragraph to be read for
+what it currently claims rather than for what changed last round; the four
+`file:line` citations still standing in rev 9 that had a symbol available were
+converted on the way through, per the preamble's own instruction.
+
+Changed: `docs/tools-api-design.md`, this log, `CLAUDE.md`'s Phase 5 row,
+`CREATION_PLAN.md` 5.1.
+
+## 2026-08-15 — CREATION_PLAN 5.1 implementation: the Tools API contract, host and pane
+
+**Built against rev 10, no deviation.** `tools-api/index.ts` is the published
+contract — `SerializedParseResult` (the `±Infinity` sentinel, every `def` slot
+`unknown`), the six capabilities with `read-ast` auto-granting `read-source`,
+`OutputBlock`'s five kinds including `table.rowSpans`, `DEADLINES`
+(`cancelGraceMs: 30_000`, `runWatchdogMs: 60_000`) and `LIMITS`
+(`maxInboundLineBytes` 8 MB, `maxOutboundRunBytes` 32 MB) named as exported
+constants rather than embedded literals, so a test asserting against them
+cannot drift from a re-derivation the way a hardcoded number would. `tools-api`
+joined `tsconfig.json`'s `include` and got its own ESLint purity block —
+stricter than the three existing ones, since a PUBLISHED contract may carry no
+runtime import of an app module either, not only of React/Monaco/Tauri.
+Mutation-tested by planting a runtime import of both `src/parser/language` and
+`react` in a throwaway file: two errors, the exact two patterns; removed, the
+gate is clean again.
+
+**Sec.9 item 2 written first, as the spec requires — `src/tools/previewBridge.ts`.**
+`previewSettingsFromContext` narrows `ToolContext.settings` (`mapSize: {name:
+string}`, `teams: number[]`) into `PreviewSettings` via the app's own
+`isMapSize`/`isTeams` guards, never a cast; `runPreviewFromContext` hands
+`ctx.parseResult` straight to `generatePreview` with no conversion. Mutated the
+one line the spec says must not compile — swapped `ToolContext<ParseResult>`
+for the bare wire-form `ToolContext` as the parameter type — and `tsc` failed
+with exactly the predicted chain (`WireNumber` not assignable to `number`,
+through `InfSentinel`); reverted, clean again. 8 tests, including a
+determinism check against `snapshots.at(-1)?.terrain` (the generator returns
+snapshots, not a live grid, which the first draft got wrong and the test
+itself caught before it ever reached a review).
+
+**Host lifecycle — `src/tools/host.ts`, protocol validation — `src/tools/protocol.ts`.**
+`ToolHost` takes an injected `ToolRunner` and an injected `Timers`
+(`setTimeout`/`clearTimeout`), which is what makes both kill paths testable
+rather than assumed: `killed` is exercised with a runner whose `cancel()`
+deliberately does not honour the request, advanced past `DEADLINES.cancelGraceMs`
+on a fake clock; `unresponsive` is exercised with a runner that never emits at
+all, advanced past `DEADLINES.runWatchdogMs`. Stale-run rejection is closed by
+HANDLE IDENTITY, not a `runId` field, per the spec's own rejection of that wire
+addition — a message from a `RunnerHandle` that is not `currentRun.handle` is
+dropped unconditionally, which is what lets a cancelled run's late `partial`
+lose to the next run's real one without either side needing to know about the
+other. `protocol.ts` is pure (no host, no React) and covers the inbound
+validator per message kind, the `rowSpans`-length cross-field check Sec.2
+delegates and Sec.4.2 accepts, manifest registration (the
+`multiSelect`-default-violates-its-own-`minSelected` case named in the spec),
+run-time param clamping, and edit validation (whole-set rejection on any
+overlap or malformed bound). 40 tests in `protocol.test.ts`, all against the
+real `DEADLINES`/`LIMITS` exports rather than literals.
+
+**`scriptStats` — Sec.7's exemplar — and the pane.** Counts commands,
+attributes, directives, conditionals, `start_random` blocks and unparsed
+regions by walking every nested block and branch, not just top-level items
+(the obvious bug here is invisible in the output on a script with no
+conditionals, which is exactly why it is unit-tested against a fixture that has
+one). Its section table demonstrates Sec.2's prose/line-number split from
+`lineNumberOfOffset` — the fix for the seven RMS03xx messages that shipped
+"offset 86970" to a release. `src/tools/registry.ts` filters out any tool
+failing `validateManifest` at startup rather than at first run, logging why.
+`ToolsPane.tsx` wires Select Tool → params form → Run/Cancel → progress →
+rendered blocks → Apply, replacing the Phase-5 placeholder tab in `App.tsx`;
+cancels the active run on tool switch (after a JS `confirm`) and on document
+replace (a `hasFile` transition, since `useDocument` mutates one module-level
+model rather than creating a new one on File > Open). Echoes `playerCount` /
+`mapSize` into the output header per Sec.5's staleness argument. `useDocument.ts`
+gained `applyTextEdits` (plural) — the N-edits-as-one-`pushEditOperations`-batch
+function the spec names as not yet existing; `applyTextEdit` (singular) is
+untouched and still what Breakdown uses.
+
+**Help coverage and the settings tab.** Eight `tools.*` ui-help.json entries
+named by the spec (`select`, `run`, `cancel`, `progress`, `apply`, `log`,
+`output`, `params`) — 108 → 116 entries. `AdvancedToolsSettings.tsx` no longer
+tells the user the pane does not exist; it lists the registered tools and what
+each one reads, in plain language rather than capability ids, which is the
+draft of the v1.1 consent-dialog copy. `helpCoverage.test.ts` reads the two
+source files for `<HelpTip id="...">` and asserts every id it finds has a
+matching entry, rather than trusting a hand-maintained list — the same
+"grep the artefact, not the memory of it" instinct rev 10 applied to the spec
+itself.
+
+**Verification.** `tsc --noEmit` clean repo-wide. `npm run validate:reference`
+clean. `eslint .` — 0 errors repo-wide, 15 pre-existing warnings in files this
+session did not touch. New suites: 53/53 (`previewBridge.test.ts`,
+`protocol.test.ts`, `helpCoverage.test.ts`). **Full suite: 1544/1544 across two
+runs, not one.** The first full-suite pass reported 9 failures, all four files
+in `src/preview/__tests__/` (`cliffs`, `elevation`, `index`, `terrains`), every
+one a `Test timed out` at a 5s or 15s per-test ceiling and none in
+`src/tools/**` or `tools-api/**`; the source comments at the failing lines are
+this project's own documented load-factor caveat ("fails in the suite is
+measuring the machine, not the code"). Re-ran those four files alone: 298/298
+in 88s. **Not visually verified** — same Tauri-host reason as every prior
+UI-only phase 4/5 landing: the app calls Tauri store APIs synchronously on
+mount, which throw outside the real host, so a local `npm run tauri dev` run
+is the only way to see the pane render.
+
+**5.2 (Generation Consistency Checker) is next**, per CREATION_PLAN, and needs
+its own design session first (spec in PLAN.md, brief in CREATION_PLAN 5.2) —
+the flagship tool is not part of 5.1's own scope.
+
+## 2026-08-15 — two ToolsPane bugs, found asking "why does the pane only fill a quarter of the screen"
+
+**The layout bug.** `ToolsPane.module.css`'s root used `height: 100%`.
+`App.module.css`'s `.main` is `flex: 1; display: flex` with no fixed height of
+its own — a flex item's used height from flex distribution does not count as a
+definite height for a CHILD's `height: 100%` to resolve against in this
+rendering path, so the pane silently fell back to its content's natural size
+(the controls row plus whatever output existed) instead of filling the tab.
+`BreakdownPane.module.css` and `CodePane.module.css` both already solve this
+the same way — `flex: 1; min-height: 0; min-width: 0` — and neither uses
+`height: 100%` anywhere. Matched to that. **Never visually verified before
+this**, for the sandbox reason recorded at 5.1's own landing; this is exactly
+the class of defect that caveat exists to flag, and it took someone actually
+looking at the running app to find it.
+
+**The document-replace bug, found while checking whether anything else needed
+attention before 5.2.** `ToolsPane`'s effect diffed `hasFile: boolean`
+(`filePath !== null`) across renders. `useDocument.openFile` goes straight from
+one non-null path to a different non-null one when a file is already open
+(`documentModel.setValue()` then `setFilePath`, never through `null`), so
+`hasFile` never toggles on that transition — the exact one Sec.5's rule names
+("File → Open... 'the document' can become an entirely different script
+mid-run"). A run started against file A would keep executing, uncancelled,
+after file B replaced it. Fixed by moving the decision into
+`ToolHost.noteOpenDocument(id: string | null)`, which tracks the identity
+itself (a `UNSET` sentinel distinct from `null` so the first call is never read
+as a replacement) rather than leaving each caller to diff two renders
+correctly. Three new tests in `protocol.test.ts`, including the reproduction of
+the exact bug (`"a.rms"` running, then `noteOpenDocument("b.rms")`) — mutated
+the fix back toward the original shape (block same-nonnull→different-nonnull
+transitions) and confirmed it goes red, restored.
+
+Neither bug was caught by the 53 tests written at 5.1's landing, because
+neither is a pure-logic property those tests were checking — one is a CSS
+resolution rule, the other was a property of which two values a component
+effect happened to diff. Both are now: the CSS choice is commented with the
+reason inline, and the identity check lives in `host.ts` where it has direct
+test coverage instead of only living in an uninstrumented render effect. 56/56
+tests, `tsc`, `eslint .`, `validate:reference` all clean.
+
+**Same day, separate session: `PublishedGameConstants` landed.**
+`tools-api/generated/gameConstants.ts` is generated from
+`reference/schemas/game-constants.schema.json` via `json-schema-to-typescript`;
+`npm run check:generated-types` regenerates and diffs, wired into CI. The
+hand-written placeholder `tools-api/index.ts` shipped with 5.1 is gone. Verified
+both sessions' work together: `tsc --noEmit` and `eslint .` clean across the
+whole repo, `npm run check:generated-types` passes. **CREATION_PLAN 5.1 has no
+open items now.**
+
+### 2026-08-15 — `PublishedGameConstants`, from the session that built it
+
+The paragraph above is that work seen from outside. What it cost, and the three
+decisions inside it:
+
+**The generated file is COMMITTED, and that is the whole reason the check can
+go red.** A file generated at build time and gitignored is in sync with the
+schema by construction, so it can never disagree with anything and nothing
+would ever tell the author of a schema change that a published type moved under
+them — which is exactly the property the hand-written placeholder lacked and
+was replaced for. Committed plus `--check` in CI is what turns a schema edit
+into a failing build that names the command that fixes it. The check runs
+**before** Typecheck in `ci.yml`, since a stale generated type typechecks
+perfectly and lies.
+
+**It is compiled from the ROW schema (`$defs.constant`), not the file schema.**
+The wire carries the array; `{ constants: [...] }` is a file layout the
+contract does not republish. `json-schema-to-typescript`'s own
+`additionalProperties: false` option is set, so a schema that is merely silent
+does not acquire an index signature — an index signature is precisely what let
+the placeholder swallow the difference between a field that exists and one that
+does not.
+
+**Formatting goes through the repo's prettier, not the generator's.**
+`json-schema-to-typescript` formats at printWidth 120 with no trailing commas;
+`.prettierrc.json` is `{}`, so `npm run format` would rewrite the generated file
+and the drift check would then fail on a file nobody edited. The script passes
+`format: false` and runs `prettier.format` with the resolved config instead.
+`npx prettier --check` on the generated file passes. (Note `tools-api/index.ts`
+itself does *not* satisfy prettier and did not before this change — the whole
+`scripts/` directory is the same. Left alone; reformatting the contract file is
+not a side effect this session should have.)
+
+**Mutation-tested, three ways, because the check had only ever passed.** Added
+a `mutantField` boolean to the schema: `check:generated-types` went red with
+the regenerate instruction and exit 1. Regenerated: `mutantField?: boolean`
+appeared in the type, so the check is reading the schema rather than hashing a
+file. Removed the field with the edit tools (never `git restore` — CLAUDE.md
+hard rule), regenerated, byte-identical to the pre-mutation output. Then moved
+the generated file away entirely and confirmed the missing-file branch is its
+own message and also exit 1.
+
+`npm install -D json-schema-to-typescript` added 6 packages (v15.0.4, whose own
+prettier dependency is `^3.2.5` and dedupes onto the repo's). `npm audit
+--omit=dev` is still **0**, which is the number CLAUDE.md says to check.
+
+**One gap found next door and deliberately NOT fixed here, because it is a
+different change:** `ToolsPane.tsx`'s context builder has no `read-reference`
+branch, so a tool declaring that capability receives `referenceData:
+undefined`. Nothing is broken today — `scriptStats` does not declare it and no
+other tool exists — but 5.2's checker declares it in the manifest the spec
+prescribes (Sec.7), so this is the first line of that session's work, not a
+latent bug in this one. Naming it rather than silently widening this change.
+
+## 2026-08-15 — `docs/consistency-checker-design.md` rev 1, the CREATION_PLAN 5.2 design session
+
+Spec only, no code. `tools-api-design.md` and `preview-design.md` had already
+pre-decided most of this tool's contract-facing shape while being written
+*for* it — the `multiSelect` param type, `OutputBlock`'s spanned `severity`/
+`table`, the chunk-unit-is-one-generation rule, both deadlines, and the whole
+`PlacementFailure`/`CommandReport`/`FailureBucket` instrumentation all cite
+this tool by name as their reason for existing. This session's job was
+therefore narrower than a from-scratch design: the four PLAN.md static checks
+(land_percent over-allocation, undefined actor areas, terrain-can't-exist,
+impossible count×spacing), the Monte Carlo aggregation model, the report
+format, and — found while grounding the runtime section against the current
+code rather than assumed — the fact that no worker-capable `ToolRunner` exists
+yet, so `ToolsPane.tsx`'s `host` is hardcoded to `inProcessRunner` and 5.2
+cannot run its Monte Carlo loop without that infrastructure landing first.
+
+**One finding worth carrying past this doc.** `PublishedGameConstant.
+allowedTerrains` (4.7) is more precise than the generator's own coarse
+`Habitat` filter that `objects.ts` actually places against — its doc comment
+says outright that nothing reads it today "so that... the Generation
+Consistency Checker can answer terrain questions exactly rather than
+approximately." That means the static layer and the Monte Carlo layer can
+**legitimately disagree** on a terrain-impossibility finding, because they
+answer the question at two different precisions. Sec.2 names this explicitly
+and Sec.5.1 requires every finding to carry which precision produced it,
+rather than letting the two blend into one undifferentiated list — the same
+"confidently wrong" failure mode CLAUDE.md's goal 1 exists to catch, one level
+up from where it usually gets applied (not "is this claim true" but "which of
+two true claims is this").
+
+**Budget decided rather than left open.** `tools-api-design.md` Sec.10 named
+the risk and stopped ("this is a 5.2 problem, not a 5.1 one"): CREATION_PLAN's
+own "1000 runs... should be seconds" estimate is off by roughly two orders of
+magnitude against the measured ~460 ms median. Default is 15 runs × the full
+2/4/6/8 matrix (60 generations, ~28 s median / ~4 min measured-worst-case),
+configurable up to 200 runs/count with Cancel always available — a deviation
+from the brief's literal number, made on the same measured ground this project
+has applied to its own specs every other time (CLAUDE.md hard rules).
+
+Not yet built: everything in Sec.7 (the `read-reference` pane wiring, the
+worker runner, the checker implementation itself) is prescribed, not written.
+
+---
+
+## 2026-08-15 (evening, later) — 5.2 design, the rev 2 review round
+
+Second design pass on `consistency-checker-design.md`. The round's product is
+`docs/consistency-checker-design-rev2-review.md`; rev 1 gains a
+do-not-implement header pointing at it. **The fold to rev 2 has NOT been done**
+— B1 and B2 both rewrite Sec.2/Sec.3 and the review's process note asks for
+them as one edit rather than section by section.
+
+**Three blocking findings, none reachable by reading, all confirmed by running
+code.** Rev 1 is well sourced — its Sec.0 inventory checked out line for line
+(19 `FailureBucket` members, unconditional `CommandReport`, `previewBridge.ts`
+as the inner call, the missing `read-reference` branch, the reserved
+`registry.ts` slot) — and wrong in three places anyway, because a doc comment
+records what someone intended and the data records what happened.
+
+- **B1: Sec.3.3's exact-terrain check has data for 31 of 2672 object rows.**
+  Rev 1 quotes `gameConstants.ts`'s "NOTHING READS THIS FIELD TODAY... so that
+  the Generation Consistency Checker can answer terrain questions exactly" and
+  read it as the data waiting to be used. **CREATION_PLAN 4.10 stripped
+  `allowedTerrains` from roster rows on 2026-08-12** — three days earlier — as
+  "a pure function of another field... 1.33 MB". 2666 rows carry
+  `terrainRestrictionId` (32 distinct values) and no expansion table exists in
+  `reference/`. So on 2666 of 2672 objects both layers read the same coarse
+  `habitat` field and Sec.2's whole two-precisions framing collapses to 31
+  objects. `game-constants.schema.json:122` still documents the stripped
+  invariant, and neither gate catches it (the field is optional, and
+  `check:generated-types` diffs the type against the schema, never the data).
+  Fix is 4.2 KB: a 32×131 restriction bitmask as its own top-level table, added
+  to Sec.7's prerequisites.
+- **B2: the static layer has no single input.**
+  `instantiateScript(parse, refDb, settings, masterSeed)` uses the seed for
+  `rnd()` draws and `start_random` branch selection. Measured over 32 maps: **23
+  change a watched Sec.3 input attribute across 5 seeds** (13 of them with 5
+  distinct fingerprints), 4 change the command SET with the seed, 7 change it
+  with the player count. `start_random` is in 27 of 32 maps, `rnd(` in 23. So
+  Sec.3.4's "guaranteed impossibility" is a per-draw claim reported as an error,
+  and Sec.8 item 3's "not possible today since S0 resolves conditionals once per
+  instantiation" is refuted on 4 maps — it confuses reusing one `ParseResult`
+  with reusing one instantiation.
+- **B3: `ToolHost.reset()` during a cancel grace kills the NEXT tool and blames
+  it.** `reset()` clears the state but not `this.active` or the timers;
+  `ToolsPane.selectTool` calls `cancel()` then `reset()`, which is the exact
+  sequence Sec.4.3 cites as its safety argument for the runner swap. Driven with
+  injected timers: 2 timers still armed, `isBusy()` false, second run accepted,
+  and when the first run's grace expires the innocent second tool is killed with
+  `reason: "unresponsive"` — a verdict `tools-api/index.ts` says only ever means
+  the tool misbehaved. Unreachable today only because `inProcessRunner` finishes
+  synchronously; the worker is what makes it live. Rev 1's "`host.ts` and
+  `protocol.ts` need zero changes" is the one false claim in Sec.4.3.
+
+**Standard findings.** Sec.4.2's `FailureMark` fold double-counts every mark —
+`originFallbackCenter` is already a `PlacementFailure` (`lands.ts:406/:443`) and
+the mark is derived from the same flag (`index.ts:113-124`), so the checker
+should ignore `failureMarks` outright; the kind is `landAtMapCenter` and
+misnaming it is what produced the error. Sec.4.4 re-cites a 460 ms median that
+**measures 794 ms today** (mean 960, worst `24hr_Petra.rms` at **4669 ms** —
+BUG-013 gave Petra its 384 land origins on 2026-08-13 and nobody re-timed it);
+60 generations is 48 s on the median map and 280 s on the worst before the
+measured Giant penalty (1.2–1.6×) and the documented 3.7× load factor, and
+N=200 is 62 minutes rather than "trading minutes". Sec.3.2's actor-area union
+compares resolved numbers against token text and manufactures a false error on
+`#const`-named areas. The tool worker is a **third transport** — in-process
+types over a structured-clone boundary — contradicting Sec.0's "no clone and no
+decode"; measured payload 13.97 MB worst parse plus 1.51 MB reference data, and
+the worker should import its reference data as `preview/worker.ts` already does.
+`refDb` is never sourced, and `ToolReferenceData.language` is `LanguageData`,
+not the `LanguageIndex` `runPreviewFromContext` needs.
+
+**The durable lesson, and it is a new one at this layer: a data-anchored claim
+outlives a comment-anchored one, and by a shorter half-life than anyone had
+reason to expect.** The rev-9 tools-api round established that symbol anchors
+outlive line anchors. This round adds the tier below: the `allowedTerrains`
+comment was accurate when written and had been false for three days when rev 1
+quoted it; Petra's cost was accurate until BUG-013 landed two days earlier.
+**Before a spec asserts that a field, a count or a lifecycle behaves some way,
+run the three lines that read it** — each of the three blocking findings was one
+`node -e`, thirty lines of `instantiateScript`, and a `ToolHost` driven with the
+injected `Timers` that `host.ts` already supports because Sec.9 item 3 asked for
+them. Corollary for Sec.8: a reporter printing `allowedTerrains` coverage or the
+seed-variance count would have produced B1 and B2 for free.
+
+Four probes written into `src/preview/__tests__/`, run, and **deleted**; nothing
+else in the tree was modified. The review's appendix records each one.
+
+---
+
+## 2026-08-16 — consistency-checker-design folded to rev 2
+
+The review round's product. `docs/consistency-checker-design.md` is rev 2, 615 →
+947 lines, and the DO-NOT-IMPLEMENT banner is gone. Revision narration stayed
+out of the doc per the rev-10 de-changelogging rule; this entry is where it
+lives.
+
+**Every finding was re-derived from the tree before being folded, and every one
+reproduced** — 31/2672 `allowedTerrains`, 2666 `terrainRestrictionId` over 32
+distinct values, 2891/3011 `verified`, 32 maps with `start_random` in 27 and
+`rnd(` in 23, Namatjira's 104/125, `reset()` clearing neither `active` nor the
+timers, `FailureMark.kind` being `landAtMapCenter`, `actorAreas` keyed by
+`number`, `CommandReport` carrying no `entity`, `partial` replacing the output,
+`resolveObjectCounts` having no percent-of-land branch. A round whose corpus
+counts reproduce to the unit earns the rest of its reading.
+
+**Three findings changed on the way in, and each is a case of the same rule the
+round itself established — check the denominator, check the operation.**
+
+1. **B1's restriction table is DECLINED as a prerequisite**, scheduled as a
+   follow-up in Sec.9. Writing it needs a schema change, a `--terrain-table`
+   change and **a regeneration from a maintainer's local DE install**, which no
+   agent session can run — so making it a prerequisite blocks the flagship tool
+   on a manual dat extraction. Sec.3.3's tier 1 now tests `allowedTerrains` per
+   row rather than naming objects, so the table widens it from 31 rows to 2666
+   with no edit to the doc or the checker. **Sec.2 survives on a denominator the
+   review did not take.** It measured rows (31 of 2672, 1.2%) and concluded the
+   two-precisions framing covers "31 objects, and every one of them a resource
+   or a fish" — but those are the objects scripts place. Token-scanned over the
+   32 maps: 2033 `create_object` commands, 1034 naming a built-in constant, and
+   **580 of those (56%) resolve to a row carrying `allowedTerrains`**. The other
+   999 name a script `#const`, mostly the guide:2211 placeholder idiom (`PHON`
+   ×152, `ONGRID_PLACEHOLDER` ×147), which the real resolver reaches and a token
+   scan does not. Same shape as 4.10's own "a corpus total is not a corpus
+   measurement", pointed at a review this time.
+2. **S4's 15.5 MB is a `JSON.stringify` length being quoted as a
+   structured-clone cost, and they are different operations.** `postMessage`
+   uses the structured clone algorithm, which **preserves internal aliasing** —
+   a `def` object shared by a thousand `CommandNode`s clones once, not a
+   thousand times — while `JSON.stringify` re-expands every one, which is
+   precisely why `tools-api-design.md` measured 41% of its payload as `def`
+   re-expansion. **That 41% does not exist over this transport.** The finding's
+   direction is right and survives (a worker is a third transport, Sec.0's "no
+   clone" contradicts Sec.4.3, and the checker should import its own reference
+   data the way `src/preview/worker.ts` already does for 111 KB); the number is
+   now an open measurement in Sec.9 rather than a figure in Sec.4.3.
+3. **S1 is sharper than reported.** The review says folding `FailureMark`s
+   doubles the `originFallbackCenter` count. True on the neutral-land path
+   (`lands.ts` `pushOrigin(..., !result.ok)`, whose failures really are
+   `originFallbackCenter`), and on the `grouped_by_team` extras path the same
+   `fromOriginFallback` flag is set while the pushed failure is
+   **`notSimulated`** — so folding there fabricates a bucket count no failure
+   record carries. Conclusion unchanged and strengthened: ignore `failureMarks`
+   entirely.
+
+**Two findings the review missed, both the class it was hunting — a spec citing
+a function that does not do what the spec needs.**
+
+- **`runPreviewFromContext` reads `playerCount` off `ctx.settings` and takes no
+  override**, so Sec.4.1's "for each player count in the matrix, call
+  `runPreviewFromContext`" generates the same map four times. Sec.7.2 adds
+  `overrides?: { playerCount?: number }` applied **after** the bridge narrows,
+  so the seam guard that module exists to be still covers the call. The
+  free half, worth stating because a checker could easily invent it: `teams`
+  needs no equivalent — `PreviewSettings.teams` is always length 8, indexed
+  `player - 1`, **independent of `playerCount`**, and every consumer slices to
+  the count via `teamModel.ts`. One context's teams array is already correct at
+  2, 4, 6 and 8.
+- **Sec.3.2's declaration scan has to run over the AST, not the
+  instantiation.** An instantiation carries one resolution of every
+  `start_random`, so a `create_actor_area 7` in an unselected branch is absent
+  from `InstantiatedScript.sections` and the check would call the id undefined
+  on a script that declares it. The reference side stays on the instantiation (a
+  reference in an unselected branch cannot fail on this seed). The asymmetry is
+  the design: generous about what counts as declared, strict about what counts
+  as a reference. This is B2's consequence one section over from where the
+  review carried it, which is the standing "a rule established in one pass is not
+  established in the passes that predate it" lesson arriving inside a single
+  round.
+
+**Everything else folded as written.** Sec.3 gains a 3.0 pinning the layer's
+input as `(playerCount, seed)` with three rules (run per player count; demote
+seed-derived findings to "guaranteed on this seed", detectable via
+`InstantiatedArg.source`; prefer a sound-on-any-seed reading where it is cheap,
+which Sec.3.4 now takes at `rnd`'s lower bound). Sec.3.2 reads resolved values
+rather than token text. Sec.4.3 carries the `reset()` defect and orders the fix
+**before** the `useMemo` change that makes it reachable. Sec.4.4 is rebuilt on
+re-measured numbers (median 794 ms, worst `24hr_Petra.rms` at 4669 ms, Giant
+1.2–1.6×, load up to 3.7×) with the honest ceiling table — 48 s median and 280 s
+worst at defaults, 62 minutes at N=200 unloaded — and keeps the run watchdog,
+which bounds one generation rather than the run. Sec.5.1 sources the Command
+column from `ctx.source` since `CommandReport` has no `entity`. Sec.5.2 records
+that the pane's settings echo is not merely redundant here but **live-bound to
+the generation context**, so it re-labels a finished report when the user changes
+the player count afterwards — a 5.1 defect worth its own known-issues line rather
+than a silent ride. Sec.5.4 reports a per-run-varying note as a range. Sec.8
+gains the corpus-driven command-set fixture, the `reset()` lifecycle assertion,
+two mutants (token-text comparison; the re-enabled mark fold) and the two
+coverage reporters that would have produced B1 and B2 for free.
+
+**Spec only — no code changed.** Sec.7's three prerequisites and the checker
+itself are the next session's work, in Sec.7.2's order.
+
+## 2026-08-16 — consistency-checker design rev 3 (a review round folded, four findings re-derived)
+
+Spec only, no code. A review round critiqued rev 2 and every corpus count in it
+reproduced to the unit against this mount: 3011 constant rows / 2672 object /
+31 `allowedTerrains` / 2666 `terrainRestrictionId` / 2668 `habitat` / 2891
+`verified`; 2052 raw `create_object` commands, 1937 with `/* */` stripped; 549
+block-form uses naming an `allowedTerrains`-covered constant, 300 of them
+carrying `terrain_to_place_on` and 61 carrying `ignore_terrain_restrictions`;
+119 `ignore_terrain_restrictions` uses across 14 maps; `replace_terrain` 82/8;
+`beach_terrain` 77/4. The per-restriction land-refusal spread reproduced too
+(restriction 8 refuses 27 land terrains including `BEACH` on 261 uses,
+restriction 7 refuses exactly 1 on 180).
+
+**The round's three blocking findings are all Sec.3.3, and all real.**
+
+- **`terrain_to_place_on` was restated as an override.** It is not, and this is
+  a CLAUDE.md hard rule with `objects.ts` carrying the correction in its own
+  capitals since 2026-08-08. Sec.3.3 now has the two narrowing each other, and
+  the finding is the stronger `allowedTerrains` intersect {named terrain} is
+  empty. The live carve-out (`terrainId === undefined || habitatIsData`)
+  survives only for an UNDECLARED habitat, and **all 31 `allowedTerrains` rows
+  carry `habitat`**, so it never touches tier 1. Read as an override it would
+  have switched tier 1 off on 300 of the 549 covered uses, which is Sec.2's own
+  coverage argument cancelled by Sec.3.3 — the two had been re-derived
+  separately and their intersection never taken.
+- **`ignore_terrain_restrictions` was absent**, and it is the actual override.
+  Sec.3.3 now models both states: valid (with `set_place_for_every_player` or
+  `place_on_specific_land_id`) means abstain outright, inert means check
+  normally. Modelling only one swings the check to the other kind of error.
+- **The terrain surface omitted three producers** — `replace_terrain`,
+  `beach_terrain`, and the engine's automatic beach pass, which has no token to
+  grep for. Every omission shrinks the surface and a smaller surface makes an
+  empty intersection likelier, so all three push toward false alarms. Closed
+  with `beachTerrainFor` over the surface.
+
+**Four findings moved on re-derivation, and one of the round's own numbers did
+not reproduce.**
+
+- **The `reset()` ordering argument was backwards in rev 2 and the round was
+  right to say so.** A per-tool host does not make the misattribution
+  reachable — it MASKS it, because the stale grace timer then fires on the old
+  host against the run that was actually cancelled. What makes it live is a
+  tool still alive at a switch on today's single shared host. Rev 3 goes
+  further than the round: a host per tool breaks "one run at a time, app-wide"
+  outright, since `isBusy()` is per-instance, so Sec.4.3 now keeps one host and
+  gives `ToolHost` a runner resolver. The `useMemo` dependency array does not
+  change at all.
+- **Sec.4.3's reference-data saving was cancelled by Sec.6, and the resolution
+  goes the other way from the round's "pick one".** The doc had the worker
+  importing its own constants while the manifest still declared
+  `read-reference` and Sec.7.1's branch built the 1.5 MB into `ctx` regardless.
+  But the argument for a private import never transferred: `preview/worker.ts`
+  is long-lived and paid per keystroke, while the checker's worker is one per
+  run and a run is 48 s to 24 minutes. The claim is dropped, the declaration
+  stays, and Sec.4.1's `ctx.referenceData` reads stand.
+- **Sec.3.2's new AST-side declaration scan then resolved through S0's symbol
+  table**, which `instantiate.ts`'s own header rules out ("a symbol inside an
+  UNTAKEN branch never exists") — B2's consequence one level below where rev 2
+  carried it. Two rules replace it: resolve declaration-side `#const` names
+  over the whole AST, and abstain for the script if a declaration id still will
+  not resolve. Measured, abstention is free: only **2 of 286**
+  `create_actor_area` commands write a name rather than a literal.
+- **The round's "only 1 corpus id is `#const`-named" does not reproduce, and
+  the direction matters.** Declaration side: 2. **Reference side: 146 of 2586
+  references across 11 of 32 maps, over 62 distinct names**, one of them a
+  parenthesised expression `(AA_TC)`. So Sec.3.2's resolved-values rule has a
+  real corpus population behind it rather than only a fixture, and Sec.8's
+  mutation of it back to token text has material to go red on. The round's
+  `create_actor_area` figure (110) and reference figure (2697) are also not
+  what a token scan gives (286 across 15 maps; 2586 across 31) — plausibly a
+  post-instantiation count, but the doc now carries the scan it can reproduce.
+
+**Three findings the round did not have, all in the same family as its own B1.**
+
+- **`second_object` must never be checked**, and the `terrain_to_place_on` fix
+  is what makes saying so urgent. guide:2211's placeholder idiom is 295 uses
+  across 24 of 32 maps; `FISH`'s restriction 19 admits 15 terrains and
+  `SHALLOW` is not one of them, so `create_object FISH_PLACEHOLDER
+  { terrain_to_place_on SHALLOW second_object FISH }` — Menindee's every pond —
+  would report empty-intersection against a script the engine runs correctly.
+- **`create_object_group` is not checked** (its first argument is a group name;
+  `objects.ts` gives the command `habitat: "any"` for the same reason).
+- **The surface takes `start_random`'s untaken branches and not `if`'s**, the
+  same generosity asymmetry as Sec.3.2's declaration side, and it upgrades a
+  tier-1 finding from "guaranteed on this seed" to guaranteed. Measured as
+  insurance rather than a live concern: 327 `start_random` blocks across the
+  corpus contain a terrain producer 4 times, in `sample.rms` alone.
+
+**Sec.8 item 6's mutation assertion was wrong, and the measurement that fixes
+it found something else.** The assertion said re-enabling the `failureMarks`
+fold "must double the `originFallbackCenter` count on the two corpus maps that
+produce marks", which contradicts Sec.4.2's own sharpened text — the
+`grouped_by_team` extras path pushes `notSimulated`, so folding there
+fabricates a bucket rather than doubling one. Split per path, two fixtures.
+Running the measurement to pick the maps then showed there are none: **across
+all 51 maps on this mount (32 tracked + 19 local) at 4 players, Normal, seeds 1
+and 2, zero `FailureMark`s, zero `originFallbackCenter`, zero `notSimulated` at
+S1**, against a control in the same pass of 10,673 S1 `CommandReport`s carrying
+652 `growthShortfall` failures — so the instrument works and the population is
+genuinely empty. `types.ts`'s own "fires 6 times, on 2 maps" therefore does not
+reproduce; BUG-009 (border-relative cross, 2026-08-12) is the plausible cause,
+and the run varied neither player count nor map size, so Sec.9 files it as
+needing re-measurement rather than declaring it wrong. The control was added
+because a reporter that finds nothing is indistinguishable from a broken one —
+the `mean x` rule arriving as a habit rather than as a lesson.
+
+**Also folded:** Sec.2 gains the 3x coverage spread (tier 1 buys real precision
+on the 261 restriction-8 uses and nothing at all on the 180 restriction-7 ones,
+which is 31% of its own denominator) and the corrected 2052/1937 command count.
+Sec.3.1 gains the clause that only `create_player_lands` multiplies by the
+player count — an `assign_to`'d extra is one land at `perPlayerDivisor` 1
+(`lands.ts`), and multiplying it would over-count declared area by the player
+count. Sec.3.5 stops reading as a formality: of the 120 unverified rows, 116 are
+terrain and 2 of the remaining 4 are `FISH`/`SHORE_FISH`, both tier-1 rows, so
+the gate fires on 2 of the 31 rows tier 1 can use. Sec.5.2's "a manifest flag or
+an equivalent check" is decided as a manifest flag (`ownsSettingsHeader`), added
+to Sec.6's block and to Sec.7.2 as a published-contract addition to
+`ToolManifest`.
+
+**Spec only — no code changed.** Sec.7's four prerequisites and the checker
+itself remain the next session's work, in Sec.7.2's order.
+
+## 2026-08-16 — consistency-checker design rev 4, and the two review files retired into this log
+
+Spec only, no code changed. `docs/consistency-checker-design.md` goes rev 3 → rev 4. Every finding below was re-derived against the working tree before folding, three of them by running the toolchain rather than a probe, and **one review finding was rejected on re-measurement** — a fold is a decision, not a transcription.
+
+### The rule this round leaves behind
+
+Rev 3 was the strongest count discipline this project has produced: thirty-odd corpus and reference-data numbers, every one reproducing to the unit on re-check (2672 object rows, 31 `allowedTerrains`, 2666 `terrainRestrictionId`, 286 `create_actor_area` across 15 maps, 2586 actor-area references across 31, 82/8 `replace_terrain`, 77/4 `beach_terrain`, 119/14 `ignore_terrain_restrictions`, 295/24 `second_object`, 327 `start_random` across 27). **Not one of rev 4's blocking findings is a count.** All three are claims the compiler or one grep answers: does this type assign to that one, does this identifier exist in `language.json`, is this function exported and does its return type carry the field.
+
+So: **a prose claim about data gets checked by a probe; a claim about a name, a type or an export gets checked by the toolchain.** A design that cites its sources by symbol — which rev 3 does throughout — has already done the hard part of making that check mechanical. All three failures are cases where the symbol was cited and never looked up.
+
+### B1 — the reference-data handoff does not compile, and this tool is the first consumer of that seam
+
+Sec.4.1 closed with *"`constants` comes from `ctx.referenceData.gameConstants`, which structurally satisfies `ObjectConstant`."* It does not. `ToolReferenceData.gameConstants` is `PublishedGameConstants`, generated from the schema, whose element declares `constId?: number | null`; `PreviewReferenceData.constants` is `readonly ObjectConstant[]`, required `constId: number | null`. Compiled against the repo's own `tsconfig.json`, a five-line module assigning one to the other is a `TS2322` naming exactly that chain, and `constId` is the only incompatible member. Nothing in `src/` reads `ToolReferenceData.gameConstants` today — `preview/worker.ts` casts the raw JSON import and never names the published type — so the checker really is first across.
+
+**The fix is the spec's decision and the obvious one was measured and rejected.** Widening `ObjectConstant.constId` to optional is inert at runtime (`objectIndex` already guards `!== null && !== undefined`) and is *not* inert to the toolchain: `ObjectConstant` is passed where `TerrainConstantForMasks` (required `constId: number | null`) is expected and its readers narrow with `!== null`, so making the edit and running `tsc` produces about 30 fresh errors across `grid.ts`, `palette.ts` and four test files. Rev 4 prescribes a **named conversion in `previewBridge.ts`** instead — the module whose entire stated purpose is this class of seam — defaulting an absent `constId` to `null`. Explicitly not an inline `as unknown as` at the call site, which is the cast that module exists to refuse.
+
+### B2 — two attribute names that are not the names of anything
+
+Sec.3.1 and Sec.3.4 both justified taking the player count through `set_scale_by_player_number`, and Sec.3.4 named `set_scale_by_map_size` beside it. **Neither string occurs in `language.json`, in `src/`, or in the corpus.** The real pair is `set_scaling_to_player_number` (9 uses across 3 maps) and `set_scaling_to_map_size` (246 across 26), read by `lastObjectScaleAttribute` and consumed by `resolveObjectCounts` exactly as the doc describes the *behaviour* — times dim squared over 10000 for map size, times playerCount for player number, floored at 1.
+
+The semantics were right and only the identifiers were wrong, which is what made it blocking rather than a typo: **design specs are authoritative here and a session is told not to improvise deviations**, so the natural action is to write `cmd.attributes.get("set_scale_by_player_number")`, get `undefined` forever, and ship a check that silently never scales — a stage producing a plausible wrong answer instead of throwing, which this repo has a standing rule about. `set_scale_by_groups` (525 corpus uses, a real terrain-side attribute) is close enough to keep the wrong name looking plausible during review.
+
+A sweep of every backticked identifier in the doc against `language.json` and the source tree found **no others**: 35 snake_case tokens, only those two missing; 95 camelCase symbols, only the five this document itself introduces (`baseSeed`, `runsPerPlayerCount`, `runIndex`, `playerCounts`, plus the corpus `#const` `PHON`).
+
+### B3 — Sec.7 omitted the export surface Sec.3 is written on
+
+Three functions named as "reuse this, do not re-implement it", none reachable from outside its module:
+
+- **`objectEntry`** (`objects.ts`) is private, and typed to `ObjectConstant` — a six-field projection carrying **neither `allowedTerrains` nor `verified`**, which are the two things Sec.3.3 tier 1 and Sec.3.5's readiness gate need. The two exported siblings return a `Habitat` and a boolean. So the instruction as written was unimplementable and the only ways out were the second resolver Sec.3.3 forbids or a source change Sec.7 did not mention.
+- **`declaredTargetTiles`** (`lands.ts`) is private. `LandOrigin.declaredTargetTiles` carries the value on an exported type but is reachable only by running S1, which is the layer Sec.3 is not.
+- **`reportFor`** is a closure inside `placeLandOrigins`, reachable from nothing — and stays that way; its rule is one line and Sec.3.1 now writes the line.
+
+New **Sec.7.0** exports the first two, `objectEntry` **generic over its row type** (it only touches `constId`, `rmsConstant` and `category`). That is what makes B1 and B3 one decision rather than two: with the generic export the static layer reads `PublishedGameConstant` rows directly and never needs the two arrays to be the same type, which leaves exactly one call site to adapt instead of two casts in two files.
+
+### S1 — the coverage number was measured over a population the tool does not use, and the correction's direction was predicted backwards
+
+Sec.2 rested on "580 of the 1034 name-resolvable `create_object` commands (56%)". Both halves reproduce — **over the comment-including text**, while the doc stated them as a subset of its own comment-stripped population. Four scans, each a refinement of the last:
+
+| scan | commands | resolvable | covered | share |
+|---|---|---|---|---|
+| token scan, comments in | 2052 | 1034 | 580 | 56% |
+| token scan, comments stripped | 1937 | 997 | 562 | 56% |
+| plus each file's own `#const` table | 1937 | 1790 | 575 | 32% |
+| through S0 at 4 players, seed 1, resolved as `objectIndex` does | 1475 | 1379 | **471** | **34%** |
+
+The family table's own note attributed its 18-use gap (562 against 580) to *resolution*; it is **comments**, and no resolver is involved in either number. And rev 3 wrote that the real resolver reaches the `#const` names a token scan misses "so the true split moves and the direction does not" — it moves **down** by twenty-two points, structurally: resolving `#const` names is what reaches the placeholder idiom (`PHON` times 152, `ONGRID_PLACEHOLDER` times 147), and placeholders are unrestricted carriers, so **every use the real resolver adds to the denominator is a use tier 1 cannot serve.**
+
+Sec.2's conclusion survives (the 261 restriction-8 uses are untouched, still the family a beginner script is made of, still the 27-terrain gap `BEACH` sits in) and its headline is now "about a third", with the population named. The two figures downstream were restated over the same population: **290 of 471** covered uses carry `terrain_to_place_on` (the misreading rev 3 fixed would have cancelled most of tier 1), and **47 carry `ignore_terrain_restrictions`, 25 valid against 22 inert** — both states live in comparable numbers, which is the point of modelling both.
+
+### S2 — two-point comparisons standing in a table whose first row is a five-seed sweep
+
+Sec.3.0's table read as three measurements of the same kind. Re-measured over the range the tool actually runs (15 seeds across four player counts):
+
+| | one pair | swept |
+|---|---|---|
+| a watched input changes across 5 seeds | — | 23 / 32 |
+| command set changes with the seed | 4 / 32 (1 against 2) | **12 / 32** (seeds 1–5) |
+| command set changes with the player count | 7 / 32 (4 against 8) | **12 / 32** (2/4/6/8) |
+
+The 4 and 7 are correct for a single pair and understate the rate the `commandSpan` aggregator meets by 3 times. Sec.8 item 3's fixture is re-scoped to the swept figure. Two things caught while measuring, both worth carrying: the **fingerprint key has to be stated or the number cannot be re-measured** — rev 3's "13 of the 23 produce five distinct fingerprints" is 15 on this mount under `(section, command span, attribute)` to resolved values, deduped or per-occurrence alike; and the corpus's "`rnd(` in 23 of 32 maps" is a **coincidence** of the same corpus and not the same 23 as the first row, so neither may be derived from the other.
+
+**A probe bug worth recording, because it produced a confident wrong answer that looked plausible.** The first run of the fingerprint sweep read `cmd.attributes.get(name)` and then `.value` on the result — but that is an `InstantiatedAttribute`, whose values live on `.args`, so every key stringified to `undefined` and the probe silently measured attribute *presence* rather than attribute *values*: 9 of 32 instead of 23. It was caught only because 9 contradicted a number that had already reproduced twice. An instrument that answers `undefined` for every field still returns a tidy number.
+
+### S3 — `group_variance` does not floor Sec.3.4's count, and the severity is error
+
+Sec.3.4 earns "guaranteed on every seed" by evaluating an `rnd`-sourced operand at its **lower** bound. It did not do the same for the other per-seed count randomiser: `variedGroupTarget` draws each group's member count from n minus v up to n plus v minus 1, so `number_of_objects 40 group_variance 10` really places as few as 30 per group. Taking the declared n over-counts N, and over-counting N in the disc-area bound makes it trip **more** easily — on an error-severity finding worded as a guaranteed impossibility, which is precisely what the section's whole argument exists to exclude. `group_variance` measures **71 uses across 14 of 32 maps**. One clause fixes it (take the low bound per group; the attribute is read only in the grouped case, `resolveObjectCounts` returning `variance: 0` otherwise), and Sec.8 gains a second boundary fixture beside the exact-packing-radius one.
+
+### The finding that was rejected, and why the rejection is the interesting half
+
+The round re-timed the corpus and reported median **1216 ms**, mean 1415, worst `24hr_Petra.rms` at **6208 ms**, against Sec.4.4's table of 794 / 960 / 4669 — asking for the watchdog arithmetic to move from about 24 s to about 32 s. A third independent run, same method (`generatePreview` once per player count per map at Normal, `collectSnapshots: false`, meaned per map) came back **median 775 ms, mean 980 ms, worst Petra 4524 ms** — reproducing the table, not the re-measurement. The middle of the ordering swaps between runs; the top and the level do not.
+
+So the table stands and **only the conclusion softens**: Sec.4.4 now says every number in it is plus or minus 50%, and the watchdog headroom is stated as a range (about 24 s at the 4.5–4.7 s an unloaded machine measures, about 32 s at the 6.2 s a loaded one produced) rather than a point. Both are inside the 60 s window; the honest margin is 2 times rather than 2.5. This is the documented 3.7 times load factor arriving in a review round instead of a test — **a re-measurement that disagrees with a measurement is a third data point, not a correction**, and on a machine this repo has already characterised as spanning 3.7 times, the tie goes to the reading two runs agree on.
+
+### Smaller folds
+
+- **Sec.3.1's per-player-count arithmetic cancels exactly.** `declaredTargetTiles` already divides by `perPlayerDivisor`, which is the player count for a `create_player_lands` occurrence, so multiplying its lands back returns the raw declared area for both the `land_percent` and `number_of_tiles` forms and the sum is player-count invariant. The requirement to run per player count is right and its stated reason was wrong: what moves is the command **set**, on 12 of 32 maps. Stating the cancelling mechanism as the reason would have left the real one uncovered by any test.
+- **Sec.3.2 quantified the smaller of its two declaration paths.** Form (a) `create_actor_area` is 286 across 15 maps; form (b), an object's own `actor_area` attribute — the path whose omission false-warns — is **919 across 31 of 32**, with 988 `actor_area_radius` beside it. The number belongs next to the one it dwarfs because the soundness argument is what it supports.
+- **`StageId` has seven values** (S0 to S6), six of which emit reports. Sec.5.1 named the type.
+- **Sec.5.2's prescribed `known-issues.md` line is now written**, as **BUG-014**: `ToolsPane.tsx` renders its settings echo from live generation state, so changing the player count after a run re-labels a finished report with settings it was never run at — the failure the echo exists to prevent, produced by the echo. `ownsSettingsHeader` hides it for this tool and fixes it for none of the others.
+- **CREATION_PLAN 5.2 was one revision stale** ("the doc is at rev 2"); updated in the same edit, with Sec.7.0 named as the implementing session's first step.
+
+### The review files are retired
+
+`consistency-checker-design-rev2-review.md` and `consistency-checker-design-rev4-review.md` are **deleted**, their findings folded into rev 4 and their reasoning summarised here and in the entries above (the rev-2 round's own fold is the 2026-08-16 entry two above this one). Nothing is lost that a fold preserves: **how a number was reached stays in the design doc, what a previous revision believed lives here** — the rule `tools-api-design.md` rev 7 wrote and rev 10 applied.
+
+## 2026-08-16 (late) — consistency-checker design rev 5, and the round that found the checks by running them
+
+Spec only, no code. The rev-5 review round (`consistency-checker-design-rev5-review.md`, now deleted — this entry is its summary) filed four blocking findings against rev 4. **All four reproduce, two of them go further than the round reached, and the design is smaller than it was.**
+
+**Every finding was re-derived here before folding**, per the standing rule that a fold is a decision rather than a transcription. Four probes were written at the repo root, run with `npx vitest run <file> --disableConsoleIntercept`, and deleted; one typecheck probe went under `src/preview/generator/` and was deleted the same way. Nothing was left behind.
+
+### The round's own lesson, and it is the one this series had left
+
+Rev 4 applied the previous round's rule comprehensively — a claim about a NAME, a TYPE or an EXPORT gets checked by the toolchain — and it still shipped four blocking defects. **Three of them came from neither reading nor compiling: they came from running the check the section specifies over the corpus and counting what it prints.** So: **a detection spec is not verified until the check it describes has been run over the corpus and its output counted.** The project already applies exactly this discipline to shipped parser checks (`rms0304.measure.test.ts`, `rms0315.measure.test.ts`); the move is to run the reporter **at design time**, against the prose, before it is anyone's implementation. Each of the three was forty lines of probe against a section that had survived four review rounds.
+
+The tell was visible without running anything: **Sec.3.1 and Sec.3.4 were the only two Sec.3 checks carrying no corpus count anywhere in their sections, and they are the two that fire.** Every check rev 4 had measured was sound. Neither check it had not measured was.
+
+### B1 — Sec.7.0 item 1's prescribed export does not compile, at the seam Sec.4.1 documents
+
+Made exactly as rev 4 prescribes it and run through `tsc --noEmit`: **six errors, four `TS2345` and two `TS2322`, every one of them the `OBJECT_INDEX` `WeakMap`.** It is declared `WeakMap<readonly ObjectConstant[], …>` and a `WeakMap`'s key type is fixed at construction, so it cannot be generic per call — `readonly T[]` does not assign to `readonly ObjectConstant[]` for precisely the reason Sec.4.1 gives three paragraphs to. **The doc names the seam, then re-crosses it inside its own fix.** The sentence covering the `WeakMap` ("keys on the array identity and keeps doing so") is a runtime statement offered where a type statement was needed, which is the same shape as rev 4's own `constId` finding one section over.
+
+The corrected form — `WeakMap<object, { byName: Map<string, unknown>; byId: Map<number, unknown> }>` plus one cast on `.get()` — compiles clean, confirmed here. Sec.7.0 item 1 now carries it, with the cast given its own sentence because it is the load-bearing part, and **"each of the two exports is a one-word change" is withdrawn for item 1** (it stays true of item 2, `declaredTargetTiles`).
+
+### B2 — Sec.3.1 warned on 23 of 32 maps, and the fix needed both halves
+
+Implemented as specified and swept: **23 of 32 tracked maps warn at 4 players, 92 of 128 map/player-count pairs, ratios 100% to 1393%.** Reproduces the round's numbers exactly.
+
+The cause is an idiom. Two or more `create_land` commands at `land_percent 100` is how a script says *fill whatever is left* — growth stops when a land meets its target **or runs out of frontier** — and `AD4 - Ra.rms` labels it with the author's own `/* neutral space */` comment while summing to 800%. A true statement about 23 of 32 expert maps that names no defect, at warning severity, on a tool whose audience is beginners.
+
+**Excluding lands that declare the whole map takes it to 6 of 32 maps and 24 of 128 pairs** — measured here, which the round asked for and did not do. That is the load-bearing half of the fix. **The severity demotion to info is the other half**, and it is needed because six expert maps still trip the corrected form (`AK_Vanguard_v1.2.rms` 554% and `OWWC1Tewaipounamu` 551% with no filler land at all). The round called the demotion "honest, and nearly worthless"; that undersells it. On a beginner writing three lands at 60% each the sentence is exactly what they want to know, and on an expert map it is harmless, which is what info is for.
+
+**The conflation worth naming**: rev 4 argued the check was "sound (never wrong in the direction of a false alarm)". The arithmetic is sound. What does not follow is that a script tripping it has a problem, and it was the second claim that put a warning on 72% of the corpus. **A bound being sound says nothing about whether the sentence built on it is worth printing.**
+
+Also confirmed: `declaredTargetTiles` defaults `land_percent` to 100, so a land declaring neither size attribute contributes the whole map — 4 commands across 2 maps, a second route to the same false alarm, closed by the same exclusion rather than by a special case.
+
+### B3 — Sec.3.4's packing bound is CUT, and the round's own fixes make it worse
+
+The round found three defects and prescribed four fixes. All three defects reproduce:
+
+- **`group_placement_radius` is a cohesion MAXIMUM, not a minimum separation.** `objects.ts` scans within it of a group's anchor to pull members *together*; nothing keeps two groups apart. N groups do not need N disjoint discs, so the packing bound is not a bound. Same class as `max_distance_to_other_zones` being a minimum — an attribute read from its name.
+- **The radius findings are a constraint the checker invented.** `DEFAULT_GROUP_PLACEMENT_RADIUS = 3` is the fallback for a grouped-but-bare command, and "resolve the spacing" picks it up: **190 of the 195 radius findings rest on the default**, 5 on an author-written number.
+- **The section read the minority attribute.** `objects.ts` resolves `temp_min_distance_group_placement` first; that spelling is dominant (**789 instantiated commands against 398**, 229 carrying both) and the section never named it. Its own headline example, `AK_Namatjira.rms`'s `number_of_groups 999999`, carries `temp_min_distance_group_placement 3` and so is caught by neither path the section describes.
+
+**Then the finding the round did not have.** Its fixes 2 and 3 are inconsistent with each other, and measuring shows which way: deleting the radius clause and correcting the resolution order takes the check from 11 sites to **207 findings across 26 of 32 maps**, because the corrected check finally reads the attribute the corpus writes. The round proposed stating "the corrected check finds 11 sites"; the corrected check finds 207.
+
+**So the bound is cut outright, not repaired.** The declared N on the 207 tripping commands runs min 16, **median 9999**, max 999999 — `number_of_objects 65536` means *fill the water with fish*, the same over-declaration idiom as `land_percent 100` and the guide's own `number_of_clumps 9320`. The engine places what fits and stops. An error-severity "guaranteed impossible" finding on 81% of an expert corpus is Sec.3.1's demotion one section over and one severity worse — and **what the bound wanted to say, the Monte Carlo layer already says better**: "you asked for 65536 and the map holds about 800" is a measured spawn rate on real terrain, needing no impossibility claim. A static packing bound is a weaker duplicate of Sec.4's own output.
+
+Sec.3.4 keeps one rule: the `minExceedsMax` promotion (`min_distance_to_players > max_distance_to_players`), which is deterministic, has no reading under which the author meant it, and **measures 0 on the corpus** — the RMS0304 shape, where near-zero is the expected result and the fixtures are the proof it fires. Recorded with the cut so nobody rebuilds it: the disc bound was **conservative** against the generator (`createSpacingIndex` uses Chebyshev, so the real exclusion region is a square of side `s`, area `s²`, against the disc's `0.785 s²`), and tightening it would make a check that already fires on 26 of 32 maps fire more. Rev 4's `group_variance` floor goes with the bound; the reasoning survives as Sec.3.0 rule 3 with nothing left to apply to.
+
+**A consequence the round did not reach, and it moves a headline number.** Sec.3.0's "a watched static-check input changes across seeds 1–5 on 23 of 32 maps" was measured over eight attributes, four of them the count-and-spacing pair the cut removes. Re-measured over the set the rev-5 checks actually read: **13 of 32, five producing five distinct fingerprints.** Both numbers are kept, because the drop is a design consequence rather than a correction and a later revision re-adding a count-reading check inherits the higher rate. **A variance figure is a property of the watched set, so cutting a check silently invalidates it** — and Sec.8's reporter is now told to print it against the live set rather than a hardcoded list.
+
+### B4 — Sec.3.2's severity sentence is false for three quarters of what it fires
+
+`objects.ts` does not treat the two reference forms alike, and the difference is exactly rev 4's parenthesised claim. An undeclared `actor_area_to_place_in` collapses the command to zero placements and pushes `actorAreaMissing`. An undeclared `avoid_actor_area` **pushes no predicate and the command places normally** — a silent no-op, and the semantically obvious reading, since avoiding a region that does not exist avoids nothing.
+
+Measured with declarations unioned across 2/4/6/8 by seeds 1–5: **12 findings across 4 maps** for `actor_area_to_place_in`, against **59 commands across 10 maps** (591 attribute occurrences) for `avoid_actor_area`. So the majority of the check's output would have shipped an **error** asserting a consequence the generator demonstrably does not produce. Split: `place_in` keeps error and the `actorAreaMissing` citation, `avoid` becomes **info** ("this line does nothing"), the register RMS0315 already moved to after BUG-007, on the identical shape.
+
+**The credit side is worth stating because it is the tool's first real corpus win**: the 12 look like genuine defects in expert maps, and Sec.8's baseline table now records them as an expected non-zero rather than leaving them a surprise.
+
+### Standard findings
+
+- **S1 — the settings echo was suppressed and its content not replaced.** `ownsSettingsHeader: true` hides `ToolsPane.tsx`'s "Run at N players, <size>", and Sec.5.2's replacement header listed no map size, so a finished report named none at all. Added, read from the run's own snapshot. Re-derived rather than folded as given: the round's supporting numbers were not reproduced here, so the section carries the one this session did measure — **8 of 32 tracked maps change their instantiated command set with the map size**, alongside Sec.4.4's 1.2–1.6 times budget move.
+- **S2 — Sec.3.3's argument for excluding `if` branches does not close, and the exclusion is safe anyway.** The disjunction has two halves (player count and map size) and the argument covered one; `AK_Vanguard_v1.2.rms` declares two actor areas inside an `elseif HUGE_MAP`, so the shape is live. Measured here: **0 of 32 maps put down a terrain producer at any map size that Normal does not also produce**, while 8 of 32 move their command set at all, so the instrument is not blind and the conclusion holds. The argument is replaced by the measurement. **Stating a reason that does not close, beside a conclusion that is right, is how the next revision talks itself into widening the wrong thing.**
+- **S3 — Sec.7.0 listed three functions and missed the one every check needs.** `argValue`/`numAttr` is private and **already copied verbatim in four stage files**, confirmed. The implementing session writes copy five silently, which is the exact outcome Sec.7.0 exists to prevent, in the session that reads Sec.7.0. The fork is real (the four copies are a deliberate per-stage convention) so the doc picks a side: export one copy, because the checker is not a stage.
+- **S4 — Sec.8's expected values were the thing that needed fixing.** "Expect near-zero on this corpus" was written for all four static checks and is wrong for three, and it is load-bearing: it is what would let an implementing session read a red reporter as "the corpus is expert-written" instead of as a defect. **A reporter's own expected values are as assumable as the numbers it prints.** Sec.8 item 2 now carries a measured baseline table (6 maps, 12 findings, 59 commands, 0), with Sec.3.3's row named explicitly as the one still owed — it cannot run until Sec.7.0's export lands, so it is the first thing the implementing session measures.
+
+### Minor
+
+`game-constants.json` plus `language.json` re-measure at **1.30 + 0.14 = 1.44 MB** against the doc's 1.51 (immaterial to the argument, which survives at any of these numbers). Sec.6's manifest block is now marked an excerpt, since `name`/`version`/`apiVersion`/`description` are all required on `ToolManifest` and a reader copying the block writes one that fails validation. Sec.5.1's `StageId` clause gains "no `CommandReport`s" — S0 does emit `SimulationNote`s, which Sec.5.4 passes through, and the two sentences read as contradictory otherwise.
+
+### What rev 5 leaves
+
+Three static checks instead of four, one demoted to info and one split by severity. That is a smaller tool than rev 4 described and a more honest one: **every surviving severity is now backed by a corpus count, except Sec.3.3's, which is named as owed rather than assumed.** Implementation order is unchanged — Sec.7.0's exports first, then `host.ts`'s `reset()`, the bridge overrides, `read-reference`, the worker runner, `ownsSettingsHeader`, then the checker.
+
+`consistency-checker-design-rev5-review.md` is **deleted**, its findings folded and its reasoning summarised above.
+
+## 2026-08-17 — consistency-checker design rev 6, and the round that found the construct rather than the count
+
+Spec only, no code. Sixth review round on `docs/consistency-checker-design.md`, folded here after every finding was re-derived against the working tree — a scratch copy of `src/`, `reference/` and `tools-api/` outside the repo with a junction to `node_modules`, reading the real `test-maps/` off disk, driven by Vitest. Where the round and the tree disagreed, the tree won, and it won three times.
+
+**Rev 5's measurement work was the strongest of the series and every corpus figure it published reproduces to the unit.** Sec.3.1's 23 to 6 with the same six maps and the same six percentages; Sec.3.2's 59 commands across 10 maps; Sec.3.4's 0; Sec.3.0's other three rows; the reference-data census. It still shipped an error-severity false positive on a shipped map, and a baseline measured with the algorithm the section it belongs to exists to replace. **So the rule this round leaves is one level up from the last one: a measurement that stands in for a prescribed algorithm has to be validated against that algorithm, not only against the corpus.** Rev 5 obeyed its own rule — it ran the check and counted — and ran a *different* check from the one it specifies, labelled the substitution in the same paragraph ("to approximate the generous AST-wide scan above"), and never asked whether the approximation and the algorithm ever disagree. The tell was already inside the document, two sections later, as a live corpus fact.
+
+### B1 — the shared-block idiom is invisible to both of Sec.3's input surfaces
+
+`parser-design.md` Sec.5.4: a `{` arriving right after a completed `if`/`start_random` whose branches end in block-capable commands becomes an `OrphanBlockNode` carrying **info RMS0110**, *"this block is shared by the command(s) chosen in the if/random above"*. It is guide Example2, cited in this repo's own parser spec as a guide-endorsed idiom, and the corpus uses it heavily.
+
+Those attributes are on **no command**, in either surface Sec.3 reads. An AST walk phrased "every `create_object` command carrying its own `actor_area` attribute" — which is Sec.3.2's declaration form (b), verbatim — does not reach them, because in the AST they are `AttributeNode`s inside an `OrphanBlockNode`. And `instantiate.ts` sends `orphanBlock` straight to `unsimulatedNote` and drops the contents, so `InstantiatedCommand.attributes` never holds them either. **Neither `objects.ts` nor `instantiate.ts` answers "what are the attributes of this command" on its own; the parser has a documented third case, and Sec.3.2 was written from the two files that do not know about it.**
+
+Measured over the 32 maps: **29 `OrphanBlockNode`s across 5 of 32 maps** (`Pa_Site_v1.1.rms`, `TL Cape of Storms.rms`, `TL Team Acropolis.rms`, `W4 - Immersion.rms`, `OWWC1Tewaipounamu-edited-v1.2.rms`) carrying **216 attributes**, against 31 RMS0110 diagnostics corpus-wide. Top rows: `avoid_actor_area` 27, `min_distance_to_players` 21, `second_object` 15, `actor_area` 14, `actor_area_radius` 14, `actor_area_to_place_in` 9, `max_distance_to_players` 7, `terrain_to_place_on` 4, `base_terrain` 3, `land_percent` 3.
+
+**The consequence is asymmetric and only one side is dangerous.** Sec.3.1 and Sec.3.4 read `InstantiatedScript`, so a hidden `land_percent` understates declared area and a hidden `min_distance_to_players` can never trip `minExceedsMax` — false negatives, in the "your map is fine" direction, now stated in each section rather than fixed, since fixing them means giving those checks a second input surface. Sec.3.2's declaration side is the other sign: a missing declaration is a false **positive** at error severity, and it has one on the corpus. `Pa_Site_v1.1.rms` declares `actor_area 8000` inside a shared block and references it sixteen lines below from an ordinary `create_object SKELETON { … actor_area_to_place_in 8000 … }`; `actor_area 8000` appears exactly once in the whole file. The check as specified reports "actor area 8000, which nothing in the script creates" at error, worded "the referencing command places nothing", on a working shipped map — precisely the class of finding Sec.3.2's soundness argument is built to exclude, arriving through the half of the argument nobody re-derived.
+
+New **Sec.3.0b** carries the construct, the census and one asymmetric rule: every scan that only ever SUPPRESSES a finding descends into shared blocks (Sec.3.2's declaration side, Sec.3.3's terrain surface), every check reading `InstantiatedScript` states its blind spot in its own section, and S0's `unsimulated:<span>` note is the honest surface Sec.5.4 connects a suppressed finding to.
+
+### B2 — the Sec.3.2 baseline was measured with the algorithm Sec.3.2 replaces
+
+Sec.3.2 is explicit that the declaration side runs over the AST, all branches selected or not, *because* an id in an unselected branch would otherwise read as undefined. The measurement one paragraph later unioned instantiations across 2/4/6/8 by seeds 1 to 5 — and a union of instantiations at **Normal** cannot reach a branch gated on **map size**, which is exactly the shape this corpus contains. Three maps have it: `AK_Vanguard_v1.2.rms` declares 6756/6757 inside `if TINY_MAP / elseif … / elseif HUGE_MAP`, `Menindee_AUS_v2.3.rms` declares 9900/9901 inside `if HUGE_MAP`, `OWWC1Tewaipounamu-edited-v1.2.rms` declares 6900/6901 inside `if TINY_MAP`.
+
+Measured both ways at 4 players / Normal / seed 1 over 32 maps. The instantiation union reproduces rev 5 exactly, which is the control that says the instrument works, then:
+
+| declaration side | `actor_area_to_place_in` | `avoid_actor_area` | abstains |
+|---|---|---|---|
+| instantiation union (the approximation) | 11 ids / 12 commands / 4 maps | 59 / 10 maps | 0 |
+| **as Sec.3.2 prescribes** | **5 / 5 / 2** | **37 / 8** | 2 |
+| + descending into shared blocks (B1) | **4 / 4 / 2** | **30 / 7** | 2 |
+| + unioned with S0's own resolved values | **4 / 4 / 2** | **30 / 7** | **1** |
+
+**So the tool's "first real corpus win" is 4 genuine findings across 2 maps, not 12 across 4.** `Pa_Site` 81, 82, 91 and `Menindee` 1000 are declared nowhere in their files by either form; `Pa_Site` 8000 is B1's false positive; the other seven were declarations the approximation could not see. Still a real result, still the tool's first, now stated at its true size — and Sec.3.2 keeps both readings side by side the way Sec.3.1 keeps its 23-against-6, because the gap belongs to the measurement rather than to the check.
+
+**Sec.3.3 already named the first of the three maps, two sections later**, using it to justify a different design point, and nobody carried it back to the paragraph whose baseline it invalidates. Same shape as the hard rule this repo wrote after the `terrain_to_place_on` fix: a fact that overturns one rule is worth pointing at every rule quantifying over the same thing.
+
+Two defects rode along inside rule 2's own justification. It rested "rare enough to be free" on *"only 2 of the 286 declarations write a name rather than a literal"* — a form (a) count, in a section whose own text calls form (b) the larger path; over both forms there are **38 non-literal declaration ids, 2 in form (a) and 36 in form (b)**. And two of the 36 do not resolve, so two maps lost the check outright. The fix is to take the declaration set as the **union of the AST scan and the instantiation's own resolved values** — both sides only suppress, so unioning cannot introduce a false positive, and S0 evaluates math expressions, so `24hr_Caverns.rms`'s `actor_area (AA_TC)` resolves to 1 for free (`#const AA_TC 1`). After it, **one map abstains**: `AK_Vanguard_v1.2.rms`, whose `actor_area ACT_AREA_TEAM_RES_TERRAIN` names a constant no `#const` in the file defines.
+
+### Three findings the round did not reach
+
+- **The reference side is blind to shared blocks too** — 9 `actor_area_to_place_in` and 27 `avoid_actor_area` occurrences — and the fix is *not* symmetric with the declaration side's. Sec.3.2's asymmetry says a reference in an unselected branch cannot fail on this seed; a shared block is not an unselected branch, it **executes**, on whichever command the `if`/`start_random` above chose. So those references belong in the strict half, anchored on the **attribute's own span**, worded to name the reference rather than a command's outcome, since RMS0110 is precisely a record that the owning command is ambiguous. Measured, the clause **adds 0 findings** on this corpus: insurance, written down so a later reader does not mistake the zero for a reason to drop it.
+- **The finding-counting convention was never pinned**, and it is where rev 5's "12" came from: the same run answers **11 by distinct id and 12 by referencing command**. Pinned to (map, id) — one id referenced from three commands is one defect with three rows of evidence. A reporter and a reader could otherwise disagree by one and both be right, which is the quiet way a measured baseline stops being reproducible.
+- **Sec.3's checks are pure over TWO inputs, not one.** Sec.3.1 and Sec.3.4 read only `InstantiatedScript`; Sec.3.2 and Sec.3.3 read the instantiation **and** `ParseResult`, because their suppressing scans run over the AST while their reporting scans run over the instantiation. Sec.7.3 now says so in the signature, so a check that reaches for the AST is visible in its own type and cannot quietly acquire a surface Sec.3.0's soundness argument does not cover. Sec.7.0 gains a fifth item with it: one `walkItems(parse, visit)` that descends into shared blocks, written once, because three scans need it and **nothing in `src/parser/` exports a general item walker today** — three hand-rolled recursions is three chances to forget the `orphanBlock` case.
+
+### Standard and minor
+
+- **The corpus baseline was a 32-map measurement inside a reporter that sees 12 files.** `git ls-files test-maps` returns 11 top-level `.rms` plus `broken/BCC2-Rekawa.rms`; three of the four maps the old error row named are absent from a clone. Sec.8 item 2's table now has two columns, both measured: Sec.3.1 is **2 maps (8 without the exclusion)** against 6 (23), Sec.3.2's error row **1 finding / 1 map** (`Menindee`) against 4 / 2, and the abstention is the same one map either way. This repo had recorded the trap once already (`tools-api-design.md` rev 8) and Sec.8 item 6 applies it correctly while item 2 did not.
+- **Sec.5.4's notes passthrough collapsed nothing and discarded every span.** S0's dominant note is keyed **per span**, so "deduped by `key`" never merges two of them: `Pa_Site_v1.1.rms` produces **134**, `OWWC1Tewaipounamu` 18, `TL Cape of Storms` 15, `W4 - Immersion` 7 — every one a distinct key, one distinct text between them. The prescribed rendering was 134 identical lines. Group by **text**, carry the count and the spans, and emit `severity`/`codeRef` blocks rather than a `text` blob — `text` is the one `OutputBlock` kind carrying no span, and those spans are exactly B1's blind spot, which is what lets the report say *this finding sits next to a block the preview could not read*. Sec.5.4 already had the right instinct one paragraph down, where a per-run varying note becomes a range; one key with many texts becomes a range, many keys with one text becomes a count.
+- **Sec.3.0's map-size row is 11 of 32, not 8.** Re-derived with two independent fingerprints — sorted `(section, command, span)` triples and a plain sorted name multiset — both returning 11, while the other three rows reproduce unchanged (13/32 seeds-watched, 12/32 across seeds 1 to 5, 12/32 across 2/4/6/8), which is the control that says the instrument did not move. Nothing built on it moves and two arguments get stronger: Sec.5.2's case for putting `mapSize` in the header, and Sec.3.3's use of the row as a not-blind control for its 0-of-32 terrain-surface reading (that 0 reproduces). This is the third revision in which the row has been re-derived by a different method, so it now carries its fingerprint in the doc.
+- **Sec.3.2's scale figures were comment-including token scans**, one section after Sec.2 fixed exactly that. Restated with a population per column: through the parser, 284 `create_actor_area` across 15 maps, 742 form-(b) `actor_area` across 30, 2385 references across 30; through the instantiation, 2001 references. Against the token scan's 286 / 919 / 2586. `AK_Vanguard` carries a commented-out `create_object FLAG_A { … actor_area_to_place_in ACT_AREA_MIDDLE_LARGE … }` — a concrete member of the gap. Conclusions unchanged.
+- **An unresolvable *reference* was unspecified, and it is where the corpus's clearest actor-area defect lives.** `AK_Vanguard_v1.2.rms` carries `actor_area_to_place_in ACT_AREA_TEAM_RES_TERRAIN` on **18 `create_object` commands** and the name is defined nowhere; `objects.ts` reads `typeof id === "number" ? (liveActorAreas.get(id) ?? []) : []`, so every one of them **places nothing**, and `validate()`'s 5 diagnostics on that map name none of it. Decided rather than left open: **not a static finding** — an unresolved name in a numeric slot is the parser's territory, and a static finding here would put one claim in two vocabularies. The consequence is that the Monte Carlo layer is the only thing that reports it, at 0% with an `actorAreaMissing` bucket, so **Sec.5.1's suppression rule now says it keys on a PRESENT finding and never on the check's abstention** — phrased as "commands Sec.3.2 has an opinion about", it would erase the row, since Sec.3.2 abstained on the whole script and has no opinion at all. Sec.9 carries the parser question as a follow-up, noting the positive-resolver rule does not forbid it: the evidence is the script's own `#const` table, not absence from reference data.
+- `(AA_TC)` moved from Sec.3.2's reference list to the declaration side, where it is form (b) and the sole trigger of that map's abstention. Sec.3.1 now pins **which** of two readings the filler exclusion tests (the raw pre-division target; 0 of 32 maps flip between the two, which is why it needs a clause rather than a re-measurement later). Sec.4.3's worker sketch stopped inventing a third name for a message the published contract already calls `run`.
+
+### Where the round was wrong, and it was wrong in its own favour
+
+Recorded because a round is audited like the spec it critiques. Its shared-block census reported **195 attributes against a measured 216**, with several per-attribute rows off — `min_distance_to_players` 17 against 21, `second_object` 1 against 15, `actor_area_to_place_in` 8/4 against 9/3 — because it did not descend into `if`/`start_random` nested *inside* a shared block, which `instantiate.ts` drops along with everything else in the block. It said "30+ `create_object` commands" carry the unresolvable reference; it is **18** (26 is the count of every occurrence of that name across all three attributes). And it read rev 5's "12" as an error when it is a counting convention the doc never stated — the real defect is the missing convention, which is now pinned. Every other number in it reproduces, including all four corrected baselines to the unit.
+
+### What rev 6 leaves
+
+No check changed shape, no severity moved and nothing was cut — which is what makes this round different from the last three. What moved is **where each scan reads from**: three scans now descend into a construct the parser has documented since Sec.5.4 and neither of Sec.3's input surfaces represents, one baseline is re-measured against the algorithm it was standing in for, one reporter grew a second population, and one counting convention got written down. Implementation order is unchanged — Sec.7.0's exports first (now five items), then `host.ts`'s `reset()`, the bridge overrides, `read-reference`, the worker runner, `ownsSettingsHeader`, then the checker.
+
+`consistency-checker-design-rev6-review.md` is **deleted**, its findings folded and its reasoning summarised above.
+
+## 2026-08-17 (later) — the rev 7 review round on the consistency checker, as the round itself reported it (folded the same day; see the fold entry below for what survived re-derivation)
+
+`docs/consistency-checker-design-rev7-review.md` is on disk and the design doc is untouched. Folding it is the next session's work, and the round file is deleted at that point per the convention the rev 4 entry set.
+
+**Rev 6's measurement work reproduces to the unit** — all four rows of Sec.3.2's baseline table with their abstention counts and ids, the 29/5/216 shared-block census and every per-attribute row, Sec.3.1's 23-against-6 with all six percentages, Sec.3.0's four variance rows under both fingerprints, Sec.5.4's 134/18/15/7, Sec.2's 1475/1379/471, Sec.3.5's 2891/120, and Sec.8 item 6's zero-marks run with its 10,673-report control. Sec.7.0 item 1's prescribed export compiles clean, as does the checker-side call it exists for. **Four blocking findings survive that and none is a count.** (1) **Sec.4.3's worker sketch does not compile**: it types its inbound message with the published `HostMessage`, whose `context` is the wire form, against `ToolImplementation.run`'s in-process `ToolContext<ParseResult>` — TS2345 at the `InfSentinel` seam; `HostMessage` has zero consumers in the tree, so the worker would be its first instantiation, and parameterising it (verified, EXIT 0) is the fix. (2) **The 30 s cancel grace is the binding deadline and Sec.4.4 prices only the 60 s watchdog**, against the same quantity — cancel is serviced between generations, so latency is one generation, which the doc's own table puts at 24–32 s; the tool gets `killed`, the field the contract calls a verdict on the tool. The Giant multiplier's 1.2–1.6× band was also measured over four heavy maps that exclude the worst map, which is the map it is applied to: re-measured best-of-two, Petra 1.77x and Caverns 1.82x. (3) **Sec.3.3 runs today** — applying the export takes minutes — and its whole corpus output is 2 warnings, **both the wrong class**: `TUNA`/`WATER` and `GOLD`/`DESERT`, where the engine table permits the terrain named and the finding is really `terrainAbsent`, printed at warning severity under the "exact terrain table" provenance. The cause is that Sec.3.3 states its tier-1 test twice and the two forms disagree when `terrain_to_place_on` names a terrain the script never lays down. The rest of the baseline is worth keeping: tier 1 checked 446, tier 2 356, 52 valid-`ignore` skips, 96 unresolvable, 3 info rows that are Sec.3.5's `verified` gate firing exactly where it predicted. (4) **`RawNode` is a third blind spot with no rule anywhere in Sec.3**: 10 of 32 maps carry one, 4 of 32 inside a surface-feeding section, and `Rage Forest 2026.rms` degrades **70.9% of its file** into one `conditional-spans-structure` node — legal RMS per parser-design Sec.5.3 — taking the terrain surface to **0 ids** and all 228 of its `create_object` commands with it, so every check silently passes a script the tool read 29% of.
+
+**The rule the round leaves: a section that has never been run is not protected by the reason it could not be run.** "Blocked on the export" was true when rev 5 wrote it; rev 6 made the export compile, wrote the working form into the doc, and inherited the conclusion without re-pricing the premise. Corollary, now twice in three rounds: when a document computes a number for one constant, check every constant that number bounds.
+
+Standard findings: the static layer has no sanctioned path to a `PreviewSettings` at any player count but the pane's (Sec.7.2's override sits on `runPreviewFromContext`, which returns a result rather than an instantiation) — measured cost today is zero, the static findings are identical at 2/4/6/8; Sec.7.0 item 5's census is wrong, since five hand-rolled item walkers already descend into `OrphanBlockNode`s including `scriptStats.ts` in the checker's own directory; and five live figures in Sec.3.2/3.3 are comment-stripped token scans quoted beside parser-derived ones, of which `beach_terrain` 77/4 against an AST 10/3 is the one that matters, because those 67 missing occurrences are finding (4).
+
+Nothing in the tree was modified to get any of this: the compile probes and the corpus runs were made in a scratch copy with `node_modules` junctioned, and the junction was removed afterwards.
+
+## 2026-08-17 (later still) — the rev 7 fold: three findings accepted as written, one rejected and replaced, two added that the round did not reach
+
+Spec only, no implementation. `consistency-checker-design.md` is at **rev 7**;
+`consistency-checker-design-rev7-review.md` is summarised here and deleted, per
+the convention every round in this series has followed.
+
+**Every claim in the round that could be re-derived here was re-derived, and
+every one reproduced to the unit.** Four of S3's population rows measured
+independently through a fresh AST walk (`replace_terrain` 82/8 against 47/7,
+`beach_terrain` **77/4 against 10/3**, `ignore_terrain_restrictions` 119/14
+against 113/14, `second_object` 295/24 against 290/23); the `RawNode` census
+(10 of 32 maps, 159 nodes, `Rage Forest 2026.rms` at **90,782 of 128,062
+characters, 70.9%**, one parsed section, 67 textual `beach_terrain` against 0
+AST nodes); S2's walker census; and B1's compile error, reproduced with the
+identical TS2345 text. That is the basis on which the round's two unrepeated
+measurements — Sec.3.3's 446/356/52/96 baseline and its two-set-reading zero —
+are folded with their provenance stated rather than re-run.
+
+### B1 — accepted, and verified against the toolchain rather than the text
+
+Sec.4.3's worker sketch types its inbound message `HostMessage & { toolId }`,
+and `HostMessage`'s context is the **wire** form while `ToolImplementation.run`
+takes the in-process one. Written out as a real file in this tree and compiled:
+`TS2345`, `InfSentinel is not assignable to number`, exactly as reported.
+Parameterising the published type
+(`HostMessage<P extends SerializedParseResult = SerializedParseResult>`) takes
+`tsc --noEmit` to **EXIT 0** with nothing else in the repo touched — `grep -rn
+"HostMessage" src/ tools-api/` returns the declaration and nothing else, so the
+type has never been instantiated and no compiler was ever going to object. Both
+edits were reverted and the tree re-typechecked clean; the change belongs to the
+implementing session and lands in Sec.7.2 item 4.
+
+### B2 — accepted, and the side the round left open is picked
+
+Cancel is serviced only between generations (Sec.4.1's chunk rule, `host.ts`'s
+own comment), so cancel latency is one generation — the same 24–32 s Sec.4.4
+computes for the watchdog, against a **30 s** grace. `cancelGraceMs` moves to
+**60 s**, equal to `runWatchdogMs`, on an argument the round did not make: a
+worker runner's `kill()` is `worker.terminate()`, so the run stops either way
+and the only thing the grace decides is whether a cooperative tool is *recorded*
+as having misbehaved — which is what `DEADLINES`' own comment says the constant
+is for, and the reading under which erring long is nearly free. It is an
+amendment to `tools-api-design.md` Sec.4.1, not a local decision. The
+re-measured Giant multipliers (Petra 1.77x, Caverns 1.82x) are recorded beside
+the 1.2–1.6x band as a third reading, not folded as a correction — the repo's
+own rule — and nothing depends on them, since the finding holds at rev 6's own
+numbers. What *is* a real defect in the derivation is that the band was measured
+over four heavy maps excluding `24hr_Petra.rms`, the map it is applied to.
+
+### B3 — accepted, and the falseness checked against the data rather than the run
+
+Sec.3.3 stated its tier-1 test twice in disagreeing forms (surface + table +
+named terrain, against table + named terrain). Both of the round's two corpus
+warnings are false and the reason is in `game-constants.json` directly, needing
+no re-run: **`TUNA`'s restriction-19 row lists terrain 1 (`WATER`)** and
+**`GOLD`'s restriction-8 row lists terrain 14 (`DESERT`)**. Tier 1 now forks —
+named terrain gives two sets, no terrain named gives table against surface,
+worded as the joint claim it is — and Sec.2's framing sentence and Sec.5.1's
+provenance rule both carry the split.
+
+### B4 — the finding is real, the prescribed FIX is wrong in both directions, and it is replaced
+
+The round's rule was *abstain when a raw node sits in a surface-feeding
+section*. Measured here, that rule **abstains on 4 maps whose raw nodes provably
+cannot hide anything** — `Pa_Site_v1.1.rms`'s 128 nodes are each 35 characters
+reading `avoidance_distance CIRCLE_AVOIDANCE`, `TC2 - Comeer`'s three are
+`4056`, `AK_ForeDaut`'s are `elseif 7_PLAYER_GAME` — **and it misses Rage
+Forest, the map it was written about**: that file's 90,719-character node sits in
+`<PLAYER_SETUP>`, not in any surface-feeding section, and the round's own census
+of "4 maps" does not include it.
+
+The replacement is a containment test over the raw node's **own source text**:
+abstain when it contains `terrain` (a substring of all six producer names, so
+its absence *proves* no producer is hidden), `#const` (can change what a terrain
+name resolves to) or `<` (a swallowed section header, which is the Rage Forest
+shape). **Measured: 1 of 32 maps abstains and it is Rage Forest.** The four
+false abstentions are kept as live coverage and the map that matters is caught.
+
+Two things the round did not reach ride along. `TL Cape of Storms.rms` hides an
+entire `create_object GOLD { ... }` in an 864-character node, so the
+**reporting** sides of Sec.3.3 and Sec.3.4 inherit a false negative too, not just
+Sec.3.1's sum. And **the corpus cannot pin this rule**: `Rage Forest 2026.rms`
+is untracked, and both RawNode-carrying maps a clone gets are correctly
+classified harmless, so a corpus assertion passes vacuously on CI — the same
+`.gitignore` trap `tools-api-design.md` rev 8 recorded. Two hand-built fixtures
+instead (Sec.8 item 1).
+
+### Two findings of this fold, both downstream of B3's own argument
+
+**Tier 2 has the identical fork and rev 6 made the identical omission there.** A
+`habitat: "water"` object named onto a dry terrain is a static contradiction the
+surface-only form cannot express; a surface test on a named-terrain command is
+`terrainAbsent` in disguise one tier down. **Run before being written**, per the
+rule three of the last four rounds established: 230 of the 844 resolvable
+`create_object` commands naming a terrain are tier-2 checkable, and the fork
+produces **1 finding on 32 maps**.
+
+**Sec.3.5's readiness gate reads the object's row and a Sec.3.3 finding is a
+claim about a PAIRING.** Rev 6 counted the 120 unverified rows, noted that 116
+are terrain, and set them aside — but tier 2's comparison is
+`habitat(object)` against `isWater(terrain)`, so the terrain row is an input to
+the finding exactly as the object row is. The gate now covers both, which makes
+**tier 2 info rather than warning in practice today** (`isWater` was transcribed
+from the community table on 2026-08-07 and 116 of 131 rows carry
+`verified: false`), lifting per row when the flag is re-extracted. Tier 1 is
+unaffected: it compares ids against ids and reads no gated field.
+
+That is also what the fork's one corpus finding turns out to need.
+`Chaotic_Straitv0.99.rms` places `#const MAKE_WATER_TERRAIN 1641` — unit 1641,
+"Empty building", restriction 4, `habitat: "land"`, `verified: true` — on
+`#const TEMP_POND_TERRAIN 59` = `DLC_NEWSHALLOW`, `isWater: true`,
+**`verified: false`**. Either the line is a real defect the engine passed
+silently or the terrain flag is wrong, and nothing available here decides it;
+Sec.9 carries it with the RMSTEST-style generation that would.
+
+### Standard and minor
+
+S1 accepted — the `playerCount` override moves onto `previewSettingsFromContext`
+with `runPreviewFromContext` passing it through, since the static layer needs a
+`PreviewSettings` and the wrapper returns a `PreviewResult`; the measured cost
+today is zero and Sec.4.1 says so, so the zero is not later mistaken for a
+reason to drop the rule. S2 accepted with its census corrected: **six files
+carrying eight recursions, five of the six descending** (the round said "six
+recursions"; `resourceTotals.ts` alone holds three), and the fork is decided on
+the orphan-flag parameter rather than on any count — checker-local, copying
+`scriptStats.ts`'s shape. S3 accepted: Sec.3.3's producer table gains an AST
+column beside the token scan. M1, M2, M4 and M5 all accepted as one-clause fixes
+— including the reporter control row, which exists because a probe written for
+this series read `.name` off `MAP_SIZES`' plain strings and returned a tidy,
+plausible, entirely wrong **0 of 32**.
+
+### What rev 7 leaves
+
+**A fix prescribed for a finding is a claim in its own right, and it is checked
+the same way the finding was.** Three of the four blocking findings this round
+were correct and their prescribed fixes were correct with them. The fourth was
+correct and its fix was wrong in both directions at once — too broad on four
+maps and too narrow on the one that motivated it — and nothing about the
+finding's own quality signalled that, because the census that supported the
+finding and the rule that acted on it were two different measurements and only
+one had been made. **Measure the rule, not only the defect.**
+
+## 2026-08-17 (later still) — the rev 8 review round on the consistency checker, as the round itself reported it
+
+`docs/consistency-checker-design-rev8-review.md` is on disk and the design doc
+is untouched. Folding it is the next session's work, and the round file is
+deleted at that point per the convention the rev 4 entry set. Nothing in the
+tree was modified to produce any of it: the compile probes and the corpus runs
+ran in a scratch copy of `src/`, `reference/` and `tools-api/` with
+`node_modules` junctioned, reading the real `test-maps/` off disk, and
+`git status --short` is byte-identical before and after.
+
+**Rev 7's measurement work is the most reproducible of the series.** Every
+reference-data figure (3011 / 2672 / 31 / 2666 / 2668, 2891 against 120, the 116
+terrain and 4 object rows with `FISH` and `SHORE_FISH` the two tier-1 ones);
+Sec.2's last row (1475 instantiated `create_object`, 1379 resolvable); Sec.3.3's
+`446 / 356 / 52 / 96` and its **0 warnings as specified**; the tier-2 fork's
+**230**; the whole of Sec.3.2's last baseline row (**4 findings / 2 maps** as
+`Menindee` 1000 and `Pa_Site` 81/82/91, **30 info commands / 7 maps**, **1
+abstention** on `AK_Vanguard`'s three named constants); the shared-block census
+(29 / 5); the `RawNode` census (10 / 159) with `Rage Forest`'s node at 90,719
+characters and the containment rule abstaining on **1 of 32 and it is Rage
+Forest**, keeping all four harmless maps verbatim; four of the five producer-table
+AST rows; and Sec.7.0 item 5's six-files/eight-recursions/five-descending census.
+**Sec.7.0 item 1 and Sec.7.2 item 4 were also applied together and compiled for
+the first time** — the generic `objectEntry` export, `HostMessage<P>`,
+`cancelGraceMs: 60_000` and Sec.4.3's worker sketch written out as a real file
+all at once, `tsc --noEmit` **EXIT 0**.
+
+**Two blocking findings survive that, and both live in one table.** (1)
+**Sec.8 item 2's Sec.3.3 info row is a rev-6 number the rev-7 fork never
+touched.** The fork re-derived the warning row (2 to 0) and inherited `4` in the
+info row of the same table, from the same run — and run under the rev-6
+three-set reading the corpus produces **five** findings, which split exactly
+into the doc's own 2 warnings (`TUNA`/`WATER`, `GOLD`/`DESERT`) and 3 infos.
+Under the reading Sec.3.3 now prescribes, two of those three vanish, because
+they are `SHORE_FISH`/`WATER` and `FISH`/`WATER` on the same map as `TUNA` and
+`WATER` is present in both objects' restriction-19 tables — **the fork's own
+false positives, one severity down, described in Sec.3.3 as "the gate firing
+exactly where it said it would".** Tier 1 as specified produces **one** finding
+on 32 maps: `AK_Namatjira.rms`'s `create_object SHORE_FISH { terrain_to_place_on
+DLC_MANGROVESHALLOW … ignore_terrain_restrictions }`, where the flag carries
+neither prerequisite and is therefore inert, so the pairing really is refused —
+the tool's first true tier-1 corpus finding, and `AK_ForeDaut_v1.3.rms` writes
+the same pairing *with* the prerequisite, so the corpus already contains the
+matched fixture pair. The info row is **2**. (2) **`RawNode` is a blind spot for
+Sec.3.2's declaration side**, which is the only error-severity suppressing scan
+in the document, while Sec.3.0b states that the surface "is the only thing it
+can invalidate". Measured: **88 actor-area ids are declared only inside a raw
+node** (`Rage Forest` 87, `TL Cape of Storms` id 2), and `TL Cape of Storms`
+references its hidden id twice with `actor_area_to_place_in 2` while declaring
+`actor_area 2` exactly once, inside the node — the `Pa_Site` shape one construct
+over. It fires 0 times today only because both referencing commands sit inside
+an untaken `if EMPIRE_WARS`. Sec.3.2 is also the only Sec.3 check carrying no
+`RawNode` sentence at all. The fix is Sec.3.3's own rule shape pointed at the
+other scan: abstain when a raw node's text contains `actor_area`, which abstains
+on 2 of 32 and costs the corpus baseline nothing.
+
+**The rule the round leaves, one turn past rev 7's own: a fix applied to a
+measurement has to be re-applied to every row that measurement produced.** Rev 7
+wrote that a prescribed fix is a claim checked the same way the finding was;
+this round found the fix checked correctly and the *rest of its own table* left
+at the pre-fix values. Third round in a row on that shape — a number computed
+for one of two deadlines, a fork applied to tier 1 and owed to tier 2, and now a
+baseline corrected in one row and inherited in the next.
+
+Standard findings: **"an `OrphanBlockNode` is not an unselected branch, it
+executes"** is false for a majority of this corpus's shared blocks — 16 of 29 are
+nested inside an `if`, and 1 of 29 (`TL Team Acropolis.rms`, inside
+`if REGICIDE`, carrying three `avoid_actor_area` references) is not reached by
+S0 at all, which matters because Sec.3.2's reference side puts shared-block
+references in the strict half on exactly that justification (adds 0 findings
+today); **Sec.7.0 item 5's single walker cannot express the three branch
+policies the document prescribes** — every branch for Sec.3.2's declaration side,
+`if`-as-selected for Sec.3.3's surface, taken-branches-only for the reference
+side — and item 5 decides its copy-or-share fork on the orphan flag alone; and
+Sec.3.3's **96 unresolvable bundles 75 resolution failures with 21 deliberate
+object-group skips** in the one column Sec.8 item 2 has just made a control.
+Minor: the producer table's `base_terrain` 1908 counts every item kind where its
+four siblings count attribute and command nodes (1877 as attributes), and the
+tier-2 fork's denominator `844` measures 843 while its `230` is exact.
+
+## 2026-08-17 (later still) — the rev 8 fold: every finding accepted, all eight re-measured independently, and one error found in the doc that the round missed
+
+Spec only, no implementation. `consistency-checker-design.md` is at **rev 8**;
+`consistency-checker-design-rev8-review.md` is summarised in the entry above and
+deleted, per the convention every round in this series has followed.
+
+**This is the first round in the series where every finding survived
+re-derivation unchanged.** Rev 8's two blocking, three standard and three minor
+findings were each re-measured here through an independent probe rather than
+folded from the round's prose, and all eight reproduce. The probes ran against
+the real tree from a scratch directory outside the repo (vitest pointed at
+`src/parser/parser.ts`, `src/preview/generator/instantiate.ts` and
+`src/preview/generator/grid.ts` by absolute path, reading the real `test-maps/`);
+the repo was not modified.
+
+**The instrument was validated against numbers already trusted before any new
+number was read off it** — this project's own *"an instrument that cannot fail
+loudly has to be checked against a number you already trust"*. The Sec.3.2 probe
+reproduces the doc's own last-row baseline exactly (**4 findings / 4 commands /
+2 maps** error, **30 commands / 7 maps** info, **1** abstention, with the error
+ids `Menindee` 1000 and `Pa_Site` 81/82/91), and the Sec.3.3 probe reproduces
+**1475 instantiated `create_object` / 1379 resolving a row** and the
+**446 / 356 / 52 / 96** baseline. Both were built before their findings were
+read.
+
+### B1 — accepted, and run rather than inferred
+
+Sec.3.3's info row was **4** in the doc and measures **2**. Both blocking halves
+check out against the data directly: `WATER` (id 1) **is** in `SHORE_FISH`'s and
+`FISH`'s 15-terrain restriction-19 rows, so under tier 1 as specified — a named
+terrain is the pure engine-table question — `AK_Six_Points`'s two info findings
+are the identical false positive the tier-1 fork was written to eliminate, one
+severity down from `TUNA`/`WATER` on the same map. Run as specified, the whole
+static terrain check emits **2 findings, both info**:
+
+```
+TIER1 AK_Namatjira.rms [tracked]: SHORE_FISH on DLC_MANGROVESHALLOW (id 54)
+      - objVerified=false => info (inert ignore_terrain_restrictions)
+TIER2 Chaotic_Straitv0.99.rms [tracked]: MAKE_WATER_TERRAIN (land) on
+      DLC_NEWSHALLOW - objVerified=true terrainVerified=false => info
+```
+
+The surviving tier-1 row is the tool's **first true corpus finding** and not a
+gate artefact: `AK_Namatjira.rms:4865` carries `ignore_terrain_restrictions` with
+neither `set_place_for_every_player` nor `place_on_specific_land_id`, so the flag
+is inert (BUG-007), and 54 is a shallow that restriction 19 refuses. **The corpus
+contains the whole fixture triple, written by two authors** —
+`AK_ForeDaut_v1.3.rms:2041` places `SHORE_FISH` on `WATER` bare (permitted) and
+`:2048` writes the same `DLC_MANGROVESHALLOW` pairing with
+`place_on_specific_land_id 1` (valid override, correctly skipped). Sec.8 item 1
+now takes the triple from the corpus rather than hand-building it.
+
+### B2 — accepted, and the prescribed fix priced by running it, not by reasoning
+
+**88 actor-area ids are declared only inside a `RawNode`** — reproduced exactly:
+`Rage Forest 2026.rms` 87 (`actor_area 20000` through `20086`),
+`TL Cape of Storms.rms` id **2**, inside an 864-character node opened by a
+malformed `elseif`, with `actor_area_to_place_in 2` on two later ordinary
+commands. Sec.3.0b's sentence *"the surface is the only thing it can invalidate"*
+is withdrawn.
+
+**The fix was measured with the check run both ways, because a prescribed fix is
+a claim in its own right — and it costs nothing.** Adding the abstention leaves
+both finding rows byte-identical (4/4/2 and 30/7) and moves only the abstention
+count, **1 to 3**. Rather than bolt a second containment test onto Sec.3.2,
+Sec.3.0b now owns the *shape* (a lexical containment test over the raw node's own
+text, abstaining direction only) and each scan names its own token in its own
+section: `terrain`/`#const`/`<` for Sec.3.3's surface (1 of 32), `actor_area` for
+Sec.3.2's declaration side (2 of 32). Sec.3.2 also gains the note that a hidden
+`#const` needs no clause, since S0 cannot see it either and the reference then
+resolves to no number.
+
+### S1, S2, S3 and the minors — all accepted, all re-measured
+
+**S1** reproduces to the unit: 29 shared blocks, **16 nested inside an `if`
+branch** (`Pa_Site` 6/6, `TL Cape of Storms` 9/12, `TL Team Acropolis` 1/2), and
+exactly **1 not reached by S0** at 4p/Normal/seed 1 — `TL Team Acropolis.rms` at
+offset 56719, tested by the presence of its own `unsimulated:<start>-<end>` note.
+So *"an `OrphanBlockNode` is not an unselected branch: it executes"* is false for
+a majority of this corpus's blocks, and the reference side's strictness rested on
+it. The filter removes 0 findings today (the unreached block's three ids are
+declared elsewhere in that file) and is written down with its zero, like the two
+clauses beside it.
+
+**S2** accepted with the review's own cheaper option taken: Sec.7.0 item 5's
+walker becomes **unconditionally generous with every caller filtering**, since
+the alternative — teaching it which `if` branch was *selected* — couples a pure
+AST walk to S0's answer. The fork argument is restated over the parameter set
+(orphan flag **and** enclosing construct kind) rather than the orphan bit alone.
+
+**S3** reproduces exactly: 96 = **75 resolving to no row + 21 naming a
+`create_object_group`**, and 1475 − 1379 = 96 closes the other way. Split into
+two rows, because the object-group row is the control that goes to 0 the day
+someone "improves" the check into the per-member test Sec.3.3 forbids by name.
+
+**M1** reproduces: `base_terrain` measures **1877** as `AttributeNode`s and
+**1908** over every item kind, where its four siblings are attribute/command
+counts. The doc now says which instrument the row used *and* that 1908 is the
+right number for a surface walk, since a `base_terrain` classified another way is
+still terrain the script lays down.
+
+**M2** is bigger than one unit once the convention is pinned. The same run
+answers **843** (resolves a row and names a resolving terrain) and **801** (the
+same, after the 52 valid-`ignore` skips the baseline table removes before either
+tier sees a command); the doc had published **844**, which is neither. Pinned to
+**801** — the population the two tiers actually divide — the way Sec.3.2 pinned
+`(map, id)`. **M3** folded: "2 warnings" was that run's output *at one severity*,
+not its output.
+
+### The finding this fold added, which the round did not reach
+
+**`Chaotic_Straitv0.99.rms` is TRACKED, and Sec.8 item 2 said it was not.**
+`git ls-files test-maps` returns it by name — `.gitignore` whitelists it on line
+50 — and `AK_Namatjira.rms` arrives through `!test-maps/AK_*.rms`. So **both** of
+the corrected info row's findings are on maps a clone gets, and that row goes
+from *"measure on the first CI run"* to the most reproducible row in the table:
+**2 / 2**. The neighbouring `avoid_actor_area` clone cell was also left as
+"fewer; measure on the first CI run" and needed no run at all — Sec.3.2 is
+per-script, so a per-map count does not depend on what else is on disk; it is
+**14 commands / 2 maps** (`AD4 - Ra` 3, `Chaotic_Strait` 11).
+
+**This document has now made the tracked/untracked mistake in both directions** —
+`tools-api-design.md` rev 8 recorded calling 32 maps "tracked" when a clone gets
+12, and this round found a tracked map called untracked, which is the direction
+that silently *under*-sells CI coverage and so never gets challenged by a red
+run. The rule written into Sec.8: run `git ls-files`, never reason from a map's
+name or its provenance.
+
+### What rev 8 leaves
+
+**The round's own rule, which the fold confirms rather than extends: a fix
+applied to a measurement must be re-applied to every row that measurement
+produced.** Rev 7 forked tier 1, re-ran the warnings, wrote 0, and inherited 4 in
+the info row of the same table one line down. That is the third round in a row on
+one shape — a number computed for one of two deadlines it bounds, a fork applied
+to tier 1 and owed to tier 2, and now a table corrected in one row and inherited
+in the next.
+
+**The fold's own rule is one the series has not stated: a round that reproduces
+perfectly still has a blind spot, and it is whatever the round and the document
+both take on trust.** Every one of rev 8's eight findings survived independent
+re-measurement — the first clean sweep in the series — and the document still
+carried a false claim about which files a clone gets, in the same table the round
+was auditing, because both the round and four prior revisions read "untracked" as
+a property of a map rather than as the output of one command.
+
+## 5.2 design — the rev 9 critique round (2026-08-17, evening)
+
+Review only, spec unchanged. Full write-up in
+`docs/consistency-checker-design-rev9-review.md`.
+
+**No blocking finding, and the reproduction rate is the result.** Every
+published figure the round could re-derive reproduces to the unit, across six
+throwaway Vitest probes and the compiler: the reference data in full, Sec.2's
+1475 / 1379 / 471 and its 47 = 25 + 22 split, Sec.3.0b's 29 blocks / 5 maps /
+216 attributes **and all ten rows of its attribute table**, the `RawNode` census
+and both abstention rules landing on exactly the named maps, Sec.3.1's 6-of-32
+against 23-of-32 with all six ratios and 0 pre-versus-post flips, Sec.3.2's
+4 / 4 / 2 and 30 / 7 with three abstentions and 38 = 2 + 36 non-literal ids,
+Sec.3.3's 446 / 356 / 52 / 75 / 21 with **0 warnings and 2 infos** on the two
+named findings, `base_terrain` at 1877 attributes + **31 commands** = 1908,
+Sec.5.4's 134 / 18 / 15 / 7, and the clone column in every row. Both prescribed
+toolchain fixes were written out as real files and compiled: the rev-6 worker
+sketch produces the quoted TS2345, the parameterised `HostMessage` compiles it
+away with no cast, and the generic `objectEntry` serves both row types from one
+declaration. `tsc --noEmit` EXIT 0 before and after, tree restored, probes
+deleted.
+
+**The three findings are all one kind: a true measurement wearing the wrong
+label**, which is the class neither a re-measurement nor the compiler can reach.
+(1) **Sec.3.3 pins 801 as "the population the two tiers actually divide"** and
+the tiers divide **802** (446 + 356); 801 is the terrain-naming population after
+the valid-skip removal, the two differ by one **by coincidence**, and the
+intersection is **492** — so the no-terrain-named half of each tier serves 310
+checked commands the sentence implies do not exist, which is the whole audience
+for the six-producer surface, the beach pass and the `RawNode` abstention.
+Sec.8's own reporter control already says 802, so two sections quote one slot
+with two numbers. (2) **`cliffs.ts:282` mints `ZERO_SPAN`** when
+`<CLIFF_GENERATION>` instantiates to zero commands — **live on 2 of 32 maps, one
+of them tracked (`sample.rms`)**, and an empty header is the idiom for default
+cliffs rather than a degenerate script — so Sec.5.1's "slice `ctx.source` at
+`commandSpan`" yields `""` against its own "the source slice always exists", and
+`rowSpans` jumps the Code tab to offset 0. `OutputBlock.rowSpans` is already
+typed `(Span | null)[]`, so the affordance exists and Sec.8 can pin it as a
+corpus assertion. (3) **Sec.2's standing warning and Sec.9's follow-up describe a
+schema defect fixed 2026-08-16 13:31**, a day before the fold: the quoted clause
+is at git HEAD only, the working tree's replacement states 2666-against-31 and
+cites this design doc by section, and `check:generated-types` is green.
+
+**The rule the round adds, one tier below rev 7's.** A *warning about a defect*
+decays exactly like *the reason a section could not be measured*, and it decays
+faster, because a warning invites nobody to re-run anything — its whole form is
+"we checked this, do not check it again". Rev 8 re-derived every count in the
+document and did not re-read the one file its own Sec.2 tells the reader to go
+and read. The standing-check extension: for every figure the document **pins** —
+a denominator, a control, a convention — state the predicate it counts in the
+same sentence as the number, and check that two sections quoting one figure
+quote the same predicate.
+
+Three minor items also recorded: `rowSpans` is a block-level array rather than a
+per-row property (Sec.5.1); Sec.8's placeholder fixture needs its
+`#const FISH_PLACEHOLDER 647` line or it tests case 3, and the resolved row's
+`habitat: "any"` rather than the `second_object` rule is what silences it today;
+and Sec.7.0 item 5's grep returns 11 non-test files, not six.
+
+## 2026-08-17 (last) — the rev 9 fold: all three findings and all three minors accepted, every number re-measured, and one arithmetic error the round inherited from the doc
+
+Spec only, no implementation. `consistency-checker-design.md` is at **rev 9**;
+`consistency-checker-design-rev9-review.md` is summarised in the entry above and
+**deleted**, per the convention the rev 4 entry set. Nothing in `src/` changed.
+
+**Every finding was re-derived before folding rather than transcribed**, through
+one throwaway Vitest probe written inside `src/preview/__tests__/` so imports
+resolved against the real modules, run with `--disableConsoleIntercept`, and
+deleted afterwards. `git status` is unchanged from the pre-fold state and no
+tree-restoring command was used.
+
+### S1 — the denominator, accepted, plus an error the round reproduced rather than caught
+
+The probe replicated `objectEntry` verbatim from `objects.ts:280-304` and
+imported `resolveTerrainId` from `grid.ts` rather than reimplementing it, at 4
+players / Normal / seed 1 over the 32 maps. **Every figure reproduces to the
+unit**: 1475 `create_object`, 1379 resolvable, **843** naming a resolving
+terrain, **52** valid `ignore_terrain_restrictions` skips, tier 1 **446**, tier 2
+**356**, checked **802**, intersection **492**, and the no-terrain-named halves
+at **182** and **128**. So the round is right: the doc pinned 801 as "the
+population the two tiers actually divide" and the tiers divide 802, with Sec.8's
+own control row already carrying the right number two sections away.
+
+**The half neither the doc nor the round checked is the subtraction.** Both
+write *"with the 52 valid `ignore_terrain_restrictions` skips removed … the same
+run answers 801"*, and 843 − 52 is **791**. Measured, only **42 of the 52** name
+a resolving terrain, so the real arithmetic is 843 − 42 — and a reader checking
+the sentence as written lands on 791 and concludes the run is broken. This is
+the round's own headline rule turned on the round: it re-derived both endpoints
+and never ran the operator between them. Sec.3.3 now carries a four-row table
+with the predicate in the row beside every number, and states the 42 explicitly.
+
+Sec.3.3 also now says what the 310 no-terrain-named commands *are*: **38% of the
+check's own traffic**, and the entire audience for the six-producer surface
+table, the `beachTerrainFor` pass, the shared-block descent and the `RawNode`
+abstention. That is the cost of the mislabel — not the unit, but a later
+revision reading the sentence literally and finding that machinery has no
+constituency.
+
+### S2 — `ZERO_SPAN`, accepted, and it is the only finding that reaches a user
+
+`cliffs.ts:282` reads `commands[0]?.span ?? ZERO_SPAN`, and `applyCliffs`
+returns early only when `<CLIFF_GENERATION>` is **absent**. Measured over the 32
+maps: the section is present-but-empty on exactly **2**, `sample.rms` (tracked)
+and `24hr_Holler.rms`, and both emit
+`{ commandSpan: {0,0}, attempted: 4, placed: 4, failures: [] }` — a healthy row
+about four real cliffs. `source.slice(0, 0)` is `""` and the prescribed
+`entity` fallback is conditioned on the row having failures, which this row does
+not, so Sec.5.1's two prescriptions both fail on it and the Code-tab jump lands
+at offset 0 silently.
+
+**Three maps that look empty in the text are not**, which is worth recording
+because it is the shape a careless census gets wrong: `24hr_Mont Saint Michel`,
+`AK_ForeDaut_v1.3.rms` and `AK_Namatjira.rms` all write
+`/* <CLIFF_GENERATION> */`, so the section is absent and the early return fires.
+The 2-of-32 figure is the parse's answer, not the grep's.
+
+Sec.5.1 gains a subsection: a report whose `commandSpan` is `{0,0}` carries
+**`null`** at its position in `rowSpans` and takes its label from the stage. The
+contract already had the affordance — `rowSpans?: (Span | null)[]` — so this is
+one clause, not a contract change. Sec.8 item 2 gains a corpus assertion (no row
+may carry `{0,0}` or an empty Command cell) rather than a fixture, because
+`sample.rms` is one of the 12 files a clone gets and trips it today, so the
+assertion cannot pass vacuously. A mutant is listed in item 6.
+
+### S3 — the stale standing warning, accepted, and rewritten rather than deleted
+
+Confirmed: `reference/schemas/game-constants.schema.json` is modified in the
+working tree, the `terrainRestrictionId` description now states 2666-rows-carry-
+the-id against 31-carry-`allowedTerrains`, and `allowedTerrains`'s own
+description leads with "PRESENT ON 31 OBJECT ROWS ONLY, NOT ON THE ROSTER" and
+cites this design doc by section. Sec.9's bullet loses its schema half.
+
+**Sec.2's paragraph was not deleted, and that is a deliberate departure from the
+round's prescription.** The round treats the paragraph as a false warning to
+remove. The *claim* is false and is gone; the *rule* it was written to carry —
+read the data, not the comment — is why the paragraph exists, and it now records
+its own instance as discharged plus the round's observation that a warning
+decays faster than a measurement because its form is "we checked, do not check
+again". A warning that was true, went stale, and was deleted teaches nothing;
+one that records the decay is the cheapest kind of entry in this document.
+
+### The three minors, all accepted, one of them larger than filed
+
+**M1** (`rowSpans` written as a per-row property) folds into the same clause as
+S2; the contract quoted verbatim. **M3**: `grep -rn "orphanBlock" src/` returns
+**11 non-test files**, not six — six is the count of `Item[]` recursions among
+them, which is what the rest of the sentence says and what the argument needs,
+so the fix is the two words that make it survive being quoted alone.
+
+**M2 is the one worth reading.** `FISH_PLACEHOLDER` is **not** an `rmsConstant`
+in `game-constants.json` (zero rows); it reaches a row only through
+`Menindee_AUS_v2.3.rms:38`'s own `#const FISH_PLACEHOLDER 647`. Without that
+line the prescribed fixture falls to case 3 and passes trivially. With it, unit
+647 is `HRICH_D`, restriction 0, `habitat: "any"`, no `allowedTerrains` — so
+tier 1 never applies and tier 2 skips by habitat, and **the `second_object` rule
+is not what makes the fixture silent**. It still goes red for its intended
+mutant, so it works; it just pins less than its own sentence claims. The fixture
+now carries the `#const` and asserts **tier-skipped** rather than
+merely finding-free. Checked while confirming this: the idiom in the doc is
+real, not paraphrased — `Menindee:1980` writes
+`create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW … second_object
+FISH }` literally.
+
+### What rev 9 leaves
+
+**The round's rule, which the fold extends by one word.** For every figure the
+document pins, state the predicate it counts in the same sentence as the number,
+and check that two sections quoting one figure quote the same predicate. The
+extension: **and run the operator between them**. Both the document and the
+round published 843, 52 and 801 in one sentence joined by "minus", four
+revisions apart, and neither subtracted. A predicate stated beside a number is
+half the check; the other half is that the arithmetic connecting two pinned
+numbers is itself a claim.
+
+**The state of the series.** Rev 8 was the first round where every finding
+survived re-measurement; rev 9 is the second, and this fold found one error the
+round missed, exactly as the rev-8 fold did. Both misses were arithmetic or
+provenance riding underneath a correctly measured number, which is now twice —
+the shape to look for in rev 10 is not another count.
+
+## 5.2 design — the rev 10 critique round (2026-08-17, evening)
+
+Review only, spec unchanged at the time. The round file
+(`docs/consistency-checker-design-rev10-review.md`) is summarised here and in the
+fold entry below, and **deleted**, per the convention the rev 4 entry set.
+
+**One blocking finding, and it is the first in three rounds that a user hits on
+an ordinary map.** Sec.5.1's spawn rate is `Σ placed / Σ attempted`, and
+`Σ attempted` is **0 on 467 of the corpus's 8095 `CommandReport`s across 30 of 32
+maps** — every one a command that placed nothing on purpose. `0 / 0` is `NaN`,
+`(NaN * 100).toFixed(1)` is `"NaN"`, and the Worst player count column beside it
+is worse: every comparison against `NaN` is `false`, so a `reduce` keeps whatever
+was folded first and prints it as a measured worst case.
+
+Three standard findings: rev 9's `ZERO_SPAN` fix keyed on the **symptom rather
+than the predicate**, repairing the 2 maps where the borrow came back empty and
+leaving the same wrong label on the 5 where it succeeded (S1); Sec.3.3's terrain
+surface never pins **how a producer's NAME resolves**, where Sec.3.2 pins the
+identical question in three explicit rules one section earlier (S2); and tier 1's
+fork is a **binary over a three-state population**, with the third state live on a
+tracked map and mis-labelled inside the pinned table rev 9 built to stop exactly
+this (S3). Three minors: the 230/228 pair is one figure with two predicates
+(M1); `ToolRunner.start`'s parameter is named `contextJson` and Sec.4.3's whole
+argument depends on it not being JSON (M2); and Sec.4.1's "3011-row index" is a
+scan of 3011 producing an index of 2672 (M3).
+
+**Reproduction rate: everything the round re-derived reproduced, and that is now
+the third round running.** Independently re-derived in the fold below: 1475 /
+1379, tier 1 446, tier 2 356, the 52 valid skips with 42 of them naming a
+resolving terrain, case 3 75 / 21, the 843 / 801 / 802 / 492 table, the
+`ZERO_SPAN` census at 2 of 32, and the surface pricing with both its controls.
+
+## 2026-08-18 — the rev 10 fold: all seven findings accepted, and the blocking one re-measured into a different fix
+
+Spec only, no implementation. `consistency-checker-design.md` is at **rev 10**;
+`consistency-checker-design-rev10-review.md` is summarised in the entry above and
+**deleted**. Nothing in `src/` changed. One new bug filed
+(`docs/known-issues.md` BUG-015).
+
+**Every finding was re-derived before folding**, through four throwaway Vitest
+probes written inside `src/preview/__tests__/` so imports resolved against the
+real modules, all deleted afterwards. Where the round and the tree disagreed the
+tree won, and on the blocking finding it won in the way that changes the fix.
+
+### B1 — the division with no domain: accepted, and the round's census of it is wrong in the half that decides the repair
+
+The mechanism reproduces exactly: **8095 reports, 467 with `attempted: 0`, on 30
+of 32 maps** — S6 **462** on 29 maps, S5 **4** on 3, S2 **1** on 1. The round
+then described all 467 as *"an early return carrying a failure bucket"* and
+listed six such paths in `objects.ts`. Measured by bucket, that is not what the
+population is:
+
+- **`actorAreaMissing` 242, `landMissing` 203, `gaiaOnlyRequired` 17** — and
+  242 + 203 + 17 = 462, so every S6 row carries exactly one bucket and the
+  decomposition is complete.
+- **The largest population is not an early return at all.**
+  `buildCandidatePredicates` returns `undefined` when `actor_area_to_place_in`
+  names an id with no live areas (`objects.ts:1079`) and the frame loop
+  `continue`s (`:1498`) **without incrementing `attempted`**, so a command whose
+  every frame misses that way reaches 0/0 through the ordinary path. A fix
+  written against the round's six early returns repairs 220 rows and leaves 242.
+- **Two of the round's six fire zero times on this corpus** — `noValidTiles` and
+  `minExceedsMax` — so `minExceedsMax` being "the Monte Carlo twin of Sec.3.4's
+  only surviving static check" is a **fixture** obligation, not the live corpus
+  pairing the round presented it as. Sec.5.1 says so in those terms and Sec.8
+  item 1 carries the fixture.
+- **5 of the 467 carry no failure bucket at all**, which the round's prescription
+  (*"print the failure buckets"*) prints as an empty cell: `elevation.ts:393`
+  (a `create_elevation` whose `MaxHeight` is ≤ 0) and `connections.ts:784` (a
+  `create_connect_to_nonplayer_land` neutralised by the documented engine bug,
+  which at least emits a `SimulationNote`).
+
+So the rule folded is stronger than the one filed: a zero-attempt row prints an
+explicit non-numeric cell rather than a percent **and never `0%`** (a
+measurement, against the absence of one), is excluded from the worst-player-count
+minimum, and **must still state a reason** — from its buckets where it has them
+and from its stage where it does not.
+
+**One consequence neither the doc nor the round had: the suppression rule and
+this rule intersect on an empty row.** 242 of the 467 carry `actorAreaMissing`
+and nothing else, and Sec.3.2's suppression removes exactly that bucket from a
+command already carrying the static finding — leaving no rate *and* no bucket,
+an entity name beside four empty cells. Sec.5.1 now says the suppression
+**replaces** the bucket with a pointer to the static finding. A suppression that
+empties a row is a silent drop.
+
+### S1 — the borrow, accepted as filed
+
+`applyCliffs` emits **exactly one report per section on every path**, with
+`commandSpan = commands[0]?.span ?? ZERO_SPAN` (`cliffs.ts:282`), so no S3 report
+has a command of its own by construction. Measured over the 32 maps: the section
+is absent on **25**, present-but-empty on **2** (the `{0,0}` case rev 9 fixed),
+and present with ≥1 command on **5** — where the borrow **succeeds** and the row
+silently claims to be a per-command row for a standalone attribute. The five and
+their labels: `24hr_Bazi is God` and `Pa_Site_v1.1` (`cliff_type CLIFF_TYPE`),
+`OWWC1Tewaipounamu-edited-v1.2` (`min_number_of_cliffs 5`), `AK_Six_Points_v1.4`
+and `QS_Three_Bays_v1.1` (`min_number_of_cliffs 21` — the round's illustration
+said 20). The rule now sits on the **stage**: S3's row always takes its label
+from the stage, keeps the borrowed span in `rowSpans` where one exists and
+`null` where it does not, and the `{0,0}` test is demoted to a backstop
+assertion in Sec.8 item 2.
+
+### S2 — the symbol table, accepted, priced at zero, and one population the round did not separate
+
+Reproduced to the unit under all three readings, over **10,325** producer
+occurrences (the round said 10,294; the gap is which producers the walk counts,
+and every per-reading figure below matched): unresolved **271** under the
+instantiation's own `symbols`, **228** adding an AST-wide numeric `#const` scan,
+**183** also following `#const NAME OTHER_NAME` aliases. Pricing and controls
+reproduced exactly too: **0 findings under all three readings**, against **309
+findings on 28 maps** with an emptied surface and **23 on 8** with a GRASS-only
+surface. `24hr_Battle Lines 1.0.rms` loses 50 of its 67 occurrences and its
+surface is 5 ids against reading C's 11; `TL Black Forest.rms` loses 88 of 180,
+53 of which survive every reading.
+
+**The 183 are not aliases and no symbol-table choice reaches them** — they are
+names *no script defines anywhere*: `LAYER_A` ×41, `PLACEHOLDER_TERRAIN_A` ×36,
+`CESTA`, `MELCINA`, `FE_PLEASE_FIXED_CRACKED_SAND`. That is the population
+clause 2 exists for, and the round folded it in with the recoverable ones.
+Sec.3.3 now carries the three clauses (union the symbol tables; abstain from the
+surface-half checks where a script loses a large fraction of its producers;
+decide the alias case out loud) with the third deferred to BUG-015.
+
+**BUG-015, which is a preview defect before it is a checker one.** `#const
+TERR_CORNER GRASS2` is legal RMS; `instantiate.ts` keeps only numeric `#const`s
+(`:446-449`), so `terrains.ts` reports **97 `terrainAbsent` failures across the
+two maps** with a detail reading *"This map's reference data doesn't know the
+terrain TERR_CORNER"* — a false statement about data that holds `GRASS2` as id
+12. Most of Battle Lines' terrain is not painted at all.
+
+### S3, M1, M2, M3 — accepted, every number reproduced
+
+Tier 1 splits **264 / 1 / 181** and tier 2 **228 / 0 / 128**, so the fork's
+missing third arm is live: `24hr_Battle Lines 1.0.rms`'s `create_object STONE
+{ terrain_to_place_on TERR_CORNER }` against `#const TERR_CORNER GRASS2` at
+`:99`. Both branches cost 0 findings today, so the price is entirely in what a
+later revision is licensed to do with a two-armed fork. Rev 9's own pinned "182
+naming no terrain at all" was a **complement written down as a predicate**, and
+`264 + 228 = 492` and `182 + 128 = 310` close whichever side the odd command
+falls on, which is why nobody saw it. M1: **230 before the valid-skip and 228
+after**, both counters run in one pass. M2: `host.ts:43`/`:129` declare
+`contextJson: unknown`, `ToolsPane.tsx:136` passes the live `ctx`, `host.ts:350`
+forwards it unserialised — the clause sits in Sec.7.2 item 3 because renaming the
+parameter is 5.1's. M3: 3011 rows scanned, **2672** indexed
+(`objects.ts:284` skips every non-`object` category).
+
+### What rev 10 leaves
+
+**The rule this round adds, and it is about formulas rather than about numbers.**
+Rev 9's rule was *state the predicate beside the number, and run the operator
+between two numbers you publish*. Rev 10's: **a formula published in a spec
+states its domain in the same sentence, or the first degenerate input prints as
+confident output.** `Σ placed / Σ attempted` was reviewed three times for
+honesty — sample size, "worst" being a claim about this run — and never once for
+whether the denominator could be zero. The tell is a spec that reasons about what
+a number *means* without ever reasoning about when it *exists*.
+
+**And the fold's rule, which is the third fold in a row to earn one.** A round
+that reproduces every number can still mis-describe the **population** behind
+one, and a mis-described population produces a fix aimed at the wrong half of
+it — here, six early returns accounting for 220 of 467 rows while the unlisted
+ordinary path accounts for 242. Rev 8's fold found an arithmetic error under a
+correct number, rev 9's a provenance error under one; this one found a
+**taxonomy** error under one. Re-derive the decomposition, not just the total.
+
+## 5.2 design — the rev 11 critique round (2026-08-18)
+
+Round file: `docs/consistency-checker-design-rev11-review.md`. Spec only; nothing
+in `src/` changed. Probes lived in `src/preview/__tests__/` and were deleted; two
+source files were patched to compile a prescription and restored from copies (no
+tree-restoring command). `tsc --noEmit` EXIT 0 before and after, `git status`
+unchanged.
+
+**Two blocking findings, both in Sec.5.1's new zero-attempt subsection, and both
+are the rev-10 fix producing a second instance of the defect it closed.**
+
+- **B1 — the Worst-player-count exclusion.** Measured over 32 maps × 2/4/6/8 at
+  Normal/seed 1, keyed by `(map, stage, span)`: **8358 rows, 402 zero-attempt at
+  every count, 65 zero at some counts and rated at others, 7891 never zero.** All
+  **65** carry the identical pattern `N000` — a rate at 2 players, `attempted: 0`
+  at 4, 6 and 8 — across 7 maps, **3 of them tracked** (`AK_Six_Points` 15,
+  `AK_Hourglass` 13, `Menindee` 10 = 38 rows on CI). Excluding the zero counts
+  from the minimum makes "worst" resolve to **2**, the only count the command
+  works at, and the Spawn rate column (defined as the rate *at the worst count*)
+  then prints a healthy percentage on a command that attempts nothing at three
+  quarters of the matrix. The `NaN` version failed in a cell that looks broken;
+  this one fails in a cell that looks measured. Sec.8's second corpus assertion
+  passes as written, because `2` is a player count in the run's own matrix.
+- **B2 — the 5 bucketless rows.** The doc attributes them to `connections.ts:784`
+  (the engine-bug early return) and says that path "at least emits a
+  `SimulationNote`". Measured: **`connectionBlockedByBug` fires 0 times across 32
+  maps × 2/4/6/8.** All four S5 rows come from `:858`'s ordinary path with
+  `pairs.length === 0`; **three of the four are not
+  `create_connect_to_nonplayer_land`** (`sample.rms` — tracked — and
+  `TL Black Forest` write `create_connect_all_players_land`, the latter also
+  `create_connect_teams_lands`); and **none carries a note at its own span**. So
+  the rule's third clause ("say why … from the stage — a connection the engine
+  bug neutralises") makes the tool print a specific, confident, wrong diagnosis
+  on a tracked map. Real mechanism is `resolvePairs` returning an empty pairing,
+  which is a better finding and true of all four. Sec.8 item 1's fixtures cover 1
+  of the 5. Population is 5 at 4/6/8 players and **3 at 2**.
+
+**Standard.** S1: four surviving paragraphs (`:798`, `:2434`, `:2463`, `:3273`)
+still say these rows report "at 0%", against the new rule at `:2311` and a
+prescribed red mutant at `:3200`; two of the four are inside Sec.5.1. S2: the
+suppression's measured reach is **4 rows** (`Menindee` 1000, `Pa_Site` 81/82/91),
+stated beside 242 — and CREATION_PLAN 5.2's own rev-10 summary has already taken
+the 242 literally. S3: Sec.5.4 tells the report to carry a group's **spans** in
+`severity`/`codeRef`, which hold one each; `table.rowSpans` is the only kind that
+holds many, and `Pa_Site` has one group of **134**. S4: Sec.5.4's census is the
+`unsimulated` family only — the largest groups on this corpus are
+`AK_Namatjira` **77** (`terrainMaskApproximated`) and `QS_Three_Bays` **69**
+(tile-shuffling), and notes per map reach **184**, against Sec.4.5's "8-block
+output".
+
+**Minors.** `CLAUDE.md`'s Phase 5 cell still says rev 9; `objects.ts:1498` is the
+loop header and the `continue` is `:1509`; Battle Lines `:98-107` holds four
+numeric `#const`s among the aliases; the zero-attempt census is pinned at 4
+players and 2 players measures **402 of 8125 / 29 maps / 251 / 128 / 20 / 3
+bucketless**.
+
+**What reproduced — the most of any round in this series.** 8095 / 467 / 30 maps;
+462 / 4 / 1 by stage; 242 / 203 / 17 with one bucket per row; the five bucketless
+triples; the S3 census 25 / 2 / 5 with all five borrowed lines and only 7 S3
+reports corpus-wide; BUG-015's **97 = 24 + 73**; the producer table's five AST
+rows (1908/31 as 1877 attributes + 31 commands, 6505, 1855, 47, 10) summing to
+exactly **10,325**; all six reference-data counts (3011 / 2672 / 31 / 2666 / 2668
+/ 2891 / 120 = 116 terrain + 4 objects); and, re-derived through Sec.7.0 item 1
+applied to this tree, **the entire Sec.3.3 census** — 1475 / 1379 / 75 / 21 / 52
+of which 42 name a resolving terrain / tier 1 **446 [264, 1, 181]** / tier 2
+**356 [228, 0, 128]** / 843 / 802 / 492 / 310, and **230 before the skip against
+228 after**. Run as specified it emits **0 warnings and 2 info**, and they are the
+two the doc names. Every code citation resolves. Both toolchain prescriptions
+re-verified on today's tree: `HostMessage<P>` plus the Sec.4.3 sketch written out
+as a real file goes to **EXIT 0** (TS2315 without the parameter), and Sec.7.0
+item 1's exact form compiles to **EXIT 0** with nothing else touched. Checked and
+cleared: **0 cross-stage span collisions and 0 duplicate `(stage, span)` pairs**,
+so Sec.4.2's `commandSpan` key is safe against Sec.5.1's per-stage tables.
+
+**The rule this round leaves: a rule written to stop a column lying has to be
+evaluated against the rows it will now govern, not only against the rows that
+made it necessary.** Rev 10 measured 467 rows three ways and prescribed an
+exclusion correct for the 402 it measured; the 65 it had no number for get the
+same column lying again, better disguised. **And the check that would have caught
+B2 for free: when a section names the code path a population comes from, run the
+path, not the population** — the 467 reproduces exactly and `connections.ts:784`
+fires zero times.
+
+## 2026-08-18 (later) — the rev 11 fold: both blocking findings accepted, three of the four standard ones re-measured into different numbers, and the round's own decomposition corrected
+
+Spec only, no implementation. `consistency-checker-design.md` is at **rev 11**;
+`consistency-checker-design-rev11-review.md` is summarised in the entry above and
+**deleted**. Nothing in `src/` changed — four throwaway Vitest probes were written
+inside `src/preview/__tests__/` so imports resolved against the real modules, run,
+and deleted; `git status` carries the same entries it carried before.
+
+**Every number was re-derived before folding, and the census reproduced to the
+unit in both directions**: 8095 reports / 467 zero-attempt / 30 maps at 4
+players, S6 462 + S5 4 + S2 1, buckets 242 / 203 / 17, five bucketless rows; and
+2 players 402 of 8125 / 29 maps / 251 / 128 / 20 / 3 bucketless. 6 and 8 players
+are identical to 4 to the unit. This is the fourth round running where the
+round's arithmetic held and the fold still moved a number that decides a fix.
+
+### B1 — the exclusion that replaces one lying column with a better-disguised one: accepted, and the corpus is worse than the round said
+
+Keyed by `(map, stage, commandSpan)` over 32 maps × 2/4/6/8 — **8358 distinct
+rows: 402 zero at every count, 65 zero at some, 7891 never**. All 65 are the same
+pattern (`N000`: a rate at 2, nothing attempted at 4, 6 and 8) across 7 maps,
+**three tracked** (38 rows). Rev 10's rule excluded zero-attempt counts from the
+worst-player-count minimum, which on these 65 takes the minimum over `{2}` and
+prints that count's rate.
+
+**The round illustrated this with "94%"; measured, 60 of the 65 place 100.0% at 2
+players** (2 at 50%, 3 under 11%), so the row reads *"Worst player count 2 —
+spawn rate 100.0%"* about a command that attempts nothing at three of the four
+counts. 63 of the 65 carry `landMissing` at the higher counts — a
+`place_on_specific_land_id` naming a land that exists only in the 2-player
+branch, which is a finding worth printing — and the other 2 are S5 rows from B2's
+population, so **the two blocking findings intersect on two rows**.
+
+**The fix folded is the round's first shape, stated as an ordering rather than an
+exclusion**: a zero-attempt count ranks *below* every rate, "worst" names the
+lowest such count, and the Spawn rate cell beside it takes the non-numeric marker
+rather than importing another count's percent. Plus a clause the round did not
+ask for: 402 rows that never attempt anything and 65 that work at 2 and stop are
+different findings and render identically under the ordering alone, so the row
+names the counts that attempted nothing. The invariant is written out for the
+implementer — *"worst" must never resolve to a player count the command succeeds
+at while another count in the same matrix attempted nothing* — and Sec.8 item 2
+carries it as a corpus assertion (red 65 times, 38 on a clone), item 1 as a
+two-count fixture, item 6 as a mutant.
+
+### B2 — the reason the tool would print on four rows is about a code path that never runs: accepted, and the doc had the bug's direction backwards too
+
+**Measured across 32 maps at 2, 4, 6 and 8 players: `connectionBlockedByBug`
+notes, 0.** `connections.ts:784` is never taken on this corpus, so all four S5
+bucketless rows arrive at `:858` with `pairs.length === 0` — the ordinary path,
+no early return, no note. Three of the four are not the command Sec.5.1 named
+(`sample.rms` and `TL Black Forest` `create_connect_all_players_land`,
+`TL Black Forest` `create_connect_teams_lands`, `Menindee`
+`create_connect_to_nonplayer_land`), and **no S5 row carries a note at its own
+span** at any count. Implemented from rev 10's parenthesis, the tool would have
+printed *"a connection the engine bug neutralises"* on `sample.rms` on every CI
+run — a specific, confident, wrong diagnosis, which this section's own ranking
+puts below `NaN%`.
+
+**The fold's own addition: `blocked` is set at `:860`, after a
+`create_connect_to_nonplayer_land` has been processed**, so that path reports the
+connections declared *after* one, never that command itself. The doc named both
+the wrong path and the wrong command.
+
+The replacement reason comes from `resolvePairs` (`:717-737`) and is better than
+the one it replaces: *"this command connects nothing, because one side of the
+pairing is empty"* — true of all four rows, derivable from the command name plus
+the pairing the stage already resolved, and squarely PLAN.md's *this command
+contributes nothing to your map*. Sec.8 item 1 gains a two-line empty-pairing
+fixture, since the sentence printed on four rows was pinned by nothing.
+
+**One correction to the round**: it wrote that the population is 5 bucketless
+rows at 4/6/8 and 3 at 2 because *"Menindee's and one of `TL Black Forest`'s do
+not exist there"*. They exist; they have a real rate at 2 players (0/26 and 1/1)
+and go to zero-attempt above. That is B1's population, which is how the two
+findings turn out to share rows.
+
+### S1, S2, S3, S4 — all accepted; two of them fold with different numbers
+
+- **S1 (four surviving "0%" sentences).** Confirmed at `:798`, `:2434`, `:2463`,
+  `:3273` against the rule at `:2311` and the mutant at `:3200`. All four
+  rewritten. The `AK_Vanguard` clause changes argument as well as wording: under
+  the rule the row is a name, `—`, `—` and a bucket, so it is now the **bucket**
+  that is named as the only thing in the app reporting those 18 commands.
+- **S2 (the suppression stated at 242).** The reach is **4 rows** — confirmed by
+  decomposing the 242 by `(map, referenced id)`. **The round's own split is
+  wrong: it reads 224 / 18 / 4, which sums to 246 against its own total of 242.**
+  Measured, it is **220 / 18 / 4**: 220 declared-but-not-live, 18 `AK_Vanguard`'s
+  non-numeric id, 4 Sec.3.2 findings (`Menindee` 1000, `Pa_Site` 81, 82, 91). The
+  rule survives, priced at 4 and with the other 238 named as untouchable.
+- **S3 (spans in a block kind that holds one).** Confirmed against
+  `tools-api/index.ts:317-326`: `severity` `span?: Span`, `codeRef` `span: Span`,
+  and `table.rowSpans?: (Span | null)[]` is the only many-span member. Sec.5.4
+  now prescribes a `severity` per group plus a `table` carrying that group's
+  spans — the shape Sec.5.1 already uses, bounded by `maxTableRowsRendered`
+  (10,000) rather than `maxBlocksPerOutput` (1000).
+- **S4 (the note census is one family).** Confirmed and enlarged: the largest
+  same-text groups are `Pa_Site` 134 (`unsimulated`), `AK_Namatjira` 77
+  (`terrainMaskApproximated`), `QS_Three_Bays` 69 (tile-shuffling), `Pa_Site` 43,
+  `24hr_Caverns` 38, `TC2 - Comeer` 36. The round put the reach at *"over 30
+  groups above 3 spans on 24 maps"*; measured, it is **76 groups above three
+  notes on 28 of 32 maps**. Notes per map reach **184** (`Pa_Site`, 6 distinct
+  texts), 138 (`AK_Namatjira`, **24** texts), 132 (`QS_Three_Bays`, 17) — so
+  Sec.4.5's "8-block output" is now stated as the measured **48** blocks under
+  Sec.5.4's shape (24 groups × 2) and 184 under the rejected one-per-span
+  rendering, both far from the 1000 cap. The conclusion was right; the number was
+  never taken.
+
+### Minors — two of the four fold with the round's own citations corrected
+
+- **M1**, accepted: `CLAUDE.md`'s Phase 5 cell opened at rev 9 and is rewritten
+  to rev 11.
+- **M2**, accepted with a correction: the `continue` is at `objects.ts:1509`,
+  confirmed — but `:1498` is the `if (predicates === undefined)` guard, not the
+  `frameLoop:` header, which is `:1496`. The doc now cites the guard and the
+  `continue` separately.
+- **M3**, accepted with corrections: `24hr_Battle Lines 1.0.rms` `:97-107` holds
+  eleven `#const`s, **six** aliases and **five** numeric. The round listed three
+  numerics inside the range while calling them four, had two of the three a line
+  late (`TERR_TEMP_2 8` is `:105` and `TERR_P_POINT 7` is `:106`, not `:106` and
+  `:107`), and missed `TERR_FOREST_B 20` at `:107` entirely. The doc's third
+  quoted alias, `#const TERR_FOREST FOREST`, is at `:104`, not `:105`. Mechanism
+  untouched; the range's description was the over-claim.
+- **M4**, accepted: the 2-player census is now a paragraph in Sec.5.1, with 6 and
+  8 pinned as identical to 4.
+
+**The rule rev 11 leaves, which is the round's and is worth keeping verbatim: a
+rule written to stop a column lying has to be evaluated against the rows it will
+now govern, not only against the rows that made it necessary.** Rev 10 measured
+467 rows three ways and prescribed a fix correct for the 402 it had numbers for.
+
+**And the fold's two.** *When a section names the code path a population comes
+from, run the path, not the population* — the 467 reproduces exactly and
+`connections.ts:784` fires zero times, so re-deriving a count checks how many and
+never where from. *And a decomposition offered as a correction is itself a
+decomposition*: the round caught rev 10 stating a rule at 242 whose reach is 4,
+and split the 242 into three parts summing to 246.
+
+## 5.2 design — the rev 12 critique round (2026-08-18)
+
+`docs/consistency-checker-design-rev12-review.md`, summarised here and deleted.
+Spec only; nothing in `src/` changed. Two throwaway Vitest probes lived in
+`src/preview/__tests__/` so imports resolved against the real modules, were run
+and deleted, and `git status --porcelain` carries the same entries it carried
+before.
+
+**The round filed two blocking findings, three standard and three minor, and
+every one was accepted.** Both blocking findings are inside the subsection rev
+11 rewrote — the second round running whose blocking half is entirely downstream
+of the previous round's repairs, and the same shape the rev-11 round filed
+against rev 10.
+
+- **B1 (blocking): the ordering rule distinguishes two states and the aggregate
+  has three.** Rev 11 replaced rev 10's exclusion with an ordering — a
+  zero-attempt count ranks below every rate — and every quantifier in it ranges
+  over *the selected matrix*, while `Σ attempted` has a third state the matrix
+  cannot express: **the command has no `CommandReport` at that count at all**.
+  Reproduced exactly: keyed `(map, stage, commandSpan)` over 32 maps × 2/4/6/8,
+  **8358 rows, of which 352 exist at some counts and not others**, patterns
+  `--P-` 86 / `P---` 85 / `---P` 71 / `PP-P` 34 / `-PPP` 29 / `-P--` 26 /
+  `--PP` 21, **all 352 rated at every count where the report exists and not one
+  carrying an `attempted: 0` cell anywhere**. **146 are on tracked maps**
+  (`Menindee` 86, `AK_Namatjira` 54, `AK_Hourglass` 4, `AK_Six_Points` 2). Folded
+  with the natural `row.get(pc)?.attempted ?? 0`, **233 print `Worst player
+  count 2`, 85 print `4`, 34 print `6`**, each beside the non-numeric marker,
+  about commands that place 100% wherever they exist — and the same `?? 0`
+  overstates the rule's own population 6.4× (417 "zero at some counts" against
+  the true 65). Rev 10's exclusion was harmless on these rows because it dropped
+  the absent counts too; rev 11's ordering promotes them to the answer.
+- **The fold's addition, which is the axis the round did not have.** Presence at
+  a count is a **boolean only at one seed**. Measured at **4 players over seeds
+  1–5, 207 of 8231 rows appear in some runs of one batch and not others**, on
+  **11 of 32 maps** — `13_Rings` 62, `AK_Vanguard` 60, `Pa_Site` 25,
+  `TL Cape of Storms` 22, `AK_Namatjira` 16, `TL Frontline` 8, `24hr_Arrakeen`
+  5, `24hr_Holler` 3, `OWWC1` 2, `QS_Three_Bays` 2, **`sample.rms` 2** —
+  distributed 142 rows in exactly 1 of 5 runs, 23 in 2, 6 in 3, 36 in 4. **The
+  default is 15 runs per count, so the batch is where this population lives**,
+  and a rate summed over 1 of 15 runs printed identically to one over 15 of 15.
+  Sec.8 item 3 had already commissioned exactly this case (*"a `commandSpan`
+  present in only one of two runs … never invents a zero row for a run that never
+  contained the command"*) — the same missing field, stated as an assertion three
+  sections before the record that would carry it. **So the fix is one field on
+  both axes**: Sec.4.2's aggregate record gains `runs` and `runsContaining`,
+  `runsContaining === 0` is absent, `0 < runsContaining < runs` is partial, and
+  Sec.5.1 branches on all three. Absent counts are **not ranked**; partial ones
+  print their denominator.
+- **B2 (blocking): the Failure buckets column states no domain, one row below
+  the column rev 10 filed that exact finding against.** Accepted. The cell can
+  be read as the worst count's or as the matrix union, and rev 11 wrote a third
+  reading into it (`landMissing ×N at 4, 6, 8`). **The round's numbers did not
+  reproduce and the fold publishes its own**, measured over the **7891 rows that
+  print a numeric rate** under the corrected three-state rule (the round counted
+  the 467 marker rows in too, which have no rate for the cell to be evidence
+  for): **2498 rows carry a failure somewhere**, the bucket **set** differs on
+  **191**, the **counts** on **2306**, the summed populations are **2833 at the
+  worst count against 10647 across the matrix (3.76×)**, and **462 rows** have a
+  union count exceeding the `Σ attempted` the rate divides by. The round
+  published 2961 / 208 / 2769 / 3295 vs 12438 / 462. The exemplar reproduces to
+  the unit: `13_Rings_v1.2.rms` (tracked) `create_terrain LOWER_HILLTOPS` at
+  `:128660`, worst count 2, `attempted 3`, `placed 3` — **"100.0%"** — with 2
+  failures at that count and **8** across the matrix.
+  **— CORRECTED the same day: every figure in this bullet after the 2306 is a
+  count of failure RECORDS, and the Failure buckets cell prints
+  `occurrences`. See the reporter entry below; the occurrence-weighted figures
+  are 2 026 194 / 8 105 519 / 803 and the exemplar is 4 at that count and 16
+  across the matrix.**
+- **S1, accepted.** Rev 11's replacement reason for the four bucketless S5 rows
+  is stated unconditionally over a shape **two** code paths produce:
+  `connections.ts:784` and `:858` push byte-identical records when
+  `pairs.length === 0`, so a row from the engine-bug path gets told its pairing
+  was empty. Confirmed in the source. The discriminator is free — `:776-786`
+  emits `connectionBlockedByBug:<span.start>` **at the row's own span** — and
+  the path measures zero on this corpus only because all six maps writing
+  `create_connect_to_nonplayer_land` write it **last in the file**. One clause,
+  plus a bug-shape fixture beside the empty-pairing one.
+- **S2, accepted, with the round's own family table corrected.** Rev 11's
+  `severity`-plus-`table` shape has no rule for a group whose notes carry no
+  span, and `SimulationNote.span` is optional. Measured at 4 players: **338
+  same-text groups, 29 of them entirely spanless, over 24 of the 32 maps**, no
+  group mixed. The round's family split (automatic beach **20**, `includes` 6,
+  `landOverwrittenBeforeGrowth` 4, `teams` 1) sums to 31 against its own stated
+  29; measured, the beach family is **18** and the total is 29. The sharp half
+  reproduces exactly: `landOverwrittenBeforeGrowth`, the family Sec.5.4's *other*
+  new rule is written about by name, is **entirely spanless**, so the section's
+  two rules met on a block with nothing to put in it.
+- **S3, accepted.** Sec.4.5's "worst corpus map" was not the worst. Ranked by
+  distinct note texts at 4 players: **`24hr_Petra` 30** (99 notes),
+  `AK_Namatjira` 24 (138), `24hr_Caverns` 23 (105), `AD4 - Pag` 23 (48),
+  `Chaotic_Strait` 21 (83), `QS_Three_Bays` 17 (132). So **60 blocks, not 48**,
+  roughly 72 with the finding tables. Rev 11's fold had swept **notes per map**
+  (184 / 138 / 132) and read the distinct-text count off the top three of that
+  ranking; the two rankings are different orders, and `Pa_Site`'s 184 notes are
+  6 texts against Petra's 99 being 30. The conclusion — nowhere near the 1000
+  cap — is untouched.
+- **M1, accepted.** Two of the six early-return citations pointed one line past
+  the `pushFailure(` the other four cite: the pushes are `objects.ts:1361` and
+  `:1379`, not `:1362` and `:1380`. Corrected, and the anchoring convention is
+  now stated in the sentence so it cannot re-drift.
+- **M2, accepted.** Rev 11's third clause put the per-count annotation in the
+  Failure buckets cell, and **2 of the 65 rows it governs are the bucketless S5
+  rows** — and all 352 absent-at-a-count rows are healthy, so they have no bucket
+  cell either. The annotation is now stated as part of the row's **reason**,
+  which every row has by construction, and rendered into the buckets cell only
+  where that cell is non-empty.
+- **M3, accepted.** The 242 `actorAreaMissing` rows decompose by
+  `(map, referenced id)` into **86 distinct pairs**, exactly one non-numeric
+  (`AK_Vanguard|?` ×18), and the four Sec.3.2 findings are **one row apiece** —
+  which is what makes "the suppression reaches 4 rows" and "4 findings" the same
+  number. The doc now says so rather than leaving it to coincidence.
+
+**What reproduced.** Rev 11's own census, to the unit and in every direction:
+8358 / 402 / 65 / 7891, all 65 the single pattern `N000`, the same seven maps
+with the same per-map counts, 60 of them at 100.0%. Also the `13_Rings`
+exemplar, the two `connections.ts` push sites and the note beside `:784`,
+`SimulationNote.span`'s optionality, the six `objects.ts` early returns, and the
+distinct-text ranking underlying S3.
+
+**The rule rev 12 leaves, which is the round's: an ordering rule has to be
+checked against the number of states its input can be in, not the number of
+states the finding that prompted it had.** Rev 10 saw two states because its 467
+rows were all zero-attempt. Rev 11 measured that population three ways, found
+the 65 rev 10 had missed, and wrote an ordering over the same two states — while
+the aggregate it orders has a third, five times larger. The tell is a rule whose
+every quantifier says *"in the matrix"* and whose input is keyed by something
+that does not exist at every point of it.
+
+**And the fold's, which is where the 207 came from: a state census taken at one
+point of a swept parameter is a census of that point.** The round measured
+presence at seed 1, where a command is either in a batch or not; the tool's own
+default sweeps 15 seeds per count, and there the same population is
+*fractionally* present on 11 maps including a tracked one. Both the round and
+the document were reasoning about a matrix whose cells the default settings turn
+into distributions. **The second, smaller: a table is one artefact — a domain
+stated for one column is owed to every column that shares its denominator.**
+`Σ placed / Σ attempted` got its domain in rev 10 after three rounds of being
+audited for honesty; the cell beside it, carrying the evidence for that same
+fraction, had none until now.
+
+## 2026-08-18 (later still) — the corpus census reporter, and the defect it caught in the rev-12 fold
+
+**`npm run measure:checker` re-derives every corpus figure in
+`docs/consistency-checker-design.md` in one command.** Twelve review rounds have
+each hand-written throwaway Vitest probes to re-derive ~30 figures, and the
+"what reproduced" half of a round had grown longer than its findings. This
+replaces that half for the Monte Carlo censuses. **The static half of Sec.8
+item 2 is still owed and cannot be written until Sec.3's checks exist** — it is
+the smaller half; the rounds have been spending their time on the corpus figures.
+
+**What landed.** `src/tools/__tests__/consistencyChecker.measure.test.ts` (six
+censuses: the zero-attempt census per player count, the matrix row census, the
+presence census, the within-batch seed-drift census, the bucket-domain
+comparison, the note census), `vitest.measure.config.ts`, one `exclude` line in
+`vitest.config.ts`, the npm script, and `consistency-census.json` in
+`.gitignore`. It prints **89 pinned figures** with per-figure `ok`/`DRIFT` and a
+drift total. **It is a reporter, not a gate** — it never fails on drift; its only
+two assertions are that the corpus is non-empty and the pin table is intact.
+
+**Three design points, each of which is a trap this repo has already recorded.**
+
+- **It has its own vitest config AND is named in `vitest.config.ts`'s
+  `exclude`.** The separate config alone is not enough: `vitest.config.ts`
+  declares no `include`, so it falls back to Vitest's default glob, which
+  catches any `*.test.ts`. This run costs **440–515 s**, and inside `npm test`
+  it would feed exactly the wall-clock flake the Tracked-debt duration note has
+  documented for months. Verified rather than assumed:
+  `npx vitest list --config vitest.config.ts` returns zero matches for it, so
+  the suite and its test floor are untouched.
+- **The npm script passes `--disableConsoleIntercept`.** The Tracked-debt entry
+  already records that this repo's four existing reporters "print nothing
+  without it and still exit 0, which is indistinguishable from a check that
+  found nothing". It also writes the full result to JSON so a run survives.
+- **Every population prints in two columns, 32-on-disk and 12-tracked, with the
+  denominator beside every count.** This document has made the tracked/untracked
+  mistake in both directions, and Sec.8's own rule is that a findings row of 0
+  beside a checked row of 0 is a broken probe rather than a measurement. The
+  tracked column is derived by filtering the same per-map data, so it costs no
+  second sweep. Note the scan is top-level only, so "tracked" here is the **11**
+  top-level maps `git ls-files` returns, not 12 — `broken/BCC2-Rekawa.rms` is in
+  a subdirectory this scan does not walk, and is not one of "the 32" either.
+
+**It earned its cost on the first run, against the fold that commissioned it.**
+All 86 original pins reproduced — but the reporter's author first computed
+Sec.5's failure sums from `PlacementFailure.occurrences` and got wildly
+different numbers, then reasoned back to the pinned values by counting failure
+*records* instead. The pins were wrong. **`PlacementFailure` has no `count`
+field** — `types.ts:372` declares `occurrences?: number`, because `pushFailure`
+coalesces by bucket as records are made. The rev-12 fold's probe was written as
+`failure.count ?? 1`, which silently evaluates to `1` for every record, **and
+Vitest transpiles without typechecking, so the type error never surfaced.** Every
+failure figure that fold published was a record count.
+
+That is not cosmetic: the Failure buckets cell renders `occupancyFull ×140`, an
+occurrence total, so B2's whole question — can the printed total exceed the
+`Σ attempted` its rate divides by — has to be occurrence-weighted. Both
+conventions are now computed, printed and pinned (89 figures, up from 86), and
+the design doc states the unit in the same sentence as the formula.
+
+**Two lessons, and the first is this repo's own rule arriving from a new
+direction.** *An instrument that cannot fail loudly has to be checked against a
+number you already trust* — recorded in rev 4, about a probe reading `.value`
+off a type whose values live on `.args`. **The new half is that the toolchain
+that would have caught it was available and simply not pointed at the probe**:
+a throwaway file under `src/preview/__tests__/` is typechecked by
+`npm run typecheck` like anything else, and one `tsc --noEmit` before trusting
+the numbers would have said `Property 'count' does not exist`. The rule that
+generalises: **a throwaway probe is load-bearing the moment its output is folded
+into a spec, so typecheck it before believing it, not before deleting it.**
+
+**And the second, which is about delegation.** The reporter's author was told to
+treat the pinned figures as ground truth and to suspect its own computation
+first on any drift. It did exactly that, and rationalised a correct measurement
+into a wrong one — the rationalisation ("8 across the matrix cannot be an
+occurrence sum, because `attempted` is 3 there") assumes precisely what B2
+exists to prove, which is that the printed total dwarfs its denominator.
+**Pins handed to an implementer are an authority claim, and an authority claim
+about an unverified number converts a fresh measurement into a copy of the
+original error.** The instruction should have been to report both readings and
+let the disagreement stand.
+
+**One honest qualification that came out of the same thread, and it narrows a
+Sec.8 assertion.** An occurrence total can exceed `Σ attempted` with no domain
+error at all: `growthShortfall` counts **tiles short of a budget**, not failed
+placement attempts. `13_Rings_v1.2.rms` at `:128660` carries
+`growthShortfall ×3, iterationCapped ×1` at every count against `attempted 3`,
+so it exceeds its denominator at its own worst count. So Sec.8's third corpus
+assertion is now a **domain** test — the bucket cell must equal the buckets of
+the count named in the Worst player count cell, red on 2306 rows — and the
+exceeds-`attempted` figure (803 occurrences, 462 records) is printed as a
+tripwire rather than asserted as a gate. The domain finding itself is untouched:
+it rests on the 191 rows whose bucket *set* differs and the 2306 whose counts
+do, where the two readings disagree about the same command in the same unit.
+
+## 2026-08-18 (later still) — CLAUDE.md's status cells de-changelogged, and the false banner they were hiding
+
+**`CLAUDE.md` is 205,894 chars to 92,712, a 55% cut, and no normative statement
+changed.** The file is auto-loaded before every session begins, so its size is a
+per-session cost paid by every agent that touches this repo. Same pass
+`tools-api-design.md` had at rev 10, same rule: **keep how a number was reached,
+move what a previous revision believed.**
+
+**The Phase 4 cell had been lying for six days, and that is why this was worth
+doing rather than only cheaper.** It opened with a `**read this first**` banner
+saying seven measured engine contradictions were written up with prescribed
+fixes and **NONE is applied**, naming BUG-007 through BUG-012 and calling
+CREATION_PLAN 4.8b "the next session's work". The same cell, further down, said
+`CREATION_PLAN 4.8b is DONE (2026-08-12)`. `docs/known-issues.md` confirms it:
+BUG-006 through BUG-012 all read **FIXED 2026-08-12**, one per 4.8b item. So the
+first thing every session read was that the preview generates against rules the
+engine has been shown not to follow, six days after that stopped being true.
+
+That is rev 9's own rule — *a warning about a defect decays faster than a
+measurement, because its form is "we checked, do not check again"* — published
+in this file, unapplied to this file. **A status banner is the highest-traffic
+prose in the repo and the least likely to be re-read by whoever discharges it**,
+because the session that fixes the bug is reading the bug tracker, not the
+status table.
+
+**What was removed and what was checked first.** Phase 4's cell was 46,739
+chars plus twelve orphaned continuation paragraphs; Phase 5's was 22,650 plus
+three (one of them 18,984 chars of rev-3 narrative). Before deleting anything,
+every backtick identifier (**434**) and every bolded figure in both cells was
+extracted and searched across `build-log.md`, all six design docs,
+`CREATION_PLAN.md`, `known-issues.md` and the `src/` tree. **Nothing was lost.**
+The nine apparent misses were all exact-substring artefacts, and the sharpest of
+them argues the point of the pass: the cell's `hash(masterSeed, stageId,
+ordinal)` is absent because `preview-design.md:686` and `rng.ts:90` both carry
+the real thing, `commandOrdinal` — the status cell held a **paraphrase** of a
+fact the spec and the code state precisely.
+
+**What the cells carry now**: current state, the open bug, where the detail
+lives, and for Phase 5 the ordered list of Sec.7 prerequisites the implementing
+session hits first. Both are ~1.5 KB.
+
+**Not done, and named so the next session can decide rather than discover.**
+`Tracked debt` still carries the full test-count changelog as one parenthetical
+("Was 16/428 through 2026-08-01. 2026-08-04 took it to 19/443 via...") running
+to several thousand chars, which is the same shape as what came out of the
+status cells; the current row above it is the part anyone reads. `Hard rules` is
+long and was deliberately left whole, because it is the one section whose value
+is cumulative and whose entries are the checklist a review round should run.
+
+## 5.2 design — the rev 13 critique round (2026-08-19)
+
+`docs/consistency-checker-design-rev13-review.md`, summarised here and deleted.
+Spec only; nothing in `src/` changed. Four throwaway Vitest probes lived in
+`src/preview/__tests__/` so imports resolved against the real modules, were run
+and deleted, and `git status --porcelain` carries the same entries it carried
+before. `npm run measure:checker` (484 s) was run as-is and not modified.
+
+**The round filed three blocking findings, four standard and four minor, and
+every one was accepted.** All three blocking findings are inside subsections rev
+12 rewrote or created — **the third round running whose blocking half is
+entirely downstream of the previous round's repairs**, which is now a pattern
+rather than a coincidence.
+
+**What the round did not find is the shorter half for once.** `npm run
+measure:checker` reports **all 89 pinned figures reproduce**, and the round
+re-derived the reference-data layer independently as well: 3011 rows, 2672
+object rows, 31 carrying `allowedTerrains`, 2666 `terrainRestrictionId`, 2668
+`habitat`, 2891 verified / 120 not decomposing 116 terrain + 4 object, exactly 2
+of the 31 tier-1 rows unverified and all 31 carrying `habitat`. Every source
+citation checked holds at the line, including rev 12's own M1 correction. **Every
+finding this round is about a rule, not a count.**
+
+- **B1 (blocking): "worst" is not a function, and rev 12 made a second cell
+  depend on it.** The document states a tie-break exactly once, inside the
+  zero-attempt clause, and the column definition says only *"the lowest spawn
+  rate"*. Measured over 32 maps × 2/4/6/8 at seed 1, restricted to rows with two
+  or more rated counts and no zero-attempt cell: **7623 rows, of which 7313
+  (95.9%) are tied at the minimum**, 2041 tracked. That is the corpus rather than
+  an edge case, because a healthy command places 100% at every count. **Harmless
+  until rev 12 pinned the Failure buckets cell to the worst count's domain**, at
+  which point an undetermined key selects the **evidence cell beside the
+  fraction**: 2022 tied rows carry a failure at a tied count, and the tied counts
+  disagree on the bucket **set** on **146** rows and on the bucket **counts** on
+  **250**. `24hr_Blind Valley.rms` S4 at `:19132-19247` reads 100.0% at all four
+  counts carrying `{growthShortfall ×10}`, `{×6}`, `{×3}` and `{}`. **Sec.8's
+  third assertion cannot catch it because it is self-referential** — it compares
+  the bucket cell against the count the Worst player count cell happens to
+  carry, which passes under any tie-break including a hash order.
+- **B2 (blocking): a `partial` denies containing commands the script contains,
+  on 99% of its rows, and the wrong output is what survives a cancel.** Rev 12
+  defined **absent** as `runsContaining === 0`, which is also the state of every
+  count the run has not reached. Sec.4.5 emits a `partial` carrying the report
+  table after each count's batch, and every quantifier in Sec.5.1 ranges over
+  *the selected matrix*, so after the 2-player batch the third reason clause
+  fires on every row: *"this command is only generated at 2 players"*. **8125
+  rows at 2 players, of which 8040 (99.0%) are also present at 4, 6 or 8**;
+  swept seeds 1–5, 8260 and 8172; tracked only, 2497 and 2438. Only **85 rows**
+  in the corpus are genuinely 2-players-only. **Three of the four outputs the
+  tool emits at the defaults would be wrong**, and `host.ts:243` sets `output` on
+  a partial while `finish()` (`:278-283`) never clears it, so a cancelled run
+  keeps the last partial as its permanent result — on runs Sec.4.4 prices at 8 to
+  30 minutes, in the section that designs for cancelling on evidence. Both of
+  Sec.8 item 2's invariants pass on it; both were written against a completed
+  matrix.
+- **B3 (blocking): every figure in Sec.5.4 is a one-generation census of a
+  sixty-generation input, and the one derived number prints 1418%.** Sec.5.4's
+  own opening sentence is that notes are accumulated across the runs and the
+  default is 4 × 15. Measured over 2/4/6/8 × seeds 1–5, the covered fraction the
+  section prescribes as *"arithmetic over data this block already holds"* reads
+  **1418.1% on `Rage Forest 2026.rms`** naive at 20 runs against 70.9% merged,
+  1099.7% / 41.9% on `QS_Three_Bays`, 885.8% / 34.2% on `Chaotic_Strait`
+  (tracked). **Two independent defects and the second is why the first was
+  invisible**: across runs the sum multiplies by the run count, and *within* one
+  run the spans overlap, so even the per-run sum overstates — and **`Rage
+  Forest`'s 70.9%, the number that motivated the whole clause, is the single
+  figure the naive arithmetic gets right**, because its two raw nodes happen to
+  be disjoint. The block and row caps were both checked at one generation too:
+  the worst map's block count is 60 at one run and **570 at 20** against a cap of
+  1000, and `Pa_Site`'s largest group is a **2680-row** table carrying 134
+  distinct spans repeated. The mechanism is Sec.5.4's two grouping rules meeting
+  with no stated order — texts multiply because notes interpolate per-run values
+  and *"group by TEXT"* makes each value its own group, while the range rule that
+  exists for exactly this is keyed by `key`.
+- **S1: `cliffs.ts:289-298` is a seventh zero-attempt report path and a second
+  static contradiction, and the document named neither.** It returns
+  `{ commandSpan, stage: "S3", attempted: 0, placed: 0, failures: [] }` when
+  `min_number_of_cliffs > max_number_of_cliffs` — a non-numeric rate, a
+  non-numeric worst count, an empty bucket cell and **no reason**, because
+  Sec.5.1's reason clause enumerates two causes by name and this is a third. **The
+  S5 discriminator does not transfer**: the note sits at the row's own span when
+  only the minimum is written and at a **different** span when both are
+  (`cliffs.ts:282` borrows `commands[0].span`, `:290` prefers `maxCliffsCmd`), so
+  a rule copied across works on one arm and fails on the other. **8 of 32 maps
+  write the pair**, seven of them three times inside a map-size `if` — an axis the
+  tool never varies — and all 8 write `min < max`, so this is zero today and one
+  edit from live, the same register as `connections.ts:784`.
+- **S2: Sec.5.4's `severity` block requires a `level` the notes carry no basis
+  for.** `severity` declares `level` required (`tools-api/index.ts:325`) and
+  `SimulationNote` has no severity field — it carries `prominence`, a two-value
+  pane display hint. **A `prominence`-derived mapping is wrong in both
+  directions on this corpus**: `cliffsMinExceedsMax` (*"crashes the real game"*)
+  is `drawer` and would file lowest, while the spanless `includes` family is
+  `banner`.
+- **S3: the row and absent censuses are quoted over the matrix and measured at
+  one seed.** The round's own hypothesis came back **negative and is the more
+  useful half**: **0 rows — not one — are present at a count where seed 1 found
+  them absent**, because the mechanism is `if N_PLAYER_GAME`. What moves is the
+  population: swept 2/4/6/8 × seeds 1–5, distinct rows 8358 → **8511**, absent
+  352 → **373** (146 → 149 tracked), partial 207 at one count → **240 across the
+  matrix**. Sec.8's invariants are pinned at exact counts and would go red on a
+  correct implementation at the defaults.
+- **S4: Sec.3.3 clause 2 prescribes a rule with an unspecified constant**, no
+  fixture, no reporter row and no entry in Sec.9, whose eleven bullets carry
+  every other open decision. The anchors bound it three orders of magnitude apart
+  (Battle Lines 50 of 67, `Menindee` 1 of 539) and 183 unresolvable producers
+  across 7 maps sit between them. **The cost of getting it wrong is invisible**:
+  the surface-half checks measure 0 findings under every reading, so a threshold
+  set too low kills them on many maps and changes no number the reporter prints.
+- **Four minors.** `runIndex` is not said to reset per player count, and Sec.3.0
+  rule 1 plus Sec.4.2's drift census both assume the reset reading. The covered
+  fraction has no definition on a spanless group (29 at one run, 177 at 20). A
+  row absent at some counts and zero-attempt at others belongs to two of the
+  three reason populations, measured at 0 overlap today. And the fourth `partial`
+  and the final `result` carry identical content at the defaults, so the last
+  partial is a redundant full re-render of the output area — the cost that
+  paragraph's own argument is about.
+
+**The rule the round leaves, which is the round's own and is worth keeping
+verbatim: a state added to a record is a state in every consumer of that record,
+and the census that justified it was taken in one of them.** Rev 12 added
+`runsContaining` for the two consumers it measured — the completed matrix and
+the within-batch sweep — and the state it introduced also describes *a count
+that has not run yet* and *the same aggregate part way through*. The tell is a
+state defined by a field being zero, in a record built incrementally. **The
+fold's: a section that measures its inputs must measure them at the rate its own
+document says it consumes them** — Sec.5.4 took every figure at one generation
+while its opening sentence says sixty, Sec.4.5 built a margin argument on those
+figures, and the one derived quantity between them prints twenty times its true
+value on the single map the clause was written for.
+
+## 2026-08-19 — the rev 13 fold: all eleven findings accepted, three of them folded differently from the way the round proposed
+
+Spec only, no implementation. `docs/consistency-checker-design.md` is at **rev
+13**; `consistency-checker-design-rev13-review.md` is summarised in the entry
+above and deleted. Nothing in `src/` changed. The document went 3885 → 4364
+lines.
+
+**Every structural and source-level claim the round made was re-verified against
+the tree before folding, and all of them hold**: `cliffs.ts`'s `zeroCliffReport`
+at `:287` returned from `:298`, with the note's span resolved at `:290` from
+`maxCliffsCmd ?? minCliffsCmd` against a `commandSpan` taken at `:282` from
+`commands[0]`; `DEFAULT_MIN_CLIFFS` 3 and `DEFAULT_MAX_CLIFFS` 8 at `:51-52`
+with `resolveCliffSettings` reading both through `lastByName`; `severity`
+declaring `level` required in the `OutputBlock` union; `SimulationNote` carrying
+`prominence` and no severity; `host.ts` setting `output` on a `partial` and
+`finish()` clearing `phase`, `progress` and `error` but not `output`.
+**The round's corpus figures were NOT independently re-derived** — the reporter
+covers the pinned 89 and the round reports them all reproducing, but the swept
+2/4/6/8 × seeds 1–5 censuses and the 20-run note figures are new populations the
+reporter does not yet compute. They are folded as **the round's measurements,
+with the re-derivation named as an obligation on the reporter** (Sec.8 item 2's
+four owed censuses) rather than restated as this document's own.
+
+**Three findings were folded differently from the way the round proposed, and
+the differences are the fold's contribution.**
+
+- **B2's fix is stated as a DOMAIN on the table's quantifier, with the round's
+  `runs === 0` test kept as a backstop rather than as the rule.** The round
+  proposed *a count with `runs === 0` is not yet measured*. In the aggregate as
+  Sec.4.2 specifies it — a map keyed `(commandSpan, playerCount)` — a count that
+  has not run has **no entry at all**, so `runs === 0` never materialises and the
+  clause would be inert against the implementation that produces the defect. The
+  rule that does the work is that a `partial`'s table ranges over **the counts
+  whose batches have completed**; the `runs === 0` test is what catches an
+  implementation that pre-seeds the matrix with empty cells, which is a
+  reasonable thing to write and is exactly how the absent state would come back.
+  Both are stated, in that order, with the reason each is there.
+- **B3's block-cap conclusion survives, and the fold records WHY it survives,
+  which the round left open.** The round re-took the block count at 20 runs
+  (570 of 1000) and asked for a re-take at 60, noting the conclusion "may well
+  survive". It survives for a reason available now: **the 570 is a count of
+  groups under the accumulation the same finding replaces.** Under the ordering
+  rule B3 prescribes — group by `key`, collapse same-key/different-text into a
+  range, then group by text — a run adds a group only when it produces a text no
+  earlier run produced, so the counts saturate near the one-generation figures
+  instead of multiplying by the run count, and `Pa_Site`'s 2680-row table is 134
+  distinct spans repeated. So Sec.4.5's margin sentence is now **conditional on
+  the fix rather than on headroom**, the re-take at 60 is named as owed **under
+  the corrected accumulation**, and the 1-run figures are marked as the ones a
+  later reader must not cite.
+- **S4 gets an interim constant rather than a fourth deferral.** The round asked
+  for a Sec.9 entry, a fixture and a reporter row, all of which landed. It did
+  not set the number, and the reason the clause had no fixture and no reporter
+  row for three revisions is that *"the threshold is not a tuned constant to be
+  guessed at here"* leaves a prescribed rule unimplementable — a decision
+  deferred into nobody's hands. **Take `unresolvable / total producers ≥ 1/3`,
+  labelled interim**, an order of magnitude clear of both anchors in both
+  directions, with the direction of an error named (too high abstains on nothing
+  that matters, too low abstains on scripts whose checks measure 0 findings
+  anyway) and the reporter row that replaces it specified.
+
+**B1's tie-break is the round's — lowest player count — and the alternative is
+recorded because it is the one a reader re-derives.** Breaking ties toward the
+count carrying the most failure occurrences would make the evidence cell the
+strongest evidence at the printed rate, which is what that column is for. It is
+rejected because it makes "worst" a minimum over two differently-typed
+quantities — a rate, then occurrence counts whose units differ per bucket, which
+is the qualification the buckets subsection already carries about
+`growthShortfall` — and because every tied count prints the **same rate**, so no
+cell is wrong under either rule. The 146 set disagreements and 250 count
+disagreements are folded in as a **reporter line** so a later revision reopening
+this has the number, since the population becomes unobservable the moment the
+tie-break is deterministic.
+
+**S1's second half decides the defaulted-max question out loud, against the
+section's own cut criterion.** A script writing only `min_number_of_cliffs 9`
+trips the comparison against a maximum its author never wrote, which reads like
+Sec.3.4(b)'s *"a constraint the author never wrote"* — the criterion the packing
+bound was cut on. **It does not apply, and the difference is where the
+constraint comes from.** The packing bound was cut because the *checker* was
+inventing the constraint; here the default is the **engine's**, the generator
+already resolves and reports against it, and the real game really does crash on
+the resolved pair. Report it, at error, with the finding worded so the defaulted
+side is visible.
+
+**S2 is decided as uniform `info`, and the uniformity is the argument rather
+than a default.** Sec.5.4's stated principle is that notes stay visible *"rather
+than this tool silently re-deriving its own opinion about what it could not
+check"*, and assigning a severity **is** that opinion. `info` is the level that
+carries none. Sec.3.5 assigns a level where it has a basis — a verified
+reference-data row — and the contrast is the whole case: there the gate reads a
+field that means what the level means, here neither side of the passthrough has
+one. A note deserving a louder level deserves it in the generator, which is a
+`preview-design.md` change.
+
+**M1 is folded with its reason rather than as a coin-flip resolved.** `runIndex`
+resets per player count, which is what Sec.3.0 rule 1 and Sec.4.2's drift census
+already assume — and it is also the better instrument, because it makes 2/4/6/8
+a paired comparison over one seed set. Monotonic seeding would confound the
+player-count axis with the seed axis, in the document whose flagship column ranks
+one against the other.
+
+**What rev 13 leaves.** The document now carries **four owed censuses** on
+Sec.8's reporter, three of which exist because every census it prints today is
+taken at one point of a swept parameter: presence and drift swept together, the
+note census at the default run count **under the new ordering**, the tie-break
+census, and the per-map unresolvable-producer ratio that closes Sec.9's interim
+constant. **Sec.9 goes from eleven open items to twelve**, and the new one is the
+only constant in the document set by argument rather than by measurement, which
+is stated in the bullet. The static half of Sec.8 item 2 is still owed and still
+cannot be written until Sec.3's checks exist.
+
+## 2026-08-19 — Sec.7.0-7.2 infrastructure (rev 13), scoped short of the checker itself
+
+**Scoped deliberately: Sec.7.0-7.2's five prerequisite items, not Sec.7.3 (the
+checker implementation) and not the Sec.8 test-plan items that need it to
+exist.** Sec.7's own title calls 7.0-7.2 "infrastructure the implementing
+session must land BEFORE the tool itself" and 7.3 is that tool; the CLAUDE.md
+status cell's "first work" list names exactly the five items below. Building
+Sec.3/4/5 (the checks, the Monte Carlo loop, the report builder) is thirteen
+review rounds' worth of pinned decisions and stayed out of scope for this
+session.
+
+**7.0 item 1 — `objectEntry` (`objects.ts`) exported and generic over an
+`ObjectRow` constraint** (`constId?`, `rmsConstant?`, `category`), so
+`PublishedGameConstants` and `ObjectConstant` both satisfy it with no second
+index. `OBJECT_INDEX` re-typed `WeakMap<object, {…unknown…}>` with a cast on
+`.get()`/`.set()`, exactly as the spec's form prescribes — the cast is safe
+because the map keys on array identity and each array only ever yields the
+index built from itself. **Item 2** — `declaredTargetTiles` (`lands.ts`)
+exported, pure, no behaviour change. **Item 4** — `argValue`/`numAttr` exported
+from `objects.ts` only, per the spec's explicit fork: `lands.ts`/`elevation.ts`/
+`terrains.ts` keep their own private copies (a deliberate per-stage
+convention), `objects.ts`'s becomes the checker's one shared import rather than
+a fifth hand-rolled copy. **Item 5** — `src/tools/walkItems.ts`, a new
+checker-local AST walk: UNCONDITIONALLY GENEROUS (every `if`/`start_random`
+branch, every `OrphanBlockNode`), handing each visitor the item, an
+`enclosing: EnclosingKind` tag, a `sharedBlock` flag that stays true for
+everything nested inside an orphan block, and the `IfBranch`/`RandomBranch`
+object itself so a caller can correlate against S0's own selection without the
+walker knowing it. Filtering is every future caller's job, per the spec's own
+three-callers-three-policies table. 6 tests, using parser.test.ts's own
+`RMS0110` "guide Example2" fixture for the shared-block case rather than
+hand-writing one.
+
+**7.1 — `ToolsPane.tsx`'s `read-reference` context branch.** A fourth branch
+alongside the three existing ones: `granted.has("read-reference") ? {
+referenceData: { language: lang, gameConstants } } : {}`. `gameConstants` is a
+new module-level import of `game-constants.json`, double-cast through
+`PublishedGameConstants` the same way `src/preview/worker.ts` already
+double-casts the same file.
+
+**7.2 item 1 — `ToolHost.reset()` now terminates an active run instead of
+forgetting it.** Before: `reset()` cleared `state` but left `this.active` and
+both its timers armed, so `ToolsPane.selectTool`'s `cancel()` then `reset()`
+let a second `start()` silently overwrite `this.active`, and the FIRST run's
+now-orphaned grace timer later killed and blamed the SECOND run. Fixed by
+sharing `clearTimers` + killing the handle + `active = null`, matching
+`documentReplaced()`'s own `terminate()` path. Mutation-tested by hand:
+reverted the fix, confirmed the new regression test goes red
+(`wasKilled()` false), restored it, confirmed green again.
+
+**A second, related timer bug surfaced building item 4c below and got fixed in
+the same file.** Making `cancelGraceMs` equal `runWatchdogMs` (see 7.2 item 4c)
+means a watchdog armed once at `start()` and never re-armed (no messages sent)
+now ties with — and, on insertion order, loses to — a cancel grace armed later
+at `cancel()` time, so a tool that is silent from the start AND ignores cancel
+was reported `unresponsive` instead of `killed`. Fixed by clearing the
+watchdog timer inside `cancel()`, since the grace timer is the more specific
+deadline once cancelling has begun; `onMessage` still re-arms a fresh watchdog
+if the tool proves life with any further message. Caught by the EXISTING
+`protocol.test.ts` regression test for the cancel-grace path, which started
+failing the moment 4c's constant changed — the mutation-testing discipline
+paid for itself immediately rather than in a future session.
+
+**7.2 item 2 — `previewBridge.ts` gains the two seam-crossings Sec.4.1 needs.**
+`previewSettingsFromContext(ctx, overrides?)` takes `overrides?.playerCount`,
+applied AFTER narrowing, with `runPreviewFromContext` taking and passing
+through the same parameter — on the WRAPPER's own function, not only on
+`runPreviewFromContext`, so the static layer (which needs a bare
+`PreviewSettings` per count) has a sanctioned path too. And a named
+`objectConstantsFromPublished(constants: PublishedGameConstants):
+readonly ObjectConstant[]`, defaulting an absent `constId` to `null` — the
+adapter side of the `constId?` (published) vs `constId` (required, preview)
+seam, kept out of any call site as an inline cast. 9 new tests, including one
+observable end to end: `create_player_lands` run at overridden counts 2 and 8
+produces 2 and 8 `PlayerMarker`s respectively, and one that runs the real
+`game-constants.json` through the conversion.
+
+**7.2 item 3 — worker transport.** `src/tools/checkerWorker.ts` (the
+`self.onmessage` entry point, dispatch table `{}` today — Sec.7.3 registers
+the checker into it, the same reserved-slot convention `registry.ts`'s `TOOLS`
+array already uses) and `src/tools/workerRunner.ts` (the host-side
+`ToolRunner`), plus `WORKER_RUNTIME_TOOL_IDS: ReadonlySet<string>` in
+`registry.ts`, empty until 7.3. **Chose the per-call `start()` argument over a
+constructor-level runner resolver** — the design document offers both as
+equivalent — specifically to avoid touching `ToolHost`'s constructor shape (so
+none of `protocol.test.ts`'s existing ~20 `new ToolHost(runner, timers)` call
+sites needed updating) and to keep `ToolsPane.tsx`'s `host` `useMemo`/deps
+exactly as they are today, which is what keeps "one run at a time, app-wide"
+true. `ToolsPane.tsx`'s `startRun` picks `workerRunner` vs `inProcessRunner` by
+checking `WORKER_RUNTIME_TOOL_IDS.has(tool.manifest.id)`.
+`workerRunner.ts` is built as `createWorkerRunner(makeWorker)` over a narrow
+`WorkerLike` interface rather than a bare object closing over the real
+`?worker` import, specifically so it is unit-testable against an injected fake
+— matching `host.ts`'s own injected-`Timers`/injected-`ToolRunner`
+convention — without spinning up a real worker thread, which this repo's own
+convention (`preview/worker.ts`, `usePreviewResult.ts`) leaves to
+typecheck+lint+manual verification. **Added a crash handler the spec's prose
+didn't spell out but its own Sec.8 test list asks for**: `worker.onerror`
+synthesizes a `{ type: "error", reason: "tool-error" }` `ToolMessage`, because
+`inProcessRunner`'s crash path is a SYNCHRONOUS throw caught by `host.start()`'s
+own try/catch, and a worker's crash is asynchronous — `postMessage` has
+already returned normally by the time the worker dies, so nothing else in the
+transport would ever see it. 6 tests against the injected fake, plus 2 more in
+`protocol.test.ts` proving `start()`'s new `runner` argument is actually
+consulted rather than accepted and ignored.
+
+**7.2 item 4 — the three published-contract changes, all in `tools-api/index.ts`.**
+(a) `ToolManifest.ownsSettingsHeader?: boolean`; `ToolsPane.tsx` now looks up
+the OUTPUT's own tool by `state.toolId` (not the currently-selected one — they
+agree while a result is showing, since switching tools resets state first, but
+`state.toolId` is what the output actually belongs to) and suppresses its
+settings echo when the flag is set; `protocol.ts`'s manifest validation now
+rejects a non-boolean value. (b) `HostMessage<P extends SerializedParseResult =
+SerializedParseResult>`, parameterised the same way `ToolContext` already is —
+verified against a real worker-shaped write-up: unparameterised, `TS2345`
+(`WireNumber` not assignable to `number`); parameterised, `tsc --noEmit` exits
+0. (c) `DEADLINES.cancelGraceMs` 30 000 → 60 000, equal to `runWatchdogMs`,
+amending `tools-api-design.md` Sec.4.1's own derivation in place (same move
+that document's rev 6 made once already) rather than deciding it locally —
+existing tests already asserted against the constant, not the literal, so this
+needed no test-body edits, only the second-timer fix above.
+
+**Verification.** `tsc --noEmit` clean repo-wide. `eslint .` — 0 errors,
+the same 15 pre-existing warnings in files this session did not touch.
+`npm run validate:reference` and `npm run check:generated-types` both clean
+(neither `reference/data/*.json` nor the schema changed). **Full suite:
+53 files / 1570 tests, up from 48/1491** (new: `walkItems.test.ts` +6,
+`workerRunner.test.ts` +6, plus assertions inside `previewBridge.test.ts` (+9)
+and `protocol.test.ts` (+7: 2 `reset()` tests, 2 `start()`-runner-argument
+tests, 3 folded into the existing lifecycle describe block)) — floor
+42/1339, comfortably clear. Not visually verified in the Tauri host (no new
+interactive UI element; the only rendering change is a conditional hiding of
+an existing echo paragraph, gated on a flag no built-in tool sets yet, so
+`ownsSettingsHeader` has no observable effect until Sec.7.3 registers a tool
+that declares it).
+
+**5.2's remaining work is unchanged in shape: 7.3, the checker itself
+(Sec.3's static checks, Sec.4's loop and aggregator, Sec.5's output builder),
+then Sec.8's checker-specific test-plan items** (fixtures per check, the
+corpus-measurement reporter's static half, aggregation, budget arithmetic
+against the checker's own `DEFAULT_RUNS_PER_PLAYER_COUNT`/
+`DEFAULT_PLAYER_COUNTS`, and the Sec.3/4/5-specific mutation tests) — none of
+which can be written before the checker exists. `WORKER_RUNTIME_TOOL_IDS` and
+`checkerWorker.ts`'s dispatch table both gain their first (and, per the
+current manifest excerpt, only) entry the day that session registers
+`"consistency-checker"`.
+
+## 2026-08-19 (afternoon) — the rev 14 critique round, and the first one with an implementation to read
+
+`docs/consistency-checker-design-rev14-review.md`, kept rather than summarised
+and deleted: unlike rounds 1-13 it audits code as well as spec, and the fold that
+takes it has two artefacts to change. Nothing in `src/` was modified. Five
+throwaway Vitest probes lived in `src/tools/builtin/__tests__/` so imports
+resolved against the real modules, were run and deleted, and no `probe-*.txt`
+survives. `npm run measure:checker` was **not** run — every figure below is a new
+census the reporter does not compute, and the four the reporter already owes are
+unchanged.
+
+**Scope.** rev 13 of the design (folded this morning), Sec.7.0-7.2's
+infrastructure (entry above), and **Sec.7.3, the checker itself** —
+`src/tools/builtin/consistencyChecker.ts` plus
+`checker/{astScan,staticChecks,aggregate,report}.ts`, landed `12:27`-`12:36` with
+no build-log entry of its own yet.
+
+**Three blocking findings, four standard, six minor.**
+
+- **B1: the tool's own output is rejected by its own host.** `Pa_Site_v1.1.rms`
+  emits **1026 blocks** with `staticOnly` and **1051** at the defaults, against
+  `LIMITS.maxBlocksPerOutput` **1000**; `validateToolMessage` rejects it and
+  `host.ts` finishes the run with `reason: "protocol"`, so the run dies at the
+  first `partial` and the user gets nothing. Two multipliers, neither of them in
+  Sec.4.5's cap arithmetic: Sec.5.1 renders one `severity` block per finding
+  without pinning what a finding is (the code counts **attribute occurrences**,
+  495 corpus-wide, where Sec.3.2's own table counts **30 commands** and its
+  counting-convention paragraph pins **134 (map, id) pairs**), and Sec.3.0 rule 1
+  runs the static layer once per count with nothing collapsing a finding
+  identical at all four. Pa_Site is 256 distinct findings × 4. Sec.4.5 states
+  *"`maxBlocksPerOutput` is not the reason and must not be cited as one"* over a
+  block population that omits the static half entirely.
+- **B2: Sec.5.4's ordered pipeline is implemented three steps out of four.**
+  Spans are deduped per `(key, text)` and never again, so the range-collapse
+  concatenates one span per distinct text and `count`/`table` multiply by the run
+  count. At the defaults: `AK_Namatjira` 23 of 30 groups inflated, worst
+  **count 58 against 1 distinct span**; `24hr_Petra` 20 of 32, worst 40 against
+  1; `13_Rings` 7 of 22. rev 13's B3 fixed the arithmetic (`coveredFraction` goes
+  through `mergeSpans`) and not the dedupe clause in the same sentence. The two
+  existing tests are one line apart from catching it — one dedupes with the
+  **same** text, the other range-collapses with **no span**.
+- **B3: a spanless note group prints "(0 places)".** The count is derived from
+  `spans.length`; 29 of 338 same-text groups at one run carry no span, on 24 of
+  32 maps including `sample.rms`.
+- **Standard.** Sec.5.1's *"print the run count beside the rate whenever
+  `runsContaining < runs`"* is unimplemented and `runsAt`/`countsRun` are dead
+  code, against **104 partially-present rows on `13_Rings`, 40 on `AK_Namatjira`
+  and 2 on `sample.rms`** at the defaults (S1); Sec.3.3 clause 2's `≥ 1/3`
+  abstention does not exist (S2); a malformed settings block yields an empty
+  report with no error (S3); `MAX_GENERATIONS_CEILING` is exported and asserted
+  nowhere (S4).
+- **What reproduced.** Sec.3.2's census to the unit — **4 error ids / 4 commands
+  / 2 maps** (`Pa_Site` 81, 82, 91 and `Menindee` 1000) and **30 avoid commands /
+  7 maps** — so the check is right and only its rendering unit is not. Every
+  rev-13 blocking fix is correctly implemented in the finding table: the
+  lowest-count tie-break, the zero-attempt ordering, absent counts unranked, the
+  buckets domain, and the `partial`'s narrowed quantifier. Every source citation
+  holds at the line except Sec.4.5's two `host.ts` ones, moved by 7.2 item 1's
+  own edit an hour after rev 13 shipped (`:243` → `:272`, `:278-283` →
+  `:305-310`).
+
+**Repo state at the end of the round:** `tsc --noEmit` clean, `eslint .` 0 errors
+/ 15 pre-existing warnings, full suite **57 files / 1639 tests** green on one run.
+
+**The rule the round adds.** *A rule that caps an output has to enumerate every
+producer that writes into it, and a rule that counts findings has to state its
+unit in the section that renders them.* **And the review's own:** *a doc comment
+that restates a rule the code does not implement is worse than no comment* —
+`aggregate.ts` enumerates Sec.5.4's four steps in order, implements three, and
+states the missing one as a property of the field.
+
+## 2026-08-19 (later) — the rev 14 fold: every finding accepted, one of the round's own fixes measured wrong and replaced, and the first round whose repairs are code rather than prose
+
+**What this is.** The fold of `consistency-checker-design-rev14-review.md`, which is now summarised here and deleted, the same as the thirteen rounds before it. **Unlike those thirteen, this one had code to repair as well as a spec**: Sec.7.3 landed the morning of the same day, so the round's findings are defects in `src/tools/builtin/consistencyChecker.ts` and `checker/{astScan,staticChecks,aggregate,report}.ts` as much as in `docs/consistency-checker-design.md`, and the fold changes both.
+
+**Every repo claim in the round was re-derived from the tree before folding.** Everything the round measured reproduced: the 1026-block rejection through `validateToolMessage` itself, the 256-distinct-×-4 decomposition on `Pa_Site_v1.1.rms`, the per-map note-group inflation counts, the partially-present row counts, and the structural claims about which line does what. One number came out slightly differently and it does not move anything (`AK_Namatjira` 29 note groups against the round's 30, a seed-range difference in the probe, with inflated = 23 identical). **One of the round's prescribed fixes was measured and is wrong** — see B3 below, which is the only place the fold departs from what the round asked for.
+
+### B1 — the tool's output was rejected by its own host, on an ordinary corpus map
+
+`Pa_Site_v1.1.rms` produced **1026 blocks** at the default 2/4/6/8 matrix against `LIMITS.maxBlocksPerOutput`'s **1000**. `protocol.ts` returns *"output has 1026 blocks, over the 1000 cap"*, `host.ts` logs a `Protocol error` and calls `finish(run, { reason: "protocol" })`, which sets `run.terminated` and drops every later message. On a full run the tool died at the **first** `partial`, one batch of four in. **The user got nothing — not a truncated report — on the map this design cites by name 27 times.** `24hr_Bazi is God.rms` sat at 866–888, 87–89% of the cap.
+
+**Two multipliers, and Sec.4.5's cap arithmetic contained neither.**
+
+- Sec.3.0 rule 1 runs the whole static layer once per selected count and nothing collapsed the result. Measured: `Pa_Site`'s 1024 static blocks are **256 distinct, each appearing exactly four times**; `24hr_Bazi is God` 216 × 4; `Chaotic_Strait` 19 × 4; `Menindee` 1 × 4. On this corpus **every** static finding is identical at all four counts.
+- Sec.5.1 said *"one `severity` block per finding"* for four revisions and never pinned what a finding is. The undeclared-`avoid_actor_area` population on `Pa_Site` at 4 players is **495 attribute occurrences / 134 distinct `(map, id)` pairs / 30 commands / 4 error ids**, depending on which section you read the unit out of — and Sec.3.2 pins `(map, id)` explicitly, one section away from a renderer that inherited none of it.
+
+**Three separable fixes, all landed.**
+
+1. **`playerCount` is a field on `StaticFinding`, never an interpolation into its text.** `runStaticChecks` stamps it on the way out (an `UnstampedFinding = Omit<StaticFinding, "playerCount">` alias means no individual check can forget it), `report.ts`'s `collapseStaticFindings` groups on `(kind, severity, text, span, commandSpan)`, and the renderer prints `At 2, 4 players: ` **only** when a group does not cover the whole selected matrix. `checkLandOverAllocation` now takes no player count at all: Sec.3.1's own cancellation argument says the sum is player-count invariant, and the *"At N players,"* prefix was the single thing stopping four identical findings from collapsing.
+2. **The three units are pinned separately in Sec.5.1** — occurrence = row, `(map, id)` = census, family = block — rather than one of them being picked silently.
+3. **A family is one `severity` plus one `table`.** One `(kind, severity)` pair renders as a headline naming the family and its size, plus a table with `Location` and `Finding` columns and one clickable `rowSpan` per occurrence. `(kind, severity)` and not `kind`, because `actorAreaUndeclaredSharedBlockReference` files at `error` or `info` depending on the attribute and a `severity` block carries one level. **This is the shape Sec.5.4 already argues for on the same ground**, and it is bounded by `maxTableRowsRendered` (10,000) instead of the block cap.
+
+**Measured after the fix: the worst map in the corpus produces 6 static-pass blocks, and 0 of 32 maps produce output the host rejects.** The static layer now carries a *constant* bound — seven kinds × at most two severities × two blocks plus a heading, at most 29 whatever the script says — which is the term Sec.4.5's arithmetic was missing and now states.
+
+**The gate is a corpus walk through `validateToolMessage`, and it has to be, because NEITHER multiplier alone reaches the cap** — with the collapse removed `Pa_Site` sits at 258 and with the family shape removed at 256, both legal and both absurd, so any block-count assertion is green in both worlds. The unit tests pin each rule separately; the corpus test asserts what the host asserts, walking `test-maps/*.rms` **from disk** rather than by name (11 files on a clone, 32 on a maintainer's disk, `staticOnly` so it is one AST pass per count per map). **Mutation-tested: with both rules removed it goes red on exactly `Pa_Site_v1.1.rms` and nothing else.** Five further mutants were run and all go red — the span dedupe removed (2 aggregate tests), the spanless count taken per bucket (1), taken as `spans.length` (2), the collapse disabled (3, including the lifecycle one), and the family shape removed (2).
+
+**And the first version of the lifecycle assertion was green in the defect world, which is the finding's own unit confusion reappearing inside its regression test.** `toHaveLength(1)` on error-severity blocks passes whether the fixture's one finding renders as one block or as one headline plus a two-row table, because the family shape absorbs the duplication. It now asserts the finding count — one severity block **and no table beside it** — and goes red on the collapse mutant.
+
+### B2 — Sec.5.4's four-step pipeline was implemented three steps out of four
+
+Spans were deduped per `(key, text)` bucket and never again. Steps 1 and 2 both **concatenate** — the range collapse joins every text's spans under one key, the text grouping joins every key's spans under one sentence — so a span reappeared once per distinct text its key produced. At the defaults (2/4/6/8 × 15 = 60 generations, the rate the subsection's own opening sentence names): `AK_Namatjira.rms` **23 of 29** groups inflated (the round read 30 — the one figure that did not reproduce exactly, and the inflated count is identical either way), the largest group by count reading **429 against 11** distinct spans (the round named a different group, 58 against 1 — both are the same defect, measured off a different row of the same table); `24hr_Petra.rms` 20 of 32; `13_Rings_v1.2.rms` 7 of 22. **0 inflated groups corpus-wide after the fix**, re-measured over all 32 maps at the defaults.
+
+**The arithmetic half of rev 13's fix landed and the dedupe clause in the same sentence did not**, and it survived because `coveredFraction` — the number rev 13 verified — runs through `mergeSpans` first and was correct throughout. `count` and the rendered table were not.
+
+**The two existing tests were each one line from catching it and neither could.** `aggregate.test.ts`'s dedupe test passes two notes with the **same text**, exercising the `(key, text)` bucket and nothing else; its range test passes two notes with **no span**, making the concatenation invisible. The regression test now carries the **same span under texts differing by a number across several runs** and asserts `count === 1` — one fixture that reaches both rules, because the two rules meet on the same note. Measured after: **0 inflated groups corpus-wide.**
+
+### B3 — `"(0 places)"` about notes that occurred, and the round's own fix over-counts by the run count
+
+`aggregate.ts` gave a spanless group `count: 0` because the aggregate's only counter was the span map, and `report.ts` rendered `${text} (${count} places).` — `"no teams in this lobby (0 places)."` on 24 of 32 maps including `sample.rms`, so on every CI run.
+
+**The round prescribed counting per `(key, text)` pair, "the same way spans are". Measured, that reports 14.** `sample.rms`'s `automaticBeach` is **one key, no span, with a tile count interpolated into its text**; over the 60 default generations it produces 14 distinct texts, which step 1 has already range-collapsed into one entry. Counting buckets reports 14 occurrences of a thing that happened once per run and is being reported once.
+
+**Folded per KEY instead**, which reads 1. This is the same *a count that tracks `runsPerPlayerCount` is reporting on the tool's settings rather than on the script* rule as B2, arriving on the branch that has no span to dedupe by — which is why the two had to be decided together. **And "places" is now a claim about spans only**: a spanless group renders its bare text, or `"(N times)."` when several keys produced one sentence. Rendering `"(1 place)"` for something with no place is the same category of false claim as `"(0 places)"`, one unit over.
+
+### S2 — Sec.3.3 clause 2's abstention, built, and the interim constant turned into a measurement
+
+`computeTerrainSurface` counted nothing: unresolvable names were dropped and returned, with no ratio and no threshold. It now returns `{ surface, producersTotal, producersUnresolvable }` and `runStaticChecks` folds the ratio into the same `surfaceAbstained` flag rule 4's `RawNode` test already fed — two independent claims (a parse-level gap, a resolution-level gap) with one consequence.
+
+**Measured over all 32 maps, and the corpus is bimodal:**
+
+| map | unresolvable / producers | |
+|---|---|---|
+| `24hr_Battle Lines 1.0.rms` | 29 / 40 = **72.5%** | abstains |
+| `TL Black Forest.rms` | 48 / 89 = **53.9%** | abstains |
+| `TL Grand Bara.rms` | 1 / 12 = 8.3% | |
+| `Pa_Site_v1.1.rms` | 20 / 245 = 8.2% | |
+| `TL Frontline.rms` | 15 / 228 = 6.6% | |
+| `24hr_Bazi is God.rms` | 19 / 552 = 3.4% | |
+| the other 26 maps | 0.0%, plus `Rage Forest` already abstaining on rule 4 | |
+
+**Nothing sits between 8.3% and 53.9%**, so `1/3` — 4.0× above one edge and 1.6× below the other — is **kept rather than re-tuned**: a threshold inside a gap that wide is decided by the gap, and moving it anywhere in `[0.09, 0.53]` changes no map. It stays labelled interim because 30 of 32 maps read exactly 0.0%, so the corpus barely constrains the low side.
+
+**Both of the clause's anchors were quoted from denominators that were not this one.** Battle Lines's *"50 of 67"* is BUG-015's count of terrain-producer occurrences including ones this walk never attempts to resolve; `Menindee`'s *"1 of 539"* a wider population again, and against the resolver's own denominator that map reads **0 of 75**. The ratios move and the two cases do not — which is this document's own *an unpinned denominator is reproducible only by accident*, for the third time. **The denominator is now in the same sentence as the rule: a producer is an occurrence this walk actually tried to resolve**, so an absent optional attribute is on neither side of the fraction.
+
+**Priced: it costs 0 findings.** `terrainImpossible` measures **2 corpus-wide** with the abstention live (`AK_Namatjira`'s `SHORE_FISH` on `DLC_MANGROVESHALLOW`, `Chaotic_Strait`'s `MAKE_WATER_TERRAIN` on `DLC_NEWSHALLOW`) — the same 2 the section already pins as the tool's first true corpus findings, neither on an abstaining map.
+
+### The rest, in one paragraph each
+
+- **S1 — the denominator rule had its carrier built and never wired.** `AggregateCell.runsContaining` existed and `MonteCarloAggregate.runsAt()` existed; `report.ts` read the first only through `cellStateOf` and the second not at all, so every rate printed bare and a rate summed over 1 of 15 runs was ranked against one summed over 15 of 15 in the same comparison. **A field added for a rule is not the rule.** Now printed as `100.0% — generated in 3 of 15 runs` whenever `runsContaining < runsAt(pc)`. The population at the defaults is **104 of 330 rows on `13_Rings`, 40 of 476 on `AK_Namatjira`, 2 of 8 on `sample.rms`** — all tracked.
+- **S3 — a malformed settings block produced a confident empty report.** `if (!bridged.ok) continue;` skipped every count, `completed++` ran unconditionally, and the tool emitted a report reading *"Total generations 60"* over empty tables with no error, no note and no static finding. Now `error` / `host-error` on the first non-`ok` bridge, matching the missing-`referenceData` guard at the top of the run, and the counter no longer increments on a generation that produced no data.
+- **S4 — `MAX_GENERATIONS_CEILING` was exported, commented with a citation to Sec.8 item 5, and asserted nowhere.** `grep -rn` returned the declaration and nothing else, so the constant could not go red on the change it names. Two assertions now: the defaults are within it, **and** `MAX_RUNS_PER_PLAYER_COUNT` × the matrix exceeds it, so the ceiling bounds something rather than being trivially true.
+- **M1 — two `host.ts` line citations in Sec.4.5 went stale within an hour of rev 13 shipping**, moved by Sec.7.2 item 1's own `reset()` rewrite. **Both claims remained true**, which is the point: the tools-api rev-9 decay measurement reproducing at a half-life of hours, and both are now anchored on symbols instead.
+- **M2 — "Elapsed" excluded the static layer**, so `staticOnly: true` reported `0.0s` for a pass that on `Pa_Site` walks the AST four times. The clock starts above the static loop.
+- **M3 — a `partial`'s `reasonCtx.instByCount` carried counts whose batches had not run.** Harmless today, one line from the cell rev 13's B2 was about, and the fix is `slice`-symmetric with the line above it.
+- **M4 — the lifecycle test's `toBeGreaterThan(0)` passed on the duplication.** The fixture runs at 2 and 4 players and emitted its one actor-area error twice; the assertion that would have caught B1 at fixture scale is `toHaveLength(1)`, the same line. Added, along with a test that pushes **every** message the tool emits through `validateToolMessage` — the host's own check, because the host's own check is what killed the run.
+- **M5 — `AggregateCell` carries four of Sec.4.2's five fields and the deviation is an improvement.** `runs` is a property of the batch, identical for every cell at that count, and storing a copy per cell lets the two disagree. Folded into Sec.4.2 as the prescribed shape so a later reader does not "correct" it back — with the one thing it buys named as the one thing to watch, since the consumer has to make the join and the first implementation built `runsAt()` and never called it.
+- **M6 — CLAUDE.md's Phase 5 cell went false thirty minutes after it was written**, saying Sec.7.3 had no code and the worker dispatch slots were empty. Corrected in this entry's session rather than left for the implementing one, since the implementing session is the same day and the cell is the file every session loads first.
+
+### Sec.4.5's re-take at the real defaults, discharged — and every table figure saturates to its one-generation value
+
+Rev 13 named this as owed: its cap margin was computed at **one** generation while the tool's default is **sixty**, and the arithmetic between the two printed 1418%. Re-taken over all 32 maps at 2/4/6/8 × 15 under the corrected pipeline:
+
+| | 1 run | 20 runs, naive | **60 runs, corrected** | cap |
+|---|---|---|---|---|
+| worst map, note blocks | `24hr_Petra` 60 | `24hr_Caverns` **570** | **`24hr_Petra` 65** | `maxBlocksPerOutput` **1000** |
+| worst tracked map | `AK_Namatjira` 48 | 538 | **`AK_Namatjira` 58** | |
+| largest single table | `Pa_Site` **134** | **2680** | **`Pa_Site` 134** | `maxTableRowsRendered` **10 000** |
+| same, tracked | `AK_Namatjira` 77 | 1540 | **`AK_Namatjira` 77** | |
+| largest covered fraction | `Rage Forest` 70.9% | **1418.1%** | **`Rage Forest` 70.9%** | 100% by construction |
+
+**The two table figures are EXACTLY their one-generation values**, which is the strongest available check that the dedupe does what the ordering rule says rather than merely reducing a number — `Pa_Site`'s `unsimulated` group is 134 distinct spans however many times the tool visits them, and 60 runs finds the same 134. The block counts sit slightly **above** their one-run values (60 → 65, 48 → 58) rather than at them, and that is the range rule working rather than a residue: more runs genuinely produce note sentences one run does not, and each new sentence is one more group.
+
+**The worst map has now changed identity a fourth time, and this one is the informative change.** Under the corrected pipeline the ranking is `24hr_Petra` 65, `AK_Namatjira` 58, `AD4 - Pag` 54, `Menindee` 52, `24hr_Caverns` 49 — so `24hr_Caverns`'s naive lead (285 groups, 570 blocks) was an artefact of the accumulation and not a fact about the map. **A superlative that moves when the arithmetic under it is fixed was never a claim about the corpus.**
+
+**And the whole output is now bounded with every term named**: notes ≤ 65 measured, static findings ≤ 29 by construction and 6 measured, finding tables ≤ 12 by construction (a `heading` plus a `table` per stage, six stages), header 1. The version of that sum which stood for four revisions omitted the static term entirely, which is the whole of B1.
+
+**One thing the re-take found on its own, and it is this document's recurring shape again.** The 60-run census's covered-fraction figures did not match Sec.5.4's table, and the reason is that they are **different populations**: Sec.5.4's table is a **per-map union of every group's spans**, while `coveredFraction` — the field the paragraph directly above that table prescribes — is **per group**. Re-derived on the table's own population (2/4/6/8 × seeds 1–5): `QS_Three_Bays` reads **41.9% as a per-map union and 30.8% as its largest single group**, `24hr_Caverns` **41.1% and 16.9%**, `Chaotic_Straitv0.99` (tracked) **34.2% and 16.0%** — **all five of the table's merged figures reproduce to the unit under the union reading and none under the per-group one.** They coincide only on `Rage Forest` (70.9% both ways), which has one dominant group — **the same map and the same coincidence that hid the 1418% for three revisions.** Nothing in the table was wrong; the sentence naming which population it counts was missing, one paragraph under the prescription for the other one. Added. *An unpinned population is reproducible only by accident*, fourth occurrence.
+
+*One incidental confirmation, from a mistake.* A directory-wide `vitest run` re-ran the probe while the sweep was still going, so `13_Rings_v1.2.rms` was measured twice by two independent processes — **22 groups / 44 blocks / 68 rows / 39.8% both times**, which is a free determinism check on the aggregator across the player-count matrix. (The operational lesson is the other half: run a throwaway probe by its exact path, never by directory.)
+
+### Sec.8 item 3, discharged rather than deferred
+
+The item says the aggregation case must be *"a **corpus** case on one of those maps, not a hand-built one"*, and the first cut answered it with two `addGeneration` calls and a literal report, citing the item by name. Both now exist: the hand-built one stays (it pins the sum arithmetic, which is the item's other half), and beside it `sample.rms` runs at the real defaults — **tracked, so it holds on a clone** — asserting the batch size on every count, that a partially-present cell's sum covers the runs that held the span, and, **first**, that the population is non-empty. That last line is the control this repo requires of any zero-capable measurement: a corpus that stopped carrying the shape now reads as a red flag rather than as a clean pass over nothing.
+
+### Five new mutants, one per defect
+
+Added to Sec.8 item 6, each against a world this repo has actually been in: the cross-count collapse removed (red on the exact-one-error-block assertion); static families rendered one `severity` per occurrence (red on `Pa_Site` **through `validateToolMessage`**, not through a block count); Sec.5.4's fourth pipeline step removed (red on the same-span/differing-number fixture); the group count taken as `spans.length` (red on the spanless fixture); and the denominator clause removed (red on the partially-present corpus case).
+
+### What the round confirmed, kept here because the round file is deleted
+
+Recorded so the next session does not re-derive it. **Every one of rev 13's three blocking fixes is correctly implemented where it concerns the finding table**: `findWorstCount` sorts ascending and updates only on a **strict** rate improvement, so the lowest-player-count tie-break falls out by construction rather than by a comparator anyone can invert; zero-attempt counts are collected before the rate scan and the lowest is named; absent counts are filtered out of `present` and never ranked; the buckets cell reads the worst count's own domain; and a `partial` is built over `selectedCounts.slice(0, i + 1)`, so rev 13's *"this command is only generated at 2 players"* defect is genuinely gone on all three partials. **Sec.3.2's census reproduces to the unit through the check rather than through an approximation of it** — 4 error ids / 4 commands / 2 maps (`Pa_Site` 81, 82, 91 and `Menindee` 1000), 30 avoid commands / 7 maps, with `AK_Vanguard` abstaining and emitting nothing. **Sec.3.0b's asymmetry is implemented as an asymmetry**: `walkItems` is unconditionally generous and every filtering decision sits in its caller. **Sec.5.1's other pinned rules are all present**: the `NON_NUMERIC` marker rather than `0%` or `NaN%`, S3 always taking the stage label with a real borrowed span still linked, the S5 discriminator keyed on the note at the row's own span, the S3 reason keyed on the note's **key**, and the suppression keyed on a **present** `actorAreaUndeclaredToPlaceIn` finding for the same `commandSpan`, replacing the bucket rather than emptying the cell. **Sec.3.1's implementation is sharper than the section was** and has been folded back as the prescribed form: one `declaredTargetTiles(cmd, dim, 1)` call whose single value is both the exclusion test's input and the sum's contribution, so the pre-division reading and the cancellation argument cannot drift apart.
+
+### Verification
+
+`tsc --noEmit` clean. `eslint src/tools tools-api` clean, exit 0. Checker suites green (`src/tools/builtin/**`, 5 files). Every corpus figure quoted above was measured by a throwaway Vitest probe under `src/tools/builtin/__tests__/`, run and deleted; nothing outside `src/tools/**` and the four docs changed. **Not visually verified** — the Tauri-host sandbox reason, unchanged since 5.1.
+
+### The rules this round produced, both now in CLAUDE.md
+
+**The round's:** *a rule that caps an output has to enumerate every producer that writes into it, and a rule that counts findings has to state its unit in the section that renders them.* Three sections each correct in isolation — a cap paragraph naming two of three block populations, a render rule with no unit, and a per-count loop multiplying whatever that turned out to be — produced a flagship tool whose output its own protocol refuses. **The tell is a cap paragraph whose own arithmetic names fewer block kinds than the output contains.**
+
+**The fold's, and it is the first round that could have one:** *a doc comment that restates a rule the code does not implement is worse than no comment.* `aggregate.ts:118-120` enumerated Sec.5.4's four steps in order and implemented three; `aggregate.ts:125` stated the missing step as a property of the field. Both read as verification to the next person and neither is — the *a warning about a defect decays exactly as a measurement does, and it decays faster* rule one layer down, because a comment asserting a property invites nobody to test it.
+
+**And a third, cheaper than both:** *a review's prescribed fix is measured, not transcribed.* This round's B3 fix was one sentence, obviously right, and reports 14 for a note that occurred once. The rule was already on the books from rev 8 — *price a prescribed fix by running the check with and without it* — and this is the first time it caught a fix rather than confirming one.
+
+## 2026-08-19 (evening) — four report-surface fixes from the first read of real output, and three of the four were mine
+
+**What this is.** The first feedback on the checker's actual output, read rather than reasoned about. Four changes, all in `src/tools/builtin/checker/`, all with tests. **Three of the four are defects the rev-14 fold introduced or left standing that same afternoon**, which is the entry's own point: fourteen rounds of review over a spec and one round over the code did not catch what one person reading one report caught in a minute.
+
+### 1. Locations named in prose were character offsets, against a standing Hard rule with an exemplar in the same folder
+
+Both tables rendered `offset 40` — a position no editor displays. The rule (*a diagnostic that points at a SECOND place in the file names a LINE; spans stay character offsets*) has been in CLAUDE.md since 2026-08-13, it was written after seven RMS03xx diagnostics shipped to a release saying *"already set at offset 86970"*, and `scriptStats.ts` — one directory away, whose header comment is **about this exact distinction** — had it right from the start.
+
+Fixed with `lineNumberOfOffset` (`src/parser/lineIndex.ts`) at both render sites, in the static family table and the notes table. The `rowSpans` entry beside each row still carries the offset, so the click-through is unchanged; only the cell a person reads and then acts on moved. **A rule that already has a working exemplar in the same folder is not self-enforcing**, which is the only durable thing here.
+
+### 2. The renderer was inventing punctuation on text whose contract is that it is passed through verbatim
+
+`"…A create_terrain command can choose which terrain the beach is for its own tiles with beach_terrain.."` — a doubled full stop, reported by a reader as looking like machine output, which is exactly what it was. **Introduced by the rev-14 fold's own B3 fix**: a spanless group at count 1 now renders its bare text with no `(N places)` clause, and the period was still being appended unconditionally. Before that change every group had a clause between the text and the period, so the defect could not appear.
+
+Now a terminator is appended only when the text does not already end in `.`/`!`/`?` and no count clause follows. Small, and worth the entry because it is Sec.5.4's own defect in miniature — the tool editing text it is supposed to be relaying — and because **it is the first thing a reader notices**, which makes it disproportionately expensive to the report's credibility.
+
+### 3. `automaticBeach` is not a statement about what the preview could not check, and it was crowding out the ones that are
+
+*"The engine lays a beach wherever the ground meets deeper ground, with no command asking for it — N tiles here…"* — three sentences, on most of the corpus, under a heading that promises the opposite. **The preview models this correctly and completely**; the note is a true description of engine behaviour, and in the Advanced Tools pane its audience already knows the rule.
+
+`NOTE_KEYS_NOT_PASSED_THROUGH` (`aggregate.ts`) now excludes it, filtered at **ingestion** so the group counts and the covered fraction describe exactly what the report shows. It stays in the preview pane's own drawer, where a reader who does not yet know the rule is the audience.
+
+**The bar for this list is a category test, not a usefulness judgement**, and the distinction is the whole of Sec.5.4: a note is excluded only when it is *not a statement about what the preview could not check at all*. `behaviorVersion2` and `atColor` look like noise and stay — they are real gaps between preview and engine, and **a limitation with low consequence is still a limitation**. Judging notes by usefulness is precisely the opinion the section's opening sentence forbids the tool from forming.
+
+### 4. `hideHealthy`, defaulting ON — the tables were mostly rows with nothing to say
+
+`24hr_Petra` 608 rows, `AK_Namatjira` 476, `13_Rings` 330, overwhelmingly healthy. A row is dropped only when there is nothing whatsoever to report about it: every count where the command exists is rated, placed everything it attempted, and carries no failure bucket, no stage reason and no annotation. **Strict on all four**, and the sharp one is that **a row at 100% carrying a failure bucket is NOT healthy** — it placed everything eventually, having missed on the way, which is the intermittent case a Monte Carlo layer exists to find and which a filter keyed on the rate alone would erase. Zero-attempt rows survive for the same reason: no rate at all is the worst outcome the matrix holds, not the best.
+
+**The hidden count is printed unconditionally, including at zero.** A filtered table and an empty one are different claims, and a reader who cannot separate them has been told the script is clean when it was only quiet. Printing at 0 too is deliberate — the sentence's absence must never be what carries the information.
+
+Read as `params.hideHealthy !== false` rather than `=== true`, because the default is ON and an absent param must not silently invert it. It is the only param in this manifest where the two spellings differ.
+
+### Verification
+
+`tsc --noEmit` clean **across `src/tools/**` and `tools-api/**`**; `eslint src/tools` exit 0. Tools suites **204 tests green**. Twelve new assertions: line numbers in both tables with the offset still on `rowSpans`, the doubled-terminator case and its negative, the beach key dropped with a live note beside it surviving, a beach-only script producing no passthrough section at all, the low-consequence notes kept, and five on the filter (drops the healthy row, keeps the 100%-with-bucket row, keeps zero-attempt, prints the count at 1 and at 0, prints nothing when off).
+
+**Two fixture bugs of my own, caught by the new tests going red for the right reason.** The line-number fixture asserted `line 3` for an offset on line 2 (the code was right, my arithmetic was not), and the filter helper folded one row per generation, making every row partially-present so Sec.5.1's denominator clause decorated every rate — a fixture measuring the wrong rule. Both fixed; recorded because *a fixture that cannot distinguish is not a test* has a mirror image, which is a fixture that distinguishes something other than what it names.
+
+**Note for the next session:** `src/components/sidepanel/ReferenceTable.tsx` currently has four `tsc` errors and they are **not from this work** — the file was modified at 18:20 while this session was running, by a parallel session. Untouched here.
+
+### The rule this round adds
+
+**A report's first reader finds a different class of defect than any number of reviewers, and it is the class that decides whether the report gets read at all.** Fourteen review rounds over the spec and one over the code produced a tool whose output was correct and, on its first showing, carried a position no editor displays, a doubled full stop that reads as machine output, three sentences of engine trivia above the findings, and several hundred rows of commands that worked. None of those is a correctness defect and all four are legibility defects, which is the axis a reviewer reading source does not experience. **Ship the output to a person before the fifteenth round.**
+
+---
+
+**2026-08-22 — BUG-014 fixed: the Tools pane's settings echo now reads a per-run snapshot, not the live generation context.**
+
+`src/tools/ToolsPane.tsx`'s output header rendered `Run at {generation.playerCount} players, {generation.mapSize}` straight from `useGenerationSettings()` — the live context — so changing the player count or map size after a run finished silently re-labelled that finished result with settings it was never run at. The comment directly above the line named the intent correctly (*"Echoing the run's settings makes a stale result self-describing instead of silently wrong"*) and then read the wrong source for it.
+
+Fixed by giving `ToolHost` a place to hold the run's own settings rather than making the pane reach for the live context at render time: `RunState` gained `settingsSnapshot: { playerCount: number; mapSize: string } | null` (`src/tools/host.ts`), `start()` takes it as an optional fifth argument (default `null`, so the ~24 existing `host.start(tool, {}, "src")` call sites in `protocol.test.ts` needed no changes), and it is folded into `this.state` once, at the same point `snapshot` (the document text) already is — never touched again for that run. `ToolsPane.startRun` passes `{ playerCount: generation.playerCount, mapSize: generation.mapSize }` alongside the runner argument, and the echo now reads `state.settingsSnapshot` instead of `generation`.
+
+**Why a host-state field rather than a `useRef` in the pane**: the pane already treats `state` (from `host.getState()` via `useSyncExternalStore`) as the single source of truth for everything about the run — phase, output, edits — and the settings a run was labelled with are exactly that kind of fact, not UI-local state. Putting it beside `snapshot` also means the same reasoning that makes `snapshot` immune to later edits (nothing after `start()` ever assigns into `this.state.snapshot` except a fresh `start()`) covers `settingsSnapshot` for free.
+
+**Verification.** Three new tests in `protocol.test.ts`'s `describe("settings snapshot (BUG-014)")`: `start()` captures the settings it was given, defaults to `null` when a caller supplies none (most existing tests), and the value is unaffected by messages arriving after `start()`. No React render harness exists in this repo (components are verified by typecheck + lint + the real Tauri host, per the Environment section above), so the host-level assertion — the snapshot is fixed at `start()` and nothing downstream can move it — is what stands in for "mutate the live context, assert the echo text is unchanged": since the pane no longer reads `generation` for the echo at all, that guarantee is the whole fix. `npm run typecheck` clean, `npm run lint` clean, full suite **58 files / 1722 tests**, one red (`elevation.test.ts`'s wall-clock timeout, passes 63/63 in isolation — the documented machine-load flake, unrelated to this change).
+
+`docs/known-issues.md` now has no open bugs; BUG-014 removed from it.
+
+---
+
+**2026-08-22 — the earlier Sec.8 mutation list (CREATION_PLAN 5.2's other "still owed" half), all 23, run and reverted one at a time.**
+
+Rev 14's own five mutants (plus the two `fromOriginFallback` path-split mutants) were confirmed the day rev 14 landed. The list before that block — item 6's original 23, prescribed across seven design rounds and never run against the finished implementation — had not been. Method per CLAUDE.md's standing rule: one precise edit, run the narrowest test file, read the failure for the right reason, revert via `Edit` to byte-identical, re-run to confirm green, next mutant. `staticChecks.ts`, `astScan.ts` and `walkItems.ts` sit under `src/tools/`, which this repo has never committed — `git diff` on them is vacuous, so every revert was confirmed by re-reading the touched region against the original `Read` output rather than by `git diff`; all four source files (`staticChecks.ts`, `walkItems.ts`, `aggregate.ts`, `report.ts`) came back byte-identical.
+
+**18 of 23 confirmed clean, each red for the reason the mutant names and nothing else.** Sec.3.1's `>`/`>=` boundary and its filler exclusion (`staticChecks.test.ts`, one test each). Sec.3.2's severity split (avoid_actor_area info→error) and its suppression rule (disabling `suppressedActorAreaSpans` down to `new Set()`). Sec.3.3's third fork arm (removing the unresolvable-named-terrain `return []` falls through to the surface test exactly as the fixture's own name predicts). Sec.4.2's aggregation key loosened from `commandSpan` to `report.stage` — no fixture in `aggregate.test.ts` distinguishes two commands sharing a stage, but `report.test.ts`'s `hideHealthy` fixture does (two different spans collapse to one row, `toHaveLength(2)` becomes 1) — the cross-command-bleed catch the mutant names, just from the neighbouring file. `cellStateOf`'s absent-folded-as-zero-attempt rewrite (both `aggregate.test.ts` and `report.test.ts`'s ABSENT-count fixture). `runsContaining` dropped from the cell literal — three tests red, including the exact "partially-present corpus case" on `sample.rms` the mutant description names. Sec.5.4's notes grouping reverted from text to a per-key grouping (three tests, the "134-identical-lines" shape). Sec.5.1's `{0,0}` backstop, its S3 label rule (the borrowed-real-span fixture — the "5-of-32 mutant"), its zero-attempt guard (bare `NaN%`), its `0%`-for-marker substitution, its zero-attempt-excluded-from-ranking rewrite (6 tests red at once — every fixture touching a zero-attempt count), its S5 reason collapsed to the unconditional empty-pairing sentence, Sec.5.4's spanless-groups-get-a-table rewrite, and its two-spans-onto-one-severity-block rewrite (both spans vanish from the fixture built to hold them). Sec.3.2's declaration walk stopped at `OrphanBlockNode`s (`walkItems.ts`) also confirmed red — see the gap note below for the caveat.
+
+**5 did not go red, and each is a real, confirmed gap rather than a fixture that happened to pass.** Sec.3.2 rule 2's `resolveDeclarationId` mutation (declaration-side `#const` resolved by value → compared by token text) is masked by its own neighbour: `checkActorAreas` folds `inst.actorAreas.keys()`/`instValuesBySpan.values()` into `declaredIds` unconditionally two lines later ("Rule 2's explicit union, restated" — the code's own comment already calls this redundant "in every case the corpus produces"), and the prescribed `#const`-named-area fixture declares in the SELECTED branch, so S0 has already resolved it there too. No existing fixture isolates rule 1's resolution from that fallback; one would need a `#const`-declared `actor_area` inside an UNTAKEN `start_random` branch. The Failure-buckets-as-records mutation (`aggregate.ts`'s occurrence fold, `+f.occurrences` → `+1`) is masked by coincidence: the one fixture that coalesces a bucket across two generations sums 3 (explicit) against 1 (default `?? 1`), and record-count (3+1) equals occurrence-sum (3+1) at exactly 4 — the fixture needs a second generation whose own `occurrences` is itself >1 to tell the two conventions apart. The Failure-buckets-taken-over-the-matrix mutation (worst cell's failures swapped for a matrix-wide union in `buildFindingTables`) has no fixture anywhere in `report.test.ts` or `consistencyChecker.test.ts` with different failure buckets at different player counts on the same row — checked both files before concluding this, per the task's own instruction to check `consistencyChecker.test.ts` before assuming a narrower file covers something. Sec.3.3's producer-resolution-narrowed-to-`inst.symbols` mutation (`computeTerrainSurface`'s merged `symbols` map) has no fixture with a `#const` terrain name sitting in an untaken `if` (item 1's own "TL Black Forest" shape) — every terrain-surface fixture in `staticChecks.test.ts` names a literal terrain. And the `walkItems.ts` orphan-block mutation, while it DOES go red, does so only by collision: `walkItems` is one shared walker, so the mutation is caught by Sec.3.3's own orphan-block terrain-surface fixture rather than by a dedicated Sec.3.2 declaration-side "Pa_Site" fixture — item 1 asked for that fixture and it was never written, so a regression scoped to Sec.3.2's declaration walk alone, leaving every Sec.3.3 caller of `walkItems` untouched, would ship clean today.
+
+**The 23rd, Sec.4.2's `failureMarks` fold re-enabled, is not a gap in the same sense — there is no code left to mutate.** `grep -rn "failureMark" src/tools/` returns nothing; `aggregate.ts` never imports or reads `FailureMark`. Two things superseded this list item before it could be run: a design revision two rounds before rev 14 concluded FailureMarks should be ignored entirely rather than folded, and rev 14's own five-mutant block had already split the underlying defect into the two `fromOriginFallback`-path mutants (the give-up path doubles `originFallbackCenter`, `grouped_by_team`'s extras fabricate `notSimulated`) and run both red the same day. Recorded rather than silently skipped, per the instruction that a mutant with no code to mutate is itself a finding.
+
+**Verification.** `tsc --noEmit` clean. The four checker test files run together: **4 files / 122 tests, all green.** All four touched source files (`staticChecks.ts`, `walkItems.ts`, `aggregate.ts`, `report.ts`) confirmed byte-identical to their pre-mutation state by direct re-read of every touched region, not by `git diff` (see the untracked-`src/tools/` note above). Write-up folded into `docs/consistency-checker-design.md` Sec.8 item 6 as a dated outcome note, appended after the existing prescriptive list rather than rewriting it; `CREATION_PLAN.md` 5.2 and this repo's `CLAUDE.md` Phase 5 status row both updated to drop the mutation list from "still owed" (the reporter censuses remain owed, unchanged).
+
+---
+
+**2026-08-23 — Terrain and Objects reference-table rows gained a `Description` column, transcribed from the community reference spreadsheets in `reference-docs/`.**
+
+Neither `game-constants.json` nor the reference table said anything about what a terrain or object actually *is* beyond its name — `isWater`/`isForest`/etc. are booleans the generator reads, not prose a person reads. The community spreadsheets already carry that prose: Zetnus's "AoE2 Terrains" has a `Comments` column (every one of the 131 terrain rows has one — "grassy", "no beaches", "automatically placed when land terrains border water"), and "Definitive Constants List" carries the same idea across three sheets keyed by the same genie unit id as `constId` — `DE only`'s `Description` (631 of 2701 rows, mostly age/variant disambiguation like "castle age" or "no graphics in DE"), `Resources`' and `Animals`' `Comments` (yield notes, habitat asides, and the odd caught bug — `FELLED_TREE_BAOBAB`/`FELLED_TREE_BAMBOO` are labelled backwards in the source data itself, "actually bamboo"/"actually baobab").
+
+New nullable `description` field on `$defs/constant` in `game-constants.schema.json`, same shape and same "one-time transcription, not something `tools/extract-constants` derives" status as `isWater`/`isForest`/`isHybrid`/`beachTerrain` — added to that script's `CONSTANT_KEY_ORDER` so a future dat-driven run carries it through rather than silently dropping it (the exact `beachTerrain` near-miss this file already warns about). Merged into the 131 terrain rows (131/131 covered) and 2670 object rows (668/2670 — the rest are gaia-roster carcasses/blood decals and other rows the community table never annotated) by a one-off script, using `extract_constants.py`'s own `format_game_constants` writer so the diff touches exactly the 799 changed rows and nothing else (confirmed: `git diff --stat` shows 799 insertions / 799 deletions, one line each). Where more than one sheet had a comment for the same id, `DE only` wins — checked by hand across all 59 conflicts and it was consistently the more complete text (e.g. "herdable; brown" vs. `Animals`' bare "brown").
+
+`ReferenceTable.tsx`'s Terrain and Objects tabs now share a trailing `Description` column (`c.description ?? "—"`), reusing the existing Find-searches-every-rendered-cell mechanism for free — no new HelpTip needed, since this is a new column in an already-`HelpTip`-wrapped table, not a new interactive element. `GameConstantEntry` (`src/breakdown/gameConstants.ts`) gained the matching optional field.
+
+**Verification.** `npm run validate:reference`, `npm run typecheck`, `npm run check:generated-types` (ran `generate:types` first — schema changed) and `npm run lint` all clean. The Python tool's own suite: **114/114 tests pass**, including `TestRoundTripAgainstRepoFile.test_byte_identical_when_nothing_changes`, which reads the real repo file and round-trips it through the writer — confirms the new field's formatting matches the rest of the file exactly. Full JS suite: **58 files / 1722 tests, all green** (floor 42/1339).
+
+---
+
+**2026-08-23 — `npm run measure:checker` gained the four owed reporter censuses (CREATION_PLAN 5.2's last "still owed" item), and one of them caught a real bug in itself the first time it ran.**
+
+`src/tools/__tests__/consistencyChecker.measure.test.ts` had six sections (rev 12's original build) and owed four more per rev 13/14's own "four censuses are owed to it" paragraph. All four are now in: **Section 7** (tie-break census, Sec.5.1's "worst" as a minimum usually tied across counts — free, reuses sweepA's rows), **Sections 8/9** (the per-map static block count against `LIMITS.maxBlocksPerOutput`, and Sec.3.3 clause 2's unresolvable-producer ratio, replacing the interim `1/3` with a measurement — cheap, no generation), **Section 10** (presence and drift swept together, 2/4/6/8 × seeds 1–5, a new 640-generation sweep — the two axes no earlier sweep crossed), and **Section 11** (the note census at the tool's own DEFAULT run count, 2/4/6/8 × 15 seeds/map, 1920 generations — the re-take Sec.4.5's block-cap margin actually depends on, since every figure Sec.5.4 pinned before this file existed was taken at one generation against a default of sixty). Pin count 89 → 116.
+
+**The first full run found a genuine bug in the new code, not just corpus drift.** Section 10's "flip" control — rev 12's own finding that 0 rows move from absent-under-seed-1 to present-under-some-other-seed — measured **549** instead of 0. Cause: the control's loop counted every (row, playerCount) pair sweepC's 5-seed union found present, without excluding rows sweepC discovers that sweepA (seed 1 only) never saw at *any* player count — exactly the ~153 new rows that make `totalRows` itself grow 8358 → 8511, a population the design doc already accounts for separately. Fixed by restricting the control to rows sweepA already has a record for, checking only the specific counts that row's own seed-1 data marks absent. Re-run: **0**, matching rev 12's finding.
+
+**Two of Section 10's other figures were also wrong to pin as exact.** The design doc states its own convention for this census — *"Sec.8's invariant figures are pinned off this, with `≥`"* — because they're a measured floor over a 5-seed sample, not an exact invariant. The first cut used exact equality throughout and read `within-batch partial pairs` as 837 against a pinned 240 (3.5×), which is real growth from sampling more seeds, not drift. `makePinner` gained a `pinMin` variant (`actual >= expected`) and the two affected figures now use it; every other pin in the file stays exact by design.
+
+**Final run: 116 pins, 2 DRIFT** — both Section 11 note-block counts off by exactly one (`24hr_Petra` 64 vs pinned 65, `AK_Namatjira` 57 vs pinned 58), plausibly the ~3 days of uncommitted tree changes since rev 14's own 2026-08-19 measurement shifting one stochastic note discovery. Left as reported drift rather than chased, per the reporter's own stated rule that its expected values are as assumable as the numbers it prints.
+
+**Wall-clock cost turned out to be the harder problem than the code.** The sweep is fully synchronous (no `await` inside the generation loops), so Vitest's timeout cannot preempt it — it can only be evaluated, and only report stale, after the function returns control. Two consecutive runs on this machine reported **~5.2 hours** and then **~24 hours** of wall clock for what should be ~30-45 minutes of real compute; mid-run, `Get-Process` on the node process showed only ~13 minutes of actual CPU time accumulated despite having "run" since the previous evening. Not load — the session's laptop sleeps/powers off while the session keeps ticking. Both runs' real work finished correctly and `consistency-census.json` was written with the right `driftCount` well before Vitest's own timeout fired and marked the test FAILED; the failure was cosmetic both times, confirmed by reading the JSON's `generatedAt`/`driftCount` directly rather than trusting the outer pass/fail. `testTimeout` (this file's `it()` and `vitest.measure.config.ts`) raised to 172,800,000ms (48h) with the reasoning written into the file's header — margin against sleep, not against real compute cost, and a future session should not use either inflated duration to recalibrate the expected cost.
+
+**Verification.** `npm run typecheck` and `npm run lint` clean on every edit. `consistency-census.json`'s final `generatedAt`/`driftCount`/`pins.length` read directly and matched the console output exactly. `npm test`'s floor and full suite untouched — this file stays excluded from it, as before.
+
+---
+
+**2026-08-23 — Hotkeys generalized from Save-only to a seven-binding registry, all one-handed by design, and six new actions wired up: New File, Open File, Preview Current/Final toggle, Preview Re-roll, and two Breakdown card actions.**
+
+Save was the only rebindable shortcut; `hotkeys.ts`/`HotkeySettingsContext.tsx` were built entirely around it (a single `saveHotkey` field, a single `isRecordingSaveHotkey` boolean). Generalized to `HotkeyId`/`DEFAULT_HOTKEYS`/`HOTKEY_STORE_KEYS` records in `hotkeys.ts` and one `hotkeys: Record<HotkeyId, Hotkey>` + `recordingId: HotkeyId | null` pair in the context, so a future binding is a `hotkeys.ts` entry plus one listener, not a second copy of the context. `HotkeysSettings.tsx` now renders one `HotkeyRow` per entry in a local `HOTKEY_ROWS` metadata array (legend/hint text — kept out of `hotkeys.ts`, which stays React-free) instead of one hardcoded Save fieldset, sharing a single recording listener since `recordingId` already guarantees at most one row records at a time. Lifting `recording` fully into context meant the old per-row mount-sync effect was no longer needed, but closing Settings (or switching settings tabs) mid-record needed a new mount-only cleanup (`return () => setRecordingId(null)`) — without it a component unmounting mid-record would leave `recordingId` stuck non-null forever, silently suppressing every hotkey listener in the app, not just the one being recorded.
+
+**Every default is Ctrl/Alt + a left-hand-reachable key, with one deliberate exception.** `o` is otherwise off limits (it falls under the right hand), but Open keeps `Ctrl+O` — close enough to a universal OS convention that fighting it would cost more muscle memory than the one-handed rule is worth (first cut used `Ctrl+E` for "existing file"; corrected same-session once the exception was made explicit). Final set: `save` Ctrl+S (unchanged), `newFile` Ctrl+N, `openFile` Ctrl+O, `previewToggleView` Ctrl+Alt+V, `previewReseed` Ctrl+Alt+R, `breakdownDeleteCard` Ctrl+Alt+D, `breakdownAddCommand` Ctrl+Alt+A. File actions use bare Ctrl (matching Save); Preview/Breakdown use Ctrl+Alt so their namespace can't collide with a future File action.
+
+**New File is a genuinely new capability** — the app had Open/Save/Save As but no way to blank the document without a file dialog. `useDocument.newFile()` mirrors `openFile`'s shape (guards via the existing `ensureSavedBefore`, `documentModel.setValue("")` for a fresh undo stack, clears `filePath`/`isDirty`/`lastSavedAt`). `UnsavedChangesDialog`'s `UnsavedAction` union gained a third member, `"new"` — its own `LABELS` record is typed `Record<UnsavedAction, …>` specifically so a missing case is a compile error, not a runtime gap (the type's own doc comment names "new" as the anticipated third case). `TitleBar`'s File menu gained a New item with its hotkey hint, alongside Open's (which never showed one before).
+
+**Preview's two hotkeys reuse and slightly refactor existing behaviour** rather than duplicating it: `PreviewViewContext` gained `toggleView` (`setView` flipped functionally, so no stale-view dependency) and `reseed` (the exact `Math.floor(Math.random()*1_000_000)` the Re-roll button already used, now shared instead of copy-pasted into App.tsx's hotkey handler). The pin (`PreviewCutContext`) was never touched by either — it already lived in a separate context untouched by `view` changes, so "toggle to Final and back to Current keeps the same pin" was already true structurally; the hotkey just confirms it rather than needing new plumbing.
+
+**The two Breakdown hotkeys are scoped to the components that own the state they need, not registered globally.** `breakdownDeleteCard` lives in `BreakdownPane.tsx` (needs `applyEdit` and the shared selection) and only acts when the selection is one of the four card kinds that already carry a Delete button — a new `canDeleteItem` type guard in `cardKind.ts`, deliberately excluding `strayAttribute`/`sharedBlock`/`raw` (none of those cards has ever offered delete, so the hotkey isn't allowed to invent a capability the UI doesn't have). `breakdownAddCommand` lives in `SectionView.tsx` (needs the per-tab `insertTarget`, memoized so the effect doesn't tear down its listener every render) and toggles the same `CommandPicker` the "+ Add command" button does. Both listeners' mount lifetime IS their tab-scoping — no explicit "only when Breakdown is active" check needed, since the component simply isn't mounted otherwise.
+
+**Verification.** `npm run validate:reference`, `npm run typecheck`, `npm run lint` all clean (one self-inflicted `react-hooks/exhaustive-deps` warning on `SectionView`'s new effect, fixed by memoizing `insertTarget` rather than suppressing the rule). `src/settings/__tests__/hotkeys.test.ts` (15 tests, unchanged file — the generic functions it exercises didn't need edits) passes standalone. Full suite: **60 files / 1746 tests, 1743 passed** — the 3 failures are the documented wall-clock-timeout flakiness in `elevation.test.ts`/`index.test.ts` (unrelated preview-generator determinism tests, known to time out under load per this file's own duration-spread notes), not anything touched this session. Six new `settings.hotkeys.*` ui-help.json entries added, `titleBar.file` and `settings.tab.hotkeys` text updated to stop undercounting what's there. Not visually verified in the running app — see Environment; a local run is the real confirmation.
+
+---
+
+## 2026-08-24 - Script formatter (CREATION_PLAN 5.2b): finished, and corrected from its own output
+
+The formatter arrived here already built by a concurrent session, at design rev 1, with `src/tools/builtin/formatter/{options,writer,layout,index}.ts`, `scriptFormatter.ts`, its unit and corpus suites, and a `scriptFormatter` entry in `registry.ts`. Everything ran green. This session finished it, and the finishing is the entry: **three defects, none of them findable by reading the code, all three found by formatting real scripts and diffing the result.**
+
+### What was already right, because it decides what follows
+
+The architecture is **AST-guided, token-driven**, and it is worth restating because every safety property in the tool comes from it. A `ParseResult` covers every non-whitespace character as a token, so a script is `gap[0] + tokens[0] + gap[1] + ... + gap[n]` with every gap pure whitespace. Formatting is choosing a new `gap[]`; the token array is never touched. Comments cannot be lost (they are tokens), `RawNode` interiors cannot be lost (tokens), nothing can be invented (no token text is ever synthesised), minimal edits are a diff of two whitespace arrays, and correctness is provable by re-tokenising the output and comparing token texts. On mismatch the tool emits **no edits at all** and says so, which is the operational form of the "never silently drop content" hard rule.
+
+That also settles the `never re-print code` question: the rule is scoped to Breakdown, where re-printing is a SIDE EFFECT of an unrelated edit the user never asked for. Here reformatting IS the request, the output is shown before it is applied, and one Ctrl+Z reverses all of it. `breakdown-design.md:63` names this tool as the sanctioned exception.
+
+### Defect 1 - the design pinned a corpus fact that is not one, and it was the tool's largest behaviour
+
+Rev 1's Sec.5 table put section items at `L = 0` and justified it in six words: *"matching the corpus"*. Diffing `local/Arena.rms` showed the whole file de-indenting: **4,746 of 5,403 lines changed at the all-preserve default**, and every one of them a DE official map's deliberate layout being thrown away.
+
+Measured properly: **87 of 263 corpus section bodies are stepped in under their header**, and the split is per script - 32 never, **13 always**, 3 mixed, with **eleven of the thirteen being DE official maps**. This is the identical bimodal shape as Sec.3.1's inline/expanded finding, arriving one level up, and rev 1 had answered it correctly there (`blockLayout: preserve`) and by assertion here. `sectionIndent: "preserve" | "flat" | "indented"` now classifies per section.
+
+Corpus-wide changed lines at the defaults: **49.4% -> 19.4%**. Arena 4,746 -> 21. `CoastalForest`, `Arabia`, `Migration`, `Glade`, `Graupel` and `24hr_Bazi is God` all go to **zero**. Nothing else moved - the same blocks stay inline, the same blocks stay expanded - which is what identifies it as one rule rather than a general excess of enthusiasm.
+
+Two details worth keeping. **The test is the MINIMUM column over the section, not the first item's**: a leading comment group (Sec.4.4) indents its own members, so "the first item is indented" is true of a flat section that merely opens with one. And **it counts tokens, not `section.items`**, because a comment is not an `Item` - `24hr_Battle Lines 1.0.rms` puts every item of a section under a heading comment at column 0, and an items-only scan reads that as a fully indented body and steps it in a second time. That one was caught by a rev-1 unit test written for a different rule, which is the argument for keeping a rule's fixture around after the rule is implemented.
+
+### Defect 2 - the indent detector was reading comment prose as code
+
+`detectIndentUnit` measured every raw line, so a file's header comment decided its indent unit. `test-maps/sample.rms` is a 4-space script whose header is inset by three, and it detected **three spaces** and re-indented the file to match. Evidence lines are now only lines a token starts, excluding the interior of a multi-line comment. An own-line comment still counts, because authors indent those with the code they introduce and the comment-group rule depends on that being deliberate.
+
+**Incidence on this corpus: one file of 52.** Fixed anyway, because the failure mode does not scale with the corpus - it scales with how much of a script is header comment, and a new map is mostly header comment. Same reasoning that keeps a bound honest rather than budgeted.
+
+### Defect 3 - eight scripts render an empty report
+
+`changedLines` compares line TEXT, and a deleted blank line has neither text nor a token, so the token-keyed diff cannot see it. Eight corpus scripts therefore produce edits with zero changed lines (`local/Arabia.rms`: 18 edits, 0 changed lines) and rendered a preview block holding the empty string plus a table with no rows, immediately under "Edits proposed: 18". Not a correctness defect and it reads as a broken tool - the same legibility class as the consistency checker's first showing to a human, and found the same way. There is now a branch that says what actually moved.
+
+### The reporter, and why rev 1's numbers were wrong
+
+Rev 1's corpus figures were hand-probed and the probes were deleted. **Its denominator was wrong in every section that used it**: it said 56 scripts, "32 top level plus 24 under `local/`", where `local/` holds 19 and the corpus is **51**. Several figures moved by more than that explains, because rev 1's instruments were text scans and blocks inside an unparseable region are not blocks the formatter lays out.
+
+`src/tools/builtin/formatter/__tests__/formatter.measure.test.ts` now prints every figure the design pins, in the order the document uses them, and runs **inside the normal suite** (the whole corpus formats in about a second, so keeping it out would only let it decay). Two throwaway probes and a `tmp-formatted.rms` left at the repo root were deleted with it. Same lesson as `npm run measure:checker`, one tool down: **a number in a spec that no committed instrument reproduces is reproducible only by accident.**
+
+### Verification
+
+`npm run typecheck` and `npm run lint` clean (16 pre-existing warnings, 0 errors). `npx vitest run src/tools` **14 files / 383 tests, all passing** - including the corpus gate's three properties (token preservation, idempotence, no new parse error) over every `.rms` in `test-maps/` plus `local/` and `broken/`, at the defaults and at an option set that overrides every `preserve` rule at once. The idempotence half is the one that matters most here: a `preserve` rule classifies from the source, so a rule that is not stable under its own output makes a file drift a little further on every run, and `sectionIndent` is the third such rule in the tool.
+
+### Mutation results, including the one that survived
+
+Per the hard rule that a check which has only ever passed proves nothing, three mutants:
+
+1. **`finish()` trims each gap's trailing spaces** (so single-space gaps become empty and tokens merge). **Killed, 104 of 104 corpus tests red.** Token preservation does what it claims.
+2. **`sectionLevel`'s minimum-column rule replaced by "any line-leading thing is indented".** **Killed twice** - 7 corpus tests and 6 unit tests. Worth recording because the prediction going in was that the corpus gate would MISS it: the mutant's output looks self-consistent, so idempotence seemed like it should hold. It does not, and the reason is the interaction with comment groups rather than with sections. Reasoning about which gate catches a mutant is not a substitute for running it.
+3. **The empty-gap guard in `GapWriter.write` removed. SURVIVED**, corpus fully green. Not a gap in the gate: the guard is unreachable from any input. The lexer splits on whitespace only, so two consecutive tokens always have at least one whitespace character between them, and the sole exception (a leading byte-order mark) is the case the guard exempts anyway. It guards a future edit to `layout.ts`, not a source shape, so no fixture can kill it and none was written. Recorded rather than papered over, the same way the 2026-08-22 mutation list recorded "one item with no code left to mutate".
+
+**Not visually verified** - same Tauri-host sandbox reason as 5.1/5.2/5.2b's other two tools. The formatter adds no UI element of its own; its ten params are rendered by the pane's generic params form, which is already covered by `tools.params` in `ui-help.json`.
+
+**Full suite after the session: 64 files / 1927 tests, all green, 133 s.** `scripts/check-test-floor.mjs`'s per-map coefficients raised 11 -> 13 and 4 -> 6, because the formatter's corpus gate adds exactly two tests per map (one per option set) and a uniform shift keeps the coefficients minima. `BASE_TESTS` deliberately left at 911 with a comment saying why: recomputing it as `total - coefficient x count` over-states it, because the coefficients are minima and every map contributing above its own minimum lands in the residual - an error invisible on a full mount that goes red on a clone, which is the one place the number has to be right.
+
+---
+
+## 2026-08-24 - BUG-015: the `#const` name-to-name alias, and why its own bug entry measured the wrong thing
+
+`#const TERR_CORNER GRASS2` then `create_terrain TERR_CORNER`. `instantiate.ts` treated `#const`'s value slot as numeric and looked `GRASS2` up in the SCRIPT's symbol table only, where it is not; the non-numeric result was then dropped from the exported `symbols` ("a flag is not an id"), so `resolveTerrainId` was handed a name that resolved against neither game constants nor symbols and reported that our reference data does not know a terrain it knows perfectly well.
+
+The diagnosis in the bug entry was exactly right. **Its numbers were not, and neither was its scope.**
+
+### The entry said terrains. The object half is bigger
+
+Census over the 52 corpus scripts, counting `#const NAME <string>` where the value is not already a script symbol:
+
+| the value names | definitions |
+|---|---|
+| a TERRAIN game constant | 96 |
+| an OBJECT game constant | **108** |
+| neither, and must stay dropped | 4 |
+
+The entry names only `create_terrain`/`terrain_type`/`base_terrain`. `#const LURE BOAR` + `create_object LURE` is the same defect on the larger population, and fixing one without the other would have left it half done. The four negatives are real and worth keeping: three are aliases to another script `#const` that is not defined yet at that point (so the engine cannot resolve them either), and one is `24hr_Battle Lines 1.0.rms`'s `#const restricted_terrain_distance max_distance_to_other_zones`, the attribute-name alias BUG-003's triage already knew about.
+
+### The entry's headline figures do not reproduce, and the metric behind them is the wrong one
+
+It claims *"97 `terrainAbsent` failures across two maps"* and *"Battle Lines loses 50 of its 67 terrain-producer occurrences"*, measured 2026-08-18. Re-measured at the same 4 players / Normal / seed 1: **`terrainAbsent` is 1,569 across 46 maps.**
+
+Two separate reasons, and the second one matters more than the correction.
+
+**One: the bucket does three jobs.** Of 127 distinct `terrainAbsent` details, only one family is *"reference data doesn't know the terrain X"*. The rest are *"no tile on the map currently matches this patch's base_terrain"* and *"no tile satisfies every constraint"* - a resolved terrain with nowhere to go, which is a different failure sharing a bucket. Neither is BUG-015.
+
+**Two, and this is the lesson: the failure count is nearly blind to this bug.** Fixing it moved corpus `terrainAbsent` **1,569 -> 1,552**, seventeen. Read on that number alone the fix looks negligible. The grid says otherwise, on the one map that carries the idiom:
+
+| `24hr_Battle Lines 1.0.rms` | before | after |
+|---|---|---|
+| distinct terrains on the final grid | **1** | **6** |
+| tiles of the base placeholder | 40,000 of 40,000 | 2,709 |
+| objects placed | 324 | **921** |
+
+The whole 200x200 map was a single flat unnamed terrain, and almost none of the damage ever reached a failure record - the terrain commands resolved to nothing and painted nothing, silently, and `create_object` then had no terrain to stand on. **CLAUDE.md's own rule, arriving from the other direction: a stage that silently produces a plausible output is harder to find than one that throws.** The corollary for bug entries is that a figure is only as good as the instrument behind it, and the instrument here should always have been the grid.
+
+Corpus-wide, three maps change and nothing else does. Battle Lines as above; `TC2 - Comeer v1.4.rms` 6,793 -> 6,698 objects and `TL Grand Bara.rms` 747 -> 739. Both **decreases are correct**: they carry object aliases (`#const HERDABLE DLC_GOAT`, `#const 9V_SHEEP DLC_GOAT`), which previously resolved to no row at all and so inherited the unknown-object `land` habitat and a false `requiresGaiaOnly`. Resolving them gives each object its real habitat and its real gaia requirement, so a few placements are now correctly refused. `gaiaOnlyRequired` rising 24 -> 27 is the same effect seen from the failure side.
+
+### The design decision, stated out loud as the entry asked
+
+`InstantiatedScript` gains `aliases: ReadonlyMap<string, string>`, **and the alias is stored UNRESOLVED.** That is the whole safety argument. `#const` values share one namespace with flags, attribute ids and command ids, so resolving a name at definition time would happily turn a flag into a terrain id - a worse failure than the one being fixed, and the reason `instantiateScript` is not given the constants roster at all.
+
+Instead **each resolver chases one hop against its own table**: `resolveTerrainId` retries the target as a terrain name, `objectEntry` retries it as an object name, and a target that is neither resolves nowhere. **The slot the name is written in decides the domain**, which is a fact the caller has and S0 does not - CLAUDE.md's "the exception belongs inside the thing that computes the rule, not at the call site that knows about the exception", applied to a lookup.
+
+Two limits are deliberate and tested. **One hop, never a chain**: `#const A B` + `#const B WATER` does not resolve, because in game a chain only works when each link was already defined, and that case resolves at definition time into `symbols` instead. **Precedence is unchanged**: built-in name first, script `#const` id second, alias last, so an alias cannot shadow either.
+
+A separate map rather than widening `symbols` to `number | string`, because the field's own note says it was shaped to keep a `typeof` narrowing off every consumer.
+
+### Verification, and the mutant that found an empty test
+
+Unit tests in `grid.test.ts` (6), `objects.test.ts` (2), `instantiate.test.ts` (4) and `index.test.ts` (2, end to end through `generatePreview`), covering the positive case, the negative case, one-hop-not-a-chain, precedence, and inertness with no alias table.
+
+**The prescribed mutant - chase the alias against every category rather than only terrains - SURVIVED on the first attempt**, and that is the useful part. `grid.test.ts`'s shared fixture is `[WATER, GRASS, FOREST]`, three terrain rows and nothing else, so a test asserting "an alias to GOLD resolves to nothing" passed whether or not the category filter existed. **A fixture with no row of the wrong category cannot test a category filter.** The fixture now carries an object row and an attribute row, plus a terrain in the same array so the test is about the category and not about the array being empty; the mutant is red. Third time this repo has recorded a test that could not distinguish, and again only a mutant said so.
+
+`npm run typecheck`, `npm run lint` clean. **Full suite 64 files / 1942 tests, all green.** One unrelated red on the way: `formatter/__tests__/corpus.test.ts`'s `local/Arena.rms` took 8.2 s inside a full run and tripped Vitest's 5,000 ms default - the documented wall-clock spread, passing in 200 ms alone. It now carries an explicit timeout for the same reason the formatter's reporter does.
+
+**Not visually verified** - Tauri-host sandbox, as ever. Worth a look in the running app on `24hr_Battle Lines 1.0.rms`, which is the map that goes from one flat colour to a real map.

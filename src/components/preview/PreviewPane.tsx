@@ -172,6 +172,7 @@ export function PreviewPane() {
     setView,
     seed,
     setSeed,
+    reseed,
     colorMode,
     setColorMode,
     selectedTile,
@@ -295,16 +296,7 @@ export function PreviewPane() {
           </label>
         </HelpTip>
         <HelpTip id="preview.reroll">
-          <button
-            type="button"
-            className={styles.reroll}
-            // A new seed, drawn once per click. Math.random is fine HERE —
-            // Sec.8's ban on it covers src/preview/generator/, where
-            // reproducibility is the whole contract. Picking which seed to
-            // show a user is not part of that contract; consuming it
-            // deterministically is.
-            onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))}
-          >
+          <button type="button" className={styles.reroll} onClick={reseed}>
             Re-roll
           </button>
         </HelpTip>

@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionTab } from "./sectionTabsModel";
 import { BlockList } from "./BlockList";
 import { CommandPicker } from "./CommandPicker";
 import { DiagnosticsRuler } from "./DiagnosticsRuler";
 import { useBreakdownContext } from "./BreakdownContext";
+import { useHotkeySettings } from "../settings/HotkeySettingsContext";
+import { matchesHotkey } from "../settings/hotkeys";
 import { HelpTip } from "../components/HelpTip";
 import styles from "./SectionView.module.css";
 
@@ -39,7 +41,34 @@ export function SectionView({ tab }: SectionViewProps) {
   // handler only ever fires for a genuine background click (the padding
   // around/between cards, not a card itself) — exactly the "click empty
   // space to deselect" behavior the spec calls for.
-  const insertTarget = selectedItem ? { after: selectedItem } : targetSection ? { in: "section" as const, section: targetSection } : null;
+  // Memoized (not just a plain expression) so the Add Command hotkey effect
+  // below can depend on it without tearing down and re-adding its listener
+  // on every render — a plain object literal here would be a new reference
+  // every time regardless of whether selectedItem/targetSection actually
+  // changed.
+  const insertTarget = useMemo(
+    () => (selectedItem ? { after: selectedItem } : targetSection ? { in: "section" as const, section: targetSection } : null),
+    [selectedItem, targetSection],
+  );
+
+  // Add Command's own hotkey — toggles the same picker the button does,
+  // with the same insertTarget rule (after the selection, else appended to
+  // this tab's last section). Scoped to this component rather than a
+  // global listener: SectionView remounts per active section tab, so the
+  // effect's mount lifetime is what makes the hotkey target the section
+  // actually on screen, the same way the button's own disabled state does.
+  const { hotkeys, recordingId } = useHotkeySettings();
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      if (!matchesHotkey(event, hotkeys.breakdownAddCommand)) return;
+      if (!insertTarget) return;
+      event.preventDefault();
+      setPickerOpen((v) => !v);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hotkeys.breakdownAddCommand, recordingId, insertTarget]);
 
   return (
     <div className={styles.outer}>

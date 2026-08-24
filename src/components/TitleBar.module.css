@@ -25,7 +25,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  min-width: 140px;
+  min-width: 170px;
   background: #fff;
   border: 1px solid #000;
   z-index: 10;
@@ -34,6 +34,10 @@
 }
 
 .dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   border: none;
   background: #fff;
   padding: 0.4rem 0.75rem;
@@ -41,6 +45,13 @@
   text-align: left;
   cursor: pointer;
   width: 100%;
+}
+
+/* The current binding, shown next to Save so a rebind in Settings > Hotkeys
+   is visible right where the action lives, not only in the dialog. */
+.hotkeyHint {
+  color: #888;
+  font-size: 0.8rem;
 }
 
 /* HelpTip always renders a <span> wrapper (see HelpTip.tsx), so for a

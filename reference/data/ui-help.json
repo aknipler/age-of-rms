@@ -2,7 +2,7 @@
   "entries": [
     {
       "id": "titleBar.file",
-      "text": "Open, Save, and Save As for .rms files."
+      "text": "New, Open, Save, and Save As for .rms files."
     },
     {
       "id": "titleBar.edit",
@@ -81,6 +81,10 @@
       "text": "The map size this script targets. Not yet used by the resource totals — will feed the approximate preview and consistency checker in a later phase."
     },
     {
+      "id": "settings.authorName",
+      "text": "The name written into the Author row of the comment this app stamps at the top of a script it creates. Left blank it reads Unknown. Changing it renames the author of scripts saved from now on, not of ones already stamped."
+    },
+    {
       "id": "settings.helpMode",
       "text": "Controls when these help popups appear: always on hover, only while holding ALT, or off entirely."
     },
@@ -89,12 +93,40 @@
       "text": "Constant names in RMS run long, and readouts such as the preview's tile panel are narrow. With this on, a name over six characters is drawn as its first three letters followed by an ellipsis, and hovering it shows the whole name. Turn it off to always see names in full, at the cost of more wrapping."
     },
     {
+      "id": "settings.hotkeys.save",
+      "text": "The shortcut for Save, shown here and next to Save in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
+      "id": "settings.hotkeys.newFile",
+      "text": "The shortcut for New File, shown here and next to New in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
+      "id": "settings.hotkeys.openFile",
+      "text": "The shortcut for Open File, shown here and next to Open… in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
+      "id": "settings.hotkeys.previewToggleView",
+      "text": "The shortcut for switching the preview between Current and Final. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
+      "id": "settings.hotkeys.previewReseed",
+      "text": "The shortcut for re-rolling the preview's seed. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
+      "id": "settings.hotkeys.breakdownDeleteCard",
+      "text": "The shortcut for deleting the selected Breakdown card. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
+      "id": "settings.hotkeys.breakdownAddCommand",
+      "text": "The shortcut for opening the Add Command picker in the Breakdown tab. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
       "id": "settings.tab.general",
       "text": "Settings that apply across the whole app, including how these help popups behave."
     },
     {
       "id": "settings.tab.hotkeys",
-      "text": "Keyboard shortcuts. Nothing is rebindable yet."
+      "text": "Keyboard shortcuts — Save, New, Open, two Preview actions and two Breakdown card actions, all rebindable here."
     },
     {
       "id": "settings.tab.theme",
@@ -318,7 +350,7 @@
     },
     {
       "id": "breakdown.sidePanel.referenceRadio",
-      "text": "Switches the reference table below between Terrain constants, Object constants, Commands, and the Preview Obj. List — the objects your own script places, with a tick box for each one the map draws."
+      "text": "Switches the reference table below between Terrain constants, Object constants, Commands / Attributes, and the Preview Obj. List — the objects your own script places, with a tick box for each one the map draws."
     },
     {
       "id": "breakdown.sidePanel.referenceFind",
@@ -330,7 +362,7 @@
     },
     {
       "id": "breakdown.sidePanel.referenceTable",
-      "text": "A read-only lookup of the constants/commands available in RMS, sourced from this app's reference data. Some columns are placeholders pending later data-extraction work."
+      "text": "A read-only lookup of the constants/commands available in RMS, sourced from this app's reference data. In Commands / Attributes, click a command's arrow to see the attributes it accepts inside its block; searching for an attribute opens its command automatically. Some columns are placeholders pending later data-extraction work."
     },
     {
       "id": "unsavedChanges.cancel",
@@ -431,6 +463,38 @@
     {
       "id": "preview.objectVisibility",
       "text": "Untick to hide this object from the map above, which is the quickest way to see what is underneath a few thousand trees. It only changes the drawing: the objects are still placed, still counted in this table, and still listed when you click their tile. A warning triangle appears beside Preview Obj. List while anything is hidden."
+    },
+    {
+      "id": "tools.select",
+      "text": "Picks which tool runs. Switching tools while one is running cancels it first — only one tool runs at a time."
+    },
+    {
+      "id": "tools.run",
+      "text": "Runs the selected tool against the open script. If you just typed, the script is re-parsed first so the tool never reads stale code."
+    },
+    {
+      "id": "tools.cancel",
+      "text": "Asks the tool to stop. A well-behaved tool stops within a moment; one that ignores the request is shut down after 60 seconds and reported as not having behaved."
+    },
+    {
+      "id": "tools.params",
+      "text": "Run settings for the selected tool. These come from the tool itself, so each tool shows a different form."
+    },
+    {
+      "id": "tools.progress",
+      "text": "How far along the run is. A bar that slides without filling means the tool has not said how much work is left."
+    },
+    {
+      "id": "tools.output",
+      "text": "What the tool reported. Rows and links that point at code jump the Code tab to that spot."
+    },
+    {
+      "id": "tools.apply",
+      "text": "Applies the changes the tool proposed, as a single undo step. Disabled if the code changed since the tool ran — re-run instead."
+    },
+    {
+      "id": "tools.log",
+      "text": "Problems the host found with what the tool sent, and anything the tool wrote to its error stream."
     }
   ]
 }

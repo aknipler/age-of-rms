@@ -1,0 +1,51 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intro {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.heading {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.version {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.description {
+  margin: 4px 0 0;
+}
+
+.capabilities {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 4px 0 0;
+}

@@ -211,6 +211,36 @@ describe("Sec.3 rule 4: #define / #const / #undefine", () => {
     expect(cmd?.args[0]?.value).toBe("TOTALLY_UNDEFINED");
     expect(result.dim).toBe(200); // override never applied since it never resolved to a number
   });
+
+  // BUG-015. The half of rule 4 `symbols` structurally cannot carry: the value
+  // is a NAME, so it kept nothing and `create_terrain TERR_CORNER` then said
+  // our reference data does not know a terrain it does.
+  describe("a name-to-name #const goes to `aliases`, unresolved (BUG-015)", () => {
+    it("records the target name rather than resolving it", () => {
+      // Unresolved ON PURPOSE: `#const` values share one namespace with flags,
+      // attribute ids and command ids, so only the caller's slot says which
+      // table this belongs to. instantiateScript is not even given the roster.
+      const result = run("#const TERR_CORNER GRASS2\n<LAND_GENERATION>\nbase_terrain TERR_CORNER\n");
+      expect(result.aliases.get("TERR_CORNER")).toBe("GRASS2");
+      expect(result.symbols.has("TERR_CORNER")).toBe(false);
+    });
+
+    it("keeps a numeric #const out of it — that one already resolves", () => {
+      const result = run("#const WOODIES 48\n#const ALIAS WOODIES\n");
+      expect(result.aliases.size).toBe(0);
+      expect(result.symbols.get("ALIAS")).toBe(48);
+    });
+
+    it("does not record an alias to a bare #define, which names no id at all", () => {
+      const result = run("#define MY_FLAG\n#const F MY_FLAG\n");
+      expect(result.aliases.size).toBe(0);
+    });
+
+    it("first-definition-wins applies here too", () => {
+      const result = run("#const T GRASS2\n#const T DIRT\n");
+      expect(result.aliases.get("T")).toBe("GRASS2");
+    });
+  });
 });
 
 describe("Sec.3 rule 5: rnd(a,b)", () => {

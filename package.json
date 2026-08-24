@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run generate:types && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
@@ -13,7 +13,10 @@
     "format": "prettier --write .",
     "test": "node scripts/check-test-floor.mjs",
     "validate:reference": "node scripts/validate-reference-data.mjs",
+    "generate:types": "node scripts/generate-published-types.mjs",
+    "check:generated-types": "node scripts/generate-published-types.mjs --check",
     "check:breakdown-prereqs": "node scripts/check-breakdown-prereqs.mjs",
+    "measure:checker": "vitest run --config vitest.measure.config.ts --disableConsoleIntercept",
     "test:raw": "vitest run"
   },
   "dependencies": {
@@ -42,6 +45,7 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
     "jsdom": "^25.0.0",
+    "json-schema-to-typescript": "^15.0.4",
     "prettier": "^3.3.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.0.0",

@@ -132,6 +132,8 @@ export function instantiateScript(
     nomadResources: false,
   };
 
+  /** BUG-015: name-to-name `#const`s, left unresolved for the caller's domain to chase. */
+  const aliases = new Map<string, string>();
   const objectGroups = new Map<string, InstantiatedCommand>();
   const actorAreas = new Map<number, InstantiatedCommand[]>();
   const sections = new Map<string, InstantiatedCommand[]>();
@@ -250,6 +252,13 @@ export function instantiateScript(
         const valueArg = node.args[1];
         const resolved = valueArg ? resolveArg(valueArg).value : undefined;
         symbols.set(symbolName, typeof resolved === "number" ? resolved : undefined);
+        // BUG-015: a value that stayed a STRING is a name-to-name alias
+        // (`#const TERR_CORNER GRASS2`). It cannot go in `symbols`, which
+        // holds ids, and dropping it is what made the preview claim our own
+        // reference data does not know a terrain it does. Recorded UNRESOLVED
+        // — see `InstantiatedScript.aliases` for why resolving it here would
+        // be worse than the bug.
+        if (typeof resolved === "string" && resolved !== symbolName) aliases.set(symbolName, resolved);
       }
     } else if (directiveName === "#include_drs" || directiveName === "#includeXS") {
       addNote({
@@ -455,6 +464,7 @@ export function instantiateScript(
     actorAreas,
     playerSetup,
     symbols: numericSymbols,
+    aliases,
     teams: canonicalTeams,
     notes,
   };

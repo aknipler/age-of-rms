@@ -54,6 +54,14 @@
           "type": "string",
           "description": "Human-readable name for the reference table UI, e.g. \"Grass 1\", \"Gold Mine\"."
         },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Free-text note for the reference table's Description column, transcribed from the community reference spreadsheets in reference-docs/ — Zetnus's 'AoE2 Terrains' Comments column for terrain rows (all 131 covered), and 'Definitive Constants List''s per-sheet Comments/Description columns for object rows ('DE only' preferred when it disagrees with 'Animals'/'Resources', since it is consistently the more complete of the two; 668 of 2670 object rows covered — the rest are gaia roster entries, mostly carcasses and blood decals, the community table never annotates). Like isWater/isForest/beachTerrain above, this is a one-time transcription rather than something tools/extract-constants derives from a local install, so the script only has to carry it through (CONSTANT_KEY_ORDER). Null means the community table has no comment for this constant, not that there is nothing to say — same positive-resolver caveat as the rest of this file.",
+          "$comment": "Terrain and object rows carry this; objectClass and attribute rows do not, since neither spreadsheet has a matching sheet for them."
+        },
         "category": {
           "type": "string",
           "enum": [
@@ -119,12 +127,12 @@
         },
         "terrainRestrictionId": {
           "type": "integer",
-          "description": "Object entries only. The dat's own Unit.terrain_restriction — the index of the row in DatFile.terrain_restrictions that decides which terrains this object may stand on. It is a KEY INTO THE GAME'S OWN TABLE and resolves to nothing outside an install, which is why allowedTerrains carries the row itself beside it; the id is here so two objects sharing a restriction are visibly the same claim rather than two coincidentally equal lists (every ordinary fish is restriction 19, most land objects are restriction 7). Written by tools/extract-constants --terrain-table. Absent means the object was never read out of a dat, which is different from an object the engine leaves unrestricted (that is restriction 0, written explicitly).",
+          "description": "Object entries only. The dat's own Unit.terrain_restriction — the index of the row in DatFile.terrain_restrictions that decides which terrains this object may stand on. It is a KEY INTO THE GAME'S OWN TABLE and resolves to nothing outside an install: as of 2026-08-12 this id is USUALLY ALL THERE IS, because 4.10 stripped the expanded allowedTerrains from roster rows as a pure function of it (1.33 MB), and reference/ carries no expansion table to re-derive it from. 2666 rows carry the id, 31 carry allowedTerrains beside it. The id is what makes two objects sharing a restriction visibly the same claim rather than two coincidentally equal lists (every ordinary fish is restriction 19, most land objects are restriction 7). Written by tools/extract-constants --terrain-table. Absent means the object was never read out of a dat, which is different from an object the engine leaves unrestricted (that is restriction 0, written explicitly).",
           "minimum": 0
         },
         "allowedTerrains": {
           "type": "array",
-          "description": "Object entries only. The terrain ids this object's restriction row permits, expanded from that row's passable_buildable_dmg_multiplier (131 floats, > 0 meaning permitted). This is the engine's real answer to 'where may this object stand', and habitat is a five-value approximation of it — the two are kept side by side deliberately, so the cost of the vocabulary can be measured rather than argued: restriction 8 (GOLD/STONE/FORAGE) permits 83 terrains while the 'land' class covers 110, so 27 terrains the engine refuses are terrain the preview still uses. NOTHING READS THIS FIELD TODAY. It exists so that whoever retires the coarse classes does it on evidence, and so the Generation Consistency Checker can answer terrain questions exactly rather than approximately. Absent means the object was never read out of a dat; an empty array would mean a row permitting nothing, which no shipped row does.",
+          "description": "Object entries only. The terrain ids this object's restriction row permits, expanded from that row's passable_buildable_dmg_multiplier (131 floats, > 0 meaning permitted). This is the engine's real answer to 'where may this object stand', and habitat is a five-value approximation of it — the two are kept side by side deliberately, so the cost of the vocabulary can be measured rather than argued: restriction 8 (GOLD/STONE/FORAGE) permits 83 terrains while the 'land' class covers 110, so 27 terrains the engine refuses are terrain the preview still uses. PRESENT ON 31 OBJECT ROWS ONLY, NOT ON THE ROSTER — 4.10 stripped it from roster rows on 2026-08-12 as a derivable 1.33 MB, so absence here means 'expand terrainRestrictionId yourself', NOT 'unrestricted' and NOT 'never read out of a dat'. The 31 survivors are the 4.7-era hand-set family (GOLD, STONE, FORAGE, DEER, BOAR, SHEEP, WOLF, RELIC, the fish, TRANSPORT_SHIP, TOWN_CENTER), which is disproportionately what scripts place. NOTHING READS THIS FIELD TODAY. It exists so that whoever retires the coarse classes does it on evidence, and so the Generation Consistency Checker can answer terrain questions exactly rather than approximately — that tool's design (docs/consistency-checker-design.md Sec.2, Sec.9) reads it per row and widens automatically if a 32x131 restriction table is ever added. An empty array would mean a row permitting nothing, which no shipped row does.",
           "items": {
             "type": "integer",
             "minimum": 0

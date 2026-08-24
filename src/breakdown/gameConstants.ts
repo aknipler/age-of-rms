@@ -14,6 +14,11 @@ export interface GameConstantEntry {
    */
   rmsConstant: string | null;
   descriptiveName: string;
+  // Terrain and object rows only — a free-text note transcribed from the
+  // community reference spreadsheets in reference-docs/ (a Comments column
+  // there), not something the game's own files carry. Absent means that
+  // table has no comment for this constant, not that there is nothing to say.
+  description?: string | null;
   category: string;
   // Optional as of CREATION_PLAN 4.10. It was required-and-nullable while every
   // object row was hand-written and carried an explicit null; the 2639 roster

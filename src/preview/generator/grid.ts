@@ -302,13 +302,36 @@ export function resolveTerrainId(
   constants: readonly TerrainConstantForMasks[],
   value: InstantiatedValue,
   symbols?: ReadonlyMap<string, number>,
+  aliases?: ReadonlyMap<string, string>,
 ): number | undefined {
   if (typeof value === "number") return Number.isInteger(value) && value >= 0 ? value : undefined;
   if (typeof value !== "string") return undefined;
+  const byName = terrainIdByName(constants, value);
+  if (byName !== undefined) return byName;
+  const bySymbol = symbols?.get(value);
+  if (bySymbol !== undefined) return bySymbol;
+
+  // Form 4 (BUG-015): `#const TERR_CORNER GRASS2`, then `create_terrain
+  // TERR_CORNER`. The alias's target is a NAME, so it could never live in
+  // `symbols`, and dropping it made this function report that our reference
+  // data does not know GRASS2 — which it does, as id 12.
+  //
+  // ONE HOP, and only against the TERRAIN table. Chasing further would let
+  // `#const A B` + `#const B C` walk a chain the engine does not walk (its
+  // `#const` resolves at definition time, so a chain only works when each
+  // link was already defined, and that case lands in `symbols` instead).
+  // Resolving against anything but terrains would let a flag or an attribute
+  // id become a terrain, which is why `InstantiatedScript.aliases` hands the
+  // name over unresolved rather than deciding for us.
+  const target = aliases?.get(value);
+  return target === undefined ? undefined : terrainIdByName(constants, target);
+}
+
+function terrainIdByName(constants: readonly TerrainConstantForMasks[], name: string): number | undefined {
   for (const entry of constants) {
-    if (entry.category === "terrain" && entry.constId !== null && entry.rmsConstant === value) return entry.constId;
+    if (entry.category === "terrain" && entry.constId !== null && entry.rmsConstant === name) return entry.constId;
   }
-  return symbols?.get(value);
+  return undefined;
 }
 
 // Sec.12 item 6 recorded isWater/isForest as "sourced but NOT a boolean" (the

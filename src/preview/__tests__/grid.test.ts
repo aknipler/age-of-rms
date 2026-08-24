@@ -220,6 +220,60 @@ describe("resolveTerrainId (the one resolver every stage shares)", () => {
     expect(resolveTerrainId(unnamed, "26")).toBeUndefined();
     expect(resolveTerrainId(unnamed, 26)).toBe(26);
   });
+
+  // BUG-015. `#const TERR_CORNER GRASS2` names a terrain rather than an id, so
+  // it can never live in `symbols` and used to resolve to nothing at all.
+  describe("a name-to-name #const (BUG-015)", () => {
+    // The shared `constants` above is three TERRAIN rows, so it cannot tell a
+    // category-filtered lookup from an unfiltered one — a mutant that dropped
+    // the filter passed every test written against it. This fixture adds the
+    // two non-terrain rows that make the negative case possible at all.
+    const mixed: TerrainConstantForMasks[] = [
+      ...constants,
+      { constId: 66, rmsConstant: "GOLD", category: "object" },
+      { constId: 40, rmsConstant: "ATTR_HITPOINTS", category: "attribute" },
+    ];
+
+    it("resolves through the alias to the built-in it names", () => {
+      expect(resolveTerrainId(constants, "MY_WATER", symbols, new Map([["MY_WATER", "WATER"]]))).toBe(1);
+    });
+
+    it("leaves an alias to something that is not a terrain unresolved", () => {
+      // The whole safety argument: `#const` values share one namespace with
+      // objects, flags and attribute ids, so an alias is only ever chased
+      // against the asking domain's own table. Turning an attribute id into a
+      // terrain id would be a worse failure than the one this fixes.
+      expect(resolveTerrainId(mixed, "G", symbols, new Map([["G", "GOLD"]]))).toBeUndefined();
+      expect(resolveTerrainId(mixed, "A", symbols, new Map([["A", "ATTR_HITPOINTS"]]))).toBeUndefined();
+      expect(resolveTerrainId(mixed, "F", symbols, new Map([["F", "NAME_NOTHING_DEFINES"]]))).toBeUndefined();
+      // ...while a terrain in the same array still resolves, so the test is
+      // about the CATEGORY and not about the array being empty.
+      expect(resolveTerrainId(mixed, "W", symbols, new Map([["W", "WATER"]]))).toBe(1);
+    });
+
+    it("prefers a real name and a real #const over the alias table", () => {
+      // Same precedence as everything above it: built-in first, script id
+      // second, alias last. An alias must not shadow either.
+      expect(resolveTerrainId(constants, "WATER", symbols, new Map([["WATER", "GRASS"]]))).toBe(1);
+      expect(resolveTerrainId(constants, "WOODIES", symbols, new Map([["WOODIES", "WATER"]]))).toBe(48);
+    });
+
+    it("chases exactly one hop, never a chain", () => {
+      // A chain only works in game when each link was already defined, and
+      // that case resolves at definition time into `symbols` instead. Walking
+      // it here would resolve names the engine does not.
+      const chain = new Map([
+        ["A", "B"],
+        ["B", "WATER"],
+      ]);
+      expect(resolveTerrainId(constants, "A", symbols, chain)).toBeUndefined();
+      expect(resolveTerrainId(constants, "B", symbols, chain)).toBe(1);
+    });
+
+    it("is inert when no alias table is passed", () => {
+      expect(resolveTerrainId(constants, "MY_WATER", symbols)).toBeUndefined();
+    });
+  });
 });
 
 describe("isWaterTerrain (the single-terrain form of waterMask)", () => {

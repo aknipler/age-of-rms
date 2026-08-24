@@ -40,13 +40,26 @@ import { tmpdir } from "node:os";
 // map's contribution is countable. Top-level maps contributed 11-19 tests
 // each, `local/` maps 4-8. Taking the minimum of each range makes this a floor
 // in the same sense the totals are: adding maps or tests never fails it.
-const TESTS_PER_CORPUS_MAP = 11;
-const TESTS_PER_LOCAL_MAP = 4;
+// Raised 11 -> 13 and 4 -> 6 on 2026-08-24: the script formatter's corpus gate
+// (src/tools/builtin/formatter/__tests__/corpus.test.ts) runs one test per map
+// per option set, two option sets, so EVERY map's contribution went up by
+// exactly two. That is a raise the floor property survives: the coefficients
+// are minima, and a uniform +2 shifts each minimum by +2.
+const TESTS_PER_CORPUS_MAP = 13;
+const TESTS_PER_LOCAL_MAP = 6;
 // Everything not attributable to a corpus map, including `broken/`, which is
 // tracked and therefore always present. 1387 - 399 (32 top-level maps) - 84
 // (19 local maps) = 904.
 // Raised 904 -> 911 on 2026-08-13: bugReport.test.ts added 7 tests that touch
 // no corpus map, so they belong in the base rather than in either coefficient.
+// DELIBERATELY LEFT AT 911 on 2026-08-24, with the suite at 1927 on a full
+// mount. Recomputing it the way the 2026-08-11 line above did (total, less
+// coefficient times count) OVER-states it, because the coefficients are minima
+// and every map contributing more than its minimum lands in the residual. That
+// error is invisible on a full mount and goes red on a clone, which is the one
+// place this number has to be right. Raising the coefficients above removes
+// most of the staleness without that risk; re-deriving BASE_TESTS honestly
+// needs a per-map attribution off a fresh JSON report.
 const BASE_TESTS = 911;
 
 // File count does NOT depend on the corpus — a gitignored map removes tests,
@@ -56,7 +69,11 @@ const BASE_TESTS = 911;
 // goes red when someone removes a scratch harness is a guard that gets
 // switched off. Raise it deliberately as suites land.
 // 46 files live (2026-08-13), minus the same four scratch harnesses, so 42.
-const MIN_FILES = 42;
+// 64 files ran (2026-08-24), minus FIVE scratch harnesses now — the formatter
+// added `formatter.measure.test.ts`, and the checker's own harness does not run
+// in this suite at all (vitest.config.ts excludes it by name) so it was never
+// in the count — so 59.
+const MIN_FILES = 59;
 
 const MAPS_DIR = join(process.cwd(), "test-maps");
 const LOCAL_CORPUS_DIR = join(MAPS_DIR, "local");

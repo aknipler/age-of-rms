@@ -183,14 +183,18 @@ const DEFAULT_ZONE_AVOID_DISTANCE = 1;
 const MAX_OBJECT_PLACEMENTS_PER_COMMAND = 20000;
 
 // ---------------------------------------------------------------------------
-// Attribute reading — duplicated per-file convention (see elevation.ts's header).
+// Attribute reading — duplicated per-file convention (see elevation.ts's
+// header), EXCEPT this pair: consistency-checker-design.md Sec.7.0 item 4
+// names lands.ts/elevation.ts/terrains.ts's copies as the deliberate
+// per-stage convention and this one as the checker's single shared import,
+// to avoid a fifth hand-rolled copy under time pressure.
 // ---------------------------------------------------------------------------
 
-function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): InstantiatedValue {
+export function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): InstantiatedValue {
   return cmd.attributes.get(name)?.[0]?.args[argIndex]?.value;
 }
 
-function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
+export function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
   const v = argValue(cmd, name, argIndex);
   return typeof v === "number" ? v : fallback;
 }
@@ -274,11 +278,31 @@ export interface ObjectConstant {
  * million comparisons over the corpus for a lookup whose answer never changes.
  * Same shape as the `CandidatePool` fix in this file: the work was not wrong,
  * it was repeated.
+ *
+ * **Generic over the row type** (consistency-checker-design.md Sec.7.0 item
+ * 1): the preview passes `ObjectConstant[]`, the checker passes
+ * `PublishedGameConstants` (whose element has neither `allowedTerrains` nor
+ * `verified` on `ObjectConstant`), and duplicating this index for the second
+ * caller would be the second resolver Sec.3.3 forbids. `ObjectRow` is the
+ * narrow read this file actually performs — `constId`, `rmsConstant`,
+ * `category` — so both element types satisfy it without a cast at the call
+ * site.
+ *
+ * The `WeakMap`'s key type is fixed at construction and cannot be generic per
+ * call, so it is keyed on plain `object` with an `unknown`-valued index; the
+ * cast on `.get()`/`.set()` is safe because the map is keyed on ARRAY
+ * IDENTITY and each array only ever yields the index built from itself.
  */
-const OBJECT_INDEX = new WeakMap<readonly ObjectConstant[], { byName: Map<string, ObjectConstant>; byId: Map<number, ObjectConstant> }>();
+interface ObjectRow {
+  constId?: number | null;
+  rmsConstant?: string | null;
+  category: string;
+}
 
-function objectIndex(constants: readonly ObjectConstant[]) {
-  let index = OBJECT_INDEX.get(constants);
+const OBJECT_INDEX = new WeakMap<object, { byName: Map<string, unknown>; byId: Map<number, unknown> }>();
+
+function objectIndex<T extends ObjectRow>(constants: readonly T[]) {
+  let index = OBJECT_INDEX.get(constants) as { byName: Map<string, T>; byId: Map<number, T> } | undefined;
   if (index === undefined) {
     index = { byName: new Map(), byId: new Map() };
     for (const c of constants) {
@@ -289,23 +313,36 @@ function objectIndex(constants: readonly ObjectConstant[]) {
       if (c.rmsConstant !== null && c.rmsConstant !== undefined && !index.byName.has(c.rmsConstant)) index.byName.set(c.rmsConstant, c);
       if (c.constId !== null && c.constId !== undefined && !index.byId.has(c.constId)) index.byId.set(c.constId, c);
     }
-    OBJECT_INDEX.set(constants, index);
+    OBJECT_INDEX.set(constants, index as { byName: Map<string, unknown>; byId: Map<number, unknown> });
   }
   return index;
 }
 
-function objectEntry(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): ObjectConstant | undefined {
+export function objectEntry<T extends ObjectRow>(
+  objectRef: string,
+  constants: readonly T[],
+  symbols?: ReadonlyMap<string, number>,
+  aliases?: ReadonlyMap<string, string>,
+): T | undefined {
   const index = objectIndex(constants);
   const byName = index.byName.get(objectRef);
   if (byName !== undefined) return byName;
   const id = symbols?.get(objectRef);
-  if (id === undefined) return undefined;
-  return index.byId.get(id);
+  if (id !== undefined) return index.byId.get(id);
+
+  // 3. A NAME-TO-NAME `#const` (BUG-015): `#const LURE BOAR`, then
+  //    `create_object LURE`. The object half of the same defect, and the
+  //    LARGER half — 108 corpus definitions name an object constant against
+  //    96 that name a terrain, which the bug entry only counted terrains for.
+  //    One hop, against the object table only; see `resolveTerrainId` for why
+  //    the alias arrives unresolved.
+  const target = aliases?.get(objectRef);
+  return target === undefined ? undefined : index.byName.get(target);
 }
 
 /** Sec.12 item 3's fallback: an object carrying any resourceAmounts is treated as a must-be-gaia resource. Mis-handles SHEEP by design — see file header note 2. */
-export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): boolean {
-  const amounts = objectEntry(objectRef, constants, symbols)?.resourceAmounts;
+export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): boolean {
+  const amounts = objectEntry(objectRef, constants, symbols, aliases)?.resourceAmounts;
   return amounts !== undefined && Object.keys(amounts).length > 0;
 }
 
@@ -377,8 +414,8 @@ export type Habitat = "land" | "water" | "amphibious" | "shore" | "any";
  * can read the terrain table out of the dat (see its README), and every entry
  * that gains a real `habitat` stops depending on this fallback.
  */
-export function objectHabitat(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): Habitat {
-  const declared = objectEntry(objectRef, constants, symbols)?.habitat;
+export function objectHabitat(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): Habitat {
+  const declared = objectEntry(objectRef, constants, symbols, aliases)?.habitat;
   if (declared === "land" || declared === "water" || declared === "amphibious" || declared === "shore" || declared === "any") return declared;
   return "land";
 }
@@ -389,13 +426,13 @@ export function objectHabitat(objectRef: string, constants: readonly ObjectConst
  * function: whether an author's `terrain_to_place_on` can switch the habitat
  * check off (see `buildCandidates` step 3).
  */
-export function objectHabitatIsDeclared(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): boolean {
-  return objectEntry(objectRef, constants, symbols)?.habitat !== undefined;
+export function objectHabitatIsDeclared(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): boolean {
+  return objectEntry(objectRef, constants, symbols, aliases)?.habitat !== undefined;
 }
 
 /** Sec.12 item 8's fallback (no real category data exists yet): resource sub-class from resourceAmounts, else a generic bucket. */
-export function objectCategory(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>): string {
-  const amounts = objectEntry(objectRef, constants, symbols)?.resourceAmounts;
+export function objectCategory(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): string {
+  const amounts = objectEntry(objectRef, constants, symbols, aliases)?.resourceAmounts;
   if (amounts?.gold) return "resource-gold";
   if (amounts?.stone) return "resource-stone";
   if (amounts?.food) return "resource-food";
@@ -872,11 +909,13 @@ interface CandidateContext {
   caches: ObjectStageCaches;
   /** The script's own `#const` table, so `terrain_to_place_on WOODIES` resolves like every other terrain slot. */
   symbols: ReadonlyMap<string, number>;
+  /** Its name-to-name half (BUG-015), so `#const MY_SHALLOW SHALLOW` resolves there too. */
+  aliases: ReadonlyMap<string, string>;
 }
 
 /** Returns undefined when `actor_area_to_place_in` names an id with no areas yet (Sec.6.6: "referencing a never-created id -> actorAreaMissing", a command-level miss handled by the caller before this returns predicates). */
 function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] | undefined {
-  const { grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols } = ctx;
+  const { grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols, aliases } = ctx;
   const { dim } = grid;
   const predicates: AttributedPredicate[] = [];
 
@@ -900,8 +939,8 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
   {
     const terrainRef = argValue(cmd, "terrain_to_place_on", 0);
     const layerRef = argValue(cmd, "layer_to_place_on", 0);
-    const terrainId = terrainRef !== undefined ? resolveTerrainId(constants, terrainRef, symbols) : undefined;
-    const layerId = layerRef !== undefined ? resolveTerrainId(constants, layerRef, symbols) : undefined;
+    const terrainId = terrainRef !== undefined ? resolveTerrainId(constants, terrainRef, symbols, aliases) : undefined;
+    const layerId = layerRef !== undefined ? resolveTerrainId(constants, layerRef, symbols, aliases) : undefined;
     if (terrainId !== undefined) {
       predicates.push({ bucket: "terrainAbsent", test: (i) => grid.terrain[i] === terrainId });
     }
@@ -1316,6 +1355,7 @@ export function applyObjects(
   // them, because 216 of the 397 distinct object names the corpus writes are
   // script constants rather than DE ones — see `objectEntry`.
   const symbols = instantiated.symbols;
+  const aliases = instantiated.aliases;
   const { dim } = grid;
   const playerOrigins = origins.filter((o) => o.player !== undefined);
   const players: PlayerMarker[] = playerOrigins.map((o) => ({ player: o.player!, x: o.x, y: o.y }));
@@ -1375,7 +1415,7 @@ export function applyObjects(
     }
 
     const gaiaOnly = cmd.attributes.has("set_gaia_object_only");
-    if (frameKind !== "none" && !isObjectGroup && !gaiaOnly && requiresGaiaOnly(typeName, constants, symbols)) {
+    if (frameKind !== "none" && !isObjectGroup && !gaiaOnly && requiresGaiaOnly(typeName, constants, symbols, aliases)) {
       pushFailure(failures, {
         bucket: "gaiaOnlyRequired",
         commandSpan: cmd.span,
@@ -1475,10 +1515,10 @@ export function applyObjects(
     const groupRadius = optionalNumAttr(cmd, "group_placement_radius", DEFAULT_GROUP_PLACEMENT_RADIUS) ?? DEFAULT_GROUP_PLACEMENT_RADIUS;
     const forcePlacement = cmd.attributes.has("force_placement") && !cmd.attributes.has("set_loose_grouping"); // guide:2739
     const ignoreTerrain = cmd.attributes.has("ignore_terrain_restrictions") && !ignoreTerrainInert;
-    const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants, symbols); // group commands: candidate filtering can't commit to one member's habitat (see file header)
+    const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants, symbols, aliases); // group commands: candidate filtering can't commit to one member's habitat (see file header)
     // A group's "any" is not data either — there is no single member to have a
     // row — so it takes the same deference `land` does.
-    const habitatIsData = !isObjectGroup && objectHabitatIsDeclared(typeName, constants, symbols);
+    const habitatIsData = !isObjectGroup && objectHabitatIsDeclared(typeName, constants, symbols, aliases);
     const selectionMode = resolveSelectionMode(cmd);
     const spacingDistance = optionalNumAttr(cmd, "temp_min_distance_group_placement", 0) ?? optionalNumAttr(cmd, "min_distance_group_placement", 0);
 
@@ -1494,7 +1534,7 @@ export function applyObjects(
     const spacing = createSpacingIndex(dim, spacingDistance ?? 0, "chebyshev");
 
     frameLoop: for (const frame of frames) {
-      const predicates = buildCandidatePredicates({ grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols });
+      const predicates = buildCandidatePredicates({ grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols, aliases });
       if (predicates === undefined) {
         const areaAttr = cmd.attributes.get("actor_area_to_place_in")?.[0];
         const id = areaAttr?.args[0]?.value;
@@ -1552,7 +1592,7 @@ export function applyObjects(
         // the second object's own terrain restriction, and since fish cannot
         // stand on a shallow this is the ONLY way they reach one. Adding a
         // check costs `Menindee_AUS_v2.3.rms` every pond fish, silently.
-        objects.push({ objectRef: secondObjectRef, x, y, player, category: objectCategory(secondObjectRef, constants, symbols), groupId });
+        objects.push({ objectRef: secondObjectRef, x, y, player, category: objectCategory(secondObjectRef, constants, symbols, aliases), groupId });
       }
 
       function commitPlacement(tile: number, groupId: number | undefined): void {
@@ -1561,7 +1601,7 @@ export function applyObjects(
         if (!forcePlacement) grid.occupied[tile] = 1;
         spacing.add(x, y);
         const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
-        objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols), groupId });
+        objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols, aliases), groupId });
         placed++;
         emitSecondObject(x, y, frame.player, groupId);
       }
@@ -1604,7 +1644,7 @@ export function applyObjects(
               const x = tile % dim;
               const y = (tile - x) / dim;
               const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
-              objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols), groupId });
+              objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols, aliases), groupId });
               placed++;
               emitSecondObject(x, y, frame.player, groupId);
             }
@@ -1656,7 +1696,7 @@ export function applyObjects(
             const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
             if (!forcePlacement) grid.occupied[tile] = 1;
             spacing.add(x, y);
-            objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols), groupId });
+            objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols, aliases), groupId });
             placed++;
             filledCount++;
             emitSecondObject(x, y, frame.player, groupId);

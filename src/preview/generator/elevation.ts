@@ -396,8 +396,8 @@ export function applyElevation(
 
     const terrainRef = argValue(cmd, "base_terrain", 0) ?? "GRASS";
     const layerRef = argValue(cmd, "base_layer", 0);
-    const terrainId = resolveTerrainId(constants, terrainRef, instantiated.symbols);
-    const layerId = layerRef !== undefined ? resolveTerrainId(constants, layerRef, instantiated.symbols) : undefined;
+    const terrainId = resolveTerrainId(constants, terrainRef, instantiated.symbols, instantiated.aliases);
+    const layerId = layerRef !== undefined ? resolveTerrainId(constants, layerRef, instantiated.symbols, instantiated.aliases) : undefined;
 
     const clumpCount = resolveClumpCount(cmd, dim);
     const tileBudget = resolveTileBudget(cmd, dim);

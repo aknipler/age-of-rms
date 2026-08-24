@@ -1220,10 +1220,14 @@ CONSTANT_KEY_ORDER = [
     "idSource",
     "rmsConstant",
     "descriptiveName",
-    "category",
-    "deTextureFile",
     # A key missing from this list is silently DROPPED from the rewritten file,
     # so anything added to the schema has to be added here in the same change.
+    # description comes from the community reference spreadsheets in
+    # reference-docs/, same as isWater/isForest/isHybrid/beachTerrain below —
+    # this script never writes it, only carries it through.
+    "description",
+    "category",
+    "deTextureFile",
     # isWater/isForest/isHybrid/beachTerrain come from the community DE terrain
     # table rather than from the game's own files, so this script never writes
     # them — it only has to carry them through. beachTerrain was missing from

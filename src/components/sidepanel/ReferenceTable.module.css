@@ -108,6 +108,41 @@
   color: #777;
 }
 
+/* The expand/collapse triangle in front of a command name. A plain button
+   reset to inline text rather than a styled control: it sits inside a table
+   cell next to the name it toggles, not as a standalone control. */
+.expandToggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 0.3rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: #555;
+}
+
+/* A command's own attributes, nested beneath it. Shaded and indented rather
+   than given a fourth column, so the tree reads at a glance without widening
+   a panel that's already narrow. */
+.attributeRow td {
+  background: #f7f7f7;
+}
+
+.attributeName {
+  padding-left: 1.2rem;
+  color: #555;
+}
+
+/* The header row above the handful of attributes no command claims (legacy
+   non-functional engine strings) — spans the full table rather than sitting
+   in the Command column, since it isn't itself a command. */
+.attributeGroupRow td {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: #777;
+  background: #f0f0f0;
+}
+
 .note {
   font-size: 0.7rem;
   color: #777;

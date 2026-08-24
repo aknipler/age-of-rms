@@ -58,9 +58,13 @@ export interface PreviewViewValue {
   /** Current vs Final (preview-design Sec.5). */
   view: PreviewViewMode;
   setView: (view: PreviewViewMode) => void;
+  /** Current <-> Final, for the hotkey (App.tsx) — same toggle the radio pair drives. */
+  toggleView: () => void;
   /** The seed the arrangement is drawn from. */
   seed: number;
   setSeed: (seed: number) => void;
+  /** Draws a new random seed — the Re-roll button's action, also bound to a hotkey (App.tsx). */
+  reseed: () => void;
   /** Game (texture) or Minimap (data colour class) terrain colours. */
   colorMode: TerrainColorMode;
   setColorMode: (mode: TerrainColorMode) => void;
@@ -99,7 +103,13 @@ const PreviewViewCtx = createContext<PreviewViewValue | null>(null);
 
 export function PreviewViewProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<PreviewViewMode>("final");
+  const toggleView = useCallback(() => setView((v) => (v === "current" ? "final" : "current")), []);
   const [seed, setSeed] = useState(1);
+  // Math.random is fine HERE — Sec.8's ban on it covers
+  // src/preview/generator/, where reproducibility is the whole contract.
+  // Picking which seed to show a user is not part of that contract;
+  // consuming it deterministically is.
+  const reseed = useCallback(() => setSeed(Math.floor(Math.random() * 1_000_000)), []);
   const [colorMode, setColorMode] = useState<TerrainColorMode>(DEFAULT_TERRAIN_COLOR_MODE);
   const [selectedTile, setSelectedTile] = useState<TilePoint | null>(null);
   const [hiddenObjects, setHiddenObjects] = useState<ReadonlySet<string>>(() => new Set<string>());
@@ -139,8 +149,10 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
     () => ({
       view,
       setView,
+      toggleView,
       seed,
       setSeed,
+      reseed,
       colorMode,
       setColorMode,
       selectedTile,
@@ -152,7 +164,9 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
     }),
     [
       view,
+      toggleView,
       seed,
+      reseed,
       colorMode,
       selectedTile,
       toggleSelectedTile,

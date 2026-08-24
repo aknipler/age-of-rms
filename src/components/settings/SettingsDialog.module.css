@@ -132,3 +132,16 @@
   color: #555;
   font-size: 0.9rem;
 }
+
+/* The author-name field. `inherit` on the font rather than a size of its
+   own, because a form control does not inherit the page font by default and
+   a settings dialog with one input in the browser's default font looks like
+   a mistake. */
+.textInput {
+  font: inherit;
+  padding: 0.3rem 0.4rem;
+  width: 18rem;
+  max-width: 100%;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+}

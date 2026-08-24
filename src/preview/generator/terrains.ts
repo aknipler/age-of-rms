@@ -168,6 +168,8 @@ function lastScaleAttribute(cmd: InstantiatedCommand): "size" | "groups" | undef
 
 /** The script's own `#const` table, threaded from `InstantiatedScript.symbols` so `resolveTerrainId` can see a `create_terrain WOODIES` this file would otherwise report as an unknown terrain. */
 type Symbols = ReadonlyMap<string, number>;
+/** BUG-015's name-to-name `#const`s, travelling with `Symbols` everywhere it goes. */
+type Aliases = ReadonlyMap<string, string>;
 
 // ---------------------------------------------------------------------------
 // Budget / clump count (Sec.6.4) — mirrors elevation.ts's shape, but with
@@ -235,13 +237,14 @@ function specificTerrainSpacings(
   cmd: InstantiatedCommand,
   constants: readonly TerrainConstantForMasks[],
   symbols: Symbols,
+  aliases: Aliases,
 ): SpecificTerrainSpacing[] {
   const attrs = cmd.attributes.get("spacing_to_specific_terrain") ?? [];
   const out: SpecificTerrainSpacing[] = [];
   for (const attr of attrs) {
     const distance = attr.args[1]?.value;
     if (typeof distance !== "number") continue;
-    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols);
+    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
     if (terrainId !== undefined) out.push({ terrainId, distance });
   }
   return out;
@@ -653,6 +656,7 @@ export function applyTerrains(
   const commands = instantiated.sections.get("TERRAIN_GENERATION") ?? [];
   const { dim } = grid;
   const symbols = instantiated.symbols;
+  const aliases = instantiated.aliases;
   const hasConnectionSection = instantiated.sections.has("CONNECTION_GENERATION");
   const playerOrigins = origins.filter((o) => o.player !== undefined);
   // Computed ONCE per applyTerrains call: elevation is final by S4 (S2
@@ -677,12 +681,12 @@ export function applyTerrains(
     // applied to the reference rather than to a resolved id so the failure
     // message below can quote what the author actually typed.
     const terrainRef = cmd.args[0]?.value;
-    const terrainId = resolveTerrainId(constants, terrainRef, symbols);
+    const terrainId = resolveTerrainId(constants, terrainRef, symbols, aliases);
 
     const baseTerrainRef = argValue(cmd, "base_terrain", 0) ?? "GRASS";
     const baseLayerRef = argValue(cmd, "base_layer", 0);
-    const baseTerrainId = resolveTerrainId(constants, baseTerrainRef, symbols);
-    const baseLayerId = baseLayerRef !== undefined ? resolveTerrainId(constants, baseLayerRef, symbols) : undefined;
+    const baseTerrainId = resolveTerrainId(constants, baseTerrainRef, symbols, aliases);
+    const baseLayerId = baseLayerRef !== undefined ? resolveTerrainId(constants, baseLayerRef, symbols, aliases) : undefined;
 
     const clumpCount = resolveClumpCount(cmd, dim);
     const failures: PlacementFailure[] = [];
@@ -706,7 +710,7 @@ export function applyTerrains(
 
     const heightLimits = readHeightLimits(cmd);
     const otherTerrainSpacing = numAttr(cmd, "spacing_to_other_terrain_types", 0, 0);
-    const specificSpacings = specificTerrainSpacings(cmd, constants, symbols);
+    const specificSpacings = specificTerrainSpacings(cmd, constants, symbols, aliases);
     const flatOnly = cmd.attributes.has("set_flat_terrain_only");
     const avoidPlayerDistance = avoidPlayerStartDistance(cmd);
     // guide:1502-1509 distinguishes the two masking layers, and they differ in
@@ -726,7 +730,7 @@ export function applyTerrains(
     const masksUnder = maskLayer === 2;
 
     const hasBeachTerrain = cmd.attributes.has("beach_terrain");
-    const beachTerrainId = resolveTerrainId(constants, argValue(cmd, "beach_terrain", 0), symbols);
+    const beachTerrainId = resolveTerrainId(constants, argValue(cmd, "beach_terrain", 0), symbols, aliases);
     const applyBeach = hasBeachTerrain && !hasConnectionSection && beachTerrainId !== undefined;
     // guide:1485: "If a water terrain is specified, it will fully replace the
     // terrain specified in create_terrain, so this is NOT recommended." That

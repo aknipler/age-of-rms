@@ -2,13 +2,17 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compareConstantRows, matchesQuery } from "../referenceRows";
+import { compareConstantRows, matchesQuery, matchingCommandRows, orphanAttributeRows } from "../referenceRows";
 import type { GameConstantEntry, GameConstantsData } from "../../../breakdown/gameConstants";
+import type { AttributeDef, CommandDef, LanguageData } from "../../../parser/language";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const gameConstants = JSON.parse(
   readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
 ) as GameConstantsData;
+const languageData = JSON.parse(
+  readFileSync(join(REPO_ROOT, "reference", "data", "language.json"), "utf8"),
+) as LanguageData;
 
 function row(partial: Partial<GameConstantEntry>): GameConstantEntry {
   return {
@@ -99,5 +103,99 @@ describe("matchesQuery", () => {
 
   it("returns false when nothing contains the needle", () => {
     expect(matchesQuery("zzz", ["GOLD", 66, "Gold Mine"])).toBe(false);
+  });
+});
+
+function command(partial: Partial<CommandDef>): CommandDef {
+  return { name: "cmd", section: "OBJECTS_GENERATION", kind: "block", verified: true, ...partial };
+}
+
+function attribute(partial: Partial<AttributeDef>): AttributeDef {
+  return { name: "attr", verified: true, ...partial };
+}
+
+describe("matchingCommandRows", () => {
+  const foo = attribute({ name: "foo", description: "the foo one" });
+  const bar = attribute({ name: "bar", description: "the bar one" });
+  const attributesByName = new Map([
+    ["foo", foo],
+    ["bar", bar],
+  ]);
+  const commandA = command({ name: "commandA", attributes: ["foo", "bar"] });
+  const commandB = command({ name: "commandB" });
+
+  it("returns every command with every one of its attributes on an empty query", () => {
+    const rows = matchingCommandRows([commandA, commandB], attributesByName, "");
+    expect(rows).toEqual([
+      { command: commandA, attributes: [foo, bar] },
+      { command: commandB, attributes: [] },
+    ]);
+  });
+
+  it("keeps a command whose own name matches, with no attributes attached", () => {
+    const rows = matchingCommandRows([commandA, commandB], attributesByName, "commandB");
+    expect(rows).toEqual([{ command: commandB, attributes: [] }]);
+  });
+
+  it("gives a command that matches directly EVERY attribute, not only the ones that also match", () => {
+    // "commandA" matches the command's own name but neither foo's nor bar's
+    // name/description — if attributes were still being narrowed by the
+    // query, this would come back empty instead of carrying both.
+    const rows = matchingCommandRows([commandA, commandB], attributesByName, "commandA");
+    expect(rows).toEqual([{ command: commandA, attributes: [foo, bar] }]);
+  });
+
+  it("keeps a command found only through a matching attribute, carrying just that attribute", () => {
+    const rows = matchingCommandRows([commandA, commandB], attributesByName, "foo");
+    expect(rows).toEqual([{ command: commandA, attributes: [foo] }]);
+  });
+
+  it("drops a command that matches neither by name nor by any attribute", () => {
+    const rows = matchingCommandRows([commandA, commandB], attributesByName, "zzz");
+    expect(rows).toEqual([]);
+  });
+
+  it("skips an attribute name with no entry in the map rather than throwing", () => {
+    const dangling = command({ name: "commandC", attributes: ["ghost"] });
+    const rows = matchingCommandRows([dangling], attributesByName, "");
+    expect(rows).toEqual([{ command: dangling, attributes: [] }]);
+  });
+
+  it("drops a non-functional attribute nested under a real command", () => {
+    // No command's attributes[] names one of the four non-functional strings
+    // today, but the filter has to hold even if one someday does — it is the
+    // reference table's own vocabulary, not just orphanAttributeRows'.
+    const deadAttr = attribute({ name: "dead", nonFunctional: true, replacedBy: "foo" });
+    const attributesWithGhost = new Map([...attributesByName, ["dead", deadAttr]]);
+    const commandWithGhost = command({ name: "commandD", attributes: ["foo", "dead"] });
+    const rows = matchingCommandRows([commandWithGhost], attributesWithGhost, "");
+    expect(rows).toEqual([{ command: commandWithGhost, attributes: [foo] }]);
+  });
+});
+
+describe("orphanAttributeRows", () => {
+  const foo = attribute({ name: "foo", description: "the foo one" });
+  const bar = attribute({ name: "bar", description: "the bar one" });
+  const commandA = command({ name: "commandA", attributes: ["foo"] });
+
+  it("returns only the attributes no command's attributes[] names", () => {
+    expect(orphanAttributeRows([commandA], [foo, bar], "")).toEqual([bar]);
+  });
+
+  it("still applies the query to the orphaned set", () => {
+    expect(orphanAttributeRows([commandA], [foo, bar], "bar")).toEqual([bar]);
+    expect(orphanAttributeRows([commandA], [foo, bar], "foo")).toEqual([]);
+  });
+
+  it("pins the real corpus: the four non-functional legacy strings are orphaned but excluded", () => {
+    // Same four names as before the nonFunctional filter landed — they are
+    // still nameless of a command, just no longer worth showing.
+    const names = orphanAttributeRows(languageData.commands, languageData.attributes, "").map((a) => a.name);
+    expect(names).toEqual([]);
+  });
+
+  it("drops a non-functional attribute even though nothing references it", () => {
+    const ghost = attribute({ name: "ghost", nonFunctional: true, replacedBy: "real" });
+    expect(orphanAttributeRows([commandA], [foo, bar, ghost], "")).toEqual([bar]);
   });
 });

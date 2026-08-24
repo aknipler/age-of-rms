@@ -6,11 +6,14 @@ import type { ParseResult, Span } from "../parser/types";
 import { PlaceholderPane } from "../components/PlaceholderPane";
 import { BreakdownProvider } from "./BreakdownContext";
 import { applyEditIntent, type ApplyTextEdit } from "./applyEdit";
+import { canDeleteItem } from "./cardKind";
 import { shiftAnchors, isAnchoredWithin, type OffsetEdit } from "./ephemeralAnchors";
 import { findItemAtOffset } from "./selectionResolve";
 import { extractComments } from "./comments";
 import type { EditIntent } from "./patch/intents";
 import type { SharedSelectionApi } from "../hooks/useSharedSelection";
+import { useHotkeySettings } from "../settings/HotkeySettingsContext";
+import { matchesHotkey } from "../settings/hotkeys";
 import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
@@ -170,6 +173,31 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     },
     [parseResult, applyTextEdit, source, reparseNow],
   );
+
+  // Breakdown's own delete-selected-card hotkey. Scoped to this component
+  // rather than App.tsx's global listener (see AppContent's own comment on
+  // why) because it needs `applyEdit` and the current selection, both of
+  // which only exist while this pane is mounted — so the effect's own
+  // mount lifetime IS the "only while Breakdown is the active tab" guard,
+  // no extra check needed. `canDeleteItem` mirrors exactly the set of card
+  // kinds that already carry their own Delete button (cardKind.ts) — the
+  // hotkey is a shortcut for that button, not a new capability, so a
+  // selection nothing else can delete (a stray attribute, a shared block,
+  // a raw node) is silently a no-op rather than acting on a different node
+  // the user didn't click.
+  const { hotkeys, recordingId } = useHotkeySettings();
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      if (!matchesHotkey(event, hotkeys.breakdownDeleteCard)) return;
+      const item = selection.selectedItem;
+      if (!item || !canDeleteItem(item)) return;
+      event.preventDefault();
+      applyEdit({ kind: "removeNode", node: item });
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hotkeys.breakdownDeleteCard, recordingId, selection.selectedItem, applyEdit]);
 
   // Resolves queued anchor shifts once their expected source has
   // actually rendered. Walks the queue from the front: if `source`

@@ -18,13 +18,27 @@ const DE_RMS_GUIDE_URL =
 type OpenMenu = "file" | "help";
 
 interface TitleBarProps {
+  onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
   onSaveAs: () => void;
   onOpenSettings: () => void;
+  /** Current display form of each shortcut (e.g. "Ctrl+N"), shown beside its menu item — Settings > Hotkeys is where they're changed. */
+  newHotkeyLabel: string;
+  openHotkeyLabel: string;
+  saveHotkeyLabel: string;
 }
 
-export function TitleBar({ onOpen, onSave, onSaveAs, onOpenSettings }: TitleBarProps) {
+export function TitleBar({
+  onNew,
+  onOpen,
+  onSave,
+  onSaveAs,
+  onOpenSettings,
+  newHotkeyLabel,
+  openHotkeyLabel,
+  saveHotkeyLabel,
+}: TitleBarProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
 
   // Clicking the open menu's own button closes it; clicking a different one
@@ -67,11 +81,23 @@ export function TitleBar({ onOpen, onSave, onSaveAs, onOpenSettings }: TitleBarP
               type="button"
               className={styles.dropdownItem}
               onMouseDown={() => {
+                onNew();
+                setOpenMenu(null);
+              }}
+            >
+              New
+              <span className={styles.hotkeyHint}>{newHotkeyLabel}</span>
+            </button>
+            <button
+              type="button"
+              className={styles.dropdownItem}
+              onMouseDown={() => {
                 onOpen();
                 setOpenMenu(null);
               }}
             >
               Open…
+              <span className={styles.hotkeyHint}>{openHotkeyLabel}</span>
             </button>
             <button
               type="button"
@@ -82,6 +108,7 @@ export function TitleBar({ onOpen, onSave, onSaveAs, onOpenSettings }: TitleBarP
               }}
             >
               Save
+              <span className={styles.hotkeyHint}>{saveHotkeyLabel}</span>
             </button>
             <button
               type="button"

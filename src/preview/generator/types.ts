@@ -160,6 +160,39 @@ export interface InstantiatedScript {
    * name does not actually win.
    */
   symbols: ReadonlyMap<string, number>;
+  /**
+   * The script's NAME-TO-NAME `#const`s (BUG-015), alias -> the name it was
+   * given, first-definition-wins like `symbols`.
+   *
+   * `#const TERR_CORNER GRASS2` is the idiom, and it is the half of rule 4
+   * that `symbols` structurally cannot carry: the value is a name, not an id,
+   * so it was dropped and `create_terrain TERR_CORNER` then reported that our
+   * reference data does not know a terrain it knows perfectly well. Measured
+   * on the corpus: **96 such definitions name a terrain constant and 108 name
+   * an object constant** — the object half is the larger one, which the bug
+   * entry did not say.
+   *
+   * A SEPARATE MAP RATHER THAN A WIDER `symbols`, deliberately. Widening
+   * `symbols` to `number | string` would push a `typeof` narrowing onto every
+   * consumer, which is the cost the field's own note above says it was shaped
+   * to avoid.
+   *
+   * **Only the entries that resolved to nothing else are here.** `#const A B`
+   * where `B` is already a numeric symbol resolves at definition time and
+   * lands in `symbols`; this map is what is left over.
+   *
+   * THE ALIAS IS NOT PRE-RESOLVED, AND THAT IS THE WHOLE SAFETY ARGUMENT.
+   * `#const` values share one namespace with flags, attribute ids and command
+   * ids, so resolving a name here against the constants roster would happily
+   * turn a flag into a terrain id — a worse failure than the one being fixed,
+   * and the reason `instantiateScript` is not given the roster. Instead each
+   * resolver chases one hop against ITS OWN table: `resolveTerrainId` retries
+   * the target as a terrain name, `objectEntry` retries it as an object name,
+   * and a target that is neither resolves nowhere. The slot the name is
+   * written in decides the domain, which is a fact the caller has and this
+   * module does not.
+   */
+  aliases: ReadonlyMap<string, string>;
   /** Canonicalised team assignment (Sec.3.1 / generationSettings/teamModel.ts), ready for S1/S6's zone and ring math. */
   teams: CanonicalTeams;
   notes: SimulationNote[];

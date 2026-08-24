@@ -40,6 +40,11 @@ __pycache__/
 
 tools/scenario-probe/generated-tests
 
+# Scratch output of `npm run measure:checker` (src/tools/__tests__/
+# consistencyChecker.measure.test.ts) — a reporter, not a build artefact
+# anyone commits.
+consistency-census.json
+
 test-maps/local
 test-maps/*
 !test-maps/sample.rms

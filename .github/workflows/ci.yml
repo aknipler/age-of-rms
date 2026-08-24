@@ -22,6 +22,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Before Typecheck, because the generated type is what Typecheck reads: a
+      # stale one typechecks perfectly and lies about the schema.
+      - name: Check generated types
+        run: npm run check:generated-types
+
       - name: Typecheck
         run: npm run typecheck
 

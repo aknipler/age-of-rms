@@ -1,0 +1,225 @@
+/* `.main` (App.module.css) is `flex: 1; display: flex` with no fixed height
+   of its own — it is itself sized by flex distribution, not a definite CSS
+   height. `height: 100%` only resolves against a definite parent height, so
+   it silently fails here and this pane collapses to its content's natural
+   size instead of filling the tab. `flex: 1` + `min-height: 0` is what
+   BreakdownPane.module.css and CodePane.module.css both use for exactly this
+   reason — match that, not `height: 100%`. */
+.pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  gap: 12px;
+  overflow: auto;
+  padding: 16px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.select,
+.input {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  padding: 5px 8px;
+}
+
+.description {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.button {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 6px 14px;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.primary {
+  border-color: var(--accent);
+}
+
+.params {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.paramRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.progressTrack {
+  background: var(--surface-raised);
+  border-radius: 3px;
+  height: 6px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progressFill {
+  background: var(--accent);
+  height: 100%;
+  transition: width 120ms linear;
+}
+
+.progressIndeterminate {
+  animation: slide 1.1s ease-in-out infinite;
+  background: var(--accent);
+  height: 100%;
+  width: 35%;
+}
+
+@keyframes slide {
+  0% { margin-left: 0; }
+  50% { margin-left: 65%; }
+  100% { margin-left: 0; }
+}
+
+.progressNote {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.output {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heading {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.kv {
+  border-collapse: collapse;
+}
+
+.kv td {
+  padding: 2px 16px 2px 0;
+}
+
+.kvKey {
+  color: var(--text-muted);
+}
+
+.tableWrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 10px 4px 0;
+  text-align: left;
+}
+
+.rowLink {
+  cursor: pointer;
+}
+
+.rowLink:hover {
+  background: var(--surface-hover);
+}
+
+.severity {
+  border-left: 3px solid var(--border);
+  padding: 4px 0 4px 10px;
+}
+
+.error { border-left-color: var(--danger, #d9534f); }
+.warning { border-left-color: var(--warning, #d9a441); }
+.info { border-left-color: var(--accent); }
+
+.codeRef {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.log {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.logLine {
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  margin: 0;
+}
+
+.empty {
+  color: var(--text-muted);
+  margin: auto;
+  text-align: center;
+}
+
+.staleNote {
+  color: var(--text-muted);
+  font-size: 12px;
+}

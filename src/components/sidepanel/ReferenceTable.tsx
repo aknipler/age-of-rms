@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import languageDataRaw from "../../../reference/data/language.json";
-import type { LanguageData } from "../../parser/language";
+import { buildLanguageIndex, type LanguageData } from "../../parser/language";
 import type { GameConstantEntry, GameConstantsData } from "../../breakdown/gameConstants";
 import { useParsedDocumentContext } from "../../ParsedDocumentContext";
 import { usePreviewResultContext } from "../../PreviewResultContext";
@@ -9,7 +9,7 @@ import { usePreviewView } from "../preview/PreviewViewContext";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
 import { buildObjectInventory } from "./objectInventory";
-import { compareConstantRows, matchesQuery } from "./referenceRows";
+import { compareConstantRows, matchesQuery, matchingCommandRows, orphanAttributeRows } from "./referenceRows";
 import styles from "./ReferenceTable.module.css";
 
 // Read straight from the reference data rather than through
@@ -30,13 +30,17 @@ import styles from "./ReferenceTable.module.css";
 // guarantee the data is shaped correctly.
 const gameConstants = gameConstantsRaw as unknown as GameConstantsData;
 const languageData = languageDataRaw as unknown as LanguageData;
+// attributesByName is the one piece of this the Commands tab needs; the rest
+// of LanguageIndex (commandsByTokenId, controlKeywords, ...) is parser
+// machinery this read-only table has no use for.
+const { attributesByName } = buildLanguageIndex(languageData);
 
 type Mode = "terrain" | "objects" | "commands" | "previewObjects";
 
 const MODE_LABELS: Record<Mode, string> = {
   terrain: "Terrain",
   objects: "Objects",
-  commands: "Commands",
+  commands: "Commands / Attributes",
   previewObjects: "Preview Obj. List",
 };
 
@@ -62,12 +66,13 @@ const CATEGORY_BY_MODE: Record<ConstantMode, string> = {
 
 /**
  * A column is a header plus a function from a row to a cell, so the two modes
- * can share one table body while disagreeing about their last columns.
+ * can share one table body while disagreeing about the columns between the
+ * shared prefix and the shared `Description` suffix.
  *
- * They have to disagree: `deTextureFile` is null on every one of the 33 object
- * rows, so reusing the terrain columns would have "implemented" Objects as a
- * table with a permanently empty column. `habitat` and `resourceAmounts` are
- * the object-side equivalents — the fields the generator and the status-bar
+ * The middle has to disagree: `deTextureFile` is null on every object row, so
+ * reusing the terrain columns would have "implemented" Objects as a table
+ * with a permanently empty column. `habitat` and `resourceAmounts` are the
+ * object-side equivalents — the fields the generator and the status-bar
  * totals actually read.
  */
 interface ConstantColumn {
@@ -91,12 +96,20 @@ const SHARED_COLUMNS: ConstantColumn[] = [
   { header: "Descriptive Name", cell: (c) => c.descriptiveName },
 ];
 
+// Community-table Comments, not this project's own data — 131 of 131 terrain
+// rows carry one, 668 of 2670 object rows do (the rest are gaia roster rows
+// the community table never annotates, mostly carcasses/blood decals). Its
+// own dash reads as "the community table has nothing to say", the same as
+// every other absent community field in this file (isWater, beachTerrain, ...).
+const DESCRIPTION_COLUMN: ConstantColumn = { header: "Description", cell: (c) => c.description ?? "—" };
+
 const COLUMNS_BY_MODE: Record<ConstantMode, ConstantColumn[]> = {
-  terrain: [...SHARED_COLUMNS, { header: "DE Texture File", cell: (c) => c.deTextureFile ?? "—" }],
+  terrain: [...SHARED_COLUMNS, { header: "DE Texture File", cell: (c) => c.deTextureFile ?? "—" }, DESCRIPTION_COLUMN],
   objects: [
     ...SHARED_COLUMNS,
     { header: "Placed On", cell: (c) => c.habitat ?? "—" },
     { header: "Base Yield", cell: (c) => formatResourceAmounts(c.resourceAmounts) },
+    DESCRIPTION_COLUMN,
   ],
 };
 
@@ -223,6 +236,11 @@ export function ReferenceTable() {
   // here is deleted, and the count in the label is what tells a user the toggle
   // is worth flipping.
   const [showCorpses, setShowCorpses] = useState(false);
+  // Manually expanded commands in the Commands / Attributes tab. Keyed by
+  // name rather than a boolean per row, so it survives the query changing
+  // (search auto-expands on top of this — see `isExpanded` below — without
+  // ever collapsing something the user opened by hand).
+  const [expandedCommands, setExpandedCommands] = useState<ReadonlySet<string>>(new Set());
   const { hiddenObjects } = usePreviewView();
   // Something is being withheld from the canvas. Worth saying on the OUTSIDE
   // of this panel, because the effect (objects missing from the map) shows up
@@ -262,12 +280,28 @@ export function ReferenceTable() {
   );
 
   const commandRows = useMemo(
-    () =>
-      mode === "commands"
-        ? languageData.commands.filter((c) => matchesQuery(query, [c.name, c.section, c.description]))
-        : [],
+    () => (mode === "commands" ? matchingCommandRows(languageData.commands, attributesByName, query) : []),
     [mode, query],
   );
+
+  // Attributes no command's attributes[] names (today: four legacy
+  // non-functional engine strings) — nowhere to nest, so they get their own
+  // rows rather than being unreachable from Find.
+  const orphanAttrRows = useMemo(
+    () => (mode === "commands" ? orphanAttributeRows(languageData.commands, languageData.attributes, query) : []),
+    [mode, query],
+  );
+
+  const noCommandResults = commandRows.length === 0 && orphanAttrRows.length === 0;
+
+  function toggleExpanded(commandName: string) {
+    setExpandedCommands((prev) => {
+      const next = new Set(prev);
+      if (next.has(commandName)) next.delete(commandName);
+      else next.add(commandName);
+      return next;
+    });
+  }
 
   return (
     <div className={`${styles.section} ${objectsHidden ? styles.sectionWarned : ""}`}>
@@ -365,16 +399,69 @@ export function ReferenceTable() {
                 </tr>
               </thead>
               <tbody>
-                {commandRows.map((c) => (
-                  <tr key={c.name}>
-                    <td>
-                      {c.name}
-                      {!c.verified && <span className={styles.unverifiedChip}>unverified</span>}
-                    </td>
-                    <td>{c.section}</td>
-                    <td>{c.description ?? "—"}</td>
-                  </tr>
-                ))}
+                {commandRows.map(({ command, attributes }) => {
+                  const hasAttributes = (command.attributes?.length ?? 0) > 0;
+                  // Searching finds an attribute buried inside a collapsed
+                  // command as easily as one that's already open: whenever a
+                  // query is live and `attributes` is non-empty — whether
+                  // that's every attribute (the command itself matched) or
+                  // just the ones that matched (it didn't) — force the row
+                  // open on top of whatever the user last clicked, rather
+                  // than making them expand every candidate by hand to see
+                  // what's actually relevant.
+                  const expanded = expandedCommands.has(command.name) || (query !== "" && attributes.length > 0);
+                  return (
+                    <Fragment key={command.name}>
+                      <tr>
+                        <td>
+                          {hasAttributes && (
+                            <button
+                              type="button"
+                              className={styles.expandToggle}
+                              onClick={() => toggleExpanded(command.name)}
+                              aria-expanded={expanded}
+                              aria-label={`${expanded ? "Collapse" : "Expand"} ${command.name}'s attributes`}
+                            >
+                              {expanded ? "▾" : "▸"}
+                            </button>
+                          )}
+                          {command.name}
+                          {!command.verified && <span className={styles.unverifiedChip}>unverified</span>}
+                        </td>
+                        <td>{command.section}</td>
+                        <td>{command.description ?? "—"}</td>
+                      </tr>
+                      {expanded &&
+                        attributes.map((a) => (
+                          <tr key={`${command.name}::${a.name}`} className={styles.attributeRow}>
+                            <td className={styles.attributeName}>
+                              {a.name}
+                              {!a.verified && <span className={styles.unverifiedChip}>unverified</span>}
+                            </td>
+                            <td>—</td>
+                            <td>{a.description ?? "—"}</td>
+                          </tr>
+                        ))}
+                    </Fragment>
+                  );
+                })}
+                {orphanAttrRows.length > 0 && (
+                  <>
+                    <tr className={styles.attributeGroupRow}>
+                      <td colSpan={3}>Other attributes (not tied to a specific command)</td>
+                    </tr>
+                    {orphanAttrRows.map((a) => (
+                      <tr key={a.name} className={styles.attributeRow}>
+                        <td className={styles.attributeName}>
+                          {a.name}
+                          {!a.verified && <span className={styles.unverifiedChip}>unverified</span>}
+                        </td>
+                        <td>—</td>
+                        <td>{a.description ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </>
+                )}
               </tbody>
             </table>
           </HelpTip>
@@ -393,9 +480,11 @@ export function ReferenceTable() {
             note below already tells the user the table is incomplete, so an
             empty result looks like confirmation of that rather than like a
             query with no hits. */}
-        {mode !== "previewObjects" && query !== "" && constantRows.length === 0 && commandRows.length === 0 && (
-          <p className={styles.note}>Nothing in {MODE_LABELS[mode]} matches “{query}”.</p>
-        )}
+        {mode !== "previewObjects" &&
+          query !== "" &&
+          (mode === "commands" ? noCommandResults : constantRows.length === 0) && (
+            <p className={styles.note}>Nothing in {MODE_LABELS[mode]} matches “{query}”.</p>
+          )}
         {(mode === "terrain" || mode === "objects") && (
           <p className={styles.note}>
             The common constants, not all of them — a name missing here may still be valid in game.

@@ -31,6 +31,42 @@ export default tseslint.config(
   // plain-Node Vitest. Deliberately does NOT catch
   // src/generationSettings/generationSettingsConstants.ts or teamModel.ts —
   // those are plain modules the generator is allowed to import (Sec.2).
+  // `tools-api/**` joins the purity globs (tools-api-design.md Sec.8). It is
+  // stricter than the three above rather than equal to them: this directory is
+  // a PUBLISHED contract, so it must not carry a runtime import of anything —
+  // not React/Monaco/Tauri, and not app modules either. Type-only imports from
+  // src/parser are allowed and real (the published artifact is a bundled .d.ts
+  // that flattens those plain-data interfaces in), which is why the ban below
+  // is on `import`, not on `import type`.
+  //
+  // `tsconfig.json`'s include gained "tools-api" in the same commit. `include`
+  // sets only the ROOT file set — TypeScript still checks whatever an import
+  // reaches, so the contract was covered the moment src/tools/ imports it. What
+  // genuinely escaped is a tools-api/ file nothing under src/ imports, which
+  // `generated/` will be until the flagship tool consumes it.
+  {
+    files: ["tools-api/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../src/**", "@/**"],
+              message:
+                "tools-api/ is a published contract: no RUNTIME imports of app modules. Use `import type` — the published .d.ts bundles the parser's plain-data interfaces in.",
+              allowTypeImports: true,
+            },
+            {
+              group: ["react", "react-dom", "monaco-editor", "@monaco-editor/*", "@tauri-apps/*"],
+              message:
+                "tools-api/ is a published contract and must carry nothing executable from the app shell.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: [
       "src/parser/**/*.ts",

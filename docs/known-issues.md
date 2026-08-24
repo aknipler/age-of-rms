@@ -371,3 +371,43 @@ The original claim: `AK_Vanguard_v1.2.rms` uses `actor_area ACT_AREA_TEAM_RES_TE
 **The target is 61, not 0.** Both causes are closed as correct warnings, so this is no longer a number to drive down — it is a **regression baseline**. All 61 must survive: 35 in Acclivity + TL Team Acropolis (unexpanded preprocessor variables) and 26 in AK_Vanguard (a deleted `#const`). A change that takes corpus RMS0202 below 61 has started suppressing real findings, which is the failure mode this entry spent three rounds walking toward.
 
 **Re-derived 2026-08-05: still 61 + 45. The spec had not caught up, and that was the live risk.** `parser-design.md` Sec.6 went on describing both causes as "noise", calling (a) "evidence that `integer` wrongly conflates a magnitude with an identifier" and (b) "supported syntax we don't yet model" — i.e. it still named the `identifier` schema change that was designed on the withdrawn reading and reverted the same day. In a document headed "do not deviate from this spec", a stale paragraph that names work to do is worse than one that merely describes the past. Rewritten in rev 6, with the 61 recorded there as a floor.
+
+
+## BUG-016 — 2026-08-19 — suspected placement-distance discrepancies found while building `Venn`
+
+**Status:** OPEN, unverified — observations from playtesting, not yet triaged against the engine. **Area:** `src/preview/generator/objects.ts` (`min_distance_to_players`, `spacing_to_other_terrain_types`, `other_zone_avoidance_distance`). **Found:** building a map named `Venn`. Not yet tracked in `test-maps/` — add it once available so the discrepancy is reproducible.
+
+**Suspected symptoms, none yet confirmed.**
+- `min_distance_to_players`: the exclusion region should be the overlap of the minimum distance from every player's land, not just one. Check the current implementation against that reading.
+- `spacing_to_other_terrain_types`: suspected not to behave correctly. Check the implementation.
+- `other_zone_avoidance_distance`: suspected not to behave correctly. Check the implementation.
+
+**Prescribed next step.** Per this project's own "prefer an observable to an argument" rule, none of the three suspicions above should be acted on without a measured discrepancy first. Generate `Venn` at each stage — land, elevation, terrain, object generation — and compare against the real engine's output for the same script. Significant differences were observed but not yet isolated to a specific command or stage.
+
+---
+
+## BUG-017 — `tools-api-design.md` Sec.9 round-trip and def-reconstruction tests were never built
+
+**Status:** OPEN. **Area:** `tools-api/index.ts`'s wire encode/decode path; `src/tools/protocol.ts`, `src/tools/checkerWorker.ts`. **Found:** code-review of the staged 5.1/5.2/5.2b commit, 2026-08-25.
+
+Sec.9 item 1 (a serialization round-trip test — hand-built fixtures under `toStrictEqual` for every `ToolMessage` kind, an `Infinity`/`-Infinity`-bound fixture, a corpus parse under `toEqual`, and an aliased-command fixture whose whole point is that deleting the alias-decode clause turns it red) and Sec.9 item 11 (def-reconstruction from the wire form, with its four named fixtures a–d) have no implementation or test anywhere in the tree — grepped for `toStrictEqual`, `Infinity`, `aliasedCommand` and `commandsByTokenId` under `src/tools/` and `tools-api/`; none of this machinery exists. The spec names these explicitly as "surviving obligations of seven review rounds, not a substitute for review" — i.e. not optional polish, and not conditioned on v1.1 external tools.
+
+**Prescribed fix.** Build the two test suites Sec.9 items 1 and 11 describe, against the four named fixtures. Until they exist, the wire encode/decode path is unverified by anything automated, which is exactly the shape of risk this project's own hard rule ("a check that has only ever passed proves nothing") exists to catch — there has been no check here at all to pass.
+
+---
+
+## BUG-018 — formatter's "empty preview under a non-zero edit count" fix has no test coverage
+
+**Status:** OPEN. **Area:** `src/tools/builtin/scriptFormatter.ts:316-335` (`buildFormatterOutput`), `docs/formatter-design.md` §9. **Found:** code-review of the staged 5.2b commit, 2026-08-25.
+
+The rev-2 changelog's third defect fix — eight corpus scripts producing blank-line-only edits that rendered an empty preview under a non-zero "Edits proposed" count — lives entirely in `buildFormatterOutput`. There is no `scriptFormatter.test.ts`, and neither `format.test.ts` nor `corpus.test.ts` calls `buildFormatterOutput` or asserts the `result.changes.length === 0 && result.edits.length > 0` branch. §11's named unit gates don't list it either. The fix is real and reads correctly, but it is currently reachable only by reading the code, not by running anything.
+
+**Prescribed fix.** Add a `scriptFormatter.test.ts` (or extend `format.test.ts`) covering the blank-line-only-edit case directly — assert the one-sentence summary replaces blocks 5/6 when `changes` is empty and `edits` is not — plus a mutant that reverts the branch, to confirm the test actually distinguishes it.
+
+---
+
+**Tracked, minor, non-blocking** (spec-text-vs-implementation drift found in the same review, none of it a correctness bug — noted here so it doesn't silently decay):
+
+- `src/tools/checkerWorker.ts`'s `CheckerWorkerRequest` is a purpose-built type, not the `HostMessage<P>` `tools-api-design.md` Sec.4.3/7.2 item 4b prescribes adding for exactly this worker. Functionally fine (`msg.context` still typechecks with no cast) but means `HostMessage<P>` still has zero real consumers in-tree — the same fact earlier review rounds flagged as the reason the bug it was meant to fix went unnoticed.
+- `src/tools/builtin/formatter/layout.ts`'s `hasNonAttributeItems` (inline/compact-block gating) refuses more item kinds (`command`, `orphanBlock`, `raw`, `directive`) than `formatter-design.md` §3.3 asks for (only conditionals). Likely intentional, but the spec prose was never widened to match.
+- `layout.ts`'s `canInline` only refuses a block containing a `RawNode` when the raw span itself is multi-line; §3.3 states the refusal unconditionally for any `RawNode` at any depth. Documented in-code as deliberate, but the spec text was never updated to match the looser behavior actually shipped. 

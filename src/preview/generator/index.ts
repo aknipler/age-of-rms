@@ -172,8 +172,8 @@ function resolveBaseFill(
   }
 
   const grassId = resolveTerrainId(constants, "GRASS") ?? 0; // 0: never crashes (CLAUDE.md), even against a stub/empty reference DB
-  const resolvedTerrainId = resolveTerrainId(constants, terrainRef, instantiated.symbols);
-  const layerId = resolveTerrainId(constants, layerRef, instantiated.symbols);
+  const resolvedTerrainId = resolveTerrainId(constants, terrainRef, instantiated.symbols, instantiated.aliases);
+  const layerId = resolveTerrainId(constants, layerRef, instantiated.symbols, instantiated.aliases);
 
   const note: SimulationNote | undefined =
     terrainRef !== undefined && resolvedTerrainId === undefined

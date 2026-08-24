@@ -92,6 +92,8 @@ import { pushFailure } from "./placement";
  * thing to `resolveTerrainId`.
  */
 type Symbols = ReadonlyMap<string, number>;
+/** BUG-015's name-to-name `#const`s, travelling with `Symbols` everywhere it goes. */
+type Aliases = ReadonlyMap<string, string>;
 
 /**
  * Upper bound for the flat `terrain_cost` table below. Not a claim about
@@ -531,12 +533,12 @@ export function findConnectionPaths(
 // ---------------------------------------------------------------------------
 
 /** `terrain_cost Terrain Cost` (repeatable): builds a lookup, unlisted terrains default to 1 (Sec.6.5). Last declaration wins for a repeated terrain, matching Sec.3 rule 10's general policy. */
-export function readTerrainCosts(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols): Map<number, number> {
+export function readTerrainCosts(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): Map<number, number> {
   const costs = new Map<number, number>();
   for (const attr of cmd.attributes.get("terrain_cost") ?? []) {
     const cost = attr.args[1]?.value;
     if (typeof cost !== "number") continue;
-    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols);
+    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
     if (terrainId !== undefined) costs.set(terrainId, cost);
   }
   return costs;
@@ -548,13 +550,13 @@ export interface TerrainSize {
 }
 
 /** `terrain_size Terrain Radius Variance` (repeatable, language.json labels the last two args "width"/"spacing" but Sec.6.5's own prose calls them radius/variance — read positionally, the labels are cosmetic). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
-export function readTerrainSizes(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols): Map<number, TerrainSize> {
+export function readTerrainSizes(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): Map<number, TerrainSize> {
   const sizes = new Map<number, TerrainSize>();
   for (const attr of cmd.attributes.get("terrain_size") ?? []) {
     const radius = attr.args[1]?.value;
     const variance = attr.args[2]?.value;
     if (typeof radius !== "number") continue;
-    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols);
+    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
     if (terrainId !== undefined) sizes.set(terrainId, { radius, variance: typeof variance === "number" ? variance : 0 });
   }
   return sizes;
@@ -577,16 +579,16 @@ export interface ReplacementRule {
  * every terrain; a specific rule written after the wildcard still wins for
  * its own terrain, since it is later and it also matches.
  */
-export function readReplacementRules(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols): ReplacementRule[] {
+export function readReplacementRules(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): ReplacementRule[] {
   const rules: ReplacementRule[] = [];
   for (const attr of cmd.attributes.get("replace_terrain") ?? []) {
-    const fromId = resolveTerrainId(constants, attr.args[0]?.value, symbols);
-    const toId = resolveTerrainId(constants, attr.args[1]?.value, symbols);
+    const fromId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
+    const toId = resolveTerrainId(constants, attr.args[1]?.value, symbols, aliases);
     if (fromId !== undefined && toId !== undefined) rules.push({ from: fromId, to: toId, order: attr.span.start });
   }
   const defaultAttr = cmd.attributes.get("default_terrain_replacement")?.[0];
   if (defaultAttr) {
-    const toId = resolveTerrainId(constants, defaultAttr.args[0]?.value, symbols);
+    const toId = resolveTerrainId(constants, defaultAttr.args[0]?.value, symbols, aliases);
     if (toId !== undefined) rules.push({ from: undefined, to: toId, order: defaultAttr.span.start });
   }
   rules.sort((a, b) => a.order - b.order);
@@ -791,9 +793,9 @@ export function applyConnections(
     // header), so a snapshot is what the flag means — the copy costs one
     // dim^2 read per accumulating command, and two corpus maps have one.
     const terrainOf = accumulating ? grid.terrain.slice() : startOfS5Terrain;
-    const costs = readTerrainCosts(cmd, constants, instantiated.symbols);
-    const sizes = readTerrainSizes(cmd, constants, instantiated.symbols);
-    const rules = readReplacementRules(cmd, constants, instantiated.symbols);
+    const costs = readTerrainCosts(cmd, constants, instantiated.symbols, instantiated.aliases);
+    const sizes = readTerrainSizes(cmd, constants, instantiated.symbols, instantiated.aliases);
+    const rules = readReplacementRules(cmd, constants, instantiated.symbols, instantiated.aliases);
     // Resolved into a flat table once per command rather than a Map lookup
     // per neighbour expansion. Terrain ids are small and dense (0-130 today),
     // so the table stays tiny; `?? 1` is Sec.6.5's "unlisted terrains cost 1".

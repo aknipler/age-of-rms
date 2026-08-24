@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
 import { MapHeader } from "./components/MapHeader";
 import { TabBar } from "./components/TabBar";
-import { PlaceholderPane } from "./components/PlaceholderPane";
+import { ToolsPane } from "./tools/ToolsPane";
 import { CodePane } from "./components/CodePane";
 import { BreakdownPane } from "./breakdown/BreakdownPane";
 import { StatusBar } from "./components/StatusBar";
@@ -10,9 +10,11 @@ import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
-import { AppSettingsProvider } from "./settings/AppSettingsContext";
+import { AppSettingsProvider, useAppSettings } from "./settings/AppSettingsContext";
+import { HotkeySettingsProvider, useHotkeySettings } from "./settings/HotkeySettingsContext";
+import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
 import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
-import { PreviewViewProvider, PreviewViewportProvider } from "./components/preview/PreviewViewContext";
+import { PreviewViewProvider, PreviewViewportProvider, usePreviewView } from "./components/preview/PreviewViewContext";
 import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useUpdateCheck } from "./update/useUpdateCheck";
@@ -37,8 +39,70 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<TabId>("breakdown");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [generationSettingsOpen, setGenerationSettingsOpen] = useState(false);
-  const doc = useDocument();
+  // The author name is read here rather than inside useDocument, so that hook
+  // keeps depending on files and nothing else (see UseDocumentOptions).
+  // AppContent already sits below AppSettingsProvider, which is what makes
+  // this the natural place for the two to meet.
+  const { authorName } = useAppSettings();
+  const doc = useDocument({ authorName });
+  const { saveFile, newFile, openFile } = doc;
   const { playerCount } = useGenerationSettings();
+  const { hotkeys, recordingId } = useHotkeySettings();
+  const { toggleView, reseed } = usePreviewView();
+
+  // The app-wide shortcuts: Save (default Ctrl+S, the original binding),
+  // New/Open, and the two Preview actions that make sense regardless of
+  // which tab is showing (the preview's view/seed state lives above the
+  // tab switch — PreviewViewContext.tsx — same as the pane itself, which
+  // both Breakdown and Code render via MapSidePanel). Breakdown's own two
+  // block-level actions are NOT here: they need `applyEdit` and the
+  // selected card, both of which only exist while BreakdownPane is
+  // mounted, so those listeners live there instead (BreakdownPane.tsx /
+  // SectionView.tsx) and are naturally inactive on any other tab.
+  //
+  // Lives here rather than inside useDocument/PreviewViewContext because
+  // the bindings themselves are a setting, not a file-I/O or preview
+  // concern, and here rather than HotkeySettingsContext because the
+  // listener needs saveFile/newFile/openFile/toggleView/reseed, which
+  // would make the settings context depend on the document hook and the
+  // preview context for no reason a rebind ever needs. No "skip when
+  // inside Monaco" guard like useDocument's undo/redo listener has: every
+  // binding here requires Ctrl, and Monaco has no binding of its own on
+  // any of these combinations to defer to; preventDefault() is what stops
+  // the browser's native Save-page/Open-file dialogs from opening on top
+  // of the app either way.
+  //
+  // Destructured to individual functions rather than depending on `doc`
+  // directly: `doc` is a fresh object every render (useDocument doesn't
+  // memoize its return value), so `doc.saveFile` in a dependency array
+  // reads as "depends on the whole doc object" to eslint's
+  // exhaustive-deps rule, which would either nag for `doc` (re-subscribing
+  // every render, since `doc` never has a stable identity) or hide that
+  // `saveFile` itself IS stable (useDocument wraps it in useCallback). The
+  // destructure makes the real, stable dependency explicit.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      if (matchesHotkey(event, hotkeys.save)) {
+        event.preventDefault();
+        void saveFile();
+      } else if (matchesHotkey(event, hotkeys.newFile)) {
+        event.preventDefault();
+        void newFile();
+      } else if (matchesHotkey(event, hotkeys.openFile)) {
+        event.preventDefault();
+        void openFile();
+      } else if (matchesHotkey(event, hotkeys.previewToggleView)) {
+        event.preventDefault();
+        toggleView();
+      } else if (matchesHotkey(event, hotkeys.previewReseed)) {
+        event.preventDefault();
+        reseed();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hotkeys, recordingId, saveFile, newFile, openFile, toggleView, reseed]);
   // docs/breakdown-design.md Sec.6.2: "one parse, in the worker" — lifted
   // to app level so both CodePane (diagnostics/source, for Monaco
   // markers) and BreakdownPane (the full ParseResult/AST) consume the
@@ -82,10 +146,14 @@ function AppContent() {
   return (
     <div className={styles.app}>
       <TitleBar
+        onNew={doc.newFile}
         onOpen={doc.openFile}
         onSave={doc.saveFile}
         onSaveAs={doc.saveFileAs}
         onOpenSettings={() => setSettingsOpen(true)}
+        newHotkeyLabel={formatHotkey(hotkeys.newFile)}
+        openHotkeyLabel={formatHotkey(hotkeys.openFile)}
+        saveHotkeyLabel={formatHotkey(hotkeys.save)}
       />
       <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
@@ -127,7 +195,13 @@ function AppContent() {
                 />
               )}
               {activeTab === "advanced-tools" && (
-                <PlaceholderPane description="Advanced Tools pane — arrives in Phase 5." />
+                <ToolsPane
+                  filePath={doc.filePath}
+                  source={parsed.source}
+                  reparseNow={parsed.reparseNow}
+                  applyTextEdits={doc.applyTextEdits}
+                  onJumpToOffset={selection.setAnchor}
+                />
               )}
             </main>
           </PreviewResultProvider>
@@ -168,26 +242,30 @@ function App() {
           Settings dialog and by every place a script-written constant name is
           rendered, so it has to sit above both. */}
       <AppSettingsProvider>
-        <GenerationSettingsProvider>
-          {/* Above AppContent, so the preview's seed/view/colour and its
-              canvas zoom/pan survive the tab switch that unmounts the pane
-              holding them. Two providers, not one context, so a drag or wheel
-              tick (which changes viewport on every frame) doesn't re-render
-              the seed/colour-mode controls — see PreviewViewContext.tsx. */}
-          <PreviewViewProvider>
-            <PreviewViewportProvider>
-              {/* Also above the tab switch, and for the same reason: both tabs
-                  render their own MapSidePanel and the inactive one is
-                  unmounted, so a width held inside it would be two widths that
-                  reset on every switch (CREATION_PLAN 4.4). Unlike the two
-                  above, this one IS persisted — a layout choice should still be
-                  there tomorrow, where a seed should not. */}
-              <SidePanelLayoutProvider>
-                <AppContent />
-              </SidePanelLayoutProvider>
-            </PreviewViewportProvider>
-          </PreviewViewProvider>
-        </GenerationSettingsProvider>
+        {/* Same store, its own context — see HotkeySettingsContext.tsx for why
+            rebindable shortcuts aren't just another AppSettingsContext field. */}
+        <HotkeySettingsProvider>
+          <GenerationSettingsProvider>
+            {/* Above AppContent, so the preview's seed/view/colour and its
+                canvas zoom/pan survive the tab switch that unmounts the pane
+                holding them. Two providers, not one context, so a drag or wheel
+                tick (which changes viewport on every frame) doesn't re-render
+                the seed/colour-mode controls — see PreviewViewContext.tsx. */}
+            <PreviewViewProvider>
+              <PreviewViewportProvider>
+                {/* Also above the tab switch, and for the same reason: both tabs
+                    render their own MapSidePanel and the inactive one is
+                    unmounted, so a width held inside it would be two widths that
+                    reset on every switch (CREATION_PLAN 4.4). Unlike the two
+                    above, this one IS persisted — a layout choice should still be
+                    there tomorrow, where a seed should not. */}
+                <SidePanelLayoutProvider>
+                  <AppContent />
+                </SidePanelLayoutProvider>
+              </PreviewViewportProvider>
+            </PreviewViewProvider>
+          </GenerationSettingsProvider>
+        </HotkeySettingsProvider>
       </AppSettingsProvider>
     </HelpSettingsProvider>
   );

@@ -1,0 +1,29 @@
+/* The current (or, while recording, placeholder) binding. <kbd> styling
+   rather than a button — it's a readout, not a control; the buttons beside
+   it are the controls. */
+.keyChip {
+  display: inline-block;
+  min-width: 6rem;
+  text-align: center;
+  border: 1px solid #999;
+  border-radius: 3px;
+  background: #f5f5f5;
+  padding: 0.2rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+/* Same flat black-bordered look as dialog.module.css's .closeButton — there
+   is no shared "settings action button" class yet since this is the first
+   settings tab with buttons of its own. */
+.button {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #f0f0f0;
+}

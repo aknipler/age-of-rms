@@ -68,6 +68,25 @@ describe("generatePreview: base fill (Sec.6.1 — no stage file owns this)", () 
     expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => GRASS));
     expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(true);
   });
+
+  // BUG-015 end to end. The orchestration level is the right home: the defect
+  // spans S0 (which records the alias) and every stage that resolves a name,
+  // and it is invisible to any one of them.
+  it("a name-to-name #const paints the terrain it names (BUG-015)", () => {
+    const result = run("#const T2 WATER\n<LAND_GENERATION>\nbase_terrain T2\n", 1, true);
+    const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
+    expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => WATER));
+    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(false);
+  });
+
+  it("an alias to something that is not a terrain still resolves to nothing", () => {
+    // The negative half, and the one that keeps the fix from being worse than
+    // the bug: `#const` values share a namespace with flags and attribute ids.
+    const result = run("#const T2 NOT_A_REAL_TERRAIN\n<LAND_GENERATION>\nbase_terrain T2\n", 1, true);
+    const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
+    expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => GRASS));
+    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(true);
+  });
 });
 
 describe("generatePreview: automatic beaches (engine behaviour, no command asks for it)", () => {

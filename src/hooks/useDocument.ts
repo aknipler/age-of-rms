@@ -12,6 +12,13 @@ import {
   LAST_SCRIPT_FOLDER_KEY,
   type FolderProbe,
 } from "../settings/scriptFolder";
+import {
+  buildScriptHeader,
+  HEADER_SEPARATOR,
+  refreshScriptHeader,
+  type ScriptHeaderFields,
+  type StampedHeader,
+} from "./scriptHeader";
 
 const RMS_FILTERS = [{ name: "AoE2 Random Map Script", extensions: ["rms"] }];
 
@@ -83,6 +90,54 @@ export function getDocumentModel(): monaco.editor.ITextModel {
   return documentModel;
 }
 
+/**
+ * Replace a byte range of the shared model, on the model's own undo stack.
+ *
+ * Module scope, beside the model, because the header stamp is the one edit
+ * the app makes on the user's behalf rather than at their request, and it has
+ * to land on the same stack everything else does — an edit Ctrl+Z cannot
+ * reach is worse than no edit at all.
+ */
+function replaceRanges(edits: readonly { start: number; end: number; newText: string }[]): void {
+  if (edits.length === 0) return;
+  const operations = edits.map((edit) => {
+    const startPos = documentModel.getPositionAt(edit.start);
+    const endPos = documentModel.getPositionAt(edit.end);
+    return {
+      range: new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column),
+      text: edit.newText,
+      forceMoveMarkers: true,
+    };
+  });
+  // Offsets are in ORIGINAL coordinates and Monaco handles the ordering
+  // itself, so the edits need no descending sort — that is what manual string
+  // splicing needs. Non-overlap is the requirement, and refreshScriptHeader
+  // produces one edit per distinct line.
+  documentModel.pushEditOperations([], operations, () => null);
+}
+
+function replaceRange(start: number, end: number, newText: string): void {
+  replaceRanges([{ start, end, newText }]);
+}
+
+/** `C:\maps\Sacred Springs.rms` -> `Sacred Springs.rms`. Both separators, since a path can arrive with either. */
+function baseName(path: string): string {
+  const segments = path.split(/[\\/]/);
+  return segments[segments.length - 1] ?? path;
+}
+
+export interface UseDocumentOptions {
+  /**
+   * Whose name the stamped script header carries, from Settings > General.
+   *
+   * A parameter rather than a `useAppSettings()` call inside the hook. The
+   * hook is otherwise about files and nothing else, and taking the value in
+   * keeps it that way — the same reason `applyTextEdit` takes a structurally
+   * typed edit instead of importing Breakdown's `TextEdit`.
+   */
+  authorName: string;
+}
+
 // Why file access happens on the Rust side, in brief: the webview that
 // renders our React UI has no filesystem access of its own — that's a
 // deliberate browser-style sandbox. The dialog/fs *plugins* we use here
@@ -93,7 +148,7 @@ export function getDocumentModel(): monaco.editor.ITextModel {
 // that says which of those commands, on which paths, this window is
 // permitted to invoke — nothing in JS can read/write a file the
 // capability doesn't cover, no matter what the code says.
-export function useDocument() {
+export function useDocument({ authorName }: UseDocumentOptions) {
   const [filePath, setFilePath] = useState<string | null>(null);
   // `content` is now a DERIVED MIRROR of documentModel's text (Sec.6.4),
   // updated via onDidChangeContent below — not the source of truth itself.
@@ -117,6 +172,41 @@ export function useDocument() {
   const filePathRef = useRef(filePath);
   isDirtyRef.current = isDirty;
   filePathRef.current = filePath;
+
+  // Same mirror, same reason, for the author name — but note the second
+  // reason it has to be a ref here. `writeToPath` below is a `useCallback`
+  // with an empty dependency array, and `ensureSavedBefore` and the
+  // close-request effect are both built on top of it. Adding `authorName` to
+  // those dependencies would give the callback a new identity on every
+  // keystroke in the Settings author field, which would tear down and
+  // re-register the window close listener each time. A ref carries the
+  // current value without participating in the dependency graph at all.
+  const authorNameRef = useRef(authorName);
+  authorNameRef.current = authorName;
+
+  // --- The stamped script header (scriptHeader.ts) -----------------------
+  //
+  // TWO pieces of state, because "should one be added?" and "may this row be
+  // rewritten?" are different questions whose answers diverge the moment
+  // somebody edits the comment.
+  //
+  // `hasHeaderRef` — has this document been stamped at all? It is what stops
+  // the comment being written a second time. Deleting the block does NOT
+  // clear it: a deleted header is an answer, and re-adding it on the next
+  // save would be the app arguing with the user.
+  //
+  // `stampedHeaderRef` — the record of what was written, carrying a per-row
+  // ownership set that only ever shrinks (scriptHeader.ts's StampedHeader).
+  // Ownership is per ROW rather than per block, so hand-correcting the
+  // created date costs you the created row and nothing else; the file name,
+  // modified date and version keep updating around your edit.
+  //
+  // The boolean cannot do the second job on its own: "already added" has to
+  // stay true after an edit (or the comment comes back) while "may be
+  // rewritten" has to go false for the edited row (or the edit is undone by
+  // the next save).
+  const hasHeaderRef = useRef(false);
+  const stampedHeaderRef = useRef<StampedHeader | null>(null);
 
   // --- Unsaved-changes prompt -------------------------------------------
   //
@@ -161,7 +251,60 @@ export function useDocument() {
     return () => subscription.dispose();
   }, []);
 
+  /**
+   * Put the standard comment at the top of the document, or bring the block
+   * already there up to date. Runs immediately before every write to disk.
+   *
+   * It edits the MODEL rather than the string on its way to the file, so the
+   * comment is a real part of the document: visible in the Code tab, undoable
+   * with Ctrl+Z like any other edit, and deletable by anyone who does not
+   * want it. Stamping it only into the written bytes would produce a file
+   * whose contents did not match the editor, which is the sort of difference
+   * people find out about later, in the game.
+   */
+  const stampHeader = useCallback((path: string) => {
+    const fileName = baseName(path);
+    const now = new Date();
+
+    if (!hasHeaderRef.current) {
+      const fields: ScriptHeaderFields = {
+        fileName,
+        author: authorNameRef.current,
+        created: now,
+        modified: now,
+        appVersion: __APP_VERSION__,
+      };
+      const { text, stamped } = buildScriptHeader(fields);
+      // An empty range at offset 0 — an insertion rather than a replacement,
+      // so whatever the document already held moves down intact.
+      replaceRange(0, 0, `${text}${HEADER_SEPARATOR}`);
+      hasHeaderRef.current = true;
+      stampedHeaderRef.current = stamped;
+      return;
+    }
+
+    const previous = stampedHeaderRef.current;
+    if (!previous) return;
+
+    const refresh = refreshScriptHeader(documentModel.getValue(), previous, {
+      fileName,
+      appVersion: __APP_VERSION__,
+      modified: now,
+    });
+    // Stored whether or not there are edits — a refresh that found nothing to
+    // change may still have found a row missing, and that narrowed ownership
+    // is the part that has to survive to the next save.
+    stampedHeaderRef.current = refresh.stamped;
+    // One call, not one per edit: N calls would be N undo entries, and the
+    // header is one action. Same reasoning as applyTextEdits below.
+    replaceRanges(refresh.edits);
+  }, []);
+
   const writeToPath = useCallback(async (path: string) => {
+    // Before the read below, so the file gets the stamped text rather than
+    // the text as it was a line earlier. pushEditOperations is synchronous,
+    // so getValue() here already includes it.
+    stampHeader(path);
     await writeTextFile(path, documentModel.getValue());
     savedVersionIdRef.current = documentModel.getAlternativeVersionId();
     setFilePath(path);
@@ -171,7 +314,7 @@ export function useDocument() {
     // remembering the folder is a background nicety that cannot fail the
     // save (rememberScriptFolder swallows its own errors).
     void rememberScriptFolder(path);
-  }, []);
+  }, [stampHeader]);
 
   /**
    * The single unsaved-work guard, shared by Open and the window-close
@@ -222,8 +365,43 @@ export function useDocument() {
     // over from whatever was previously open — this is the one place we
     // want Monaco's undo stack reset, not preserved.
     documentModel.setValue(text);
+    // An opened script was not built here, so it does not get stamped —
+    // "every script built with AoRMS" is the promise, and writing a header
+    // onto somebody else's file (or onto your own, saved before this feature
+    // existed) is editing their work uninvited. Marking it as already
+    // headered is how that is expressed: `hasHeaderRef` is the "do not add
+    // one" flag, and it is set here for a document that never had one, which
+    // reads oddly until you notice both states want the same behaviour.
+    //
+    // The stamp record goes the other way. The file on disk may well contain
+    // a block this app wrote in an earlier session, and it looks identical to
+    // one written a minute ago — but nothing in the file records whether a
+    // human has since rewritten it, so the app has no basis for editing it
+    // and does not. A reopened script keeps whatever date it was saved with.
+    hasHeaderRef.current = true;
+    stampedHeaderRef.current = null;
     savedVersionIdRef.current = documentModel.getAlternativeVersionId();
     setFilePath(selected);
+    setIsDirty(false);
+    setLastSavedAt(null);
+  }, [ensureSavedBefore]);
+
+  const newFile = useCallback(async () => {
+    // Same guard as openFile, and for the same reason: a blank document is
+    // a replacement for the current model's contents, so anything unsaved
+    // in it has to be resolved first.
+    if (!(await ensureSavedBefore("new"))) return;
+    // setValue (not pushEditOperations), same as openFile: a new document
+    // starts a new undo history rather than inheriting the old one.
+    documentModel.setValue("");
+    // The one place the header state resets to "not stamped yet". New is the
+    // start of a script built here, so its first save writes a fresh comment
+    // with today as the created date — where Open, just above, does the
+    // opposite for the opposite reason.
+    hasHeaderRef.current = false;
+    stampedHeaderRef.current = null;
+    savedVersionIdRef.current = documentModel.getAlternativeVersionId();
+    setFilePath(null);
     setIsDirty(false);
     setLastSavedAt(null);
   }, [ensureSavedBefore]);
@@ -317,6 +495,32 @@ export function useDocument() {
     );
   }, []);
 
+  // The N-edit form, for the Advanced Tools pane (docs/tools-api-design.md
+  // Sec.4.5). It exists because calling applyTextEdit N times produces N UNDO
+  // ENTRIES, which breaks that spec's central promise that a tool's Apply is one
+  // undoable action — a user who applied 40 changes should press Ctrl+Z once,
+  // not forty times.
+  //
+  // Converting all N and passing ONE array is the whole mechanism.
+  // pushEditOperations takes ranges in ORIGINAL coordinates and handles ordering
+  // itself, so the edits need no descending sort — that is what manual string
+  // splicing needs, and presenting it as the mechanism invites a later "fix" of
+  // the wrong thing. What Monaco does require is non-overlap, which the caller
+  // validates (protocol.ts's validateEdits) before reaching here.
+  const applyTextEdits = useCallback((edits: readonly { start: number; end: number; newText: string }[]) => {
+    if (edits.length === 0) return;
+    const operations = edits.map((edit) => {
+      const startPos = documentModel.getPositionAt(edit.start);
+      const endPos = documentModel.getPositionAt(edit.end);
+      return {
+        range: new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column),
+        text: edit.newText,
+        forceMoveMarkers: true,
+      };
+    });
+    documentModel.pushEditOperations([], operations, () => null);
+  }, []);
+
   // Sec.6.4's "one undo stack" promise has a reachability gap: the model's
   // undo/redo stack is real and shared, but Ctrl+Z is normally a
   // keybinding the Monaco *editor instance* owns, and that instance only
@@ -359,10 +563,12 @@ export function useDocument() {
     content,
     isDirty,
     lastSavedAt,
+    newFile,
     openFile,
     saveFile,
     saveFileAs,
     applyTextEdit,
+    applyTextEdits,
     /** Non-null while the unsaved-changes modal should be on screen; also selects its wording. */
     unsavedAction,
     /** Called by that modal with the user's choice; resolves the pending operation. */
@@ -371,7 +577,5 @@ export function useDocument() {
 }
 
 function fileNameFromPath(path: string): string {
-  const segments = path.split(/[\\/]/);
-  const fileName = segments[segments.length - 1] ?? path;
-  return fileName.replace(/\.rms$/i, "");
+  return baseName(path).replace(/\.rms$/i, "");
 }

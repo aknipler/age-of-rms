@@ -18,6 +18,7 @@ import {
   objectCategory,
   objectGroupMembers,
   objectHabitat,
+  objectHabitatIsDeclared,
   requiresGaiaOnly,
   resolveObjectCounts,
   resolveObjectFrames,
@@ -176,6 +177,24 @@ describe("objectHabitat (the terrain table's coarse stand-in)", () => {
     // so a script redefining a built-in name does not take effect in game.
     const symbols = new Map([["SHORE_FISH", 457]]);
     expect(objectHabitat("SHORE_FISH", constants, symbols)).toBe("shore");
+  });
+
+  // BUG-015's object half, and the LARGER half — 108 corpus `#const`s name an
+  // object constant against 96 that name a terrain, though the bug entry only
+  // counted terrains. `#const LURE BOAR` then `create_object LURE`.
+  it("resolves a name-to-name #const against the object table", () => {
+    const aliases = new Map([["MY_FISH", "SHORE_FISH"]]);
+    expect(objectHabitat("MY_FISH", constants)).toBe("land"); // no aliases: the unknown-object fallback
+    expect(objectHabitat("MY_FISH", constants, undefined, aliases)).toBe("shore");
+    // Every object lookup takes the same path, not just habitat.
+    expect(objectHabitatIsDeclared("MY_FISH", constants, undefined, aliases)).toBe(true);
+  });
+
+  it("does not let an object alias resolve against something that is not an object", () => {
+    // The alias is chased against THIS domain's table only. A `#const` value
+    // naming a terrain, a flag or an attribute id resolves nowhere here.
+    expect(objectHabitatIsDeclared("T", constants, undefined, new Map([["T", "WATER"]]))).toBe(false);
+    expect(objectHabitatIsDeclared("F", constants, undefined, new Map([["F", "SOME_FLAG"]]))).toBe(false);
   });
 
   it("puts the DE ocean-fish family in the water, where the 'land' fallback used to put it ashore", () => {

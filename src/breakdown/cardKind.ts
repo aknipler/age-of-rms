@@ -3,7 +3,7 @@
 // and by a plain-Node coverage test (every Item from every corpus file
 // maps to exactly one card-kind, mirroring the parser's own coverage
 // gate spirit) without pulling in jsdom/React.
-import type { Item } from "../parser/types";
+import type { CommandNode, DirectiveNode, IfNode, Item, RandomNode } from "../parser/types";
 
 export type CardKind =
   | "command" // CommandNode -> CommandCard
@@ -38,4 +38,20 @@ export function cardKindForItem(item: Item): CardKind {
       throw new Error(`Unhandled Item kind: ${JSON.stringify(exhaustive)}`);
     }
   }
+}
+
+/**
+ * Which card kinds carry their own Delete button today (CommandCard,
+ * DirectiveCard, ConditionalCard, RandomCard) — the set the breakdown
+ * delete-selected-card hotkey (BreakdownPane.tsx) is allowed to act on.
+ * `strayAttribute`, `sharedBlock` and `raw` are deliberately excluded: none
+ * of their cards has ever offered a delete action (a stray attribute wants
+ * `RMS0207`'s fix instead, a shared block is read-only, and a raw node
+ * offers only the suggestion Fix button), so a hotkey silently doing
+ * something the UI has never offered would be a new capability in
+ * disguise, not a shortcut for an existing one.
+ */
+export function canDeleteItem(item: Item): item is CommandNode | DirectiveNode | IfNode | RandomNode {
+  const kind = cardKindForItem(item);
+  return kind === "command" || kind === "directive" || kind === "conditional" || kind === "random";
 }
