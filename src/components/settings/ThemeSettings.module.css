@@ -1,0 +1,107 @@
+/* Layout only — colours come from SettingsDialog.module.css's shared
+   .fieldset/.legend/.hint, which the app-wide theme sweep already routes
+   through var(--token-name). */
+
+.themePicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.select {
+  font: inherit;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border-muted, #999);
+  border-radius: 3px;
+  min-width: 12rem;
+}
+
+.dirtyNote {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--warning, #b8860b);
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.nameInput {
+  font: inherit;
+  padding: 0.3rem 0.4rem;
+  width: 14rem;
+  max-width: 100%;
+  border: 1px solid var(--border-muted, #999);
+  border-radius: 3px;
+}
+
+.customizeHint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #555);
+}
+
+.group {
+  margin-bottom: 1rem;
+}
+
+.groupTitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted, #555);
+}
+
+.tokenGrid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 0.4rem;
+  column-gap: 0.75rem;
+  align-items: center;
+}
+
+.tokenLabel {
+  font-size: 0.85rem;
+}
+
+.tokenControl {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-self: end;
+}
+
+.swatch {
+  width: 2.2rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--border-muted, #999);
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+}
+
+.hexInput {
+  font: inherit;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  width: 6rem;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--border-muted, #999);
+  border-radius: 3px;
+}
+
+.fontInput {
+  font: inherit;
+  font-size: 0.8rem;
+  width: 18rem;
+  max-width: 100%;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--border-muted, #999);
+  border-radius: 3px;
+}

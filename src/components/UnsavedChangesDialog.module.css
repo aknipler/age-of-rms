@@ -9,8 +9,8 @@
 }
 
 .dialog {
-  background: #fff;
-  border: 1px solid #000;
+  background: var(--surface);
+  border: 1px solid var(--border);
   min-width: 380px;
   max-width: 480px;
   padding: 1rem 1.25rem;
@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.5rem;
   margin-bottom: 0.75rem;
 }
@@ -33,8 +33,8 @@
 
 /* The X. Same outcome as Cancel — see the component's comment. */
 .dismissButton {
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   cursor: pointer;
   line-height: 1;
   padding: 0.1rem 0.4rem;
@@ -42,7 +42,7 @@
 }
 
 .dismissButton:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }
 
 .message {
@@ -61,14 +61,14 @@
 }
 
 .button {
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   padding: 0.35rem 1rem;
   cursor: pointer;
 }
 
 .button:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }
 
 /* Default action — visually primary, and the one Enter triggers. */
@@ -78,9 +78,9 @@
 
 /* Destructive: discards work. Deliberately not styled as the default. */
 .destructive {
-  color: #a00;
+  color: var(--danger);
 }
 
 .destructive:hover {
-  background: #fdf0f0;
+  background: var(--danger-bg);
 }

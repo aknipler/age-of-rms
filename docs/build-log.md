@@ -9305,3 +9305,15 @@ Unit tests in `grid.test.ts` (6), `objects.test.ts` (2), `instantiate.test.ts` (
 `npm run typecheck`, `npm run lint` clean. **Full suite 64 files / 1942 tests, all green.** One unrelated red on the way: `formatter/__tests__/corpus.test.ts`'s `local/Arena.rms` took 8.2 s inside a full run and tripped Vitest's 5,000 ms default - the documented wall-clock spread, passing in 200 ms alone. It now carries an explicit timeout for the same reason the formatter's reporter does.
 
 **Not visually verified** - Tauri-host sandbox, as ever. Worth a look in the running app on `24hr_Battle Lines 1.0.rms`, which is the map that goes from one flat colour to a real map.
+
+---
+
+## 2026-08-26 - Save As hotkey, and custom theming (CREATION_PLAN 5.4c)
+
+Three requests in one session: a `saveAs` hotkey, a version-control note (CREATION_PLAN A.3, not designed), and full custom theming.
+
+**Save As** joins `HotkeyId`/`DEFAULT_HOTKEYS`/`HOTKEY_STORE_KEYS` in `hotkeys.ts` at `Ctrl+Shift+S` - the app's second deliberate exception to the one-handed-no-Shift default (after Open's `Ctrl+O`), justified the same way: it is the near-universal OS convention, Shift is still a left-hand modifier so the one-handed rule holds anyway, and it reuses Save's own base letter rather than spending a new one. Wired into `App.tsx`'s shared keydown listener, `TitleBar.tsx`'s File menu hint, and `HotkeysSettings.tsx`'s row list, with the matching `ui-help.json` entry and `settings.tab.hotkeys`'s count text updated.
+
+**Custom theming is CREATION_PLAN 5.4c** (full write-up there) - `src/settings/theme.ts` and `ThemeSettingsContext.tsx` are new, `ThemeSettings.tsx` replaces the old placeholder, and all 38 `.module.css` files plus `App.css`/`App.module.css` were converted from hardcoded hex to `var(--token)`, dispatched by CSS property since the same hex plays different roles depending on whether it's on `background`, `border*`, or `color`. `ToolsPane.module.css` had already been written against a `var(--text)`/`var(--surface-raised)`/`var(--border)`/`var(--accent)`/`var(--danger)` vocabulary with literal fallbacks and no `:root` definitions anywhere to back it - the token names in `theme.ts` deliberately match it verbatim rather than inventing a second vocabulary, and its fallbacks are now dead code rather than load-bearing. Monaco's own syntax-highlighting theme (`AOE2_RMS_THEME`) is explicitly untouched, matching the boundary the placeholder it replaced already drew between "app chrome" and "code editor colour scheme."
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` all clean. Full suite: 983/983 tests that ran passed; 4 slow parser/checker corpus-measurement files (untouched this session) hit `vitest-pool` worker-start timeouts, plausibly load contention with a concurrent session's own edits to this file's neighbour `docs/known-issues.md` mid-run rather than anything this session changed - `hotkeys.test.ts` re-run standalone afterward, 15/15. **Not visually verified**, same Tauri-host sandbox reason as ever - the dark theme and the live-preview interaction are the two things most worth a look in the running app.

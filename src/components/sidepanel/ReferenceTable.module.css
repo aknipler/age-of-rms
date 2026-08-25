@@ -46,7 +46,7 @@
 
 .hiddenWarning {
   margin-left: 0.25rem;
-  color: #b8860b;
+  color: var(--warning);
 }
 
 .radioRow {
@@ -68,7 +68,7 @@
   min-width: 0;
   font-size: 0.75rem;
   padding: 0.15rem 0.35rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-subtle);
 }
 
 .table {
@@ -79,13 +79,13 @@
 
 .table th,
 .table td {
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-subtle);
   padding: 0.2rem 0.35rem;
   text-align: left;
 }
 
 .table th {
-  background: #f0f0f0;
+  background: var(--surface-hover);
   position: sticky;
   top: 0;
   /* Without this the Preview Obj. List's checkboxes scroll OVER the header
@@ -102,10 +102,10 @@
 .unverifiedChip {
   margin-left: 0.3rem;
   font-size: 0.65rem;
-  border: 1px solid #999;
+  border: 1px solid var(--border-muted);
   border-radius: 999px;
   padding: 0 0.35rem;
-  color: #777;
+  color: var(--text-faint);
 }
 
 /* The expand/collapse triangle in front of a command name. A plain button
@@ -118,19 +118,19 @@
   margin-right: 0.3rem;
   cursor: pointer;
   font-size: 0.7rem;
-  color: #555;
+  color: var(--text-muted);
 }
 
 /* A command's own attributes, nested beneath it. Shaded and indented rather
    than given a fourth column, so the tree reads at a glance without widening
    a panel that's already narrow. */
 .attributeRow td {
-  background: #f7f7f7;
+  background: var(--surface-raised);
 }
 
 .attributeName {
   padding-left: 1.2rem;
-  color: #555;
+  color: var(--text-muted);
 }
 
 /* The header row above the handful of attributes no command claims (legacy
@@ -139,18 +139,18 @@
 .attributeGroupRow td {
   font-size: 0.7rem;
   font-style: italic;
-  color: #777;
-  background: #f0f0f0;
+  color: var(--text-faint);
+  background: var(--surface-hover);
 }
 
 .note {
   font-size: 0.7rem;
-  color: #777;
+  color: var(--text-faint);
 }
 
 /* An object the script asked for and the generator never placed. Muted rather
    than red: it is usually a real restriction doing its job, not an error. */
 .zeroCount {
-  color: #b8860b;
+  color: var(--warning);
   font-weight: 600;
 }

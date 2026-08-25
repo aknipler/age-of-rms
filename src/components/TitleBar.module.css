@@ -1,6 +1,6 @@
 .titleBar {
   display: flex;
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--border);
 }
 
 .menuWrapper {
@@ -8,17 +8,17 @@
 }
 
 .menuItem {
-  border: 1px solid #000;
+  border: 1px solid var(--border);
   border-top: none;
   border-left: none;
-  background: #fff;
+  background: var(--surface);
   padding: 0.4rem 1rem;
   font-size: 0.95rem;
   cursor: pointer;
 }
 
 .menuItem:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }
 
 .dropdown {
@@ -26,8 +26,8 @@
   top: 100%;
   left: 0;
   min-width: 170px;
-  background: #fff;
-  border: 1px solid #000;
+  background: var(--surface);
+  border: 1px solid var(--border);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -39,7 +39,7 @@
   justify-content: space-between;
   gap: 1rem;
   border: none;
-  background: #fff;
+  background: var(--surface);
   padding: 0.4rem 0.75rem;
   font-size: 0.9rem;
   text-align: left;
@@ -50,7 +50,7 @@
 /* The current binding, shown next to Save so a rebind in Settings > Hotkeys
    is visible right where the action lives, not only in the dialog. */
 .hotkeyHint {
-  color: #888;
+  color: var(--text-faint);
   font-size: 0.8rem;
 }
 
@@ -64,5 +64,5 @@
 }
 
 .dropdownItem:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }

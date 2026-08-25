@@ -62,7 +62,7 @@
      future badges/Hide-Unused (Sec.3.3.1) to sit alongside the button
      without the whole row needing to be re-laid-out then. */
   align-self: stretch;
-  background: #fff;
+  background: var(--surface);
   /* Was .view's own top/left/right padding — moved here (see .view's
      comment) so the sticky header's opaque background, not exposed
      .view padding, is what sits flush against the true edges. */
@@ -98,8 +98,8 @@
 .addButton {
   display: block;
   width: 100%;
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
   cursor: pointer;

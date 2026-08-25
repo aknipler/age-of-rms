@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.5rem;
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--border);
 }
 
 .controls {
@@ -37,7 +37,7 @@
 
 .pin:disabled {
   cursor: default;
-  color: #777;
+  color: var(--text-faint);
 }
 
 /* Same amber as .readoutPinned, and for the same reason: a pinned thing has
@@ -45,7 +45,7 @@
    a frozen pane. */
 .pinActive {
   font-weight: 600;
-  color: #7a4a00;
+  color: var(--warning);
 }
 
 .seed {
@@ -74,12 +74,12 @@
 .readout {
   font-size: 0.66rem;
   font-variant-numeric: tabular-nums;
-  color: #333;
+  color: var(--text-secondary);
   min-height: 1em;
 }
 
 .readoutHint {
-  color: #777;
+  color: var(--text-faint);
 }
 
 .readoutHeader {
@@ -93,7 +93,7 @@
    stops following the pointer reads as a frozen UI. */
 .readoutPinned {
   font-weight: 600;
-  color: #7a4a00;
+  color: var(--warning);
 }
 
 .clearSelection {
@@ -113,7 +113,7 @@
 }
 
 .readoutLabel {
-  color: #777;
+  color: var(--text-faint);
 }
 
 .readoutValue {
@@ -124,5 +124,5 @@
 /* The same red the canvas draws the marker triangle in (drawPreview.ts), so
    the sentence and the glyph read as one thing. */
 .readoutProblem {
-  color: #e23e32;
+  color: var(--danger);
 }

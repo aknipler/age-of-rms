@@ -15,9 +15,9 @@
 }
 
 .nonFunctionalBadge {
-  border: 1px solid #000;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.05rem 0.55rem;
   font-size: 0.75rem;
-  background: #d1ecf1;
+  background: var(--info-bg);
 }

@@ -1,7 +1,7 @@
 .card {
-  border: 1px solid #000;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
+  background: var(--surface);
   padding: 0.4rem 0.6rem;
 }
 
@@ -16,43 +16,43 @@
   border-radius: 999px;
   padding: 0.05rem 0.55rem;
   font-size: 0.75rem;
-  border: 1px solid #000;
+  border: 1px solid var(--border);
 }
 
 .severity-error {
-  background: #f8d7da;
+  background: var(--danger-bg);
 }
 
 .severity-warning {
-  background: #fff3cd;
+  background: var(--warning-bg);
 }
 
 .severity-info {
-  background: #d1ecf1;
+  background: var(--info-bg);
 }
 
 .unknownBadge {
-  border: 1px dashed #999;
+  border: 1px dashed var(--border-muted);
   border-radius: 999px;
   padding: 0.05rem 0.5rem;
   font-size: 0.75rem;
-  color: #555;
+  color: var(--text-muted);
   margin-left: 0.4rem;
 }
 
 .deleteButton,
 .stubButton,
 .fixButton {
-  border: 1px solid #999;
-  background: #fff;
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.1rem 0.5rem;
 }
 
 .fixButton {
-  border-color: #2a6;
-  color: #1a5c3a;
+  border-color: var(--success);
+  color: var(--success);
   margin-left: 0.4rem;
 }
 

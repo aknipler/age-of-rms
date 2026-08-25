@@ -16,8 +16,8 @@
 }
 
 .dialog {
-  background: #fff;
-  border: 1px solid #000;
+  background: var(--surface);
+  border: 1px solid var(--border);
   min-width: 320px;
   padding: 1rem 1.25rem;
 }
@@ -25,7 +25,7 @@
 .title {
   margin: 0 0 0.75rem;
   font-size: 1rem;
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.5rem;
 }
 
@@ -47,12 +47,12 @@
 }
 
 .closeButton {
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   padding: 0.35rem 1rem;
   cursor: pointer;
 }
 
 .closeButton:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }

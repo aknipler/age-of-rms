@@ -14,8 +14,8 @@
   align-items: center;
   justify-content: center;
   cursor: col-resize;
-  background: #e9e9e9;
-  border-right: 1px solid #000;
+  background: var(--surface-raised);
+  border-right: 1px solid var(--border);
   /* Stops a touch drag scrolling the pane instead of moving the splitter.
      Pointer capture handles the mouse; this is the touch half. */
   touch-action: none;
@@ -24,11 +24,11 @@
 
 .resizer:hover,
 .dragging {
-  background: #cfd6e4;
+  background: var(--accent-bg-subtle);
 }
 
 .resizer:focus-visible {
-  outline: 2px solid #2b5fa8;
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
@@ -37,8 +37,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e9e9e9;
-  border-right: 1px solid #000;
+  background: var(--surface-raised);
+  border-right: 1px solid var(--border);
 }
 
 /* A tall thin pill rather than a square: at 14px wide there is no room for a
@@ -49,13 +49,13 @@
   height: 40px;
   padding: 0;
   border: none;
-  background: #cfcfcf;
-  color: #000;
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 0.8rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .collapseButton:hover {
-  background: #b4bdd0;
+  background: var(--accent-bg-subtle);
 }

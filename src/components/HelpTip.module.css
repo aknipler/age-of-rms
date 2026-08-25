@@ -22,9 +22,9 @@
   position: fixed;
   width: max-content;
   max-width: 260px;
-  background: #fff;
-  color: #000;
-  border: 1px solid #000;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
   font-size: 0.8rem;
   font-style: italic;
   line-height: 1.3;

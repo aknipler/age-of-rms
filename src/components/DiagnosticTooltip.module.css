@@ -3,8 +3,8 @@
   left: 0;
   width: max-content;
   max-width: 320px;
-  background: #fff;
-  color: #000;
+  background: var(--surface);
+  color: var(--text);
   border: 2px solid;
   font-size: 0.8rem;
   line-height: 1.3;

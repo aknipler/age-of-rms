@@ -8,7 +8,7 @@
 }
 
 .branch {
-  border-left: 3px solid #999;
+  border-left: 3px solid var(--border-muted);
   margin: 0.3rem 0;
   padding: 0.2rem 0 0.2rem 0.6rem;
 }
@@ -26,13 +26,13 @@
 
 .condition {
   font-family: "Cascadia Code", Consolas, monospace;
-  border: 1px solid #999;
+  border: 1px solid var(--border-muted);
   padding: 0.05rem 0.4rem;
 }
 
 .conditionMissing {
   font-style: italic;
-  color: #a00;
+  color: var(--danger);
   font-size: 0.8rem;
 }
 
@@ -48,7 +48,7 @@
 
 .preambleNote {
   font-size: 0.75rem;
-  color: #a00;
+  color: var(--danger);
   margin: 0 0 0.2rem;
 }
 
@@ -58,16 +58,16 @@
 }
 
 .addCommandButton {
-  border: 1px solid #999;
-  background: #fff;
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.1rem 0.5rem;
 }
 
 .branchControlButton {
-  border: 1px solid #999;
-  background: #fff;
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.1rem 0.5rem;

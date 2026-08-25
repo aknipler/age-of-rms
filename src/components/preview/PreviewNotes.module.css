@@ -18,25 +18,25 @@
 }
 
 .failureOk {
-  color: #3a6b3a;
+  color: var(--success);
 }
 
 .failureBad {
-  color: #9a2a1a;
+  color: var(--danger);
   font-weight: 600;
 }
 
 .drawerButton {
   font-size: 0.66rem;
   padding: 0.05rem 0.3rem;
-  background: #f2f2f2;
-  border: 1px solid #999;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-muted);
   border-radius: 2px;
   cursor: pointer;
 }
 
 .drawerButton[aria-expanded="true"] {
-  background: #ddd;
+  background: var(--surface-hover);
 }
 
 .noteList,
@@ -46,13 +46,13 @@
   padding: 0;
   max-height: 8rem;
   overflow-y: auto;
-  border: 1px solid #ccc;
-  background: #fafafa;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
 }
 
 .note {
   padding: 0.22rem 0.3rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-subtle);
   line-height: 1.3;
 }
 
@@ -66,9 +66,9 @@
   margin-right: 0.3rem;
   padding: 0 0.2rem;
   font-size: 0.6rem;
-  background: #e6e6e6;
+  background: var(--surface-raised);
   border-radius: 2px;
-  color: #444;
+  color: var(--text-secondary);
 }
 
 /* How many times this command hit the same failure. Sits next to the bucket
@@ -79,7 +79,7 @@
   font-size: 0.6rem;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #9a2a1a;
+  color: var(--danger);
 }
 
 .legendRow {
@@ -104,9 +104,9 @@
   padding: 0.3rem 0.4rem;
   font-size: 0.63rem;
   line-height: 1.35;
-  color: #555;
-  background: #f4f4f4;
-  border-top: 1px solid #ddd;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* Marks a row whose colour did not come from the selected mode. */
@@ -114,6 +114,6 @@
   margin-left: auto;
   padding-left: 0.3rem;
   font-size: 0.58rem;
-  color: #777;
+  color: var(--text-faint);
   font-style: italic;
 }

@@ -35,9 +35,16 @@ export const DEFAULT_SAVE_HOTKEY: Hotkey = { key: "s", ctrl: true, shift: false,
  * File actions use bare Ctrl (matching Save, the original binding); the
  * Preview and Breakdown actions use Ctrl+Alt so their namespace can't
  * collide with a future File action reusing the same base letter.
+ *
+ * `saveAs` is the one deliberate second exception alongside Open: Ctrl+Shift+S
+ * is the near-universal Save As convention, it stays one-handed (Shift is
+ * a left-pinky modifier same as Ctrl), and it reuses Save's own base letter
+ * rather than spending a new one, which is exactly why it doesn't collide —
+ * Ctrl+S and Ctrl+Shift+S are different bindings.
  */
 export type HotkeyId =
   | "save"
+  | "saveAs"
   | "newFile"
   | "openFile"
   | "previewToggleView"
@@ -47,6 +54,7 @@ export type HotkeyId =
 
 export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   save: DEFAULT_SAVE_HOTKEY,
+  saveAs: { key: "s", ctrl: true, shift: true, alt: false },
   newFile: { key: "n", ctrl: true, shift: false, alt: false },
   openFile: { key: "o", ctrl: true, shift: false, alt: false },
   previewToggleView: { key: "v", ctrl: true, shift: false, alt: true },
@@ -58,6 +66,7 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
 /** Where each binding is persisted in the app-settings store — see HotkeySettingsContext.tsx. */
 export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   save: SAVE_HOTKEY_KEY,
+  saveAs: "saveAsHotkey",
   newFile: "newFileHotkey",
   openFile: "openFileHotkey",
   previewToggleView: "previewToggleViewHotkey",

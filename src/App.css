@@ -1,6 +1,48 @@
 /* Global reset. Component-specific styling lives in each component's
    .module.css file — this file only sets up the page-level baseline. */
 
+/* The Light theme's values, restated here as static CSS custom properties
+   (src/settings/theme.ts's DEFAULT_LIGHT_THEME, kebab-cased) — every
+   component stylesheet reads these through var(--token-name). This block is
+   what's on screen for the one frame before ThemeSettingsProvider's async
+   settings.json load resolves and calls applyThemeTokens (same load-then-
+   apply pattern as every other persisted setting in this app — see
+   AppSettingsContext.tsx). Without it, that frame would have no value for
+   any --token-name at all, not just the wrong one. Kept byte-for-byte equal
+   to DEFAULT_LIGHT_THEME on purpose: a mismatch here would flash the WRONG
+   light-theme colours before settling on the real ones. */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #f7f7f7;
+  --surface-hover: #f0f0f0;
+  --surface-active: #b3b3b3;
+  --border: #000000;
+  --border-muted: #999999;
+  --border-subtle: #dddddd;
+  --text: #000000;
+  --text-secondary: #333333;
+  --text-muted: #555555;
+  --text-faint: #888888;
+  --text-on-accent: #ffffff;
+  --accent: #2a6df4;
+  --accent-bg-subtle: #f0f4ff;
+  --success: #22863a;
+  --success-bg: #eafbef;
+  --warning: #b8860b;
+  --warning-bg: #fff3cd;
+  --warning-bg-subtle: rgba(224, 163, 0, 0.08);
+  --danger: #dc3545;
+  --danger-bg: #f8d7da;
+  --danger-bg-subtle: rgba(220, 53, 69, 0.06);
+  --info: #17a2b8;
+  --info-bg: #d1ecf1;
+  --info-bg-subtle: rgba(23, 162, 184, 0.06);
+  --canvas-bg: #14161a;
+  --canvas-text: #ffffff;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -20,7 +62,8 @@ body {
     Roboto,
     sans-serif;
   font-size: 16px;
-  color: #000;
+  background: var(--bg);
+  color: var(--text);
 }
 
 button {

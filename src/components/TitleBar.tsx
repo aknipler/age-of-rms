@@ -27,6 +27,7 @@ interface TitleBarProps {
   newHotkeyLabel: string;
   openHotkeyLabel: string;
   saveHotkeyLabel: string;
+  saveAsHotkeyLabel: string;
 }
 
 export function TitleBar({
@@ -38,6 +39,7 @@ export function TitleBar({
   newHotkeyLabel,
   openHotkeyLabel,
   saveHotkeyLabel,
+  saveAsHotkeyLabel,
 }: TitleBarProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
 
@@ -119,6 +121,7 @@ export function TitleBar({
               }}
             >
               Save As…
+              <span className={styles.hotkeyHint}>{saveAsHotkeyLabel}</span>
             </button>
           </div>
         )}

@@ -18,15 +18,15 @@
   flex: 1;
   display: flex;
   min-height: 0; /* lets .panel actually scroll instead of stretching .body */
-  border: 1px solid #000;
+  border: 1px solid var(--border);
 }
 
 .tabList {
   display: flex;
   flex-direction: column;
   flex: 0 0 11rem;
-  border-right: 1px solid #000;
-  background: #fff;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
   overflow-y: auto;
 }
 
@@ -34,8 +34,8 @@
    side — borders sit on the bottom edge so the strip reads as a stack. */
 .tabButton {
   border: none;
-  border-bottom: 1px solid #000;
-  background: #fff;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   padding: 0.45rem 0.75rem;
   font-size: 0.95rem;
   text-align: left;
@@ -44,12 +44,12 @@
 }
 
 .tabButton:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }
 
 .tabButtonActive,
 .tabButtonActive:hover {
-  background: #b3b3b3;
+  background: var(--surface-active);
 }
 
 /* HelpTip always renders a <span> wrapper (see HelpTip.tsx), so the span
@@ -85,7 +85,7 @@
 .hint {
   margin: 0.25rem 0 0;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-muted);
 }
 
 /* Credits: a label/value line, not a control, so it borrows the fieldset's
@@ -116,20 +116,20 @@
   max-width: 34rem;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: #555;
+  color: var(--text-muted);
 }
 
 /* Matches PlaceholderPane's italic grey, so an unbuilt settings tab reads
    the same way an unbuilt pane does. */
 .placeholder {
   font-style: italic;
-  color: #555;
+  color: var(--text-muted);
 }
 
 .placeholderList {
   margin: 0.5rem 0 0;
   padding-left: 1.25rem;
-  color: #555;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -142,6 +142,6 @@
   padding: 0.3rem 0.4rem;
   width: 18rem;
   max-width: 100%;
-  border: 1px solid #bbb;
+  border: 1px solid var(--border-muted);
   border-radius: 3px;
 }

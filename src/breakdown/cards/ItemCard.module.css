@@ -6,8 +6,8 @@
 }
 
 .selected {
-  border-left-color: #2a6df4;
-  background: rgba(42, 109, 244, 0.06);
+  border-left-color: var(--accent);
+  background: var(--accent-bg-subtle);
 }
 
 /* Below the Current preview's cut point — the card is still fully

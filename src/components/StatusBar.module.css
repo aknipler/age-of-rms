@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  border-top: 1px solid #000;
+  border-top: 1px solid var(--border);
   padding: 0.35rem 1.25rem;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -45,7 +45,7 @@
 }
 
 .bucketLabel {
-  color: #555;
+  color: var(--text-muted);
 }
 
 .resource {
@@ -82,24 +82,24 @@
    ruler and this indicator report the same diagnostics, and two palettes
    for one set of severities would teach the user nothing. */
 .levelNone {
-  color: #9a9a9a;
+  color: var(--text-faint);
 }
 
 .levelInfo {
-  color: #17a2b8;
+  color: var(--info);
 }
 
 .levelWarning {
-  color: #e0a300;
+  color: var(--warning);
 }
 
 .levelError {
-  color: #dc3545;
+  color: var(--danger);
 }
 
 .settingsCog {
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   padding: 0.1rem 0.5rem;
   font-size: 0.9rem;
   line-height: 1.3;
@@ -107,5 +107,5 @@
 }
 
 .settingsCog:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }

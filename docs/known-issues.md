@@ -1,12 +1,191 @@
 # Known issues — Age of RMS
 
-Open bugs with diagnosis and prescribed fix. One `##` section per bug. Move an entry to `docs/build-log.md` (as part of the session entry that fixed it) once it's closed — don't leave stale "fixed" entries here.
+Bugs and prescribed fixes for the Age of RMS app itself, grouped by the subsystem they affect: Breakdown, Preview Engine, Advanced Tools, Others (parser, reference data, tooling). Numbering is by filing order across the whole project, not per category. Within a category, OPEN entries come first; closed ones stay here too — CLAUDE.md's status table and the design docs cite fixes by BUG number, so this file doubles as the fix-history record, not only an open list. Update an entry's Status in place rather than deleting it.
 
 Entry format: symptom → reproduction → root cause (with file:line) → prescribed fix → verification.
 
 ---
 
-## BUG-012 — a word valued 69 inside a comment hides the rest of the file from the engine, and the parser cannot see it
+## Breakdown
+
+No entries. BUG-001 was the only Breakdown bug filed; it is fixed and its write-up moved to `docs/build-log.md`. Printed here rather than omitted, since a missing section reads the same as a section nobody checked.
+
+---
+
+## Preview Engine
+
+### BUG-016 — 2026-08-19 — suspected placement-distance discrepancies found while building `Venn`
+
+**Status:** OPEN, unverified — observations from playtesting, not yet triaged against the engine. **Area:** `src/preview/generator/objects.ts` (`min_distance_to_players`, `spacing_to_other_terrain_types`, `other_zone_avoidance_distance`). **Found:** building a map named `Venn`. Not yet tracked in `test-maps/` — add it once available so the discrepancy is reproducible.
+
+**Suspected symptoms, none yet confirmed.**
+- `min_distance_to_players`: the exclusion region should be the overlap of the minimum distance from every player's land, not just one. Check the current implementation against that reading.
+- `spacing_to_other_terrain_types`: suspected not to behave correctly. Check the implementation.
+- `other_zone_avoidance_distance`: suspected not to behave correctly. Check the implementation.
+
+**Prescribed next step.** Per this project's own "prefer an observable to an argument" rule, none of the three suspicions above should be acted on without a measured discrepancy first. Generate `Venn` at each stage — land, elevation, terrain, object generation — and compare against the real engine's output for the same script. Significant differences were observed but not yet isolated to a specific command or stage.
+
+---
+
+### BUG-011 — the default grouping mode is implemented as tight; measured, it is loose
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 5). **Area:** `src/preview/generator/objects.ts`, `docs/preview-design.md` Sec.6.6 and Sec.15 item 17(c). **Found:** 2026-08-11, `RMSTEST_46a/46b/46c`.
+
+**What landed.** `isTightGrouping` now requires an explicit `set_tight_grouping`; an explicit `set_loose_grouping` still beats it. **Corpus delta, seed 7 on Normal: 13 of 32 maps change, every one of them downward, 159,732 → 141,281 placements (−11.6%)** — the two large movers are `OWWC1Tewaipounamu` 11,068 → 2,336 and `24hr_Mont Saint Michel` 9,899 → 1,946, both maps whose grouped commands had been filling straight through terrain their objects cannot occupy. New behavioural pair (a group confined to a one-column `terrain_to_place_on` patch, unstated versus tight), mutation-tested by restoring the tight default (2 red). **`force_placement`'s guide:2739 exclusion was deliberately left keyed on the `set_loose_grouping` ATTRIBUTE** rather than extended to an unstated-but-loose command, which is a second question nothing has measured.
+
+**Symptom.** A `create_object` that sets `group_placement_radius` and states neither `set_tight_grouping` nor `set_loose_grouping` is treated as tight — anchor checked, fill unchecked. **498 of the corpus's 964 grouped commands declare neither mode**, so this governs the majority of grouped placements.
+
+**Measurement.** One mode per file, three runs each, identical otherwise. Off-patch fraction against a `terrain_to_place_on` patch: tight **22–35%**, loose **0%**, unstated **0%**. The unstated command is checked per member.
+
+**Prescribed fix.** Default to loose in `objects.ts`. Note the blast radius is larger than the line changed: under tight, a group's fill skips the habitat and spacing checks, so flipping the default makes hundreds of corpus commands place fewer objects in legal positions instead of more objects in illegal ones. Re-measure the corpus before and after and put the delta in the build log.
+
+**Verification.** A test with a group restricted to a small patch and no mode stated, asserting every member lands on the patch; the existing tight test stays as the contrast. Mutation-test by restoring the tight default and confirming the new test goes red.
+
+**Recorded and deliberately NOT fixed: the placement counts differ.** Explicit loose placed exactly 24 in all three runs; unstated placed 32, 32 and 40. Zero spill in both makes them identical on the rule this bug is about, but a consistent count difference means they are not the same code path. Do not tune to it — construct the run that separates a cap from a rejection rate if it starts to matter.
+
+**Process note worth keeping with the bug.** The first version of this test put all three modes on one map, distinguished only by object id, and produced two contradictory readings across two sittings before being thrown away. A scenario records objects and positions, not which command placed them. **When a test's arms share a map, ask what in the export tells them apart** — the redesign cost two generations and removed the ambiguity entirely.
+
+---
+
+### BUG-010 — the beach pass edges the shallows/open-water boundary; measured, the engine does not
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 3). **Area:** `src/preview/generator/grid.ts` (`terrainDepth`/`waterDepthMask`), the beach pass in `terrains.ts`, `docs/preview-design.md` Sec.6.4 and Sec.15 item 29. **Found:** 2026-08-11, `RMSTEST_52`, two runs.
+
+**What landed.** One line: the beach pass skips every tile that is not `DEPTH_LAND`, where it used to skip only open water. `terrainDepth`, `waterDepthMask`, `isHybrid` and the `beachTerrain` rows are all untouched, and the test that pins why they survive is the dry hybrid — land beside `DLC_MANGROVESHALLOW` still beaches, which an `isWater`-only test cannot express. Two `bands()` expectations inverted, mutation-tested by restoring the seaward skip (2 red). **Corpus re-measured at seed 7 on Normal: 6 of 32 maps change, beach 8984 → 7577** (`W4 - Immersion` 1752 → 1016, `TL Tres Leches` 1045 → 678, `AK_Hourglass` 568 → 380, `Chaotic_Strait` −71, `Three_Bays` −46, `AK_Six_Points` +1 through a downstream cascade). So the withdrawn half was producing about a sixth of all the sand on the corpus.
+
+**Symptom.** The 2026-08-08 three-depth rule ("a tile takes its own beach where it borders anything strictly deeper than itself") produces sand on BOTH sides of a shallows shelf. The engine produces it only on the landward side.
+
+**Measurement.** Land / shallows / open water in a known order. Beach tiles bordering **shallow and water**: **3** and **2**, against 336/312 bordering grass-and-water and 30/90 bordering grass-and-shallow. Two or three tiles at a triple junction is incidental, not a boundary.
+
+**Prescribed fix.** Restore shallows to counting as water for the beach comparison — land against water is the rule — while keeping the part of the 2026-08-08 change that was right: the dry hybrids (`DLC_MANGROVESHALLOW` and the navigable ice family) must still take a beach against land, which is what the old `isWater`-only test missed and what motivated the depth model. The `isHybrid` flag and `beachTerrain` rows stay; only the seaward comparison goes.
+
+**Verification.** `terrains.test.ts` already has a `bands()` cross-section covering both boundaries — invert the expectation on the seaward one. Re-measure the nine maps the 2026-08-08 change moved; S1 beach should stay at or above its pre-change value on all of them, which is the property that change was justified on.
+
+**The lesson.** The far edge was argued from a `terrain_state` line about "thinner blending of shallows and beach terrain", read as evidence the two are adjacent by default. It evidently describes an author-supplied adjacency. **A guide sentence that a construct *can* be configured is not a statement that the engine does it unasked** — and the entry itself named the corpus map that could not distinguish the two readings, which was the signal to run this before shipping the rule rather than after.
+
+---
+
+### BUG-009 — the land-origin cross is applied in map coordinates; measured, it is relative to the borders
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 1). **Area:** `src/preview/generator/lands.ts` (neutral origin rejection sampling), `docs/preview-design.md` Sec.6.1 and Sec.15 item 26. **Found:** 2026-08-11, `RMSTEST_51`, nineteen generations.
+
+**What landed.** `crossRegion`/`insideCross` compute the centre and both half-widths from the inclusive border rectangle; `neutralOrigin` and `sampleReservoir` share them, the second deliberately taking the BORDER box rather than the origin-neighbourhood box it samples from, or the region would follow the land instead of the borders. The unbordered case is preserved by construction and pinned by the pre-existing test, which computes the cross the old map-frame way on purpose. New bordered test asserts origins reach the box's middle and that at least one lands where the map frame forbids; mutation-tested by passing map coordinates, confirmed red, reverted.
+
+**Symptom.** A `create_land` carrying borders has its origin drawn from an L-shaped sliver hugging the inner edges of its border box, so bordered islands crowd toward the middle of the map and never reach the outer corner. Visible on `AD4 - Pag - v1.2.rms` and reported as a rendering bug.
+
+**Measurement.** One small non-growing land, `right_border 60 bottom_border 60` on a 200 map, origin read as the snow patch centroid. The absolute model forbids `x < 65.8 && y < 65.8`; **16 of 19 centroids are inside that forbidden region.** Against the box's own centre the same cross forbids about 43% of the box (its four corners) and **0 of 19 centroids fall there**, against ~8 expected if the scatter were merely uniform. So the cross exists and is measured against the allowed region.
+
+**Prescribed fix.** Compute the cross's centre and reference length from the border-allowed rectangle rather than from the map. Where no borders are set the two coincide, so `RMSTEST_25`'s original unbordered measurement is preserved by construction — check that explicitly, since it is the regression this change most easily breaks.
+
+**Verification.** A test with borders asserting origins reach all four quadrants of the box; a test without borders asserting the existing measured cross is unchanged. Mutation-test by reverting to map coordinates and confirming the first goes red.
+
+**The lesson this one carries.** The symptom was correctly diagnosed on 2026-08-07 as two individually-correct rules composing into a wrong result, and the right response was recorded then: work out the intersection and write down the run that decides the open half, rather than softening a measured rule because its consequence looks odd. That run is this one, and the composition turned out to be the wrong half — the rule itself was mis-scoped.
+
+---
+
+### BUG-008 — a sub-3 `min_length_of_cliff` suppresses the whole section; measured, it is a per-draw yield
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 4). **Area:** `src/preview/generator/cliffs.ts`, `docs/preview-design.md` Sec.6.3 and Sec.15 item 17(b). **Found:** 2026-08-11, `RMSTEST_45a/45b/45c`.
+
+**What landed.** The section-level early return is gone; each cliff's rolled length is dropped below 3, so `attempted` exceeds `placed` and the six official maps that write a sub-3 minimum with a workable maximum now render cliffs. The note splits in two — "no cliffs at all" only when the maximum is also below 3, "fewer than it asks for" otherwise. Tests are the measurement's own three arms at twenty cliffs, including the `min 2 / max 4` arm a section gate cannot produce; mutation-tested by deleting the per-draw drop (2 red). **No rate was fitted from 36-against-66, per this entry's own warning.**
+
+**Symptom.** `cliffs.ts` emits zero cliffs plus a note whenever `min_length_of_cliff < 3`, following the guide. Six official maps write 1 or 2 with a maximum of 3 or more, so all six get no cliffs at all.
+
+**Measurement.** Two runs per arm, twenty cliffs requested, everything else identical. `min 2 / max 2` → **0** cliff units. `min 3 / max 3` → **66**. `min 2 / max 4` → **36**. Suppression predicts 0 in the third arm; a clamp predicts arms one and two matching. Neither holds.
+
+**Prescribed fix.** Roll each cliff's length in `[min, max]` and drop the rolls below 3, rather than gating the section. The current behaviour stays correct where `max < 3` (every roll dies) but must reach that outcome through the roll, not through a section gate — the distinction is exactly what the third arm measures.
+
+**Do NOT fit a constant from these numbers.** Cliff UNITS are not cliff COUNT: a longer cliff carries more units, so 36-against-66 conflates yield with length. If a rate is wanted, re-read with `--clusters` and count components.
+
+---
+
+### BUG-007 — a frameless `ignore_terrain_restrictions` empties the whole command; measured, it does nothing at all
+
+**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 2). **Area:** `src/preview/generator/objects.ts` (the whole-command gate), `src/parser/validate.ts` (RMS0315), `docs/preview-design.md` Sec.6.6. **Found:** 2026-08-11, `RMSTEST_42`, four runs.
+
+**What landed.** The gate is gone: `ignoreTerrainInert` now only suppresses the flag's own effect and emits a drawer note, so the command runs with the restrictions it would have had anyway. RMS0315's consequence clause moved from "places nothing at all" to "this line does nothing" (the wording lives in `language.json`'s `requiresNote`, so no code changed), and both `language.ts`'s doc comment and the census file's header were corrected — the census re-derives the count on every run and reports **56 sites across 12 maps**, so the build log's 47-command figure is withdrawn rather than left to age. Two mutants, both red: the frameless flag still lifting restrictions, and the whole-command gate restored.
+
+**Symptom.** A `create_object` carrying `ignore_terrain_restrictions` with no `set_place_for_every_player` and no `place_on_specific_land_id` is treated as placing **nothing**, and RMS0315 warns that the command is dead. It affects **47 commands across 11 corpus maps**.
+
+**Measurement.** Three commands on one half-land half-water map, differing only in the flag and in the object's own restriction. Flagged salmon 30, unflagged control salmon 30, flagged olive trees 30. Result, identical across four runs: **60 salmon, all 60 in water; 30 olive trees on grass.** So the flagged commands placed in full (the command is not voided) and the flagged fish kept its own water restriction (the flag did not bypass anything). **The attribute is inert without a frame. The command is untouched.**
+
+**Root cause.** The gate was inferred from `AK_Namatjira.rms` placing zero shore fish, and that map cannot discriminate: its command also names a shallow, which a shore-habitat fish cannot occupy, so the inert reading predicts zero there too. A map that produces zero is consistent with every model that produces zero. The corpus counter-argument was already written into `RMSTEST_42`'s header before the run — `find_closest` carries the identical `Requires:` line and appears 71 times frameless in working maps — and was not weighed against the gate.
+
+**Prescribed fix.**
+1. `objects.ts`: delete the whole-command gate. A frameless flag becomes a no-op plus the existing `SimulationNote`, which is what Sec.6.6's frame list already prescribes for every other member of that family.
+2. RMS0315: re-scope from "this command places nothing" to "this attribute does nothing here", and drop the severity accordingly.
+3. `src/parser/__tests__/rms0315.measure.test.ts` re-derives the corpus count; the 47-command figure in the build log becomes wrong and should be struck rather than left to age.
+4. Add the discriminating test to `objects.test.ts`: a flagged command on an object whose own habitat excludes the target terrain must place its full count on legal ground.
+
+**Verification.** Mutation-test the new no-op: re-enable the gate and confirm the new test goes red. The old behaviour had a test asserting it, so this is a case where a green suite asserted the defect.
+
+**The durable lesson, and it is about the document rather than the engine.** Sec.6.6 listed this flag among the frameless-inert attributes and, forty lines later, said the bypass applies anyway. The implementation picked a third reading neither sentence contained. **When a spec states a rule twice, check the two statements agree before implementing either** — and when an attribute's behaviour is inferred from one shipped map, name what else would produce the same observation.
+
+---
+
+## Advanced Tools
+
+### BUG-018 — formatter's "empty preview under a non-zero edit count" fix has no test coverage
+
+**Status:** OPEN. **Area:** `src/tools/builtin/scriptFormatter.ts:316-335` (`buildFormatterOutput`), `docs/formatter-design.md` §9. **Found:** code-review of the staged 5.2b commit, 2026-08-25.
+
+The rev-2 changelog's third defect fix — eight corpus scripts producing blank-line-only edits that rendered an empty preview under a non-zero "Edits proposed" count — lives entirely in `buildFormatterOutput`. There is no `scriptFormatter.test.ts`, and neither `format.test.ts` nor `corpus.test.ts` calls `buildFormatterOutput` or asserts the `result.changes.length === 0 && result.edits.length > 0` branch. §11's named unit gates don't list it either. The fix is real and reads correctly, but it is currently reachable only by reading the code, not by running anything.
+
+**Prescribed fix.** Add a `scriptFormatter.test.ts` (or extend `format.test.ts`) covering the blank-line-only-edit case directly — assert the one-sentence summary replaces blocks 5/6 when `changes` is empty and `edits` is not — plus a mutant that reverts the branch, to confirm the test actually distinguishes it.
+
+---
+
+### BUG-017 — `tools-api-design.md` Sec.9 round-trip and def-reconstruction tests were never built
+
+**Status:** OPEN. **Area:** `tools-api/index.ts`'s wire encode/decode path; `src/tools/protocol.ts`, `src/tools/checkerWorker.ts`. **Found:** code-review of the staged 5.1/5.2/5.2b commit, 2026-08-25.
+
+Sec.9 item 1 (a serialization round-trip test — hand-built fixtures under `toStrictEqual` for every `ToolMessage` kind, an `Infinity`/`-Infinity`-bound fixture, a corpus parse under `toEqual`, and an aliased-command fixture whose whole point is that deleting the alias-decode clause turns it red) and Sec.9 item 11 (def-reconstruction from the wire form, with its four named fixtures a–d) have no implementation or test anywhere in the tree — grepped for `toStrictEqual`, `Infinity`, `aliasedCommand` and `commandsByTokenId` under `src/tools/` and `tools-api/`; none of this machinery exists. The spec names these explicitly as "surviving obligations of seven review rounds, not a substitute for review" — i.e. not optional polish, and not conditioned on v1.1 external tools.
+
+**Prescribed fix.** Build the two test suites Sec.9 items 1 and 11 describe, against the four named fixtures. Until they exist, the wire encode/decode path is unverified by anything automated, which is exactly the shape of risk this project's own hard rule ("a check that has only ever passed proves nothing") exists to catch — there has been no check here at all to pass.
+
+---
+
+**Tracked, minor, non-blocking** (spec-text-vs-implementation drift found in the same review, none of it a correctness bug — noted here so it doesn't silently decay):
+
+- `src/tools/checkerWorker.ts`'s `CheckerWorkerRequest` is a purpose-built type, not the `HostMessage<P>` `tools-api-design.md` Sec.4.3/7.2 item 4b prescribes adding for exactly this worker. Functionally fine (`msg.context` still typechecks with no cast) but means `HostMessage<P>` still has zero real consumers in-tree — the same fact earlier review rounds flagged as the reason the bug it was meant to fix went unnoticed.
+- `src/tools/builtin/formatter/layout.ts`'s `hasNonAttributeItems` (inline/compact-block gating) refuses more item kinds (`command`, `orphanBlock`, `raw`, `directive`) than `formatter-design.md` §3.3 asks for (only conditionals). Likely intentional, but the spec prose was never widened to match.
+- `layout.ts`'s `canInline` only refuses a block containing a `RawNode` when the raw span itself is multi-line; §3.3 states the refusal unconditionally for any `RawNode` at any depth. Documented in-code as deliberate, but the spec text was never updated to match the looser behavior actually shipped.
+
+---
+
+## Others
+
+### BUG-021 — `#define` used in a numeric slot: our parser stays silent, but what the engine actually resolves is unconfirmed
+
+**Status:** OPEN, unverified. **Area:** `src/parser/parser.ts` (`isDefinedSymbol`, the symbol table), `src/preview/generator/instantiate.ts` (constant resolution feeding generation). **Found:** `de-official-map-issues.md` §5 (`Capricious.rms:880-883`, `#define HERDABLE_COUNT n` inside a `start_random`, consumed by `includes/herdable.inc`'s `number_of_objects HERDABLE_COUNT`), 2026-08-21.
+
+`Capricious.rms` rolls `HERDABLE_COUNT` with `#define`, not `#const`, inside a `start_random`. `#define` assigns no value in the engine, so the roll almost certainly does nothing — but what does the numeric slot see when generation actually runs? Our parser is already deliberately permissive here: `isDefinedSymbol()` (`parser.ts:1086`) treats a `#define`d name and a `#const`d name as interchangeably "resolved" for diagnostic purposes, and a `#define` symbol carries no `valueToken` (`parser.ts:455-461`), so no false warning fires and no fabricated value is produced. That's consistent with "no value", but it doesn't say what `instantiate.ts` should feed into generation when the name is later read in a numeric slot: does it fall through to `herdable.inc`'s own `#const HERDABLE_COUNT` default (first-definition-wins, if `#define` and `#const` genuinely share one namespace), or is the name simply unresolved at that point? No corpus script currently hits this shape, so `instantiate.ts`'s behaviour here has never been checked against either reading.
+
+**Prescribed fix.** Build an RMSTEST script exercising `#define`-in-a-numeric-slot and read the result with `tools/scenario-probe`, per this project's "prefer an observable to an argument" rule. Once the engine's answer is known, confirm `instantiate.ts` resolves through to it and add a regression fixture. Until then, leave the parser's permissive read alone — it produces no false diagnostic under either candidate reading.
+
+---
+
+### BUG-020 — nested `start_random`: the parser flags it, but what it actually resolves to is unconfirmed
+
+**Status:** OPEN, unverified engine behaviour. **Area:** `src/parser/parser.ts` (RMS0213), `docs/parser-design.md` verify item 20. **Found:** `de-official-map-issues.md` §6 (`includes/F_seasons.inc`, ten nested `start_random` sites, included by 43 shipped scripts), 2026-08-21.
+
+`F_seasons.inc` opens a `start_random` inside another `start_random` at ten sites. Our parser already detects the nesting and emits **RMS0213** (parsed structurally, lossless — the AST does not throw the block away), but `parser-design.md`'s own verify item 20 already records the actual resolution as unmeasured: the suspicion is that the inner `end_random` closes the OUTER block, orphaning its remaining branches and making everything after unconditional, but that is inference from the guide's prohibition, not an observation. If confirmed, this affects more than RMS0213's wording — it would mean the preview generator's random-block instantiation is wrong for any corpus script that hits the shape (none of the 12 tracked maps do today, but the shared `.inc` reaches 43 official scripts).
+
+**Prescribed fix.** Build an RMSTEST script nesting `start_random` and read the result with `tools/scenario-probe`. If the guessed model holds, update RMS0213's message to state the consequence rather than only the prohibition, and check whether `instantiate.ts`/`objects.ts`'s random-block handling needs the same correction.
+
+---
+
+### BUG-019 — `temp_min_distance_to_players`: no reference-data entry, no confirmed reading
+
+**Status:** OPEN, unverified — reference-data question, engine behaviour unconfirmed. **Area:** `reference/data/language.json` (`create_object` attributes), `src/parser/parser.ts` (unknown-attribute diagnostic). **Found:** `de-official-map-issues.md` §4 (`real_world_world.rms:498`), 2026-08-21.
+
+`real_world_world.rms:498` writes `temp_min_distance_to_players 45`. `language.json` has no entry for that exact name — only `min_distance_to_players` and, for a different attribute, `temp_min_distance_group_placement` (a real "temp_"-prefixed variant, so the naming pattern itself is not unprecedented in this data). A script using it today draws our unknown-attribute warning under no closer name than that. Two readings, neither confirmed: (a) an author typo for `min_distance_to_players`; (b) a genuine, undocumented "temp_"-prefixed sibling, the same shape as `temp_min_distance_group_placement`.
+
+**Prescribed fix.** Per CLAUDE.md's rule that the guide has to license a reading with a sentence, not a naming resemblance: do not add or alias anything in `language.json` on the strength of the name alone. Confirm with an RMSTEST script — does the attribute change generation at all, and if so does it match `min_distance_to_players`'s effect — before touching the data.
+
+---
+
+### BUG-012 — a word valued 69 inside a comment hides the rest of the file from the engine, and the parser cannot see it
 
 **Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 7). **Area:** `src/parser/validate.ts` (not the lexer — see below), `src/parser/diagnostics.ts`, `docs/parser-design.md` Sec.2.1 and Sec.13 item 7. **Found:** 2026-08-11, `RMSTEST_56a/56b/57/60`.
 
@@ -48,103 +227,7 @@ Two things follow and are part of the fix, not optional polish. The AST below th
 
 ---
 
-## BUG-011 — the default grouping mode is implemented as tight; measured, it is loose
-
-**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 5). **Area:** `src/preview/generator/objects.ts`, `docs/preview-design.md` Sec.6.6 and Sec.15 item 17(c). **Found:** 2026-08-11, `RMSTEST_46a/46b/46c`.
-
-**What landed.** `isTightGrouping` now requires an explicit `set_tight_grouping`; an explicit `set_loose_grouping` still beats it. **Corpus delta, seed 7 on Normal: 13 of 32 maps change, every one of them downward, 159,732 → 141,281 placements (−11.6%)** — the two large movers are `OWWC1Tewaipounamu` 11,068 → 2,336 and `24hr_Mont Saint Michel` 9,899 → 1,946, both maps whose grouped commands had been filling straight through terrain their objects cannot occupy. New behavioural pair (a group confined to a one-column `terrain_to_place_on` patch, unstated versus tight), mutation-tested by restoring the tight default (2 red). **`force_placement`'s guide:2739 exclusion was deliberately left keyed on the `set_loose_grouping` ATTRIBUTE** rather than extended to an unstated-but-loose command, which is a second question nothing has measured.
-
-**Symptom.** A `create_object` that sets `group_placement_radius` and states neither `set_tight_grouping` nor `set_loose_grouping` is treated as tight — anchor checked, fill unchecked. **498 of the corpus's 964 grouped commands declare neither mode**, so this governs the majority of grouped placements.
-
-**Measurement.** One mode per file, three runs each, identical otherwise. Off-patch fraction against a `terrain_to_place_on` patch: tight **22–35%**, loose **0%**, unstated **0%**. The unstated command is checked per member.
-
-**Prescribed fix.** Default to loose in `objects.ts`. Note the blast radius is larger than the line changed: under tight, a group's fill skips the habitat and spacing checks, so flipping the default makes hundreds of corpus commands place fewer objects in legal positions instead of more objects in illegal ones. Re-measure the corpus before and after and put the delta in the build log.
-
-**Verification.** A test with a group restricted to a small patch and no mode stated, asserting every member lands on the patch; the existing tight test stays as the contrast. Mutation-test by restoring the tight default and confirming the new test goes red.
-
-**Recorded and deliberately NOT fixed: the placement counts differ.** Explicit loose placed exactly 24 in all three runs; unstated placed 32, 32 and 40. Zero spill in both makes them identical on the rule this bug is about, but a consistent count difference means they are not the same code path. Do not tune to it — construct the run that separates a cap from a rejection rate if it starts to matter.
-
-**Process note worth keeping with the bug.** The first version of this test put all three modes on one map, distinguished only by object id, and produced two contradictory readings across two sittings before being thrown away. A scenario records objects and positions, not which command placed them. **When a test's arms share a map, ask what in the export tells them apart** — the redesign cost two generations and removed the ambiguity entirely.
-
----
-
-## BUG-010 — the beach pass edges the shallows/open-water boundary; measured, the engine does not
-
-**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 3). **Area:** `src/preview/generator/grid.ts` (`terrainDepth`/`waterDepthMask`), the beach pass in `terrains.ts`, `docs/preview-design.md` Sec.6.4 and Sec.15 item 29. **Found:** 2026-08-11, `RMSTEST_52`, two runs.
-
-**What landed.** One line: the beach pass skips every tile that is not `DEPTH_LAND`, where it used to skip only open water. `terrainDepth`, `waterDepthMask`, `isHybrid` and the `beachTerrain` rows are all untouched, and the test that pins why they survive is the dry hybrid — land beside `DLC_MANGROVESHALLOW` still beaches, which an `isWater`-only test cannot express. Two `bands()` expectations inverted, mutation-tested by restoring the seaward skip (2 red). **Corpus re-measured at seed 7 on Normal: 6 of 32 maps change, beach 8984 → 7577** (`W4 - Immersion` 1752 → 1016, `TL Tres Leches` 1045 → 678, `AK_Hourglass` 568 → 380, `Chaotic_Strait` −71, `Three_Bays` −46, `AK_Six_Points` +1 through a downstream cascade). So the withdrawn half was producing about a sixth of all the sand on the corpus.
-
-**Symptom.** The 2026-08-08 three-depth rule ("a tile takes its own beach where it borders anything strictly deeper than itself") produces sand on BOTH sides of a shallows shelf. The engine produces it only on the landward side.
-
-**Measurement.** Land / shallows / open water in a known order. Beach tiles bordering **shallow and water**: **3** and **2**, against 336/312 bordering grass-and-water and 30/90 bordering grass-and-shallow. Two or three tiles at a triple junction is incidental, not a boundary.
-
-**Prescribed fix.** Restore shallows to counting as water for the beach comparison — land against water is the rule — while keeping the part of the 2026-08-08 change that was right: the dry hybrids (`DLC_MANGROVESHALLOW` and the navigable ice family) must still take a beach against land, which is what the old `isWater`-only test missed and what motivated the depth model. The `isHybrid` flag and `beachTerrain` rows stay; only the seaward comparison goes.
-
-**Verification.** `terrains.test.ts` already has a `bands()` cross-section covering both boundaries — invert the expectation on the seaward one. Re-measure the nine maps the 2026-08-08 change moved; S1 beach should stay at or above its pre-change value on all of them, which is the property that change was justified on.
-
-**The lesson.** The far edge was argued from a `terrain_state` line about "thinner blending of shallows and beach terrain", read as evidence the two are adjacent by default. It evidently describes an author-supplied adjacency. **A guide sentence that a construct *can* be configured is not a statement that the engine does it unasked** — and the entry itself named the corpus map that could not distinguish the two readings, which was the signal to run this before shipping the rule rather than after.
-
----
-
-## BUG-009 — the land-origin cross is applied in map coordinates; measured, it is relative to the borders
-
-**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 1). **Area:** `src/preview/generator/lands.ts` (neutral origin rejection sampling), `docs/preview-design.md` Sec.6.1 and Sec.15 item 26. **Found:** 2026-08-11, `RMSTEST_51`, nineteen generations.
-
-**What landed.** `crossRegion`/`insideCross` compute the centre and both half-widths from the inclusive border rectangle; `neutralOrigin` and `sampleReservoir` share them, the second deliberately taking the BORDER box rather than the origin-neighbourhood box it samples from, or the region would follow the land instead of the borders. The unbordered case is preserved by construction and pinned by the pre-existing test, which computes the cross the old map-frame way on purpose. New bordered test asserts origins reach the box's middle and that at least one lands where the map frame forbids; mutation-tested by passing map coordinates, confirmed red, reverted.
-
-**Symptom.** A `create_land` carrying borders has its origin drawn from an L-shaped sliver hugging the inner edges of its border box, so bordered islands crowd toward the middle of the map and never reach the outer corner. Visible on `AD4 - Pag - v1.2.rms` and reported as a rendering bug.
-
-**Measurement.** One small non-growing land, `right_border 60 bottom_border 60` on a 200 map, origin read as the snow patch centroid. The absolute model forbids `x < 65.8 && y < 65.8`; **16 of 19 centroids are inside that forbidden region.** Against the box's own centre the same cross forbids about 43% of the box (its four corners) and **0 of 19 centroids fall there**, against ~8 expected if the scatter were merely uniform. So the cross exists and is measured against the allowed region.
-
-**Prescribed fix.** Compute the cross's centre and reference length from the border-allowed rectangle rather than from the map. Where no borders are set the two coincide, so `RMSTEST_25`'s original unbordered measurement is preserved by construction — check that explicitly, since it is the regression this change most easily breaks.
-
-**Verification.** A test with borders asserting origins reach all four quadrants of the box; a test without borders asserting the existing measured cross is unchanged. Mutation-test by reverting to map coordinates and confirming the first goes red.
-
-**The lesson this one carries.** The symptom was correctly diagnosed on 2026-08-07 as two individually-correct rules composing into a wrong result, and the right response was recorded then: work out the intersection and write down the run that decides the open half, rather than softening a measured rule because its consequence looks odd. That run is this one, and the composition turned out to be the wrong half — the rule itself was mis-scoped.
-
----
-
-## BUG-008 — a sub-3 `min_length_of_cliff` suppresses the whole section; measured, it is a per-draw yield
-
-**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 4). **Area:** `src/preview/generator/cliffs.ts`, `docs/preview-design.md` Sec.6.3 and Sec.15 item 17(b). **Found:** 2026-08-11, `RMSTEST_45a/45b/45c`.
-
-**What landed.** The section-level early return is gone; each cliff's rolled length is dropped below 3, so `attempted` exceeds `placed` and the six official maps that write a sub-3 minimum with a workable maximum now render cliffs. The note splits in two — "no cliffs at all" only when the maximum is also below 3, "fewer than it asks for" otherwise. Tests are the measurement's own three arms at twenty cliffs, including the `min 2 / max 4` arm a section gate cannot produce; mutation-tested by deleting the per-draw drop (2 red). **No rate was fitted from 36-against-66, per this entry's own warning.**
-
-**Symptom.** `cliffs.ts` emits zero cliffs plus a note whenever `min_length_of_cliff < 3`, following the guide. Six official maps write 1 or 2 with a maximum of 3 or more, so all six get no cliffs at all.
-
-**Measurement.** Two runs per arm, twenty cliffs requested, everything else identical. `min 2 / max 2` → **0** cliff units. `min 3 / max 3` → **66**. `min 2 / max 4` → **36**. Suppression predicts 0 in the third arm; a clamp predicts arms one and two matching. Neither holds.
-
-**Prescribed fix.** Roll each cliff's length in `[min, max]` and drop the rolls below 3, rather than gating the section. The current behaviour stays correct where `max < 3` (every roll dies) but must reach that outcome through the roll, not through a section gate — the distinction is exactly what the third arm measures.
-
-**Do NOT fit a constant from these numbers.** Cliff UNITS are not cliff COUNT: a longer cliff carries more units, so 36-against-66 conflates yield with length. If a rate is wanted, re-read with `--clusters` and count components.
-
----
-
-## BUG-007 — a frameless `ignore_terrain_restrictions` empties the whole command; measured, it does nothing at all
-
-**Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 2). **Area:** `src/preview/generator/objects.ts` (the whole-command gate), `src/parser/validate.ts` (RMS0315), `docs/preview-design.md` Sec.6.6. **Found:** 2026-08-11, `RMSTEST_42`, four runs.
-
-**What landed.** The gate is gone: `ignoreTerrainInert` now only suppresses the flag's own effect and emits a drawer note, so the command runs with the restrictions it would have had anyway. RMS0315's consequence clause moved from "places nothing at all" to "this line does nothing" (the wording lives in `language.json`'s `requiresNote`, so no code changed), and both `language.ts`'s doc comment and the census file's header were corrected — the census re-derives the count on every run and reports **56 sites across 12 maps**, so the build log's 47-command figure is withdrawn rather than left to age. Two mutants, both red: the frameless flag still lifting restrictions, and the whole-command gate restored.
-
-**Symptom.** A `create_object` carrying `ignore_terrain_restrictions` with no `set_place_for_every_player` and no `place_on_specific_land_id` is treated as placing **nothing**, and RMS0315 warns that the command is dead. It affects **47 commands across 11 corpus maps**.
-
-**Measurement.** Three commands on one half-land half-water map, differing only in the flag and in the object's own restriction. Flagged salmon 30, unflagged control salmon 30, flagged olive trees 30. Result, identical across four runs: **60 salmon, all 60 in water; 30 olive trees on grass.** So the flagged commands placed in full (the command is not voided) and the flagged fish kept its own water restriction (the flag did not bypass anything). **The attribute is inert without a frame. The command is untouched.**
-
-**Root cause.** The gate was inferred from `AK_Namatjira.rms` placing zero shore fish, and that map cannot discriminate: its command also names a shallow, which a shore-habitat fish cannot occupy, so the inert reading predicts zero there too. A map that produces zero is consistent with every model that produces zero. The corpus counter-argument was already written into `RMSTEST_42`'s header before the run — `find_closest` carries the identical `Requires:` line and appears 71 times frameless in working maps — and was not weighed against the gate.
-
-**Prescribed fix.**
-1. `objects.ts`: delete the whole-command gate. A frameless flag becomes a no-op plus the existing `SimulationNote`, which is what Sec.6.6's frame list already prescribes for every other member of that family.
-2. RMS0315: re-scope from "this command places nothing" to "this attribute does nothing here", and drop the severity accordingly.
-3. `src/parser/__tests__/rms0315.measure.test.ts` re-derives the corpus count; the 47-command figure in the build log becomes wrong and should be struck rather than left to age.
-4. Add the discriminating test to `objects.test.ts`: a flagged command on an object whose own habitat excludes the target terrain must place its full count on legal ground.
-
-**Verification.** Mutation-test the new no-op: re-enable the gate and confirm the new test goes red. The old behaviour had a test asserting it, so this is a case where a green suite asserted the defect.
-
-**The durable lesson, and it is about the document rather than the engine.** Sec.6.6 listed this flag among the frameless-inert attributes and, forty lines later, said the bypass applies anyway. The implementation picked a third reading neither sentence contained. **When a spec states a rule twice, check the two statements agree before implementing either** — and when an attribute's behaviour is inferred from one shipped map, name what else would produce the same observation.
-
----
-
-## BUG-006 — RMS0101's error severity is now unsupported: DE generates a file with an unclosed `{` at EOF
+### BUG-006 — RMS0101's error severity is now unsupported: DE generates a file with an unclosed `{` at EOF
 
 **Status:** **FIXED 2026-08-12** (CREATION_PLAN 4.8b item 8). **Area:** `src/parser/diagnostics.ts` (RMS0101), `docs/parser-design.md` Sec.10 and Sec.13 item 6. **Found:** 2026-08-11, by loading the map.
 
@@ -164,7 +247,7 @@ Two things follow and are part of the fix, not optional polish. The AST below th
 
 ---
 
-## BUG-005 — RMS0200 asserts engine behaviour from absence in our own data
+### BUG-005 — RMS0200 asserts engine behaviour from absence in our own data
 
 **Status: CLOSED 2026-08-13.** Piece 1 (wording) was done 2026-08-02, piece 3 DROPPED 2026-08-05, and **piece 2 shipped 2026-08-13**: corpus RMS0200 **858 → 277**, all 21 true positives unchanged, and the two RMS0201 sites parked here from BUG-003 closed with it (**22 → 20**). **Area:** `src/parser/parser.ts` (`parseNamedOrRun`, `aliasedCommand`, `stopSetAt`), `reference/data/language.json` (`CommandDef.tokenId`, `ArgumentDef.acceptsKnownName`), `docs/parser-design.md` Sec.2.1 item 4. **Found:** 2026-07-31 parser audit. **Instrument:** `src/parser/__tests__/rms0200.measure.test.ts` re-derives every number in this entry; run it rather than quoting them.
 
@@ -253,7 +336,7 @@ So roughly 2.5% of the volume is the signal the check exists for. **That 2.5% is
 
 **Piece 2's type problem is now recorded in the spec too** (2026-08-05, rev 6): `parser-design.md` Sec.2.1 previously presented `ParseOptions.aliasTable` as the upgrade hook with no caveat, so the fact that `ReadonlyMap<string, TokenKind>` cannot express a word aliasing a *command* lived only in this file. Both mentions now carry it, along with the 581/858 figure.
 
-## BUG-003 — False RMS0201 on attributes that are legal with no argument
+### BUG-003 — False RMS0201 on attributes that are legal with no argument
 
 **Status: CLOSED 2026-08-05 at a regression baseline of 32, RE-BASELINED TO 22 on 2026-08-12** when row 10 below was settled in game and `showType` became `optional: true` (CREATION_PLAN 4.8b item 6), **and TO 20 on 2026-08-13** when BUG-005 piece 2 closed the two sites this triage parked there. Corpus RMS0201 went **69 → 35 → 32 → 22 → 20**. All 35 remaining warnings were triaged individually **against the guide**; **20 are true positives**, 10 are **UNDETERMINED and deliberately still warn**, and 2 are a *different* defect (Sec.6 stop set meeting Sec.2.1 aliasing), parked on the BUG-005 piece 2 decision rather than fixed here. Only 3 turned out to be genuine false positives, and all three were in our own fixture. **Area:** `reference/data/language.json` (data, not code) — though in the end no `language.json` change survived. **Instrument:** `src/parser/__tests__/rms0201.measure.test.ts` re-derives every number below — run it rather than quoting them.
 
@@ -261,7 +344,7 @@ So roughly 2.5% of the volume is the signal the check exists for. **That 2.5% is
 
 **Read this before touching the data: the first attempt at closing this bug got it wrong, and the way it got it wrong is the whole lesson.** `ai_info_map_type.showType` was marked `optional: true` on 2026-08-05 and reverted the same day. The evidence was 52 three-argument uses across 52 distinct DE-official files with 20+ distinct map types — genuinely independent, not a copy-paste artefact, and it still did not survive. **Official DE maps contain bugged lines; the engine passes them silently, the affected code never takes effect, and nobody finds out.** guide:475 lists `showType` **not functional on DE**, so writing it and omitting it are indistinguishable in game, and no shipped script could ever have revealed which form is correct. A frequency count only counts when a wrong answer could have been *observed*. Both halves are now CLAUDE.md Hard rules.
 
-### Triage of all 35 (2026-08-05)
+#### Triage of all 35 (2026-08-05)
 
 | Count | Name | Site | Verdict |
 |---:|---|---|---|
@@ -318,7 +401,7 @@ The mechanism itself was **mutation-tested** while the `showType` flag was brief
 
 ---
 
-## BUG-002 — CLOSED 2026-08-02. Both remaining "false" RMS0202 causes were true positives
+### BUG-002 — CLOSED 2026-08-02. Both remaining "false" RMS0202 causes were true positives
 
 **Status:** closed, not-a-bug, both halves. **Found:** while fixing the `#const`-in-numeric-slot report (parser-design Sec.6 amendment — that fix is done and is *not* what this entry was about). **Area:** `reference/data/language.json`, `src/parser/parser.ts`.
 
@@ -328,7 +411,7 @@ After the Sec.6 amendment the 52-file corpus emitted **238 RMS0202 warnings + 75
 
 **The pattern across both, and it is the third instance in one session.** Each half was filed as a false positive on evidence that was really one observation wearing a plural — 35 occurrences that are 3 copy-pasted template sites, 26 occurrences of a single name in a single file. Both then attracted a *mechanism* (DE templating syntax; Sec.2.1 token-ID aliasing) plausible enough to survive review, because a mechanism that explains the data feels like evidence for it. Neither had ever been checked for independence, and neither needed the game to refute — one needed a look at the file headers, the other needed asking the author. Same family as `avoidance_distance`'s 320 uses.
 
-### (a) Undefined words used deliberately as opaque identifiers — CLOSED 2026-08-02, evidence withdrawn
+#### (a) Undefined words used deliberately as opaque identifiers — CLOSED 2026-08-02, evidence withdrawn
 
 **Not a bug. The 26 warnings are true positives, and the premise was one author's accident.**
 
@@ -347,7 +430,7 @@ The original claim: `AK_Vanguard_v1.2.rms` uses `actor_area ACT_AREA_TEAM_RES_TE
 
 **What survives, and is worth keeping:** the sweep found that identifier-likeness would be per-**argument**, not per-command — `create_actor_area X Y Identifier Radius` has three magnitudes and one handle. If this ever reopens on real evidence, that is the shape, and the four slots are `create_actor_area` arg 2 plus `actor_area`/`actor_area_to_place_in`/`avoid_actor_area` arg 0. What would count as real evidence: a bare-word actor-area identifier in a map with **no includes**, from an author who did not lose a `#const`.
 
-### (b) `$`-prefixed names — CLOSED 2026-08-02, and the answer inverts the entry
+#### (b) `$`-prefixed names — CLOSED 2026-08-02, and the answer inverts the entry
 
 **Not-a-bug, and not in the direction this entry assumed: these 35 warnings are TRUE POSITIVES.**
 
@@ -364,50 +447,10 @@ The original claim: `AK_Vanguard_v1.2.rms` uses `actor_area ACT_AREA_TEAM_RES_TE
 
 **Rejected: a dedicated "unexpanded template variable" diagnostic.** Three sites in two files from one toolchain is too thin to earn a code, and the message would assert something about an authoring pipeline seen only indirectly. Revisit if `$` appears in a map from an unrelated ecosystem.
 
-### Verification
+#### Verification
 
 `npm test` (parser suites), plus re-measure the corpus RMS0202 counts before/after — a scratch script parsing every `test-maps/**/*.rms` and bucketing by code and severity is the quickest instrument. **Current baseline: 61 warnings + 45 info across 52 files**, being 26 from (a) in AK_Vanguard and 35 from (b) in Acclivity + TL Team Acropolis. Zero from any other file.
 
 **The target is 61, not 0.** Both causes are closed as correct warnings, so this is no longer a number to drive down — it is a **regression baseline**. All 61 must survive: 35 in Acclivity + TL Team Acropolis (unexpanded preprocessor variables) and 26 in AK_Vanguard (a deleted `#const`). A change that takes corpus RMS0202 below 61 has started suppressing real findings, which is the failure mode this entry spent three rounds walking toward.
 
 **Re-derived 2026-08-05: still 61 + 45. The spec had not caught up, and that was the live risk.** `parser-design.md` Sec.6 went on describing both causes as "noise", calling (a) "evidence that `integer` wrongly conflates a magnitude with an identifier" and (b) "supported syntax we don't yet model" — i.e. it still named the `identifier` schema change that was designed on the withdrawn reading and reverted the same day. In a document headed "do not deviate from this spec", a stale paragraph that names work to do is worse than one that merely describes the past. Rewritten in rev 6, with the 61 recorded there as a floor.
-
-
-## BUG-016 — 2026-08-19 — suspected placement-distance discrepancies found while building `Venn`
-
-**Status:** OPEN, unverified — observations from playtesting, not yet triaged against the engine. **Area:** `src/preview/generator/objects.ts` (`min_distance_to_players`, `spacing_to_other_terrain_types`, `other_zone_avoidance_distance`). **Found:** building a map named `Venn`. Not yet tracked in `test-maps/` — add it once available so the discrepancy is reproducible.
-
-**Suspected symptoms, none yet confirmed.**
-- `min_distance_to_players`: the exclusion region should be the overlap of the minimum distance from every player's land, not just one. Check the current implementation against that reading.
-- `spacing_to_other_terrain_types`: suspected not to behave correctly. Check the implementation.
-- `other_zone_avoidance_distance`: suspected not to behave correctly. Check the implementation.
-
-**Prescribed next step.** Per this project's own "prefer an observable to an argument" rule, none of the three suspicions above should be acted on without a measured discrepancy first. Generate `Venn` at each stage — land, elevation, terrain, object generation — and compare against the real engine's output for the same script. Significant differences were observed but not yet isolated to a specific command or stage.
-
----
-
-## BUG-017 — `tools-api-design.md` Sec.9 round-trip and def-reconstruction tests were never built
-
-**Status:** OPEN. **Area:** `tools-api/index.ts`'s wire encode/decode path; `src/tools/protocol.ts`, `src/tools/checkerWorker.ts`. **Found:** code-review of the staged 5.1/5.2/5.2b commit, 2026-08-25.
-
-Sec.9 item 1 (a serialization round-trip test — hand-built fixtures under `toStrictEqual` for every `ToolMessage` kind, an `Infinity`/`-Infinity`-bound fixture, a corpus parse under `toEqual`, and an aliased-command fixture whose whole point is that deleting the alias-decode clause turns it red) and Sec.9 item 11 (def-reconstruction from the wire form, with its four named fixtures a–d) have no implementation or test anywhere in the tree — grepped for `toStrictEqual`, `Infinity`, `aliasedCommand` and `commandsByTokenId` under `src/tools/` and `tools-api/`; none of this machinery exists. The spec names these explicitly as "surviving obligations of seven review rounds, not a substitute for review" — i.e. not optional polish, and not conditioned on v1.1 external tools.
-
-**Prescribed fix.** Build the two test suites Sec.9 items 1 and 11 describe, against the four named fixtures. Until they exist, the wire encode/decode path is unverified by anything automated, which is exactly the shape of risk this project's own hard rule ("a check that has only ever passed proves nothing") exists to catch — there has been no check here at all to pass.
-
----
-
-## BUG-018 — formatter's "empty preview under a non-zero edit count" fix has no test coverage
-
-**Status:** OPEN. **Area:** `src/tools/builtin/scriptFormatter.ts:316-335` (`buildFormatterOutput`), `docs/formatter-design.md` §9. **Found:** code-review of the staged 5.2b commit, 2026-08-25.
-
-The rev-2 changelog's third defect fix — eight corpus scripts producing blank-line-only edits that rendered an empty preview under a non-zero "Edits proposed" count — lives entirely in `buildFormatterOutput`. There is no `scriptFormatter.test.ts`, and neither `format.test.ts` nor `corpus.test.ts` calls `buildFormatterOutput` or asserts the `result.changes.length === 0 && result.edits.length > 0` branch. §11's named unit gates don't list it either. The fix is real and reads correctly, but it is currently reachable only by reading the code, not by running anything.
-
-**Prescribed fix.** Add a `scriptFormatter.test.ts` (or extend `format.test.ts`) covering the blank-line-only-edit case directly — assert the one-sentence summary replaces blocks 5/6 when `changes` is empty and `edits` is not — plus a mutant that reverts the branch, to confirm the test actually distinguishes it.
-
----
-
-**Tracked, minor, non-blocking** (spec-text-vs-implementation drift found in the same review, none of it a correctness bug — noted here so it doesn't silently decay):
-
-- `src/tools/checkerWorker.ts`'s `CheckerWorkerRequest` is a purpose-built type, not the `HostMessage<P>` `tools-api-design.md` Sec.4.3/7.2 item 4b prescribes adding for exactly this worker. Functionally fine (`msg.context` still typechecks with no cast) but means `HostMessage<P>` still has zero real consumers in-tree — the same fact earlier review rounds flagged as the reason the bug it was meant to fix went unnoticed.
-- `src/tools/builtin/formatter/layout.ts`'s `hasNonAttributeItems` (inline/compact-block gating) refuses more item kinds (`command`, `orphanBlock`, `raw`, `directive`) than `formatter-design.md` §3.3 asks for (only conditionals). Likely intentional, but the spec prose was never widened to match.
-- `layout.ts`'s `canInline` only refuses a block containing a `RawNode` when the raw span itself is multi-line; §3.3 states the refusal unconditionally for any `RawNode` at any depth. Documented in-code as deliberate, but the spec text was never updated to match the looser behavior actually shipped. 

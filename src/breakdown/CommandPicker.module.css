@@ -12,8 +12,8 @@
   max-height: 20rem;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid #999;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 0.5rem;
 }
@@ -28,7 +28,7 @@
 .search {
   flex: 1;
   padding: 0.25rem 0.4rem;
-  border: 1px solid #999;
+  border: 1px solid var(--border-muted);
   font-size: 0.85rem;
 }
 
@@ -53,14 +53,14 @@
   text-align: left;
   background: none;
   border: none;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-subtle);
   padding: 0.3rem 0.2rem;
   cursor: pointer;
   font-size: 0.85rem;
 }
 
 .entry:hover {
-  background: #f0f4ff;
+  background: var(--accent-bg-subtle);
 }
 
 .entryName {
@@ -68,7 +68,7 @@
 }
 
 .entryDesc {
-  color: #555;
+  color: var(--text-muted);
   font-size: 0.78rem;
   flex: 1;
 }
@@ -77,11 +77,11 @@
   font-size: 0.68rem;
   border-radius: 999px;
   padding: 0.02rem 0.4rem;
-  border: 1px solid #999;
+  border: 1px solid var(--border-muted);
 }
 
 .empty {
   font-size: 0.8rem;
-  color: #777;
+  color: var(--text-faint);
   padding: 0.5rem;
 }

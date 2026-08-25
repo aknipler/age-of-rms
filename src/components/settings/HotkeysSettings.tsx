@@ -15,6 +15,11 @@ import hotkeyStyles from "./HotkeysSettings.module.css";
 const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
   { id: "save", legend: "Save", hint: "Saves the open file, wherever you are in the app — including while editing." },
   {
+    id: "saveAs",
+    legend: "Save As",
+    hint: "Opens the Save As dialog to save the open file under a new name or location, same as File > Save As…",
+  },
+  {
     id: "newFile",
     legend: "New File",
     hint: "Starts a blank map, prompting to save first if the current one has unsaved changes.",

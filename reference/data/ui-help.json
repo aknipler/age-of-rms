@@ -97,6 +97,10 @@
       "text": "The shortcut for Save, shown here and next to Save in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
+      "id": "settings.hotkeys.saveAs",
+      "text": "The shortcut for Save As, shown here and next to Save As… in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
       "id": "settings.hotkeys.newFile",
       "text": "The shortcut for New File, shown here and next to New in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
@@ -126,11 +130,19 @@
     },
     {
       "id": "settings.tab.hotkeys",
-      "text": "Keyboard shortcuts — Save, New, Open, two Preview actions and two Breakdown card actions, all rebindable here."
+      "text": "Keyboard shortcuts — Save, Save As, New, Open, two Preview actions and two Breakdown card actions, all rebindable here."
     },
     {
       "id": "settings.tab.theme",
-      "text": "Colours and fonts for the app and the code editor. Empty for now."
+      "text": "Pick Light, Dark, or a theme you've saved, and customize colours and the code font. Changes preview live before you save them."
+    },
+    {
+      "id": "settings.theme.picker",
+      "text": "Switch the active theme, or save your current colour edits as a new one. Light and Dark are built in and can't be edited in place — customize below, then Save as new theme. A theme you saved can be updated, renamed or deleted from here too."
+    },
+    {
+      "id": "settings.theme.customize",
+      "text": "Every colour and the code editor's monospace font, grouped by what they control. Editing one applies it everywhere immediately, so you can see the effect before deciding to keep it."
     },
     {
       "id": "settings.tab.breakdown",

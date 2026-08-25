@@ -9,7 +9,8 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 - **Live checking**, 48 diagnostic codes covering unclosed blocks, unknown names, argument problems and semantic mistakes the game reports no error for. Several catch lines that parse cleanly and then do nothing in game, such as an attribute whose required partner is missing, or a command sitting in a section the engine will not run it from.
 - **Approximate map preview**, a canvas render of what your script generates, with zoom and pan, a game or minimap colour mode, hover and click readouts for any tile, and a notes drawer listing every approximation and placement failure.
 - **Reference panel**, sharing the preview column. Look up terrains, objects, commands and the attributes each command accepts, and read a list of every object your script names beside how many of it the last generation actually placed, zeroes included. An object the script asks for and the map never gets is the usual sign of a terrain restriction or a distance band nothing can satisfy.
-- **Advanced Tools**, a pane for built-in and community-contributed tools that operate on your script. Specified, not built yet, and currently a placeholder.
+- **Advanced Tools**, a pane of built-in tools that analyze or edit your script: a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. Community-contributed external tools are planned for a later release.
+- **Theming**, in Settings: Light and Dark ship built in, every colour and the code font can be customized, and edits preview live before you save them as your own named theme.
 
 Code is always the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
@@ -17,7 +18,7 @@ The preview is an approximation and can always be improved. It reproduces the en
 
 ## Status
 
-In development, and usable. The editor, the parser and the map preview (not 100% perfect, feedback always welcome) are all built. Advanced Tools is the remaining pane.
+In development, and usable. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built. See the [user guide](docs/user-guide.md) for a walkthrough.
 
 ## Installing
 
@@ -68,3 +69,5 @@ Age of Empires II © Microsoft Corporation. Age of RMS was created under Microso
 ## Contributing
 
 See `CONTRIBUTING.md`. This project is aimed at the AoE2 RMS community, including casual and first-time contributors.
+
+Thinking about writing your own Advanced Tools tool? External tools aren't pluggable yet, but the contract they'll speak already exists and runs today's five built-in tools — see [`docs/tool-author-preview.md`](docs/tool-author-preview.md).

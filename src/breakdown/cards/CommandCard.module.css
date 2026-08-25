@@ -5,8 +5,8 @@
 }
 
 .toggle {
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   width: 1.5rem;
   height: 1.5rem;
   cursor: pointer;
@@ -29,7 +29,7 @@
 }
 
 .group {
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border-subtle);
   padding-top: 0.3rem;
 }
 
@@ -37,7 +37,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #555;
+  color: var(--text-muted);
   margin: 0 0 0.25rem;
 }
 
@@ -53,18 +53,18 @@
 }
 
 .rowSeverity-error {
-  border-left: 3px solid #dc3545;
-  background: rgba(220, 53, 69, 0.06);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg-subtle);
 }
 
 .rowSeverity-warning {
-  border-left: 3px solid #e0a300;
-  background: rgba(224, 163, 0, 0.08);
+  border-left: 3px solid var(--warning);
+  background: var(--warning-bg-subtle);
 }
 
 .rowSeverity-info {
-  border-left: 3px solid #17a2b8;
-  background: rgba(23, 162, 184, 0.06);
+  border-left: 3px solid var(--info);
+  background: var(--info-bg-subtle);
 }
 
 /* The fixed-width column — lives here, not on .argLabel, for the same
@@ -77,7 +77,7 @@
 }
 
 .argLabel {
-  color: #333;
+  color: var(--text-secondary);
 }
 
 .argValue {

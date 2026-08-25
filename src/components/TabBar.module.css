@@ -1,27 +1,27 @@
 .tabBar {
   display: flex;
-  border-bottom: 1px solid #000;
-  background: #fff;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .tab {
-  border: 1px solid #000;
+  border: 1px solid var(--border);
   border-top: none;
   border-left: none;
-  background: #fff;
+  background: var(--surface);
   padding: 0.35rem 1rem;
   font-size: 0.95rem;
   cursor: pointer;
 }
 
 .tab:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }
 
 .tabActive {
-  background: #b3b3b3;
+  background: var(--surface-active);
 }
 
 .tabActive:hover {
-  background: #b3b3b3;
+  background: var(--surface-active);
 }

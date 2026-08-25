@@ -5,8 +5,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.6rem;
-  border-top: 1px solid #000;
-  background: #f4f4f4;
+  border-top: 1px solid var(--border);
+  background: var(--surface-raised);
   font-size: 0.85rem;
 }
 
@@ -15,15 +15,15 @@
 }
 
 .button {
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   padding: 0.2rem 0.7rem;
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 .button:hover {
-  background: #f0f0f0;
+  background: var(--surface-hover);
 }
 
 .primary {

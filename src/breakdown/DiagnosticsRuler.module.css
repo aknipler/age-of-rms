@@ -3,8 +3,8 @@
   flex: 0 0 10px;
   width: 10px;
   height: 100%;
-  background: #f5f5f5;
-  border-left: 1px solid #ddd;
+  background: var(--surface-raised);
+  border-left: 1px solid var(--border-subtle);
   /* Belt-and-suspenders alongside the topFraction clamp in
      DiagnosticsRuler.tsx: a tick's `top` is meant to always land inside
      [0%, 100%], but nothing should be able to render outside this track
@@ -17,9 +17,9 @@
   position: absolute;
   left: 0;
   width: 100%;
-  background: rgba(42, 109, 244, 0.15);
-  border-top: 1px solid rgba(42, 109, 244, 0.5);
-  border-bottom: 1px solid rgba(42, 109, 244, 0.5);
+  background: var(--accent-bg-subtle);
+  border-top: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
   pointer-events: none;
 }
 
@@ -50,13 +50,13 @@
 }
 
 .severity-error {
-  background: #dc3545;
+  background: var(--danger);
 }
 
 .severity-warning {
-  background: #e0a300;
+  background: var(--warning);
 }
 
 .severity-info {
-  background: #17a2b8;
+  background: var(--info);
 }

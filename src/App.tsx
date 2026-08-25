@@ -11,6 +11,7 @@ import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
 import { AppSettingsProvider, useAppSettings } from "./settings/AppSettingsContext";
+import { ThemeSettingsProvider } from "./settings/ThemeSettingsContext";
 import { HotkeySettingsProvider, useHotkeySettings } from "./settings/HotkeySettingsContext";
 import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
 import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
@@ -45,13 +46,13 @@ function AppContent() {
   // this the natural place for the two to meet.
   const { authorName } = useAppSettings();
   const doc = useDocument({ authorName });
-  const { saveFile, newFile, openFile } = doc;
+  const { saveFile, saveFileAs, newFile, openFile } = doc;
   const { playerCount } = useGenerationSettings();
   const { hotkeys, recordingId } = useHotkeySettings();
   const { toggleView, reseed } = usePreviewView();
 
   // The app-wide shortcuts: Save (default Ctrl+S, the original binding),
-  // New/Open, and the two Preview actions that make sense regardless of
+  // Save As, New/Open, and the two Preview actions that make sense regardless of
   // which tab is showing (the preview's view/seed state lives above the
   // tab switch — PreviewViewContext.tsx — same as the pane itself, which
   // both Breakdown and Code render via MapSidePanel). Breakdown's own two
@@ -86,6 +87,9 @@ function AppContent() {
       if (matchesHotkey(event, hotkeys.save)) {
         event.preventDefault();
         void saveFile();
+      } else if (matchesHotkey(event, hotkeys.saveAs)) {
+        event.preventDefault();
+        void saveFileAs();
       } else if (matchesHotkey(event, hotkeys.newFile)) {
         event.preventDefault();
         void newFile();
@@ -102,7 +106,7 @@ function AppContent() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hotkeys, recordingId, saveFile, newFile, openFile, toggleView, reseed]);
+  }, [hotkeys, recordingId, saveFile, saveFileAs, newFile, openFile, toggleView, reseed]);
   // docs/breakdown-design.md Sec.6.2: "one parse, in the worker" — lifted
   // to app level so both CodePane (diagnostics/source, for Monaco
   // markers) and BreakdownPane (the full ParseResult/AST) consume the
@@ -154,6 +158,7 @@ function AppContent() {
         newHotkeyLabel={formatHotkey(hotkeys.newFile)}
         openHotkeyLabel={formatHotkey(hotkeys.openFile)}
         saveHotkeyLabel={formatHotkey(hotkeys.save)}
+        saveAsHotkeyLabel={formatHotkey(hotkeys.saveAs)}
       />
       <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
@@ -242,30 +247,38 @@ function App() {
           Settings dialog and by every place a script-written constant name is
           rendered, so it has to sit above both. */}
       <AppSettingsProvider>
-        {/* Same store, its own context — see HotkeySettingsContext.tsx for why
-            rebindable shortcuts aren't just another AppSettingsContext field. */}
-        <HotkeySettingsProvider>
-          <GenerationSettingsProvider>
-            {/* Above AppContent, so the preview's seed/view/colour and its
-                canvas zoom/pan survive the tab switch that unmounts the pane
-                holding them. Two providers, not one context, so a drag or wheel
-                tick (which changes viewport on every frame) doesn't re-render
-                the seed/colour-mode controls — see PreviewViewContext.tsx. */}
-            <PreviewViewProvider>
-              <PreviewViewportProvider>
-                {/* Also above the tab switch, and for the same reason: both tabs
-                    render their own MapSidePanel and the inactive one is
-                    unmounted, so a width held inside it would be two widths that
-                    reset on every switch (CREATION_PLAN 4.4). Unlike the two
-                    above, this one IS persisted — a layout choice should still be
-                    there tomorrow, where a seed should not. */}
-                <SidePanelLayoutProvider>
-                  <AppContent />
-                </SidePanelLayoutProvider>
-              </PreviewViewportProvider>
-            </PreviewViewProvider>
-          </GenerationSettingsProvider>
-        </HotkeySettingsProvider>
+        {/* Same store, its own context — see ThemeSettingsContext.tsx for why
+            the palette isn't just another AppSettingsContext field. Above
+            everything else in this tree because it writes CSS custom
+            properties straight onto documentElement on mount, which every
+            component stylesheet below reads through var(--token-name) —
+            nothing downstream needs to import it directly. */}
+        <ThemeSettingsProvider>
+          {/* Same store, its own context — see HotkeySettingsContext.tsx for why
+              rebindable shortcuts aren't just another AppSettingsContext field. */}
+          <HotkeySettingsProvider>
+            <GenerationSettingsProvider>
+              {/* Above AppContent, so the preview's seed/view/colour and its
+                  canvas zoom/pan survive the tab switch that unmounts the pane
+                  holding them. Two providers, not one context, so a drag or wheel
+                  tick (which changes viewport on every frame) doesn't re-render
+                  the seed/colour-mode controls — see PreviewViewContext.tsx. */}
+              <PreviewViewProvider>
+                <PreviewViewportProvider>
+                  {/* Also above the tab switch, and for the same reason: both tabs
+                      render their own MapSidePanel and the inactive one is
+                      unmounted, so a width held inside it would be two widths that
+                      reset on every switch (CREATION_PLAN 4.4). Unlike the two
+                      above, this one IS persisted — a layout choice should still be
+                      there tomorrow, where a seed should not. */}
+                  <SidePanelLayoutProvider>
+                    <AppContent />
+                  </SidePanelLayoutProvider>
+                </PreviewViewportProvider>
+              </PreviewViewProvider>
+            </GenerationSettingsProvider>
+          </HotkeySettingsProvider>
+        </ThemeSettingsProvider>
       </AppSettingsProvider>
     </HelpSettingsProvider>
   );
