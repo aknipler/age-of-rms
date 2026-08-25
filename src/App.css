@@ -66,7 +66,28 @@ body {
   color: var(--text);
 }
 
-button {
+/* Form controls don't inherit text colour OR background from their
+   ancestors the way ordinary elements do — a <button>/<select>/<input> uses
+   system colours (buttontext/field) and ignores the page's `color`/
+   `background` unless told otherwise. That's invisible in a codebase where
+   every control happened to be black-on-white already, and it surfaces in
+   two opposite ways the instant a theme makes `--text` and `--surface`
+   differ from the system defaults: a control with no background of its own
+   (a bare `<select>`/`<input>`, styled by nothing but this reset — the
+   Generation Settings dialog's map-size and player-count fields are two)
+   picked up the new `color` but kept its native white background, which is
+   the SAME unreadable pairing as before, just inverted (light text on a
+   light native box instead of dark text on a dark themed one) — first fixed
+   `color` alone here and this is the other half of the same class of bug.
+   `inherit`/`var(--surface-raised)` here are only the DEFAULT underneath a
+   component's own class — plenty override one or both on purpose
+   (.presetActive, .fixButton, .rowLink, .codeRef, .swatch and others). */
+button,
+select,
+input,
+textarea {
   font-family: inherit;
   font-size: inherit;
+  color: inherit;
+  background-color: var(--surface-raised);
 }
