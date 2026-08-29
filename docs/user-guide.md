@@ -45,6 +45,15 @@ itself won't tell you about, like an attribute whose required partner is
 missing, or a command sitting in a section the engine silently ignores it
 from.
 
+`Ctrl+Alt+F` flips the command under the cursor between one line and one
+attribute per line. With a selection spanning several commands, each one
+toggles independently — to the opposite of its own current shape, not to a
+shared target — so a mixed selection stays mixed the other way round. It
+skips anything it can't safely flip, such as a block that holds a nested
+`if`/`start_random` (collapsing that onto one line would be unreadable) or
+one that would force reindenting a different, untouched command elsewhere
+in the file.
+
 ### Advanced Tools
 
 A pane of built-in tools that run analysis or edits over your open script.
@@ -108,6 +117,7 @@ to move) — the one exception is Open, which keeps the OS-conventional
 | Re-roll Preview seed | `Ctrl+Alt+R` |
 | Delete selected Breakdown card | `Ctrl+Alt+D` |
 | Add command (in Breakdown) | `Ctrl+Alt+A` |
+| Toggle command layout (in Code) | `Ctrl+Alt+F` |
 
 ## Theming
 

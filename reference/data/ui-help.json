@@ -125,12 +125,16 @@
       "text": "The shortcut for opening the Add Command picker in the Breakdown tab. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
+      "id": "settings.hotkeys.codeToggleLayout",
+      "text": "The shortcut for toggling a command between one line and one attribute per line in the Code tab. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+    },
+    {
       "id": "settings.tab.general",
       "text": "Settings that apply across the whole app, including how these help popups behave."
     },
     {
       "id": "settings.tab.hotkeys",
-      "text": "Keyboard shortcuts — Save, Save As, New, Open, two Preview actions and two Breakdown card actions, all rebindable here."
+      "text": "Keyboard shortcuts — Save, Save As, New, Open, two Preview actions, two Breakdown card actions and the Code tab's layout toggle, all rebindable here."
     },
     {
       "id": "settings.tab.theme",

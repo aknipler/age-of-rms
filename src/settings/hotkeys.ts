@@ -50,7 +50,8 @@ export type HotkeyId =
   | "previewToggleView"
   | "previewReseed"
   | "breakdownDeleteCard"
-  | "breakdownAddCommand";
+  | "breakdownAddCommand"
+  | "codeToggleLayout";
 
 export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   save: DEFAULT_SAVE_HOTKEY,
@@ -61,6 +62,9 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   previewReseed: { key: "r", ctrl: true, shift: false, alt: false },
   breakdownDeleteCard: { key: "d", ctrl: true, shift: false, alt: true },
   breakdownAddCommand: { key: "a", ctrl: true, shift: false, alt: true },
+  // Code tab's own namespace, Ctrl+Alt like Preview/Breakdown's — "F" for
+  // Format, left-hand, unused elsewhere.
+  codeToggleLayout: { key: "f", ctrl: true, shift: false, alt: true },
 };
 
 /** Where each binding is persisted in the app-settings store — see HotkeySettingsContext.tsx. */
@@ -73,6 +77,7 @@ export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   previewReseed: "previewReseedHotkey",
   breakdownDeleteCard: "breakdownDeleteCardHotkey",
   breakdownAddCommand: "breakdownAddCommandHotkey",
+  codeToggleLayout: "codeToggleLayoutHotkey",
 };
 
 /** Type guard for whatever the store handed back — a corrupted or pre-feature settings.json must not crash startup. */

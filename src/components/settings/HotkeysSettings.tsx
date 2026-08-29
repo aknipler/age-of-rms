@@ -49,6 +49,11 @@ const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
     legend: "Breakdown: Add Command",
     hint: "Opens the command picker, inserting after the selected card or at the end of the active section — same as the + Add command button.",
   },
+  {
+    id: "codeToggleLayout",
+    legend: "Code: Toggle Command Layout",
+    hint: "Flips the command under the cursor between one line and one attribute per line. With a selection, every command it touches is toggled independently — each to the opposite of its own current shape, not to a shared target. Does nothing where flipping isn't safe, such as a block holding a nested if/start_random.",
+  },
 ];
 
 function HotkeyRow({ id, legend, hint }: { id: HotkeyId; legend: string; hint: string }) {

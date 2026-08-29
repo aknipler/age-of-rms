@@ -195,6 +195,8 @@ function AppContent() {
                   hasFile={doc.filePath !== null}
                   source={parsed.source}
                   diagnostics={parsed.diagnostics}
+                  parseResult={parsed.parseResult}
+                  applyTextEdits={doc.applyTextEdits}
                   selectedItem={selection.selectedItem}
                   onCursorOffsetChange={selection.setAnchor}
                 />

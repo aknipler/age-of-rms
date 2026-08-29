@@ -5,10 +5,13 @@ import { PlaceholderPane } from "./PlaceholderPane";
 import { MapSidePanel } from "./sidepanel/MapSidePanel";
 import { AOE2_RMS_THEME } from "../editor/aoe2RmsLanguage";
 import { diagnosticsToMarkers } from "../editor/diagnosticsToMarkers";
+import { toggleCommandLayoutInRange } from "../editor/formatToggle";
 import { DOCUMENT_MODEL_PATH, getDocumentModel } from "../hooks/useDocument";
 import { usePreviewCut } from "../PreviewCutContext";
 import { usePreviewView } from "./preview/PreviewViewContext";
-import type { Diagnostic, Item } from "../parser/types";
+import { useHotkeySettings } from "../settings/HotkeySettingsContext";
+import { matchesHotkey } from "../settings/hotkeys";
+import type { Diagnostic, Item, ParseResult } from "../parser/types";
 import styles from "./CodePane.module.css";
 
 // A stable "owner" id for our diagnostics, so setModelMarkers only ever
@@ -27,6 +30,18 @@ interface CodePaneProps {
    */
   source: string;
   diagnostics: Diagnostic[];
+  /**
+   * The same parse `diagnostics` came from — needed only by
+   * `codeToggleLayout` below, to resolve the command(s) under the cursor/
+   * selection. `null` during the brief window before the first parse lands.
+   */
+  parseResult: ParseResult | null;
+  /**
+   * The N-edit form (docs/tools-api-design.md Sec.4.5), same function
+   * Advanced Tools' Apply button uses — one `pushEditOperations` call, one
+   * undo entry, however many commands `codeToggleLayout` touched at once.
+   */
+  applyTextEdits: (edits: readonly { start: number; end: number; newText: string }[]) => void;
   /**
    * Cross-tab-sync follow-up: the Item the shared selection
    * anchor currently resolves to (from App's useSharedSelection), used
@@ -71,7 +86,15 @@ interface CodePaneProps {
 // state (`doc.content` in useDocument) is a read-only mirror derived from
 // the model's onDidChangeContent — CodePane doesn't need it at all
 // anymore, hence no `content`/`onChange` props here.
-export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorOffsetChange }: CodePaneProps) {
+export function CodePane({
+  hasFile,
+  source,
+  diagnostics,
+  parseResult,
+  applyTextEdits,
+  selectedItem,
+  onCursorOffsetChange,
+}: CodePaneProps) {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
   // Read inside a mount-only listener (handleMount runs once per mount) —
@@ -215,6 +238,39 @@ export function CodePane({ hasFile, source, diagnostics, selectedItem, onCursorO
       onCursorOffsetChangeRef.current?.(offset);
     });
   };
+
+  // Toggle-command-layout hotkey (default Ctrl+Alt+F). Scoped to this
+  // component rather than App.tsx's global listener — same reasoning as
+  // BreakdownPane's own two hotkeys (see App.tsx's comment on why): it needs
+  // `editorRef`/`parseResult`/`applyTextEdits`, all of which only exist
+  // while the Code tab is mounted, so this effect's own mount lifetime is
+  // the "only while Code is the active tab" guard.
+  const { hotkeys, recordingId } = useHotkeySettings();
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      if (!matchesHotkey(event, hotkeys.codeToggleLayout)) return;
+      event.preventDefault();
+      const editor = editorRef.current;
+      if (!editor || !parseResult) return;
+      const model = getDocumentModel();
+      // parseResult is debounced ~150ms behind typing (useParsedDocument) —
+      // the same race applyMarkers above guards against. Computing offsets
+      // against a parse that no longer matches the live buffer could shift
+      // or garble text nowhere near where the user was actually looking.
+      if (model.getValue() !== parseResult.source) return;
+      const selection = editor.getSelection();
+      // No live selection (editor briefly unfocused, or between renders) —
+      // fall back to nothing rather than guessing a range.
+      if (!selection) return;
+      const start = model.getOffsetAt(selection.getStartPosition());
+      const end = model.getOffsetAt(selection.getEndPosition());
+      const { edits } = toggleCommandLayoutInRange(parseResult, { start, end });
+      if (edits.length > 0) applyTextEdits(edits);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hotkeys.codeToggleLayout, recordingId, parseResult, applyTextEdits]);
 
   useEffect(() => {
     applyMarkers(source, diagnostics);
