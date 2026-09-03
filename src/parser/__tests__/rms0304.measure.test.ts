@@ -5,10 +5,10 @@
 // The two columns are the whole point of the design, so they are printed side
 // by side rather than described:
 //
-//   "if driven by CommandDef.section"  — the naive check the spec forbids,
+//   "if driven by CommandDef.section", the naive check the spec forbids,
 //       recomputed here rather than quoted from 2026-07-31, so the number
 //       ages with the corpus instead of becoming folklore.
-//   "as shipped (sectionLocked)"       — what validate() actually reports.
+//   "as shipped (sectionLocked)", what validate() actually reports.
 //
 // Run with: npx vitest run src/parser/__tests__/rms0304.measure.test.ts
 
@@ -36,7 +36,7 @@ function walk(dir: string): string[] {
  *
  * Written out longhand instead of by flipping a flag in validate.ts, because
  * the point is to keep the rejected design visible next to the shipped one.
- * It walks into conditionals for the same reason validate() does — a command
+ * It walks into conditionals for the same reason validate() does, a command
  * inside `if X` still belongs to the enclosing section.
  */
 function naiveSectionHits(sections: SectionNode[]): { name: string; belongsIn: string; foundIn: string }[] {

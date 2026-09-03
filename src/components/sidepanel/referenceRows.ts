@@ -13,8 +13,8 @@ import type { AttributeDef, CommandDef } from "../../parser/language";
  * Descriptive name, then RMS constant, then constant id.
  *
  * All three tiers earn their place, which is why this is not just a name sort.
- * Both tables carry genuine ALIASES — 450 is both MARLIN1 and
- * GREAT_FISH_MARLIN, 457 both TUNA and FISH_TUNA — so "Marlin" and "Tuna" each
+ * Both tables carry genuine ALIASES, 450 is both MARLIN1 and
+ * GREAT_FISH_MARLIN, 457 both TUNA and FISH_TUNA, so "Marlin" and "Tuna" each
  * appear twice under identical descriptive names, and the second tier is what
  * decides those pairs. The third separates rows sharing a name AND a constant,
  * which nothing does today; it is there so the order is TOTAL, since a
@@ -34,7 +34,7 @@ export function compareConstantRows(a: GameConstantEntry, b: GameConstantEntry):
   // A missing id sorts last rather than first. Written out instead of
   // `(a.constId ?? Infinity) - (b.constId ?? Infinity)` because that
   // subtraction is NaN when BOTH are null, and a comparator returning NaN does
-  // not throw — it silently leaves the array in whatever order the sort
+  // not throw. It silently leaves the array in whatever order the sort
   // happened to reach.
   const aId = a.constId ?? Number.POSITIVE_INFINITY;
   const bId = b.constId ?? Number.POSITIVE_INFINITY;
@@ -73,13 +73,13 @@ export interface CommandAttributeRow {
  *
  * Attribute rows only ever exist nested under a command in the reference
  * table, so a command stays in the list when EITHER it matches directly OR
- * one of its own attributes does — otherwise searching for an attribute name
+ * one of its own attributes does, otherwise searching for an attribute name
  * (`terrain_to_place_on`) would have nothing to nest the hit under.
  *
  * Which attributes it carries depends on WHY it's in the list. A command
  * that matches directly (its own name/section/description) earns every one
  * of its attributes: the query already singled the command out, so also
- * narrowing its attribute list would hide the block the search was about —
+ * narrowing its attribute list would hide the block the search was about,
  * searching "create_object" should open the whole thing, not just whichever
  * attribute happens to contain the letters "object". A command that only
  * matches THROUGH an attribute gets just the attributes that matched, since
@@ -92,7 +92,7 @@ export function matchingCommandRows(
 ): CommandAttributeRow[] {
   const rows: CommandAttributeRow[] = [];
   for (const command of commands) {
-    // Every command in language.json is something the engine runs — the
+    // Every command in language.json is something the engine runs, the
     // nonFunctional flag exists only on AttributeDef/DirectiveDef, for names
     // the engine carries as dead strings. No command is ever one of those,
     // but an attribute nested under a real command still can be, so that
@@ -113,7 +113,7 @@ export function matchingCommandRows(
  * Attributes no command's `attributes[]` names, minus the non-functional
  * ones. language.json's four legacy engine-ghost attributes are kept
  * resolvable there so RMS0310 can point at their working replacement, but
- * that is a diagnostics concern, not a reference-sheet one — a user reading
+ * that is a diagnostics concern, not a reference-sheet one, a user reading
  * this table wants to know what RMS does, and a string the engine ignores
  * is not a usable answer to "what attributes exist". Everything else with
  * no command to nest under is listed on its own rather than left

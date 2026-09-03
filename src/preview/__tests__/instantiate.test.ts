@@ -340,7 +340,7 @@ describe("command identity comes from the resolved def, not the written word (BU
   // `#const L 32` makes `L { … }` a create_land: 32 is the engine's token id
   // for the command, the parser resolves it through `commandsByTokenId` and
   // writes the real def onto the node. `24hr_Petra.rms` builds its whole map
-  // this way — 384 commands, no literal `create_land` anywhere in the file.
+  // this way, 384 commands, no literal `create_land` anywhere in the file.
   it("names an aliased command by its def, so a `#const L 32` block instantiates as create_land", () => {
     const source = "#const L 32\n<LAND_GENERATION>\nL {\nland_percent 20\nnumber_of_tiles 500\n}\n";
     const result = run(source);
@@ -360,7 +360,7 @@ describe("command identity comes from the resolved def, not the written word (BU
 
   it("still uses the written word for a command language.json has no def for", () => {
     // The fallback half. An unknown command has no def, so nothing else can
-    // supply its name — and rule 9 skips it by that name.
+    // supply its name, and rule 9 skips it by that name.
     const source = "<PLAYER_SETUP>\ntotally_not_a_real_command 1\ndirect_placement\n";
     expect(commandNames(run(source))).toEqual(["direct_placement"]);
   });
@@ -450,7 +450,7 @@ describe("teams (Sec.3.1)", () => {
 // no-throw tier: "never crash" (CLAUDE.md hard rule) has to hold over real,
 // messy, sometimes-invalid maps, not just the hand-written fixtures above.
 // This does not assert anything about the RESULT (no reference `.rms` file
-// has been triaged against Sec.3's rules by hand) — only that instantiating
+// has been triaged against Sec.3's rules by hand); only that instantiating
 // it, at several player counts/map sizes/seeds, never throws.
 function listRms(dir: string): string[] {
   if (!existsSync(dir)) return [];

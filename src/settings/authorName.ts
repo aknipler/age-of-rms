@@ -1,4 +1,4 @@
-// The "Author name" setting — the one piece of the stamped script header
+// The "Author name" setting, the one piece of the stamped script header
 // (src/hooks/scriptHeader.ts) the app cannot work out for itself.
 //
 // Its own module rather than another constant in nameDisplay.ts: that file is

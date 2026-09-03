@@ -13,7 +13,7 @@ interface ScriptNameProps {
  * The full name is carried on the native `title` attribute rather than through
  * a HelpTip, and that is a deliberate exception to the wrap-everything-in-
  * HelpTip convention. HelpTip is gated on the help-mode setting, so with tips
- * off the full name would be unreachable — and shortening is the one place
+ * off the full name would be unreachable, and shortening is the one place
  * where the tooltip is not an explanation of a control but the DATA ITSELF.
  * A hidden value has to stay recoverable no matter how the help system is
  * configured.

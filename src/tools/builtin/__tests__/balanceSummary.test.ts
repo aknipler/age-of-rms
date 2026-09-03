@@ -38,7 +38,7 @@ describe("foldGeneration", () => {
     const stats = new Map();
     foldGeneration(stats, 2, objects, players, refDb);
     // A cell always exists once its player/resource pair has been touched by
-    // any fold (zeroed, not absent — see foldGeneration's own doc); "did not
+    // any fold (zeroed, not absent, see foldGeneration's own doc); "did not
     // happen" reads as runsWithAny 0, not as a missing map entry.
     expect(stats.get(2)?.get(1)?.get("gold")?.runsWithAny).toBe(1);
     expect(stats.get(2)?.get(2)?.get("gold")?.runsWithAny).toBe(0);

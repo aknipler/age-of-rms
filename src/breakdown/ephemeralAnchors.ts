@@ -1,11 +1,11 @@
-// docs/breakdown-design.md Sec.6.3 — ephemeral UI state (expansion, focus)
+// docs/breakdown-design.md Sec.6.3, ephemeral UI state (expansion, focus)
 // anchored to source offsets rather than node identity, since every edit
 // re-derives the AST from scratch (new node objects every time). Kept
 // free of React so it's plain-logic testable, same convention as
 // attributeModel.ts / sectionTabsModel.ts.
 import type { Span } from "../parser/types";
 
-/** A byte-level edit's shape, structurally — avoids importing patch/intents.ts's TextEdit here. */
+/** A byte-level edit's shape, structurally, avoids importing patch/intents.ts's TextEdit here. */
 export interface OffsetEdit {
   start: number;
   end: number;
@@ -16,7 +16,7 @@ export interface OffsetEdit {
  * After an edit, shift every anchor by the edit's Δ (newText.length - (end
  * - start)): anchors before the edit are untouched, anchors at/after the
  * edit's end move by Δ, and an anchor that fell INSIDE the deleted/replaced
- * range is dropped (rev 4's rule — don't let it dangle and spuriously
+ * range is dropped (rev 4's rule, don't let it dangle and spuriously
  * "expand" whatever now occupies those offsets).
  */
 export function shiftAnchors(anchors: ReadonlySet<number>, edit: OffsetEdit): Set<number> {
@@ -29,7 +29,7 @@ export function shiftAnchors(anchors: ReadonlySet<number>, edit: OffsetEdit): Se
   return next;
 }
 
-/** True iff some anchor offset falls within `span` — the post-reparse "is this card expanded" test. */
+/** True iff some anchor offset falls within `span`, the post-reparse "is this card expanded" test. */
 export function isAnchoredWithin(anchors: ReadonlySet<number>, span: Span): boolean {
   for (const anchor of anchors) {
     if (anchor >= span.start && anchor < span.end) return true;
@@ -38,7 +38,7 @@ export function isAnchoredWithin(anchors: ReadonlySet<number>, span: Span): bool
 }
 
 /**
- * Same shift as shiftAnchors, for a single nullable anchor — Sec.3.9's
+ * Same shift as shiftAnchors, for a single nullable anchor, Sec.3.9's
  * `selectedAnchor` is exactly one offset (or none), not a Set, but must
  * obey the identical shift-and-drop rule (and the identical BUG-001
  * ordering fix in BreakdownPane: only ever called once the matching
@@ -55,14 +55,14 @@ export function shiftSingleAnchor(anchor: number | null, edit: OffsetEdit): numb
  * a replaced range collapses to the start of that range instead of dropping.
  *
  * The preview's Current cut point (`PreviewCutContext`) is the caller. A
- * dropped selection is harmless — nothing is selected, and the user can see
+ * dropped selection is harmless. Nothing is selected, and the user can see
  * that. A dropped pin is not: it silently reverts Current to following the
  * caret and the map jumps, with no control showing what changed.
  *
  * THE NULL CHECK IS THE WHOLE REASON THIS IS A FUNCTION AND NOT
  * `shiftSingleAnchor(...) ?? edit.start` AT THE CALL SITE, which is what it
  * was until 2026-08-11. `shiftSingleAnchor` returns null for two unrelated
- * reasons — the anchor was dropped, and there was no anchor to begin with —
+ * reasons; the anchor was dropped, and there was no anchor to begin with,
  * so `??` cannot tell them apart and MANUFACTURES an anchor out of "none" on
  * the first edit that arrives. The preview came up reading "Pinned line 1"
  * with the button never clicked, because the document's own initial content
@@ -79,20 +79,20 @@ export function shiftCollapsingAnchor(anchor: number | null, edit: OffsetEdit): 
  * whose matching reparse hasn't landed yet (BreakdownPane's
  * `pendingAnchorShiftsRef` queue). This exists to close a data-corruption
  * bug: rapid card actions (e.g. deleting several cards back-to-back)
- * each call `computeEdit` against the last CONFIRMED `parseResult` — but
+ * each call `computeEdit` against the last CONFIRMED `parseResult`, but
  * `computeEdit`'s offsets are only valid relative to THAT parse's source.
  * If a prior action's edit already landed on the model (pushEditOperations
  * is synchronous) while its reparse is still in flight, blindly splicing
  * the new edit's stale offsets into the model's current (already-shifted)
- * text corrupts whatever now occupies those byte positions — this is
+ * text corrupts whatever now occupies those byte positions. This is
  * exactly the "rapid delete truncates an unrelated command" bug it fixes.
  *
  * Returns the rebased edit when it's safe (every prior edit was either
- * entirely before or entirely after this edit's range — the ranges never
+ * entirely before or entirely after this edit's range, the ranges never
  * touched), or `null` when this edit's range overlaps a still-pending
  * prior edit, meaning it can't be resolved without re-parsing first.
- * `null` is deliberately treated exactly like `PatchError` by callers —
- * "this edit is unavailable right now," not a crash — the same
+ * `null` is deliberately treated exactly like `PatchError` by callers,
+ * "this edit is unavailable right now," not a crash, the same
  * conservative "drop rather than guess" trade this codebase already makes
  * for the anchor queue itself (see BreakdownPane's resolving effect).
  */
@@ -102,14 +102,14 @@ export function rebaseEdit(edit: OffsetEdit, priorEdits: readonly OffsetEdit[]):
   for (const prior of priorEdits) {
     const delta = prior.newText.length - (prior.end - prior.start);
     if (end <= prior.start) {
-      continue; // entirely before this prior edit — still valid as-is
+      continue; // entirely before this prior edit, still valid as-is
     }
     if (start >= prior.end) {
       start += delta;
       end += delta;
       continue;
     }
-    return null; // overlaps a not-yet-confirmed prior edit — unsafe to resolve blindly
+    return null; // overlaps a not-yet-confirmed prior edit, unsafe to resolve blindly
   }
   return { start, end, newText: edit.newText };
 }

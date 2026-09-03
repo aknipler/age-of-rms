@@ -1,0 +1,115 @@
+﻿/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain WATER
+
+  /* Two player islands on opposite sides of a Normal map, far enough apart
+     that the connection path between them crosses open water nowhere near
+     either island's own (already-beached) coastline. */
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 8
+    base_size 8
+    border_fuzziness 0
+    circle_radius 80 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  /* The only water-to-land conversion on the map. DIRT appears nowhere
+     else, so every DIRT tile - and any beach found beside one - can only
+     have come from this command. */
+  create_connect_all_players_land
+  {
+    replace_terrain WATER DIRT
+  }
+
+/*
+RMSTEST_70 - is the new land/water boundary a CONNECTION command carves
+through open water dressed with beach, or does it ship bare?
+Feeds: preview-design Sec.15 item 31, src/preview/generator/index.ts:281-289
+(applyConnections' "DELIBERATELY no beach pass here" comment)
+
+THE QUESTION, AND IT IS NARROW
+DE paints its own beach at a land/water boundary with no command asking for
+it. That step is pinned to run twice: at the end of land generation, and
+again at the end of every create_terrain command (RMSTEST_58, Sec.15 item
+28, CLOSED). Both of those moments are over by the time
+<CONNECTION_GENERATION> runs, and the shipped preview generator deliberately
+adds no third pass there, on the reasoning that inventing an unobserved
+moment is worse than leaving a real gap - Pag alone carries 873 unbeached
+coastal tiles as a result (Sec.6.4).
+
+What is open is whether that reasoning is right. A create_connect_all_lands
+family command with replace_terrain can convert WATER to a land terrain
+along its path, which is a land/water boundary the engine has never dressed
+before - it did not exist at the end of S4. Two readings:
+
+  A THIRD PASS EXISTS -> the new DIRT/water boundary gets a beach ring, the
+                          same way S1's and S4's boundaries do. The shipped
+                          "no pass" comment is wrong and index.ts needs one.
+  NO THIRD PASS        -> the new boundary ships bare, matching the current
+                          code exactly. Sec.15 item 31 closes with no
+                          change.
+
+METHOD
+An all-water map with two small player islands on opposite sides, connected
+by one create_connect_all_players_land command carrying replace_terrain
+WATER DIRT. That command is the ONLY thing on the map that ever puts a land
+terrain next to water outside the two islands' own coastlines, and DIRT is
+not used anywhere else, so every DIRT tile is attributable to it by
+construction.
+
+Read the DIRT path's own patch geometry first, then check for BEACH beside
+its INTERIOR - the stretch of the path that runs through open water, away
+from either island. The two islands' own coastlines will show ordinary
+beach from the S1 pass; that is expected and not the question. The question
+is only about beach touching DIRT tiles that sit in what was open water at
+the end of S4.
+
+  BEACH beside interior DIRT tiles -> a pass runs after S5.
+  NO BEACH beside interior DIRT tiles, only at the path's two ends where it
+    meets the islands' pre-existing beach rings -> no pass runs after S5,
+    exactly as shipped.
+
+WHY THE MAP IS BUILT THIS WAY
+No <TERRAIN_GENERATION> commands at all, so item 28's already-closed
+question (the per-command step's own scope) cannot contribute a confound.
+No forest, leaves or shallows, which auto-place objects or complicate the
+depth rule. circle_radius 80 0 puts the two islands close to opposite edges
+of a Normal map so the path's middle third sits well clear of both
+coastlines, giving the interior/end distinction a clean geometric readout
+rather than a guess.
+
+GENERATE AT NORMAL (200), 2 PLAYERS. TWO RUNS.
+
+Two rather than one because a beach could in principle appear only where
+the path reconnects with existing land and not along the open-water
+interior, which a single generation cannot separate from noise in exactly
+where the islands' own beach rings end.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches DIRT
+  python probe_scenario.py "<scenario>" --patches BEACH
+  python probe_scenario.py "<scenario>" --patches GRASS
+  Get the DIRT path's bounding box and compare it against the BEACH
+  patches' bounding boxes. Beach overlapping the path's interior, away from
+  both GRASS islands, is the third-pass reading; beach confined to the two
+  ends is the shipped reading.
+*/

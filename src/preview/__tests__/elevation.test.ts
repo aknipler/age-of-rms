@@ -317,8 +317,8 @@ describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds
 
   it("MaxHeight is an absolute ceiling: two lands at different base_elevations top out at the SAME height", () => {
     // The distinguishing case. `create_elevation 6` over a land already at
-    // base_elevation 5 and one at base_elevation 2 gives both a ceiling of 6
-    // — shallow-looking hills on the first (5 -> 6), tall ones on the second
+    // base_elevation 5 and one at base_elevation 2 gives both a ceiling of 6;
+    // shallow-looking hills on the first (5 -> 6), tall ones on the second
     // (2 -> 6). An additive model would put them at 11 and 8.
     const { instantiated, grid, maxOn, seed } = twoLands(6, 5, 2);
     expect(maxOn(0)).toBe(5);
@@ -384,11 +384,11 @@ describe("height profile (Sec.6.2)", () => {
     expect(peak).toBe(3);
   });
 
-  // NOTE: this only exercises growClump/clumpEdgeDistances — the `min(h, ...)`
+  // NOTE: this only exercises growClump/clumpEdgeDistances. The `min(h, ...)`
   // clamp below is written locally, not called from elevation.ts, so it does
   // NOT cover applyElevation's own ring-clamping line (a mutation there
   // passed this test; the "always attempts MaxHeight" integration test above
-  // is what actually catches it — confirmed by mutation testing, see the
+  // is what actually catches it, confirmed by mutation testing, see the
   // build log). Kept because it still verifies growClump reaches a genuine
   // depth of 5+ on a big-enough clump, i.e. that the deep tiles this whole
   // mechanism depends on are actually reachable.
@@ -431,7 +431,7 @@ describe("height profile (Sec.6.2)", () => {
     ].join("\n");
     // Force the elevation clump to seed exactly on the land: land occupies
     // the whole small map's center, so with default seeding params the
-    // clump's seed is very likely to land inside it — verified by checking
+    // clump's seed is very likely to land inside it, verified by checking
     // that AT LEAST one land tile ends up above the land's own base of 3.
     const { grid } = place(source, 7, { mapSize: "Tiny" });
     let sawAboveBase = false;
@@ -459,7 +459,7 @@ describe("height profile (Sec.6.2)", () => {
 });
 
 describe("corpus: applyElevation never throws", () => {
-  // One `it()` per map, not one big loop inside a single `it()` — a single
+  // One `it()` per map, not one big loop inside a single `it()`; a single
   // `it()` accumulates every map's time against vitest's one 5s per-test
   // timeout and can time out under full-suite machine load even when no
   // individual map is slow (see docs/build-log.md, the lands.ts growth

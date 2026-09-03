@@ -1,4 +1,4 @@
-// Phase 2.3 parser unit suite — one test per docs/parser-design.md Sec.5
+// Phase 2.3 parser unit suite, one test per docs/parser-design.md Sec.5
 // production / Sec.10 recovery path, plus the Sec.12 micro-fixtures that don't
 // need corpus files. Corpus + fuzz live in their own files.
 
@@ -211,7 +211,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   // BUG-005 piece 1. The two RMS0200 branches make different claims because
   // they rest on different evidence, and the whole point of the fix is that the
   // no-suggestion branch says nothing about the engine. That is a property of a
-  // string, so it regresses silently unless something pins it — the message had
+  // string, so it regresses silently unless something pins it. The message had
   // no test at all before this, which is how "the engine will silently ignore
   // it" survived the positive-resolver rule by four months.
   describe("RMS0200 asserts engine behaviour only where a did-you-mean earns it", () => {
@@ -238,7 +238,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   // BUG-005 piece 2. Sec.2.1: the engine resolves every word to one integer, so
   // `#const L 32` makes `L` the same word as the command holding tokenId 32.
   // 581 corpus warnings were this one idiom in two maps, and all 581 were on a
-  // construct that works — 24hr_Petra.rms has no create_land and no
+  // construct that works, 24hr_Petra.rms has no create_land and no
   // create_player_lands, and its lands generate.
   describe("RMS0200: a #const aliased to a command's token id resolves (BUG-005 piece 2)", () => {
     const aliased = "#const L 32\n<LAND_GENERATION>\nL { terrain_type SNOW land_percent 15 }";
@@ -259,7 +259,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       //
       // Both halves are asserted together on purpose. An unknown command ALSO
       // keeps its token and ALSO gets its block, so the token check alone
-      // passes whether or not the resolver exists — it was vacuous when first
+      // passes whether or not the resolver exists. It was vacuous when first
       // written and a mutant that deleted the resolver left it green.
       expect(node.def?.name).toBe("create_land");
       expect(r.tokens[node.name].text).toBe("L");
@@ -282,8 +282,8 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       // With no symbol there is no alias, and the lookup order is unobservable.
       //
       // This asserts the reachability property instead, which is the thing that
-      // actually holds. Give the name slot `acceptsKnownName` and this goes red
-      // — which is the moment the lookup order starts mattering and someone has
+      // actually holds. Give the name slot `acceptsKnownName` and this goes red,
+      // which is the moment the lookup order starts mattering and someone has
       // to think about it.
       const r = parse("#const create_elevation 32\n<ELEVATION_GENERATION>\ncreate_elevation 5 { }");
       expect(r.symbols).toHaveLength(0);
@@ -309,8 +309,8 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     it("declines anything that is not a plain decimal integer", () => {
       // This pins the /^\d+$/ specifically, and the expression case above
       // cannot: `Number("(30")` is NaN, so that test stays green however loose
-      // the check gets. `Number` is the trap here — it accepts hex, a leading
-      // `+`, surrounding whitespace, and turns "" into 0 — so a laxer guard
+      // the check gets. `Number` is the trap here, it accepts hex, a leading
+      // `+`, surrounding whitespace, and turns "" into 0, so a laxer guard
       // would read 0x20 as 32 and silently render this as create_land.
       const r = parse("#const L 0x20\n<LAND_GENERATION>\nL { terrain_type SNOW }");
       expect(codes(r)).toContain("RMS0200");
@@ -320,7 +320,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   // The other half of the same Sec.2.1 ruling: a #const may alias a name, not
   // only an id. `24hr_Battle Lines 1.0.rms:93` writes exactly this under its own
   // `/* parameter renames */` comment, and we reported the author's correct line
-  // twice — once for too-few-arguments, once for the orphaned attribute left
+  // twice, once for too-few-arguments, once for the orphaned attribute left
   // behind. Parked on BUG-005 from BUG-003's triage.
   describe("#const may take a known name as its value (BUG-003's two parked sites)", () => {
     it("consumes the known name as the value and says nothing", () => {
@@ -354,7 +354,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     // A half-typed name is unreachable by edit distance once the missing tail
     // runs past two characters, which is most of RMS's longer attributes.
     // (The four dead engine strings that motivated this rule now have their
-    // own language.json entries and draw RMS0310 instead — see validate's
+    // own language.json entries and draw RMS0310 instead, see validate's
     // suite. This exercises the heuristic on names the data does not carry.)
     const suggestionFor = (source: string): string | undefined =>
       parse(source).diagnostics.find((d) => d.code === "RMS0200")?.suggestion;
@@ -378,7 +378,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   it("did-you-mean: never suggests a name that is itself non-functional", () => {
     // min_distance now HAS an entry (nonFunctional, replacedBy
     // min_distance_to_players), so it is a known name. It must still never be
-    // offered as a fix — a did-you-mean has to point at something that works,
+    // offered as a fix, a did-you-mean has to point at something that works,
     // or the author is sent to a second dead end.
     const diag = parse("<OBJECTS_GENERATION>\ncreate_object GOLD { min_distanc 5 }").diagnostics.find(
       (d) => d.code === "RMS0200",
@@ -406,7 +406,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     // origin stays inside the map", and names two ways to ensure that. It names
     // no consequence at all. The shipped message used to say a negative border
     // "can crash the game", which is the failure CLAUDE.md's reference-data
-    // rule exists to catch — a behavioural claim with no observation behind it.
+    // rule exists to catch, a behavioural claim with no observation behind it.
     const message =
       parse("<LAND_GENERATION>\ncreate_land { left_border -5 }").diagnostics.find(
         (d) => d.code === "RMS0217",
@@ -422,7 +422,7 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
 
   it("RMS0210: one unglued-operand diagnostic, not one per bare paren", () => {
     // `( 5 + 1 )` has a bare opener AND a bare terminator. Both used to report,
-    // with the same code, message and span — a duplicate, not a second finding.
+    // with the same code, message and span, a duplicate, not a second finding.
     const r = parse("<LAND_GENERATION>\n#const A ( 5 + 1 )");
     expect(codes(r).filter((c) => c === "RMS0210")).toHaveLength(1);
   });
@@ -474,7 +474,7 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
     it("the optional flag works, on a case the guide states outright", () => {
       // require_path is one of the five fixed on 2026-07-31, each carrying
       // explicit guide prose: "No argument, or a value of 0 imposes no further
-      // restrictions" (guide:2719). That sentence is what licenses the flag —
+      // restrictions" (guide:2719). That sentence is what licenses the flag,
       // not the presence of a `default`, and not how often shipped maps use it.
       expect(rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { require_path }")).toEqual([]);
     });
@@ -491,7 +491,8 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
       // guide:475 lists showType NOT FUNCTIONAL on DE, so no shipped script
       // could ever have distinguished the two forms in play. **Change this
       // test only from a game measurement, never from a recount of shipped
-      // maps** — the rule that killed the first attempt is untouched.
+      // maps**. The rule that killed the first attempt is untouched.
+
       expect(rms0201("<PLAYER_SETUP>\nai_info_map_type ARABIA 0 0")).toEqual([]);
     });
 
@@ -501,7 +502,7 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
 
     it("terrain_cost: a missing TerrainType still warns", () => {
       // The counter-case. `Cost` carries a documented default (guide:1929) so a
-      // mechanical "has a default ⇒ optional" sweep would reach this command —
+      // mechanical "has a default ⇒ optional" sweep would reach this command,
       // but the argument being omitted here is the LEADING `TerrainType`, which
       // guide:1925's signature makes required and gives no default at all.
       const hits = rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { terrain_cost 10 }");
@@ -637,7 +638,7 @@ describe("Sec.5.3 degradation", () => {
   // BACKWARD half of the range got that for free (those tokens had already been
   // through parseDirective). The forward extension added in rev 5 never parses
   // at all, so a directive in it was absorbed into the RawNode and recorded
-  // nowhere — the pinned rule's own failure mode, produced by the mechanism
+  // nowhere, the pinned rule's own failure mode, produced by the mechanism
   // written to prevent it.
   describe("symbols and includes survive the FORWARD half of the range", () => {
     const degraded = (tail: string): string =>
@@ -680,7 +681,7 @@ describe("Sec.5.3 degradation", () => {
     it("uses the same stop set as parseDirective, so a control keyword is never swallowed", () => {
       // `#define endif` records nothing and leaves the `endif` to close the
       // range, exactly as it behaves outside a degraded region. The two paths
-      // agreeing is the property worth pinning — a raw scan with its own idea
+      // agreeing is the property worth pinning, a raw scan with its own idea
       // of where a directive's operands end would desynchronise the range.
       const r = parse(degraded("#define endif"));
       expect(r.symbols.map((s) => s.name)).not.toContain("endif");

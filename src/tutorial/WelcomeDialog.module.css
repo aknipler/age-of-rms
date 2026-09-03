@@ -1,0 +1,62 @@
+.intro {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.6rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.choice:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.choiceTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.choiceBlurb {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.skipRow {
+  display: flex;
+  justify-content: center;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.skipButton {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.2rem;
+}
+
+.skipButton:hover {
+  color: var(--text);
+}
+
+.footer {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  text-align: center;
+}

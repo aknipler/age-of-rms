@@ -2,7 +2,7 @@
 // with a MATCHING entry in reference/data/ui-help.json, as it is built.
 //
 // A HelpTip whose id has no entry renders an empty popup, which is worse than
-// no tip at all — it looks broken rather than absent. Nothing enforced the
+// no tip at all. It looks broken rather than absent. Nothing enforced the
 // pairing before; this test does it for the pane, by reading the source rather
 // than by trusting a list maintained by hand.
 
@@ -31,6 +31,33 @@ describe("Advanced Tools help coverage", () => {
   it("every HelpTip in the settings tab has one too", () => {
     const used = helpTipIdsIn("src/components/settings/AdvancedToolsSettings.tsx");
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  // Slice-4b item 5: the Land Placement panel, new files, so the gate needs
+  // their paths added or it silently covers nothing built this slice.
+  it("every HelpTip in the Land Placement panel has a ui-help.json entry", () => {
+    const used = helpTipIdsIn("src/tools/builtin/landPlacement/panel/LandPlacementPanel.tsx");
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  // The panel's Tool Explanation dialog is its own file, so the scan above
+  // cannot see it. A HelpTip living one import away from a gated file is
+  // exactly the gap this suite exists to close, so the new file is named
+  // here rather than left to the next reader to notice.
+  it("every HelpTip in the Land Placement explanation dialog has one too", () => {
+    const used = helpTipIdsIn("src/tools/builtin/landPlacement/panel/LandPlacementHelpDialog.tsx");
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  // `landPlacement.canvas` is threaded through OverlayCanvas as a PROP
+  // (`helpTipId="landPlacement.canvas"`), not a literal `<HelpTip id="...">`
+  // in either file. The regex scan above cannot discover it by pattern, so
+  // it is named explicitly here, the same way the eight `tools.*` ids are
+  // pinned below.
+  it("carries the landPlacement.* ids threaded through OverlayCanvas as a prop rather than a literal HelpTip", () => {
+    expect(ids.has("landPlacement.canvas"), "missing ui-help entry landPlacement.canvas").toBe(true);
   });
 
   // The spec names these eight so the 5.1 session cannot skip them. Naming them

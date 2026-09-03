@@ -65,7 +65,7 @@ function place(source: string, seed = 1, overrides?: Parameters<typeof settings>
   return { grid, dim: instantiated.dim, origins: landResult.origins, ...connectionsResult };
 }
 
-/** Instantiate a bare script and hand back a fresh flat grid, without running S1-S4 — for tests that call applyConnections directly against a hand-built grid/origins. */
+/** Instantiate a bare script and hand back a fresh flat grid, without running S1-S4, for tests that call applyConnections directly against a hand-built grid/origins. */
 function bareGrid(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
   const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
   const grid = createTileGrid(instantiated.dim, GRASS);
@@ -569,7 +569,7 @@ describe("applyConnections (Sec.6.5 end to end)", () => {
    * Both accumulate_connections tests share one geometry: two player lands
    * either side of a FULL-HEIGHT wall with a single one-tile gap, so that
    * gap is the ONLY possible route (same "moat" shape as the earlier,
-   * already-passing impassable-moat test — a partial wall isn't enough,
+   * already-passing impassable-moat test, a partial wall isn't enough,
    * since a path can simply detour around it through open space elsewhere
    * on the map). Command 1 always paints that gap tile from GRASS to WATER
    * (`replace_terrain`, its own `terrain_cost WATER 0` forces its path
@@ -678,7 +678,7 @@ describe("applyConnections (Sec.6.5 end to end)", () => {
     // search runs before any painting: `terrain_size` is keyed on the path
     // tile's terrain, so a live read would size disc N+1 from the terrain
     // disc N just painted onto it. GRASS is radius 1 and DIRT radius 5, and
-    // the command paints GRASS to DIRT — so a live read widens the band from
+    // the command paints GRASS to DIRT, so a live read widens the band from
     // the second path tile onwards.
     const source = [
       "<CONNECTION_GENERATION>",

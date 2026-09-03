@@ -22,7 +22,7 @@ import styles from "./MapSidePanel.module.css";
  * As of CREATION_PLAN 4.4 it is resizable and collapsible. The width and the
  * collapsed flag come from context rather than local state, because both tabs
  * render their own instance of this component and the inactive one is
- * unmounted — SidePanelLayoutContext.tsx has the full reasoning. This returns
+ * unmounted. SidePanelLayoutContext.tsx has the full reasoning. This returns
  * a fragment of two siblings (panel, then separator) so both land directly in
  * the surrounding pane's flex row; wrapping them in a div of their own would
  * put a fixed-width box around a column whose whole point is to change width.

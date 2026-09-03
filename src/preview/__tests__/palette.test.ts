@@ -23,7 +23,7 @@ const constants = (gameConstantsRaw as unknown as { constants: TerrainConstant[]
 describe("hashString", () => {
   // Pinned against the published FNV-1a 32-bit test vectors rather than
   // against our own output. A hash test that only asserts "what it currently
-  // returns" cannot tell a correct implementation from a subtly broken one —
+  // returns" cannot tell a correct implementation from a subtly broken one;
   // these three say the algorithm is the one it claims to be.
   it("matches the FNV-1a reference vectors", () => {
     expect(hashString("").toString(16)).toBe("811c9dc5");
@@ -120,7 +120,7 @@ describe("createTerrainPalette", () => {
 
   it("ignores object entries when building the terrain table", () => {
     // GOLD is constId 66 and category "object", and terrain 66 is a rice
-    // farm — so this is no longer a null check but a collision check, which
+    // farm, so this is no longer a null check but a collision check, which
     // is the stronger version of the same claim. A palette that indexed the
     // whole file by constId would colour that terrain gold.
     const gold = constants.find((c) => c.category === "object" && c.rmsConstant === "GOLD");
@@ -236,7 +236,7 @@ describe("colour arithmetic", () => {
 describe("object and player colours", () => {
   it("falls back through the category family before giving up", () => {
     // An unseen sub-category walks up to the nearest family it does know,
-    // rather than dropping straight to the unknown colour — the spec's
+    // rather than dropping straight to the unknown colour, since the spec's
     // category list ends with "...", so new values are expected.
     expect(categoryColor("resource-food-berry")).toEqual(categoryColor("resource-food"));
     expect(categoryColor("resource-obsidian")).toEqual(categoryColor("resource"));

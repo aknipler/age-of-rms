@@ -1,6 +1,6 @@
 // Shared constants for the Phase 2.5 generation-settings pane (map size,
 // player count). Same persistence file as HelpSettingsContext's
-// helpConstants.ts (settings.json, per 1.7's precedent) — different keys,
+// helpConstants.ts (settings.json, per 1.7's precedent), different keys,
 // one store, so the app doesn't juggle multiple Tauri store files for
 // what's conceptually all "app settings".
 
@@ -12,13 +12,13 @@ export const TEAM_PRESET_KEY = "generationTeamPreset";
 export const TEAM_STASH_KEY = "generationTeamStash";
 
 // AoE2:DE's standard map-size names, smallest to largest. Not consumed by
-// resourceTotals.ts in v1 (only playerCount is) — persisted now so the preview/consistency-checker work
+// resourceTotals.ts in v1 (only playerCount is). Persisted now so the preview/consistency-checker work
 // (PLAN.md) has it ready to read later without another settings-plumbing
 // pass.
 // Ordered smallest to largest BY DIMENSION, which is not the order the names
 // suggest: in-game Huge is 240x240 and Giant is 252x252, so Giant sorts last.
 // This list had Giant before Huge until 2026-08-01 (preview-design Sec.15
-// item 6). Only display order changes — the strings are the persisted values
+// item 6). Only display order changes. The strings are the persisted values
 // (MAP_SIZE_KEY) and nothing indexes into this array, so existing settings
 // still load.
 //
@@ -38,7 +38,7 @@ export const TEAM_STASH_KEY = "generationTeamStash";
 // What the split costs, and it is a real cost: the join is resolved at runtime
 // and `dimensions` is optional on `PredefinedLabel`, so nothing in the type
 // system guarantees a size has a dimension at all. `npm run validate:reference`
-// pays for that at build time instead — it reads this array out of the source
+// pays for that at build time instead. It reads this array out of the source
 // and asserts every size resolves, that the legacy and modern labels for one
 // size agree on the number, that no label claims a size the picker does not
 // offer, and that this array is still ascending by dimension. That last check
@@ -94,7 +94,7 @@ export const MAX_TEAM = 4;
 // Always 8 entries, indexed player - 1, INDEPENDENT of playerCount. Lowering
 // the player count hides rows but keeps their assignments, so raising it
 // again restores what you had. The cost of that convenience is that every
-// consumer must slice to playerCount first — players above the count are not
+// consumer must slice to playerCount first. Players above the count are not
 // in the game and must not appear in team sizes (teamModel.ts does this).
 export const TEAM_SLOTS = MAX_PLAYER_COUNT;
 export const DEFAULT_TEAMS: readonly TeamNumber[] = Object.freeze(
@@ -115,7 +115,7 @@ export interface TeamPreset {
   /**
    * Player count the preset implies, or null to leave it alone. Only FFA is
    * null: "2v2" names a four-player lobby, but "FFA" is a statement about
-   * teams at ANY count, so it must not pin one — and it is the reason the
+   * teams at ANY count, so it must not pin one, and it is the reason the
    * player-count control stays enabled under FFA and locks under the others.
    */
   playerCount: number | null;

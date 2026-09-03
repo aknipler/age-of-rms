@@ -1,4 +1,4 @@
-// Tests for spacingIndex.ts — the uniform-grid replacement for the linear
+// Tests for spacingIndex.ts, the uniform-grid replacement for the linear
 // "is anything already placed within d" scans S2 and S6 each had.
 //
 // The correctness bar is EXACT AGREEMENT with the scan it replaced, not
@@ -76,7 +76,7 @@ describe("createSpacingIndex", () => {
 
   it("never sees a point on the opposite edge of the map", () => {
     // The bucket key is `row * cols + col`, so an out-of-range col -1 on row
-    // k computes the same key as the last column of row k-1 — a real cell
+    // k computes the same key as the last column of row k-1, a real cell
     // with real points in it. Writing this test is what established that the
     // aliasing is a WASTED LOOKUP rather than a wrong answer (the distance
     // test runs on true coordinates, so a point 39 tiles away fails it
@@ -115,7 +115,7 @@ describe("createSpacingIndex", () => {
           const x = edge ? (step % 8 === 0 ? 0 : dim - 1) : Math.floor(random() * dim);
           const y = edge ? Math.floor(random() * 6) : Math.floor(random() * dim);
           expect(index.tooClose(x, y)).toBe(referenceTooClose(points, x, y, distance, metric));
-          // Add unconditionally — including points that ARE too close. Real
+          // Add unconditionally, including points that ARE too close. Real
           // callers only add accepted points, but the index must not depend
           // on that for correctness, only for its occupancy bound.
           index.add(x, y);

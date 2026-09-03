@@ -1,4 +1,4 @@
-// Seeded RNG — docs/preview-design.md Sec.8.
+// Seeded RNG, docs/preview-design.md Sec.8.
 //
 // PURE (CLAUDE.md hard rule / preview-design Sec.2): no React/Monaco/Tauri.
 //
@@ -9,7 +9,7 @@
 //
 //   1. Math.random() is not seedable at all.
 //   2. ECMAScript leaves Math.sin/cos/pow/sqrt/hypot/log and `**`
-//      implementation-defined in their last bits — a V8 point release could
+//      implementation-defined in their last bits, a V8 point release could
 //      change a result. This file (and everything under
 //      src/preview/generator/) is lint-scoped (eslint.config.js) to forbid
 //      them; only Math.imul (exact 32-bit integer multiply) and exact ops
@@ -27,7 +27,7 @@ export type Rng = () => number;
 
 /**
  * mulberry32. Seed is coerced to uint32 (`>>> 0`), so any 32-bit integer
- * seed — including the output of substreamSeed below — reproduces the same
+ * seed, including the output of substreamSeed below, reproduces the same
  * stream forever.
  */
 export function mulberry32(seed: number): Rng {
@@ -40,7 +40,7 @@ export function mulberry32(seed: number): Rng {
   };
 }
 
-// One splitmix32 avalanche step — used to fold arbitrary integers (a master
+// One splitmix32 avalanche step, used to fold arbitrary integers (a master
 // seed, a stage tag, a command ordinal) into a well-mixed 32-bit state. Not
 // exported: substreamSeed()/hash32() below are the public surface, so a
 // caller never has to know the mixing works this way.
@@ -53,7 +53,7 @@ function mix32(x: number): number {
 
 /**
  * Folds a sequence of 32-bit integers into one well-mixed 32-bit value.
- * Order-sensitive by design — hash32(a, b) !== hash32(b, a) — which is what
+ * Order-sensitive by design, hash32(a, b) !== hash32(b, a), which is what
  * lets substreamSeed below tell "stage S1, command 3" apart from
  * "stage S3, command 1" even though the same two numbers are involved.
  */
@@ -67,7 +67,7 @@ export function hash32(...values: readonly number[]): number {
 
 // FNV-1a over a string, folded down to the same 32-bit integer space
 // hash32 works in. StageId is a closed 7-value set ("S0".."S6"), so this
-// runs once per substream, never per tile — nowhere near Sec.11's budget.
+// runs once per substream, never per tile. Nowhere near Sec.11's budget.
 function fnv1aString(s: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -80,7 +80,7 @@ function fnv1aString(s: string): number {
 /**
  * Sec.8: "stream seed = hash(masterSeed, stageId, commandOrdinal)". Two
  * instantiated commands never draw from the same substream, so editing one
- * create_object does not reshuffle unrelated commands or land origins —
+ * create_object does not reshuffle unrelated commands or land origins.
  * Sec.8 calls this "best-effort stability" since shared mutable state (tile
  * occupancy) can still cascade regardless of substream isolation.
  *
@@ -97,7 +97,7 @@ export function createSubstream(masterSeed: number, stageId: StageId, ordinal: n
 }
 
 /**
- * Uniform integer in [min, max], inclusive both ends — "rnd(a,b): evaluated
+ * Uniform integer in [min, max], inclusive both ends, "rnd(a,b): evaluated
  * ... uniform integer inclusive" (Sec.3.6) and "roll r = uniform integer
  * 1-100" (Sec.3.3) both want this shape. Plain modulo, not rejection-sampled:
  * every range this generator draws from (tile coordinates, percentages, tiny
@@ -113,7 +113,7 @@ export function nextInt(rng: Rng, min: number, max: number): number {
 /**
  * Uniform float in [0, 1). For the rare continuous draw an integer range
  * doesn't fit (Sec.6.1's scattered-origin model for negative `circle_radius`
- * is the first caller) — plain division, not a banned Math function.
+ * is the first caller), plain division, not a banned Math function.
  */
 export function nextFloat01(rng: Rng): number {
   return rng() / 4294967296; // 2^32
@@ -121,13 +121,13 @@ export function nextFloat01(rng: Rng): number {
 
 /**
  * sin/cos of the angle 2*pi*k/n, as fixed-point integers scaled by
- * SINE_SCALE (sineTable.ts) — "Angles come from a precomputed fixed-point
+ * SINE_SCALE (sineTable.ts), "Angles come from a precomputed fixed-point
  * sine table indexed by floor(3600*k/N), never Math.sin/Math.cos" (Sec.8).
  * Used for the player ring (k = player index, n = player count) and for
  * angular jitter (k = a drawn offset in the same units as n).
  *
  * Divide the result by SINE_SCALE only where a float is genuinely needed
- * (e.g. handing a coordinate to the renderer) — never inside a comparison
+ * (e.g. handing a coordinate to the renderer), never inside a comparison
  * that could stay in scaled-integer space, per sineTable.ts's own note.
  */
 export function sinAt(k: number, n: number): number {

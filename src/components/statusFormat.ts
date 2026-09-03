@@ -1,4 +1,4 @@
-// Status-bar text formatting — pure, no React, so it can be unit-tested
+// Status-bar text formatting, pure, no React, so it can be unit-tested
 // directly (same split as src/components/preview/tileInfo.ts, which pulled
 // the readout's derivation out of PreviewCanvas for the same reason).
 //
@@ -28,10 +28,10 @@ const DECIMAL_CEILING = 100;
  *
  * Under 1000 the number is printed whole. Above that it takes a scale
  * suffix and gets ONE decimal place while it is under 100 of that scale,
- * none at or above it — so the printed figure never runs past four
+ * none at or above it, so the printed figure never runs past four
  * characters plus its suffix ("999", "1.8k", "608k", "42.4m", "425m").
  * The old rule was one decimal at every magnitude, which produced
- * "2008.6k" — six digits, and a scale nobody reads at a glance.
+ * "2008.6k", six digits, and a scale nobody reads at a glance.
  *
  * Trailing ".0" is stripped, since "60k" and "60.0k" carry the same
  * information and this whole module is about width.
@@ -45,8 +45,8 @@ export function formatCompact(n: number): string {
     if (Math.abs(rounded) < unit.div) continue;
 
     // Round to the precision that will actually be PRINTED before deciding
-    // which rule applies, so 99,960 prints "100k" rather than "100.0k" —
-    // choosing on the unrounded 99.96 would pick the one-decimal branch and
+    // which rule applies, so 99,960 prints "100k" rather than "100.0k".
+    // Choosing on the unrounded 99.96 would pick the one-decimal branch and
     // then round straight past the threshold it was chosen for.
     const scaled = rounded / unit.div;
     const oneDp = Math.round(scaled * 10) / 10;
@@ -80,7 +80,7 @@ export function formatExact(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
-/** Collapses to a single figure when min === max — the common case for a script with no conditional placement. */
+/** Collapses to a single figure when min === max, the common case for a script with no conditional placement. */
 export function formatCompactRange(min: number, max: number): string {
   return min === max ? formatCompact(min) : `${formatCompact(min)}-${formatCompact(max)}`;
 }
@@ -93,7 +93,7 @@ export function formatExactRange(min: number, max: number): string {
 /**
  * Which of the four states the problem indicator is in. This is a plain
  * string union rather than the parser's own `DiagnosticSeverity` because it
- * carries one value that severity does not — "none" — and the indicator's
+ * carries one value that severity does not, "none", and the indicator's
  * whole job is to distinguish "nothing wrong" from "nothing worse than
  * info". Same shape as a discriminant, but nothing switches on it except
  * the icon's colour.

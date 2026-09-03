@@ -1,4 +1,4 @@
-// Phase 3.3 — per-intent unit fixtures, breakdown-design Sec.10 (rev 4).
+// Phase 3.3, per-intent unit fixtures, breakdown-design Sec.10 (rev 4).
 // Each asserts the exact TextEdit shape and/or that the re-parse yields the
 // intended structure with clean astDiff, incl. every rev-2/3/4 defect fixture.
 
@@ -166,6 +166,52 @@ describe("addCommand + placeholders (Sec.4.3/Sec.4.5, rev 4 pins)", () => {
       name: "random_placement",
     });
     expect(b.script.sections[0].items).toHaveLength(1);
+  });
+
+  it("in:preamble appends after the last preamble item (Header tab, nothing selected)", () => {
+    const src = "#const FOO 5\n<PLAYER_SETUP>";
+    const { out, b } = run(src, { kind: "addCommand", at: { in: "preamble" }, name: "random_placement" });
+    expect(b.script.preamble).toHaveLength(2);
+    expect(out).toBe("#const FOO 5\nrandom_placement\n<PLAYER_SETUP>");
+  });
+
+  it("in:preamble on an empty preamble inserts at offset 0 (not reachable from the UI today — see SectionView.tsx)", () => {
+    const src = "<PLAYER_SETUP>";
+    const { out } = run(src, { kind: "addCommand", at: { in: "preamble" }, name: "random_placement" });
+    expect(out).toBe("random_placement\n<PLAYER_SETUP>");
+  });
+
+  it("in:preamble with 2+ existing items reads onOwnLines from a real consecutive pair", () => {
+    const src = "#const FOO 5\n#const BAR 6\n<PLAYER_SETUP>";
+    const { out } = run(src, { kind: "addCommand", at: { in: "preamble" }, name: "random_placement" });
+    expect(out).toBe("#const FOO 5\n#const BAR 6\nrandom_placement\n<PLAYER_SETUP>");
+  });
+});
+
+describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", () => {
+  it("a wholly empty file gets the tag with no leading separator", () => {
+    const { out, b } = run("", { kind: "addCommand", at: { in: "newSection", name: "PLAYER_SETUP" }, name: "random_placement" });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement\n");
+    expect(b.script.sections).toHaveLength(1);
+    expect(b.script.sections[0].name).toBe("PLAYER_SETUP");
+  });
+
+  it("appends after the last existing section, not woven in at its canonical slot", () => {
+    const src = "<PLAYER_SETUP>\nrandom_placement";
+    const { out } = run(src, { kind: "addCommand", at: { in: "newSection", name: "LAND_GENERATION" }, name: "create_land" });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\ncreate_land\n");
+  });
+
+  it("appends after the preamble when there are no sections at all yet", () => {
+    const src = "#const FOO 5";
+    const { out } = run(src, { kind: "addCommand", at: { in: "newSection", name: "PLAYER_SETUP" }, name: "random_placement" });
+    expect(out).toBe("#const FOO 5\n<PLAYER_SETUP>\nrandom_placement\n");
+  });
+
+  it("anchors after an empty existing section's header, not its (nonexistent) last item", () => {
+    const src = "<PLAYER_SETUP>";
+    const { out } = run(src, { kind: "addCommand", at: { in: "newSection", name: "LAND_GENERATION" }, name: "create_land" });
+    expect(out).toBe("<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_land\n");
   });
 });
 

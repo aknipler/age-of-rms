@@ -6,7 +6,7 @@
  *
  * `declare const` in a .d.ts is an *ambient declaration*: it tells TypeScript
  * this identifier exists at runtime without emitting anything for it. That is
- * exactly right here, because the value is not a variable at all — Vite
+ * exactly right here, because the value is not a variable at all. Vite
  * find-and-replaces the literal text `__APP_VERSION__` in the bundle before it
  * ever reaches a browser.
  *

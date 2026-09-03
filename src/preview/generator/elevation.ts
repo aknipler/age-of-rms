@@ -1,4 +1,4 @@
-// S2: elevation clumps — docs/preview-design.md Sec.6.2. PURE (CLAUDE.md hard
+// S2: elevation clumps, docs/preview-design.md Sec.6.2. PURE (CLAUDE.md hard
 // rule / preview-design Sec.2).
 //
 // Per `create_elevation MaxHeight { ... }`: pick `number_of_clumps` seed
@@ -9,7 +9,7 @@
 // `MaxHeight` IS AN ABSOLUTE CEILING, NOT AN INCREMENT. A command raises a
 // tile toward MaxHeight and never past it, and never lowers one already
 // higher. Two lands under the same `create_elevation 6`, one at
-// `base_elevation 2` and one at 5, therefore BOTH top out at 6 — the first
+// `base_elevation 2` and one at 5, therefore BOTH top out at 6. The first
 // gets tall-looking hills (2 -> 6), the second shallow ones (5 -> 6). Nothing
 // adds: not clumps within a command, not commands within a section, and not
 // `base_elevation` underneath. Corrected 2026-08-07; Sec.6.2's "heights add
@@ -18,9 +18,9 @@
 //
 // DELIBERATELY NOT IMPLEMENTED, both cited at the point they'd apply:
 // growth's measured ~3% overshoot (Sec.6.2 itself calls implementing it
-// "optional and low priority" — a plain stop-at-target is defensible) and
+// "optional and low priority", a plain stop-at-target is defensible) and
 // the density-amplification constant `A`'s exact fit (Sec.6.2: "the fit
-// targets the OUTPUT... run the generator, count elevated tiles, compare" —
+// targets the OUTPUT... run the generator, count elevated tiles, compare",
 // this file ships a first-pass value from one calibration run against its
 // own five-point table, not the iterated fit the spec describes as ideal;
 // see the build log for the run and where it landed against the table).
@@ -46,12 +46,12 @@ import { bucketWeights } from "./lands";
 // [tune] constants
 // ---------------------------------------------------------------------------
 
-/** RMSTEST_14: default tile budget is `dim`, NOT area-scaled — "about 120 on tiny maps" scales with side length. */
+/** RMSTEST_14: default tile budget is `dim`, NOT area-scaled, "about 120 on tiny maps" scales with side length. */
 function defaultTileBudget(dim: number): number {
   return dim;
 }
 
-/** RMSTEST_22a: overshoot grows sharply as a clump's share shrinks — "model it as max(6, share) before growth." */
+/** RMSTEST_22a: overshoot grows sharply as a clump's share shrinks, "model it as max(6, share) before growth." */
 const MIN_TILES_PER_CLUMP = 6;
 
 /** guide:2857-adjacent measurement (RMSTEST_39): the direct SEED bias is 1.31:1, favouring y > x. */
@@ -60,7 +60,7 @@ const SEED_BASE_RATIO = 1.3;
 /** Sec.6.2's density-amplification formula: seedRatio = clamp(BASE + A*max(0, density-d0), BASE, RMAX). */
 const DENSITY_KNEE = 250 / 40000; // ~250 clumps on a 200 map
 /**
- * [tune], NOT rigorously fitted — Sec.6.2 asks for this to be tuned by
+ * [tune], NOT rigorously fitted, Sec.6.2 asks for this to be tuned by
  * running the generator and comparing its own tile ratio against the
  * five-point table (50/100/250/500/1000 clumps on a 200 map -> 1.45/1.88/
  * 3.74/7.01/14.88). One calibration pass against exactly that table (see the
@@ -72,14 +72,14 @@ const SEED_RATIO_MAX = 20; // Sec.6.2: "a real clamp and is not optional"
 /** guide: "elevation avoids the origins of player lands by about 9 tiles." */
 const PLAYER_ORIGIN_MIN_DISTANCE = 9;
 
-/** Sec.6.2: "Grow each clump like a land region (clumping weight fixed moderate [tune])" — reuses lands.ts's cf=8 (the default/moderate regime) rather than inventing a second weight-shape formula. */
+/** Sec.6.2: "Grow each clump like a land region (clumping weight fixed moderate [tune])", reuses lands.ts's cf=8 (the default/moderate regime) rather than inventing a second weight-shape formula. */
 const CLUMP_GROWTH_CF = 8;
 
 /** Bounded retries for a spacing-compliant seed draw, mirroring lands.ts's ORIGIN_ATTEMPTS convention. */
 const SEED_SPACING_ATTEMPTS = 100;
 
 // ---------------------------------------------------------------------------
-// Attribute reading (duplicated from lands.ts rather than imported — small,
+// Attribute reading (duplicated from lands.ts rather than imported, small,
 // stage-agnostic, and importing S1-named internals into an S2 file the other
 // direction reads oddly; see lands.ts's own copy for the same shape).
 // ---------------------------------------------------------------------------
@@ -89,12 +89,17 @@ function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): Instant
   return arg?.value;
 }
 
+// BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
+// a known symbol (a #define with no #const) that resolves to JS `undefined`
+// — that reads as 0, measured. See objects.ts's own copy for the full note.
 function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
-  const v = argValue(cmd, name, argIndex);
-  return typeof v === "number" ? v : fallback;
+  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
+  if (arg === undefined) return fallback;
+  if (typeof arg.value === "number") return arg.value;
+  return arg.value === undefined ? 0 : fallback;
 }
 
-/** guide:1257/1274: "only the LAST scale attribute applies" when a script writes both — resolved by source position, since Sec.3's attribute folding only dedupes repeats of the SAME name. */
+/** guide:1257/1274: "only the LAST scale attribute applies" when a script writes both, resolved by source position, since Sec.3's attribute folding only dedupes repeats of the SAME name. */
 function lastScaleAttribute(cmd: InstantiatedCommand): "size" | "groups" | undefined {
   const sizeAttr = cmd.attributes.get("set_scale_by_size")?.[0];
   const groupsAttr = cmd.attributes.get("set_scale_by_groups")?.[0];
@@ -106,7 +111,7 @@ function lastScaleAttribute(cmd: InstantiatedCommand): "size" | "groups" | undef
 
 /**
  * RMSTEST_14: the DEFAULT (`number_of_tiles` absent) is `dim`, measured
- * directly and NOT area-scaled — so an absent value skips the scaling
+ * directly and NOT area-scaled, so an absent value skips the scaling
  * formula entirely, even if `set_scale_by_size` is present. Only an
  * EXPLICIT `number_of_tiles` goes through Sec.4's scaling.
  */
@@ -126,7 +131,7 @@ export function resolveClumpCount(cmd: InstantiatedCommand, dim: number): number
 /**
  * Sec.6.2's density-amplification formula. Below the knee (sparse clumps)
  * the ratio is the flat measured seed bias; above it, rises linearly with
- * clump density, clamped — "a real clamp... otherwise computes an unbounded
+ * clump density, clamped, "a real clamp... otherwise computes an unbounded
  * weight and empties the disfavoured half."
  */
 export function seedRatio(clumpCount: number, mapArea: number): number {
@@ -135,13 +140,13 @@ export function seedRatio(clumpCount: number, mapArea: number): number {
   return Math.min(SEED_RATIO_MAX, SEED_BASE_RATIO + DENSITY_AMPLIFICATION * excess);
 }
 
-/** RMSTEST_22a: "model it as max(6, share) before growth" — the overshoot floor for a clump's own tile share. */
+/** RMSTEST_22a: "model it as max(6, share) before growth", the overshoot floor for a clump's own tile share. */
 export function perClumpTarget(tileBudget: number, clumpCount: number): number {
   return Math.max(MIN_TILES_PER_CLUMP, Math.floor(tileBudget / clumpCount));
 }
 
 // ---------------------------------------------------------------------------
-// Terrain constants — the narrow local shape, matching grid.ts/palette.ts's
+// Terrain constants, the narrow local shape, matching grid.ts/palette.ts's
 // own precedent (each consumer states what it needs from game-constants.json).
 // ---------------------------------------------------------------------------
 
@@ -167,7 +172,7 @@ function fourNeighbors(dim: number, tile: number): number[] {
 }
 
 /**
- * Frontier-weighted growth from one seed to `target` tiles — the same
+ * Frontier-weighted growth from one seed to `target` tiles, the same
  * bucket-by-neighborsOwned shape lands.ts's growth uses (`bucketWeights`,
  * imported rather than re-derived), at the fixed "moderate" regime Sec.6.2
  * specifies (no clumping_factor attribute exists on `create_elevation`, so
@@ -196,7 +201,7 @@ export function growClump(dim: number, seed: number, target: number, rng: Rng): 
   while (owned.size < target) {
     const sizes = buckets.map((b) => b.length);
     const totalWeight = sizes.reduce((sum, size, i) => sum + size * weights[i], 0);
-    if (totalWeight <= 0) break; // frontier exhausted (e.g. a tiny map) — take what growth reached
+    if (totalWeight <= 0) break; // frontier exhausted (e.g. a tiny map), take what growth reached
     let roll = nextFloat01(rng) * totalWeight;
     let bucketIndex = 0;
     for (; bucketIndex < 3; bucketIndex++) {
@@ -218,10 +223,10 @@ export function growClump(dim: number, seed: number, target: number, rng: Rng): 
 }
 
 /**
- * Sec.6.2: "tile height = min(h, floor(distanceFromClumpEdge / spacing))" —
+ * Sec.6.2: "tile height = min(h, floor(distanceFromClumpEdge / spacing))",
  * concentric rings from the boundary inward. Multi-source BFS seeded from
  * every clump tile touching a non-clump tile OR the map edge (both count as
- * "the edge" — there is no clump tile beyond either).
+ * "the edge", there is no clump tile beyond either).
  */
 export function clumpEdgeDistances(dim: number, clumpTiles: ReadonlySet<number>): Map<number, number> {
   const dist = new Map<number, number>();
@@ -303,11 +308,11 @@ export function eligibleSeedCandidates(
 }
 
 /**
- * The candidate pool, split once by diagonal side — Sec.6.2's "weight ratio
+ * The candidate pool, split once by diagonal side, Sec.6.2's "weight ratio
  * favouring y > x, uniform with respect to distance from the map edge".
  *
  * Built ONCE PER COMMAND. `drawSeed` used to do this split itself, on every
- * call, which made each seed draw O(candidates) — and a `create_elevation`
+ * call, which made each seed draw O(candidates), and a `create_elevation`
  * command asks for one draw per clump, so a command with thousands of clumps
  * over a 40,000-tile candidate set cost hundreds of millions of operations.
  * `AK_Namatjira.rms` spent 3.1 s in S2 alone on this before the split moved
@@ -332,7 +337,7 @@ export function buildSeedPool(dim: number, candidates: Int32Array): SeedPool {
 /**
  * One diagonally-biased, spacing-respecting seed draw from a prebuilt pool.
  * `placedSeeds` is the running index of seeds this command has already
- * accepted — a uniform grid rather than a list, for the same reason
+ * accepted, a uniform grid rather than a list, for the same reason
  * `spacingIndex.ts` exists at all: the scan it replaces was quadratic in the
  * clump count.
  */
@@ -353,7 +358,7 @@ export function drawSeed(
     const { x, y } = xyOf(dim, tile);
     if (!placedSeeds.tooClose(x, y)) return tile;
   }
-  return undefined; // spacing kept rejecting every draw — reported as spacingConflict by the caller
+  return undefined; // spacing kept rejecting every draw, reported as spacingConflict by the caller
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +372,7 @@ export interface ElevationResult {
 /**
  * Sec.6.2: AST -> elevation clumps. Mutates `grid.elevation` (ADDING onto
  * whatever base_elevation already wrote, per "heights add on top of
- * base_elevation — DE-relative behaviour"); returns one `CommandReport` per
+ * base_elevation, DE-relative behaviour"); returns one `CommandReport` per
  * `create_elevation` command (Sec.7).
  */
 export function applyElevation(
@@ -436,7 +441,7 @@ export function applyElevation(
     const pool = buildSeedPool(dim, candidateResult.value);
 
     // Euclidean, matching the `dx*dx + dy*dy < spacing*spacing` this replaced
-    // (S6's own spacing rule is Chebyshev — the two attributes genuinely
+    // (S6's own spacing rule is Chebyshev, the two attributes genuinely
     // differ, which is why the index takes the metric as a parameter).
     const placedSeeds = createSpacingIndex(dim, spacing, "euclidean");
     for (let c = 0; c < clumpCount; c++) {

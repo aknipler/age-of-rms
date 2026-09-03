@@ -139,7 +139,7 @@ describe("matchingCommandRows", () => {
 
   it("gives a command that matches directly EVERY attribute, not only the ones that also match", () => {
     // "commandA" matches the command's own name but neither foo's nor bar's
-    // name/description — if attributes were still being narrowed by the
+    // name/description. If attributes were still being narrowed by the
     // query, this would come back empty instead of carrying both.
     const rows = matchingCommandRows([commandA, commandB], attributesByName, "commandA");
     expect(rows).toEqual([{ command: commandA, attributes: [foo, bar] }]);
@@ -163,7 +163,7 @@ describe("matchingCommandRows", () => {
 
   it("drops a non-functional attribute nested under a real command", () => {
     // No command's attributes[] names one of the four non-functional strings
-    // today, but the filter has to hold even if one someday does — it is the
+    // today, but the filter has to hold even if one someday does. It is the
     // reference table's own vocabulary, not just orphanAttributeRows'.
     const deadAttr = attribute({ name: "dead", nonFunctional: true, replacedBy: "foo" });
     const attributesWithGhost = new Map([...attributesByName, ["dead", deadAttr]]);
@@ -188,7 +188,7 @@ describe("orphanAttributeRows", () => {
   });
 
   it("pins the real corpus: the four non-functional legacy strings are orphaned but excluded", () => {
-    // Same four names as before the nonFunctional filter landed — they are
+    // Same four names as before the nonFunctional filter landed. They are
     // still nameless of a command, just no longer worth showing.
     const names = orphanAttributeRows(languageData.commands, languageData.attributes, "").map((a) => a.name);
     expect(names).toEqual([]);

@@ -82,7 +82,7 @@ describe("teamLabels", () => {
     expect(PREDEFINED_LABELS.size).toBeGreaterThan(0);
 
     // Collect, then assert ONCE. An expect() per label here costs ~200k
-    // assertions and times the suite out — the same trap CLAUDE.md records
+    // assertions and times the suite out, the same trap CLAUDE.md records
     // for lexer.test.ts, where an expect() per token cost 7.6 s against
     // 0.07 s of real work. The loop must measure the code, not vitest.
     const seen = new Set<string>();

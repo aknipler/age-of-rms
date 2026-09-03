@@ -1,8 +1,8 @@
 /* A non-scrolling frame around the scrolling panel, added purely so the
    hidden-objects shading has something still to sit on. An inset box-shadow
    painted on the scroll container itself moves with the content in Chromium,
-   so the band would slide up out of view as soon as the table was scrolled —
-   the overlay has to live on an element that does not scroll. */
+   so the band would slide up out of view as soon as the table was scrolled.
+   The overlay has to live on an element that does not scroll. */
 .section {
   display: flex;
   flex-direction: column;
@@ -90,7 +90,7 @@
   top: 0;
   /* Without this the Preview Obj. List's checkboxes scroll OVER the header
      row instead of under it. `position: sticky` makes a th a positioned
-     element, and so does HelpTip's `position: relative` wrapper — which every
+     element, and so does HelpTip's `position: relative` wrapper, which every
      checkbox in that table sits inside. Positioned elements at `z-index:
      auto` paint in DOM order, and a body row comes after the thead, so the
      wrapped checkbox wins by default. The header's opaque background hides
@@ -134,7 +134,7 @@
 }
 
 /* The header row above the handful of attributes no command claims (legacy
-   non-functional engine strings) — spans the full table rather than sitting
+   non-functional engine strings), spans the full table rather than sitting
    in the Command column, since it isn't itself a command. */
 .attributeGroupRow td {
   font-size: 0.7rem;

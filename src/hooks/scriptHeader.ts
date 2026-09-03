@@ -1,7 +1,7 @@
 // The standard comment AoRMS stamps at the top of a script it created.
 //
 // Pure: no React, no Monaco, no Tauri. Split out of useDocument.ts for the
-// same reason components/statusFormat.ts is split out of StatusBar.tsx — the
+// same reason components/statusFormat.ts is split out of StatusBar.tsx, the
 // formatting rules are the part worth unit-testing, and a hook that only
 // runs inside a Tauri window is the one place they could not be tested from.
 //
@@ -9,7 +9,7 @@
 //
 // 1. RMS comment markers are whole tokens, not character sequences. The lexer
 //    (src/parser/lexer.ts) splits on whitespace and only then asks whether a
-//    token IS "/*" or "*/" — so both markers have to stand alone, separated
+//    token IS "/*" or "*/", so both markers have to stand alone, separated
 //    by whitespace from everything around them. A closing "====*/" would not
 //    close the comment; it would lex as one `word` and the rest of the script
 //    would stay commented out, silently, with the map still generating.
@@ -22,11 +22,11 @@
 //    RMS0301/commentOpensNestedComment), which hides the rest of the file.
 //    Nothing this module writes on its own can do that, but the author name
 //    and file name come from outside, so keep them out of the shapes that
-//    matter — see sanitizeField.
+//    matter; see sanitizeField.
 //
 // OWNERSHIP IS PER ROW, NOT PER BLOCK. The app keeps refreshing the rows it
 // still recognises as its own and leaves the rest alone, so correcting the
-// created date by hand costs you nothing else — see `refreshScriptHeader`.
+// created date by hand costs you nothing else; see `refreshScriptHeader`.
 
 /** Every field the stamped comment carries. Dates are `Date` so formatting stays this module's business. */
 export interface ScriptHeaderFields {
@@ -48,19 +48,28 @@ export interface ScriptHeaderFields {
  * A `const` array with a type derived from it, rather than a TypeScript
  * `enum`: the array is the printing order AND the set of legal keys, so
  * adding a row here is the whole change. `(typeof HEADER_FIELDS)[number]`
- * reads the union of its element types straight back out — the standard TS
+ * reads the union of its element types straight back out, the standard TS
  * idiom for "these exact strings", and unlike an enum it survives into plain
  * JavaScript as ordinary data.
  */
 export const HEADER_FIELDS = ["file", "author", "created", "modified", "builtWith"] as const;
 export type HeaderField = (typeof HEADER_FIELDS)[number];
 
+/**
+ * The one-line signature that identifies a block as ours.
+ *
+ * Deliberately the product name rather than a machine-readable marker: the
+ * comment is meant to be read and freely edited by a human, so it does not
+ * get a hidden tag telling them not to touch part of it.
+ */
+export const HEADER_SIGNATURE = "AoRMS";
+
 const LABELS: Record<HeaderField, string> = {
   file: "File",
   author: "Author",
   created: "Created",
   modified: "Last modified",
-  builtWith: "Built with",
+  builtWith: `${HEADER_SIGNATURE} version`,
 };
 
 /**
@@ -78,24 +87,15 @@ const REFRESHED_FIELDS: readonly HeaderField[] = ["file", "modified", "builtWith
 export const UNKNOWN_AUTHOR = "Unknown";
 
 /**
- * Shortest the "=" rules are ever drawn — a width that keeps a typical header
+ * Shortest the "=" rules are ever drawn, a width that keeps a typical header
  * inside 80 columns and, more to the point, keeps every header the same size
  * as every other one. The rules grow past this only when a row would
  * otherwise stick out past them (see `ruleFor`), which a long file name does.
  */
 const MIN_RULE_WIDTH = 62;
 
-/** Label column width — the longest label ("Last modified") plus the two-space gutter. */
+/** Label column width, the longest label ("Last modified") plus the two-space gutter. */
 const LABEL_WIDTH = 15;
-
-/**
- * The one-line signature that identifies a block as ours.
- *
- * Deliberately the product name rather than a machine-readable marker: the
- * comment is meant to be read and freely edited by a human, so it does not
- * get a hidden tag telling them not to touch part of it.
- */
-export const HEADER_SIGNATURE = "Age of RMS";
 
 /** What goes between the stamped comment and whatever the script already had. One blank line, so the block reads as separate from the code. */
 export const HEADER_SEPARATOR = "\n\n";
@@ -106,8 +106,8 @@ export const HEADER_SEPARATOR = "\n\n";
  *
  * `rows` holds each line EXACTLY as written. That is the whole ownership
  * test: a line still present, byte for byte, in the document is one nobody
- * has touched. The alternative — re-parsing the block and deciding how much
- * drift still counts as ours — has to answer "how edited is edited", and
+ * has touched. The alternative, re-parsing the block and deciding how much
+ * drift still counts as ours, has to answer "how edited is edited", and
  * every answer to that eventually rewrites something a person typed.
  *
  * `owned` only ever shrinks. Once a row leaves the set it does not come back,
@@ -119,7 +119,7 @@ export interface StampedHeader {
   readonly fields: ScriptHeaderFields;
   /** Each row exactly as written. Rows outside `owned` are stale and unused. */
   readonly rows: Readonly<Record<HeaderField, string>>;
-  /** The rule line, written twice — above and below the rows. */
+  /** The rule line, written twice, above and below the rows. */
   readonly rule: string;
   /** Rows the app may still rewrite. */
   readonly owned: ReadonlySet<HeaderField>;
@@ -140,7 +140,7 @@ export interface HeaderEdit {
  * ownership: a row is matched as a whole line, so a value containing a line
  * break could never be found again. A literal comment-close marker typed into
  * the author field would end the comment early, leaving the rest of the
- * header as live script — the engine would then try to run "Author" as a
+ * header as live script, the engine would then try to run "Author" as a
  * command. Windows file names cannot contain either, but the author name is
  * free text.
  */
@@ -148,7 +148,7 @@ function sanitizeField(value: string): string {
   return value.replace(/[\r\n]+/g, " ").replace(/\/\*|\*\//g, "").trim();
 }
 
-/** `23/08/2026` — the same day/month/year order MapHeader's "Last Saved" already uses. */
+/** `23/08/2026`, the same day/month/year order MapHeader's "Last Saved" already uses. */
 function formatDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -166,7 +166,7 @@ function valueFor(field: HeaderField, fields: ScriptHeaderFields): string {
     case "modified":
       return formatDate(fields.modified);
     case "builtWith":
-      return `${HEADER_SIGNATURE} ${sanitizeField(fields.appVersion)}`;
+      return sanitizeField(fields.appVersion);
   }
 }
 
@@ -208,7 +208,7 @@ export interface HeaderStamp {
   readonly stamped: StampedHeader;
 }
 
-/** Render the block for a script being saved for the first time. No trailing newline — the caller decides what separates it from the script below. */
+/** Render the block for a script being saved for the first time. No trailing newline. The caller decides what separates it from the script below. */
 export function buildScriptHeader(fields: ScriptHeaderFields): HeaderStamp {
   const rows = renderRows(fields);
   const rule = ruleFor(rows);
@@ -262,8 +262,8 @@ function splitLines(source: string): SourceLine[] {
  * Where `text` sits in the document, if it appears as a complete line exactly
  * once.
  *
- * Uniqueness is the safety property. A row that appears twice — someone has
- * copied the header as a template for another script, most likely — gives no
+ * Uniqueness is the safety property. A row that appears twice, someone has
+ * copied the header as a template for another script, most likely, gives no
  * way to tell which one the app wrote, and rewriting the wrong one would edit
  * text that was never ours. Two matches is treated exactly like none: the row
  * stops being ours and is left alone from then on.
@@ -288,7 +288,7 @@ function uniqueLine(lines: readonly SourceLine[], text: string): SourceLine | nu
  * hand-edited character froze the entire comment.
  *
  * Rows are matched anywhere in the document rather than inside a located
- * block, which sounds looser than it is — the search key is a full line
+ * block, which sounds looser than it is. The search key is a full line
  * carrying an exact label, column padding and value, and it must be unique.
  * It buys tolerance for the things people actually do: adding a line inside
  * the box, putting another comment above the header, reordering the rows.

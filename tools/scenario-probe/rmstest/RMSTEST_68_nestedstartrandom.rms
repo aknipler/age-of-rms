@@ -1,0 +1,192 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* FLOOR_BEFORE - unconditional, outside every random block. Sanity that the
+     file parsed and ran at all. */
+  create_object WILD_BOAR
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+  /* OUTER start_random. Pinned 100/0, so branch 1 is the only one that can
+     legitimately fire under correct semantics. */
+  start_random
+    percent_chance 100
+
+      /* OUTER_CHOSEN_HEAD - proves the engine entered branch 1's body. */
+      create_object GOLD
+      {
+        number_of_objects 20
+        set_gaia_object_only
+      }
+
+      /* INNER start_random, nested inside the outer's chosen branch. Also
+         pinned 100/0. */
+      start_random
+        percent_chance 100
+          /* INNER_CHOSEN */
+          create_object CYPRESS_TREE
+          {
+            number_of_objects 20
+            set_gaia_object_only
+          }
+        percent_chance 0
+          /* INNER_UNCHOSEN - must not appear under correct inner selection. */
+          create_object OLIVE_TREE
+          {
+            number_of_objects 20
+            set_gaia_object_only
+          }
+      end_random
+
+      /* AFTER_INNER - still inside the outer's chosen branch, after the
+         inner block's own end_random. */
+      create_object BIRCH_TREE
+      {
+        number_of_objects 20
+        set_gaia_object_only
+      }
+
+    percent_chance 0
+      /* OUTER_UNCHOSEN - THE decisive marker. Must not appear if the outer's
+         branch exclusivity survives the inner block intact. */
+      create_object STONE
+      {
+        number_of_objects 20
+        set_gaia_object_only
+      }
+  end_random
+
+  /* TAIL_AFTER - unconditional, after the outer's own end_random. */
+  create_object ASIAN_PINE_TREE
+  {
+    number_of_objects 20
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_68 - nested start_random: what does the inner end_random actually
+close
+docs/known-issues.md BUG-020, src/parser/parser.ts (RMS0213),
+docs/parser-design.md verify item 20, de-official-map-issues.md Sec.6
+(includes/F_seasons.inc, ten nested sites reached by 43 shipped scripts)
+================================================================================
+
+THE QUESTION
+F_seasons.inc nests a start_random inside another start_random at ten sites.
+Our parser detects the nesting structurally and emits RMS0213 (lossless - the
+AST keeps the nested block rather than discarding it), but parser-design's own
+verify item 20 already records the actual engine resolution as UNMEASURED. The
+suspicion, inferred only from the guide's prohibition on nesting rather than
+from an observation: the inner end_random closes the OUTER start_random
+instead of the inner one, so the inner block's own terminator never really
+exists as far as the engine's random-selection state is concerned, and
+whatever comes after it - including the OUTER's remaining, supposedly-
+unselected branches - runs unconditionally.
+
+METHOD
+Every percent_chance in both blocks is pinned to 100/0, so which branch a
+CORRECTLY nested pair of start_random blocks would pick is known in advance
+with no run-to-run variance. Six markers are placed at the six positions where
+the hypothesis and the correct-nesting reading disagree or agree, plus a floor
+control before everything and a tail control after everything, so a
+completely broken/blank generation is distinguishable from a working one that
+simply answers the question. One command per marker, one object type per
+marker, so the read is a headcount only - no position math needed.
+
+READ-OFF TABLE
+  WILD_BOAR (floor, before anything)        expect 20-25   file parsed and ran;
+                                             if this is 0, nothing below is
+                                             readable - regenerate and check
+                                             for an unrelated script error
+                                             first
+  GOLD (outer branch 1's head)              expect ~20     outer picked its
+                                             100% branch, as it must under
+                                             either reading - if this is 0,
+                                             something is wrong with pinned
+                                             percent_chance itself and this
+                                             run cannot be trusted (see
+                                             RMSTEST_55, which already
+                                             confirmed pinned percent_chance
+                                             works for a NON-nested block)
+  CYPRESS_TREE (inner branch 1)             expect ~20     inner picked its
+                                             100% branch
+  OLIVE_TREE (inner branch 0)               expect 0       inner branch
+                                             exclusivity intact
+  BIRCH_TREE (outer branch 1, after the
+              inner block's own end_random) expect ~20     outer branch 1's
+                                             body continues normally past the
+                                             nested block
+  STONE (outer branch 0)                    expect 0 IF nesting resolves
+                                             correctly; NONZERO is the
+                                             suspected defect CONFIRMED - the
+                                             inner end_random consumed the
+                                             outer's random state early, and
+                                             everything from outer branch 0
+                                             onward ran unconditionally
+  ASIAN_PINE_TREE (tail, after the outer's
+                   own end_random)          expect ~20     if this reads 0
+                                             while everything above the STONE
+                                             row looks normal, the outer's
+                                             real end_random - now with no
+                                             random state left to close under
+                                             the corruption hypothesis -
+                                             became a dangling token that
+                                             broke something downstream rather
+                                             than being silently ignored;
+                                             record this as its own finding
+                                             even though the STONE row already
+                                             answered the main question
+
+READING THE COMBINATION
+  STONE=0, OLIVE_TREE=0, everything else present    nesting resolves exactly
+    as lexically written. The suspected defect is REFUTED for this two-level
+    case. RMS0213's message can state the consequence ("resolves correctly,
+    but the engine does not support this - avoid it for portability") instead
+    of only the prohibition, per this bug's own prescribed fix.
+  STONE>0                                            THE hypothesis, confirmed.
+    RMS0213 needs to say so explicitly, and instantiate.ts's random-block
+    handling needs the same correction wherever it currently assumes a
+    start_random's own end_random terminates only itself.
+  OLIVE_TREE>0, STONE=0                              a different defect: inner
+    branch selection is broken (e.g. reading a shared roll instead of its own)
+    while outer exclusivity survives. Worth its own RMSTEST rather than being
+    folded into this one's conclusion.
+  BIRCH_TREE=0 with STONE=0                          the inner block silently
+    swallows the REST of the outer's chosen branch too, not just the outer's
+    unchosen one - a third shape, and grounds to re-read F_seasons.inc's ten
+    sites specifically for whether anything follows the inner block within
+    the same outer branch (if nothing ever does in the real file, this shape
+    is moot there even though it would still be a real engine behavior).
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. ONE RUN - every question here is
+a presence/absence at a pinned 100/0 split, not a statistical one, same shape
+as RMSTEST_42's single-run read for BUG-007.
+
+READ WITH
+  python probe_scenario.py "<scenario>"
+  The default object histogram is the whole reading - seven names, each
+  either near its requested count or nowhere in the list.
+================================================================================
+*/

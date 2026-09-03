@@ -31,7 +31,7 @@ describe("shiftSingleAnchor", () => {
   });
 
   it("drops an anchor that falls inside the edited/deleted range", () => {
-    // Same drop rule as expansion — a selected card that gets deleted
+    // Same drop rule as expansion, a selected card that gets deleted
     // simply has no valid anchor afterward (clearSelection's job, but the
     // shift itself is what makes that automatic rather than a special case).
     const anchor = 7; // inside [5, 10)

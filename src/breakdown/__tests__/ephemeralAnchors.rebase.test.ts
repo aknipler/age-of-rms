@@ -37,7 +37,7 @@ describe("rebaseEdit", () => {
   it("returns null when the edit's range overlaps a still-pending prior edit", () => {
     // The exact bug scenario: card A's delete already removed [0,20) on
     // the model, but card B's edit was computed against the OLD parse
-    // and targets [15,25) — genuinely ambiguous, must not guess.
+    // and targets [15,25), genuinely ambiguous, must not guess.
     const prior = { start: 0, end: 20, newText: "" };
     const edit = { start: 15, end: 25, newText: "" };
     expect(rebaseEdit(edit, [prior])).toBeNull();

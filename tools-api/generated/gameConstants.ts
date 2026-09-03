@@ -44,9 +44,27 @@ export interface PublishedGameConstant {
    */
   description?: string | null;
   /**
-   * objectClass rows are genie unit classes, which an RMS author can target directly (effect_amount SET_ATTRIBUTE TREE_CLASS ...). They live in this array rather than a separate one because a class IS an RMS constant, so every consumer that resolves a written name against constants[] picks them up unchanged.
+   * objectClass rows are genie unit classes, which an RMS author can target directly (effect_amount SET_ATTRIBUTE TREE_CLASS ...). They live in this array rather than a separate one because a class IS an RMS constant, so every consumer that resolves a written name against constants[] picks them up unchanged. The fourteen categories from mapType through magicNumber are the families tools/extract-constants reads from random_map.def and includes/constants.inc but does NOT (and must not) join against empires2_x2_p1.dat: mapType (ai_info_map_type's argument, e.g. ARABIA, ARENA), civilization (set_gaia_civilization's argument; carries both random_map.def's American CIVILIZATION_* spelling and constants.inc's British CIVILISATION_* spelling as separate rows, since both are independently writable identifiers), waterDefinition (water_definition's argument, WD_*), colorCorrection (color_correction's argument, CC_*; random_map.def's own section header calls this family 'SEASON TYPES'), cliffType (cliff_type's argument, CT_*), assignTarget (assign_to's argument, AT_*), terrainAlias (a second, legacy naming scheme for terrain ids read from constants.inc's TERRAIN_CONSTANTS/PLACEHOLDER_TERRAINS sections — e.g. GRASS_A, DIRT_A — distinct from the dat-verified terrain rows above), objectAlias (the same for unit/building/decoration ids, from constants.inc's REGULAR_UNITS/SPECIAL_UNITS/ANIMAL_OBJCETS/REGULAR_BUILDINGS/SPECIAL_BUILDINGS/AESTHETIC_OBJECTS/RESOURCE_CONSTANTS/UTILITY_CONSTANTS sections), effectAction (random_map.def's own 'Effect Constants' section — the value for effect_amount/effect_percent's first argument, e.g. SET_ATTRIBUTE, GAIA_MODIFY_TECH), effectFlag (random_map.def's 'Effect Type Constants' section — ATTR_DISABLE/ATTR_ENABLE/etc., a value written into effect_amount's third argument for specific effectAction values such as ENABLE_OBJECT; the shared ATTR_ prefix is the file's own naming convention and does not make these attribute rows), modifyTechAttribute (random_map.def's 'ModifyTech Constants' section — the third-argument value when effectAction is MODIFY_TECH/GAIA_MODIFY_TECH), playerDataAttribute (random_map.def's 'PlayerData Constants' section — the third-argument value when effectAction is SET_PLAYER_DATA/GAIA_SET_PLAYER_DATA), resourceAmountType (random_map.def's 'ResourceAmount Constants' section, AMOUNT_* — the third-argument value for several effectAction values, most directly SET_TECH_COST/ADD_TECH_COST), and magicNumber (random_map.def's own 'Magic Number Constants' section — currently just RANDOM_OBJECT; the file gives this family no further documentation, so nothing beyond the name and id is claimed here). The hard constraint on all fourteen: their numeric ids are NOT unique across families or against terrain/object ids (id 61 is simultaneously a dolphin, DLC_JUNGLEROAD and ATTR_CHARGE_EVENT; RICE_FARM is independently defined twice inside constants.inc itself, once as a terrain id and once as an object id), so a row in one of these fourteen categories is a name -> id pair sourced from the game's own definitions and nothing more — never a claim about what kind of engine record that id resolves to.
    */
-  category: "terrain" | "object" | "objectClass" | "attribute";
+  category:
+    | "terrain"
+    | "object"
+    | "objectClass"
+    | "attribute"
+    | "mapType"
+    | "civilization"
+    | "waterDefinition"
+    | "colorCorrection"
+    | "cliffType"
+    | "assignTarget"
+    | "terrainAlias"
+    | "objectAlias"
+    | "effectAction"
+    | "effectFlag"
+    | "modifyTechAttribute"
+    | "playerDataAttribute"
+    | "resourceAmountType"
+    | "magicNumber";
   /**
    * DE texture filename shown in the reference table (e.g. g_grs). Null until confirmed.
    */
@@ -59,6 +77,19 @@ export interface PublishedGameConstant {
    * Terrain entries only. True for the tree-bearing terrains, taken from the community DE table's own descriptive name (every one of the 24 is named "Forest, ..."). Feeds the forest-zone mask that place_on_forest_zone reads. The /FOREST|JUNGLE|BAMBOO/ name heuristic it replaces missed every unnamed forest, including "Forest, Oak Bush" and "Forest, Bush". Note underbrush terrains are deliberately NOT forest: they are the ground a forest is drawn on, not the treeline. Absent means unknown, and the name heuristic still applies.
    */
   isForest?: boolean;
+  /**
+   * Terrain entries only. The units the engine spawns automatically the instant this terrain paints a tile, no create_object involved — the dat's own terrain_unit_id/terrain_unit_density slots (tools/extract-constants --terrain-units), first-hit-wins down the slot list for a multi-slot terrain (P(slot i) = density_i * product of (1 - density_j) for j < i). Only slots whose unit carries a nonzero resourceAmounts.wood are written; cosmetic (0-wood) slots are dropped at extraction time, which is also why a terrain can be isForest: true and still carry no wood-bearing slot here (it would not, in practice, since the 24 isForest rows are exactly the 24 rows this field is nonempty on). Absent means 'not known', not 'no trees' — read together with isForest: true, absence is read as one implicit slot at density 1.0 and the spawned unit's default 100 wood (Ash's stated foundational default: 100 wood per tree, 100% density, true for 15 of the 24 rows outright). A script can suppress a slot at runtime via effect_amount (GAIA_)SET_ATTRIBUTE <unit> ATTR_TERRAIN_ID <n> retargeting the unit off this terrain — see terrainRestrictions at the top level, which resolves what restriction n excludes.
+   */
+  autoTreeUnits?: {
+    /**
+     * The spawned unit's constId (an object row's own constId, category: object). NOT the unit's rmsConstant: two of the wood-bearing spawn units in this table (constId 302 'Bush A' and constId 1350 'Tree Reeds') carry rmsConstant: null, the same 'exists, just not callable by name' case the terrain rows themselves already document — so the id is the only field guaranteed to resolve for every slot, and it is also what the suppression scan compares a resolved script target against (objectEntry(...).constId), never a name.
+     */
+    objectId: number;
+    /**
+     * Normalised 0-1 (the dat's terrain_unit_density is per-mille, calibrated against three prose figures already in description and confirmed to fit all three exactly: DLC_BAOBABFOREST 25% -> 250, DLC_ACACIAFOREST 50% -> 500, DLC_MANGROVEFOREST 80% -> 800).
+     */
+    density: number;
+  }[];
   /**
    * Terrain entries only. True for the shallows — terrain that BOTH land units and ships can cross, so it is neither land nor open water but sits between them. Taken from the community DE table's own 'Unit Pathing' column, which reads 'all' on exactly 24 rows; the nine beach terrains and the five rice farms are removed, leaving these ten: 4 SHALLOW, 26 Ice Navigable, 54 DLC_MANGROVESHALLOW, 55 DLC_MANGROVEFOREST, 59 DLC_NEWSHALLOW, 90 Forest Reeds (Shallows), 93 and 94 Moddable Walkable Shallows, 111 MUDDY_SHALLOW, 115 YELLOW_SHALLOW. A beach terrain is removed because it is what this rule PRODUCES rather than a thing it edges, and a rice farm because 'both can path it' describes farmland without making it wet. It is ORTHOGONAL to isWater and does not restate it: isWater still answers the placement question every other stage asks (a shallow is water you cannot build a house on), while isHybrid answers the depth question only the automatic-beach rule asks, and the two disagree in both directions — SHALLOW is water and hybrid, DLC_MANGROVESHALLOW is hybrid and not water. The two forests in the set (55, 90) are a flagged judgment call: both are named as growing out of a shallow rather than out of dry ground, so they are edged as shallows. There is no name heuristic for absence, unlike isWater and isForest: YELLOW_SHALLOW is hybrid and YELLOW_SHALLOW_WATER is open water, so no pattern separates them, and every one of the 131 rows carries this field explicitly. Absent therefore means a terrain the table has never covered, and such a terrain is treated as not hybrid, which leaves it behaving exactly as it did before the field existed.
    */

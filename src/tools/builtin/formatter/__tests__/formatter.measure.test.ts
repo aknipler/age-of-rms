@@ -1,4 +1,4 @@
-// Corpus reporter for the script formatter — re-derives every figure
+// Corpus reporter for the script formatter, re-derives every figure
 // docs/formatter-design.md pins, so a review round does not hand-write a probe
 // and a number in the spec cannot quietly rot.
 //
@@ -161,7 +161,7 @@ it("formatter corpus census", () => {
 }, REPORT_TIMEOUT_MS);
 
 /**
- * The rest of the design's pinned figures — the ones that decided a DEFAULT.
+ * The rest of the design's pinned figures, the ones that decided a DEFAULT.
  *
  * Separated from the census above because these are properties of the corpus
  * rather than of the formatter: they answer "what do authors already do", which

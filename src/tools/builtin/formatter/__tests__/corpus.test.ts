@@ -1,6 +1,6 @@
 // Corpus gates for the script formatter (docs/formatter-design.md Sec.11).
 //
-// Three properties, over every .rms the machine has, under two option sets —
+// Three properties, over every .rms the machine has, under two option sets,
 // the all-preserve default and an aggressive rewrite that touches nearly every
 // line. They are separate properties on purpose:
 //
@@ -45,7 +45,7 @@ const FILES = [
  * All-preserve (the shipped default) and a rewrite that overrides every
  * preserve rule at once. The second exists because the first, on a
  * well-formatted script, can pass all three properties by barely doing
- * anything — it is the "no changes" case that proves the least.
+ * anything. It is the "no changes" case that proves the least.
  */
 const OPTION_SETS: { name: string; options: FormatScriptOptions }[] = [
   { name: "defaults", options: {} },
@@ -71,7 +71,7 @@ describe.each(OPTION_SETS)("formatter corpus — $name", ({ options }) => {
   for (const path of FILES) {
     const name = path.slice(MAPS_DIR.length + 1);
 
-    // The explicit timeout is not a hint that a file is slow — the worst map
+    // The explicit timeout is not a hint that a file is slow. The worst map
     // formats in ~200 ms alone. `local/Arena.rms` took 8.2 s inside a full
     // suite run on 2026-08-24 and went red against Vitest's 5,000 ms default,
     // which is the wall-clock spread CLAUDE.md's tracked debt records for this
@@ -83,7 +83,7 @@ describe.each(OPTION_SETS)("formatter corpus — $name", ({ options }) => {
       const first = formatScript(parse, options);
 
       // 1. The invariant, checked here independently of the tool's own
-      //    verification rather than by trusting `verified` — the check and the
+      //    verification rather than by trusting `verified`. The check and the
       //    thing it checks must not be the same code path in a gate.
       expect(first.verifyProblem).toBeUndefined();
       const before = parse.tokens.map((t) => t.text);
@@ -95,7 +95,7 @@ describe.each(OPTION_SETS)("formatter corpus — $name", ({ options }) => {
       expect(second.text).toBe(first.text);
       expect(second.edits).toEqual([]);
 
-      // 3. No new errors. Not "zero errors" — most of this corpus is untriaged
+      // 3. No new errors. Not "zero errors". Most of this corpus is untriaged
       //    and BCC2-Rekawa is a known defect. The formatter is only accountable
       //    for the delta.
       expect(errorCount(first.text)).toBeLessThanOrEqual(errorCount(source));

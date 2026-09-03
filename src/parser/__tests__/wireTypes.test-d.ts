@@ -1,4 +1,4 @@
-// Type-level gate for docs/parser-design.md Sec.4's amendment — the two
+// Type-level gate for docs/parser-design.md Sec.4's amendment, the two
 // defaulted parameters on the AST tree that let the Phase-5 tools contract name
 // its external-wire form as an INSTANTIATION of these types rather than a
 // hand-maintained copy.
@@ -11,7 +11,7 @@
 // WHY IT CANNOT DECAY INTO A VACUOUS PASS, which is the usual objection to a
 // check that has only ever been green: half the assertions here are
 // `@ts-expect-error`, and TypeScript reports an UNUSED `@ts-expect-error` as an
-// error of its own. So each negative claim fails in both directions — if the
+// error of its own. So each negative claim fails in both directions. If the
 // error stops happening, this file goes red. The positive claims are ordinary
 // assignments and fail the normal way.
 //
@@ -38,7 +38,7 @@ type SerializedParseResult = ParseResult<number | InfSentinel, NoDefs>;
 
 // ---------------------------------------------------------------------------
 // 1. The load-bearing property: a real ParseResult flows INTO the wire type.
-// Everything else rests on this — `ToolContext<ParseResult>` is only assignable
+// Everything else rests on this. `ToolContext<ParseResult>` is only assignable
 // to `ToolContext` (which defaults to the wire form) because of it.
 // ---------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ export const wireDoesNotFlowBack: ParseResult = fromWire;
 // ---------------------------------------------------------------------------
 // 3. `def` is unreadable over the wire. This is the defect the amendment exists
 // to prevent: `node.def?.name` compiles, works in-process, and returns
-// undefined for every node over the wire — failing in the direction of "your
+// undefined for every node over the wire, failing in the direction of "your
 // map is fine".
 // ---------------------------------------------------------------------------
 
@@ -77,7 +77,7 @@ export function defIsUnreadableOnWire(node: CommandNode<number | InfSentinel, No
 }
 
 export function defIsReadableInProcess(node: CommandNode) {
-  return node.def?.name; // string | undefined — no cast, no decode
+  return node.def?.name; // string | undefined; no cast, no decode
 }
 
 // ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ export function tokenIndicesStayPlainNumbers(arg: ArgNode<number | InfSentinel, 
 // keeping the rejected section-driven design runnable).
 // ---------------------------------------------------------------------------
 
-// (a) `def?: never` — the first thing anyone reaches for. It breaks
+// (a) `def?: never`, the first thing anyone reaches for. It breaks
 // assignability outright, and it breaks it a long way from where it is written.
 interface NeverDefNode {
   kind: "command";
@@ -128,8 +128,8 @@ declare const realDefNode: { kind: "command"; def?: CommandDef };
 export const neverDefBreaksAssignability: NeverDefNode = realDefNode;
 
 // (b) A conditional property type on a mode parameter. Omitting `def` entirely
-// is correct in isolation and cannot be reached by instantiating a parameter —
-// a parameter changes a property's TYPE, never its EXISTENCE. Reaching for a
+// is correct in isolation and cannot be reached by instantiating a parameter.
+// A parameter changes a property's TYPE, never its EXISTENCE. Reaching for a
 // conditional instead makes the mode parameter unmeasurable for variance, and
 // the two instantiations stop being assignable on the type argument alone.
 interface ConditionalDefNode<M extends "real" | "wire"> {

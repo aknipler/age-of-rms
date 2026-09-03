@@ -3,9 +3,9 @@
  * the `GapWriter` (docs/formatter-design.md Sec.4, Sec.5).
  *
  * AST-GUIDED, TOKEN-DRIVEN, and that phrase is the whole architecture. A
- * printer that walked only the AST would emit no comments at all — they are
+ * printer that walked only the AST would emit no comments at all, they are
  * `isTrivia` tokens the parser skips (parser.ts:132's non-trivia index), not
- * nodes — and would lose every `RawNode`'s interior. So the tree decides
+ * nodes, and would lose every `RawNode`'s interior. So the tree decides
  * INDENTATION AND LINE BREAKS while a token cursor guarantees COVERAGE: every
  * token from `cursor` up to whatever the tree asks for next is emitted first,
  * whether or not any node claimed it.
@@ -37,8 +37,8 @@ export interface LayoutStats {
   madeInline: number;
   madeExpanded: number;
   /**
-   * Non-trivia tokens no AST node claimed. Should be 0 — parser-design Sec.12's
-   * coverage property says every one belongs to a node — so this is a census of
+   * Non-trivia tokens no AST node claimed. Should be 0, parser-design Sec.12's
+   * coverage property says every one belongs to a node, so this is a census of
    * a thing believed impossible, handled rather than asserted because the
    * alternative to handling it is losing the token.
    */
@@ -129,7 +129,7 @@ export class Layout {
    *
    * Not the maximal trivia run: one complete comment immediately followed by
    * another is two units, and has to be, or Sec.4.4 cannot see a heading
-   * comment whose group begins with another comment — exactly the shape
+   * comment whose group begins with another comment, exactly the shape
    * 24hr_Battle Lines uses.
    *
    * Depth is recounted here rather than read off the lexer, which is an
@@ -228,8 +228,8 @@ export class Layout {
    *     percent_chance 50 #define TWO_B
    *
    * A branch body on the keyword's own line is the same authorial choice as a
-   * command on one line — space, when the alternative is four lines saying one
-   * thing — and splitting it is the same kind of damage.
+   * command on one line, space, when the alternative is four lines saying one
+   * thing, and splitting it is the same kind of damage.
    *
    * Off under `blockLayout: "expanded"`, which is the "normalise everything"
    * setting, and off for the DIRECT items of an expanded block, where one
@@ -332,7 +332,7 @@ export class Layout {
 
   /**
    * `allowContinuation` is false for the DIRECT items of an expanded block, and
-   * true everywhere else — including for an `if` body nested inside an expanded
+   * true everywhere else, including for an `if` body nested inside an expanded
    * block, where `if TINY_MAP base_size 2 else base_size 3 endif` on one line is
    * a shape real scripts use and the block's own layout has nothing to say
    * about it.
@@ -404,7 +404,7 @@ export class Layout {
 
     this.emitList(block.items, block.close ?? block.lastToken + 1, level + 1, false);
     // An unclosed block has no `}` to write, and the formatter never invents
-    // one — it is not a fixer.
+    // one, it is not a fixer.
     if (block.close !== undefined) this.startLine(block.close, indent);
   }
 
@@ -467,7 +467,7 @@ export class Layout {
 
   /**
    * A run of tokens the parser could not read. Reproduced VERBATIM apart from
-   * its first line's indent — laying out something we did not understand is how
+   * its first line's indent, laying out something we did not understand is how
    * a formatter corrupts a file it should have left alone.
    */
   private emitRaw(node: RawNode, level: number, allowContinuation: boolean): void {
@@ -589,7 +589,7 @@ export class Layout {
    * The indent level a section's BODY starts at: 0 flush with the header, or 1
    * stepped in under it.
    *
-   * Both are live conventions and neither is a majority — 88 of 265 corpus
+   * Both are live conventions and neither is a majority; 88 of 265 corpus
    * section bodies are indented, 13 scripts do it in every section (eleven of
    * them DE official) against 33 that never do (options.ts's
    * `SectionIndentPolicy`). Flattening `local/Arena.rms` moved 4,746 of its
@@ -608,7 +608,7 @@ export class Layout {
    *   item is indented" is true of a flat section that merely opens with one.
    *   Only a minimum can tell a stepped-in body from a group inside a flat one.
    * - A comment is not an `Item`, and a heading comment at column 0 is exactly
-   *   as much evidence as a command at column 0 — it is the shape
+   *   as much evidence as a command at column 0, it is the shape
    *   `24hr_Battle Lines 1.0.rms` uses, where every item is indented under a
    *   comment that is not.
    *
@@ -653,13 +653,13 @@ export class Layout {
       const section = script.sections[k];
       const next = script.sections[k + 1]?.header ?? end;
       const blank = this.opts.blankLineBeforeSections && this.writer.lastPlaced >= 0 ? 1 : 0;
-      // The HEADER is always at column 0. Its body may or may not be — see
+      // The HEADER is always at column 0. Its body may or may not be, see
       // sectionLevel.
       this.startLine(section.header, "", blank);
       this.emitList(section.items, next, this.sectionLevel(section, next));
     }
 
-    // Anything left — trailing comments, and a stray the tree never reached.
+    // Anything left, trailing comments, and a stray the tree never reached.
     this.emitTrivia(end, "", "auto");
   }
 }

@@ -1,5 +1,5 @@
 /**
- * `formatScript` — the formatter's whole public surface
+ * `formatScript`, the formatter's whole public surface
  * (docs/formatter-design.md Sec.10).
  *
  * Pure: `src/parser` types plus `tokenize` and `lineOfOffset`, nothing else.
@@ -25,7 +25,7 @@ export interface FormatStats extends LayoutStats {
   lineEnding: "\n" | "\r\n";
   /**
    * Source lines whose text really changed, or that became more than one line.
-   * Compared as text, never derived from the edit list — see collectChanges.
+   * Compared as text, never derived from the edit list, see collectChanges.
    */
   changedLines: number;
   /** Line counts before and after, which is where blank-line changes show up. */

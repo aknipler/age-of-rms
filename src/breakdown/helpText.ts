@@ -1,9 +1,9 @@
-// Per-attribute/argument hover text for Breakdown labels — reads the same
+// Per-attribute/argument hover text for Breakdown labels, reads the same
 // underlying data src/editor/aoe2RmsHover.ts's Monaco hover provider reads
 // (reference/data/doc-strings.json, falling back to reference/data/language.json's
 // own `description` fields) so Breakdown and hover can never disagree
 // (docs/breakdown-design.md Sec.8's help-coverage rule). This is a smaller
-// module than aoe2RmsHover.ts on purpose — HelpTip's popup is plain text,
+// module than aoe2RmsHover.ts on purpose. HelpTip's popup is plain text,
 // not Monaco's richer markdown (signature blocks, cautions, verified
 // badge), so this only needs the summary lookup, not the full formatter.
 import docStringsDataRaw from "../../reference/data/doc-strings.json";
@@ -21,7 +21,7 @@ interface DocStringsData {
 const docStringsData = docStringsDataRaw as DocStringsData;
 const DOC_BY_KEY = new Map(docStringsData.entries.map((e) => [e.key, e]));
 
-/** doc-strings.json's summary for `name`, if an entry exists — undefined otherwise. Callers supply their own fallback (usually the def's own `description`). */
+/** doc-strings.json's summary for `name`, if an entry exists, undefined otherwise. Callers supply their own fallback (usually the def's own `description`). */
 export function docSummary(name: string): string | undefined {
   return DOC_BY_KEY.get(name)?.summary;
 }
@@ -50,7 +50,7 @@ interface ArgumentLike {
 
 /**
  * Hover text for a positional argument. Most positional args (unlike
- * attributes) have no dedicated language.json `description` today — the
+ * attributes) have no dedicated language.json `description` today, the
  * fallback composes something from the type/range/default rather than a
  * bare "a positional argument" placeholder, so at minimum the type and
  * legal range are visible on hover even with no prose written yet.

@@ -66,16 +66,20 @@ fills in `constId`) if genieutils-py can't parse your DE version's dat
 file — file format assumptions get out of date; this keeps half the
 tool useful even then.
 
-Five narrow modes exist alongside the full run, each rewriting only its own
-fields. They are mutually exclusive, and each takes `--dry-run`.
+Eight narrow modes exist alongside the full run, each rewriting only its own
+fields (or, for `--roster`/`--misc-constants`, only adding rows). They are
+mutually exclusive, and each takes `--dry-run`.
 
 | mode | writes | section below |
 |---|---|---|
 | `--ids-only` | `constId` only, no dat needed | above |
 | `--colors-only` | `previewColor`, `minimapColor` | The two terrain colours |
 | `--terrain-table` | `terrainRestrictionId`, `allowedTerrains`, `placementSideTerrain`, `habitat` | The terrain restriction table |
+| `--terrain-units` | `autoTreeUnits` on terrain rows, plus the top-level `terrainRestrictions` array | Forest auto-spawn units |
 | `--classes` | `classId`, and the `objectClass` rows | Unit classes |
 | `--storages` | `resourceStorages`, and a refreshed `resourceAmounts` | Resource storage |
+| `--roster` | new `object` rows, one per live gaia unit | The gaia roster |
+| `--misc-constants` | new rows in fourteen name-only categories, no dat needed | The misc-family constants |
 
 Add `--colors-only` to refresh **just** the two terrain colour fields
 and leave every other field, and the rest of each entry's `notes`,
@@ -332,6 +336,66 @@ is unused across the roster.)
 Note the table is also mutable at run time from inside a script, via
 `effect_amount SET_ATTRIBUTE <object> ATTR_TERRAIN_ID <n>`, which no static
 extraction can capture. `Menindee_AUS_v2.3.rms` uses it ten times.
+
+## Forest auto-spawn units — `--terrain-units`
+
+```bash
+python extract_constants.py --terrain-units --dry-run   # report only
+python extract_constants.py --terrain-units             # take it
+```
+
+Forest terrains (`SNOW_FOREST` etc.) spawn real, choppable trees the instant
+the engine paints that terrain — no `create_object` involved, and until this
+mode existed the status bar's resource totals had no way to count it at all
+(the status-bar accuracy pass, `docs/build-log.md`'s 2026-09-02 entry). This
+mode writes two things, one per terrain row and one at the top level:
+
+| field | what it is |
+|---|---|
+| `autoTreeUnits` (terrain rows) | Which unit(s) this terrain auto-spawns and at what density — `Terrain.terrain_unit_id`/`terrain_unit_density`, the first `number_of_terrain_units_used` slots of two fixed-length arrays, in slot order |
+| `terrainRestrictions` (top-level array) | The dat's WHOLE `terrain_restrictions` table, 53 rows, each expanded to the terrain ids it permits |
+
+**Multi-slot terrains are first-hit-wins.** Seven terrains carry more than one
+slot (`P(slot i) = density_i * product of (1 - density_j) for j < i`), and the
+model is an INFERENCE from the measured wood figures rather than something the
+dat states outright — it is exact for six of the seven (every unit in their
+mix is worth the same 100 wood, so any model that reaches full coverage gives
+the same answer) and inferred for the seventh, `SOUTH_AMERICAN_FOREST`, by
+about 8%. See `replicated-whistling-sparkle.md`'s "Still open" item 1 and
+`RMSTEST_65_forestmix_and_density.rms` for the run that would settle it.
+
+**A slot is dropped, not written at density 0, for either of two reasons**,
+both measured rather than assumed: the slot's density is literally 0 (a decoy
+entry the first-hit-wins model gives probability 0 regardless — `PINE_FOREST`
+carries two of these ahead of its real `PINETREE` slot, for units that DO
+spawn elsewhere at real density), or the slot's unit carries no
+`resourceAmounts.wood` at all (the 12 cosmetic-only terrains: Grass, Dirt,
+...). Either way the dropped slot changes no total, since a 0-density or
+0-wood slot contributes 0 regardless of whether it is written.
+
+**Why the restriction table is a SEPARATE top-level array, not another
+per-object field like `--terrain-table`'s `allowedTerrains`.** The forest-wood
+suppression scan (`src/preview/generator/forestTreeSuppression.ts`) has to
+resolve an ARBITRARY restriction id a script writes at runtime via
+`effect_amount ATTR_TERRAIN_ID <n>` — the id in the script, not one already
+attached to an object row the roster happens to carry. `docs/consistency-checker-design.md`
+Sec.9 already names this table as something it would widen to consume if it
+existed.
+
+**Every mode that writes `game-constants.json` has to pass this table
+through untouched, or a run of an unrelated mode (`--colors-only`, the full
+run, ...) silently deletes it.** This is the same `CONSTANT_KEY_ORDER` trap
+that already governs every per-entry field, one level up on a top-level key —
+`format_game_constants` takes `terrain_restrictions` as an explicit second
+argument for exactly this reason, and every `run_*` function passes
+`existing.get("terrainRestrictions")` through even when its own job is
+something else entirely.
+
+**First real run (2026-09-02) reproduced a prior hand-verified extraction
+exactly**: 24 of 24 wood-bearing terrain rows agreed with the file, 0 changed,
+and all 53 `terrainRestrictions` rows matched — the independent confirmation
+that both the earlier probe-script data and this mode's own read of the dat
+agree.
 
 ## Resource storage — `--storages`
 
@@ -599,6 +663,158 @@ class, which `--classes` deliberately gives no `objectClass` row, so referential
 integrity failed. Class -1 is skipped rather than written, because absent is the
 honest value for a unit in no class an author can name. Run
 `npm run validate:reference` after taking a roster run.
+
+## The misc-family constants (`--misc-constants`)
+
+```bash
+python extract_constants.py --misc-constants --dry-run   # report only
+python extract_constants.py --misc-constants             # take it
+```
+
+Every prior mode either fills fields on rows that already exist (the narrow
+modes) or joins the dat to create rows (`--roster`). This one is the second
+mode that creates rows, and the only one that needs no dat at all: it reads
+two plain-text files random_map.def already sits beside, and turns fourteen
+name-only families into rows.
+
+**Twelve of them were already being parsed and thrown away.**
+`parse_random_map_def_sections` already splits the file by its own
+`/* SECTION */` headers, and `object_constants`/`attribute_constants` keep
+only the sections that are unit ids or effect-attribute selectors. Twelve
+more sections sat unused, added in two passes the same day. The first six:
+the AI map types (`ARABIA`...`SOCOTRA`, the argument to `ai_info_map_type`),
+`CIVILIZATIONS` (`set_gaia_civilization`), `WATER DEFINITIONS`
+(`water_definition`), `SEASON TYPES` (`color_correction` — the file's own
+header calls the family "season", the constants are `CC_*`), `CLIFF TYPES`
+(`cliff_type`) and `ASSIGN TYPES` (`assign_to`) — 144 names. The next six,
+all of them `effect_amount`/`effect_percent`'s own argument vocabulary:
+`Effect Constants` (`SET_ATTRIBUTE`, `GAIA_MODIFY_TECH`, ... — the first
+argument), `Effect Type Constants` (`ATTR_DISABLE`/`ATTR_ENABLE`/... — a
+third-argument value for specific first-argument values such as
+`ENABLE_OBJECT`), `ModifyTech Constants` (the third-argument value when the
+first argument is `MODIFY_TECH`/`GAIA_MODIFY_TECH`), `PlayerData Constants`
+(same, for `SET_PLAYER_DATA`/`GAIA_SET_PLAYER_DATA`), `ResourceAmount
+Constants` (`AMOUNT_*`, same, for `SET_TECH_COST`/`ADD_TECH_COST` among
+others) and `Magic Number Constants` (one name, `RANDOM_OBJECT` — the file
+gives this section no further documentation, so nothing more is claimed
+about it) — 89 more names. 233 names total, zero of which were ever joined
+against the dat, because doing so would be the exact mistake
+`object_constants`'s own docstring warns about one level down — id 16 is
+both the `FORTRESS` AI map type and a real dolphin.
+
+Every section of random_map.def is read by something in this file now —
+`OBJECT_SECTIONS`, `ATTRIBUTE_SECTION` or `MISC_FAMILY_SECTIONS` — with
+nothing left silently dropped.
+
+**The second source is `includes/constants.inc`**, never read by this tool
+before now: 897 more `#const`s, structured as `#define SECTION_NAME` markers
+wrapping `if SECTION_NAME ... endif` blocks. Only 238 of its names overlap
+random_map.def's own 1114 — mostly its unit/building sections restating names
+`EXPORTED FROM THE DATABASE` already covers under the same spelling. The
+~700 that do not overlap are genuinely new: a legacy naming scheme for
+terrain ids (`GRASS_A`, `DIRT_A`, ...), a lot of DE-era decoration/unit
+constants random_map.def has never listed, and — at the top of the file, with
+no `#define` of its own — a second, **British-spelled** copy of three of the
+six families above (`CIVILISATION_*`, `WD_*`, `CC_*`, against random_map.def's
+American `CIVILIZATION_*`/`WD_*`/`CC_*`). Same ids, different name text, so
+the two sets are added as separate rows rather than merged.
+
+### Names, not facts about what an id resolves to
+
+**Every row this mode writes carries a name and an id and nothing else** —
+`idSource: "extracted"`, `verified: true` (the name/id pair is read straight
+from the game's own definitions, which is all `verified` claims here), and a
+`notes` sentence naming the source file. No `deTextureFile`, no
+`resourceAmounts`, no habitat, because none of that is knowable without
+joining the dat, and joining these families against the dat is exactly the
+mistake the rest of this README spends its middle third warning about: ids
+collide across every one of these namespaces the same way they collide
+between terrain and object (`RICE_FARM` is defined twice inside
+`constants.inc` alone, once as a terrain id and once as a unit id).
+
+Two categories exist for constants.inc's own two flavours: `terrainAlias`
+(the `TERRAIN_CONSTANTS`/`PLACEHOLDER_TERRAINS` sections) and `objectAlias`
+(everything else — units, buildings, decorations, resources). Both are
+"alias" categories on purpose: they are a second, unverified name for an id
+this file may already know under a different name, or may not know at all,
+and neither question is this mode's to answer.
+
+### Two names that legitimately collide
+
+The report prints every name that would land in more than one of the fourteen
+categories, because it is not an error to fix — it is two different engine
+constants that happen to share text, the same class of collision this
+project has documented extensively for numeric ids, one level up on names.
+Measured today: `FORTRESS` (16 as the AI map type, 33 as a legacy building
+name in `constants.inc`) and `RICE_FARM` (63 as a terrain id, 1187 as a unit
+id — `constants.inc` defines it twice, and whichever definition runs later in
+an included script would shadow the earlier one in game). A name in this
+state resolves correctly everywhere this project's own by-name lookups filter
+on `category` first; `aoe2RmsHover.ts`'s hover map does not, and will only
+ever show one of the two — recorded rather than fixed, since changing that
+map's shape is a larger, separate decision.
+
+### A regression this data addition caused, and the fix that shipped with it
+
+`src/parser/validate.ts` derives which words the lexer must treat as an
+in-comment `/*` from **every row in `constants[]` whose `constId` is 69**,
+regardless of category, on the stated assumption that the set is "engine-
+defined names only" — i.e. names ambiently active in every script because
+they come from the auto-included `random_map.def`. Adding `CORRUPTION`
+(`constants.inc`'s `TERRAIN_CONSTANTS` section, id 69) broke that assumption:
+`constants.inc` is only active in a script that writes its own `#include` for
+it, so `CORRUPTION` is real vocabulary but not ambient. `commentOpenAliases`
+and `checkCommentOpeningWords` now both exclude the `terrainAlias`/
+`objectAlias` categories (wholly `constants.inc`-sourced) from this specific
+check — general name resolution elsewhere is untouched, so an author who does
+`#include` `constants.inc` still gets every name recognised. The mixed-source
+categories (`civilization`/`waterDefinition`/`colorCorrection`) are not
+excluded — none of their `constants.inc`-sourced rows happen to carry
+`constId` 69 today — which is a known, documented gap rather than a general
+provenance model. See the comment above `NON_AMBIENT_CONSTANT_CATEGORIES`.
+
+### Scope, measured against the ~902/1776 target this mode was specced against
+
+The measured starting point this mode was built from said "902 of 1774 union
+names absent from `game-constants.json`, target ~1776 total". The first pass
+(six families plus `constants.inc`, 2026-08-30) landed **804 new rows, 874 →
+1678**, short of the target for two reasons recorded then and closed since:
+
+- **The "AMOUNT\_\* effect constants" the original spec attributed to
+  `constants.inc` were not there.** They are random_map.def's own
+  `ResourceAmount Constants` section — `constants.inc` has no `AMOUNT_*`
+  names at all, checked directly.
+- **random_map.def had 89 more names in sections outside the six first
+  requested**: `Effect Constants` (28, effect_amount/effect_percent's own
+  first-argument vocabulary — `SET_ATTRIBUTE`, `GAIA_MODIFY_TECH`, ...),
+  `Effect Type Constants` (6, `ATTR_DISABLE`/`ATTR_ENABLE`/...), `ModifyTech
+  Constants` (19, `ATTR_SET_TIME`/`ATTR_SET_FOOD_COST`/...), `PlayerData
+  Constants` (1, `DATA_CIV_NAME_ID`), `ResourceAmount Constants` (34,
+  `AMOUNT_*`) and `Magic Number Constants` (1, `RANDOM_OBJECT`).
+
+**A second pass (2026-08-30, same day) added all six**, as categories
+`effectAction`, `effectFlag`, `modifyTechAttribute`, `playerDataAttribute`,
+`resourceAmountType` and `magicNumber` — six more entries in
+`MISC_FAMILY_SECTIONS`, nothing else new to build, since the mechanism
+(`misc_family_constants`/`merge_misc_families`/`build_misc_entries`) is
+already generic over "a random_map.def section that isn't object/terrain/
+attribute". **89 more new rows, 1678 → 1767.** Every section of
+random_map.def is now read by something in this file; nothing is silently
+dropped any more. The residual 9-row gap against the original ~1776 estimate
+is unaccounted for and small enough to be measurement noise in the spec's own
+count (it measured 1149 `#const`s in random_map.def; this tool measures 1114
+on the current build) rather than a missed section — there are no more
+section headers left unclaimed by any function in this file.
+
+`ATTR_DISABLE`/`ATTR_ENABLE`/`ATTR_SET_TIME`/... reuse the same `ATTR_`
+textual prefix `category: attribute` uses, for a completely unrelated
+purpose (a value written into `effect_amount`'s third argument for one
+specific first-argument value, not an attribute selector). Sourced by
+section, the same defence that already keeps `*_CLASS` names out of
+`object_constants` — see `MISC_FAMILY_SECTIONS`'s own comment. None of the
+89 collide by name with anything already in the file, and none carry
+`constId` 69, so the `NON_AMBIENT_CONSTANT_CATEGORIES` fix above needed no
+changes for this pass.
 
 ## If the dat parse breaks: the Advanced Genie Editor
 

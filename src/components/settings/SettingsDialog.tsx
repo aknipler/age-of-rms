@@ -8,7 +8,7 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
-// A simple modal, not a separate window — Tauri windows are heavier to
+// A simple modal, not a separate window, Tauri windows are heavier to
 // set up (own webview, own close-guard) and an overlay + fixed-position
 // box is the simpler choice.
 //
@@ -19,7 +19,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(DEFAULT_SETTINGS_TAB);
   // Roving tabindex needs to move focus, not just selection, so the
   // buttons are kept by id. A Map in a ref (rather than state) because
-  // writing it must not re-render — refs are the escape hatch for values
+  // writing it must not re-render, refs are the escape hatch for values
   // that aren't part of the rendered output.
   const tabRefs = useRef(new Map<SettingsTabId, HTMLButtonElement>());
 
@@ -93,7 +93,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
           </div>
 
           {/* Keyed by tab id so switching tabs remounts the panel rather
-              than reusing the previous one's state — panels are unrelated
+              than reusing the previous one's state, panels are unrelated
               to each other, and a shared mount would leak state between
               them once they hold real controls. */}
           <div

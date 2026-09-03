@@ -1,4 +1,4 @@
-// Phase 3.3 — formatting inference + item rendering, docs/breakdown-design.md Sec.4.3 (rev 4).
+// Phase 3.3, formatting inference + item rendering, docs/breakdown-design.md Sec.4.3 (rev 4).
 // All inference reads the source via token spans; nothing is guessed.
 
 import type { ParseResult } from "../../parser/types";
@@ -129,6 +129,6 @@ export function renderAttribute(def: AttributeDef | undefined, name: string, val
 
 export function renderCommand(def: CommandDef | undefined, name: string): Rendered {
   // Bare command (no braces) even for block-kind defs: legal RMS; the block
-  // is synthesized by the first addAttribute (Sec.4.6) — one brace-adding path.
+  // is synthesized by the first addAttribute (Sec.4.6), one brace-adding path.
   return renderNamed(name, def?.arguments, undefined);
 }

@@ -1,5 +1,5 @@
 /**
- * The gap writer — the formatter's whole contact with the text
+ * The gap writer, the formatter's whole contact with the text
  * (docs/formatter-design.md Sec.2).
  *
  * THE INVARIANT: the formatter never changes a token, only the whitespace
@@ -67,7 +67,7 @@ export class GapWriter {
     this.gaps = new Array<string | undefined>(parse.tokens.length + 1).fill(undefined);
   }
 
-  /** The indent of the output line in progress — what a verbatim run shifts to. */
+  /** The indent of the output line in progress, what a verbatim run shifts to. */
   get currentIndent(): string {
     return this.lineIndent;
   }
@@ -145,7 +145,7 @@ export class GapWriter {
     const orig = this.origGap(i);
     if (!hasBreak(orig)) {
       // Intra-line spacing inside a comment is never collapsed, whatever the
-      // policy says — that spacing IS the comment.
+      // policy says. That spacing IS the comment.
       this.write(i, orig);
       return;
     }
@@ -197,7 +197,7 @@ export class GapWriter {
    * Where each token landed in the formatted text. Valid only after `finish()`.
    *
    * The diff preview needs to say "this original line became these output
-   * lines", and the token array is the only thing the two texts share — token
+   * lines", and the token array is the only thing the two texts share. Token
    * `i` is the same token in both, so its two offsets are the correspondence.
    */
   tokenStarts(): readonly number[] {

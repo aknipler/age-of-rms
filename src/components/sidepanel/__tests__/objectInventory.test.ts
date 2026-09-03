@@ -44,7 +44,7 @@ describe("buildObjectInventory", () => {
 
   it("lists group MEMBERS and not the group's own name", () => {
     // The distinguishing case: `create_object FOREST_MIX` writes a group name
-    // in object position, and no placement ever carries that name — every one
+    // in object position, and no placement ever carries that name. Every one
     // of them is a member. A row for the group would always read 0.
     const result = buildObjectInventory(
       parse(
@@ -61,7 +61,7 @@ describe("buildObjectInventory", () => {
   });
 
   it("lists a second_object, which is usually the one that matters", () => {
-    // guide:2211's placeholder idiom — the MAIN object is an invisible carrier
+    // guide:2211's placeholder idiom, the MAIN object is an invisible carrier
     // and the second object is the fish. Missing it would leave the object the
     // author cares about with no row and therefore no way to hide it.
     const result = buildObjectInventory(

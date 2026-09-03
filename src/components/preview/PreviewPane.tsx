@@ -39,7 +39,7 @@ function ReadoutRow({ label, children }: { label: string; children: React.ReactN
 /**
  * The objects on one tile: `GOLD ×4`, or `BOAR (P3), DEER` where they differ.
  *
- * Player ownership is shown only where an object has one — most of what a
+ * Player ownership is shown only where an object has one. Most of what a
  * script places is Gaia, and "(Gaia)" on every entry would bury the cases
  * that matter.
  */
@@ -69,9 +69,9 @@ function TileReadout({ tile }: { tile: TileInfo }) {
       <ReadoutRow label="Terrain">
         {tile.terrainName ?? `terrain ${tile.terrain}`}
         {/* The layer is what a terrain_mask or base_layer painted on top. It
-            is often the thing you are actually LOOKING at — the tile is drawn
-            as a heavy blend of the two — so a readout naming only the terrain
-            reads as a colour bug. */}
+            is often the thing you are actually LOOKING at, since the tile is
+            drawn as a heavy blend of the two, so a readout naming only the
+            terrain reads as a colour bug. */}
         {tile.layer !== null && ` + ${tile.layerName ?? `terrain ${tile.layer}`} layer`}
       </ReadoutRow>
       <ReadoutRow label="Elevation">
@@ -86,7 +86,7 @@ function TileReadout({ tile }: { tile: TileInfo }) {
       {/*
         The other half of the marker. A red triangle on the map says something
         is wrong HERE; only this row says what, and it is the reason the marks
-        need no legend entry beyond naming the glyph — the explanation is one
+        need no legend entry beyond naming the glyph. The explanation is one
         hover away rather than in a key the reader has to hold in their head.
       */}
       {tile.marks.map((mark) => (
@@ -110,11 +110,11 @@ function TileReadout({ tile }: { tile: TileInfo }) {
  * That is deliberate: "line 34" is the only address the user shares with the
  * gutter, and "offset 812" would be true and useless. The shading in the code
  * is what shows the exact point. 1-based here, 0-based everywhere below,
- * converted once — in the two `+ 1`s in this component.
+ * converted once, in the two `+ 1`s in this component.
  *
  * Rendered only in Current. In Final the cut has no effect at all, and a
- * control that changes nothing is worse than no control — the same reasoning
- * that kept this toggle honest while the pin did not exist.
+ * control that changes nothing is worse than no control, which is the same
+ * reasoning that kept this toggle honest while the pin did not exist.
  */
 function PinControl() {
   const { cursorLine, pinnedLine, pinCursor, unpin } = usePreviewCut();
@@ -152,12 +152,12 @@ function PinControl() {
  * The approximate map preview (CREATION_PLAN 4.2/4.3, docs/preview-design.md).
  *
  * Runs the real `generatePreview()` in a dedicated worker (`usePreviewResult`,
- * Sec.10) over the live document's `ParseResult` — the fixture this pane drew
+ * Sec.10) over the live document's `ParseResult`. The fixture this pane drew
  * against through 4.2 (`src/preview/fixture.ts`) is gone; CREATION_PLAN 4.3's
  * last line was "swaps the fixture for the worker" and this is that swap.
  *
  * Current vs Final (Sec.5, CREATION_PLAN 4.6): Final draws the whole script,
- * Current draws the script truncated at the cut point — the pin, or the caret
+ * Current draws the script truncated at the cut point, the pin, or the caret
  * while nothing is pinned. The truncation and the second generation happen in
  * `PreviewResultContext`; the code the cut leaves out is dimmed by `CodePane`
  * and `ItemCard`; this pane owns only the pin control, which reads and writes
@@ -185,7 +185,7 @@ export function PreviewPane() {
   // the context above the tab switch, for the same reason the seed does.
   const [hovered, setHovered] = useState<TilePoint | null>(null);
 
-  const result = usePreviewResultContext();
+  const { result } = usePreviewResultContext();
 
   // Rebuilt when the mode changes: the palette memoises a colour per terrain
   // id, and that cache is only valid for one mode. Keeping one palette and
@@ -224,7 +224,7 @@ export function PreviewPane() {
   // still while you move the pointer somewhere else.
   //
   // Guarded against a dim change (a re-roll at a different map size, or
-  // override_map_size) leaving the selection off the new grid — reading past
+  // override_map_size) leaving the selection off the new grid. Reading past
   // the end of a typed array yields undefined, which would render as "terrain
   // undefined" rather than throwing.
   const shown = selectedTile ?? hovered;
@@ -243,12 +243,12 @@ export function PreviewPane() {
   const dim = result.dim;
 
   return (
-    <div className={styles.pane}>
+    <div className={styles.pane} data-tutorial-anchor="sidePanel.preview">
       <div className={styles.controls}>
         {/*
           The id is the existing `breakdown.sidePanel.previewToggle` rather
           than a new `preview.toggle`. Sec.5 lists the latter "if the pane
-          hosts its own toggle distinct from the Breakdown side panel" — it
+          hosts its own toggle distinct from the Breakdown side panel". It
           does not; this IS that toggle, in that panel, and a second id for
           one control would leave the audit checking two entries for the same
           thing. Its copy is rewritten this session, as Sec.5 requires.
@@ -301,7 +301,7 @@ export function PreviewPane() {
           </button>
         </HelpTip>
         {/*
-          Two real colour sources, not a cosmetic skin — each resolves what the
+          Two real colour sources, not a cosmetic skin. Each resolves what the
           other collapses (see palette.ts's header). Game is the default
           because it is per-terrain; minimap is the game data's own colour
           class, which is coarser but separates forest from underbrush.

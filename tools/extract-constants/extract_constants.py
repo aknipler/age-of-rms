@@ -293,6 +293,377 @@ def build_attribute_entries(attributes: dict[str, int], run_date: str) -> list[d
     return entries
 
 
+# ---------------------------------------------------------------------------
+# 1b. Twelve more random_map.def families, all sitting in sections
+#     `parse_random_map_def_sections` already returns and `object_constants`/
+#     `attribute_constants` deliberately skip: AI map types, civilizations,
+#     water/season presets, cliff types, assign-to targets, and — added in a
+#     second pass once the first six shipped — the effect_amount/effect_percent
+#     vocabulary (effect actions, effect flags, ModifyTech/PlayerData/
+#     ResourceAmount attribute values) plus the one-name Magic Number
+#     Constants section. Same argument as `class_constants` one level down —
+#     these are not object or terrain ids, so a name resolved against the unit
+#     roster would be meaningless (id 45 is simultaneously DOCK, CUSTOM,
+#     CIVILIZATION_GEORGIANS and ATTR_BLAST_DEFENSE), and they must never be
+#     joined against the dat.
+#
+#     With this second pass, every section of random_map.def is now read by
+#     something in this file — nothing is silently dropped any more. The
+#     first pass's own README section ("Scope, measured against the
+#     ~902/1776 target...") named these six sections and `constants.inc`'s
+#     total as the two things left out; both are now covered.
+# ---------------------------------------------------------------------------
+
+#: Section header text -> the category this tool files its names under.
+#: Measured against the current DE build (2026-08-30). The AI-map-type block
+#: carries no header of its own: the file opens with three individually
+#: well-formed `/* ... */` comment lines ("random map types for AI" /
+#: "Numbers come from Object Category ID" / "29 NOV 99"), and
+#: `parse_random_map_def_sections` treats each as a header in turn, so the
+#: LAST one is the section's actual key. Fragile to a future header rewrite —
+#: MISC_FAMILY_MIN_COUNTS below turns a silently-empty section into a loud one
+#: rather than a quietly-shrunk category.
+MISC_FAMILY_SECTIONS = {
+    "29 NOV 99": "mapType",
+    "CIVILIZATIONS": "civilization",
+    "WATER DEFINITIONS": "waterDefinition",
+    "SEASON TYPES": "colorCorrection",
+    "CLIFF TYPES": "cliffType",
+    "ASSIGN TYPES": "assignTarget",
+    # Added in the second pass (2026-08-30). All six are effect_amount's own
+    # third-argument vocabulary, sharing the file's habit of an "ATTR_" prefix
+    # across several UNRELATED families — see `effectFlag`'s and
+    # `modifyTechAttribute`'s schema description for why that prefix does not
+    # make these `attribute` rows.
+    "Effect Constants": "effectAction",
+    "Effect Type Constants": "effectFlag",
+    "ModifyTech Constants": "modifyTechAttribute",
+    "PlayerData Constants": "playerDataAttribute",
+    "ResourceAmount Constants": "resourceAmountType",
+    "Magic Number Constants": "magicNumber",
+}
+
+#: Floor for each family, well under the measured count (41/54/21/19/6/3 for
+#: the first six, 28/6/19/1/34/1 for the second), so a DE patch that adds a
+#: few names doesn't trip it but a renamed or emptied header does. Checked by
+#: `run_misc_constants`, not by the parser itself.
+MISC_FAMILY_MIN_COUNTS = {
+    "mapType": 30,
+    "civilization": 40,
+    "waterDefinition": 15,
+    "colorCorrection": 15,
+    "cliffType": 6,
+    "assignTarget": 3,
+    "effectAction": 20,
+    "effectFlag": 6,
+    "modifyTechAttribute": 15,
+    "playerDataAttribute": 1,
+    "resourceAmountType": 25,
+    "magicNumber": 1,
+}
+
+
+def misc_family_constants(def_text: str) -> dict[str, dict[str, int]]:
+    """category -> {name: id} for the random_map.def families above, sourced
+    by SECTION rather than by name prefix — the same defence
+    `object_constants` and `class_constants` already use, because these ids
+    collide across families exactly the way terrain/object/class ids do."""
+    sections = parse_random_map_def_sections(def_text)
+    out: dict[str, dict[str, int]] = {category: {} for category in MISC_FAMILY_SECTIONS.values()}
+    for title, category in MISC_FAMILY_SECTIONS.items():
+        for name, value in sections.get(title, []):
+            out[category][name] = value
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 1c. includes/constants.inc — DE's second plain-text constant source, never
+#     read by this tool before now. 897 `#const`s (measured 2026-08-30), only
+#     238 of which overlap random_map.def's own 1114: most of its
+#     unit/building/decoration sections restate names random_map.def's
+#     EXPORTED FROM THE DATABASE section already covers under the same
+#     spelling, and the top-of-file block is a second, BRITISH-spelled copy of
+#     three of the six families above (CC_/WD_/CIVILISATION_, against
+#     random_map.def's own CC_/WD_/CIVILIZATION_ — same ids, different name
+#     text, so the two sets never collide by name even though every id does).
+#
+#     Structured as `#define SECTION_NAME /* Section Constants */` markers
+#     wrapping `if SECTION_NAME ... endif` blocks, with per-constant trailing
+#     comments that are real prose ("Doesn't allow blending. Legacy terrain
+#     that is a mixture of DIRT_MUD and GRASS_B."). One name is `#undefine`d
+#     in the same file (NOTHING_OBJECT, a scratch symbol the file uses to zero
+#     out gaia's own slot 0 and then retracts) — excluded here for the same
+#     reason a commented-out `#const` is excluded from random_map.def: it
+#     does not survive to be writable by a script authored after this include
+#     runs.
+# ---------------------------------------------------------------------------
+
+INC_DEFINE_RE = re.compile(r"#define\s+(\w+)")
+INC_UNDEFINE_RE = re.compile(r"#undefine\s+(\w+)")
+INC_CONST_RE = re.compile(r"#const\s+([A-Za-z_][A-Za-z0-9_]*)\s+(-?\d+)\b\s*(?:/\*\s*(.*?)\s*\*/)?")
+
+#: Section macro name -> category. Every section is EITHER terrain ids or
+#: object/unit/building ids under this second, legacy naming scheme (checked
+#: by hand against each section's own numeric range) — never both.
+INC_SECTION_CATEGORY = {
+    "PLACEHOLDER_TERRAINS": "terrainAlias",
+    "TERRAIN_CONSTANTS": "terrainAlias",
+    "UTILITY_CONSTANTS": "objectAlias",
+    "RESOURCE_CONSTANTS": "objectAlias",
+    "REGULAR_UNITS": "objectAlias",
+    "SPECIAL_UNITS": "objectAlias",
+    "ANIMAL_OBJCETS": "objectAlias",  # sic — the file's own misspelling of "OBJECTS"
+    "REGULAR_BUILDINGS": "objectAlias",
+    "SPECIAL_BUILDINGS": "objectAlias",
+    "AESTHETIC_OBJECTS": "objectAlias",
+}
+
+#: Name prefix -> category, checked in order, for the top-of-file block that
+#: carries no `#define` of its own. First match wins.
+INC_PREAMBLE_PREFIXES = [
+    ("CC_", "colorCorrection"),
+    ("WD_", "waterDefinition"),
+    ("CIVILISATION_", "civilization"),
+]
+
+
+def parse_constants_inc(text: str) -> dict[str, list[tuple[str, int, str | None]]]:
+    """category -> [(name, id, trailing_comment_or_None)], in file order.
+
+    Deliberately line-based, like `parse_random_map_def_sections`: a
+    `#define`/`if`/`endif` block is control structure, not a comment, so
+    `strip_rms_comments` is not run first. Trailing comments ARE real
+    per-constant prose and are returned rather than dropped, so a caller can
+    decide by hand whether one belongs in `description` — this function does
+    not make that call.
+    """
+    undefined = set(INC_UNDEFINE_RE.findall(text))
+    current_category: str | None = None
+    out: dict[str, list[tuple[str, int, str | None]]] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        define = INC_DEFINE_RE.match(stripped)
+        if define is not None:
+            current_category = INC_SECTION_CATEGORY.get(define.group(1))
+            continue
+        const = INC_CONST_RE.search(stripped)
+        if const is None:
+            continue
+        name, value, comment = const.group(1), int(const.group(2)), const.group(3)
+        if name in undefined:
+            continue
+        category = current_category
+        if category is None:
+            for prefix, prefix_category in INC_PREAMBLE_PREFIXES:
+                if name.startswith(prefix):
+                    category = prefix_category
+                    break
+        if category is None:
+            continue
+        out.setdefault(category, []).append((name, value, comment))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# 1d. Merge the two sources above into new rows for `run_misc_constants`
+#     (CREATION_PLAN — extract-constants misc families). NEW rows only: never
+#     touches an existing terrain/object/objectClass/attribute row, and never
+#     re-adds a name that's already anywhere in the file, in any category.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MiscConstant:
+    name: str
+    const_id: int
+    source: str  # "random_map.def" or "constants.inc"
+    comment: str | None = None
+
+
+def merge_misc_families(def_text: str, inc_text: str) -> tuple[dict[str, dict[str, MiscConstant]], list[str]]:
+    """category -> {name: MiscConstant}, plus a list of conflict reports.
+
+    random_map.def wins when a name appears in both sources under the SAME
+    category (measured: only the CC_/WD_ overlap, all agreeing ids) — a
+    conflicting id is reported rather than silently overwritten, since that
+    would mean the two sources disagree about a fact rather than restating it.
+    A name appearing under DIFFERENT categories in the two sources (FORTRESS:
+    mapType 16 in random_map.def, objectAlias 33 in constants.inc) is not a
+    conflict — it is two different constants that happen to share text, the
+    same kind of collision this project has documented extensively for
+    numeric ids, one level up on names instead.
+    """
+    combined: dict[str, dict[str, MiscConstant]] = {}
+    conflicts: list[str] = []
+    for category, names in misc_family_constants(def_text).items():
+        bucket = combined.setdefault(category, {})
+        for name, value in names.items():
+            bucket[name] = MiscConstant(name, value, "random_map.def")
+
+    for category, entries in parse_constants_inc(inc_text).items():
+        bucket = combined.setdefault(category, {})
+        for name, value, comment in entries:
+            existing = bucket.get(name)
+            if existing is None:
+                bucket[name] = MiscConstant(name, value, "constants.inc", comment)
+            elif existing.const_id != value:
+                conflicts.append(
+                    f"{category}.{name}: random_map.def says {existing.const_id}, "
+                    f"constants.inc says {value} — kept {existing.const_id}"
+                )
+            # else: same name, same category, same id — constants.inc is
+            # restating random_map.def's own fact; the first source wins and
+            # its (lack of a) comment is kept.
+    return combined, conflicts
+
+
+def misc_descriptive_name(name: str, category: str) -> str:
+    """`descriptiveName` for a misc-family row: the identifier un-shouted, the
+    same treatment `class_descriptive_name`/`build_attribute_entries` give
+    names the dat has no text for. The prefixed families additionally drop
+    their own prefix, since e.g. 'Cc Autumn' repeats the family in every row's
+    name for no reason 'Autumn' doesn't already serve just as well.
+
+    `effectFlag` and `modifyTechAttribute` share the `ATTR_` prefix
+    `build_attribute_entries` strips for `category: attribute` — the same
+    textual convention reused across three unrelated random_map.def sections,
+    stripped here for the same presentation-only reason, not because these
+    rows are attributes.
+    """
+    prefix_by_category = {
+        "colorCorrection": "CC_",
+        "waterDefinition": "WD_",
+        "civilization": None,  # both CIVILIZATION_ and CIVILISATION_ appear; strip either
+        "cliffType": "CT_",
+        "assignTarget": "AT_",
+        "effectFlag": "ATTR_",
+        "modifyTechAttribute": "ATTR_",
+        "resourceAmountType": "AMOUNT_",
+        "playerDataAttribute": "DATA_",
+    }
+    stem = name
+    if category == "civilization":
+        for prefix in ("CIVILIZATION_", "CIVILISATION_"):
+            if name.startswith(prefix):
+                stem = name[len(prefix):]
+                break
+    else:
+        prefix = prefix_by_category.get(category)
+        if prefix and name.startswith(prefix):
+            stem = name[len(prefix):]
+    return stem.replace("_", " ").title()
+
+
+def build_misc_entries(
+    combined: dict[str, dict[str, MiscConstant]], existing_names: set[str], run_date: str
+) -> list[dict]:
+    """New rows for every name in `combined` not already present, under ANY
+    category, in the file's own existing `rmsConstant`s — matching the
+    project's rule that this tool must never re-derive a fact the file
+    already states. Ordered id then name within each category, the same
+    convention `build_attribute_entries` uses."""
+    entries: list[dict] = []
+    for category in sorted(combined):
+        bucket = combined[category]
+        for const in sorted(bucket.values(), key=lambda c: (c.const_id, c.name)):
+            if const.name in existing_names:
+                continue
+            notes = (
+                f"Name -> id pair read from {const.source} by tools/extract-constants --misc-constants "
+                f"{run_date}. NOT joined against empires2_x2_p1.dat — ids in this family are not unique "
+                "against terrain, object or the other extracted-name families, so this row states only "
+                "that the name and id exist together in the game's own definitions."
+            )
+            if const.comment:
+                notes += f" File comment: \"{const.comment}\" (not yet promoted to description — review by hand)."
+            entries.append(
+                {
+                    "constId": const.const_id,
+                    "idSource": "extracted",
+                    "rmsConstant": const.name,
+                    "descriptiveName": misc_descriptive_name(const.name, category),
+                    "category": category,
+                    "verified": True,
+                    "notes": notes,
+                }
+            )
+    return entries
+
+
+def run_misc_constants(install_path: Path, output: Path, dry_run: bool) -> int:
+    """CREATE rows for the misc name-only families above (CREATION_PLAN —
+    extract-constants misc families): every random_map.def section
+    `object_constants`/`attribute_constants` skip, plus includes/constants.inc
+    as a second source. Needs no dat — see the module docstrings above for why
+    joining these against it would be wrong, not merely unnecessary. Never
+    overwrites an existing row and never touches terrain/object/objectClass/
+    attribute rows.
+    """
+    import json
+
+    def_matches = find_file(install_path, "random_map.def")
+    if not def_matches:
+        print("random_map.def not found.", file=sys.stderr)
+        return 1
+    inc_matches = find_file(install_path, "constants.inc")
+    if not inc_matches:
+        print("includes/constants.inc not found.", file=sys.stderr)
+        return 1
+
+    def_text = def_matches[0].read_text(encoding="utf-8", errors="replace")
+    inc_text = inc_matches[0].read_text(encoding="utf-8", errors="replace")
+
+    combined, conflicts = merge_misc_families(def_text, inc_text)
+
+    short = [f"{cat} ({len(combined.get(cat, {}))}, floor {floor})" for cat, floor in MISC_FAMILY_MIN_COUNTS.items() if len(combined.get(cat, {})) < floor]
+    if short:
+        print(
+            "WARNING: a family came back under its measured floor — a DE patch may have renamed or "
+            f"emptied a section header (see MISC_FAMILY_SECTIONS): {', '.join(short)}",
+            file=sys.stderr,
+        )
+
+    if conflicts:
+        print(f"CONFLICTS (same name+category, different id — random_map.def kept): {len(conflicts)}", file=sys.stderr)
+        for line in conflicts:
+            print(f"      {line}", file=sys.stderr)
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    existing_names = {c["rmsConstant"] for c in existing["constants"] if c.get("rmsConstant")}
+    run_date = date.today().isoformat()
+    new_entries = build_misc_entries(combined, existing_names, run_date)
+
+    print(f"\nMisc-family names read: {sum(len(b) for b in combined.values())} across {len(combined)} categories")
+    print(f"New rows to add        : {len(new_entries)}")
+    by_category: dict[str, int] = {}
+    for entry in new_entries:
+        by_category[entry["category"]] = by_category.get(entry["category"], 0) + 1
+    for category in sorted(by_category):
+        already = len(combined.get(category, {})) - by_category[category]
+        print(f"      {category:16s} new={by_category[category]:4d}  already covered={already:4d}")
+
+    # Names that would land in more than one NEW category — not a bug (see
+    # merge_misc_families), but worth printing so a reviewer can see the
+    # by-name lookup (aoe2RmsHover.ts's CONSTANTS_BY_NAME) will only resolve
+    # one of them.
+    name_categories: dict[str, list[str]] = {}
+    for entry in new_entries:
+        name_categories.setdefault(entry["rmsConstant"], []).append(entry["category"])
+    cross_category = {name: cats for name, cats in name_categories.items() if len(cats) > 1}
+    if cross_category:
+        print(f"  Same name, different category (by-name lookups will only resolve one): {len(cross_category)}")
+        for name, cats in sorted(cross_category.items()):
+            print(f"      {name:22s} {', '.join(cats)}")
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(existing["constants"] + new_entries, existing.get("terrainRestrictions")), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
 def verify_class_offset(
     named_classes: dict[str, int],
     classes: dict[int, list[int]],
@@ -943,6 +1314,40 @@ class DatExtraction:
             side_terrains=[int(s) for s in unit.placement_side_terrain],
         )
 
+    def terrain_units(self, const_id: int) -> list[tuple[int, int]] | None:
+        """The units THIS terrain auto-spawns the instant it paints a tile, no
+        create_object involved — `Terrain.terrain_unit_id`/`terrain_unit_density`,
+        the first `number_of_terrain_units_used` slots of two fixed-length
+        arrays, in SLOT ORDER (first-hit-wins down the list for a multi-slot
+        terrain: `P(slot i) = density_i * product of (1 - density_j) for j < i`,
+        the model rev 2 of the status-bar plan measured against four
+        cross-checks already in the file's own `description` prose).
+        `density` is per-mille (1000 = 100%), NOT normalised here — that
+        conversion is `compute_auto_tree_units`'s job, kept separate so the raw
+        reading and the reading of it stay two functions, same split as
+        `placement`/`derive_habitat`.
+        """
+        terrains = self.dat.terrain_block.terrains
+        if not (0 <= const_id < len(terrains)):
+            return None
+        t = terrains[const_id]
+        n = max(0, t.number_of_terrain_units_used)
+        return [(int(t.terrain_unit_id[i]), int(t.terrain_unit_density[i])) for i in range(n)]
+
+    def terrain_restrictions_table(self) -> list[dict]:
+        """The dat's WHOLE `terrain_restrictions` table, one row per restriction
+        id, each expanded to the terrain ids it permits — the top-level
+        `terrainRestrictions` array `--terrain-units` writes. Needed because the
+        forest-wood suppression scan (`src/preview/generator/forestTreeSuppression.ts`)
+        has to resolve an ARBITRARY restriction id a script writes at runtime via
+        `effect_amount ATTR_TERRAIN_ID`, not only the ids the object roster
+        happens to use (`placement()`'s own per-object join)."""
+        out: list[dict] = []
+        for rid, restriction in enumerate(self.dat.terrain_restrictions):
+            row = restriction.passable_buildable_dmg_multiplier
+            out.append({"restrictionId": rid, "permittedTerrainIds": [i for i, v in enumerate(row) if v > 0]})
+        return out
+
     def unit_classes(self) -> dict[int, list[int]]:
         """Genie unit class id -> the unit ids in it, ascending.
 
@@ -1080,6 +1485,81 @@ def merge_terrain_table(entry: dict, placement: "ExtractedPlacement", fit: "Habi
     if fit is not None:
         updated["habitat"] = fit.habitat
         updated["notes"] = habitat_note(entry.get("notes"), fit, placement, run_date)
+    return updated
+
+
+# ---------------------------------------------------------------------------
+# 5bc. Forest auto-spawn units — `--terrain-units` (status-bar accuracy pass,
+# docs/build-log.md's 2026-09-02 "Status bar" entry)
+# ---------------------------------------------------------------------------
+
+# Idempotent same way `_COLOR_NOTE_RE`/`_STORAGE_NOTE_RE` are: matches a
+# sentence THIS function wrote on an earlier run so a re-run replaces it
+# instead of stacking a second copy onto `notes`.
+_TERRAIN_UNITS_NOTE_RE = re.compile(
+    r"\s*autoTreeUnits extracted \S+ by tools/extract-constants --terrain-units "
+    r"\(terrain_unit_id/terrain_unit_density read directly from empires2_x2_p1\.dat, "
+    r"first-hit-wins density model for multi-slot terrains, cosmetic 0-wood slots dropped\)\."
+)
+
+
+def terrain_units_note(run_date: str) -> str:
+    return (
+        f"autoTreeUnits extracted {run_date} by tools/extract-constants --terrain-units "
+        "(terrain_unit_id/terrain_unit_density read directly from empires2_x2_p1.dat, "
+        "first-hit-wins density model for multi-slot terrains, cosmetic 0-wood slots dropped)."
+    )
+
+
+def compute_auto_tree_units(slots: list[tuple[int, int]], wood_by_unit: dict[int, float]) -> list[dict]:
+    """Raw `terrain_units()` slots -> the schema's `autoTreeUnits` shape:
+    density converted from per-mille to 0-1, cosmetic slots DROPPED. Two
+    independent reasons a slot is cosmetic, both measured against the real
+    dat rather than assumed, and a slot dropped for EITHER reason:
+
+    1. **Zero density.** `PINE_FOREST`'s own slot list carries `BUSH` and
+       `DLC_AFRICANBUSH` at density 0 ahead of `PINETREE` at 1000 — decoy
+       entries the first-hit-wins model gives probability 0 regardless (the
+       same two units DO spawn elsewhere, at real density, on `OAK_BUSH`).
+       Keeping a density-0 entry changes no total (0 * anything is 0), so
+       dropping it is purely data hygiene, not a numeric decision.
+    2. **The unit itself carries no `resourceAmounts.wood`** — a genuinely
+       decorative object with a real, nonzero density (the 12 cosmetic-only
+       terrains Q2 of the plan's Step 0 measured: Grass, Dirt, ...).
+
+    Pure: `wood_by_unit` is precomputed by the caller (`DatExtraction.object`
+    per unit id) so this function needs no dat access and is directly
+    unit-testable.
+    """
+    out: list[dict] = []
+    for unit_id, density_permille in slots:
+        if density_permille <= 0:
+            continue
+        wood = wood_by_unit.get(unit_id)
+        if not wood:
+            continue
+        out.append({"objectId": unit_id, "density": round(density_permille / 1000, 4)})
+    return out
+
+
+def merge_terrain_units(entry: dict, auto_tree_units: list[dict], run_date: str) -> dict:
+    """Writes `autoTreeUnits` onto one terrain entry, pure and separate from
+    `merge_entry` for the same reason `merge_terrain_colors`/`merge_terrain_table`
+    are. An EMPTY `auto_tree_units` (no wood-bearing slot measured) removes the
+    field rather than writing `[]` — the schema's own contract is that ABSENT
+    means "not known", not "no trees" (the `isForest` fallback in
+    `forestTrees.ts` reads it that way), so writing `[]` on the ~107
+    non-forest terrain rows would be a claim the schema does not want made and
+    would bloat the file with a hundred rows of it.
+    """
+    updated = dict(entry)
+    if not auto_tree_units:
+        updated.pop("autoTreeUnits", None)
+        return updated
+    updated["autoTreeUnits"] = list(auto_tree_units)
+    existing_notes = _TERRAIN_UNITS_NOTE_RE.sub("", updated.get("notes", "")).strip()
+    note = terrain_units_note(run_date)
+    updated["notes"] = f"{existing_notes} {note}" if existing_notes else note
     return updated
 
 
@@ -1236,6 +1716,10 @@ CONSTANT_KEY_ORDER = [
     # of its values without saying anything.
     "isWater",
     "isForest",
+    # Terrain entries only: the units this terrain auto-spawns, --terrain-units.
+    # Sits beside isForest, which it is read together with (D9's fallback:
+    # isForest true + this field absent means one implicit 100-wood slot).
+    "autoTreeUnits",
     "isHybrid",
     "isBeach",
     "beachTerrain",
@@ -1305,7 +1789,19 @@ def format_constant(entry: dict) -> str:
     return "{ " + ", ".join(parts) + " }"
 
 
-def format_game_constants(constants: list[dict]) -> str:
+def format_terrain_restrictions(rows: list[dict]) -> str:
+    """One line per restriction row, matching `format_game_constants`'s own
+    "no reflow of unrelated lines" discipline — no blank-line grouping here,
+    since restriction rows have no `category` to group by."""
+    lines = []
+    for i, r in enumerate(rows):
+        ids = ", ".join(str(x) for x in r["permittedTerrainIds"])
+        comma = "," if i < len(rows) - 1 else ""
+        lines.append(f'    {{ "restrictionId": {r["restrictionId"]}, "permittedTerrainIds": [{ids}] }}{comma}')
+    return "\n".join(lines)
+
+
+def format_game_constants(constants: list[dict], terrain_restrictions: list[dict] | None = None) -> str:
     # A blank line between category groups (terrain block, then object
     # block) matches the source file's existing hand-formatting and keeps
     # a real run's git diff to just the changed fields, not a reflow of
@@ -1330,6 +1826,16 @@ def format_game_constants(constants: list[dict]) -> str:
         else:
             out_lines.append(row + ",")
     body = "\n".join(out_lines)
+    # `terrain_restrictions` is a SEPARATE top-level key, `game-constants.json`
+    # carries alongside `constants` (the dat's terrain_restrictions table,
+    # `--terrain-units`). EVERY caller of this function has to pass through
+    # whatever the file already had for it, or a run of an unrelated mode
+    # (--colors-only, the full run, ...) silently deletes the table — this is
+    # not hypothetical, it is exactly the CONSTANT_KEY_ORDER trap one level up,
+    # on a top-level key instead of a per-entry one.
+    if terrain_restrictions:
+        tr_body = format_terrain_restrictions(terrain_restrictions)
+        return "{\n  \"constants\": [\n" + body + "\n  ],\n  \"terrainRestrictions\": [\n" + tr_body + "\n  ]\n}\n"
     return "{\n  \"constants\": [\n" + body + "\n  ]\n}\n"
 
 
@@ -1465,7 +1971,86 @@ def run_terrain_table(install_path: Path, output: Path, dat: "DatExtraction | No
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated), encoding="utf-8")
+    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# 5bac. Terrain auto-spawn units + the terrainRestrictions table — `--terrain-units`
+# ---------------------------------------------------------------------------
+
+
+def run_terrain_units(install_path: Path, output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Writes `autoTreeUnits` onto every terrain entry (the units it
+    auto-spawns, no `create_object` involved) and refreshes the top-level
+    `terrainRestrictions` table both come from `empires2_x2_p1.dat`.
+
+    Two independent measurements in one run, same as `--terrain-table`
+    bundles the raw restriction row with the derived `habitat`: the per-terrain
+    spawn table needs the restriction table to be USEFUL (a script's runtime
+    `effect_amount ATTR_TERRAIN_ID` rewrite can only be checked against it),
+    and the restriction table has no home of its own to be written from
+    otherwise.
+    """
+    import json
+
+    if dat is None:
+        print("Cannot extract terrain auto-spawn units without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    constants = existing["constants"]
+    run_date = date.today().isoformat()
+
+    changed: list[tuple[str, list | None, list]] = []
+    unchanged: list[str] = []
+    no_slots: list[str] = []
+    updated: list[dict] = []
+    for entry in constants:
+        if entry.get("category") != "terrain" or entry.get("constId") is None:
+            updated.append(entry)
+            continue
+        const_id = entry["constId"]
+        slots = dat.terrain_units(const_id)
+        if not slots:
+            no_slots.append(entry_label(entry))
+            updated.append(entry)
+            continue
+        wood_by_unit: dict[int, float] = {}
+        for unit_id, _density in slots:
+            obj = dat.object(unit_id)
+            wood = obj.resource_amounts.get("wood") if obj else None
+            if wood:
+                wood_by_unit[unit_id] = wood
+        auto_tree_units = compute_auto_tree_units(slots, wood_by_unit)
+        current = entry.get("autoTreeUnits") or []
+        if current == auto_tree_units:
+            if auto_tree_units:
+                unchanged.append(entry_label(entry))
+            updated.append(entry)
+            continue
+        changed.append((entry_label(entry), entry.get("autoTreeUnits"), auto_tree_units))
+        updated.append(merge_terrain_units(entry, auto_tree_units, run_date))
+
+    terrain_restrictions = dat.terrain_restrictions_table()
+    restrictions_changed = terrain_restrictions != existing.get("terrainRestrictions")
+
+    terrain_entries = sum(1 for c in constants if c.get("category") == "terrain" and c.get("constId") is not None)
+    print(f"Terrain entries with a constId: {terrain_entries}")
+    print(f"  autoTreeUnits agrees with the file: {len(unchanged)}")
+    print(f"  autoTreeUnits CHANGED by this run  : {len(changed)}")
+    for name, before, after in changed:
+        print(f"      {name:22s} {before} -> {after}")
+    if no_slots:
+        print(f"  no terrain_unit slots in the dat   : {len(no_slots)}")
+    print(f"terrainRestrictions table: {len(terrain_restrictions)} rows, {'CHANGED' if restrictions_changed else 'unchanged'}")
+
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    output.write_text(format_game_constants(updated, terrain_restrictions), encoding="utf-8")
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -1615,7 +2200,7 @@ def run_storages(install_path: Path, output: Path, dat: "DatExtraction | None", 
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated), encoding="utf-8")
+    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -1658,7 +2243,7 @@ def run_attributes(install_path: Path, output: Path, dry_run: bool) -> int:
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(kept + entries), encoding="utf-8")
+    output.write_text(format_game_constants(kept + entries, existing.get("terrainRestrictions")), encoding="utf-8")
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -1778,7 +2363,7 @@ def run_classes(install_path: Path, output: Path, dat: "DatExtraction | None", d
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated), encoding="utf-8")
+    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2097,7 +2682,7 @@ def run_roster(install_path: Path, output: Path, dat: "DatExtraction | None", dr
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated), encoding="utf-8")
+    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root, then the before/after corpus diff — the habitat fallback stops firing for hundreds of objects and the preview is expected to MOVE.")
     return 0
@@ -2117,15 +2702,17 @@ def main() -> int:
     parser.add_argument("--ids-only", action="store_true", help="Skip empires2_x2_p1.dat entirely — only fill in constId from random_map.def. Use this if genieutils-py isn't installed or the .dat parse fails on your DE version.")
     parser.add_argument("--colors-only", action="store_true", help="Update ONLY previewColor on terrain entries, from each terrain's existing deTextureFile. Reads no .dat and rewrites no other field — use this to refresh colours without re-extracting everything.")
     parser.add_argument("--terrain-table", action="store_true", help="Update ONLY the engine's terrain table on object entries, read from empires2_x2_p1.dat (preview-design Sec.15 item 23): terrainRestrictionId, allowedTerrains, placementSideTerrain, and the coarse habitat derived from them. Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
+    parser.add_argument("--terrain-units", action="store_true", help="Update ONLY autoTreeUnits on terrain entries (the units a terrain auto-spawns with no create_object, first-hit-wins by slot) plus the top-level terrainRestrictions table, both read from empires2_x2_p1.dat. Rewrites no other field. Prints every entry whose measured autoTreeUnits disagrees with what is in the file.")
     parser.add_argument("--storages", action="store_true", help="Update ONLY the resource-storage data on object entries, read from empires2_x2_p1.dat: the raw resourceStorages slots plus a refreshed resourceAmounts derived from them. Rewrites no other field. This is what tells a consumer whether an effect_amount ATTR_STORAGE_VALUE line changes a resource, a population count or a decay timer.")
     parser.add_argument("--attributes", action="store_true", help="Update ONLY the effect_amount attribute selectors (ATTR_*), read from random_map.def's own Attribute Constants section. Needs no dat file. Rewrites no other field.")
     parser.add_argument("--classes", action="store_true", help="Update ONLY the unit-class data, read from empires2_x2_p1.dat: one objectClass row per genie unit class (with the unit ids in it) plus a classId on every object entry. Rewrites no other field. Verifies the class-to-constant offset against random_map.def first and refuses to write if it disagrees.")
-    parser.add_argument("--roster", action="store_true", help="CREATE an object row for every live gaia unit, read from empires2_x2_p1.dat (CREATION_PLAN 4.10) — the only mode that adds rows rather than filling fields on rows that already exist. Rows are keyed by constId with rmsConstant null where the unit has no name, since unit 1546 has no #const at all. Never overwrites an existing row, and prints every descriptiveName where DE's own display text disagrees with what the file says.")
-    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --classes or --roster to see the diff before taking it.")
+    parser.add_argument("--roster", action="store_true", help="CREATE an object row for every live gaia unit, read from empires2_x2_p1.dat (CREATION_PLAN 4.10) — the only other mode that adds rows rather than filling fields on rows that already exist. Rows are keyed by constId with rmsConstant null where the unit has no name, since unit 1546 has no #const at all. Never overwrites an existing row, and prints every descriptiveName where DE's own display text disagrees with what the file says.")
+    parser.add_argument("--misc-constants", action="store_true", help="CREATE rows for the AI map type / civilization / water definition / color correction / cliff type / assign-to / effect action / effect flag / ModifyTech / PlayerData / ResourceAmount / magic-number families random_map.def keeps in sections this tool otherwise skips, plus includes/constants.inc as a second source. Needs no dat — these ids are never joined against it, since they collide across families and against terrain/object ids the same way the rest of the file's namespaces do. Never overwrites an existing row.")
+    parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --terrain-units, --classes, --roster or --misc-constants to see the diff before taking it.")
     args = parser.parse_args()
 
-    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster)]) > 1:
-        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --classes, --storages, --attributes, --roster) are mutually exclusive.", file=sys.stderr)
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants)]) > 1:
+        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --terrain-units, --classes, --storages, --attributes, --roster, --misc-constants) are mutually exclusive.", file=sys.stderr)
         return 1
 
     install_path = args.install_path or guess_install_path()
@@ -2171,7 +2758,7 @@ def main() -> int:
         existing = json.loads(args.output.read_text(encoding="utf-8"))
         run_date = date.today().isoformat()
         updated_constants = [merge_terrain_colors(e, textures, minimaps, run_date) for e in existing["constants"]]
-        args.output.write_text(format_game_constants(updated_constants), encoding="utf-8")
+        args.output.write_text(format_game_constants(updated_constants, existing.get("terrainRestrictions")), encoding="utf-8")
         terrains = [c for c in updated_constants if c.get("category") == "terrain"]
         print(f"\nWrote {args.output}")
         print(f"{'const':<13} {'texture':<8} {'previewColor (game)':<22} minimapColor")
@@ -2190,6 +2777,9 @@ def main() -> int:
     if args.terrain_table:
         return run_terrain_table(install_path, args.output, load_dat(), args.dry_run)
 
+    if args.terrain_units:
+        return run_terrain_units(install_path, args.output, load_dat(), args.dry_run)
+
     if args.classes:
         return run_classes(install_path, args.output, load_dat(), args.dry_run)
 
@@ -2201,6 +2791,9 @@ def main() -> int:
 
     if args.roster:
         return run_roster(install_path, args.output, load_dat(), args.dry_run)
+
+    if args.misc_constants:
+        return run_misc_constants(install_path, args.output, args.dry_run)
 
     def_matches = find_file(install_path, "random_map.def")
     if not def_matches:
@@ -2253,7 +2846,7 @@ def main() -> int:
         resolved += 1
         updated_constants.append(merge_entry(entry, const_id, dat_extraction, run_date, textures))
 
-    args.output.write_text(format_game_constants(updated_constants), encoding="utf-8")
+    args.output.write_text(format_game_constants(updated_constants, existing.get("terrainRestrictions")), encoding="utf-8")
 
     print(f"\nResolved {resolved}/{len(existing['constants'])} constants against {def_path.name}.")
     if unresolved:

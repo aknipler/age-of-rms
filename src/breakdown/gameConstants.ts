@@ -5,7 +5,7 @@
 export interface GameConstantEntry {
   constId: number | null;
   /**
-   * Null for a row the engine reaches only by bare id — 53 of the 131 terrains
+   * Null for a row the engine reaches only by bare id, 53 of the 131 terrains
    * and 32 of the 56 object classes. This was declared `string` until
    * 2026-08-11, which made every `?? ""` guard against it look like dead code
    * to the compiler while being live at runtime. It is the narrowest slice of
@@ -14,7 +14,7 @@ export interface GameConstantEntry {
    */
   rmsConstant: string | null;
   descriptiveName: string;
-  // Terrain and object rows only — a free-text note transcribed from the
+  // Terrain and object rows only, a free-text note transcribed from the
   // community reference spreadsheets in reference-docs/ (a Comments column
   // there), not something the game's own files carry. Absent means that
   // table has no comment for this constant, not that there is nothing to say.
@@ -25,7 +25,7 @@ export interface GameConstantEntry {
   // rows omit it, because it is a terrain field and 2639 nulls is 56 KB spent
   // restating that objects have no texture.
   deTextureFile?: string | null;
-  // Object rows only, and optional for that reason — the terrain rows that
+  // Object rows only, and optional for that reason, the terrain rows that
   // make up most of this file carry neither. Optional here is a claim about
   // the DATA (a terrain has no habitat) rather than about confidence, which
   // is what keeps `deTextureFile: string | null` above a different shape: a
@@ -34,7 +34,7 @@ export interface GameConstantEntry {
   // Object rows only, present only when true: something else in the gaia roster
   // dies or bleeds into this unit, so it is a carcass or a blood decal rather
   // than something an author places. The reference table hides these by
-  // default. Absent means "not one" — the field is a positive marker, never a
+  // default. Absent means "not one". The field is a positive marker, never a
   // three-state, which is why the consumer tests `!c.isCorpse` and not `=== false`.
   isCorpse?: boolean;
   resourceAmounts?: Record<string, number>;

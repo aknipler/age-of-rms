@@ -1,7 +1,7 @@
 // End-to-end smoke tests for the assembled ToolImplementation
 // (consistency-checker-design.md Sec.4.1's loop, Sec.6's manifest). Exercises
 // the real lifecycle: progress -> partial -> result, cancellation, and a
-// staticOnly fast pass — mirroring tools-api-design.md Sec.9's own lifecycle
+// staticOnly fast pass, mirroring tools-api-design.md Sec.9's own lifecycle
 // list rather than re-deriving it.
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -117,7 +117,7 @@ describe("consistencyChecker.run — lifecycle", () => {
         messages.push(msg);
         if (msg.type === "error" || msg.type === "result") resolve();
       });
-      // Cancel almost immediately — before the run could plausibly finish 800 generations.
+      // Cancel almost immediately, before the run could plausibly finish 800 generations.
       setTimeout(() => handle.cancel(), 5);
     });
     const last = messages[messages.length - 1];
@@ -146,7 +146,7 @@ describe("consistencyChecker.run — lifecycle", () => {
     //
     // Assert the FINDING COUNT, not the block count. A family of two
     // renders as one `severity` plus a two-row `table` (Sec.5.1), so a
-    // severity-block count of 1 is green in BOTH worlds — which is exactly
+    // severity-block count of 1 is green in BOTH worlds, which is exactly
     // the "unit" confusion the finding was about, reappearing in its own
     // regression test.
     const messages = await collect({ params: { staticOnly: true } });
@@ -176,7 +176,7 @@ describe("consistencyChecker.run — lifecycle", () => {
   // Sec.5.1's block-cap gate. The fixture script is far too small to reach
   // `LIMITS.maxBlocksPerOutput`, and the defect that motivated this rule was
   // only ever visible on a real map: `Pa_Site_v1.1.rms` at 1026 blocks. So
-  // this walks the corpus ON DISK rather than naming a map — a clone has 11
+  // this walks the corpus ON DISK rather than naming a map. A clone has 11
   // top-level `.rms` files and a maintainer's disk has 32, and neither run
   // ENOENTs (CLAUDE.md's corpus rule). `staticOnly` keeps it to one AST pass
   // per player count per map, which is where every block in the population
@@ -237,7 +237,7 @@ describe("consistencyChecker.run — lifecycle", () => {
 
   it("the budget ceiling Sec.8 item 5 asks for actually bounds the shipped defaults", () => {
     // The constant existed, was exported, carried a comment citing Sec.8
-    // item 5, and was asserted nowhere — so it could not go red on the
+    // item 5, and was asserted nowhere. So it could not go red on the
     // change it names.
     expect(DEFAULT_RUNS_PER_PLAYER_COUNT * DEFAULT_PLAYER_COUNTS.length).toBeLessThanOrEqual(MAX_GENERATIONS_CEILING);
     expect(MAX_RUNS_PER_PLAYER_COUNT * DEFAULT_PLAYER_COUNTS.length).toBeGreaterThan(MAX_GENERATIONS_CEILING);

@@ -3,9 +3,9 @@ import type { Diagnostic, DiagnosticSeverity, Span, Token } from "./types";
 /**
  * Full diagnostic code table from docs/parser-design.md Sec.10. Severities
  * here are the PINNED defaults; a handful of parser-level codes (marked
- * † in the spec — RMS0201/0202/0203) get downgraded to "info" at the
+ * † in the spec, RMS0201/0202/0203) get downgraded to "info" at the
  * call site when the underlying language.json entry is `"verified": false`
- * (spec Sec.6.2) — that's a per-call override, not part of this table.
+ * (spec Sec.6.2). That's a per-call override, not part of this table.
  *
  * Only the lexer-level codes (RMS0001-0005, RMS0216) are wired up as of
  * Phase 2.2. The rest are listed now, verbatim from the spec, so the
@@ -51,23 +51,23 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   RMS0210: { severity: "warning", summary: "Malformed math expression (nested paren / glued operator / rnd inside / unglued operand)" },
   RMS0211: { severity: "warning", summary: "Quoted path on #includeXS (engine rejects quotes — documented bug)" },
   RMS0212: { severity: "warning", summary: "Digit-prefixed word in a numeric-typed argument slot only" },
-  RMS0213: { severity: "warning", summary: "Nested start_random (engine does not support nesting randoms)" },
+  RMS0213: { severity: "warning", summary: "Nested start_random (resolves correctly — RMSTEST_68 — but unsupported; avoid for portability)" },
   RMS0214: { severity: "warning", summary: "rnd-like token failing the canonical form" },
   RMS0215: { severity: "warning", summary: "Unexpected value where a statement was expected" },
   RMS0216: { severity: "warning", summary: '"//" is not a comment in RMS — use /* */' },
   // Added post-spec (2.4 bug-fix session, not in docs/parser-design.md's
-  // original Sec.10 table — logged there as an amendment instead of a full
+  // original Sec.10 table, logged there as an amendment instead of a full
   // rewrite). Distinct from RMS0203: the value is NOT out of the documented
-  // range (no min/max violation) — it's a real, valid value that reference
+  // range (no min/max violation), it's a real, valid value that reference
   // data flags as risky. Message must say so explicitly (see cautionMessage
   // on the triggering language.json entry) so it doesn't read as an error.
   //
   // INFO, not warning (changed 2026-08-05). `cautionBelow` is a per-argument
-  // scalar, so the check can only see the value — never the condition that
+  // scalar, so the check can only see the value, never the condition that
   // makes it risky, which lives elsewhere in the block. The border caution is
   // the whole of its current use and the corpus settles it: of the 135
   // attributable sites, 135 sit in a block that also carries `land_position`
-  // or `base_size` — the guide's own two prescribed mitigations — and 0 sit in
+  // or `base_size`, the guide's own two prescribed mitigations, and 0 sit in
   // a block with neither. A warning severity would fire hardest on authors who
   // did the documented thing, which is goal #5 exactly backwards. Upgrading it
   // needs the block-level condition, and that belongs in validate().
@@ -84,20 +84,20 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // (RMS00xx lexical, RMS01xx structural, RMS02xx names/arguments).
   //
   // Severity discipline is unchanged from Sec.10: error is a strong claim
-  // (goal #5). Exactly one code here carries it — RMS0311, whose condition
+  // (goal #5). Exactly one code here carries it, RMS0311, whose condition
   // is engine-verified and whose consequence is a map that ships broken.
   RMS0300: { severity: "warning", summary: "Name is not defined anywhere in this file" },
   RMS0301: { severity: "warning", summary: "Redefinition — the first definition wins in-engine" },
   // Split by what the engine actually does, which is NOT the same for the two
   // kinds of name Sec.8 lumped together (2026-07-31 corpus review, spec Sec.8
   // amended). A game constant really is defined before the script runs, so a
-  // user #const of it never takes effect — but only a value that DIFFERS from
+  // user #const of it never takes effect, but only a value that DIFFERS from
   // the engine's is a bug, and the warning tier is reserved for that. A
   // predefined LABEL is not defined unconditionally at all (see RMS0312), so
   // it never belonged under this code.
   RMS0302: { severity: "warning", summary: "User #const of a built-in game constant — the engine keeps its own value" },
   RMS0303: { severity: "warning", summary: "Name is used above the line that defines it" },
-  // DELIBERATELY NOT BUILT — listed, like the Phase 2.2 codes above it, so the
+  // DELIBERATELY NOT BUILT, listed, like the Phase 2.2 codes above it, so the
   // number stays reserved and nobody re-derives it. Sec.8 asks for a
   // wrong-section warning from `CommandDef.section`, but that field records
   // where the guide DOCUMENTS a command, not where the engine accepts it:
@@ -115,9 +115,9 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   RMS0310: { severity: "info", summary: "Non-functional syntax — parses, but does nothing in DE" },
   RMS0311: { severity: "error", summary: "base_elevation without an <ELEVATION_GENERATION> section" },
   // Added 2026-07-31 by the corpus review, carved out of RMS0302. Every one of
-  // language.json's 138 predefinedLabels is a RUNTIME CONDITION — the engine
+  // language.json's 138 predefinedLabels is a RUNTIME CONDITION. The engine
   // defines EMPIRE_WARS only in an Empire Wars game, MAPSIZE_TINY only on a
-  // tiny map — so a user #define of one is not shadowed and not a no-op. It
+  // tiny map, so a user #define of one is not shadowed and not a no-op. It
   // switches the condition on by hand, which is the documented way to test a
   // mode-specific branch. Info, never warning: the corpus's six instances are
   // all guarded by a testing flag and all correct.
@@ -128,21 +128,21 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // token stream, so a condition that already appeared earlier in that chain
   // cannot be reached. No guard algebra, no monotonicity precondition, no
   // reference data. Found DE's own nomad.rms testing INDOMALAYAN_TROPICAL
-  // twice in one ladder — 23 lines of biome configuration that never run.
+  // twice in one ladder, 23 lines of biome configuration that never run.
   RMS0313: { severity: "warning", summary: "elseif repeats a condition from earlier in the same chain — the branch is unreachable" },
   // CREATION_PLAN 2.6, built 2026-07-31. RMS0301's claim ("the first
   // definition wins, this value never applies") reached across execution
   // paths rather than along one: an earlier definition guarded by a SUBSET of
   // this one's conditions has already run whenever this one can. Separate
-  // code rather than a widened RMS0301 because the fix differs — RMS0301 says
+  // code rather than a widened RMS0301 because the fix differs, RMS0301 says
   // delete the line, this usually says move the unconditional default below
-  // the conditional ones — and because a shared code makes the two
+  // the conditional ones, and because a shared code makes the two
   // indistinguishable in a corpus measurement.
   RMS0314: { severity: "warning", summary: "#const is shadowed by an earlier one whose conditions this line also requires" },
   // Added 2026-08-10. A guide "Requires:" line, which reads like documentation
   // of an attribute and is a rule about the whole block: without a partner
   // attribute the command places NOTHING, silently, while the rest of the map
-  // generates normally. Same argument for reporting it as RMS0304 — an author
+  // generates normally. Same argument for reporting it as RMS0304. An author
   // cannot find this by looking at their map. The only entry today is
   // ignore_terrain_restrictions, confirmed in game rather than reasoned from
   // the guide alone, and the check reads `requiresOneOf` from the data so a
@@ -215,7 +215,7 @@ export function slashSlashComment(token: Token): Diagnostic {
 }
 
 // ---- Parser-level diagnostic builders (Phase 2.3) ----
-// Message philosophy per docs/parser-design.md Sec.10: beginner-first — say
+// Message philosophy per docs/parser-design.md Sec.10: beginner-first, say
 // what's wrong AND what to do. Severity comes from the pinned table above;
 // `capToInfo` implements the spec's † rule (Sec.6.2): arity/type/range
 // diagnostics against `"verified": false` reference entries never rise
@@ -304,14 +304,14 @@ export function degradedToRaw(first: Token, last: Token, unclosedAtEof = false):
 }
 
 /**
- * RMS0111 — a word inside a comment whose value is 69, which is the engine's
+ * RMS0111, a word inside a comment whose value is 69, which is the engine's
  * own id for `/*`. The engine resolves constants inside comments, comments
  * nest, and the script's closing marker then shuts only the inner one: every
  * line below is invisible to the game (parser-design Sec.2.1 amendment,
  * measured by `RMSTEST_55/56a/57/60`).
  *
  * **The wording is part of the fix.** This failure is completely invisible in
- * play — no crash, no error, a map that generates and looks plausible — so the
+ * play, no crash, no error, a map that generates and looks plausible, so the
  * diagnostic is the author's only route to it. It names the token (the comment
  * may be long), states that everything below is gone (which is what justifies
  * error severity), says the map still generates (or the author hunts for a
@@ -336,15 +336,15 @@ export function sharedBlock(openToken: Token): Diagnostic {
 }
 
 /**
- * RMS0200. Two messages, because the two branches rest on different evidence —
- * see docs/known-issues.md BUG-005 for the measurement behind the split.
+ * RMS0200. Two messages, because the two branches rest on different evidence.
+ * See docs/known-issues.md BUG-005 for the measurement behind the split.
  *
  * **With a did-you-mean**, a known name sits within edit distance of this one.
  * That is *positive* evidence of a typo (the same distance-based reasoning
  * RMS0300 uses), and it also licenses the behavioural clause: if the author
  * meant `set_loose_grouping` and wrote `set_loose grouping`, the engine
  * demonstrably is not applying loose grouping. Install-wide this branch is
- * where the value is — it found all 563 true positives in the 276-file DE
+ * where the value is. It found all 563 true positives in the 276-file DE
  * scan, including `set_loose grouping` 457 times and `set_scale_by_group`
  * singular 96 times in `includes/water_blending.inc`, a file that writes the
  * correct plural 47 times alongside.
@@ -352,7 +352,7 @@ export function sharedBlock(openToken: Token): Diagnostic {
  * **Without one**, the only evidence is that the name is absent from
  * `language.json`, and CLAUDE.md's positive-resolver rule is explicit that
  * absence from reference data proves nothing. The old text asserted "the
- * engine will silently ignore it" on exactly that, 858 times on the corpus —
+ * engine will silently ignore it" on exactly that, 858 times on the corpus,
  * and was plausibly *false* on its single largest input, since
  * `avoidance_distance` (256 of the 858) is undetermined rather than wrong: no
  * shipped script can distinguish a real attribute from a discarded token when
@@ -400,23 +400,23 @@ export function argTypeMismatch(token: Token, argDef: { name: string; type: stri
 /**
  * A bare word sits in a numeric slot and is NOT a symbol this file defines
  * above the use (`#const`/`#define`). Still RMS0202, but the message names
- * the real problem — the name is undefined, not "the wrong type" — and the
+ * the real problem, the name is undefined, not "the wrong type", and the
  * severity depends on how much of the picture we can actually see.
  *
  * Why this exists (docs/parser-design.md Sec.6, amended): using a `#const` as an
- * attribute value is standard RMS idiom —
+ * attribute value is standard RMS idiom, for example:
  *
  *     #const PL_LANDS_CLUMPING_FAC 15
  *     create_land { clumping_factor PL_LANDS_CLUMPING_FAC }
  *
- * — and the original rule ("numeric slots accept number/rnd/expression/inf")
+ * The original rule ("numeric slots accept number/rnd/expression/inf")
  * warned on every one of them. That is a goal-#5 violation (no false warnings
  * on legal maps), so a word that resolves to a known symbol now draws nothing
  * at all, and only genuinely-unresolvable names reach this builder.
  *
  * `includesPresent` softens to info, mirroring Sec.7's rule for unknown symbols:
  * an `#include_drs` can define constants we cannot see, so we must not claim
- * the name is undefined — Pa_Site pulls 43 includes and would otherwise drown.
+ * the name is undefined. Pa_Site pulls 43 includes and would otherwise drown.
  */
 export function unresolvedConstantInNumericSlot(
   token: Token,
@@ -507,7 +507,7 @@ export function digitPrefixedWord(token: Token): Diagnostic {
 export function nestedRandom(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0213",
-    "start_random blocks cannot be nested — use a first random block to #define which additional random block to run.",
+    "Nested start_random resolves correctly (measured, RMSTEST_68), but the engine does not officially support it — use a first random block to #define which additional random block to run instead, for portability.",
     toSpan(token),
   );
 }
@@ -522,7 +522,7 @@ export function malformedRnd(token: Token): Diagnostic {
 
 // Distinct from argOutOfRange (RMS0203, "outside the documented range"):
 // this fires for a value that IS within the documented/allowed range but
-// that the reference data flags as risky — the message text comes from
+// that the reference data flags as risky. The message text comes from
 // the triggering language.json entry's own cautionMessage, so it can say
 // plainly that the value is valid RMS rather than reading as an error.
 export function valueCaution(token: Token, message: string): Diagnostic {
@@ -543,20 +543,20 @@ export function unexpectedValue(first: Token, last: Token): Diagnostic {
 //
 // 1. INCLUDE SOFTENING (Sec.7). An `#include_drs` can define constants we
 //    cannot read, so once a file has any include we must not claim a name is
-//    undefined — every "I can't find this" diagnostic drops to info and says
+//    undefined. Every "I can't find this" diagnostic drops to info and says
 //    why. Pa_Site pulls 43 includes and would otherwise drown in false
 //    warnings. Same rule the parser already applies in
 //    unresolvedConstantInNumericSlot; shared here as one helper so the two
 //    passes can't drift apart.
 // 2. BEGINNER-FIRST WORDING (Sec.10). Every message says what the engine
-//    actually does — "ignores it and keeps going", "uses the last one",
-//    "the first definition wins" — because the defining property of all of
+//    actually does, "ignores it and keeps going", "uses the last one",
+//    "the first definition wins", because the defining property of all of
 //    these is that the map still generates. Nothing looks broken, which is
 //    exactly why they're worth reporting.
 
 /**
  * Drops a diagnostic to info and appends the "may be in an include" caveat.
- * Applied only to diagnostics that assert a name is missing — never to ones
+ * Applied only to diagnostics that assert a name is missing, never to ones
  * about structure (duplicate definitions, wrong section), which an include
  * file cannot explain away.
  */
@@ -595,7 +595,7 @@ export function crossCategoryConstant(
 }
 
 /**
- * Only ever raised with a `suggestion` — a name close enough to be a typo of
+ * Only ever raised with a `suggestion`, a name close enough to be a typo of
  * something real. The message leads with the consequence rather than the
  * spelling, because the consequence is the part that isn't visible: the map
  * generates perfectly and this branch simply never runs.
@@ -628,7 +628,7 @@ export function duplicateDefinition(token: Token, firstDefinitionLine: number): 
  * The message says what to do instead, not only what is wrong.
  *
  * Otherwise both sit under conditions and the earlier one's are a subset, so
- * the message names the shared ones — that is the part the author has to see
+ * the message names the shared ones. That is the part the author has to see
  * to believe the claim, since the two lines can be hundreds of lines apart.
  */
 export function subsumedDefinition(token: Token, firstDefinitionLine: number, earlierConditions: string[]): Diagnostic {
@@ -643,7 +643,7 @@ export function subsumedDefinition(token: Token, firstDefinitionLine: number, ea
  * RMS0302, warning tier. The only version of this check with a real bug behind
  * it: the script assigns a value the engine will never adopt, so every use of
  * the name below still means the engine's number. Raised only on POSITIVE
- * evidence of the mismatch — a verified `constId` to compare against and an
+ * evidence of the mismatch, a verified `constId` to compare against and an
  * integer literal to compare it with (spec Sec.6's provenance gate).
  */
 export function shadowedConstantValueIgnored(token: Token, engineValue: number, writtenValue: number): Diagnostic {
@@ -655,15 +655,15 @@ export function shadowedConstantValueIgnored(token: Token, engineValue: number, 
 }
 
 /**
- * RMS0302, info tier — the dominant real-world case by a wide margin. All 73
+ * RMS0302, info tier, the dominant real-world case by a wide margin. All 73
  * corpus instances redefine a constant to the value the engine already has,
  * inside an `if TERRAIN_CONSTANTS` documentation header copied between maps.
  * The line genuinely does nothing, which is worth saying once and quietly; it
  * is not worth a warning and it is certainly not worth "pick a different name",
  * since the author's intent is to write the ID down, not to change it.
  *
- * `engineValue` is absent when the constants DB has no verified ID to quote —
- * the claim then narrows to "the engine keeps its own definition", which holds
+ * `engineValue` is absent when the constants DB has no verified ID to quote.
+ * The claim then narrows to "the engine keeps its own definition", which holds
  * without knowing the number.
  */
 export function redundantConstantDefinition(token: Token, engineValue?: number): Diagnostic {
@@ -677,7 +677,7 @@ export function redundantConstantDefinition(token: Token, engineValue?: number):
 /**
  * RMS0312. Deliberately NOT phrased as a mistake. The engine sets these from
  * the game being played, so `#define EMPIRE_WARS` is a working override in
- * every game that isn't Empire Wars — the standard way to exercise a
+ * every game that isn't Empire Wars, the standard way to exercise a
  * mode-specific branch while authoring. The only thing worth saying is what
  * happens if it ships unguarded.
  */
@@ -712,8 +712,8 @@ export function missingPlayerSetup(at: Span): Diagnostic {
  * The message leads with the reasoning rather than the rule, because the rule
  * ("first match wins in an if/elseif chain") is one every programmer already
  * knows and would not have violated on purpose. What makes this worth a
- * diagnostic is that the two branches can sit hundreds of lines apart — the
- * corpus specimen has 130 lines between them — so nothing about reading the
+ * diagnostic is that the two branches can sit hundreds of lines apart, the
+ * corpus specimen has 130 lines between them, so nothing about reading the
  * code locally reveals it.
  */
 export function unreachableBranch(token: Token, earlierLine: number): Diagnostic {
@@ -725,7 +725,7 @@ export function unreachableBranch(token: Token, earlierLine: number): Diagnostic
 }
 
 /**
- * Raised on the LATER of the two, which is the one that survives — so the
+ * Raised on the LATER of the two, which is the one that survives, so the
  * message says which value the engine keeps rather than only that a rule was
  * broken. The author's next question after "these are duplicated" is always
  * "which of my two numbers is the map using".
@@ -739,8 +739,8 @@ export function duplicateAttribute(token: Token, firstUseLine: number): Diagnost
 }
 
 /**
- * RMS0307. The base message claims only what `mutexWith` actually records — the
- * guide lists the two as mutually exclusive — because for most pairs that is
+ * RMS0307. The base message claims only what `mutexWith` actually records, the
+ * guide lists the two as mutually exclusive, because for most pairs that is
  * all the guide says. It used to add "they set the same thing two different
  * ways", which is false for the pair that dominates this check's output:
  * `set_scale_by_size` scales the tile count and `set_scale_by_groups` scales
@@ -761,7 +761,7 @@ export function mutuallyExclusive(
 }
 
 /**
- * RMS0315 — an attribute whose guide "Requires:" partner is nowhere in the block.
+ * RMS0315, an attribute whose guide "Requires:" partner is nowhere in the block.
  *
  * The message leads with the CONSEQUENCE for the same reason RMS0304's does:
  * "this attribute requires that one" reads as a syntax rule and earns a shrug,
@@ -803,23 +803,23 @@ export function chanceLint(kind: ChanceLintKind, at: Span): Diagnostic {
   // Two of the five aren't evidence of a mistake. An under-99 total is a real
   // technique (a random block that sometimes does nothing), and an rnd()
   // with equal bounds is usually a templated line someone flattened on
-  // purpose — 11 of them in one corpus map, e.g. rnd(96,96). A genuinely
+  // purpose, 11 of them in one corpus map, e.g. rnd(96,96). A genuinely
   // REVERSED range is different: nobody writes rnd(5,1) deliberately.
   return kind === "under99" || kind === "constantRange" ? { ...diagnostic, severity: "info" } : diagnostic;
 }
 
-/** `guidance` is the def's own `deprecated` string — the data says what to do instead. */
+/** `guidance` is the def's own `deprecated` string, the data says what to do instead. */
 export function deprecatedCommand(token: Token, guidance: string): Diagnostic {
   return makeDiagnostic("RMS0309", `"${token.text}" is obsolete — ${guidance}. It still runs, so this is safe to leave.`, toSpan(token));
 }
 
 /**
- * RMS0304 — a `sectionLocked` command sitting where the engine discards it.
+ * RMS0304, a `sectionLocked` command sitting where the engine discards it.
  *
  * The message states the CONSEQUENCE rather than the rule, because the rule
  * ("commands belong to sections") reads as a style convention and earns a
  * shrug. What makes this worth a warning is that the line does nothing at all,
- * silently, while the rest of the map generates normally — which is precisely
+ * silently, while the rest of the map generates normally, which is precisely
  * what RMSTEST_33a/33b measured, three runs each. An author cannot find this by
  * looking at their map, and that is the whole argument for reporting it.
  *
@@ -837,8 +837,8 @@ export function wrongSection(token: Token, belongsIn: string, foundIn: string): 
 /**
  * `replacedBy` is set only for the dead ATTRIBUTE strings, where a working
  * name exists and the whole point of carrying an entry is to say so. The
- * directives have no replacement — `#undefine` and `#include` correspond to
- * nothing you should write instead — so their message ends at "delete it".
+ * directives have no replacement, `#undefine` and `#include` correspond to
+ * nothing you should write instead, so their message ends at "delete it".
  */
 export function nonFunctionalSyntax(token: Token, replacedBy?: string): Diagnostic {
   const message = replacedBy
@@ -852,7 +852,7 @@ export function nonFunctionalSyntax(token: Token, replacedBy?: string): Diagnost
 /**
  * The one error-severity semantic check (spec Sec.10: error is a strong
  * claim). Both halves of the wording are deliberate. That the slopes don't
- * generate without the section is verified — in-game, Phase 4.1, by
+ * generate without the section is verified, in-game, Phase 4.1, by
  * RMSTEST_4_negelev.rms. That the map then crashes when played is a
  * second-hand report from the guide's author and is attributed, not asserted;
  * the check earns its severity from the first half alone.

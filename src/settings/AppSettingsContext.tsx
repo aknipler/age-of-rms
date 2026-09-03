@@ -25,7 +25,7 @@ import { AUTHOR_NAME_KEY, AUTHOR_NAME_MAX_LENGTH, DEFAULT_AUTHOR_NAME } from "./
  * make an unrelated preference re-render all of that. Adding a tab to the
  * Settings dialog should not mean editing the help system.
  *
- * Persisted, unlike PreviewViewContext — this is how you want the app to
+ * Persisted, unlike PreviewViewContext, this is how you want the app to
  * behave rather than where you happen to be looking, which is the same line
  * SidePanelLayoutContext draws.
  */

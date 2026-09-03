@@ -8,11 +8,11 @@ import cardStyles from "./cards.module.css";
 import styles from "./DirectiveCard.module.css";
 
 // docs/breakdown-design.md Sec.3.6. Includes the "has no effect in DE"
-// badge for nonFunctional directives (#undefine/#include — flagged in
+// badge for nonFunctional directives (#undefine/#include, flagged in
 // language.json per Sec.0.1 P2), and the string-overload distinction:
 // #const/#define NAME are never quoted, #include_drs/#includeXS filename
 // args re-emit their original quoting (Sec.3.4's pinned
-// DirectiveNode.hash -> IncludeInfo.directiveToken lookup) — both are
+// DirectiveNode.hash -> IncludeInfo.directiveToken lookup), both are
 // handled uniformly by setArgValue/renderValue (computeEdit consults the
 // same lookup), so this card doesn't special-case quoting itself.
 export function DirectiveCard({ directive }: DirectiveCardProps) {
@@ -24,7 +24,7 @@ export function DirectiveCard({ directive }: DirectiveCardProps) {
   return (
     <div className={cardStyles.card}>
       <div className={styles.header}>
-        {/* Only the static name gets its own HelpTip here — each arg's
+        {/* Only the static name gets its own HelpTip here, each arg's
             AttributeValueEditor (-> ValueEditor) already wraps its own
             input in a HelpTip with the same id, and nesting a second
             identical-id wrapper around it produced two overlapping

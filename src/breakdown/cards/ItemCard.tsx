@@ -32,17 +32,17 @@ function renderInner(item: Item) {
 
 /**
  * Central dispatcher, docs/breakdown-design.md Sec.3.2's table. Every `Item`
- * kind maps to exactly one card component — the mapping is total
+ * kind maps to exactly one card component. The mapping is total
  * (cardKindForItem throws on an unhandled kind at compile time via its
  * `never` exhaustiveness check), so nothing in the AST is silently
  * dropped from the UI (goal #3).
  *
- * Sec.3.9 (post-3.4) — this is also the single place that makes every card
+ * Sec.3.9 (post-3.4), this is also the single place that makes every card
  * selectable, incl. nested ones: BlockList recursively renders ItemCard
  * for a branch's items too, so wrapping here covers top-level AND nested
  * cards uniformly with no per-card-type change. stopPropagation is the
  * whole mechanism for "clicking a value editor inside a card also
- * selects that card, but doesn't ALSO select an ancestor conditional" —
+ * selects that card, but doesn't ALSO select an ancestor conditional",
  * the innermost ItemCard's click handler fires first (React bubbles
  * child-to-parent) and stops it there.
  */
@@ -55,7 +55,7 @@ export function ItemCard({ item }: { item: Item }) {
   // Sec.5): a card the preview is ignoring is dimmed, so "the map stops
   // here" is visible on this tab too and not only in the code.
   //
-  // Nested cards get this for free, and correctly — BlockList renders
+  // Nested cards get this for free, and correctly. BlockList renders
   // ItemCard recursively, so a `create_land` whose block was cut in half
   // stays lit while the attributes below the cut dim inside it. That is
   // exactly what the generator did to it.
@@ -67,7 +67,7 @@ export function ItemCard({ item }: { item: Item }) {
         ignoredByPreview ? styles.ignoredByPreview : ""
       }`}
       // Cross-tab sync (post-3.9 follow-up) scrolls a specific card into
-      // view by querying for this exact attribute — see BreakdownPane's
+      // view by querying for this exact attribute, see BreakdownPane's
       // mount-sync effect. The offset (span.start) is the same value used
       // as the anchor everywhere else in the selection system.
       data-anchor={item.span.start}

@@ -1,10 +1,10 @@
-// Tests for generatePreview() (Sec.10/Sec.13) — the orchestration layer
+// Tests for generatePreview() (Sec.10/Sec.13), the orchestration layer
 // only. Each stage's OWN internal correctness (candidate filtering, grouping
 // scope, growth heuristics, ...) is already deeply covered by that stage's
 // own test file and its own corpus gate; re-proving it here would duplicate
 // coverage rather than add any. What this file checks is specific to wiring
 // S0-S6 together into one callable PreviewResult: base-terrain resolution
-// (no stage file owns this — every one of them was tested via a hand-rolled
+// (no stage file owns this; every one of them was tested via a hand-rolled
 // `place()` helper that hardcoded GRASS), snapshot boundaries, cross-stage
 // note dedup, and Sec.13's own "Determinism (bedrock)" requirement, which
 // literally cannot be tested before this function exists as one unit.
@@ -112,12 +112,41 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
 
   it("`base_terrain BEACH` therefore has tiles to match: the command places rather than reporting terrainAbsent", () => {
     // 67 uses across the tracked corpus. This is the observable that
-    // refuted the single-late-pass design — those commands did not error,
+    // refuted the single-late-pass design; those commands did not error,
     // they silently painted nothing.
     const result = run(`${coastline}<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nbase_terrain BEACH\nland_percent 100\nnumber_of_clumps 9320\n}\n`, 3);
     const report = result.reports.at(-1)!;
     expect(report.placed).toBeGreaterThan(0);
     expect(report.failures.some((f) => f.bucket === "terrainAbsent")).toBe(false);
+  });
+
+  it("dresses the boundary a connection command carves through open water (Sec.15 item 31, RMSTEST_70)", () => {
+    // Two player islands joined by one create_connect_all_players_land with
+    // replace_terrain, the same idiom AD4 - Pag - v1.2.rms uses for its
+    // causeways. DIRT exists nowhere else on the map, so any DIRT tile
+    // touching BEACH can only be the post-connection pass at work — the S1
+    // pass ran before the path existed and only ever touched GRASS/WATER.
+    const script =
+      "<LAND_GENERATION>\nbase_terrain WATER\ncreate_player_lands {\nterrain_type GRASS\nland_percent 8\nbase_size 3\nborder_fuzziness 0\ncircle_radius 20 0\n}\n<CONNECTION_GENERATION>\ncreate_connect_all_players_land {\nreplace_terrain WATER DIRT\n}\n";
+    const result = run(script, 3, false, { playerCount: 2, mapSize: "Tiny" });
+    const DIRT = constants.find((c) => c.rmsConstant === "DIRT")!.constId!;
+    const { dim, terrain } = result.grid;
+    let dirtBesideBeach = false;
+    for (let y = 0; y < dim && !dirtBesideBeach; y++) {
+      for (let x = 0; x < dim && !dirtBesideBeach; x++) {
+        if (terrain[y * dim + x] !== DIRT) continue;
+        const neighbours = [
+          [x - 1, y],
+          [x + 1, y],
+          [x, y - 1],
+          [x, y + 1],
+        ];
+        dirtBesideBeach = neighbours.some(
+          ([nx, ny]) => nx >= 0 && nx < dim && ny >= 0 && ny < dim && terrain[ny * dim + nx] === BEACH,
+        );
+      }
+    }
+    expect(dirtBesideBeach).toBe(true);
   });
 });
 
@@ -141,13 +170,53 @@ describe("generatePreview: snapshots (Sec.5)", () => {
   });
 
   it("the S6 snapshot's grid matches the final placed-objects run (same seed, same script)", () => {
-    // Sec.5: "the S6 snapshot is the final grid plus the full objects list" —
-    // objects aren't IN the grid, so this only checks the terrain layer
+    // Sec.5: "the S6 snapshot is the final grid plus the full objects list".
+    // Objects aren't IN the grid, so this only checks the terrain layer
     // reflects every earlier stage's writes (e.g. S1's base fill survives
     // into S6 wherever no later stage painted over it).
     const result = run("<LAND_GENERATION>\nbase_terrain WATER\n", 1, true);
     const s6 = result.snapshots!.find((s) => s.stage === "S6")!;
     expect(s6.terrain[0]).toBe(WATER);
+  });
+});
+
+describe("generatePreview: land-placement-design.md Sec.3.8's two prerequisites", () => {
+  it("landOrigins is always present and reflects the script's own create_land commands, regardless of collectSnapshots", () => {
+    const result = run(
+      "<LAND_GENERATION>\ncreate_land {\nterrain_type GRASS\nland_percent 20\nland_position 30 30\n}\n",
+      1,
+      false,
+      { playerCount: 2 },
+    );
+    expect(result.landOrigins).toHaveLength(1);
+    expect(result.landOrigins[0].x).toBeGreaterThanOrEqual(0);
+    expect(result.landOrigins[0].y).toBeGreaterThanOrEqual(0);
+  });
+
+  it("landOrigins is the empty array, not undefined, for a script with no lands", () => {
+    const result = run("<LAND_GENERATION>\n", 1, false);
+    expect(result.landOrigins).toEqual([]);
+  });
+
+  it("grid is always present, regardless of collectSnapshots, and is the FINAL (S6) state", () => {
+    const withoutSnapshots = run("<LAND_GENERATION>\nbase_terrain WATER\n", 1, false);
+    expect(withoutSnapshots.grid).toBeDefined();
+    expect(withoutSnapshots.grid.dim).toBe(withoutSnapshots.dim);
+    expect(Array.from(withoutSnapshots.grid.terrain)).toEqual(Array.from(withoutSnapshots.grid.terrain, () => WATER));
+  });
+
+  it("grid matches the S6 snapshot's own terrain layer when both are collected", () => {
+    const result = run("<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n", 1, true, { playerCount: 2 });
+    const s6 = result.snapshots!.find((s) => s.stage === "S6")!;
+    expect(Array.from(result.grid.terrain)).toEqual(Array.from(s6.terrain));
+    expect(Array.from(result.grid.elevation)).toEqual(Array.from(s6.elevation));
+  });
+
+  it("landOrigins[].commandSpan lets a caller click through to the create_land that placed it", () => {
+    const source = "<LAND_GENERATION>\ncreate_land {\nterrain_type GRASS\nland_percent 20\nland_position 30 30\n}\n";
+    const result = run(source, 1, false, { playerCount: 2 });
+    const span = result.landOrigins[0].commandSpan;
+    expect(source.slice(span.start, span.end)).toContain("create_land");
   });
 });
 
@@ -166,7 +235,7 @@ describe("generatePreview: cross-stage note dedup (Sec.10: 'a final pass keeps t
 
 describe("generatePreview: failure marks (Sec.15 item 5)", () => {
   // The marks are derived in index.ts from the origins and the finished grid,
-  // so this is the only file that can test them — which is also the argument
+  // so this is the only file that can test them, which is also the argument
   // for deriving them here rather than inside lands.ts.
 
   it("marks a land the border settings leave nowhere to place", () => {
@@ -214,7 +283,7 @@ describe("generatePreview: failure marks (Sec.15 item 5)", () => {
 
   it("does NOT mark an ordinary growth shortfall, which is the normal outcome", () => {
     // Two lands each declaring the whole map. Both fall far short, both are
-    // drawn at their real size, and neither is a lie — measured over the
+    // drawn at their real size, and neither is a lie. Measured over the
     // corpus, growthShortfall fires 230 times across 35 maps at a median 12%
     // of target, so marking it would speckle nearly every map. This test is
     // the guard on that decision: it goes red the moment somebody widens the
@@ -262,7 +331,7 @@ describe("generatePreview: determinism (Sec.13 bedrock)", () => {
   const corpusDir = join(REPO_ROOT, "test-maps");
   // Taken from disk, never named. Half of test-maps/ is gitignored, so a
   // hardcoded filename is a test that passes here and ENOENTs on a fresh
-  // clone — `24hr_A Heart Map.rms` broke CI that way on 2026-08-10. Same
+  // clone; `24hr_A Heart Map.rms` broke CI that way on 2026-08-10. Same
   // selection the corpus gate below already uses.
   const sampleMaps = readdirSync(corpusDir, { withFileTypes: true })
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".rms"))
@@ -313,12 +382,12 @@ describe("corpus: generatePreview never throws, and its output is internally con
   // make this file alone slower than the rest of npm test combined (each
   // run is a full S0-S6 pipeline, the same per-map cost objects.test.ts's
   // own 25-map corpus gate already pays once). So: the full corpus runs
-  // ONCE per map at a single baseline (seed 1, 4 players — matching every
+  // ONCE per map at a single baseline (seed 1, 4 players, matching every
   // sibling stage's own corpus gate), and both the seed and player-count
   // axes get their extra coverage on a small subset instead, per Sec.13's
   // own prescribed trade. This gate exists to catch ORCHESTRATION bugs (a
   // stage fed the wrong grid, a report dropped, a snapshot boundary in the
-  // wrong place) — every stage's own internal correctness is already the
+  // wrong place); every stage's own internal correctness is already the
   // job of that stage's own corpus gate, run at every player count there.
   const corpusDir = join(REPO_ROOT, "test-maps");
   const corpusFiles = readdirSync(corpusDir, { withFileTypes: true })

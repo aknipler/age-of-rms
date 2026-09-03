@@ -1,16 +1,17 @@
 // Sec.12 corpus gates. Two tiers:
 //
-// 1. EVERY .rms in test-maps/ (including test-maps/local/, test-maps/broken/
-//    and any still-untriaged additions): parseRms must not throw and must
-//    satisfy the coverage + span-fidelity properties. Non-negotiable.
+// 1. EVERY .rms in test-maps/ (including test-maps/local/, test-maps/broken/,
+//    test-maps/rms-check/ and any still-untriaged additions): parseRms must
+//    not throw and must satisfy the coverage + span-fidelity properties.
+//    Non-negotiable.
 // 2. The TRIAGED allowlist below additionally passes the zero-error gate.
 //    A file joins this list only after the per-map triage protocol
-//    (generates in DE + every diagnostic triaged — spec Sec.12). The corpus
+//    (generates in DE + every diagnostic triaged, spec Sec.12). The corpus
 //    grew to ~52 files in July 2026; triage is incremental, so most files
 //    are tier-1 only for now.
 //
 // BCC2-Rekawa is deliberately NOT in the allowlist: its glued `}8050`
-// (line 891) makes RMS0101 fire by design — it belongs in test-maps/broken/
+// (line 891) makes RMS0101 fire by design. It belongs in test-maps/broken/
 // or fixed, per the spec.
 
 import { readdirSync, readFileSync, existsSync } from "node:fs";
@@ -34,6 +35,14 @@ const BROKEN_DIR = join(MAPS_DIR, "broken");
 // corpus too, and a measurement whose inputs no gate ever runs is a
 // measurement that can rot without anyone noticing.
 const LOCAL_DIR = join(MAPS_DIR, "local");
+// The test_rms/ set from Divy1211/rms-check (GPL-3.0), added 2026-08-29. Also
+// gitignored, it is somebody else's corpus, not ours to redistribute, and
+// kept out of test-maps/local/ because it is a different KIND of input: tiny
+// synthetic probes for name liveness and random-block unification, several
+// deliberately malformed (`#const 5+_players`, a bare `#const P(L)`). Mixing
+// them into local/ would quietly change what "the local corpus" means for the
+// scoping measurements in docs/build-log.md that were taken over it.
+const RMSCHECK_DIR = join(MAPS_DIR, "rms-check");
 
 const refDb: ValidateReferenceDb = {
   language: lang,
@@ -54,7 +63,7 @@ const ZERO_ERROR_ALLOWLIST = [
   "Pa_Site_v1.1.rms",
   "OWWC1Tewaipounamu-edited-v1.2.rms",
   "AK_Hourglass_v2.0.rms",
-  "AK_Vanguard_v1.2.rms", // renamed from Vanguard_v1.2.rms — the old name silently dropped it from this gate
+  "AK_Vanguard_v1.2.rms", // renamed from Vanguard_v1.2.rms. The old name silently dropped it from this gate
 ];
 
 // `.rms2` is deliberately NOT matched. DE ships some official maps under that
@@ -73,6 +82,7 @@ const allMaps = [
   ...listRms(MAPS_DIR).map((name) => ({ name, path: join(MAPS_DIR, name) })),
   ...listRms(LOCAL_DIR).map((name) => ({ name: `local/${name}`, path: join(LOCAL_DIR, name) })),
   ...listRms(BROKEN_DIR).map((name) => ({ name: `broken/${name}`, path: join(BROKEN_DIR, name) })),
+  ...listRms(RMSCHECK_DIR).map((name) => ({ name: `rms-check/${name}`, path: join(RMSCHECK_DIR, name) })),
 ];
 
 describe("corpus: no-throw + coverage + span fidelity (every file)", () => {
@@ -111,7 +121,7 @@ describe("corpus: zero-error gate (triaged allowlist)", () => {
 
 // The semantic pass gets the same treatment as the parser: it runs over every
 // file (must not throw), and over the triaged allowlist it must raise no
-// error-severity diagnostic — these are maps confirmed to generate in DE, so
+// error-severity diagnostic. These are maps confirmed to generate in DE, so
 // an error against one is by definition a false alarm. RMS0311 is the only
 // error this pass can raise, which makes this gate a live check on
 // `requiresSection` data rather than a formality.
@@ -189,9 +199,9 @@ describe("corpus: benchmark sanity (Vanguard, ~50k tokens)", () => {
  * This exists because the unit tests in `lexer.test.ts` pass with the feature
  * switched OFF everywhere else: the corpus gates above call `parseRms` with no
  * options, so a feature only the worker configures would never meet a real
- * file. Two tracked maps do contain this — both a commented-out
+ * file. Two tracked maps do contain this, both a commented-out
  * `create_object SHORE_FISH { … }` block, which is what an author writes when
- * disabling a command — and each loses about half its lines in game.
+ * disabling a command, and each loses about half its lines in game.
  *
  * Selected from disk, never named: `.gitignore` whitelists only a handful of
  * maps, so naming one that happens to be on a maintainer's machine passes here
@@ -217,7 +227,7 @@ describe("corpus: a word valued 69 inside a comment truncates the file (Sec.2.1 
   });
 
   it("reports which maps the engine truncates", () => {
-    // Not a threshold — a census. It prints so the number is re-derived each
+    // Not a threshold, a census. It prints so the number is re-derived each
     // run rather than quoted from a doc that ages.
     console.log(
       `[comment-alias] ${affected.length} of ${allMaps.length} corpus maps are truncated in game:`,

@@ -1,4 +1,4 @@
-// Team canonicalisation and label derivation — preview-design.md Sec.3.1.
+// Team canonicalisation and label derivation, preview-design.md Sec.3.1.
 //
 // PURE ON PURPOSE. No React, no Tauri, no I/O. The Phase 4 preview generator
 // runs in a bare web worker and must import this same function rather than
@@ -11,7 +11,7 @@ import { MAX_TEAM, NO_TEAM, type TeamNumber } from "./generationSettingsConstant
 export interface CanonicalTeams {
   /**
    * Canonical team per player, index = player - 1, length = playerCount
-   * (NOT 8 — players above the count are not in the game at all).
+   * (NOT 8, players above the count are not in the game at all).
    */
   canonical: readonly TeamNumber[];
   /** Surviving team count: the k in `<k>_TEAM_GAME`. 0 for an FFA lobby. */
@@ -43,7 +43,7 @@ export function canonicaliseTeams(
 ): CanonicalTeams {
   // Group the players who are actually in the game by their picked number.
   // Insertion order of a Map is insertion order of first appearance, which
-  // IS lobby order here — so no explicit sort is needed for step 3 below.
+  // IS lobby order here, so no explicit sort is needed for step 3 below.
   const bySelected = new Map<TeamNumber, number[]>();
   for (let i = 0; i < playerCount; i += 1) {
     const pick = selected[i] ?? NO_TEAM;
@@ -77,8 +77,8 @@ export function canonicaliseTeams(
  * The predefined labels this lobby defines (preview-design Sec.3.1).
  *
  * Returns NAMES ONLY. The caller resolves each against
- * language.json's predefinedLabels rather than trusting these strings —
- * constructing a name and assuming it exists is precisely what CLAUDE.md's
+ * language.json's predefinedLabels rather than trusting these strings.
+ * Constructing a name and assuming it exists is precisely what CLAUDE.md's
  * data-driven-vocabulary rule forbids, and the test asserts every name
  * returned here is really in the data.
  *

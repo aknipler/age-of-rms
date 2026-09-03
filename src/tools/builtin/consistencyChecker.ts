@@ -33,10 +33,10 @@ import {
 } from "./checker/report";
 
 // ---------------------------------------------------------------------------
-// Sec.4.4's budget — named constants rather than embedded literals, per
+// Sec.4.4's budget, named constants rather than embedded literals, per
 // Sec.8 item 5: the comment must say this bounds the KNOB, not the time,
 // since per-generation cost spans 6x across the corpus and a further 1.4x
-// across map size (Sec.4.4) — no generation count pins a duration.
+// across map size (Sec.4.4); no generation count pins a duration.
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_PLAYER_COUNTS = [2, 4, 6, 8] as const;
@@ -44,7 +44,7 @@ export const DEFAULT_RUNS_PER_PLAYER_COUNT = 15;
 export const MIN_RUNS_PER_PLAYER_COUNT = 5;
 export const MAX_RUNS_PER_PLAYER_COUNT = 200;
 export const DEFAULT_BASE_SEED = 1;
-/** [tune]: a ceiling on `runsPerPlayerCount * playerCounts.length`, so a future default change is caught — see Sec.8 item 5. */
+/** [tune]: a ceiling on `runsPerPlayerCount * playerCounts.length`, so a future default change is caught, see Sec.8 item 5. */
 export const MAX_GENERATIONS_CEILING = 100;
 
 // ---------------------------------------------------------------------------
@@ -112,8 +112,8 @@ export const consistencyCheckerManifest: ToolManifest = {
       default: false,
     },
   ],
-  // edit-source is not declared — this tool reports, it does not patch code.
-  // read-selection is not declared — nothing here is selection-scoped.
+  // edit-source is not declared, this tool reports, it does not patch code.
+  // read-selection is not declared, nothing here is selection-scoped.
 };
 
 // ---------------------------------------------------------------------------
@@ -190,7 +190,7 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
 
   const languageIndex = buildLanguageIndex(ctx.referenceData.language);
   const constants = ctx.referenceData.gameConstants;
-  // Sec.4.1: this conversion happens ONCE, before any loop — never per
+  // Sec.4.1: this conversion happens ONCE, before any loop, never per
   // generation, or the WeakMap index objectEntry builds gets silently rebuilt
   // every single run.
   const refDb: PreviewReferenceData = { language: languageIndex, constants: objectConstantsFromPublished(constants) };
@@ -200,7 +200,7 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
   // the SAME baseSeed the Monte Carlo layer starts from.
   // -------------------------------------------------------------------
   // Sec.5.2's "Elapsed" is the whole run's, and with `staticOnly: true` the
-  // static layer IS the whole run — set below the static loop it reported
+  // static layer IS the whole run, set below the static loop it reported
   // `0.0s` for a pass that walks the AST once per selected player count.
   const startedAt = Date.now();
 
@@ -212,7 +212,7 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
     const bridged = previewSettingsFromContext(ctx, { playerCount: pc });
     if (!bridged.ok) {
       // NOT `continue`. Skipping every count silently produces a report whose
-      // header reads "Total generations 60" over empty tables — the "clean
+      // header reads "Total generations 60" over empty tables, the "clean
       // report on a script the tool read none of" failure Sec.5.4's
       // covered-fraction clause exists to prevent, arriving through the
       // settings door. Same treatment as the missing `referenceData` above.
@@ -246,7 +246,7 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
   if (!staticOnly) {
     for (let i = 0; i < selectedCounts.length; i++) {
       const pc = selectedCounts[i];
-      // Sec.4.1: `runIndex` RESETS at each player count — 2/4/6/8 is a paired
+      // Sec.4.1: `runIndex` RESETS at each player count, 2/4/6/8 is a paired
       // comparison over one seed set, not four unrelated seed ranges.
       for (let runIndex = 0; runIndex < runsPerPlayerCount; runIndex++) {
         if (isCancelled()) {
@@ -260,7 +260,7 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
           // `PreviewBridgeFailure` reason is a property of `ctx`, which that
           // loop already validated and bailed on. Kept, and kept as an ERROR
           // rather than a `continue`, because the alternative is what this
-          // loop used to do — count the generation as `completed` and print
+          // loop used to do, count the generation as `completed` and print
           // "Total generations 60" over a report built from fewer.
           emit({
             type: "error",
@@ -280,14 +280,14 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
           fraction: totalGenerations > 0 ? completed / totalGenerations : undefined,
           note: `${pc} players — run ${runIndex + 1} of ${runsPerPlayerCount}`,
         });
-        // Sec.4.1: chunk unit is ONE generation — generatePreview is
+        // Sec.4.1: chunk unit is ONE generation, generatePreview is
         // synchronous and cannot yield inside itself, so the macrotask
         // boundary has to sit HERE, between calls, for a pending cancel to
         // ever be serviced.
         await yieldToEventLoop();
       }
 
-      // Sec.4.5: a `partial` after every completed count EXCEPT the last —
+      // Sec.4.5: a `partial` after every completed count EXCEPT the last,
       // the last count's batch completing leaves the aggregate identical to
       // what `result` carries next, so a partial there is a redundant
       // full re-render for no benefit.

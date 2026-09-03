@@ -117,7 +117,7 @@ function formatAttributeSignature(entry: { name: string; arguments?: Argument[] 
 }
 
 // Arguments carry cautionBelow/cautionMessage (RMS0217, added 2.4 bug-fix
-// session) for values that are valid RMS but risky — e.g. a negative
+// session) for values that are valid RMS but risky, e.g. a negative
 // border value that can crash the game. The live parser diagnostic only
 // fires once you've actually typed such a value; hover is what surfaces
 // the same warning *before* you type it, so it needs to render
@@ -166,14 +166,14 @@ export function registerAoe2RmsHoverProvider() {
     // async: needs to check the persisted help-mode setting (same Tauri
     // store the React-side HelpSettingsContext reads/writes, see
     // src/help/helpConstants.ts) before deciding whether to show anything.
-    // Monaco's hover API accepts a Promise return, so this just works —
-    // the popup appears once the store read resolves rather than
+    // Monaco's hover API accepts a Promise return, so this just works.
+    // The popup appears once the store read resolves rather than
     // blocking the UI thread.
     async provideHover(model, position) {
       const store = await load(HELP_STORE_FILE, { autoSave: true, defaults: {} });
       const savedMode = await store.get<string>(HELP_MODE_KEY);
       // Monaco's own hover only has an on/off toggle, not the alt-hover
-      // distinction HelpTip has — so it stays visible for both "hover"
+      // distinction HelpTip has, so it stays visible for both "hover"
       // and "alt-hover", and only "off" suppresses it.
       if (isHelpMode(savedMode) && savedMode === "off") return null;
 
@@ -183,7 +183,7 @@ export function registerAoe2RmsHoverProvider() {
       const { word, startColumn, endColumn } = wordInfo;
       const lineContent = model.getLineContent(position.lineNumber);
       // getWordAtPosition excludes leading punctuation, so a directive
-      // like #const is returned as just "const" — check the character
+      // like #const is returned as just "const". Check the character
       // right before the word to reconstruct the real directive name.
       const precedingChar = lineContent.charAt(startColumn - 2);
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { evaluateExpressionTokens, roundForIntegerSlot } from "../generator/mathEval";
 
 // Mirrors src/parser/__tests__/parser.test.ts's "math expressions (Sec.2.2)"
-// block — that suite asserts the same scripts ASSEMBLE correctly; this one
+// block; that suite asserts the same scripts ASSEMBLE correctly; this one
 // asserts what they EVALUATE to. Token arrays here are exactly how the
 // parser splits each source string on whitespace (parser-design Sec.2.2),
 // not something this test derives independently.
@@ -33,7 +33,7 @@ describe("evaluateExpressionTokens", () => {
   it("reproduces the guide's own worked example: (GOLD_COUNT + (5 + 2)) -> 8, dropping (5", () => {
     // The guide states the result (8) without stating GOLD_COUNT's value.
     // GOLD_COUNT=6 is chosen HERE because it reproduces 8 under this model
-    // (6, then the invalid "(5" operand is dropped, then +2 -> 8) — that
+    // (6, then the invalid "(5" operand is dropped, then +2 -> 8); that
     // match is a self-consistency check on the model, not a claim about
     // what the guide's own source script actually defined GOLD_COUNT as.
     const result = evaluateExpressionTokens(
@@ -78,9 +78,54 @@ describe("evaluateExpressionTokens", () => {
     expect(result).toBe(0);
   });
 
-  it("x % 0 -> left operand truncated toward zero (Sec.2.2, guide line 4550)", () => {
+  // MEASURED 2026-08-30 (RMSTEST_64, BUG-022), reversing the 2026-08-29 owner
+  // decision that had followed the guide's main math text ("Dividing by 0
+  // gives 0. Modulo 0 also gives 0.") instead of the Summer 2025 Update note
+  // Sec.2.2 originally cited. The note was right: this is the pin for that
+  // decision, so a future re-reversal has exactly one place to go.
+  it("x % 0 -> the left operand, truncated toward zero (RMSTEST_64)", () => {
     expect(evaluateExpressionTokens(["(7", "%", "0)"], constants({}))).toBe(7);
     expect(evaluateExpressionTokens(["(-7.5", "%", "0)"], constants({}))).toBe(-7);
+  });
+
+  // The cast is the half RMSTEST_47 never exercised: every arm of that run used
+  // integer operands, so it pinned the SIGN and left these free to be wrong.
+  it("% casts BOTH operands to int before taking the remainder", () => {
+    // JS's native % gives 2.7 / 2.1 here, the fractional part survives.
+    expect(evaluateExpressionTokens(["(5.7", "%", "3)"], constants({}))).toBe(2);
+    expect(evaluateExpressionTokens(["(5", "%", "2.9)"], constants({}))).toBe(1);
+  });
+
+  // The case the SIN macro rests on: `θ % 360` truncates θ, so R is an integer
+  // for ANY input and `(R * 2 + 1) % 2` is always ±1. See
+  // docs/land-placement-design.md Sec.5.4.
+  it("a divisor larger than the dividend truncates: X % Y == (int)X when |Y| > |X|", () => {
+    expect(evaluateExpressionTokens(["(51.43", "%", "360)"], constants({}))).toBe(51);
+    expect(evaluateExpressionTokens(["(-51.43", "%", "360)"], constants({}))).toBe(-51);
+  });
+
+  // Reachable only because the cast happens FIRST: neither operand is zero.
+  // RMSTEST_64 arm 7 (BAMBOO_TREE) cross-checked exactly this shape and is the
+  // one arm whose four candidate readings landed on four different values,
+  // which is why the observed 600 was decisive on its own.
+  it("a divisor that truncates to zero is a modulo by zero", () => {
+    expect(evaluateExpressionTokens(["(5.7", "%", "0.5)"], constants({}))).toBe(5);
+  });
+
+  // RMSTEST_47's three measured arms, kept as a regression pin: the cast must
+  // not disturb the sign rule it was measured alongside.
+  it("keeps RMSTEST_47's measured sign rule (sign of the dividend)", () => {
+    expect(evaluateExpressionTokens(["(-7", "%", "2)"], constants({}))).toBe(-1);
+    expect(evaluateExpressionTokens(["(7", "%", "-2)"], constants({}))).toBe(1);
+    expect(evaluateExpressionTokens(["(-7", "%", "-2)"], constants({}))).toBe(-1);
+  });
+
+  // The old mod() reached `Infinity % 5`, which is NaN, a value
+  // PROHIBITED_VALUE_KINDS forbids from crossing the tools boundary.
+  it("never produces NaN from a non-finite dividend", () => {
+    const result = evaluateExpressionTokens(["(inf", "%", "5)"], constants({}));
+    expect(Number.isNaN(result)).toBe(false);
+    expect(result).toBe(Infinity);
   });
 
   it("idiomatic flooring via -inf: (5.9 % -inf) -> 5", () => {

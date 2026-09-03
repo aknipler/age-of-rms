@@ -22,7 +22,7 @@ interface SettingsTab {
   /** Matches an id in reference/data/ui-help.json. */
   helpId: string;
   /**
-   * The panel component itself, not an element — SettingsDialog picks one
+   * The panel component itself, not an element, SettingsDialog picks one
    * out of this table and renders `<Panel />`. Storing the component in
    * data (rather than a switch statement in the dialog) means adding a tab
    * is one entry here plus one file, and the dialog never changes.

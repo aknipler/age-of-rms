@@ -133,6 +133,22 @@ export function isOnMap(point: TilePoint, dim: number): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < dim && point.y < dim;
 }
 
+/**
+ * Fractional tile point -> percent-of-map (0-100), the coordinate space
+ * `land-placement-design.md`'s panel modules share (viewModel.ts's own
+ * `percentToTile`, snapping.ts, dragMath.ts). Deliberately takes the
+ * CONTINUOUS `screenToTile` result rather than an already-floored tile
+ * index: flooring to a tile and then converting to percent rounds twice and
+ * biases a drag toward the map origin by up to half a tile
+ * (land-placement-design.md Sec.7.3 brief, "one piece of arithmetic that
+ * must not end up in the component"). `0` at `dim <= 0`, matching
+ * `snapping.ts`'s own no-op convention for a map with no known size yet.
+ */
+export function tileToPercent(point: TilePoint, dim: number): { x: number; y: number } {
+  if (dim <= 0) return { x: 0, y: 0 };
+  return { x: (point.x / dim) * 100, y: (point.y / dim) * 100 };
+}
+
 /** The whole map's screen bounding box under a viewport. */
 export function mapBounds(viewport: Viewport, dim: number) {
   const halfHeight = halfHeightOf(viewport);

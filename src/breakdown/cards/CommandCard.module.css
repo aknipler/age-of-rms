@@ -47,7 +47,7 @@
   font-size: 0.85rem;
   padding: 0.1rem 0.25rem;
   /* DiagnosticTooltip.tsx's popup anchors to this row (position:
-     absolute, top/bottom: 100%) — needs this to be its containing block,
+     absolute, top/bottom: 100%), needs this to be its containing block,
      same reasoning as AttributeRow.module.css's .row. */
   position: relative;
 }
@@ -67,7 +67,7 @@
   background: var(--info-bg-subtle);
 }
 
-/* The fixed-width column — lives here, not on .argLabel, for the same
+/* The fixed-width column lives here, not on .argLabel, for the same
    reason as AttributeRow.module.css's .labelSlot: .argLabel is nested
    inside <HelpTip>, whose own wrapper becomes the actual flex item once
    help mode is on, so a width set one level too deep has no effect on

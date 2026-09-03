@@ -7,8 +7,8 @@ import { lineOfOffset, resolveCutOffset } from "./preview/generator/truncateAst"
 /**
  * Where Current cuts the script (docs/preview-design.md Sec.5, CREATION_PLAN 4.6).
  *
- * WHY A THIRD ROOT-LEVEL CONTEXT. `PreviewPane` takes no props —
- * `MapSidePanel`'s contract — so anything it needs has to arrive through
+ * WHY A THIRD ROOT-LEVEL CONTEXT. `PreviewPane` takes no props
+ * (`MapSidePanel`'s contract), so anything it needs has to arrive through
  * context, which is the same reason `ParsedDocumentContext` and
  * `PreviewResultContext` exist beside this file. What this one bridges is the
  * shared selection anchor (`useSharedSelection`, owned by `AppContent`): the
@@ -35,7 +35,7 @@ export interface PreviewCutValue {
   pinnedOffset: number | null;
   /**
    * Where Current actually truncates: the pin when there is one, the caret
-   * otherwise, and null when there is neither — in which case Current has
+   * otherwise, and null when there is neither, in which case Current has
    * nothing to cut and draws the whole script, same as Final.
    */
   cutOffset: number | null;
@@ -58,7 +58,7 @@ export function PreviewCutProvider({
   children,
 }: {
   cursorOffset: number | null;
-  /** The source the current parse was computed for — what the pin's shifts are sequenced against. */
+  /** The source the current parse was computed for, what the pin's shifts are sequenced against. */
   source: string;
   parseResult: ParseResult | null;
   children: ReactNode;
@@ -100,7 +100,7 @@ export function PreviewCutProvider({
   const pinnedLine = toLine(pinOffsetForDisplay);
 
   // Depends on `cursorOffset` on purpose. An empty dependency list here would
-  // capture the value from the first render forever — a stale closure, the
+  // capture the value from the first render forever, a stale closure, the
   // same trap PreviewViewContext's `toggleSelectedTile` avoids with the
   // updater form. There is no updater form available for "read another
   // value", so the dependency is the fix.

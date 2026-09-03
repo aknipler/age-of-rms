@@ -2,12 +2,12 @@
  * Sec.4.2's aggregation key and three-state cell model
  * (consistency-checker-design.md). Groups `CommandReport`s by `(commandSpan,
  * playerCount)`, summing `attempted`/`placed` and coalescing `failures` by
- * bucket — the same shape `pushFailure` already uses within one run, applied
+ * bucket, the same shape `pushFailure` already uses within one run, applied
  * again here across N runs.
  *
  * **The record needs a THIRD field or the report cannot tell "attempted
  * nothing" from "was not in the script here".** `runsContaining` is how many
- * of the batch's runs actually produced a report for this span at all —
+ * of the batch's runs actually produced a report for this span at all,
  * `runsContaining === 0` is ABSENT (no entry, see below), between 0 and
  * `runs` is PARTIALLY PRESENT, and `runs` itself is FULLY PRESENT.
  */
@@ -20,7 +20,7 @@ import type { CommandReport, FailureBucket, PlacementFailure, SimulationNote, St
 // ---------------------------------------------------------------------------
 
 export interface AggregateCell {
-  /** Of the runs in this player count's batch, how many contained this commandSpan at all. 0 is never stored — see `MonteCarloAggregate.rows`'s own doc. */
+  /** Of the runs in this player count's batch, how many contained this commandSpan at all. 0 is never stored, see `MonteCarloAggregate.rows`'s own doc. */
   runsContaining: number;
   attempted: number;
   placed: number;
@@ -32,7 +32,7 @@ export interface AggregateRow {
   commandSpan: Span;
   stage: StageId;
   /**
-   * Present ONLY for player counts where `runsContaining > 0` — Sec.4.2's own
+   * Present ONLY for player counts where `runsContaining > 0`, Sec.4.2's own
    * point: "`runsContaining === 0` is ABSENT" is stated as a domain fact
    * about the record, and the natural implementation is a map with no entry
    * rather than an entry reading zero (Sec.4.5 names this exact distinction
@@ -61,7 +61,7 @@ export class MonteCarloAggregate {
     this.sourceLength = length;
   }
 
-  /** Called once per completed generation, BEFORE folding in its reports — a count's `runs` tracks how many generations were attempted at it, independent of which commandSpans any one of them produced. */
+  /** Called once per completed generation, BEFORE folding in its reports. A count's `runs` tracks how many generations were attempted at it, independent of which commandSpans any one of them produced. */
   addGeneration(playerCount: number, reports: readonly CommandReport[], notes: readonly SimulationNote[]): void {
     this.runsPerCount.set(playerCount, (this.runsPerCount.get(playerCount) ?? 0) + 1);
     for (const report of reports) {
@@ -88,12 +88,12 @@ export class MonteCarloAggregate {
     this.notes.addGeneration(notes);
   }
 
-  /** Generations attempted so far at `playerCount` — the batch's own `runs`, not a per-row figure. */
+  /** Generations attempted so far at `playerCount`, the batch's own `runs`, not a per-row figure. */
   runsAt(playerCount: number): number {
     return this.runsPerCount.get(playerCount) ?? 0;
   }
 
-  /** Every row accumulated SO FAR. A `partial` built from this ranges only over `runsAt(pc) > 0` counts — Sec.4.5's own rule; the caller enforces that domain, this method just returns what exists. */
+  /** Every row accumulated SO FAR. A `partial` built from this ranges only over `runsAt(pc) > 0` counts, Sec.4.5's own rule; the caller enforces that domain, this method just returns what exists. */
   allRows(): readonly AggregateRow[] {
     return [...this.rows.values()];
   }
@@ -115,12 +115,12 @@ export function cellStateOf(cell: AggregateCell | undefined): CellState {
 }
 
 // ---------------------------------------------------------------------------
-// Sec.5.4: notes passthrough — an ORDERED pipeline, and every step is load-
+// Sec.5.4: notes passthrough, an ORDERED pipeline, and every step is load-
 // bearing at the DEFAULTS (60 generations), not at one generation:
 //   1. group by KEY, collapsing same-key/different-text into a range;
 //   2. group the result by TEXT;
 //   3. dedupe spans WITHIN the group (steps 1 and 2 both concatenate);
-//   4. overlap-merge, for the covered fraction ONLY — the table renders the
+//   4. overlap-merge, for the covered fraction ONLY, the table renders the
 //      deduped-but-unmerged spans, one row each.
 // Step 3 was the step this file's own comment enumerated and did not
 // implement, at a cost of `count = 58` for one place on `AK_Namatjira`.
@@ -128,17 +128,17 @@ export function cellStateOf(cell: AggregateCell | undefined): CellState {
 
 export interface NoteGroup {
   text: string;
-  /** Distinct spans, deduped across runs AND across the keys/texts the group merged (the SAME span reported by two runs, or by two texts under one key, counts once) — NOT overlap-merged, since this is what the table renders one row per. */
+  /** Distinct spans, deduped across runs AND across the keys/texts the group merged (the SAME span reported by two runs, or by two texts under one key, counts once), NOT overlap-merged, since this is what the table renders one row per. */
   spans: Span[];
   /**
    * Sec.5.4: the group's DISTINCT OCCURRENCES, which is `spans.length` only
    * when every note in it carried a span. A spanless `(key, text)` pair
-   * contributes 1 — it happened, at a place the note does not name — so the
+   * contributes 1, it happened, at a place the note does not name, so the
    * spanless branch reports a real number instead of the `0` a span-derived
    * count gives it.
    */
   count: number;
-  /** `undefined` for a spanless group (no table, no fraction — Sec.5.4's own rule). Computed from the OVERLAP-MERGED union of spans, never the naive sum (Sec.4.5's 1418% defect). */
+  /** `undefined` for a spanless group (no table, no fraction, Sec.5.4's own rule). Computed from the OVERLAP-MERGED union of spans, never the naive sum (Sec.4.5's 1418% defect). */
   coveredFraction?: number;
 }
 
@@ -147,10 +147,10 @@ export interface NoteGroup {
  * key... one group carrying a RANGE rather than two groups". `String.split`
  * on a capturing digit-run regex gives alternating [literal, digits,
  * literal, digits, ..., literal] segments with no placeholder character
- * needed — comparing the literal segments for equality across texts decides
+ * needed, comparing the literal segments for equality across texts decides
  * collapsibility, and only the digit segments get ranged.
  *
- * Returns `undefined` when the texts are not merely a numeric difference —
+ * Returns `undefined` when the texts are not merely a numeric difference,
  * the caller must then keep each text as its OWN entry rather than silently
  * dropping the ones that lost a collapse (a first version of this function
  * fell back to `texts[0]`, which discarded every OTHER text's spans under a
@@ -190,7 +190,7 @@ function mergeSpans(spans: readonly Span[]): Span[] {
 
 interface TextBucket {
   spans: Map<string, Span>;
-  /** This `(key, text)` pair was reported at least once with NO span — one distinct occurrence with nowhere to point. Deduped the same way a span is, so it does not multiply by the run count either. */
+  /** This `(key, text)` pair was reported at least once with NO span, one distinct occurrence with nowhere to point. Deduped the same way a span is, so it does not multiply by the run count either. */
   spanless: boolean;
 }
 
@@ -206,13 +206,13 @@ interface CollapsedEntry {
  * purpose.
  *
  * Sec.5.4's passthrough exists so the checker does not re-derive its own
- * opinion about what the preview could not check — so the bar for excluding a
+ * opinion about what the preview could not check, so the bar for excluding a
  * note is not "low value", it is **"this is not a statement about what the
  * preview could not check at all"**. `automaticBeach` describes engine
  * behaviour the preview models CORRECTLY and completely: beach appears where
  * ground meets deeper ground. It is a true sentence in the wrong section, it
  * fires on most of the corpus, and in the Advanced Tools pane it pushes real
- * findings down the page — which is the one cost this report cannot afford,
+ * findings down the page, which is the one cost this report cannot afford,
  * since a report nobody scrolls to the bottom of has hidden the thing it was
  * run to find.
  *
@@ -221,7 +221,7 @@ interface CollapsedEntry {
  *
  * Everything that is genuinely "we approximated / skipped / could not see
  * this" stays, including the cheap-sounding ones (`behaviorVersion2`,
- * `atColor`) — those are real limitations, and a limitation with low
+ * `atColor`), those are real limitations, and a limitation with low
  * consequence is still a limitation.
  */
 export const NOTE_KEYS_NOT_PASSED_THROUGH: ReadonlySet<string> = new Set(["automaticBeach"]);
@@ -254,7 +254,7 @@ class NoteAggregate {
 
   groups(sourceLength: number): NoteGroup[] {
     // Step 1: per key, collapse to ONE ranged entry when every text under it
-    // differs only numerically; otherwise keep each text as its own entry —
+    // differs only numerically; otherwise keep each text as its own entry,
     // never merge spans into a text that was not theirs.
     const collapsed: CollapsedEntry[] = [];
     for (const byText of this.byKeyText.values()) {
@@ -271,7 +271,7 @@ class NoteAggregate {
         // ONE occurrence for the whole collapsed key, not one per text it
         // interpolated. `sample.rms`'s `automaticBeach` note is one spanless
         // note whose text carries a per-run tile count, so across the 60
-        // default generations it produces 14 distinct texts under one key —
+        // default generations it produces 14 distinct texts under one key,
         // counting the buckets reports 14 occurrences of a thing that
         // happened once per run and is being reported once. This is the same
         // "the count must not track the run count" rule the span dedupe below
@@ -285,7 +285,7 @@ class NoteAggregate {
       }
     }
 
-    // Step 2: group by TEXT — multiple KEYS sharing one literal sentence
+    // Step 2: group by TEXT, multiple KEYS sharing one literal sentence
     // (S0's per-span `unsimulated:<span>` notes are the dominant case) merge here.
     const byText = new Map<string, { spans: Span[]; spanlessCount: number }>();
     for (const { text, spans, spanlessCount } of collapsed) {

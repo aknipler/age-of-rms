@@ -9,7 +9,7 @@ interface GenerationSettingsDialogProps {
 }
 
 // Mirrors SettingsDialog's shape (overlay + fixed box, reuses the shared
-// dialog.module.css — same look, no need for a near-duplicate
+// dialog.module.css, same look, no need for a near-duplicate
 // stylesheet). Deliberately still its own dialog rather than a Settings
 // tab: these are properties of the script being written, not preferences
 // about the app, which is why they open from the status bar. Map
@@ -33,7 +33,7 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
               min={MIN_PLAYER_COUNT}
               max={MAX_PLAYER_COUNT}
               // Locked while a preset that names a player count is active
-              // ("2v2" asserts four players). FFA leaves this enabled — see
+              // ("2v2" asserts four players). FFA leaves this enabled, see
               // TeamPreset.playerCount.
               disabled={playerCountLocked}
               value={playerCount}

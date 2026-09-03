@@ -78,7 +78,7 @@ function ownedCount(grid: TileGrid, landIndex: number): number {
  * it ran out of GROUND rather than because it ran out of turns, which is the
  * only way to state "it filled its wall exactly" without hardcoding the
  * wall's size. Ignores every rejection rule growth itself applies (borders,
- * zone avoidance) — it is a question about the map, not about the land.
+ * zone avoidance). It is a question about the map, not about the land.
  */
 function reachableUnowned(grid: TileGrid, landIndex: number): number {
   const { dim } = grid;
@@ -102,7 +102,7 @@ function reachableUnowned(grid: TileGrid, landIndex: number): number {
   return found;
 }
 
-/** 4-connected component count for one land's owned tiles — the same connectivity RMSTEST_38 measured against. */
+/** 4-connected component count for one land's owned tiles, the same connectivity RMSTEST_38 measured against. */
 function countComponents(grid: TileGrid, landIndex: number): number {
   const { dim } = grid;
   const visited = new Uint8Array(dim * dim);
@@ -145,7 +145,7 @@ describe("neutral (unassigned) create_land origin", () => {
 
   // BUG-009's named regression risk: with no borders the border box IS the
   // map, so the border-relative cross has to reproduce RMSTEST_25's original
-  // map-frame numbers exactly. This test is that pin — it computes the cross
+  // map-frame numbers exactly. This test is that pin. It computes the cross
   // the old map-frame way on purpose, and must keep passing.
   it("a random-sampled origin always lands inside the border bounds and the cross-shape region", () => {
     for (let seed = 1; seed <= 20; seed++) {
@@ -176,7 +176,7 @@ describe("neutral (unassigned) create_land origin", () => {
       expect(origin.x).toBeLessThanOrEqual(boxMax);
       expect(origin.y).toBeLessThanOrEqual(boxMax);
 
-      // Inside the box-frame cross — the rule as it now stands.
+      // Inside the box-frame cross, the rule as it now stands.
       const boxCenter = (boxMax + 1) / 2;
       const boxHalf = 0.35 * ((boxMax + 1) / 2);
       const outsideBoxCross = Math.abs(origin.x - boxCenter) > boxHalf && Math.abs(origin.y - boxCenter) > boxHalf;
@@ -604,7 +604,7 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
 describe("detached seeds stay near their land (Sec.15 item 27)", () => {
   it("a fragmenting land's pieces are splinters off it, not tiles on the far side of the map", () => {
     // A detached seed models a land BREAKING APART. Drawn from the whole map,
-    // as Sec.6.1's text reads, it instead teleports — and a land whose target
+    // as Sec.6.1's text reads, it instead teleports, and a land whose target
     // it can never reach keeps drawing, so those splinters grow without
     // limit. `AK_Six_Points_v1.4.rms` is the case that exposed it: a
     // `land_percent 100` flood walled inside a closed ellipse put DIRT out in
@@ -642,7 +642,7 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
     // was necessary and not sufficient: the radius is max(12, 0.12*dim), so on
     // AK_Six_Points a land whose origin sits 20 tiles from a wall still seeded
     // straight through it, and the map's flood came out at 7,741 / 7,897 /
-    // 10,855 tiles across three seeds against an interior of 14,201 — one
+    // 10,855 tiles across three seeds against an interior of 14,201; one
     // clean region, one plus a stranded blob, and one that escaped into the
     // open sea. The seed-dependence was never in growth, it was in how many
     // seeds happened to jump a wall.
@@ -656,8 +656,8 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
     // 2 tiles apart on a 200 grid and each stamp reaches +/-1, so the wall is
     // sealed 4-connected. An earlier version used `base_size 0` and 120
     // stamps, whose rounded positions left gaps the land simply walked
-    // through — the fixture, not the code, and it failed loudly enough to be
-    // caught.
+    // through. The bug was in the fixture, not the code, and it failed
+    // loudly enough to be caught.
     const wall: string[] = [];
     for (let percent = 0; percent <= 100; percent++) {
       wall.push(
@@ -693,7 +693,7 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
     // is structural: after growth the land is ONE 4-connected piece and there
     // is no free ground left that it could still have walked to. Those two
     // together say the land is exactly the free region its origin sits in,
-    // which the fixed `land_position`s determine — so they pin seed-identity
+    // which the fixed `land_position`s determine, so they pin seed-identity
     // without hardcoding 14,201, a number that would also move if an
     // unrelated land's rules changed (BUG-009's border-relative cross is
     // still unapplied and touches this map).
@@ -702,7 +702,7 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
     // grows its own blob, which shows up as a second component; a seed
     // OUTSIDE the ellipse escapes into the open sea, and the reachable-unowned
     // count then runs to the thousands the sea holds. The pre-fix numbers were
-    // 7,741 / 7,897 / 10,855 tiles across three seeds — one clean region, one
+    // 7,741 / 7,897 / 10,855 tiles across three seeds; one clean region, one
     // plus a stranded blob, one escaped.
     //
     // Normal only, deliberately: at Huge and Giant the same percent positions
@@ -731,7 +731,7 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
 describe("bucketWeights / reservoirSize (Sec.6.1's two growth knobs, isolated from the full pipeline)", () => {
   // reservoirSize is non-zero for every cf < 20, so a full-pipeline
   // connectivity test can't isolate what bucketWeights alone controls (shape
-  // roundness) from what reservoirSize controls (fragmentation) — see the
+  // roundness) from what reservoirSize controls (fragmentation); see the
   // build log entry on the mutation test that found this. Unit-tested here
   // instead.
 
@@ -790,7 +790,7 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     );
     // Scan first, assert once. The land here is ~14k tiles and the earlier
     // form ran four `expect()`s inside the loop, ~57,000 calls, which is a
-    // wall clock rather than a check — the same shape `terrainBitmap.test.ts`
+    // wall clock rather than a check, the same shape `terrainBitmap.test.ts`
     // was rewritten out of (3.97s -> 73ms). It cost ~1.3s standalone against
     // vitest's 5s default, so it went red under load on a machine whose load
     // factor reaches 3.7x. Reporting the first offender by coordinate also
@@ -834,16 +834,68 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     expect(owned).toBeGreaterThan(1000);
   });
 
-  it("keeps two different-zone lands at least other_zone_avoidance_distance apart", () => {
+  it("keeps two different-zone lands apart during growth by the SMALLER of their two other_zone_avoidance_distance values (BUG-016 reopened, RMSTEST_73/RMSTEST_66-recheck, measured 2026-09-03)", () => {
     // Origins only 20 tiles apart (45/55%), each targeting 15000 tiles -- a
-    // ~69-tile-radius circle each -- so without the avoidance check these
-    // would overlap by more than 100 tiles. Any gap that survives has to
-    // come from the constraint, not from the lands simply never meeting.
+    // ~69-tile-radius circle each -- so with no constraint at all these
+    // would freely overlap; the point is to force a genuine contest for the
+    // boundary tile rather than two lands that ran out of budget first.
+    //
+    // A 2026-09-02 pass read RMSTEST_66's real-engine positive control via
+    // bounding-box extent (`max_x(left)` vs `min_x(right)`) and measured
+    // -3/-10/-5, taken as overlap; this DELETED the check. That reading was
+    // wrong -- growth is a randomised frontier process, so two lands' bboxes
+    // can cross on paper (one bulging right at one y, the other bulging left
+    // at a different y) with the patches never actually touching. Re-read
+    // with the TRUE tile-to-tile minimum distance: the same control pair sat
+    // 5-7 tiles apart across all four runs, zero tiles of contact. RMSTEST_73
+    // (one grower against a static different-zone land, far enough away that
+    // its origin doesn't already start inside its own declared distance)
+    // calibrated the model exactly: measured gap = declared value + 1, for
+    // three different declared values, reproducing across three runs. See
+    // lands.ts's violatesZoneAvoidance for the restored check and the full
+    // measurement, and known-issues.md BUG-016 for the write-up.
     const { grid, dim } = placeAndGrow(
       [
         "<LAND_GENERATION>",
         "create_land {\nland_position 45 50\nbase_size 2\nnumber_of_tiles 15000\nzone 1\nother_zone_avoidance_distance 5\n}",
         "create_land {\nland_position 55 50\nbase_size 2\nnumber_of_tiles 15000\nzone 2\nother_zone_avoidance_distance 5\n}",
+      ].join("\n"),
+    );
+    let minGap = Infinity;
+    for (let y = 0; y < dim; y++) {
+      for (let x = 0; x < dim; x++) {
+        const i = tileIndex(grid, x, y);
+        if (grid.landId[i] !== 0) continue;
+        for (let dy = -10; dy <= 10; dy++) {
+          for (let dx = -10; dx <= 10; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
+            const j = tileIndex(grid, nx, ny);
+            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
+          }
+        }
+      }
+    }
+    // Chebyshev distance, matching violatesZoneAvoidance's own metric: the
+    // check rejects any candidate at distance <= the smaller of the two
+    // declared values (5 here, since both match), so the closest tile either
+    // land can ever claim sits at exactly effective+1 = 6 from the other's
+    // territory.
+    expect(minGap).toBe(6);
+  });
+
+  it("does not enforce other_zone_avoidance_distance between two lands sharing a zone (same-zone exemption)", () => {
+    // Same setup as the different-zone test above, but both lands declare
+    // zone 1 -- Sec.6.1's own model text is explicit that the check is
+    // against a DIFFERENT zone only, and RMSTEST_66's same-zone control pair
+    // (measured, real engine) freely interleaves with dozens of tiles of
+    // actual contact, not merely a small gap.
+    const { grid, dim } = placeAndGrow(
+      [
+        "<LAND_GENERATION>",
+        "create_land {\nland_position 45 50\nbase_size 2\nnumber_of_tiles 15000\nzone 1\nother_zone_avoidance_distance 5\n}",
+        "create_land {\nland_position 55 50\nbase_size 2\nnumber_of_tiles 15000\nzone 1\nother_zone_avoidance_distance 5\n}",
       ].join("\n"),
     );
     let minGap = Infinity;
@@ -857,12 +909,43 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
             const ny = y + dy;
             if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
             const j = tileIndex(grid, nx, ny);
-            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.hypot(dx, dy));
+            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
           }
         }
       }
     }
-    expect(minGap).toBeGreaterThanOrEqual(5);
+    expect(minGap).toBe(1);
+  });
+
+  it("applies the SMALLER of two mismatched other_zone_avoidance_distance values, not the larger (RMSTEST_66 pair 3, re-read 2026-09-03)", () => {
+    // Real-engine re-read of RMSTEST_66's asymmetric pair (DIRT3 declared 12,
+    // GRASS3 declared 2) with the true tile-distance method: 3-7 tiles apart
+    // across four runs, three of the four landing on exactly 2+1=3 -- nowhere
+    // near the 12+1=13 the "larger wins" reading would predict.
+    const { grid, dim } = placeAndGrow(
+      [
+        "<LAND_GENERATION>",
+        "create_land {\nland_position 45 50\nbase_size 2\nnumber_of_tiles 15000\nzone 1\nother_zone_avoidance_distance 12\n}",
+        "create_land {\nland_position 55 50\nbase_size 2\nnumber_of_tiles 15000\nzone 2\nother_zone_avoidance_distance 2\n}",
+      ].join("\n"),
+    );
+    let minGap = Infinity;
+    for (let y = 0; y < dim; y++) {
+      for (let x = 0; x < dim; x++) {
+        const i = tileIndex(grid, x, y);
+        if (grid.landId[i] !== 0) continue;
+        for (let dy = -14; dy <= 14; dy++) {
+          for (let dx = -14; dx <= 14; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
+            const j = tileIndex(grid, nx, ny);
+            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
+          }
+        }
+      }
+    }
+    expect(minGap).toBe(3);
   });
 
   it("never lets two lands claim the same tile", () => {
@@ -1013,7 +1096,7 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
 
   it("a later land's terrain wins on tiles it took from an earlier one", () => {
     // Both at the same position, so the second land's origin stamp overwrites
-    // the first's landId — the paint pass must follow that, not script order.
+    // the first's landId. The paint pass must follow that, not script order.
     const source = [
       "<LAND_GENERATION>",
       "create_land {\nland_position 50 50\nbase_size 4\nnumber_of_tiles 1\nterrain_type WATER\n}",
@@ -1097,11 +1180,11 @@ describe("base_elevation (Sec.6.1, applied after growth)", () => {
 });
 
 describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw", () => {
-  // One `it()` per map, not one big loop inside a single `it()` — matching
+  // One `it()` per map, not one big loop inside a single `it()`; matching
   // corpus.test.ts's and instantiate.test.ts's own convention. Growth on a
   // handful of maps (e.g. Crownwood's deliberately-unclamped land_percent
   // 1024, Sec.6.1) can legitimately run every step of the 4*dim^2 cap before
-  // giving up, and vitest's default 5s PER-TEST timeout is per `it()` — a
+  // giving up, and vitest's default 5s PER-TEST timeout is per `it()`; a
   // single `it()` looping over 30+ maps accumulates all of their time
   // against that one timeout and can time out under machine load even
   // though no individual map is slow (verified: the full 32-map corpus
@@ -1126,8 +1209,8 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
     });
   }
 
-  // BUG-013's corpus half. Petra has no literal `create_land` in it — every
-  // one of its 384 land commands is a `#const L 32` alias — so it is the one
+  // BUG-013's corpus half. Petra has no literal `create_land` in it; every
+  // one of its 384 land commands is a `#const L 32` alias, so it is the one
   // map that goes to zero lands if command identity ever goes back to being
   // the written word. It is NOT one of the whitelisted maps in `.gitignore`,
   // so this is green-by-absence on a clone and `runIf` says so out loud

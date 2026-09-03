@@ -11,7 +11,7 @@ import {
   substreamSeed,
 } from "../generator/rng";
 
-// This file is a test, not code under src/preview/generator/ — Sec.8's lint
+// This file is a test, not code under src/preview/generator/. Sec.8's lint
 // scope does not (and should not) reach it, so using Math.sin/cos below as
 // the reference to check the precomputed table against is fine.
 

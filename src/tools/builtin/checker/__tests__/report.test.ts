@@ -11,7 +11,7 @@ import type { StaticFinding } from "../staticChecks";
 const SOURCE = "0123456789create_object DEER\nnumber_of_objects 5\n0123456789";
 const SPAN = { start: 10, end: 30 }; // "create_object DEER"
 /**
- * Offsets of each line's first character in SOURCE — the shape
+ * Offsets of each line's first character in SOURCE, the shape
  * `ParseResult.lineOffsets` carries. A location named in PROSE is a 1-based
  * LINE NUMBER; the clickable `span` stays a character offset.
  */
@@ -53,7 +53,7 @@ describe("Sec.5.1 worst-player-count ranking", () => {
   it("an ABSENT count is never ranked and never named as worst, even when every present count is healthy", () => {
     const agg = new MonteCarloAggregate();
     agg.addGeneration(2, [report({ attempted: 1, placed: 1 })], []);
-    agg.addGeneration(4, [], []); // ran, but this row never appeared — ABSENT, not zero
+    agg.addGeneration(4, [], []); // ran, but this row never appeared, ABSENT, not zero
     const blocks = buildFindingTables(agg, { source: SOURCE, selectedCounts: [2, 4], reasonCtx: emptyCtx, suppressedActorAreaMissing: new Set(), hideHealthy: false });
     const rows = tableRows(blocks);
     expect(rows[0][2]).toBe("2"); // the only present count
@@ -214,7 +214,7 @@ describe("static findings render as their own severity blocks", () => {
 
 describe("the renderer does not invent punctuation on text it passes through", () => {
   it("a note text that already ends in a full stop does not get a second one", () => {
-    // Shipped as "…with beach_terrain.." — a spanless group renders its bare
+    // Shipped as "…with beach_terrain..". A spanless group renders its bare
     // text (no "(N places)" clause), and the period was appended regardless.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(SOURCE.length);
@@ -258,7 +258,7 @@ describe("the checker does not pass through notes that are not about what it cou
 
   it("keeps the low-consequence limitations, which are still limitations", () => {
     // The bar is "not a statement about what the preview could not check",
-    // not "low value" — so behavior_version and AT_COLOR stay.
+    // not "low value". So behavior_version and AT_COLOR stay.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(SOURCE.length);
     agg.addGeneration(4, [], [
@@ -303,7 +303,7 @@ describe("Sec.5.1 hideHealthy \u2014 the noise filter", () => {
     const agg = new MonteCarloAggregate();
     // ONE generation carrying every row. Folding one row per generation would
     // make each of them present in 1 of N runs, and Sec.5.1's denominator
-    // clause would then decorate every rate — a fixture measuring the wrong
+    // clause would then decorate every rate, a fixture measuring the wrong
     // rule.
     agg.addGeneration(
       4,

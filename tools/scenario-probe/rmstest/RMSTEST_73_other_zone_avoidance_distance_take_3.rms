@@ -1,0 +1,135 @@
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+
+  base_terrain GRASS2
+
+  create_land
+  {
+  terrain_type DIRT
+  land_position 50 15
+  base_size 4
+  land_percent 100
+  zone 31
+  other_zone_avoidance_distance 6
+  border_fuzziness 100
+  }
+
+  create_land
+  {
+  terrain_type WATER
+  land_position 50 50
+  base_size 4
+  land_percent 100
+  zone 32
+  other_zone_avoidance_distance 10
+  border_fuzziness 100
+  }
+
+  create_land
+  {
+  terrain_type DLC_SAVANNAH
+  land_position 50 85
+  base_size 4
+  land_percent 100
+  zone 33
+  other_zone_avoidance_distance 12
+  border_fuzziness 100
+  }
+
+/* first line */
+  create_land
+  {
+  terrain_type ICE
+  land_position 10 33
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 30 33
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 70 33
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 90 33
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 50 33
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+/* second line */
+
+  create_land
+  {
+  terrain_type ICE
+  land_position 10 66
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 30 66
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 70 66
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 90 66
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+  create_land
+  {
+  terrain_type ICE
+  land_position 50 66
+  base_size 16
+  land_percent 0
+  zone 1
+  }
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+<OBJECTS_GENERATION>
+

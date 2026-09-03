@@ -15,7 +15,7 @@ const HELP_MODE_OPTIONS: ReadonlyArray<{ value: HelpMode; label: string }> = [
 ];
 
 // The only tab with real controls today. Help mode moved here verbatim
-// from the old PreferencesDialog — same state, same persisted key, just a
+// from the old PreferencesDialog, same state, same persisted key, just a
 // different place in the tree.
 export function GeneralSettings() {
   const { mode, setMode } = useHelpSettings();

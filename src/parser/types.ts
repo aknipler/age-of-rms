@@ -1,23 +1,23 @@
 // Core lexer/parser types shared across src/parser/*. Per
 // docs/parser-design.md Sec.14: no imports from React, Monaco, or Tauri
-// anywhere under src/parser/ — it must run unchanged in plain Node
+// anywhere under src/parser/, it must run unchanged in plain Node
 // (Vitest) and, later, in a bare web worker (CREATION_PLAN 2.4).
 
 export type TokenKind =
   | "word" // default: commands, attributes, constants, labels, operators, paren-glued operands
   | "number" // /^-?\d+(\.\d+)?$/
-  | "rnd" // /^rnd\(-?\d+,-?\d+\)$/ — DE inline random, a single token
+  | "rnd" // /^rnd\(-?\d+,-?\d+\)$/, DE inline random, a single token
   | "openBrace" // exactly "{"
   | "closeBrace" // exactly "}"
   | "commentOpen" // exactly "/*"
   | "commentClose" // exactly "*/"
   | "sectionHeader" // /^<[A-Z0-9_]+>$/
-  | "directive"; // starts with "#" — not automatically a *real* directive; that's a parser-level judgment
+  | "directive"; // starts with "#", not automatically a *real* directive; that's a parser-level judgment
 
 export interface Token {
   text: string;
   start: number; // char offset, inclusive
-  end: number; // char offset, exclusive — source.slice(start, end) === text
+  end: number; // char offset, exclusive; source.slice(start, end) === text
   kind: TokenKind;
   isTrivia: boolean; // set by the comment-span pass, except the leading-BOM token, which the lexer itself emits as trivia
 }
@@ -36,7 +36,7 @@ export interface Diagnostic {
   span: Span;
   /**
    * Optional beginner-facing fix suggestion (e.g. the nearest known name for
-   * an unknown identifier). Populated for RMS0200 ("unknown name") today —
+   * an unknown identifier). Populated for RMS0200 ("unknown name") today,
    * see unknownName() in diagnostics.ts. Consumed by the Breakdown raw-card
    * quick-fix (docs/breakdown-design.md Sec.3.7 / Appendix rev-2 changelog).
    */
@@ -46,7 +46,7 @@ export interface Diagnostic {
 export interface LexOptions {
   /**
    * Whether RMS's block comments (its only comment syntax) nest inside
-   * each other. Defaults to true — DE-confirmed behavior per
+   * each other. Defaults to true, DE-confirmed behavior per
    * docs/parser-design.md Sec.2 "Comment handling" (rev 2 had this
    * defaulting false, which was wrong).
    */
@@ -67,8 +67,8 @@ export interface LexOptions {
    * 69) both do it, the bare literal `69` does not.
    *
    * **Scoped to inside a comment, and that scoping is the whole safety of it.**
-   * These words are ordinary constants in ordinary positions — real maps place
-   * shore fish every day — so classifying them as `commentOpen` globally (the
+   * These words are ordinary constants in ordinary positions, real maps place
+   * shore fish every day, so classifying them as `commentOpen` globally (the
    * `aliasTable` route) would truncate every map that names one. The engine
    * only reads a word as a comment marker while it is scanning for the end of
    * a comment.
@@ -106,14 +106,14 @@ import type { ArgumentDef, CommandDef, AttributeDef, DirectiveDef } from "./lang
 //
 //   SerializedParseResult = ParseResult<number | { inf: 1 | -1 }, NoDefs>
 //
-// N — the numeric form. JSON cannot carry Infinity (`JSON.stringify(Infinity)`
+// N, the numeric form. JSON cannot carry Infinity (`JSON.stringify(Infinity)`
 //     is `null`), and ArgValue legitimately holds it, so the wire encodes a
 //     sentinel object. N marks every position where a PARSED NUMBER lands and
 //     no other: token indices, offsets and `expr.tokens` stay `number`, which
-//     is why a blanket deep mapped type was rejected — it would publish a type
+//     is why a blanket deep mapped type was rejected, it would publish a type
 //     claiming a token index might be infinite.
-// D — the def slots. The wire strips `def` (JSON has no back-references, so a
-//     shared CommandDef re-expands at every node — 41% of a 13 MB payload), and
+// D, the def slots. The wire strips `def` (JSON has no back-references, so a
+//     shared CommandDef re-expands at every node, 41% of a 13 MB payload), and
 //     the strip has to be VISIBLE to the compiler or a portable tool reads
 //     `node.def?.name`, compiles, and silently gets undefined over the wire.
 //
@@ -129,7 +129,7 @@ import type { ArgumentDef, CommandDef, AttributeDef, DirectiveDef } from "./lang
 //     type makes D unmeasurable for variance, and the two instantiations stop
 //     being assignable on the type argument alone. INDEXED ACCESS
 //     (`def?: D["command"]`) keeps variance measurement working.
-// `unknown` is the one def type satisfying both halves — anything is assignable
+// `unknown` is the one def type satisfying both halves, anything is assignable
 // TO it (so ParseResult flows into the wire form) and nothing can be read OFF
 // it without a cast (so a portable tool gets a compile error, not undefined).
 // The property tests live in __tests__/wireTypes.test-d.ts.
@@ -158,7 +158,7 @@ export interface NodeBase {
 }
 
 // N lands in exactly two positions: the bare number, and the `rnd` bounds.
-// The bounds are NOT an oversight-free freebie — parseRndValue() is Number()
+// The bounds are NOT an oversight-free freebie, parseRndValue() is Number()
 // over an unbounded digit run, so `rnd(1,999…9)` reaches Infinity by the same
 // route a bare number token does. `expr.tokens` stays number[]: those are token
 // indices, and that distinction is the whole reason for a parameter rather than
@@ -166,7 +166,7 @@ export interface NodeBase {
 export type ArgValue<N = number> =
   | N // includes floats; Infinity/-Infinity for inf/-inf words in numeric slots
   | { rnd: [N, N] }
-  | { expr: { tokens: number[] } } // Sec.2.2 — token indices, unevaluated
+  | { expr: { tokens: number[] } } // Sec.2.2, token indices, unevaluated
   | string; // constant/label reference; quoted paths: assembled, quotes stripped
 
 export interface ArgNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
@@ -240,7 +240,7 @@ export interface RawNode extends NodeBase {
 }
 
 // RawNode takes neither parameter on purpose: it has no children, no args and
-// no def — an opaque, exactly-spanned token range.
+// no def, an opaque, exactly-spanned token range.
 export type Item<N = number, D extends NoDefs = DefSlots> =
   | CommandNode<N, D>
   | AttributeNode<N, D>
@@ -271,7 +271,7 @@ export interface SymbolInfo {
   // 0 = unconditionally defined. Counts BOTH if-branches AND start_random
   // branches (pinned, docs/parser-design.md Sec.3).
   conditionalDepth: number;
-  // A later #undefine names this symbol — which does NOTHING in-engine
+  // A later #undefine names this symbol, which does NOTHING in-engine
   // (docs/parser-design.md Sec.7). validate() must NOT treat it as removed.
   undefineAttempted?: boolean;
 }
@@ -284,15 +284,15 @@ export interface IncludeInfo {
 
 export interface ParseOptions {
   nestedComments?: boolean; // default TRUE (docs/parser-design.md Sec.2)
-  aliasTable?: ReadonlyMap<string, TokenKind>; // default empty (Sec.2.1) — lexer-level classification override
-  commentOpenAliases?: ReadonlySet<string>; // default empty — words the engine reads as `/*` INSIDE a comment; see LexOptions
+  aliasTable?: ReadonlyMap<string, TokenKind>; // default empty (Sec.2.1); lexer-level classification override
+  commentOpenAliases?: ReadonlySet<string>; // default empty; words the engine reads as `/*` INSIDE a comment; see LexOptions
   maxNestingDepth?: number; // default 200 (Sec.5.0)
 }
 
 export interface ParseResult<N = number, D extends NoDefs = DefSlots> {
   source: string;
   tokens: Token[]; // ALL tokens including trivia, in order
-  lineOffsets: number[]; // char offsets, never infinite — deliberately NOT parameterized
+  lineOffsets: number[]; // char offsets, never infinite; deliberately NOT parameterized
   script: ScriptNode<N, D>;
   symbols: SymbolInfo[];
   includes: IncludeInfo[];

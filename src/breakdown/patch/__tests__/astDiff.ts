@@ -1,4 +1,4 @@
-// Phase 3.3 — the shift-aware AST comparator (breakdown-design Sec.4.8).
+// Phase 3.3, the shift-aware AST comparator (breakdown-design Sec.4.8).
 // Implements clauses 1, 2, 4, 5 fully; clause 3's ancestor-chain rule is
 // verified implicitly (ancestors straddle and are excluded from 1-2; their
 // stretched spans are exercised by clause 5's well-nestedness) plus light
@@ -38,7 +38,7 @@ export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: Di
   const problems: string[] = [];
   const delta = edit.newText.length - (edit.end - edit.start);
 
-  // Clause 5 first — if B is malformed nothing else is meaningful.
+  // Clause 5 first, if B is malformed nothing else is meaningful.
   problems.push(...checkProperties(b).map((p) => `clause5(wellformed): ${p}`));
   const errorCounts = (r: ParseResult) => {
     const m = new Map<string, number>();
@@ -77,7 +77,7 @@ export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: Di
         problems.push(`clause2b: node ${k.label}@${k.start} starting at the edit neither survived nor shifted`);
       }
     }
-    // strictly straddling: governed per-intent (clause 3) — checked by the caller.
+    // strictly straddling: governed per-intent (clause 3), checked by the caller.
   }
 
   // Clause 4: trivia outside any deleted range survives byte-identical, in order.

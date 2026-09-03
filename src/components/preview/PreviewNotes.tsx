@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { PreviewResult } from "../../preview/generator/types";
+import type { PreviewWireResult } from "../../preview/generator/types";
 import {
   COLOR_MODE_NOTES,
   cssColor,
@@ -10,7 +10,7 @@ import { HelpTip } from "../HelpTip";
 import styles from "./PreviewNotes.module.css";
 
 interface PreviewNotesProps {
-  result: PreviewResult;
+  result: PreviewWireResult;
   palette: TerrainPalette;
   /** Terrain ids actually present on the drawn grid, for the legend. */
   terrainsInUse: readonly number[];
@@ -20,7 +20,7 @@ interface PreviewNotesProps {
  * The honesty surface: how many placements failed, what the preview did not
  * simulate, and what the colours mean.
  *
- * Sec.9 splits notes by `prominence` — "banner" notes are lifted onto the
+ * Sec.9 splits notes by `prominence`. "banner" notes are lifted onto the
  * canvas (PreviewCanvas draws those) and the rest live here in a drawer with
  * a count badge, so a script with twenty caveats does not bury the map.
  */
@@ -29,8 +29,8 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
 
   const drawerNotes = result.notes.filter((note) => note.prominence === "drawer");
   // Failures are coalesced per command per bucket (generator/placement.ts), so
-  // the headline number has to sum `occurrences` rather than count records —
-  // a script can genuinely produce a quarter of a million failed placements
+  // the headline number has to sum `occurrences` rather than count records.
+  // A script can genuinely produce a quarter of a million failed placements
   // from a handful of records, and reporting "6 placements failed" for it
   // would be worse than the pre-coalescing wall of text.
   const failureCount = result.reports.reduce(

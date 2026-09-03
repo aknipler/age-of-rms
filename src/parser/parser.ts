@@ -1,7 +1,7 @@
-// Phase 2.3 — the RMS parser core, implementing docs/parser-design.md
+// Phase 2.3, the RMS parser core, implementing docs/parser-design.md
 // (rev 5) Sec.Sec.3-7. Pure function: no I/O, no globals, no exceptions escape
 // (spec goal #1). Iterative with an explicit frame stack (Sec.5.0's preferred
-// shape — no recursion, so no depth-related throw is even possible; the
+// shape, no recursion, so no depth-related throw is even possible; the
 // maxNestingDepth option still degrades absurd nesting to RawNodes so the
 // AST stays sane for consumers).
 //
@@ -41,7 +41,7 @@ const ASSEMBLY_CAP = 64; // shared by expression and quote assembly (spec Sec.2.
 const DEFAULT_MAX_NESTING = 200;
 
 // ---------------------------------------------------------------------------
-// Frames — the explicit parse stack. Sections are NOT frames (they cannot
+// Frames, the explicit parse stack. Sections are NOT frames (they cannot
 // nest); the section cursor lives directly on the Parser.
 // ---------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ interface BlockFrame {
   node: BlockNode;
   owner: CommandNode | OrphanBlockNode;
   // RMS0207 cascade suppression (Sec.5.1): set when a token inside this block
-  // carried a lexer RMS0003 brace lint — one glued brace must not produce
+  // carried a lexer RMS0003 brace lint, one glued brace must not produce
   // fifty wrong-context warnings.
   suspect: boolean;
   wrongContextCount: number;
@@ -76,7 +76,7 @@ class Parser {
   readonly lang: LanguageIndex;
   readonly maxNesting: number;
 
-  /** Indices (into `tokens`) of non-trivia tokens — the parse stream. */
+  /** Indices (into `tokens`) of non-trivia tokens, the parse stream. */
   readonly nt: number[];
   /** Cursor into `nt`. */
   p = 0;
@@ -91,7 +91,7 @@ class Parser {
   pendingRun: number[] = [];
   /**
    * True when the run's FIRST token already carries its own diagnostic
-   * (stray } → RMS0104, mismatched keyword → RMS0106) — the flush must not
+   * (stray } → RMS0104, mismatched keyword → RMS0106), the flush must not
    * add a second one (spec Sec.5.1: absorbed tokens keep their own diagnostic;
    * one diagnostic per run otherwise).
    */
@@ -107,7 +107,7 @@ class Parser {
     const lex = tokenize(source, {
       nestedComments: opts.nestedComments,
       // Goes into the lexer's own comment pass rather than the post-lex alias
-      // fixup below, because it has to affect comment NESTING — see the note
+      // fixup below, because it has to affect comment NESTING, see the note
       // on that fixup, which named this exact gap.
       commentOpenAliases: opts.commentOpenAliases,
     });
@@ -117,7 +117,7 @@ class Parser {
 
     // Sec.2.1 aliasTable: lexer-level classification override. v1 limitation
     // (documented): applied post-lex, so aliases of comment markers do not
-    // affect the already-completed comment pass — fine while the table is
+    // affect the already-completed comment pass, fine while the table is
     // empty by default; revisit when token-aliases.json is imported.
     const aliasTable = opts.aliasTable;
     if (aliasTable && aliasTable.size > 0) {
@@ -146,7 +146,7 @@ class Parser {
   /**
    * The 1-based line an offset falls on, for the one diagnostic here that
    * points at a SECOND place in the file (RMS0103's still-open brace). The
-   * span it highlights stays an offset — only the prose names a line, since
+   * span it highlights stays an offset, only the prose names a line, since
    * that is the part a person has to act on.
    */
   lineOf(offset: number): number {
@@ -210,8 +210,8 @@ class Parser {
       lastToken: lastIdx,
       span: this.span(firstIdx, lastIdx),
     };
-    // One diagnostic per run (Sec.5.1) — unless the first token already carries
-    // its own (RMS0104/0106 absorption, or a lexer RMS0003 glue lint — a
+    // One diagnostic per run (Sec.5.1), unless the first token already carries
+    // its own (RMS0104/0106 absorption, or a lexer RMS0003 glue lint, a
     // "}8050" token must not draw BOTH the glue lint and an unknown-name
     // warning). Word-initiated → RMS0200 with did-you-mean; value-initiated
     // → RMS0215 (rev 5).
@@ -232,7 +232,7 @@ class Parser {
   /**
    * The attribute names the innermost enclosing block's command actually
    * accepts, or undefined outside a block / for an unknown command. Used only
-   * to RANK did-you-mean candidates, never to reject a name — an attribute
+   * to RANK did-you-mean candidates, never to reject a name, an attribute
    * missing from a command's list is a reference-data gap, not evidence the
    * author is wrong (CLAUDE.md: positive resolver, never negative authority).
    */
@@ -252,7 +252,7 @@ class Parser {
     if (name.length < 3) return undefined;
     // Non-functional names are excluded from the pool entirely. They are known
     // to the engine, so they belong in language.json and RMS0310 reports them
-    // on sight — but suggesting one as a fix would send the author to a second
+    // on sight, but suggesting one as a fix would send the author to a second
     // dead end. A did-you-mean must always point at something that works.
     const attributeNames = [...this.lang.attributesByName.values()]
       .filter((a) => !a.nonFunctional)
@@ -270,7 +270,7 @@ class Parser {
       if (dist < bestDist) {
         bestDist = dist;
         best = candidate;
-        if (dist === 0) break; // case-only mismatch — perfect suggestion
+        if (dist === 0) break; // case-only mismatch, perfect suggestion
       }
     }
     if (best !== undefined) return best;
@@ -279,13 +279,13 @@ class Parser {
     //
     // Suffix catches corpus-real `avoidance_distance` →
     // `other_zone_avoidance_distance`. Prefix was added 2026-07-31 for the
-    // short forms the engine itself carries as dead strings — the guide's
+    // short forms the engine itself carries as dead strings, the guide's
     // Non-Functional Syntax appendix lists `min_distance`, `max_distance`,
     // `set_position` and `percent_of_land`, every one of them a truncation of
     // a name that does work (`min_distance_to_players`, `land_percent`,
     // `land_position`). They are the forms a beginner guesses at, and with
     // suffix-only matching all four drew a bare "unknown attribute" with no
-    // suggestion at all — edit distance can't reach them either, the missing
+    // suggestion at all, edit distance can't reach them either, the missing
     // tails run to eleven characters.
     //
     // Both sides lowercased, which the suffix test previously was not: the
@@ -372,7 +372,7 @@ class Parser {
       // headers → Sec.5.3 degradation, absorbing headers while only
       // conditionals remain open. If blocks are ALSO open, the forward
       // scan stops at a header per RMS0103 semantics inside `degrade`.
-      // All open frames are involved (blocks too, when mixed — the forward
+      // All open frames are involved (blocks too, when mixed, the forward
       // scan's own RMS0103 rule bounds that case at the header).
       this.degrade(0, "conditional-spans-structure", "RMS0110");
       return;
@@ -468,7 +468,7 @@ class Parser {
         conditionalDepth: this.conditionalDepth(),
       });
     } else if (hashTok.text === "#undefine" && firstArg !== undefined) {
-      // #undefine does NOTHING in-engine (Sec.7) — record the attempt only.
+      // #undefine does NOTHING in-engine (Sec.7), record the attempt only.
       const name = this.tokens[firstArg.firstToken].text;
       for (let i = this.symbols.length - 1; i >= 0; i--) {
         if (this.symbols[i].name === name) {
@@ -622,7 +622,7 @@ class Parser {
         return;
       }
       default: {
-        // A control keyword in language.json we don't know structurally —
+        // A control keyword in language.json we don't know structurally,
         // future-proofing; absorb.
         this.runPush(this.p);
         this.p++;
@@ -677,7 +677,7 @@ class Parser {
     // command, because the script defined it as one. Resolved after the direct
     // lookup so a real command name can never be shadowed by a `#const`, and
     // fed into `asCommand` rather than handled separately so an alias inherits
-    // every rule that follows — wrong-context (RMS0207), block opening, arity.
+    // every rule that follows, wrong-context (RMS0207), block opening, arity.
     const asCommand = this.lang.commandsByName.get(nameTok.text) ?? this.aliasedCommand(nameTok.text);
     const primary = inBlock ? asAttribute : asCommand;
     const crossCategory = inBlock ? asCommand : asAttribute;
@@ -691,7 +691,7 @@ class Parser {
     this.flushRun();
 
     if (!primary && crossCategory) {
-      // Known name, wrong context (RMS0207) — parse as its actual category.
+      // Known name, wrong context (RMS0207), parse as its actual category.
       this.emitWrongContext(nameTok, inBlock ? "command" : "attribute");
       if (inBlock) {
         this.parseCommand(nameIdx, crossCategory as CommandDef);
@@ -701,7 +701,7 @@ class Parser {
       return;
     }
 
-    // Context-native (dual-use names resolve here silently — no RMS0207).
+    // Context-native (dual-use names resolve here silently, no RMS0207).
     if (inBlock) {
       this.parseAttribute(nameIdx, primary as AttributeDef);
     } else {
@@ -771,7 +771,7 @@ class Parser {
   }
 
   handleOpenBrace(): void {
-    // Depth cap first — none of the Sec.5.4 paths may open a frame past it.
+    // Depth cap first, none of the Sec.5.4 paths may open a frame past it.
     if (this.constructDepth() >= this.maxNesting) {
       this.degradeTooDeep();
       return;
@@ -779,7 +779,7 @@ class Parser {
     // Sec.5.4, in pinned order: unknown-run upgrade → shared block → plain orphan.
     const openTok = this.tokAt(this.p);
 
-    // (a) Unknown word(s) followed by { — upgrade the run to an unknown command.
+    // (a) Unknown word(s) followed by {, upgrade the run to an unknown command.
     if (this.pendingRun.length > 0 && this.tokAt(this.pendingRun[0]).kind === "word") {
       const runPositions = this.pendingRun;
       this.pendingRun = [];
@@ -803,7 +803,7 @@ class Parser {
 
     this.flushRun();
 
-    // (b) Shared-block rule (rev 5 — guide Example2's path): { right after a
+    // (b) Shared-block rule (rev 5, guide Example2's path): { right after a
     // just-completed if/random whose branch tails are block-capable commands.
     const items = this.currentItems();
     const last = items[items.length - 1];
@@ -961,7 +961,7 @@ class Parser {
    * argument.
    *
    * `acceptsKnownName` drops ONLY the known-name half, for a slot whose own
-   * `ArgumentDef` declares that a command or attribute name belongs there —
+   * `ArgumentDef` declares that a command or attribute name belongs there,
    * `#const`'s value, per Sec.2.1's aliasing. The structural half never yields:
    * a brace, section header, directive or control keyword ends the list
    * whatever the slot says, or a `#const` missing its value would swallow the
@@ -1012,7 +1012,7 @@ class Parser {
         argDef.cautionMessage !== undefined &&
         (value as number) < argDef.cautionBelow
       ) {
-        // Not a range violation (checked above) — a value that's valid RMS
+        // Not a range violation (checked above), a value that's valid RMS
         // but that reference data flags as worth a second look (RMS0217).
         this.diagnostics.push(d.valueCaution(tok, argDef.cautionMessage));
       }
@@ -1026,22 +1026,22 @@ class Parser {
         else if (tok.text.startsWith("rnd(")) {
           this.diagnostics.push(d.malformedRnd(tok)); // RMS0214 instead of a baffling 0202
         } else if (/^\d/.test(tok.text)) {
-          this.diagnostics.push(d.digitPrefixedWord(tok)); // RMS0212 — numeric slots ONLY (rev 5)
+          this.diagnostics.push(d.digitPrefixedWord(tok)); // RMS0212, numeric slots ONLY (rev 5)
         } else if (this.isDefinedSymbol(tok.text)) {
-          // A user constant standing in for a number — standard RMS idiom:
+          // A user constant standing in for a number, standard RMS idiom:
           //   #const PL_LANDS_CLUMPING_FAC 15
           //   create_land { clumping_factor PL_LANDS_CLUMPING_FAC }
           // No diagnostic: the name resolves, so there is nothing wrong here.
-          // (Deliberately permissive about #define-vs-#const — see
+          // (Deliberately permissive about #define-vs-#const, see
           // isDefinedSymbol. Judging *which* constant belongs in *which* slot
           // is semantic, and belongs to validate(), spec Sec.8.)
         } else {
           // Not a number, not inf, not ours. Either genuinely undefined, or
-          // defined in an include we can't read — the builder distinguishes.
+          // defined in an include we can't read, the builder distinguishes.
           this.diagnostics.push(d.unresolvedConstantInNumericSlot(tok, argDef, this.includes.length > 0));
         }
       }
-      // Constant/string slots accept words (and numbers) freely — Sec.2.1(1).
+      // Constant/string slots accept words (and numbers) freely, Sec.2.1(1).
     } else {
       this.diagnostics.push(d.argTypeMismatch(tok, argDef, unverified));
     }
@@ -1055,7 +1055,7 @@ class Parser {
    * idiom (see the call site in consumeOneArg).
    *
    * Deliberately "so far" rather than "anywhere in the file", and that is not
-   * a limitation of the single pass — it is the engine's own rule. The guide
+   * a limitation of the single pass, it is the engine's own rule. The guide
    * (line 148) states a definition "will only be true if [it is] defined
    * higher up in the file … regardless of the section header", so a constant
    * used above its `#const` genuinely does NOT resolve in-engine and warning
@@ -1066,7 +1066,7 @@ class Parser {
    * flag) count. A `#define`d name in a numeric slot is probably an author
    * mistake, but Sec.2.1 pins that every word resolves to some internal token ID,
    * and that our type diagnostics are "style warnings about probable
-   * mistakes, never correctness claims" — so flagging it here would risk
+   * mistakes, never correctness claims", so flagging it here would risk
    * exactly the false warning this method exists to remove. If it's worth
    * reporting at all, it belongs in validate() (Sec.8) where the whole symbol
    * table is available at once.
@@ -1076,7 +1076,7 @@ class Parser {
    * a profile ever says otherwise.
    *
    * TODO(predefinedLabels): `language.json` now HAS `predefinedLabels` (138
-   * entries, typed as `PredefinedLabel[]` in language.ts) — the precondition
+   * entries, typed as `PredefinedLabel[]` in language.ts), the precondition
    * this TODO was waiting on is met, only the work is outstanding.
    * Engine-provided names should count as defined here too, so that e.g.
    * `clumping_factor LARGE_MAP` stops drawing RMS0202. Read the array off
@@ -1096,7 +1096,7 @@ class Parser {
    * the engine. `24hr_Petra.rms:6` writes `#const L 32` and then uses `L { … }`
    * 384 times; `24hr_Holler.rms` does the same 197 times. Those 581 sites were
    * 68% of RMS0200's entire corpus output and every one of them is a construct
-   * that WORKS in game — Petra contains no `create_land` and no
+   * that WORKS in game, Petra contains no `create_land` and no
    * `create_player_lands`, and its lands generate.
    *
    * Only the caller's `def` changes. `CommandNode.name` stays the author's own
@@ -1120,7 +1120,7 @@ class Parser {
    * so far, so a `#const` BELOW a use cannot reach back and reinterpret it.
    * That matches the engine, which is also single-pass.
    *
-   * Linear scan, same as `isDefinedSymbol` above and for the same reason —
+   * Linear scan, same as `isDefinedSymbol` above and for the same reason,
    * symbol counts are tens per map. It runs only for a word that resolved as
    * neither command nor attribute, which on this corpus is rare enough that the
    * relative-cost benchmark in `corpus.test.ts` does not move; re-time it there
@@ -1140,7 +1140,7 @@ class Parser {
 
   /**
    * Sec.2.2 expression assembly. Terminator rule (pinned): first token whose
-   * text ends with ")" regardless of kind — EXCEPT canonical rnd tokens,
+   * text ends with ")" regardless of kind, EXCEPT canonical rnd tokens,
    * which never terminate. Break-outs (structural/control/EOF/cap) degrade
    * the collected tokens to a RawNode with RMS0208.
    */
@@ -1177,7 +1177,7 @@ class Parser {
     // Guide-verified lints (RMS0210).
     //
     // ONE unglued-operand diagnostic, however many ends are unglued. `( 5 + 1 )`
-    // has a bare `(` AND a bare `)`, and both used to report — same code, same
+    // has a bare `(` AND a bare `)`, and both used to report, same code, same
     // message, same (whole-expression) span, so the second was a duplicate
     // rather than a second finding. Spec Sec.5.1's one-diagnostic-per-problem
     // convention applies.
@@ -1196,7 +1196,7 @@ class Parser {
       if (t.kind === "word" || t.kind === "number") {
         const core = t.text.replace(/^\(+/, "").replace(/\)+$/, "");
         // `-` is deliberately absent from the glued-operator class. A negative
-        // literal is one token by construction — `-5`, `-inf`, `(A + -1)` —
+        // literal is one token by construction, `-5`, `-inf`, `(A + -1)`,
         // so treating an interior `-` as glue would flag every negative
         // operand as a malformed expression. The cost is that a genuinely
         // glued minus (`(A-1)`) goes unreported: it lexes as one unknown word
@@ -1289,17 +1289,17 @@ class Parser {
    * The backward half satisfies that rule for free: those tokens went through
    * parseDirective() before the imbalance was detected, so their entries are
    * already in this.symbols/this.includes when degrade() discards the nodes.
-   * The forward extension never parses at all — it is a raw token scan — so
+   * The forward extension never parses at all, it is a raw token scan, so
    * without this a `#const` past the trigger point would be invisible to
    * isDefinedSymbol() and to validate(), and every later use of the name would
    * draw the false unknown-symbol warning the pinned rule exists to prevent.
    *
    * Mirrors parseDirective()'s bookkeeping and nothing else: no AST node, and
-   * no diagnostics — the whole region is already covered by one RMS0110, and a
+   * no diagnostics, the whole region is already covered by one RMS0110, and a
    * second diagnostic inside it would break Sec.5.3's one-diagnostic promise.
    *
    * Leaves this.p just past the directive and its declared operands, using the
-   * same stop set parseDirective does — so a control keyword or brace is never
+   * same stop set parseDirective does, so a control keyword or brace is never
    * swallowed as an operand and the scan's own counting stays in step. Quote
    * assembly runs here too, or `#include_drs "my maps/x.inc"` would record its
    * path as `"my`.
@@ -1310,14 +1310,14 @@ class Parser {
     this.p++;
 
     const def = this.lang.directivesByName.get(hashTok.text);
-    if (!def) return; // unknown `#` token — parseDirective consumes no args either
+    if (!def) return; // unknown `#` token, parseDirective consumes no args either
 
     const operands: { firstToken: number; text: string; quoted: boolean }[] = [];
     const argDefs = def.arguments ?? [];
     for (let i = 0; i < argDefs.length; i++) {
       // Same stop rule as parseDirective's, `acceptsKnownName` included, or a
       // `#const` aliasing a known name would record a different value inside a
-      // degraded region than outside one — and Sec.5.3's whole promise is that
+      // degraded region than outside one, and Sec.5.3's whole promise is that
       // symbols survive degradation unchanged.
       const operand = this.takeRawOperand(argDefs[i].acceptsKnownName);
       if (operand === undefined) break;
@@ -1358,7 +1358,7 @@ class Parser {
    * One directive operand during a raw scan, with Sec.5.2 quote assembly so an
    * `#include_drs "my maps/x.inc"` records the path it really has. Returns
    * undefined (leaving this.p on the offending token) when the stop set or an
-   * unclosed quote ends the list — the caller stops asking for operands and the
+   * unclosed quote ends the list, the caller stops asking for operands and the
    * scan's own brace/conditional counting picks the token up as normal.
    */
   takeRawOperand(acceptsKnownName = false): { firstToken: number; text: string; quoted: boolean } | undefined {
@@ -1413,7 +1413,7 @@ class Parser {
       else openConds++;
     }
 
-    // Range start: outermost involved construct — including the statement
+    // Range start: outermost involved construct, including the statement
     // owning an involved block (spec Sec.5.3).
     const outermost = this.frames[outermostIdx];
     const rangeStartToken =
@@ -1493,7 +1493,7 @@ class Parser {
     parentItems.push(raw);
     if (code === "RMS0110") {
       // When the raw region runs all the way to EOF because an if/random
-      // never closed, say so directly in THIS diagnostic — its span
+      // never closed, say so directly in THIS diagnostic, its span
       // covers the whole degraded region (often most of the file), while
       // the separate unclosedConditionalAtEof (RMS0105) above only spans
       // the single opening keyword and is easy to miss underneath it.
@@ -1516,7 +1516,7 @@ class Parser {
       : below.node.preamble;
   }
 
-  /** Sec.5.0: opening one more construct would exceed the cap — degrade it. */
+  /** Sec.5.0: opening one more construct would exceed the cap, degrade it. */
   degradeTooDeep(): void {
     // Treat the would-be construct as a zero-frame Sec.5.3 range starting at
     // the opener token; forward-scan its own body.
@@ -1535,7 +1535,7 @@ class Parser {
       const tok = this.tokAt(this.p);
       if (tok.kind === "sectionHeader" && openBraces > 0) break;
       if (tok.kind === "directive") {
-        // Same rule as degrade()'s scan — Sec.5.3's symbols/includes survival
+        // Same rule as degrade()'s scan, Sec.5.3's symbols/includes survival
         // is about the token stream, so a depth-capped region is no different.
         this.recordDirectiveInRawScan(survivingCondDepth + openConds);
         lastConsumedNt = this.p - 1;
@@ -1601,7 +1601,7 @@ function parseRndValue(text: string): { rnd: [number, number] } | undefined {
 
 /**
  * Banded Levenshtein with early exit above `cap`. Exported for validate.ts,
- * which needs the same did-you-mean heuristic for condition labels — the two
+ * which needs the same did-you-mean heuristic for condition labels, the two
  * passes must agree on what counts as "close enough to be a typo".
  */
 export function editDistanceCapped(a: string, b: string, cap: number): number {
@@ -1627,7 +1627,7 @@ export function editDistanceCapped(a: string, b: string, cap: number): number {
 }
 
 /**
- * Parse an AoE2:DE random map script. Pure function — no I/O, never throws
+ * Parse an AoE2:DE random map script. Pure function, no I/O, never throws
  * (docs/parser-design.md goal #1). See ParseResult for what you get back.
  */
 export function parseRms(source: string, langData: LanguageData, opts: ParseOptions = {}): ParseResult {

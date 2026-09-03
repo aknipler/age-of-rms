@@ -7,7 +7,7 @@ import type { TerrainPalette } from "../../preview/render/palette";
  *
  * This used to be built inside PreviewCanvas and handed out through
  * `onHoverTile`, which was fine while hover was the only reader. Selection
- * added a second one, and the two must not disagree — so the canvas now
+ * added a second one, and the two must not disagree. So the canvas now
  * reports COORDINATES and the pane derives the description. The distinction
  * matters beyond tidiness: a selection outlives the re-roll that regenerates
  * the map, and a stored description would keep showing the OLD map's terrain
@@ -30,7 +30,7 @@ export interface TileInfo {
   marks: readonly FailureMark[];
 }
 
-/** Shared empty array for tiles with nothing on them — a fresh `[]` per lookup would make every readout a new object and re-render for no change. */
+/** Shared empty array for tiles with nothing on them. A fresh `[]` per lookup would make every readout a new object and re-render for no change. */
 const EMPTY_OBJECTS: readonly PlacedObject[] = [];
 const EMPTY_MARKS: readonly FailureMark[] = [];
 
@@ -44,8 +44,8 @@ export type MarksByTile = ReadonlyMap<number, FailureMark[]>;
  * Same shape as `indexObjectsByTile` and deliberately a second function rather
  * than a generic over `{x, y}`: the two are indexed together and read
  * together, and one generic helper would save four lines while making the
- * call sites read as though the two arrays were interchangeable. They are not
- * — one is unbounded and the other is bounded by land count.
+ * call sites read as though the two arrays were interchangeable. They are not.
+ * One is unbounded and the other is bounded by land count.
  */
 export function indexMarksByTile(marks: readonly FailureMark[], dim: number): MarksByTile {
   const index = new Map<number, FailureMark[]>();
@@ -77,7 +77,7 @@ export function indexObjectsByTile(objects: readonly PlacedObject[], dim: number
 }
 
 /**
- * Reads one tile out of the grid. `x`/`y` must already be on the map —
+ * Reads one tile out of the grid. `x`/`y` must already be on the map.
  * `isOnMap` (projection.ts) is the caller's gate, since only the caller knows
  * whether an off-map pointer means "no readout" or "ignore this click".
  */
@@ -117,8 +117,8 @@ export interface ObjectTally {
  * Groups a tile's objects for display.
  *
  * Grouped by (objectRef, player) rather than listed one per entry, because the
- * common case for a stacked tile is several of the same thing — a tight group
- * of four gold, say — and "GOLD, GOLD, GOLD, GOLD" is noise. Returns structured
+ * common case for a stacked tile is several of the same thing, a tight group
+ * of four gold, say, and "GOLD, GOLD, GOLD, GOLD" is noise. Returns structured
  * tallies rather than a formatted string so the renderer can shorten each name
  * on its own (nameDisplay.ts) instead of the caller pre-joining them.
  */

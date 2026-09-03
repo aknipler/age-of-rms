@@ -7,7 +7,7 @@ import cardStyles from "./cards.module.css";
 /**
  * Sec.3.2's table: an AttributeNode at statement level (not inside a `{ }`
  * block) renders as a command-card-shaped shell with an RMS0207 badge
- * ("belongs inside a { } block") rather than as an AttributeRow — it's
+ * ("belongs inside a { } block") rather than as an AttributeRow, it's
  * not part of any command's all-attributes list here.
  */
 export function StrayAttributeCard({ attribute }: { attribute: AttributeNode }) {

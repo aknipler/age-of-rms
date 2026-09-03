@@ -7,13 +7,13 @@
 //
 // **The flag is not optional.** Vitest 4 intercepts console output in this
 // repo's configuration and none of these reporters print a single line without
-// it, which is easy to read as "the check found nothing" — every one of them
+// it, which is easy to read as "the check found nothing", every one of them
 // still exits 0. Measured 2026-08-10 while adding this file.
 //
 // What to look at in the output: RMS0315 is a warning about an ABSENCE, so the
 // question a count answers is whether the absence is really a mistake or a form
 // authors write on purpose. Every site printed here is a command carrying a
-// line that does nothing — **not**, as this file said until 2026-08-12, a
+// line that does nothing, **not**, as this file said until 2026-08-12, a
 // command that places nothing. RMSTEST_42 measured the attribute as inert and
 // the command as untouched, so the count is a count of dead lines, and the
 // build log's "47 commands place nothing" figure is withdrawn.

@@ -326,6 +326,8 @@ type InsertTarget =
   | { in: "section"; section: SectionNode }   // append at end of section body
   | { in: "block"; block: BlockNode }         // append before block close
   | { in: "branch"; branch: BranchRef }       // append before the branch's terminating keyword
+  | { in: "preamble" }                        // append at end of ScriptNode.preamble (2026-09-01 — see Sec.4.5)
+  | { in: "newSection"; name: string }        // no SectionNode named `name` exists yet (2026-09-01 — see Sec.4.5)
   | { after: Item };                          // insert directly after a sibling (Sec.3.9 selection)
 
 type ArgValueInput = number | { rnd: [number, number] } | string; // never expr — expressions are Code-tab-only (Sec.3.4)
@@ -394,6 +396,8 @@ Insertion text is then assembled as: for `onOwnLines`, `eol + indentUnit + <rend
 - **`in: "section"`** — append at end of the section body: the offset just after the last item's `lastToken.end` (or just after the section header token if the section is empty). New text = `eol + indentUnit + rendered`.
 - **`in: "block"`** — before the block's `close` brace: offset = `tokens[block.close].start`, backed up over the whitespace immediately preceding `}` on its line so the `}` stays where it is. New text = `eol + indentUnit + rendered`.
 - **`{ after: Item }`** (Sec.3.9's selection-driven insert) — immediately after that item: offset = the end of the anchor item's last token (`tokens[item.lastToken].end`), i.e. `item.span.end`. Style comes from the **anchor item's own** surroundings (Sec.4.3), so an item nested in a branch or block inserts at that depth with no special case — the anchor carries its context implicitly. Use `item.span.end` rather than "start of the next sibling's line" so any trailing same-line comment on the anchor stays attached to the anchor, exactly as Sec.4.6's surgical rule keeps it attached on delete.
+- **`in: "preamble"`** (2026-09-01) — the Header tab's fallback when nothing is selected. `ScriptNode.preamble` has no `SectionNode`/header token to anchor an empty case to, so this mirrors `in: "section"`'s non-empty branch only; the Header tab never renders on an empty preamble (Sec.3.1), so that case doesn't arise from the UI.
+- **`in: "newSection"; name`** (2026-09-01) — a canonical tab whose `SectionNode` doesn't exist in the file at all (a brand-new file's every tab). New text = `<name>` + `eol` + `rendered` + `eol`, inserted as one edit right after everything already in the file (last section's end, else the preamble's end, else offset 0). Deliberately doesn't seek a canonically-ordered slot among existing sections: the engine runs sections in canonical order regardless of file position (build-log, Phase 4.2/4.3), so there's no correctness requirement on placement, and appending lands in canonical order anyway for the ordinary case of building front-to-back.
 
 - **`in: "branch"`** (the fully-editable-conditional case) — before the branch's **terminating keyword**, resolved from the `BranchRef`'s `parent` + `index` (Sec.4.1 — this is precisely why the intent carries both):
 

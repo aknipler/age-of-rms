@@ -1,10 +1,10 @@
 /* `.main` (App.module.css) is `flex: 1; display: flex` with no fixed height
-   of its own — it is itself sized by flex distribution, not a definite CSS
+   of its own, it is itself sized by flex distribution, not a definite CSS
    height. `height: 100%` only resolves against a definite parent height, so
    it silently fails here and this pane collapses to its content's natural
    size instead of filling the tab. `flex: 1` + `min-height: 0` is what
    BreakdownPane.module.css and CodePane.module.css both use for exactly this
-   reason — match that, not `height: 100%`. */
+   reason, match that, not `height: 100%`. */
 .pane {
   display: flex;
   flex-direction: column;

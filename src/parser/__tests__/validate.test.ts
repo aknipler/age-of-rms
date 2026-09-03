@@ -1,4 +1,4 @@
-// Semantic-pass unit suite — one describe per docs/parser-design.md Sec.8
+// Semantic-pass unit suite, one describe per docs/parser-design.md Sec.8
 // check, plus the scoping decisions that came out of the corpus measurement
 // (recorded in docs/build-log.md). The negative tests matter as much as the
 // positive ones here: most of this pass's design is about what it refuses to
@@ -96,7 +96,7 @@ describe("RMS0301 — redefinition on the same execution path", () => {
     expect(only(sameBranch, "RMS0301")).toHaveLength(1);
 
     // Different branches of one start_random are mutually exclusive, exactly
-    // like if/else — no claim to make.
+    // like if/else, no claim to make.
     const twoBranches =
       "<LAND_GENERATION>\nstart_random\npercent_chance 50 #const TREES 10\npercent_chance 50 #const TREES 20\nend_random\n";
     expect(codes(twoBranches)).not.toContain("RMS0301");
@@ -136,7 +136,7 @@ describe("RMS0301 — redefinition on the same execution path", () => {
   });
 
   it("respects monotonicity across those two ifs", () => {
-    // Same shape, but the condition only becomes true between them — so the
+    // Same shape, but the condition only becomes true between them, so the
     // first block never ran and the second definition is the live one.
     const source =
       "<PLAYER_SETUP>\nif LATE_FLAG\n#const TREES 2\nendif\n#define LATE_FLAG\nif LATE_FLAG\n#const TREES 3\nendif\n";
@@ -161,7 +161,7 @@ describe("RMS0314 — shadowed by an earlier definition on a containing path", (
   });
 
   it("flags a nested assignment killed by an outer one under the same condition", () => {
-    // if A / #const T 2 ... then later if B / if A / #const T 14 — the inner
+    // if A / #const T 2 ... then later if B / if A / #const T 14, the inner
     // one requires A, which the outer one already had, so it never applies.
     const source = [
       "<PLAYER_SETUP>",
@@ -302,7 +302,7 @@ describe("RMS0302 — redefining a built-in game constant", () => {
 
   it("stays at info when the value can't be compared", () => {
     // No integer literal to compare, so there is no positive evidence of a
-    // mismatch — the claim narrows to "the engine keeps its own definition".
+    // mismatch, the claim narrows to "the engine keeps its own definition".
     const found = only("#const OTHER 5\n#const SNOW OTHER\n", "RMS0302");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
@@ -315,7 +315,7 @@ describe("RMS0302 — redefining a built-in game constant", () => {
   });
 
   it("says it once across an if/elseif/else chain, not once per branch", () => {
-    // Exclusive branches, so only one runs — but the engine keeps 32 whichever
+    // Exclusive branches, so only one runs, but the engine keeps 32 whichever
     // one that is, making all three equally futile. One misunderstanding, one
     // report. Contrast RMS0301, which stays silent on the same shape for a
     // USER constant, where the branches really are doing different things.
@@ -336,7 +336,7 @@ describe("RMS0302 — redefining a built-in game constant", () => {
 describe("RMS0312 — defining an engine condition label", () => {
   it("notes a #define of a predefined label without calling it a no-op", () => {
     // The engine defines DEATH_MATCH only in a death match, so this #define
-    // is a working force-on switch in every other game — not shadowing.
+    // is a working force-on switch in every other game, not shadowing.
     const found = only("#define DEATH_MATCH\n", "RMS0312");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
@@ -375,7 +375,7 @@ describe("RMS0303 — use before definition", () => {
 
 /**
  * The corpus reports ZERO of these (see rms0304.measure.test.ts), so this suite
- * is the only evidence the check works at all — the RMS0314 situation, and the
+ * is the only evidence the check works at all, the RMS0314 situation, and the
  * reason the negative cases below are written out one by one rather than
  * summarised. Every `expect(...).not.toContain` here is a specific false
  * positive this check has already produced once, or one it would produce if
@@ -436,7 +436,7 @@ describe("RMS0304 — a command in a section the engine will not run it from", (
   it("stays silent after a degraded region, which may have swallowed a header", () => {
     // Sec.8's suppression rule. The gibberish parses to a RawNode, and the
     // parser's recovery scan absorbs a section header outright when only
-    // conditionals are open — so a command after one cannot be trusted to be
+    // conditionals are open, so a command after one cannot be trusted to be
     // in the section it appears to be in, and warning would report the
     // recovery as the author's mistake.
     const source = "<OBJECTS_GENERATION>\n!!! ??? %%%\ncreate_terrain SNOW { number_of_clumps 4 }\n";
@@ -488,7 +488,7 @@ describe("RMS0306 — repeated non-repeatable attributes", () => {
 describe("messages that point at a second place in the file name a LINE", () => {
   // Reported from a real script: `"max_distance_to_players" is already set at
   // offset 86970`. A character offset is not a position any editor shows, so
-  // the one actionable fact in the message — go look at the other one — was
+  // the one actionable fact in the message, go look at the other one, was
   // unreachable. Spans stay offsets (Monaco and the ruler consume those); only
   // the prose converts.
   //
@@ -513,7 +513,7 @@ describe("messages that point at a second place in the file name a LINE", () => 
     expect(found[0].message).toContain("already set on line 4");
     expect(found[0].message).toContain("the value here (the last one)");
     expect(found[0].message).not.toContain("offset");
-    // Raised on the LATER use — the one the engine keeps — so the reader is
+    // Raised on the LATER use, the one the engine keeps, so the reader is
     // looking at the surviving value while the message names the dead one.
     expect(source.slice(found[0].span.start, found[0].span.end)).toBe("max_distance_to_players");
     expect(source.slice(0, found[0].span.start).split("\n")).toHaveLength(6);
@@ -601,7 +601,7 @@ describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", (
   // guide:2509 carries the Requires line, and what an unmet requirement DOES
   // was measured by RMSTEST_42 (2026-08-11, four runs): the attribute is inert
   // and the command places in full. The check keeps its trigger and lost its
-  // consequence clause — it warned that the command placed nothing at all,
+  // consequence clause, it warned that the command placed nothing at all,
   // which was inferred from `AK_Namatjira.rms` spawning no shore fish, on a
   // command that also names a shallow its fish cannot occupy and so predicts
   // zero under either model.
@@ -646,7 +646,7 @@ describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", (
 });
 
 describe("RMS0308 — percent_chance and rnd ranges", () => {
-  // Both cumulative thresholds are 99, not 100 — guide:3006-3007 plus
+  // Both cumulative thresholds are 99, not 100, guide:3006-3007 plus
   // guide:3010's "the 100th percent is never chosen". This shipped as 100
   // because Sec.8 used both numbers in one sentence.
   it("flags branches after the running total reaches 99", () => {
@@ -712,7 +712,7 @@ describe("RMS0309 / RMS0310 — obsolete and non-functional syntax", () => {
   it("names the working attribute behind a dead engine string", () => {
     // min_distance is in the exe's string table with nothing behind it
     // (guide, Non-Functional Syntax). Before it had an entry it drew a bare
-    // "unknown attribute" — wrong, since the engine does carry the word, and
+    // "unknown attribute", wrong, since the engine does carry the word, and
     // useless, since it named nothing to use instead.
     const source = "<OBJECTS_GENERATION>\ncreate_object GOLD { min_distance 5 }\n";
     const found = only(source, "RMS0310");
@@ -830,7 +830,7 @@ describe("pass-level guarantees", () => {
 describe("RMS0111 — a word inside a comment that the engine reads as an opening comment marker", () => {
   // Measured by RMSTEST_55/56a/57/60 (parser-design Sec.2.1 amendment): a
   // leading comment containing a word valued 69 blanks the map, while the bare
-  // literal 69 does not. Reported rather than modelled — decided 2026-08-11.
+  // literal 69 does not. Reported rather than modelled, decided 2026-08-11.
   it("flags an object constant valued 69", () => {
     const found = only("/* place SHORE_FISH here */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
     expect(found).toHaveLength(1);

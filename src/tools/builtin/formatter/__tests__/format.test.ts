@@ -361,7 +361,7 @@ describe("detection helpers (Sec.5.3)", () => {
 
   it("still reads a comment that opens its own line", () => {
     // Own-line comments are indented WITH the code they introduce, which is
-    // the same evidence a command carries — and Sec.4.4 depends on it.
+    // the same evidence a command carries, and Sec.4.4 depends on it.
     const source = ["<LAND_GENERATION>", "create_land", "{", "  /* why */", "  land_percent 5", "}"].join("\n");
     expect(indentUnit(source)).toBe("  ");
   });

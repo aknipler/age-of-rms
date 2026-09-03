@@ -1,4 +1,4 @@
-// Tests for truncateAst() — docs/preview-design.md Sec.5's Current cut point.
+// Tests for truncateAst(), docs/preview-design.md Sec.5's Current cut point.
 //
 // Every cut position is looked up by SEARCHING THE SOURCE for the text it
 // sits after, never written as a literal offset. Hand-counted positions in a
@@ -36,7 +36,7 @@ random_placement
 /* base_elevation is a no-op without this section, empty or not (lands.ts).
    It sits ABOVE the lands on purpose: sections run in the engine's canonical
    order regardless of file order, and putting it below would leave every cut
-   inside a land dropping this section too — so a test meaning to prove that
+   inside a land dropping this section too, so a test meaning to prove that
    ONE ATTRIBUTE was cut would pass just as well if nothing were cut inside
    the block at all. A mutation test caught exactly that. */
 <ELEVATION_GENERATION>
@@ -76,14 +76,14 @@ function parse(source = SCRIPT): ParseResult {
   return parseRms(source, lang);
 }
 
-/** The offset just AFTER `needle` — "the caret sits at the end of this text". Throws rather than returning -1, so a fixture edit that moves the text fails loudly. */
+/** The offset just AFTER `needle`, "the caret sits at the end of this text". Throws rather than returning -1, so a fixture edit that moves the text fails loudly. */
 function after(needle: string, source = SCRIPT): number {
   const index = source.indexOf(needle);
   if (index === -1) throw new Error(`the fixture does not contain ${JSON.stringify(needle)}`);
   return index + needle.length;
 }
 
-/** The offset just BEFORE `needle` — "the caret sits at the very start of this text". */
+/** The offset just BEFORE `needle`, "the caret sits at the very start of this text". */
 function before(needle: string, source = SCRIPT): number {
   const index = source.indexOf(needle);
   if (index === -1) throw new Error(`the fixture does not contain ${JSON.stringify(needle)}`);
@@ -121,7 +121,7 @@ function landItems(result: ParseResult): Item[] {
   return section(result, "LAND_GENERATION")?.items ?? [];
 }
 
-/** The `create_land` with the three attributes — always index 1, after `base_terrain`. */
+/** The `create_land` with the three attributes, always index 1, after `base_terrain`. */
 function firstLand(result: ParseResult): CommandNode {
   const item = landItems(result)[1];
   if (item.kind !== "command") throw new Error(`expected a command, got ${item.kind}`);
@@ -203,7 +203,7 @@ describe("resolveCutOffset", () => {
 describe("truncateAst", () => {
   it("drops an item that starts at or after the caret", () => {
     const result = parse();
-    // Caret at the very start of `create_land` — the insertion point is
+    // Caret at the very start of `create_land`, the insertion point is
     // before it, so it has not been written yet.
     const cut = truncateAst(result, before("create_land {"));
     expect(names(landItems(cut), cut)).toEqual(["base_terrain"]);
@@ -307,7 +307,7 @@ describe("truncateAst", () => {
     const result = parse();
     const cut = truncateAst(result, after("land_percent 12"));
     // The PLAYER_SETUP section is wholly above the cut, so it is the very
-    // same node — the recursion returns its input whenever nothing changed,
+    // same node, the recursion returns its input whenever nothing changed,
     // which is what keeps a cut cheap on a large script.
     expect(section(cut, "PLAYER_SETUP")).toBe(section(result, "PLAYER_SETUP"));
     expect(landItems(cut)[0]).toBe(landItems(result)[0]);
@@ -363,7 +363,7 @@ describe("truncateAst", () => {
     const opts = { seed: 7, collectSnapshots: true };
 
     // `base_elevation 3` is the last attribute of the first land. Cutting
-    // above it must flatten that land — the case the old line-granular rule
+    // above it must flatten that land, the case the old line-granular rule
     // could not express, since the caret is inside the block either way.
     const withElevation = generatePreview(result, refDb, settings, opts);
     const withoutElevation = generatePreview(

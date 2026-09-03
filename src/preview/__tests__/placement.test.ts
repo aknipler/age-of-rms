@@ -54,7 +54,7 @@ describe("intersectCandidates", () => {
   });
 
   it("attributes the failure to the predicate that actually emptied the set, not an earlier one that merely narrowed it", () => {
-    // keepEven narrows [1,3,201] to [] directly (none are even) — the
+    // keepEven narrows [1,3,201] to [] directly (none are even), so the
     // failure belongs to keepEven, and keepUnder100 never even gets a
     // chance to run, so its bucket must NOT be reported.
     const scratch = Int32Array.from([1, 3, 201]);
@@ -65,7 +65,7 @@ describe("intersectCandidates", () => {
 
   it("attributes to the SECOND predicate when the first narrows but doesn't empty", () => {
     // keepEven narrows [3,200,202,204] to [200,202,204] (non-empty), THEN
-    // keepUnder100 empties it — the failure belongs to keepUnder100.
+    // keepUnder100 empties it. The failure belongs to keepUnder100.
     const scratch = Int32Array.from([3, 200, 202, 204]);
     const result = intersectCandidates(scratch, scratch.length, [keepEven, keepUnder100]);
     expect(result.count).toBe(0);
@@ -97,7 +97,7 @@ describe("pushFailure (Sec.7's bucket coalescing)", () => {
     for (let i = 0; i < 50_000; i++) pushFailure(failures, failure("occupancyFull", `attempt ${i}`));
     expect(failures).toHaveLength(1);
     expect(failures[0].occurrences).toBe(50_000);
-    // The example stays the FIRST one, not the last — a later attempt is not
+    // The example stays the FIRST one, not the last; a later attempt is not
     // more representative, and re-pointing it every time would mean the
     // detail string could never be reasoned about.
     expect(failures[0].detail).toBe("attempt 0");

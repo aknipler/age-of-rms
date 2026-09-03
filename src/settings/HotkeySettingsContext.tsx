@@ -20,7 +20,7 @@ import { DEFAULT_HOTKEYS, HOTKEY_STORE_KEYS, isHotkey, type Hotkey, type HotkeyI
  * One `hotkeys` record rather than a field per binding (which is how this
  * context looked when Save was the only one): every consumer that fires an
  * action reads `hotkeys[id]` and every consumer that lists bindings (the
- * Settings tab) iterates `Object.keys(DEFAULT_HOTKEYS)` — adding a binding
+ * Settings tab) iterates `Object.keys(DEFAULT_HOTKEYS)`. Adding a binding
  * is now a `hotkeys.ts` edit plus one new listener, not a second copy of
  * this whole context.
  */
@@ -34,7 +34,7 @@ export interface HotkeySettingsValue {
    * combined one, plus BreakdownPane/SectionView's scoped ones) checks this
    * before matching a press, so pressing the app's CURRENT binding for
    * something while choosing a new one for it doesn't ALSO fire the old
-   * action — a bare "add a second listener" approach can't express that
+   * action. A bare "add a second listener" approach can't express that
    * ordering, since every listener lives on `window` and the one that fires
    * first wins. Scoped to at most one recording binding at a time (a
    * single id, not a set) because the Settings UI only ever lets one row
@@ -49,13 +49,13 @@ const HotkeySettingsContext = createContext<HotkeySettingsValue | null>(null);
 export function HotkeySettingsProvider({ children }: { children: ReactNode }) {
   const [hotkeys, setHotkeysState] = useState<Record<HotkeyId, Hotkey>>(DEFAULT_HOTKEYS);
   const [store, setStore] = useState<Store | null>(null);
-  // Ephemeral — never persisted, reset to null on every launch.
+  // Ephemeral, never persisted, reset to null on every launch.
   const [recordingId, setRecordingId] = useState<HotkeyId | null>(null);
 
   // `cancelled` guards against an unmount between the load starting and
-  // finishing — see AppSettingsContext.tsx for why StrictMode's
+  // finishing; see AppSettingsContext.tsx for why StrictMode's
   // double-invoke in dev makes this necessary rather than defensive. One
-  // store load, then one get() per binding — the store itself is a flat
+  // store load, then one get() per binding, the store itself is a flat
   // key/value file, so there's no benefit to loading them any other way.
   useEffect(() => {
     let cancelled = false;

@@ -10,14 +10,14 @@ import styles from "./BlockList.module.css";
  * Recursive Item[] renderer (docs/breakdown-design.md Sec.6.1). A branch
  * segment renders a BlockList over branch.items, which is how nested
  * conditionals/blocks-within-branches render uniformly with a section
- * body — same component, different item list.
+ * body, same component, different item list.
  *
  * Also where comments get interleaved: every
  * BlockList call independently attributes to itself whichever comments
- * fall strictly between two of ITS OWN consecutive items — safe and
+ * fall strictly between two of ITS OWN consecutive items, safe and
  * unambiguous, since item spans never overlap across different lists.
  * Comments before the first item or after the last item of any list are
- * out of scope for v1 (see comments.ts's own doc comment) — they simply
+ * out of scope for v1 (see comments.ts's own doc comment). They simply
  * don't render yet.
  */
 export function BlockList({ items }: { items: Item[] }) {

@@ -9,7 +9,7 @@ interface CommentCardProps {
 }
 
 // Show comments in Breakdown too. Read-only, same
-// as raw/orphan regions (Sec.3.7) — comments are pure trivia (parser-design
+// as raw/orphan regions (Sec.3.7), comments are pure trivia (parser-design
 // Sec.2), not part of the editable AST, so there's no EditIntent for them
 // yet. Showing them doesn't imply making them editable here; that stays
 // Code-tab-only for now. BlockList decides WHERE these render (the gaps

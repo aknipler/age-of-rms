@@ -1,4 +1,4 @@
-// The Open dialog's starting folder — the path rules only. The Tauri half
+// The Open dialog's starting folder, the path rules only. The Tauri half
 // (the store read, the `exists` IPC) is wired in useDocument.ts and has no
 // automated coverage, same as every other hook in this codebase; everything
 // that can be a pure function is one, and this is that function.
@@ -15,7 +15,7 @@ import {
 
 /**
  * A fake disk. `exists` answers from a set of paths, case-insensitively
- * because Windows is, and `readTextFile` throws for anything absent — the
+ * because Windows is, and `readTextFile` throws for anything absent, the
  * same way the real plugin does, which is the behaviour `readSteamLibraries`
  * has to survive.
  */
@@ -126,7 +126,7 @@ describe("findDeScriptsFolder", () => {
 describe("candidateScriptFolders", () => {
   it("never probes the same folder twice, however many libraries name it", async () => {
     // Steam lists its own root as library 0, and both .vdf locations exist on
-    // a machine upgraded across the move — so the default root arrives three
+    // a machine upgraded across the move, so the default root arrives three
     // times before any deduplication.
     const vdf = '"path" "C:\\\\Program Files (x86)\\\\Steam"';
     const disk = fakeDisk({

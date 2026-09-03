@@ -23,7 +23,7 @@ import {
 const RMS_FILTERS = [{ name: "AoE2 Random Map Script", extensions: ["rms"] }];
 
 // The Tauri half of scriptFolder.ts's two filesystem questions. It is this
-// object, and not the module, that can't run in Vitest — which is the whole
+// object, and not the module, that can't run in Vitest, which is the whole
 // reason the resolver takes it as a parameter.
 const TAURI_PROBE: FolderProbe = { exists, readTextFile };
 
@@ -31,7 +31,7 @@ const TAURI_PROBE: FolderProbe = { exists, readTextFile };
  * Which folder the Open / Save As dialog should start in.
  *
  * `undefined` means "pass no `defaultPath`", which hands the choice back to
- * the Windows common dialog and its per-app MRU — the behaviour before this
+ * the Windows common dialog and its per-app MRU, the behaviour before this
  * existed, and still the right answer once neither of the two better ones is
  * available.
  *
@@ -59,7 +59,7 @@ async function dialogStartFolder(): Promise<string | undefined> {
  *
  * Ours rather than the shell's MRU on purpose: the shell keys its MRU on the
  * executable, so it resets on a reinstall and differs between the dev build
- * and the installed one — which is exactly how the release ended up opening
+ * and the installed one, which is exactly how the release ended up opening
  * on a folder from someone's development tree.
  */
 async function rememberScriptFolder(filePath: string): Promise<void> {
@@ -67,11 +67,11 @@ async function rememberScriptFolder(filePath: string): Promise<void> {
     const store = await load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} });
     await store.set(LAST_SCRIPT_FOLDER_KEY, await dirname(filePath));
   } catch {
-    // Same reasoning as above — failing to remember must never fail the save.
+    // Same reasoning as above, failing to remember must never fail the save.
   }
 }
 
-// docs/breakdown-design.md Sec.6.4 — the persistent Monaco ITextModel is the
+// docs/breakdown-design.md Sec.6.4, the persistent Monaco ITextModel is the
 // authoritative document buffer, created ONCE at module scope (not inside
 // the hook) so React 18 StrictMode's double-invoke of component bodies/lazy
 // initializers can never try to create a second model at the same URI
@@ -79,7 +79,7 @@ async function rememberScriptFolder(filePath: string): Promise<void> {
 // language + self-hosts monaco (src/editor/monacoSetup.ts) before this
 // module is ever imported, and `loader.config({ monaco })` there points
 // @monaco-editor/react's internal loader at this exact same `monaco-editor`
-// module instance — so a model created here via the real `monaco-editor`
+// module instance, so a model created here via the real `monaco-editor`
 // import IS visible to <Editor path=... keepCurrentModel /> in CodePane.tsx;
 // there is no async race to coordinate.
 export const DOCUMENT_MODEL_PATH = "inmemory://model/document.rms";
@@ -95,7 +95,7 @@ export function getDocumentModel(): monaco.editor.ITextModel {
  *
  * Module scope, beside the model, because the header stamp is the one edit
  * the app makes on the user's behalf rather than at their request, and it has
- * to land on the same stack everything else does — an edit Ctrl+Z cannot
+ * to land on the same stack everything else does. An edit Ctrl+Z cannot
  * reach is worse than no edit at all.
  */
 function replaceRanges(edits: readonly { start: number; end: number; newText: string }[]): void {
@@ -110,7 +110,7 @@ function replaceRanges(edits: readonly { start: number; end: number; newText: st
     };
   });
   // Offsets are in ORIGINAL coordinates and Monaco handles the ordering
-  // itself, so the edits need no descending sort — that is what manual string
+  // itself, so the edits need no descending sort. That is what manual string
   // splicing needs. Non-overlap is the requirement, and refreshScriptHeader
   // produces one edit per distinct line.
   documentModel.pushEditOperations([], operations, () => null);
@@ -132,32 +132,32 @@ export interface UseDocumentOptions {
    *
    * A parameter rather than a `useAppSettings()` call inside the hook. The
    * hook is otherwise about files and nothing else, and taking the value in
-   * keeps it that way — the same reason `applyTextEdit` takes a structurally
+   * keeps it that way, the same reason `applyTextEdit` takes a structurally
    * typed edit instead of importing Breakdown's `TextEdit`.
    */
   authorName: string;
 }
 
 // Why file access happens on the Rust side, in brief: the webview that
-// renders our React UI has no filesystem access of its own — that's a
+// renders our React UI has no filesystem access of its own. That's a
 // deliberate browser-style sandbox. The dialog/fs *plugins* we use here
 // are a thin JS wrapper around Tauri "commands": each call
 // (open/save/readTextFile/writeTextFile) is serialized, sent over IPC to
 // the Rust process, executed there (where real OS file access lives), and
 // the result is sent back. `capabilities/default.json` is the allowlist
 // that says which of those commands, on which paths, this window is
-// permitted to invoke — nothing in JS can read/write a file the
+// permitted to invoke. Nothing in JS can read/write a file the
 // capability doesn't cover, no matter what the code says.
 export function useDocument({ authorName }: UseDocumentOptions) {
   const [filePath, setFilePath] = useState<string | null>(null);
   // `content` is now a DERIVED MIRROR of documentModel's text (Sec.6.4),
-  // updated via onDidChangeContent below — not the source of truth itself.
+  // updated via onDidChangeContent below, not the source of truth itself.
   const [content, setContentState] = useState(() => documentModel.getValue());
   const [isDirty, setIsDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // Dirty is "model version != last-saved version" (Sec.6.4's suggested
-  // cleaner signal than string compare) rather than comparing strings —
+  // cleaner signal than string compare) rather than comparing strings,
   // it also means an undo back to the saved state correctly clears dirty,
   // which a string-equality check would have gotten right anyway but this
   // is the idiom Monaco itself uses (e.g. VS Code's own dirty tracking).
@@ -165,7 +165,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
 
   // The close-request listener below is registered once but needs the
   // *current* isDirty/filePath/content on every close attempt, not
-  // whatever they were when the listener was created — reading state
+  // whatever they were when the listener was created, reading state
   // directly in that closure would capture stale values ("stale
   // closure"), so we mirror state into refs and read the refs instead.
   const isDirtyRef = useRef(isDirty);
@@ -173,7 +173,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   isDirtyRef.current = isDirty;
   filePathRef.current = filePath;
 
-  // Same mirror, same reason, for the author name — but note the second
+  // Same mirror, same reason, for the author name, but note the second
   // reason it has to be a ref here. `writeToPath` below is a `useCallback`
   // with an empty dependency array, and `ensureSavedBefore` and the
   // close-request effect are both built on top of it. Adding `authorName` to
@@ -190,12 +190,12 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // rewritten?" are different questions whose answers diverge the moment
   // somebody edits the comment.
   //
-  // `hasHeaderRef` — has this document been stamped at all? It is what stops
+  // `hasHeaderRef`. Has this document been stamped at all? It is what stops
   // the comment being written a second time. Deleting the block does NOT
   // clear it: a deleted header is an answer, and re-adding it on the next
   // save would be the app arguing with the user.
   //
-  // `stampedHeaderRef` — the record of what was written, carrying a per-row
+  // `stampedHeaderRef`, the record of what was written, carrying a per-row
   // ownership set that only ever shrinks (scriptHeader.ts's StampedHeader).
   // Ownership is per ROW rather than per block, so hand-correcting the
   // created date costs you the created row and nothing else; the file name,
@@ -217,7 +217,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // calls `resolveUnsavedChoice(...)` with the user's answer.
   //
   // The resolver lives in a ref, not state, because it's plumbing rather
-  // than something the UI renders — storing it in state would trigger an
+  // than something the UI renders. Storing it in state would trigger an
   // extra render for no visual reason. The *action* IS state, because it
   // decides both whether the dialog shows and what its buttons say.
   const [unsavedAction, setUnsavedAction] = useState<UnsavedAction | null>(null);
@@ -240,7 +240,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   }, []);
 
   // Mirror the model's text into React state on every change, whichever
-  // side made it — Code-tab typing, Breakdown's pushEditOperations, or
+  // side made it; Code-tab typing, Breakdown's pushEditOperations, or
   // undo/redo. This is the "content becomes a derived mirror via
   // onDidChangeContent" piece of Sec.6.4.
   useEffect(() => {
@@ -275,7 +275,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
         appVersion: __APP_VERSION__,
       };
       const { text, stamped } = buildScriptHeader(fields);
-      // An empty range at offset 0 — an insertion rather than a replacement,
+      // An empty range at offset 0, an insertion rather than a replacement,
       // so whatever the document already held moves down intact.
       replaceRange(0, 0, `${text}${HEADER_SEPARATOR}`);
       hasHeaderRef.current = true;
@@ -291,7 +291,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
       appVersion: __APP_VERSION__,
       modified: now,
     });
-    // Stored whether or not there are edits — a refresh that found nothing to
+    // Stored whether or not there are edits, a refresh that found nothing to
     // change may still have found a row missing, and that narrowed ownership
     // is the part that has to survive to the next save.
     stampedHeaderRef.current = refresh.stamped;
@@ -318,7 +318,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
 
   /**
    * The single unsaved-work guard, shared by Open and the window-close
-   * handler — the two places that would otherwise silently discard changes.
+   * handler, the two places that would otherwise silently discard changes.
    *
    * Returns `true` when it's safe to proceed (nothing was dirty, the save
    * succeeded, or the user chose to discard) and `false` when the user
@@ -326,7 +326,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
    *
    * Note there are TWO ways to end up cancelling: choosing Cancel in our
    * dialog, and cancelling the native Save As picker afterwards. Both must
-   * abandon the whole operation — a cancelled Save As that still closed the
+   * abandon the whole operation, a cancelled Save As that still closed the
    * window would be the exact data-loss bug this guard exists to prevent.
    */
   const ensureSavedBefore = useCallback(
@@ -362,10 +362,10 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     void rememberScriptFolder(selected);
     // setValue (not pushEditOperations) deliberately: opening a different
     // file is a new document buffer, so its undo history should NOT carry
-    // over from whatever was previously open — this is the one place we
+    // over from whatever was previously open, this is the one place we
     // want Monaco's undo stack reset, not preserved.
     documentModel.setValue(text);
-    // An opened script was not built here, so it does not get stamped —
+    // An opened script was not built here, so it does not get stamped.
     // "every script built with AoRMS" is the promise, and writing a header
     // onto somebody else's file (or onto your own, saved before this feature
     // existed) is editing their work uninvited. Marking it as already
@@ -375,7 +375,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     //
     // The stamp record goes the other way. The file on disk may well contain
     // a block this app wrote in an earlier session, and it looks identical to
-    // one written a minute ago — but nothing in the file records whether a
+    // one written a minute ago, but nothing in the file records whether a
     // human has since rewritten it, so the app has no basis for editing it
     // and does not. A reopened script keeps whatever date it was saved with.
     hasHeaderRef.current = true;
@@ -396,7 +396,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     documentModel.setValue("");
     // The one place the header state resets to "not stamped yet". New is the
     // start of a script built here, so its first save writes a fresh comment
-    // with today as the created date — where Open, just above, does the
+    // with today as the created date, where Open, just above, does the
     // opposite for the opposite reason.
     hasHeaderRef.current = false;
     stampedHeaderRef.current = null;
@@ -429,7 +429,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // mount) specifically to catch bugs like the one that used to be here:
   // this listener is registered asynchronously (onCloseRequested returns
   // a Promise<UnlistenFn>), and the *first* mount's cleanup could fire
-  // before that promise resolved — leaving `unlisten` still undefined, so
+  // before that promise resolved, leaving `unlisten` still undefined, so
   // cleanup was a no-op and the first listener leaked. StrictMode's
   // second mount then added a second listener on top of it, so closing
   // the window fired two independent confirm dialogs and left things in
@@ -445,18 +445,18 @@ export function useDocument({ authorName }: UseDocumentOptions) {
         if (!isDirtyRef.current) return;
         event.preventDefault();
 
-        // The same guard Open uses — a real 3-way choice via our own modal.
+        // The same guard Open uses, a real 3-way choice via our own modal.
         // This used to be Tauri's native confirm(), which returns a boolean:
         // it cannot express three outcomes, and gives no way to tell an
         // explicit "No" from a dismissed dialog, so it had to be collapsed
         // to save-or-stay. Owning the markup fixes that, and every dismissal
         // path (X, Esc, backdrop) reports "cancel".
         //
-        // Returning here simply leaves the window open — preventDefault()
+        // Returning here simply leaves the window open, preventDefault()
         // above already stopped the close.
         if (!(await ensureSavedBefore("close"))) return;
 
-        // destroy() closes without re-emitting closeRequested — calling
+        // destroy() closes without re-emitting closeRequested, calling
         // close() here would just trigger this same handler again.
         await getCurrentWindow().destroy();
       })
@@ -478,7 +478,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
 
   // Applies a byte-level TextEdit (docs/breakdown-design.md Sec.4.1's
   // TextEdit shape) to the shared document model via pushEditOperations,
-  // which lands on Monaco's own undo/redo stack — the same stack Ctrl+Z
+  // which lands on Monaco's own undo/redo stack, the same stack Ctrl+Z
   // in the Code tab uses (Sec.6.4). This is the one function Breakdown's
   // patch-application glue (src/breakdown/applyEdit.ts) needs from this
   // hook; it deliberately takes a structurally-typed edit rather than
@@ -498,12 +498,12 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // The N-edit form, for the Advanced Tools pane (docs/tools-api-design.md
   // Sec.4.5). It exists because calling applyTextEdit N times produces N UNDO
   // ENTRIES, which breaks that spec's central promise that a tool's Apply is one
-  // undoable action — a user who applied 40 changes should press Ctrl+Z once,
+  // undoable action, a user who applied 40 changes should press Ctrl+Z once,
   // not forty times.
   //
   // Converting all N and passing ONE array is the whole mechanism.
   // pushEditOperations takes ranges in ORIGINAL coordinates and handles ordering
-  // itself, so the edits need no descending sort — that is what manual string
+  // itself, so the edits need no descending sort. That is what manual string
   // splicing needs, and presenting it as the mechanism invites a later "fix" of
   // the wrong thing. What Monaco does require is non-overlap, which the caller
   // validates (protocol.ts's validateEdits) before reaching here.
@@ -525,13 +525,13 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // undo/redo stack is real and shared, but Ctrl+Z is normally a
   // keybinding the Monaco *editor instance* owns, and that instance only
   // exists while CodePane is mounted (the Code tab is active). Switch to
-  // the Breakdown tab — CodePane unmounts, nothing is listening for
+  // the Breakdown tab, CodePane unmounts, nothing is listening for
   // Ctrl+Z, and a Breakdown edit becomes unreachable to undo even though
   // the data is sitting right there on the shared model. Fix: a
   // window-level listener that calls the model's own undo()/redo()
   // directly, so it works with or without a mounted editor. When the
   // Monaco editor IS focused, its own binding already handles the
-  // keystroke (and does it better — cursor/scroll restoration) — detect
+  // keystroke (and does it better, cursor/scroll restoration), detect
   // that via closest(".monaco-editor") and step aside rather than
   // double-handling the same keystroke through two paths.
   useEffect(() => {

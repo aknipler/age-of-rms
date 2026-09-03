@@ -1,5 +1,5 @@
 // The "Shorten long #const / #define names" setting, split into a pure module
-// so the rule can be unit-tested without a React tree or the Tauri store —
+// so the rule can be unit-tested without a React tree or the Tauri store,
 // same split as help/helpConstants.ts and sidepanel/sidePanelLayout.ts.
 
 // Same store file as the help (1.7), generation (2.5) and side-panel (4.4)
@@ -21,7 +21,7 @@ export const SHORTENED_PREFIX_LENGTH = 3;
  * `SHORE_FISH` -> `SHO…`, `GOLD` -> `GOLD`.
  *
  * A single character (U+2026) rather than three dots, so the shortened form is
- * four columns wide instead of six — shortening to something nearly as long as
+ * four columns wide instead of six, shortening to something nearly as long as
  * the limit would defeat the point.
  *
  * Returns the name unchanged when it is short enough OR when the setting is
@@ -33,7 +33,7 @@ export function shortenName(name: string, enabled: boolean): string {
   return `${name.slice(0, SHORTENED_PREFIX_LENGTH)}…`;
 }
 
-/** Whether `shortenName` would actually change this name — i.e. whether the full name still needs to be reachable somehow. */
+/** Whether `shortenName` would actually change this name, i.e. whether the full name still needs to be reachable somehow. */
 export function isShortened(name: string, enabled: boolean): boolean {
   return enabled && name.length > NAME_LENGTH_LIMIT;
 }

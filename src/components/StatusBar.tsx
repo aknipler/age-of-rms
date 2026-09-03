@@ -1,6 +1,6 @@
 import { HelpTip } from "./HelpTip";
 import type { Diagnostic } from "../parser/types";
-import type { ResourceAmounts, ResourceRange } from "../parser/resourceTotals";
+import type { ResourceAmounts, ResourceRange } from "../preview/generator/resourceSummary";
 import {
   formatCompactRange,
   formatExactRange,
@@ -13,11 +13,16 @@ interface StatusBarProps {
   /** Live parser diagnostics from the Code tab (Phase 2.4). Empty when
    * no file is open yet, or before the first parse has come back. */
   diagnostics?: Diagnostic[];
-  /** Live resource totals from the Code tab (Phase 2.5). Zeroed ranges
-   * when no file is open yet, or before the first parse has come back. */
+  /** Resource totals read off the current preview generation (resourceSummary.ts).
+   * Zeroed ranges when no file is open yet, or before the first generation
+   * has come back. */
   total?: ResourceRange;
   player?: ResourceRange;
   neutral?: ResourceRange;
+  /** D11: a generation is in flight, so these figures describe the previous one. */
+  pending?: boolean;
+  /** D3: "Pinned line N" / "Current line N" when Current view is drawing less than the whole script. Absent draws nothing. */
+  cutLabel?: string;
   onOpenGenerationSettings?: () => void;
   /** Opens a prefilled GitHub issue in the user's browser (src/bugReport.ts). */
   onReportBug?: () => void;
@@ -28,7 +33,7 @@ const ZERO_RANGE: ResourceRange = {
   max: { food: 0, wood: 0, gold: 0, stone: 0 },
 };
 
-// Emoji stand in for the words "Food"/"Wood"/"Gold"/"Stone" — twelve
+// Emoji stand in for the words "Food"/"Wood"/"Gold"/"Stone", twelve
 // figures share this row with a problem count and two buttons, and the
 // labels were most of its width. The icon carries an `aria-label` with the
 // real word, so the saving is visual only: a screen reader still hears
@@ -41,8 +46,8 @@ const RESOURCES: readonly { key: keyof ResourceAmounts; name: string; icon: stri
   { key: "stone", name: "Stone", icon: "🪨" },
 ];
 
-// The colour IS the severity readout — there is no "Problems:" label any
-// more — so the triangle is drawn as an SVG rather than written as the ⚠
+// The colour IS the severity readout, there is no "Problems:" label any
+// more, so the triangle is drawn as an SVG rather than written as the ⚠
 // character. A text ⚠ renders as a colour emoji on Windows in most fonts
 // and ignores `color` entirely, which would leave the one thing this
 // element has to communicate untellable.
@@ -102,16 +107,19 @@ function ResourceBucket({
   );
 }
 
-// Resource totals (Phase 2.5): walks the AST for create_object of
-// resource objects (src/parser/resourceTotals.ts), computed in the
-// parser worker and lifted here from App via useRmsDiagnostics. Problems
-// (Phase 2.4) is likewise real: the live count from the parser worker
-// wired up in CodePane.
+// Resource totals (status-bar accuracy pass): read off the actual preview
+// generation currently showing (src/preview/generator/resourceSummary.ts),
+// not a static AST walk — see that module's own header for why. Lifted here
+// from App via StatusBarContainer, which reads PreviewResultContext.
+// Problems (Phase 2.4) is likewise real: the live count from the parser
+// worker wired up in CodePane.
 export function StatusBar({
   diagnostics = [],
   total = ZERO_RANGE,
   player = ZERO_RANGE,
   neutral = ZERO_RANGE,
+  pending = false,
+  cutLabel,
   onOpenGenerationSettings,
   onReportBug,
 }: StatusBarProps) {
@@ -121,18 +129,29 @@ export function StatusBar({
     <div className={styles.statusBar}>
       {/* Only the resource buckets scroll. The problem indicator and the two
           buttons live outside this element (see .pinned), so nothing the
-          user needs to REACH — report a bug, open settings, see that the
-          script is broken — can be pushed out of sight by a wide total. */}
-      <div className={styles.scrollArea}>
+          user needs to REACH, report a bug, open settings, see that the
+          script is broken, can be pushed out of sight by a wide total.
+          Dimmed while a generation is in flight (D11) — not colour-only,
+          aria-busy says the same thing to a screen reader. */}
+      <div
+        className={`${styles.scrollArea} ${pending ? styles.pending : ""}`}
+        data-tutorial-anchor="statusBar.resources"
+        aria-busy={pending}
+      >
+        {cutLabel && (
+          <HelpTip id="statusBar.cut">
+            <span className={styles.cutLabel}>({cutLabel})</span>
+          </HelpTip>
+        )}
         <ResourceBucket helpId="statusBar.total" label="Total" range={total} />
         <ResourceBucket helpId="statusBar.player" label="Player" range={player} />
         <ResourceBucket helpId="statusBar.neutral" label="Neutral" range={neutral} />
       </div>
       <div className={styles.pinned}>
         {/* The breakdown stays written out ("4 warnings, 2 info") rather than
-            collapsing to a total. The triangle replaces the word "Problems:"
-            — a label that never told the user anything the row's position
-            didn't — and its colour repeats the worst severity, so the text is
+            collapsing to a total. The triangle replaces the word "Problems:",
+            a label that never told the user anything the row's position
+            didn't, and its colour repeats the worst severity, so the text is
             the detail and the colour is the glance. */}
         <HelpTip id="statusBar.problems">
           <span className={`${styles.problems} ${PROBLEM_LEVEL_CLASS[problems.level]}`}>
@@ -167,7 +186,7 @@ export function StatusBar({
 
 // A lookup rather than a template string (`styles[`level-${level}`]`) so
 // TypeScript checks that every level has a class and that every class named
-// here exists — a template index silently yields `undefined` for a typo,
+// here exists, a template index silently yields `undefined` for a typo,
 // which renders as an uncoloured icon and looks like a CSS problem.
 const PROBLEM_LEVEL_CLASS: Record<ProblemLevel, string> = {
   none: styles.levelNone,

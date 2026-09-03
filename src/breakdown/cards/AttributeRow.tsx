@@ -17,7 +17,7 @@ interface InstanceValueProps {
   helpId: string;
 }
 
-// docs/breakdown-design.md Sec.3.4/Sec.4.11 — set-value edits, commit on
+// docs/breakdown-design.md Sec.3.4/Sec.4.11, set-value edits, commit on
 // blur/Enter. Wired to the same-value-source-order intent regardless of
 // whether this arg belongs to a listed attribute, an unlisted one (Other
 // contents), or a positional command argument (reused by CommandCard).
@@ -34,7 +34,7 @@ export function AttributeValueEditor({ arg, type, helpId }: InstanceValueProps) 
   }
   // Sec.3.4's quoting round-trip: a quoted source token (only #include_drs/
   // #includeXS filename args are ever written this way) is allowed to
-  // contain spaces — computeEdit re-quotes on write iff the original
+  // contain spaces. computeEdit re-quotes on write iff the original
   // token was quoted, so whitespace here is legal RMS, not unrenderable.
   const wasQuoted = tokens[arg.firstToken]?.text.startsWith('"') ?? false;
   return (
@@ -52,21 +52,21 @@ export function AttributeValueEditor({ arg, type, helpId }: InstanceValueProps) 
   );
 }
 
-/** Exported for OtherContentsRow.tsx — a known-but-unlisted attribute (Sec.3.3(c)) renders as this same typed row, just with no repeatable/badge framing. */
+/** Exported for OtherContentsRow.tsx, a known-but-unlisted attribute (Sec.3.3(c)) renders as this same typed row, just with no repeatable/badge framing. */
 export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; helpId: string }) {
   const { tokens, applyEdit, diagnostics } = useBreakdownContext();
   const name = tokens[node.name].text;
   const defArgs = node.def?.arguments ?? [];
   const isBareFlag = node.args.length === 0 && defArgs.length === 0;
   // A diagnostic on this attribute previously only
-  // showed up in the owning CommandCard's HEADER badge — easy to miss
+  // showed up in the owning CommandCard's HEADER badge, easy to miss
   // which of several attributes it was actually about. Highlighting the
   // specific row too (same span-containment rule Sec.5 already uses for the
   // header badge, just scoped to this one node instead of the whole
   // command) makes that immediate.
   const severity = maxSeverityWithin(diagnostics, node.span);
   const rowMessage = severity ? diagnosticsWithin(diagnostics, node.span).map((d) => d.message).join("\n") : undefined;
-  // Custom-positioned popup instead of a native `title` — see
+  // Custom-positioned popup instead of a native `title`, see
   // DiagnosticTooltip.tsx: a browser tooltip can't be repositioned, so it
   // was free to land on top of a HelpTip popup opened by something
   // nested in this same row. Always hoverable when a
@@ -74,7 +74,7 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
   // setting), just flips above/below to avoid colliding with one.
   const diagHover = useDiagnosticHover();
 
-  // Note: no row-level HelpTip wrapper here — the value editor (below,
+  // Note: no row-level HelpTip wrapper here. The value editor (below,
   // via AttributeValueEditor -> ValueEditor) already wraps its own input
   // in a HelpTip with this same id. Wrapping the whole row a second time
   // with the same id produced two overlapping popups on hover (one
@@ -89,7 +89,7 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
       {severity && diagHover.hovering && (
         <DiagnosticPopup message={rowMessage!} severity={severity} side={diagHover.side} />
       )}
-      {/* .labelSlot (not .label) carries the fixed column width — see its
+      {/* .labelSlot (not .label) carries the fixed column width, see its
           CSS comment. It's the actual flex item; HelpTip's own wrapper
           span goes inside it so the column width holds regardless of
           whether HelpTip renders a wrapper (help mode on) or a bare
@@ -106,7 +106,7 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
               type="checkbox"
               checked
               onChange={() => applyEdit({ kind: "removeNode", node })}
-              // Unchecking removes this attribute — same "don't steal
+              // Unchecking removes this attribute, same "don't steal
               // selection" reasoning as the delete buttons below, applied to
               // click rather than change since that's what bubbles to
               // ItemCard's selection handler.
@@ -131,7 +131,7 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
           className={styles.deleteButton}
           onClick={(e) => {
             // Same "deleting must not change selection" rule as CommandCard's
-            // delete button — this row lives inside a CommandCard, and
+            // delete button, this row lives inside a CommandCard, and
             // removing one attribute instance shouldn't touch which card (or
             // which OTHER card) is selected.
             e.stopPropagation();
@@ -148,7 +148,7 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
 
 interface AttributeRowProps {
   slot: AttributeSlot;
-  /** The command's block (or the bare command itself, for brace synthesis, Sec.4.6) — needed to construct addAttribute/toggleFlag intents. */
+  /** The command's block (or the bare command itself, for brace synthesis, Sec.4.6), needed to construct addAttribute/toggleFlag intents. */
   target: AttributeTarget;
 }
 
@@ -158,7 +158,7 @@ interface AttributeRowProps {
  * - 0 instances: faint, byte-free add-affordance -> addAttribute/toggleFlag(on).
  * - 1 instance: filled row (value editor(s), or checkbox for a flag).
  * - 2+ instances: ALWAYS a list (the ground-truth rule), regardless of
- *   `def.repeatable` — presence in the source is ground truth, the flag
+ *   `def.repeatable`. Presence in the source is ground truth, the flag
  *   only gates whether "add another" is offered.
  */
 export function AttributeRow({ slot, target }: AttributeRowProps) {
@@ -179,28 +179,38 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
       if (result) requestFocus(result.caret);
     };
     // Attributes were merging multiple-per-line only while
-    // Help Tips was on. Root cause — this used to wrap the WHOLE row
+    // Help Tips was on. Root cause. This used to wrap the WHOLE row
     // <div> in <HelpTip>. HelpTip's own wrapper (HelpTip.module.css's
     // .wrapper) is `display: inline-block`; with help mode on, that put
     // an inline-block box around this block-level row div, and .group
-    // (this row's parent) has no `display` set at all — plain block
-    // flow — so consecutive inline-block-wrapped rows behave like
+    // (this row's parent) has no `display` set at all, plain block
+    // flow, so consecutive inline-block-wrapped rows behave like
     // inline content and pack onto the same line wherever they fit,
     // exactly like wrapping text. With help mode off, HelpTip returns a
     // bare fragment (see HelpTip.tsx), so the row rendered as an
     // ordinary block div again and this never showed up. Every OTHER
     // row in this file (AttributeInstanceRow) already avoids this by
-    // only wrapping a piece INSIDE the row, never the row itself — this
+    // only wrapping a piece INSIDE the row, never the row itself. This
     // was the one place that didn't follow that pattern.
     return (
       // Note: the "greyed out" look is applied per-element (.absentDim
       // below) rather than once via `opacity` on this row div. Opacity
-      // on an ANCESTOR of HelpTip's popup dims the popup too — CSS
+      // on an ANCESTOR of HelpTip's popup dims the popup too. CSS
       // opacity can't be undone by a descendant's own opacity, since it
       // composites the whole subtree at reduced alpha. Scoping it to the
       // label TEXT span (a sibling of the popup inside HelpTip's own
       // wrapper, not an ancestor of it) keeps the popup fully opaque.
-      <div className={styles.row}>
+      //
+      // .absentRow + row-level onClick: the placeholder text literally
+      // reads "click to add", but that text was a bare <span> with no
+      // handler. Only the small, equally-dimmed "+" button actually did
+      // anything, so clicking the text a user was just told to click did
+      // nothing. The dedicated button stays (keyboard-focusable, an
+      // explicit target), but its own click must stopPropagation or a
+      // click landing on it would fire addAbsent() twice; once from the
+      // button, once from the row it bubbles into, adding the
+      // attribute twice over.
+      <div className={`${styles.row} ${styles.absentRow}`} onClick={addAbsent}>
         <span className={styles.labelSlot}>
           <HelpTip id="breakdown.attributeRow.absent" text={namedEntryHelpText(slot.name, slot.def.description)}>
             <span className={`${styles.label} ${styles.absentDim}`}>{slot.name}</span>
@@ -209,7 +219,15 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
         <span className={`${styles.absentValue} ${styles.absentDim}`}>
           {firstArgDefault !== undefined ? String(firstArgDefault) : "click to add"}
         </span>
-        <button type="button" className={`${styles.addButton} ${styles.absentDim}`} onClick={addAbsent} title="Add">
+        <button
+          type="button"
+          className={`${styles.addButton} ${styles.absentDim}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            addAbsent();
+          }}
+          title="Add"
+        >
           +
         </button>
       </div>

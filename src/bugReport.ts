@@ -3,7 +3,7 @@
  *
  * Pure on purpose, and it takes every fact as an argument rather than reading
  * any of them itself. The version lives in a build-time global, the user agent
- * lives on `navigator`, and neither exists under plain-Node Vitest — a module
+ * lives on `navigator`, and neither exists under plain-Node Vitest. A module
  * that reached for them directly could only be tested by faking two globals.
  * Passing them in costs one line at the call site and makes every branch here
  * testable, which is the same trade `src/parser/**` makes for the worker.

@@ -1,10 +1,10 @@
-// validate() — the semantic pass, docs/parser-design.md Sec.8. Pure function
+// validate(), the semantic pass, docs/parser-design.md Sec.8. Pure function
 // over a finished ParseResult plus reference data: no React/Monaco/Tauri
 // imports (Sec.14), so it runs in the parser worker beside parseRms and stays
 // fully Vitest-testable in plain Node.
 //
 // WHY THIS IS A SECOND PASS, not more checks inside the parser. parseRms is
-// single-pass and deliberately knows only "what have I seen so far" — that is
+// single-pass and deliberately knows only "what have I seen so far", that is
 // not a shortcut, it is the engine's own rule for constants (a #const only
 // counts below its own line, guide:148). Every check in this file needs the
 // opposite: the whole file at once. You cannot know a #const is a *re*definition
@@ -17,11 +17,11 @@
 // WHAT THESE CHECKS HAVE IN COMMON, and why they're worth shipping at all: in
 // every single case the map still generates. The engine "ignores it or
 // substitutes the most recent valid identifier and keeps going". Nothing looks
-// broken at authoring time — a typo'd condition label just quietly never fires,
+// broken at authoring time, a typo'd condition label just quietly never fires,
 // a redefined #const quietly keeps its old value. These are the bugs that are
 // invisible without a tool, which is the whole argument for the pass.
 //
-// THE ONE RULE THAT SHAPES EVERY DECISION HERE — reference data is a POSITIVE
+// THE ONE RULE THAT SHAPES EVERY DECISION HERE: reference data is a POSITIVE
 // resolver, never a negative authority. game-constants.json holds 31 constants;
 // the real game has ~130 terrains and hundreds of objects. So finding a name in
 // it proves something ("SNOW is a terrain"), but NOT finding one proves nothing
@@ -54,7 +54,7 @@ import type {
 } from "./types";
 
 /**
- * The slice of game-constants.json this pass needs — deliberately narrower
+ * The slice of game-constants.json this pass needs, deliberately narrower
  * than the file's real shape, same approach as resourceTotals.ts's
  * GameConstantsForTotals. TypeScript is structurally typed, so the full JSON
  * object satisfies this without any adapter: a type here is a description of
@@ -87,7 +87,7 @@ const VERIFIED_PROVENANCE: ReadonlySet<string> = new Set(["extracted", "patch-no
 /**
  * Which game-constants category a typed argument slot expects. `otherConstant`
  * is deliberately absent rather than mapped to something: it is the open slot
- * (Sec.6 — "#const's value slot is otherConstant, not integer", because one
+ * (Sec.6, "#const's value slot is otherConstant, not integer", because one
  * item may carry several constants), so there is no category to be wrong about.
  */
 const CONSTANT_SLOT_CATEGORY: Partial<Record<ArgumentType, string>> = {
@@ -113,24 +113,45 @@ const RANDOM_BRANCH_PREFIX = "\u0000rnd";
 export const COMMENT_OPEN_ID = 69;
 
 /**
+ * Categories `tools/extract-constants --misc-constants` sources ENTIRELY from
+ * includes/constants.inc, which a script only sees if it writes its own
+ * `#include` for it, unlike random_map.def, which every script gets for
+ * free. A name in one of these two is real, resolvable vocabulary (it still
+ * matches everywhere else this file reads `constantsByName`), just not
+ * "engine-defined" in the ambient sense this check needs, so it is excluded
+ * here rather than treated as always active.
+ *
+ * civilization/waterDefinition/colorCorrection mix both sources under one
+ * category name (random_map.def's CIVILIZATION_/WD_/CC_ prefixes alongside
+ * constants.inc's CIVILISATION_/WD_/CC_ prefixes) and are deliberately NOT in
+ * this set: none of their constants.inc-sourced rows carry constId 69 on the
+ * current DE build, so the narrower exclusion below is exact for today's
+ * data. A per-row provenance flag would be needed to keep it exact if that
+ * ever changes, this is a known gap, not an oversight.
+ */
+const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set(["terrainAlias", "objectAlias"]);
+
+/**
  * The words the lexer must treat as `/*` when it meets them INSIDE a comment,
  * built from reference data so no RMS vocabulary is hardcoded. Feed the result
  * to `ParseOptions.commentOpenAliases`.
  *
  * Engine-defined names only. A script's own `#const NAME 69` is caught by
  * RMS0111 but is NOT modelled, because deciding it needs the directive stream
- * the lexer deliberately does not read — see the note on `checkCommentOpeningWords`.
+ * the lexer deliberately does not read, see the note on `checkCommentOpeningWords`.
  */
 export function commentOpenAliases(
-  // Structurally typed to the two fields it reads, and both slots accept null
-  // AND undefined: the JSON carries null, `ValidateConstant` models the same
-  // absence as optional, and a parameter narrower than either caller is a
-  // compile error rather than a bug — which is how this signature was found.
-  constants: readonly { rmsConstant?: string | null; constId?: number | null }[],
+  // Structurally typed to the fields it reads, and the nullable slots accept
+  // null AND undefined: the JSON carries null, `ValidateConstant` models the
+  // same absence as optional, and a parameter narrower than either caller is a
+  // compile error rather than a bug, which is how this signature was found.
+  constants: readonly { rmsConstant?: string | null; constId?: number | null; category?: string | null }[],
 ): ReadonlySet<string> {
   const names = new Set<string>();
   for (const c of constants) {
-    if (c.constId === COMMENT_OPEN_ID && c.rmsConstant) names.add(c.rmsConstant);
+    if (c.constId !== COMMENT_OPEN_ID || !c.rmsConstant) continue;
+    if (c.category && NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category)) continue;
+    names.add(c.rmsConstant);
   }
   return names;
 }
@@ -140,7 +161,7 @@ interface GuardedDefinition {
   symbol: SymbolInfo;
   /** Innermost last. A negated condition is the name prefixed with "!". */
   guards: readonly string[];
-  /** `guards` joined for equality comparison — see recordConstDefinition. */
+  /** `guards` joined for equality comparison, see recordConstDefinition. */
   path: string;
 }
 
@@ -162,7 +183,7 @@ class Validator {
 
   // Names whose #define/#const is present in the file but COMMENTED OUT.
   // Toggling a feature by commenting its #define is a real RMS idiom, and the
-  // resulting `if DEBUG_MODE` branches are dead on purpose — 168 uses of that
+  // resulting `if DEBUG_MODE` branches are dead on purpose, 168 uses of that
   // one flag in a single DE-official map. Without this the unknown-name check
   // cannot tell a deliberate switch-off from a typo, and reports the idiom as
   // an error hundreds of times per file.
@@ -174,16 +195,16 @@ class Validator {
   // switch and exactly two arms care.
   //
   // RMS0304 reports NOTHING for the preamble. That is a deliberate limit and
-  // not an oversight — what RMSTEST_33a/33b measured is a locked command in the
+  // not an oversight, what RMSTEST_33a/33b measured is a locked command in the
   // WRONG section, never one in no section at all, and this check does not
   // claim past its measurement.
   private currentSection: SectionNode | undefined;
 
   // Sec.8's wrong-section suppression rule, revived alongside RMS0304 (its
-  // only consumer). A degraded region can SWALLOW a section header — the
+  // only consumer). A degraded region can SWALLOW a section header, the
   // parser's recovery scan absorbs one outright when only conditionals are
   // open (parser.ts, "Only conditionals open → legal spanning; absorb the
-  // header") — and every item after that point is then attributed to the
+  // header"), and every item after that point is then attributed to the
   // previous section. Reporting those would be reporting the parser's own
   // recovery as the author's mistake, and it would do so exactly on the
   // broken files where a warning is least readable.
@@ -202,7 +223,7 @@ class Validator {
   // The conditions guarding the item currently being walked, innermost last.
   // An `if A` contributes "A" to its own branch; every later branch of that
   // chain inherits "!A". Two definitions with an IDENTICAL guard stack sit on
-  // one execution path — either both run or neither does — which is the whole
+  // one execution path, either both run or neither does, which is the whole
   // basis of RMS0301 below. Maintained as a mutable stack rather than passed
   // down as a parameter because walkItem is a discriminated-union switch with
   // eight arms and only two of them care.
@@ -215,7 +236,7 @@ class Validator {
   private readonly constDefinitions: GuardedDefinition[] = [];
 
   // Keyed by the token index the parser recorded as the symbol's name, which
-  // is `firstArg.firstToken` (parser.ts:388) — the same token the walk sees as
+  // is `firstArg.firstToken` (parser.ts:388), the same token the walk sees as
   // args[0].firstToken. Correlating instead of re-deriving keeps ONE answer to
   // "is this a #const or a #define" in the codebase, the parser's.
   private readonly symbolByNameToken = new Map<number, SymbolInfo>();
@@ -256,7 +277,7 @@ class Validator {
 
     // The lexer tokenizes comment interiors normally and only flags the tokens
     // `isTrivia` afterwards (lexer.ts, the comment-span pass), so a
-    // commented-out definition is still fully readable here — no re-scan of
+    // commented-out definition is still fully readable here, no re-scan of
     // the raw source needed.
     for (let i = 0; i < this.tokens.length - 1; i++) {
       const token = this.tokens[i];
@@ -269,7 +290,7 @@ class Validator {
 
   /**
    * The 1-based line an offset falls on, for the messages that point at a
-   * SECOND place in the file — the earlier definition, the branch that
+   * SECOND place in the file, the earlier definition, the branch that
    * already ran, the other half of a mutex pair.
    *
    * Only the PROSE takes a line. Every `span` stays a character offset, which
@@ -313,14 +334,14 @@ class Validator {
   // ---- file-level checks ------------------------------------------------
 
   /**
-   * RMS0111 — a word inside a comment that the engine resolves to **69**, its
+   * RMS0111, a word inside a comment that the engine resolves to **69**, its
    * own id for `/*`. Measured (parser-design Sec.2.1 amendment): a leading
    * comment containing `SHORE_FISH` (object 69) or `ATTR_PROJECTILE_ARC`
-   * (attribute 69) blanked the map, while the bare literal `69` did not —
+   * (attribute 69) blanked the map, while the bare literal `69` did not,
    * numeric literals are lexed as numbers and never reach the symbol table, so
    * **it is the value, carried by a word**, and the namespace is irrelevant.
    *
-   * **Reported, not modelled — decided 2026-08-11, do not re-open.** Treating
+   * **Reported, not modelled, decided 2026-08-11, do not re-open.** Treating
    * the rest of the file as commented would match the engine and would hand
    * the author an empty Breakdown for a file full of content, as a consequence
    * of the bug they are hunting. The AST below the offending comment is
@@ -328,7 +349,7 @@ class Validator {
    * downstream may read a clean parse there as evidence the script works.
    *
    * **Only the FIRST hit is reported.** Everything after it is inside the
-   * engine's nested comment, so a second one is not a second bug — and the
+   * engine's nested comment, so a second one is not a second bug, and the
    * message's whole claim is "everything below here is gone".
    *
    * Resolution is positive-only, per this module's standing rule: engine
@@ -340,13 +361,13 @@ class Validator {
     for (const token of this.tokens) {
       if (!token.isTrivia || token.kind !== "word") continue;
       const constant = this.constantsByName.get(token.text);
-      if (constant?.constId === COMMENT_OPEN_ID) {
+      if (constant?.constId === COMMENT_OPEN_ID && !NON_AMBIENT_CONSTANT_CATEGORIES.has(constant.category)) {
         this.diagnostics.push(d.commentOpensNestedComment(token, `the game's own ${constant.category} constant`));
         return;
       }
       // A script `#const NAME 69` reaches the same table the engine's names do.
       // `SymbolInfo` carries the value's TOKEN rather than a number, since a
-      // `#const` value can be an expression — so the literal case is the one
+      // `#const` value can be an expression, so the literal case is the one
       // that can be answered here, and it is the one that matters.
       const symbols = this.symbolsByName.get(token.text);
       if (symbols?.some((s) => s.valueToken !== undefined && this.tokens[s.valueToken]?.text === String(COMMENT_OPEN_ID))) {
@@ -366,26 +387,26 @@ class Validator {
     }
     // RMS0301 and RMS0314 live in checkRedefinitions, after the walk. They
     // used to run here, off `conditionalDepth`, which cannot express what the
-    // check actually needs — see that method.
+    // check actually needs, see that method.
   }
 
   /**
-   * RMS0312 — a user definition of one of language.json's predefinedLabels.
+   * RMS0312, a user definition of one of language.json's predefinedLabels.
    *
    * This is NOT shadowing, and reading it as shadowing was the pass's one
    * outright wrong claim (found by the 2026-07-31 corpus review; spec Sec.8
    * amended). Sec.8's rationale for the shadowing check is "random_map.def
    * defined it first", which is true of game constants and false of these:
-   * every one of the 138 labels is a runtime condition — the ten categories
+   * every one of the 138 labels is a runtime condition, the ten categories
    * are game mode, map size, starting resources, starting age, lobby setting,
-   * player count, team count, team size, player-in-team, game version — and
+   * player count, team count, team size, player-in-team, game version, and
    * the engine defines each one only when it holds. `MAPSIZE_TINY` exists on a
    * tiny map and nowhere else. So `#define EMPIRE_WARS` is not overridden by
    * anything; it switches the condition on, which is exactly why three
    * DE-official maps do it inside `if EW_TESTING`. Telling the author to "pick
    * a different name" would have broken their test harness.
    *
-   * Reported on the first definition only — the note is about the name, and
+   * Reported on the first definition only, the note is about the name, and
    * repeating it per branch would say the same thing twice.
    */
   private checkOverridesEngineCondition(name: string, first: SymbolInfo): void {
@@ -394,12 +415,12 @@ class Validator {
   }
 
   /**
-   * RMS0302 — a user `#const` of a name the constants DB says the engine
+   * RMS0302, a user `#const` of a name the constants DB says the engine
    * already owns. Positive resolution, so an incomplete DB can only make this
    * check miss, never false-fire.
    *
    * The severity split is the point. The engine keeps its own definition
-   * either way, so the *line* is inert either way — but that only costs the
+   * either way, so the *line* is inert either way, but that only costs the
    * author something when the value they wrote differs from the engine's,
    * which is a silent value bug and earns the warning. When the values match
    * (73 of 73 corpus instances, all in copied `if TERRAIN_CONSTANTS`
@@ -436,8 +457,8 @@ class Validator {
 
   /**
    * The literal integer a `#const` assigns, or undefined when there isn't one.
-   * `Number()` is not used as the test because it accepts far too much —
-   * `Number("")` is 0 and `Number(" 12 ")` is 12 — and because an expression,
+   * `Number()` is not used as the test because it accepts far too much,
+   * `Number("")` is 0 and `Number(" 12 ")` is 12, and because an expression,
    * an `rnd()` or another constant genuinely cannot be compared statically.
    * Anything unresolvable stays silent rather than guessing, per the module's
    * positive-evidence rule.
@@ -448,7 +469,7 @@ class Validator {
     return /^-?\d+$/.test(text) ? Number(text) : undefined;
   }
 
-  /** RMS0305 — info, and only for scripts that have sections at all. */
+  /** RMS0305, info, and only for scripts that have sections at all. */
   private checkMissingPlayerSetup(): void {
     const sections = this.result.script.sections;
     if (sections.length === 0) return; // empty or preamble-only: nothing to say
@@ -465,7 +486,7 @@ class Validator {
   /**
    * Runs `visit` with extra guards pushed, then restores the stack. Truncating
    * by remembered length rather than popping one per literal keeps the two
-   * halves impossible to get out of step — the caller passes a variable number
+   * halves impossible to get out of step, the caller passes a variable number
    * of literals (an elseif inherits every earlier negation) and a mismatched
    * pop would silently corrupt every path recorded afterwards.
    */
@@ -477,14 +498,14 @@ class Validator {
   }
 
   /**
-   * RMS0313 — an `elseif` whose condition already appeared earlier in the same
+   * RMS0313, an `elseif` whose condition already appeared earlier in the same
    * chain. The strongest claim this pass makes and the cheapest to compute:
    * every branch of one chain is tested against the same set of defines at the
    * same point in the token stream, so if the condition were true the earlier
    * branch would have taken it. No guard algebra, no reference data, no
    * question about whether a define landed in between.
    *
-   * Compared by exact token text because RMS labels are case-sensitive —
+   * Compared by exact token text because RMS labels are case-sensitive,
    * `if Regicide` and `if REGICIDE` are genuinely different conditions, the
    * same rule RMS0300 relies on.
    *
@@ -513,7 +534,7 @@ class Validator {
     if (nameToken === undefined) return;
     const symbol = this.symbolByNameToken.get(nameToken);
     // Only a later #const is worth reporting. Re-#define-ing a flag is
-    // idempotent — the flag is already set, nothing is lost. A later #const,
+    // idempotent, the flag is already set, nothing is lost. A later #const,
     // by contrast, carries a VALUE that silently never applies, which is the
     // whole point of the guide's first-definition-wins rule.
     if (!symbol || symbol.directiveKind !== "const") return;
@@ -525,13 +546,13 @@ class Validator {
   }
 
   /**
-   * RMS0301 — a second `#const` of a name on the SAME execution path.
+   * RMS0301, a second `#const` of a name on the SAME execution path.
    *
    * "Same path" replaced "both unconditional" in the 2026-07-31 corpus review,
    * and the two differ in both directions. It is broader: two definitions
    * inside one `if` branch both run whenever that branch does, so the second
    * is dead, and the old depth test could not see this because
-   * `conditionalDepth` is a COUNT — depth 1 could mean the same branch or two
+   * `conditionalDepth` is a COUNT, depth 1 could mean the same branch or two
    * exclusive ones. It is also exactly as narrow where it matters: `if A` and
    * `else` produce different guard stacks, so the legitimate
    * branch-per-value idiom stays silent, which was the 4,856-diagnostic cut
@@ -541,7 +562,7 @@ class Validator {
    * being a shared template that writes `#const PREDATOR_A` twice per branch
    * where its neighbours write `_A` and `_B`.
    *
-   * RMS0314 — the same claim reaching ACROSS paths (CREATION_PLAN 2.6).
+   * RMS0314, the same claim reaching ACROSS paths (CREATION_PLAN 2.6).
    *
    * If an earlier definition's guards are a SUBSET of a later one's, then
    * whenever the later one runs the earlier one already did, so the later
@@ -550,7 +571,7 @@ class Validator {
    * conditional versions instead of below them.
    *
    * Both live in one method because a definition must draw at most one of
-   * them. Same-path wins when both apply — it names the nearer cause, and the
+   * them. Same-path wins when both apply, it names the nearer cause, and the
    * subsuming definition is usually the same one the reader would find next.
    */
   private checkRedefinitions(): void {
@@ -574,7 +595,7 @@ class Validator {
         const later = definitions[i];
         // A guard set holding both X and !X describes a branch that cannot
         // run at all. RMS0313 reports that once, on the branch; repeating it
-        // per statement inside would be one fact counted many times — which
+        // per statement inside would be one fact counted many times, which
         // is exactly how this analysis first surfaced nomad.rms's dead biome,
         // as 15 redefinition hits that were really one unreachable branch.
         if (this.isContradictory(later.guards)) continue;
@@ -588,8 +609,8 @@ class Validator {
           // need the monotonicity test just as much: two separate `if A`
           // blocks produce the same stack, so a `#define A` landing between
           // them makes the first block's definition never happen and the
-          // second one genuinely live. Same-branch definitions are unaffected
-          // — their guard was evaluated once, before both.
+          // second one genuinely live. Same-branch definitions are unaffected,
+          // their guard was evaluated once, before both.
           if (!this.subsumes(earlier, later)) continue;
           if (earlier.path === later.path) samePath ??= earlier;
           else subsuming ??= earlier;
@@ -639,7 +660,7 @@ class Validator {
    * NEGATED literals are safe without any check: definitions only ever
    * accumulate in RMS (`#undefine` is documented non-functional, spec Sec.7),
    * so a name undefined at the later site was undefined at the earlier one
-   * too. Opaque `start_random` literals are safe for the same reason — no
+   * too. Opaque `start_random` literals are safe for the same reason, no
    * name, nothing to redefine. Only a POSITIVE condition can flip, so only
    * those are checked, and any definition of one landing between the two
    * sites makes the claim unsound and silences it.
@@ -661,7 +682,7 @@ class Validator {
 
   private walkItem(item: Item): void {
     // No `default:` on purpose. Item is a discriminated union, so an
-    // unhandled kind is a compile error here rather than a silent no-op —
+    // unhandled kind is a compile error here rather than a silent no-op,
     // add a node type to types.ts and the compiler points at this switch.
     switch (item.kind) {
       case "command":
@@ -736,20 +757,20 @@ class Validator {
 
   // ---- per-item checks --------------------------------------------------
 
-  /** RMS0309 — read off the def, so the deprecation list lives in the data. */
+  /** RMS0309, read off the def, so the deprecation list lives in the data. */
   private checkDeprecated(item: CommandNode): void {
     if (!item.def?.deprecated) return;
     this.diagnostics.push(d.deprecatedCommand(this.tokens[item.name], item.def.deprecated));
   }
 
   /**
-   * RMS0304 — a command the engine will not run from where it is written.
+   * RMS0304, a command the engine will not run from where it is written.
    *
    * **Driven by `CommandDef.sectionLocked`, never by `CommandDef.section`, and
    * that distinction is the entire check.** `section` records where the guide
    * DOCUMENTS a command. Enforcing it warned 53 times on the corpus and 52 of
    * those were `effect_amount` used outside <PLAYER_SETUP> by shipped, working
-   * maps — so at least one command is provably not locked the way its `section`
+   * maps, so at least one command is provably not locked the way its `section`
    * implies, and a blanket rule rebuilds the false-positive class BUG-002 and
    * BUG-005 already cost three rounds of work. `sectionLocked` is set only
    * where the engine has been measured: two commands today, `create_terrain`
@@ -764,11 +785,11 @@ class Validator {
    * because a corpus count of zero says nothing about whether a check can fire.
    *
    * Three silences, each a refusal to claim past the measurement:
-   * - the preamble (`currentSection === undefined`) — measured is wrong
+   * - the preamble (`currentSection === undefined`), measured is wrong
    *   section, not no section;
-   * - an unrecognised section name (`known === false`) — what the engine does
+   * - an unrecognised section name (`known === false`), what the engine does
    *   with a header it does not know is not something we have measured;
-   * - anything after a degraded region in the same section — see
+   * - anything after a degraded region in the same section, see
    *   `sectionAttributionLost`.
    */
   private checkWrongSection(item: CommandNode): void {
@@ -780,7 +801,7 @@ class Validator {
     this.diagnostics.push(d.wrongSection(this.tokens[item.name], item.def.section, section.name));
   }
 
-  /** RMS0311 — the one error. Data-driven via AttributeDef.requiresSection. */
+  /** RMS0311, the one error. Data-driven via AttributeDef.requiresSection. */
   private checkRequiredSection(item: AttributeNode): void {
     const required = item.def?.requiresSection;
     if (!required) return;
@@ -792,7 +813,7 @@ class Validator {
   }
 
   /**
-   * RMS0310 — real engine words with no behavior behind them, from the guide's
+   * RMS0310, real engine words with no behavior behind them, from the guide's
    * Non-Functional Syntax appendix.
    *
    * Two shapes, one check. The directives (`#undefine`, `#include`) correspond
@@ -811,7 +832,7 @@ class Validator {
   }
 
   /**
-   * RMS0300 on if/elseif condition labels — the one place the vocabulary is
+   * RMS0300 on if/elseif condition labels, the one place the vocabulary is
    * genuinely closed (user #defines + the 138 predefinedLabels), so "I can't
    * find this" is real evidence rather than a gap in our data.
    */
@@ -844,7 +865,7 @@ class Validator {
     if (this.disabledDefinitions.has(token.text)) return; // switched off on purpose
 
     // Everything above is a POSITIVE resolution. Reaching here only means we
-    // couldn't find the name — which, per this module's header rule, is not
+    // couldn't find the name, which, per this module's header rule, is not
     // by itself evidence of anything. The corpus proved why: DE-official maps
     // branch on MAPSIZE_ABOVE_GIANT, THEME_AFRICAN, NOMAD_START and a dozen
     // more labels that appear nowhere in the archived guide our 138
@@ -852,7 +873,7 @@ class Validator {
     // data, and "never defined" would have been a false warning 299 times.
     //
     // So the claim gets inverted: report only when there IS positive evidence
-    // of a typo — a name within edit distance 2 of something this file or the
+    // of a typo, a name within edit distance 2 of something this file or the
     // engine actually defines. An unrecognised name with no near neighbour is
     // presumed to be a label we simply don't know about yet, and stays silent.
     const suggestion = this.nearestKnownName(token.text);
@@ -868,8 +889,8 @@ class Validator {
    * Deliberately tighter than the parser's RMS0200 did-you-mean, which allows
    * distance 2. Command names are a fixed vocabulary of 130 well-spaced words;
    * condition labels are invented per file and come in dense families, so at
-   * distance 2 a neighbour is always findable and means nothing — the corpus
-   * produced "CONFIG_RIVER_D1 — did you mean CONFIG_RIVER_A4?", which is a
+   * distance 2 a neighbour is always findable and means nothing, the corpus
+   * produced "CONFIG_RIVER_D1, did you mean CONFIG_RIVER_A4?", which is a
    * different river, not a misspelling. One character off is the signature of
    * an actual slip.
    */
@@ -921,7 +942,7 @@ class Validator {
     this.checkUseBeforeDefinition(token, arg.firstToken);
   }
 
-  /** RMS0308 — an rnd() that can't actually vary, split by which kind it is. */
+  /** RMS0308, an rnd() that can't actually vary, split by which kind it is. */
   private checkRndRange(arg: ArgNode): void {
     if (typeof arg.value !== "object" || !("rnd" in arg.value)) return;
     const [min, max] = arg.value.rnd;
@@ -929,17 +950,17 @@ class Validator {
     this.diagnostics.push(d.chanceLint(max === min ? "constantRange" : "reversedRange", arg.span));
   }
 
-  /** RMS0204 — only when we can actually name the ID. */
+  /** RMS0204, only when we can actually name the ID. */
   private checkBareNumericId(arg: ArgNode, category: string): void {
     const constant = this.constantsByCategoryAndId.get(`${category}:${arg.value as number}`);
-    // Not in the DB means we have nothing useful to say — "use a named
+    // Not in the DB means we have nothing useful to say, "use a named
     // constant" without being able to name it is worse than silence.
     if (!constant || !arg.def) return;
     const named = constant.idSource !== undefined && VERIFIED_PROVENANCE.has(constant.idSource);
     this.diagnostics.push(d.bareNumericId(this.tokens[arg.firstToken], arg.def, named ? constant.rmsConstant : undefined));
   }
 
-  /** RMS0205 — fires on positive evidence only: the name IS in the DB, in the wrong category. */
+  /** RMS0205, fires on positive evidence only: the name IS in the DB, in the wrong category. */
   private checkCrossCategory(token: Token, expectedCategory: string, arg: ArgNode): void {
     const constant = this.constantsByName.get(token.text);
     if (!constant || !arg.def) return;
@@ -983,7 +1004,7 @@ class Validator {
         continue;
       }
       // Cumulative attributes are a list, not a last-one-wins slot. Read the
-      // flag, never a name list (spec Sec.8, pinned) — five carry it today,
+      // flag, never a name list (spec Sec.8, pinned), five carry it today,
       // and without it this check false-warns on every connection block.
       if (item.def.repeatable === true) continue;
       this.diagnostics.push(
@@ -991,7 +1012,7 @@ class Validator {
       );
     }
 
-    // RMS0315 — a guide "Requires:" partner that is nowhere in this block.
+    // RMS0315, a guide "Requires:" partner that is nowhere in this block.
     //
     // **The search is block-WIDE, unlike the two checks above, and the two
     // scopes are answering opposite questions.** RMS0306/RMS0307 ask "did the
@@ -1060,12 +1081,12 @@ class Validator {
   }
 
   /**
-   * RMS0308 — the percent_chance family (spec Sec.8, all four guide-sourced).
+   * RMS0308, the percent_chance family (spec Sec.8, all four guide-sourced).
    *
    * Both cumulative thresholds are 99, not 100, and the guide is explicit about
    * why (guide:3006-3007): "If the total percentages add up to less than 99%,
    * there is a chance that none of them get chosen. If the total exceeds 99%,
-   * only the first 99% will have a chance of occurring" — plus guide:3010,
+   * only the first 99% will have a chance of occurring", plus guide:3010,
    * "the 100th percent is never chosen". So a block totalling exactly 99 has
    * full coverage and no gap, and a branch that starts at cumulative 99 is
    * already past the reachable range.
@@ -1086,7 +1107,7 @@ class Validator {
 
       if (value === undefined) {
         // An rnd() or expression chance can't be reasoned about statically.
-        // Stop the cumulative arithmetic rather than guessing — a wrong
+        // Stop the cumulative arithmetic rather than guessing, a wrong
         // "unreachable" claim is worse than no claim.
         evaluable = false;
         continue;
@@ -1116,8 +1137,8 @@ class Validator {
 }
 
 /**
- * Semantic checks over a parsed script (docs/parser-design.md Sec.8). Pure —
- * no I/O, never throws — and additive: the returned diagnostics are meant to be
+ * Semantic checks over a parsed script (docs/parser-design.md Sec.8). Pure,
+ * no I/O, never throws, and additive: the returned diagnostics are meant to be
  * concatenated onto `result.diagnostics`, which holds the lexical and syntactic
  * ones. Nothing here re-reports anything the parser already said.
  *

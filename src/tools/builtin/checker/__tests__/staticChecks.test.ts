@@ -1,9 +1,9 @@
-// consistency-checker-design.md Sec.3, Sec.8 item 1 — the positive/negative
+// consistency-checker-design.md Sec.3, Sec.8 item 1, the positive/negative
 // fixture pairs for the checks that matter most: the Sec.3.1 boundary, the
 // Sec.3.2 declaration forms and the #const-resolved-value soundness rule,
 // Sec.3.3's tier-1 fork arms and the placeholder idiom, and Sec.3.4's two
 // promoted contradictions. Not exhaustive against every fixture the design
-// doc names — a representative slice, cross-checked against the real corpus
+// doc names, a representative slice, cross-checked against the real corpus
 // by consistencyChecker.measure.test.ts's static-half table.
 
 import { describe, expect, it } from "vitest";
@@ -36,7 +36,7 @@ function instantiate(source: string, playerCount = 4): { inst: InstantiatedScrip
   return { inst, parse, ctx };
 }
 
-// A minimal, hand-built constants table — precise and independent of
+// A minimal, hand-built constants table, precise and independent of
 // whatever the real game-constants.json happens to contain today.
 const DEER: PublishedGameConstant = {
   constId: 65,
@@ -44,7 +44,7 @@ const DEER: PublishedGameConstant = {
   descriptiveName: "Deer",
   category: "object",
   habitat: "land",
-  allowedTerrains: [0, 2, 3], // GRASS, BEACH, DIRT — NOT water (1)
+  allowedTerrains: [0, 2, 3], // GRASS, BEACH, DIRT, NOT water (1)
   verified: true,
 };
 const GRASS: PublishedGameConstant = { constId: 0, rmsConstant: "GRASS", descriptiveName: "Grass", category: "terrain", isWater: false, verified: true };
@@ -74,7 +74,7 @@ describe("Sec.3.1 land over-allocation", () => {
     const findings = checkLandOverAllocation(inst);
     expect(findings).toHaveLength(1);
     expect(findings[0].severity).toBe("info");
-    // The count is NOT in the text — it is stamped on the finding by
+    // The count is NOT in the text, it is stamped on the finding by
     // `runStaticChecks` and printed by the renderer only when the finding
     // does not hold at every selected count (Sec.5.1's collapse rule).
     expect(findings[0].text).not.toMatch(/\d+ players/);
@@ -95,7 +95,7 @@ describe("Sec.3.1 land over-allocation", () => {
     const at8 = checkLandOverAllocation(instantiate(source, 8).inst);
     expect(at2).toHaveLength(1);
     expect(at8).toHaveLength(1);
-    // BYTE-identical now, with no normalising `replace` in the way — which is
+    // BYTE-identical now, with no normalising `replace` in the way, which is
     // the property Sec.5.1's cross-count collapse relies on.
     expect(at2[0].text).toBe(at8[0].text);
   });
@@ -222,7 +222,7 @@ describe("Sec.3.3 terrain surface", () => {
 describe("Sec.3.3 terrain impossibility (tier 1: the exact engine table)", () => {
   it("create_object DEER { terrain_to_place_on WATER } warns — DEER's table has no water terrain", () => {
     // The named-terrain fork bullet reads allowedTerrains ∩ {that terrain}
-    // only — it never consults the surface, so surfaceAbstained here is
+    // only, it never consults the surface, so surfaceAbstained here is
     // irrelevant to this assertion and left true for clarity.
     const { inst } = instantiate("<OBJECTS_GENERATION>\ncreate_object DEER { terrain_to_place_on WATER }");
     const findings = checkAllObjectTerrainPlacements(inst, {

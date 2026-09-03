@@ -1,5 +1,5 @@
 /**
- * Balance Summary — the second of CREATION_PLAN 5.2b's additional built-ins.
+ * Balance Summary, the second of CREATION_PLAN 5.2b's additional built-ins.
  *
  * A Monte Carlo pass across a selected player-count matrix (same shape as
  * 5.2's consistency checker, and reusing its tuned run-count constants
@@ -10,8 +10,8 @@
  * spawn over another shows up as a number instead of a hunch.
  *
  * Ties into the same generator plumbing 5.2 already proved out
- * (`previewBridge.ts`, `objects.ts`'s `objectEntry`/category resolution) —
- * this tool's whole job is reading `PreviewResult.objects` and `.players`
+ * (`previewBridge.ts`, `objects.ts`'s `objectEntry`/category resolution).
+ * This tool's whole job is reading `PreviewResult.objects` and `.players`
  * that generation already produces, not deriving anything new about how the
  * game places resources.
  */
@@ -92,7 +92,7 @@ export const balanceSummaryManifest: ToolManifest = {
 
 /**
  * The four categories `objects.ts`'s `objectCategory` ever produces for a
- * resource. Not a new vocabulary — the same fixed set that function already
+ * resource. Not a new vocabulary, the same fixed set that function already
  * commits to; kept here as the iteration order for this tool's tables.
  */
 const RESOURCE_KEYS = ["gold", "stone", "food", "wood"] as const;
@@ -107,7 +107,7 @@ function resourceKeyOf(category: string): ResourceKey | undefined {
 /**
  * Nearest player-land origin by straight-line distance. This is the fallback
  * for a resource the script never tied to a player frame at all (no
- * `set_place_for_every_player` / `place_on_specific_land_id`) — a real
+ * `set_place_for_every_player` / `place_on_specific_land_id`), a real
  * approximation, not a fact read off the script, which is why the report
  * says so once rather than per row (Sec.9's honesty-surface convention).
  */
@@ -125,11 +125,11 @@ function nearestPlayer(x: number, y: number, players: readonly PlayerMarker[]): 
 // ---------------------------------------------------------------------------
 
 interface ResourceCell {
-  /** Out of `runsPerPlayerCount` — how many generations placed >=1 patch of this resource for this player. */
+  /** Out of `runsPerPlayerCount`, how many generations placed >=1 patch of this resource for this player. */
   runsWithAny: number;
-  /** Summed across EVERY run, absent contributing 0 — the average is over the whole batch, not just the runs where it showed up. */
+  /** Summed across EVERY run, absent contributing 0. The average is over the whole batch, not just the runs where it showed up. */
   totalAmountSum: number;
-  /** Summed only across runs where it showed up — a "how far, when present" average, which is meaningless to divide by a run that had nothing. */
+  /** Summed only across runs where it showed up, a "how far, when present" average, which is meaningless to divide by a run that had nothing. */
   nearestDistanceSum: number;
   patchCountSum: number;
 }
@@ -162,7 +162,7 @@ function cellFor(stats: BalanceStats, pc: number, player: number, key: ResourceK
 
 /**
  * Folds one generation's placements into `stats`. Exported for its own unit
- * test — the amount/distance/attribution split is the entire point of this
+ * test. The amount/distance/attribution split is the entire point of this
  * tool, and it is the one part with no coverage from re-running the checker's
  * own tests (this tool reads the SAME `PreviewResult` shape, but nothing
  * about resource attribution).
@@ -222,7 +222,7 @@ function buildPlayerCountSection(pc: number, byPlayer: Map<number, Map<ResourceK
   const players = [...byPlayer.keys()].sort((a, b) => a - b);
 
   // A resource with zero occurrences for EVERY player at this count is left
-  // out of the table entirely — an all-zero row for every player is not a
+  // out of the table entirely. An all-zero row for every player is not a
   // finding, it is "this script has no stone", which the reader can already
   // tell from the resource's absence.
   const activeKeys = RESOURCE_KEYS.filter((key) => players.some((p) => (byPlayer.get(p)?.get(key)?.runsWithAny ?? 0) > 0));
@@ -278,7 +278,7 @@ export function buildBalanceOutput(stats: BalanceStats, selectedCounts: readonly
 }
 
 // ---------------------------------------------------------------------------
-// Run loop — same shape as the consistency checker's (tools-api-design.md
+// Run loop, same shape as the consistency checker's (tools-api-design.md
 // Sec.4.1's chunk-per-generation rule: generatePreview is synchronous and
 // cannot yield inside itself, so the cancellation check has to sit between
 // calls).

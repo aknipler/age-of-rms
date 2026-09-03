@@ -46,7 +46,7 @@ describe("createTileGrid", () => {
 
   it("defaults the layer to NO_LAYER when omitted, which is NOT terrain id 0", () => {
     // 0 is GRASS. A zero fill made "no layer" and "layered with GRASS"
-    // indistinguishable in every consumer — see NO_LAYER's own doc.
+    // indistinguishable in every consumer, see NO_LAYER's own doc.
     const grid = createTileGrid(2, 5);
     expect([...grid.layer]).toEqual([NO_LAYER, NO_LAYER, NO_LAYER, NO_LAYER]);
     expect(NO_LAYER).not.toBe(0);
@@ -126,7 +126,7 @@ describe("distanceTransform (Sec.4's derived mask, 4-connected)", () => {
     grid.terrain[tileIndex(grid, 0, 0)] = 9;
     grid.terrain[tileIndex(grid, 6, 0)] = 9;
     const dist = distanceTransform(grid, 9);
-    // Tile (3,0) is 3 from both sources — check it picked the min, not summed.
+    // Tile (3,0) is 3 from both sources. Check it picked the min, not summed.
     expect(dist[tileIndex(grid, 3, 0)]).toBe(3);
   });
 
@@ -225,7 +225,7 @@ describe("resolveTerrainId (the one resolver every stage shares)", () => {
   // it can never live in `symbols` and used to resolve to nothing at all.
   describe("a name-to-name #const (BUG-015)", () => {
     // The shared `constants` above is three TERRAIN rows, so it cannot tell a
-    // category-filtered lookup from an unfiltered one — a mutant that dropped
+    // category-filtered lookup from an unfiltered one. A mutant that dropped
     // the filter passed every test written against it. This fixture adds the
     // two non-terrain rows that make the negative case possible at all.
     const mixed: TerrainConstantForMasks[] = [
@@ -319,7 +319,7 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
   });
 
   it("treats a terrain the table has never covered exactly as isWater alone would", () => {
-    // No name heuristic for hybrid, on purpose — YELLOW_SHALLOW is a shallow
+    // No name heuristic for hybrid, on purpose. YELLOW_SHALLOW is a shallow
     // and YELLOW_SHALLOW_WATER is open water, so no pattern separates them.
     expect(terrainDepth(constants, 1)).toBe(DEPTH_WATER); // /WATER/ name, unflagged
     expect(terrainDepth(constants, 9999)).toBe(DEPTH_LAND); // unknown id
@@ -344,7 +344,7 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
   });
 
   it("asks 'is this sand' separately from 'what sand would this grow'", () => {
-    // The nine beach rows satisfy both — a beach does not grow a beach — and
+    // The nine beach rows satisfy both, a beach does not grow a beach, and
     // reading one off the other would be wrong anyway: open water grows no
     // beach either and is emphatically not sand. The `shore` habitat depends
     // on the difference.

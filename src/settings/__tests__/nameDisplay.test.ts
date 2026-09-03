@@ -11,7 +11,7 @@ describe("shortenName", () => {
   it("leaves a name at the limit alone", () => {
     // Six characters exactly. The setting shortens names LONGER than the
     // limit, so the boundary is the one case worth pinning in both
-    // directions — an off-by-one here silently truncates a whole class of
+    // directions. An off-by-one here silently truncates a whole class of
     // perfectly readable names.
     expect("SHEEP1".length).toBe(NAME_LENGTH_LIMIT);
     expect(shortenName("SHEEP1", true)).toBe("SHEEP1");

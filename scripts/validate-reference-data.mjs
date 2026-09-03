@@ -258,6 +258,56 @@ if (gameConstantsData) {
   }
 }
 
+// `autoTreeUnits` ⟷ `description` prose, on the rows where both exist. Two
+// sections that count the same thing must be checked against each other, not
+// only against the tree (CLAUDE.md's rev-3 lesson) — here the "tree" is the
+// dat extraction and the "other section" is the community-transcribed prose
+// this data already carried before the extraction ran. Only single-slot
+// terrains carry a plain "N% tree density" / "N wood per tree" sentence; a
+// multi-slot terrain's prose (e.g. SOUTH_AMERICAN_FOREST's "a mix of 6
+// different tree types") doesn't decompose into one number, so this only
+// checks the rows where the sentence is unambiguous.
+if (gameConstantsData) {
+  const rows = gameConstantsData.constants;
+  const objectsById = new Map(
+    rows.filter((c) => c.category === "object" && c.constId !== null).map((c) => [c.constId, c]),
+  );
+  let treeProseOk = true;
+  for (const row of rows) {
+    if (row.category !== "terrain" || !row.autoTreeUnits || row.autoTreeUnits.length !== 1) continue;
+    const description = row.description ?? "";
+    const densityMatch = description.match(/(\d+(?:\.\d+)?)%\s*tree density/);
+    const woodMatch = description.match(/(\d+(?:\.\d+)?)\s*wood per tree/);
+    if (!densityMatch && !woodMatch) continue;
+    const label = row.rmsConstant ?? `constId ${row.constId}`;
+    const slot = row.autoTreeUnits[0];
+    if (densityMatch) {
+      const proseDensity = Number(densityMatch[1]) / 100;
+      if (Math.abs(proseDensity - slot.density) > 1e-9) {
+        hadError = true;
+        treeProseOk = false;
+        console.error(
+          `✗ game-constants.json: ${label} description says ${densityMatch[1]}% tree density but autoTreeUnits density is ${slot.density}`,
+        );
+      }
+    }
+    if (woodMatch) {
+      const unit = objectsById.get(slot.objectId);
+      const wood = unit?.resourceAmounts?.wood;
+      if (wood !== Number(woodMatch[1])) {
+        hadError = true;
+        treeProseOk = false;
+        console.error(
+          `✗ game-constants.json: ${label} description says ${woodMatch[1]} wood per tree but autoTreeUnits' unit (objectId ${slot.objectId}) has resourceAmounts.wood ${wood}`,
+        );
+      }
+    }
+  }
+  if (treeProseOk) {
+    console.log("✓ game-constants.json: autoTreeUnits density/wood agrees with description prose everywhere both are stated");
+  }
+}
+
 // `MAP_SIZES` (TypeScript) ⟷ `predefinedLabels` (JSON): the join that carries
 // every map dimension in the project.
 //

@@ -1,8 +1,8 @@
-// PlacementOutcome machinery and failure attribution — docs/preview-design.md
+// PlacementOutcome machinery and failure attribution, docs/preview-design.md
 // Sec.7. PURE (CLAUDE.md hard rule / preview-design Sec.2).
 //
 // Sec.7's non-negotiable rule is "no placement primitive returns a bare
-// boolean" — every stage (lands, elevation, terrains, objects, ...) reports
+// boolean". Every stage (lands, elevation, terrains, objects, ...) reports
 // through PlacementOutcome, and this file is where the shared pieces of that
 // live, so S1 and S6 don't each grow a slightly different version of the
 // same algorithm the way rev 3 let borderBlocked/zoneAvoidanceBlocked drift.
@@ -33,8 +33,8 @@ export function fail<T>(failure: PlacementFailure): PlacementOutcome<T> {
  * one generation, `TC2 - Comeer v1.4.rms` 185,432, `24hr_Caverns.rms`
  * 172,650. Every one is an object carrying a freshly built sentence. They are
  * allocated during generation, structured-cloned wholesale across the worker
- * boundary on every keystroke burst, and then — the part that actually breaks
- * — rendered as one `<li>` each the moment the user opens the notes drawer.
+ * boundary on every keystroke burst, and then, the part that actually breaks,
+ * rendered as one `<li>` each the moment the user opens the notes drawer.
  * None of that buys anything a count does not.
  *
  * The scan is linear in the number of DISTINCT buckets already recorded for
@@ -61,7 +61,7 @@ export interface AttributedPredicate {
 }
 
 export interface IntersectionResult {
-  /** View into the same buffer passed in — see intersectCandidates' note. */
+  /** View into the same buffer passed in. See intersectCandidates' note. */
   survivors: Int32Array;
   count: number;
   /** Set exactly when count === 0: which predicate (or none) emptied the set. */
@@ -70,21 +70,21 @@ export interface IntersectionResult {
 
 /**
  * Sec.7's attribution algorithm, pinned: "successive set intersections in a
- * fixed, documented order — and attribute the failure to the predicate whose
+ * fixed, documented order, and attribute the failure to the predicate whose
  * intersection first produced the empty set; if the set was empty before any
  * predicate ran, noValidTiles." The predicate order is each stage's own
- * constraint list in the order written in its spec subsection (Sec.7) — this
+ * constraint list in the order written in its spec subsection (Sec.7). This
  * function does not choose an order, it only runs the one it is given.
  *
  * Sec.11 pins the implementation this has to be, not just the algorithm:
  * `scratch` is a per-command Int32Array copied ONCE from a cached per-stage
  * base set (the caller's job), and each predicate pass write-compacts it IN
- * PLACE rather than allocating a filtered copy — "copy, do not compact the
+ * PLACE rather than allocating a filtered copy, "copy, do not compact the
  * cache itself", because compacting the shared base would corrupt it for
  * every later command that reuses the same (reference frame, habitat class)
  * cache entry. One `.set()` per command (the caller's copy into `scratch`)
  * buys both the performance property and this function's attribution for
- * free — the same compaction pass IS the attribution.
+ * free. The same compaction pass IS the attribution.
  */
 export function intersectCandidates(
   scratch: Int32Array,

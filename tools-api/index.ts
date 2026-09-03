@@ -122,7 +122,16 @@ export type Capability =
    */
   | "read-reference"
   | "read-selection"
-  | "edit-source";
+  | "edit-source"
+  /**
+   * land-placement-design.md Sec.3.3. Read-only: the preview pane's seed and
+   * its Current/Final cut point are deliberately absent from
+   * `read-generation-settings` (that field's own doc comment says so) — a
+   * tool that must reproduce the pane exactly, rather than choosing its own
+   * cut via a layer-1 `generate` request, escalates to this instead of a
+   * silent widening of the settings capability.
+   */
+  | "read-preview-view";
 
 /**
  * read-ast IMPLIES read-source, and that is why stripping `source` would be
@@ -199,6 +208,23 @@ export interface ToolManifest {
    * rather than the live context (consistency-checker-design.md Sec.5.2).
    */
   ownsSettingsHeader?: boolean;
+  /**
+   * "report" (default) — the tool emits ToolOutput blocks and the host
+   *   renders them. The only kind an external (v1.1) tool may declare.
+   * "panel" — the tool renders the pane body itself. BUILT-IN ONLY; the
+   *   registry rejects a "panel" manifest arriving over the external
+   *   transport, because a panel is app code and app code cannot come off
+   *   the wire without the webview tier's sandbox. The restriction is the
+   *   security boundary, not a stub (land-placement-design.md Sec.3.2).
+   *
+   * A panel tool does NOT go through `ToolHost.start()` — see host.ts's
+   * `PanelState`. It keeps the capability declaration, the context builder
+   * and the Apply path; what it does not get is the one-shot run lifecycle
+   * (watchdog, cancel grace, terminal message), because a panel is live and
+   * long-lived while each `generate` it asks for (layer 1, below) is the
+   * bounded, one-shot computation those deadlines already cover.
+   */
+  surface?: "report" | "panel";
   // v1.1 external tools add: entry (executable + args), language, author, homepage.
 }
 
@@ -262,6 +288,13 @@ export interface ToolContext<P extends SerializedParseResult = SerializedParseRe
   referenceData?: ToolReferenceData;
   /** iff "read-selection" */
   selection?: ToolSelection;
+  /**
+   * iff "read-preview-view" (Sec.3.3). READ-ONLY — a tool escalating to this
+   * capability reproduces the pane's own seed/cut exactly; it does not get a
+   * write half. `cutOffset` is `null` when the pane's Current pin has none
+   * set (Final, or no pin).
+   */
+  previewView?: { seed: number; cutOffset: number | null };
   /**
    * The value union includes string[] for multiSelect, and the widening lands
    * NOW rather than with v1.1: `params` is the type an external tool
@@ -335,7 +368,17 @@ export type OutputBlock =
   | { kind: "table"; columns: string[]; rows: string[][]; rowSpans?: (Span | null)[] }
   | { kind: "severity"; level: "info" | "warning" | "error"; text: string; span?: Span }
   /** Clickable — jumps the Code tab to span.start via useSharedSelection's anchor. */
-  | { kind: "codeRef"; text: string; span: Span };
+  | { kind: "codeRef"; text: string; span: Span }
+  /**
+   * land-placement-design.md Sec.3.4 layer 2 — declarative drawing on the
+   * preview canvas, over ANY transport including external. `shapes` is ONE
+   * block holding N shapes (never one block per shape — Sec.3.7), capped at
+   * `LIMITS.maxOverlayShapesPerBlock`: over-budget TRUNCATES and says so via
+   * the pane, exactly `table`'s own `maxTableRowsRendered` behaviour; it
+   * never rejects. `interactive` opts into layer 3's `overlayEvent`s for
+   * this block's shapes — a report tool omits it and gets a static drawing.
+   */
+  | { kind: "mapOverlay"; shapes: OverlayShape[]; interactive?: boolean };
 
 // ---------------------------------------------------------------------------
 // Messages (Sec.4)
@@ -369,6 +412,44 @@ export type ToolMessage =
   | { type: "partial"; output: ToolOutput }
   | { type: "result"; output: ToolOutput; edits?: TextEdit[] }
   | { type: "error"; message: string; reason: ErrorReason };
+
+// ---------------------------------------------------------------------------
+// Layers 1-3 (land-placement-design.md Sec.3.4) — the preview-as-a-service
+// channel a PANEL tool (and any future built-in) uses, orthogonal to the
+// progress/partial/result/error lifecycle above: one `generate` can be asked
+// many times over one long-lived panel session, never once per "run".
+// Works over ANY transport, external NDJSON tools included — nothing here
+// requires the panel-tier restriction that `ToolManifest.surface` enforces.
+// ---------------------------------------------------------------------------
+
+/** Sent BY a tool, asking the host to run a generation or read one back. */
+export type ToolToHost =
+  | { type: "generate"; settings?: { playerCount?: number }; seed?: number; cutOffset?: number }
+  | { type: "sliceRequest"; handle: string; rect: { x: number; y: number; w: number; h: number } }
+  /** Early free (Sec.3.8) — an optimisation a well-behaved tool can offer, never a step a correct host waits for. */
+  | { type: "release"; handle: string };
+
+/** Sent BY the host, in answer to a `ToolToHost` message. */
+export type HostToTool =
+  | { type: "generated"; handle: string; summary: PreviewSummary }
+  | { type: "previewSlice"; handle: string; rect: { x: number; y: number; w: number; h: number }; terrain: number[]; elevation: number[] }
+  /** Names the reason — a stale handle, an over-cap rect, a failed generation — never silence and never stale tiles (Sec.3.8). */
+  | { type: "generateFailed"; reason: string };
+
+/**
+ * Sent BY the host, when a viewer interacts with an `interactive: true`
+ * `mapOverlay` block's shapes (Sec.3.4 layer 3). `drag` is coalesced to the
+ * latest position per animation frame; `dragStart`/`dragEnd` are always
+ * delivered — the same shape as Sec.7.2's vector/full render-tier split, and
+ * it costs a tool that samples every frame nothing it can observe (Sec.3.7).
+ */
+export interface OverlayEvent {
+  type: "overlayEvent";
+  event: "click" | "dragStart" | "drag" | "dragEnd";
+  tile: { x: number; y: number };
+  shapeId?: string;
+  modifiers: ("shift" | "ctrl" | "alt" | "meta")[];
+}
 
 /**
  * `cancelled` and `killed` are DISTINCT, and collapsing them throws away the
@@ -445,6 +526,17 @@ export const LIMITS = Object.freeze({
   maxBlocksPerOutput: 1000,
   /** Rendered rows; beyond this the pane shows "showing first N of M". */
   maxTableRowsRendered: 10_000,
+  /**
+   * Shapes RENDERED per `mapOverlay` block (Sec.3.7 of land-placement-design.md)
+   * — a render budget, not a memory budget, hence the same order as
+   * `maxTableRowsRendered` rather than a fresh number derived from the same
+   * argument. Derived from the worst real script: `Arena.rms` (DE official)
+   * has 3,774 `create_land` commands, and a tool drawing a mark plus an edge
+   * per land doubles that. Over-budget TRUNCATES and says so, unconditionally
+   * — including at zero, since a filtered overlay and an empty one are
+   * different claims — exactly `table`'s own behaviour; it never rejects.
+   */
+  maxOverlayShapesPerBlock: 10_000,
   maxTextLengthPerBlock: 100_000,
   /** stderr from an external tool, as a ring buffer. */
   maxStderrBytes: 64 * 1024,
@@ -525,6 +617,87 @@ export const PROHIBITED_VALUE_KINDS = Object.freeze([
   "±Infinity outside the sentinel",
   "undefined as an array element",
 ] as const);
+
+// ---------------------------------------------------------------------------
+// Advanced Land Placement — Sec.5.0 (Expr/Ref) and Sec.11 (PreviewSummary,
+// OverlayShape) of docs/land-placement-design.md. SLICE 1 (Sec.13): types
+// only, no behaviour here — the model, the math compiler and the frame
+// algebra live in src/tools/builtin/landPlacement/. `ToolManifest.surface`
+// (Sec.3.2) and the layer 1-3 wire messages (Sec.3.4) are slice 2.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every NUMERIC quantity the tool owns. Discriminated union on `k`, plain JSON
+ * data (no functions, no cycles, no class instances), because Sec.6.1 round-trips
+ * the whole model through JSON.parse of a comment.
+ */
+export type Expr =
+  /** A finite literal. Non-finite is `inf`; NaN is not representable. */
+  | { k: "num"; v: number }
+  | { k: "inf"; sign: 1 | -1 }
+  /** A `#const` the script already defines, by name. Never one the tool emits. */
+  | { k: "sym"; name: string }
+  /** A hoisted rnd (Sec.4.4). Resolves per player when `perPlayer`. */
+  | { k: "param"; id: string }
+  /** Another placement's own quantity — Sec.4.2's INBOUND, and Rage Forest's bisector. */
+  | { k: "node"; id: string; field: "x" | "y" | "theta" | "inbound" }
+  | { k: "bin"; op: "+" | "-" | "*" | "/" | "%"; l: Expr; r: Expr }
+  | { k: "neg"; e: Expr }
+  | { k: "sin"; e: Expr }
+  | { k: "cos"; e: Expr };
+
+/** A NAME-valued slot: terrain_type, base_terrain. Separate domain from Expr. */
+export type Ref = { k: "name"; name: string } | { k: "id"; id: number };
+
+/**
+ * Everything the host returns about a generation WITHOUT shipping the grid OR
+ * the object list — measured, objects are 85-87% of a real map's payload
+ * (land-placement-design.md Sec.3.8), so they come back through a slice
+ * request like tiles do.
+ *
+ * TWO PREREQUISITES against `src/preview/generator/index.ts`, both named in
+ * Sec.3.8: `generatePreview` must surface `landResult.origins` (it drops them
+ * today) and must return the final grid (only `snapshots` escapes, and only
+ * when collecting). Neither exists as this is written — this type is landed
+ * ahead of its producer per slice 1 (Sec.13 item 1: "types only").
+ */
+export interface PreviewSummary {
+  /** Post-override_map_size, so it can differ from the requested size. */
+  dim: number;
+  seedUsed: number;
+  landOrigins: readonly {
+    commandSpan: Span;
+    /** TILES, not percent — the grid's own units (Sec.4.3). */
+    x: number;
+    y: number;
+    zone: number;
+    player?: number;
+    tiles: number;
+    declaredTargetTiles: number;
+  }[];
+  reports: readonly {
+    commandSpan: Span;
+    stage: string;
+    attempted: number;
+    placed: number;
+    failureBuckets: Record<string, number>;
+  }[];
+  notes: readonly { key: string; text: string }[];
+  /** Counts only. The list itself is slice-requested (Sec.3.8). */
+  objectCount: number;
+}
+
+/** Themed by role, never by hex, so an overlay reads in both app themes. */
+export type OverlayRole = "primary" | "secondary" | "warning" | "error" | "muted";
+
+/** TILE coordinates throughout — projection.ts owns the screen transform. */
+export type OverlayShape =
+  | { id?: string; kind: "point"; x: number; y: number; role: OverlayRole; radiusPx?: number }
+  | { id?: string; kind: "circle"; x: number; y: number; rTiles: number; role: OverlayRole; fill?: boolean }
+  | { id?: string; kind: "line"; from: { x: number; y: number }; to: { x: number; y: number }; role: OverlayRole; dashed?: boolean }
+  | { id?: string; kind: "polyline"; points: { x: number; y: number }[]; role: OverlayRole; closed?: boolean }
+  | { id?: string; kind: "label"; x: number; y: number; text: string; role: OverlayRole }
+  | { id: string; kind: "handle"; x: number; y: number; role: OverlayRole; cursor?: "move" | "ew-resize" | "grab" };
 
 // Re-exported for built-ins that resolve defs in-process. External tools get
 // none of these over the wire and rebuild them from `referenceData.language`.

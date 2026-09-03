@@ -1,0 +1,126 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain DESERT
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  /* ARM 1 - the mixing model. Six tree types share this terrain and the
+     engine's rule for choosing between them is unmeasured. */
+  create_terrain SOUTH_AMERICAN_FOREST
+  {
+    base_terrain DESERT
+    land_percent 40
+    number_of_clumps 12
+  }
+
+  /* ARM 2 - the density unit. Free second observable: this terrain is the
+     one whose density is NOT 1000, so it is where per-mille shows itself. */
+  create_terrain DLC_BAOBABFOREST
+  {
+    base_terrain DESERT
+    land_percent 25
+    number_of_clumps 10
+  }
+
+<OBJECTS_GENERATION>
+
+/*
+================================================================================
+RMSTEST_65 - the forest auto-spawn mixing model, and the density unit
+================================================================================
+
+DESERT is the base because it is one of the few terrains with NO terrain_unit
+slots of its own, so every object in the export came from one of the two arms.
+GRASS and DIRT would each have added a cosmetic unit to the histogram.
+
+The two arms share NO unit, checked against the dat, so they can sit on one map
+and be read independently from a single map-wide object histogram.
+
+--------------------------------------------------------------------------------
+ARM 1 - WHICH TREE, WHEN A TERRAIN LISTS SIX
+--------------------------------------------------------------------------------
+The dat gives terrain 128 six terrain_unit slots, in this order, with these
+densities: ITALIAN_PINETREE 350, OLIVE_TREE 150, TREE_MONKEY_PUZZLE 300,
+DLC_ACACIATREE 420, TREE_GREEN_OAK 750, DLC_AFRICANBUSH 1000. It does not say
+how the engine picks. Four models are plausible and they disagree loudly.
+
+Read each count as a PERCENTAGE OF THE TERRAIN-128 TILE COUNT, which the probe
+prints in its own terrain histogram. Absolute counts depend on how much land
+the two commands actually won, which this test does not care about.
+
+  unit                    A seq   B last-wins   C normalised   D truncated
+  ITALIAN_PINETREE        35.0%       0%           11.8%          35.0%
+  OLIVE_TREE               9.8%       0%            5.1%          15.0%
+  TREE_MONKEY_PUZZLE      16.6%       0%           10.1%          30.0%
+  DLC_ACACIATREE          16.2%       0%           14.1%          20.0%
+  TREE_GREEN_OAK          16.8%       0%           25.3%           0%
+  DLC_AFRICANBUSH          5.6%     100%           33.7%           0%
+  E[wood/tile]            108.1     100.0          107.1          110.0
+
+  A - sequential first-hit down the slot list. p_i = remaining * d_i/1000.
+      This is what the plan currently assumes.
+  B - independent rolls, a later slot overwriting an earlier one.
+  C - densities as normalised weights.
+  D - each slot claims d_i/1000 of the tiles in order, truncated at 100%.
+
+TREE_GREEN_OAK and DLC_AFRICANBUSH are the discriminators - every model puts
+them somewhere different, and two models put one of them at exactly zero. Read
+those two first; the other four only confirm.
+
+C AND B ARE ALREADY REFUTED ON PAPER and are here as controls, so a reading
+that lands on either means the test itself is wrong, not the model. C would
+give DLC_BAOBABFOREST 100% tree coverage when its own descriptiveName says
+25%. B cannot produce a mixture at all, yet MEDITERRANEAN_FOREST's
+descriptiveName calls it "mixture of cypress, olive and italian pine".
+
+--------------------------------------------------------------------------------
+ARM 2 - IS terrain_unit_density PER-MILLE
+--------------------------------------------------------------------------------
+Terrain 49 has ONE slot, DLC_BAOBABTREE at density 250, and its own
+descriptiveName in game-constants.json says "200 wood per tree; 25% tree
+density". Reading 1000 as 100% is currently supported only by that prose
+agreeing with two other rows. This is the first direct look.
+
+  count(DLC_BAOBABTREE) / count(terrain 49 tiles)
+
+  0.25  confirms per-mille. Nothing changes; the plan's numbers stand.
+  1.00  the density field is not a coverage fraction at all, and every
+        forest-wood figure in the plan needs rederiving before it ships.
+  other refutes per-mille and gives the real scale directly.
+
+EXPECT THIS TO READ SLIGHTLY LOW. The engine clears trees around player
+starts, so some Baobab tiles lose theirs. ARM 1 is immune - clearing removes
+species in proportion, so the ratios it measures do not move. If arm 2 comes
+back near 0.22-0.25 treat it as confirmed; if it comes back near 1.0 or near
+0.10 that is a real result, not clearing.
+
+--------------------------------------------------------------------------------
+GENERATE AT NORMAL (200), TWO PLAYERS. ONE RUN.
+--------------------------------------------------------------------------------
+Two players rather than eight to keep start-clearing off arm 2. One run is
+enough: even a few hundred tiles separates the four models by many standard
+errors, since the tightest real gap (A's 9.8% against D's 15.0% on OLIVE_TREE)
+is five percentage points.
+
+If the terrain histogram shows either terrain below ~200 tiles, raise
+land_percent and regenerate rather than reading it.
+
+If DLC_AFRICANBUSH reads 0 while TREE_GREEN_OAK reads sensibly, suspect the
+constant before believing model D - that unit is shared with terrains 20 and
+89 and is the least independently proven name in the list.
+
+READ IT WITH
+  python probe_scenario.py "<scenario>"
+  The two default histograms are the whole reading: objects give arm 1's
+  numerator and arm 2's numerator, terrains give both denominators.
+*/

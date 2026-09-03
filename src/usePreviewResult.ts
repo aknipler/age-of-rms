@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PreviewWorker from "./preview/worker?worker";
 import type { ParseResult } from "./parser/types";
-import type { PreviewRequest, PreviewResponse, PreviewResult, PreviewSettings } from "./preview/generator/types";
+import type { PreviewRequest, PreviewResponse, PreviewSettings, PreviewWireResult } from "./preview/generator/types";
 import type { MapSize, TeamNumber } from "./generationSettings/generationSettingsConstants";
 
 // docs/preview-design.md Sec.10. Mirrors useParsedDocument.ts's shape
-// closely on purpose — same worker lifecycle, same request-id staleness
-// discard — plus the one thing that hook doesn't need: a watchdog, since
+// closely on purpose (same worker lifecycle, same request-id staleness
+// discard), plus the one thing that hook doesn't need: a watchdog, since
 // generatePreview is synchronous and a pathological script (Sec.11's
 // iteration-cap escape hatches aside) could in principle run long enough to
 // block a worker's onmessage from ever firing again.
@@ -20,7 +20,7 @@ const DEBOUNCE_MS = 300; // Sec.10: "regenerate ~300ms [tune] after the parse se
  * pipeline costs**, and the gap turned the watchdog from a safety net into
  * the bug: measured over the 32 tracked maps (2026-08-07), a full
  * `generatePreview` runs a median of ~460ms and up to 3.8s. So the corpus's
- * heavier maps were reliably killed at 1000ms — and because the timeout
+ * heavier maps were reliably killed at 1000ms, and because the timeout
  * re-posts the same request and re-arms itself, they were killed again, and
  * again, forever. A map that took 1.2s to generate would never render at all
  * and would pin a core doing it. This is exactly the shape of "slow preview"
@@ -39,15 +39,31 @@ const WATCHDOG_MS = 12_000;
  * The unbounded retry above is only half the defect. A script that hangs
  * deterministically hangs identically on retry, so "keep retrying until a
  * newer request supersedes it" is an infinite loop whenever the user stops
- * typing — which is precisely when they are waiting for the preview. Two
+ * typing, which is precisely when they are waiting for the preview. Two
  * attempts is enough to survive a genuinely stuck worker; past that the
  * honest answer is to stop and keep showing the last good result.
  */
 const MAX_WATCHDOG_RETRIES = 2;
 
 export interface PreviewResultState {
-  /** null until the first response arrives (or there is no parse to generate from yet). */
-  result: PreviewResult | null;
+  /**
+   * null until the first response arrives (or there is no parse to generate
+   * from yet). `PreviewWireResult`, not `PreviewResult`. This is exactly
+   * what crossed the worker's `postMessage` boundary, which never carries
+   * `.grid` (see `PreviewWireResult`'s own doc comment in generator/types.ts).
+   */
+  result: PreviewWireResult | null;
+  /**
+   * True from the moment a request is sent until its matching response
+   * arrives (D11 in the status-bar build-log entry). This hook already has
+   * every input needed to know it: it knows when it has sent a request and
+   * not yet had a matching response, `latestRequestIdRef` plus the
+   * `onmessage` id check is the whole state. Debounce (300ms) plus a
+   * generation (measured ~460ms median, up to 3.8s) means the status bar
+   * otherwise lags typing with no indicator, showing stale-but-plausible
+   * figures on a script that takes a while to generate.
+   */
+  pending: boolean;
 }
 
 /**
@@ -56,7 +72,7 @@ export interface PreviewResultState {
  * settles. `playerCount`/`mapSize`/`teams` are taken as separate primitives
  * (matching useParsedDocument's own `playerCount` param) rather than one
  * `PreviewSettings` object, so a caller building that object fresh every
- * render doesn't reset the debounce timer on referential inequality alone —
+ * render doesn't reset the debounce timer on referential inequality alone.
  * this hook builds its own stable one via useMemo.
  */
 export function usePreviewResult(
@@ -66,9 +82,10 @@ export function usePreviewResult(
   teams: readonly TeamNumber[],
   seed: number,
 ): PreviewResultState {
-  const [result, setResult] = useState<PreviewResult | null>(null);
+  const [result, setResult] = useState<PreviewWireResult | null>(null);
+  const [pending, setPending] = useState(false);
   const workerRef = useRef<Worker | null>(null);
-  // Only the most recently SENT request's id is "current" — mirrors
+  // Only the most recently SENT request's id is "current". This mirrors
   // useParsedDocument.ts's latestRequestIdRef exactly, same reason: a
   // response (or a watchdog firing) for any earlier request means a newer
   // one has since superseded it and must be dropped/ignored.
@@ -98,6 +115,7 @@ export function usePreviewResult(
         // same discard-by-id rule as useParsedDocument.ts.
         if (data.id !== latestRequestIdRef.current) return;
         clearWatchdog();
+        setPending(false);
         if (data.ok) setResult(data.result);
         // data.ok === false (abandoned) never actually arrives from THIS
         // worker in practice -- see worker.ts's header: a worker can't post
@@ -174,10 +192,11 @@ export function usePreviewResult(
       const id = latestRequestIdRef.current + 1;
       latestRequestIdRef.current = id;
       retriesRef.current.clear(); // every earlier id is superseded and can never retry again
+      setPending(true);
       postRequest({ id, parse: parseResult, settings, opts: { seed, collectSnapshots: true } });
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(timeoutId);
   }, [parseResult, settings, seed, postRequest]);
 
-  return { result };
+  return { result, pending };
 }

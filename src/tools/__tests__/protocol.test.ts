@@ -1,4 +1,4 @@
-// tools-api-design.md Sec.9 items 3-7 — the host's own obligations.
+// tools-api-design.md Sec.9 items 3-7, the host's own obligations.
 //
 // The kill paths are EXERCISED, never assumed, and every deadline assertion
 // reads the constant the host actually holds rather than a literal in a test
@@ -10,6 +10,7 @@ import {
   DEADLINES,
   LIMITS,
   TOOLS_API_VERSION,
+  type OverlayShape,
   type ToolImplementation,
   type ToolManifest,
   type ToolMessage,
@@ -17,6 +18,7 @@ import {
 import {
   checkOutboundContextSize,
   effectiveCapabilities,
+  overlayShapesToRender,
   parseInboundLine,
   resolveParams,
   tableRowsToRender,
@@ -25,7 +27,7 @@ import {
   validateToolMessage,
 } from "../protocol";
 import { ToolHost, type RunnerHandle, type ToolRunner, type Timers } from "../host";
-import { checkRegistry } from "../registry";
+import { checkRegistry, type RegisteredTool } from "../registry";
 
 // --- a controllable clock, so the deadlines are tested rather than waited on --
 function fakeTimers() {
@@ -81,7 +83,9 @@ function scriptedRunner(opts: { honourCancel?: boolean } = {}) {
   return { runner, send: (m: ToolMessage | unknown) => emit?.(m), wasKilled: () => killed };
 }
 
-const tool: ToolImplementation = { manifest: manifest(), run: () => ({ cancel() {} }) };
+const toolImpl: ToolImplementation = { manifest: manifest(), run: () => ({ cancel() {} }) };
+// host.start() takes a RegisteredTool, not a bare ToolImplementation (external-tools-design.md Sec.10).
+const tool: RegisteredTool = { kind: "builtin", manifest: toolImpl.manifest, impl: toolImpl };
 
 describe("inbound message validation (Sec.4.2)", () => {
   it("rejects invalid JSON", () => {
@@ -136,6 +140,84 @@ describe("inbound message validation (Sec.4.2)", () => {
   it("does not trust the discriminant", () => {
     expect(validateToolMessage({ type: "result" }).ok).toBe(false);
     expect(validateToolMessage({ type: "progress", fraction: 5 }).ok).toBe(false);
+  });
+});
+
+describe("mapOverlay validation (land-placement-design.md Sec.3.4 layer 2, Sec.3.7)", () => {
+  it("accepts a well-formed block of every shape kind", () => {
+    const shapes: OverlayShape[] = [
+      { kind: "point", x: 1, y: 1, role: "primary" },
+      { kind: "circle", x: 2, y: 2, rTiles: 3, role: "secondary" },
+      { kind: "line", from: { x: 0, y: 0 }, to: { x: 5, y: 5 }, role: "muted" },
+      { kind: "polyline", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], role: "warning" },
+      { kind: "label", x: 3, y: 3, text: "hi", role: "error" },
+      { id: "h1", kind: "handle", x: 4, y: 4, role: "primary" },
+    ];
+    const r = validateToolMessage({ type: "partial", output: { blocks: [{ kind: "mapOverlay", shapes }] } });
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects an out-of-enum role", () => {
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "point", x: 1, y: 1, role: "rainbow" }] }] },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects a handle shape with no id — the type says required, JSON cannot enforce it", () => {
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "handle", x: 1, y: 1, role: "primary" }] }] },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects a shape with a non-numeric x/y", () => {
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "point", x: "1", y: 1, role: "primary" }] }] },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("does not trust the discriminant on an unknown shape kind", () => {
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "star", x: 1, y: 1, role: "primary" }] }] },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it("accepts a block over the shape cap — that is overlayShapesToRender's job, not validation's", () => {
+    const shapes: OverlayShape[] = Array.from({ length: LIMITS.maxOverlayShapesPerBlock + 1 }, (_, i) => ({
+      kind: "point" as const,
+      x: i,
+      y: i,
+      role: "primary" as const,
+    }));
+    const r = validateToolMessage({ type: "partial", output: { blocks: [{ kind: "mapOverlay", shapes }] } });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("overlayShapesToRender (Sec.3.7)", () => {
+  const shape = (x: number): OverlayShape => ({ kind: "point", x, y: 0, role: "primary" });
+
+  it("passes an under-cap block through unchanged, with hidden: 0", () => {
+    const shapes = [shape(1), shape(2)];
+    expect(overlayShapesToRender(shapes)).toEqual({ shapes, hidden: 0 });
+  });
+
+  it("truncates an over-cap block and reports how many were hidden — never rejects", () => {
+    const shapes = Array.from({ length: LIMITS.maxOverlayShapesPerBlock + 5 }, (_, i) => shape(i));
+    const { shapes: rendered, hidden } = overlayShapesToRender(shapes);
+    expect(rendered).toHaveLength(LIMITS.maxOverlayShapesPerBlock);
+    expect(hidden).toBe(5);
+  });
+
+  it("prints hidden: 0, not an absent field, for an empty overlay — a filtered overlay and an empty one are different claims", () => {
+    expect(overlayShapesToRender([])).toEqual({ shapes: [], hidden: 0 });
   });
 });
 
@@ -355,7 +437,7 @@ describe("lifecycle (Sec.9 item 3)", () => {
 
   // consistency-checker-design.md Sec.4.3, Sec.7.2 item 1. Mirrors
   // ToolsPane.selectTool's exact sequence (cancel() then reset()) on a tool
-  // that never honours cancel — a worker-backed checker is the first tool
+  // that never honours cancel. A worker-backed checker is the first tool
   // that can still be alive at a switch, so this reproduces with an injected
   // runner and no worker at all.
   it("kills the cancelled run's own timers at reset(), so its orphaned grace timer cannot blame the NEXT run", () => {
@@ -377,7 +459,7 @@ describe("lifecycle (Sec.9 item 3)", () => {
     // ever could. Now that `cancelGraceMs` equals `runWatchdogMs`, starting B
     // immediately would make the two deadlines coincide and the test could
     // not tell "the old bug fired" apart from "B's own legitimate watchdog
-    // fired" — see the cancel() fix in host.ts for the same race.
+    // fired", see the cancel() fix in host.ts for the same race.
     clock.advance(30_000); // t = 30_000
     host.start(tool, {}, "src-b"); // B's own watchdog deadline: 90_000
     expect(host.getState().phase).toBe("running");
@@ -385,7 +467,7 @@ describe("lifecycle (Sec.9 item 3)", () => {
     // Before this fix: reset() left run A's `cancelTimer` armed (deadline
     // 60_000) and `this.active` un-cleared, so `start()` for run B silently
     // overwrote `this.active`. When A's grace timer fires here, `terminate()`
-    // reads `this.active` — now B — and kills and blames IT with reason
+    // reads `this.active`, now B, and kills and blames IT with reason
     // "killed", for a cancel B never received. B's own watchdog (90_000) is
     // nowhere close.
     clock.advance(30_001); // t = 60_001
@@ -472,8 +554,8 @@ describe("staleness and document replace (Sec.4.3, Sec.9 item 8)", () => {
   });
 
   // Regression: the caller used to diff a `hasFile` BOOLEAN across renders,
-  // which stays `true` across "file A open, then file B opened" — the exact
-  // transition Sec.5 names — because useDocument.openFile never passes through
+  // which stays `true` across "file A open, then file B opened", the exact
+  // transition Sec.5 names, because useDocument.openFile never passes through
   // `null`. noteOpenDocument diffs the identity itself so this is covered here
   // rather than only in a component the repo has no render harness for.
   it("noteOpenDocument treats one open file replaced by a different one as a replacement", () => {
@@ -491,7 +573,7 @@ describe("staleness and document replace (Sec.4.3, Sec.9 item 8)", () => {
     const host = new ToolHost(runner, fakeTimers().timers);
     host.noteOpenDocument("a.rms"); // first call: nothing to have replaced yet
     host.start(tool, {}, "content of a");
-    host.noteOpenDocument("a.rms"); // unchanged — a re-render, not a new file
+    host.noteOpenDocument("a.rms"); // unchanged, a re-render, not a new file
     expect(wasKilled()).toBe(false);
     expect(host.getState().phase).toBe("running");
   });
@@ -509,7 +591,7 @@ describe("staleness and document replace (Sec.4.3, Sec.9 item 8)", () => {
 describe("settings snapshot (BUG-014)", () => {
   // The pane's settings echo must describe the run it labels, not whatever the
   // generation context has since changed to. Proving that at the host level
-  // (rather than by rendering ToolsPane, which this repo has no harness for —
+  // (rather than by rendering ToolsPane, which this repo has no harness for,
   // see CLAUDE.md's Tauri-only-render caveat) means: the snapshot is captured
   // once at start() and nothing after start() can move it.
   it("captures the settings passed to start(), not a live reference", () => {
@@ -533,7 +615,7 @@ describe("settings snapshot (BUG-014)", () => {
     send({ type: "progress", fraction: 0.5 });
     send({ type: "result", output: { blocks: [] } });
     // Calling start() again for a NEW run (after this one finished) with
-    // different settings must not reach back and mutate the first snapshot —
+    // different settings must not reach back and mutate the first snapshot,
     // there is nothing left holding a reference to it once state moved on.
     expect(host.getState().settingsSnapshot).toEqual({ playerCount: 2, mapSize: "medium" });
   });
@@ -595,7 +677,11 @@ describe("scriptStats exemplar (Sec.9 item 9)", () => {
     const host = new ToolHost(inProcessRunner, fakeTimers().timers);
     const seen: string[] = [];
     host.subscribe((s) => seen.push(s.phase));
-    host.start(scriptStats, { apiVersion: TOOLS_API_VERSION, parseResult: parseRms(source, lang), params: {} }, source);
+    host.start(
+      { kind: "builtin", manifest: scriptStats.manifest, impl: scriptStats },
+      { apiVersion: TOOLS_API_VERSION, parseResult: parseRms(source, lang), params: {} },
+      source,
+    );
     await vi.waitFor(() => expect(host.getState().phase).toBe("done"));
     expect(host.getState().error).toBeNull();
     expect(host.getState().output?.blocks[0]).toEqual({ kind: "heading", text: "Script statistics" });

@@ -1,4 +1,5 @@
-import type { PreviewResult, StageSnapshot } from "../generator/types";
+import type { OverlayRole, OverlayShape } from "../../../tools-api/index";
+import type { PreviewWireResult, StageSnapshot } from "../generator/types";
 import { categoryColor, cssColor, playerColor, type Rgb } from "./palette";
 import { halfHeightOf, tileToScreen, type Viewport } from "./projection";
 import type { TerrainBitmap } from "./terrainBitmap";
@@ -21,8 +22,27 @@ const FAILURE_FILL = "rgba(226, 62, 50, 0.95)";
 const FAILURE_EDGE = "rgba(0, 0, 0, 0.8)";
 
 /**
+ * `OverlayShape.role` colours (Sec.3.4 layer 2: "themed by role, never by
+ * hex, so an overlay reads in both app themes"). Fixed values rather than a
+ * read of the app's light/dark CSS custom properties, matching every other
+ * colour in this file (BACKGROUND, HIGHLIGHT, SELECTION, FAILURE_FILL above)
+ * the canvas's own background is always dark regardless of app theme, so
+ * "themes with the app" here means "reads against a dark canvas", not
+ * "follows light/dark mode". `secondary` and `error` intentionally reuse
+ * SELECTION's and FAILURE_FILL's own colours, so a handle or an error shape
+ * reads as the same kind of thing those existing marks already mean.
+ */
+const OVERLAY_COLORS: Record<OverlayRole, string> = {
+  primary: "rgba(94, 174, 255, 0.9)",
+  secondary: SELECTION,
+  warning: "rgba(240, 173, 60, 0.9)",
+  error: FAILURE_FILL,
+  muted: MAP_EDGE,
+};
+
+/**
  * Wraps the pure bitmap in an offscreen canvas, which is what `drawImage`
- * accepts. Rebuilt only when the result changes — never per frame.
+ * accepts. Rebuilt only when the result changes. Never per frame.
  */
 export function createBitmapCanvas(bitmap: TerrainBitmap): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -30,7 +50,7 @@ export function createBitmapCanvas(bitmap: TerrainBitmap): HTMLCanvasElement {
   canvas.height = bitmap.dim;
   const ctx = canvas.getContext("2d");
   // A 2D context is only null if the canvas already has a context of another
-  // kind, which cannot happen for one we just made — but the type says it
+  // kind, which cannot happen for one we just made, but the type says it
   // can, so say what happens rather than assert it away.
   if (ctx !== null) {
     ctx.putImageData(new ImageData(bitmap.pixels, bitmap.dim, bitmap.dim), 0, 0);
@@ -38,27 +58,49 @@ export function createBitmapCanvas(bitmap: TerrainBitmap): HTMLCanvasElement {
   return canvas;
 }
 
-export interface PreviewScene {
-  result: PreviewResult;
-  /** The grid being drawn — S6 for both toggle positions (Sec.5). */
+/**
+ * The full-fidelity content layer, a real generation's terrain, objects,
+ * players and failure marks. OPTIONAL on `PreviewScene` (slice-4b item 2,
+ * land-placement-design.md Sec.3.4/Sec.3.5): a canvas drawing only
+ * `mapOverlay` shapes (a report tool with no base map of its own, or the
+ * Land Placement panel before its first generation lands) omits this
+ * entirely and gets the background plus whatever shapes it supplied, no
+ * terrain bitmap to build, no result to have.
+ */
+export interface PreviewBaseLayer {
+  result: PreviewWireResult;
+  /** The grid being drawn, S6 for both toggle positions (Sec.5). */
   snapshot: StageSnapshot;
   /** Output of createBitmapCanvas for that snapshot. */
   terrain: HTMLCanvasElement;
-  /** Tile under the pointer, drawn with an outline. */
-  highlight?: { x: number; y: number } | null;
-  /** Tile the user clicked, drawn with its own heavier outline and kept until they click it again. */
-  selection?: { x: number; y: number } | null;
   /**
    * Object names to leave undrawn (the reference table's Preview Obj. List).
    *
    * A VIEW filter and nothing more: the objects are still in `result.objects`,
    * still counted in the table, still in the tile readout. Hiding them here
-   * rather than filtering the array upstream is what keeps that true — a
+   * rather than filtering the array upstream is what keeps that true, a
    * filtered array would make the hidden objects disappear from the readout
    * and the counts as well, which turns a display control into something that
    * looks like it changed the generation.
    */
   hiddenObjects?: ReadonlySet<string>;
+}
+
+export interface PreviewScene {
+  /** Absent draws just the background plus `overlayShapes`. See `PreviewBaseLayer`'s own doc. */
+  base?: PreviewBaseLayer;
+  /**
+   * Sec.3.4 layer 2: declarative shapes any tool (built-in or, over the wire,
+   * external) can draw on this same canvas, Land Placement's own land
+   * circles and chain edges are the reference implementation of this path,
+   * not a special case of it. Drawn between the failure marks and the hover
+   * highlight, so a shape sits above the base map but below either outline.
+   */
+  overlayShapes?: readonly OverlayShape[];
+  /** Tile under the pointer, drawn with an outline. */
+  highlight?: { x: number; y: number } | null;
+  /** Tile the user clicked, drawn with its own heavier outline and kept until they click it again. */
+  selection?: { x: number; y: number } | null;
 }
 
 /**
@@ -73,13 +115,18 @@ export function drawPreview(ctx: CanvasRenderingContext2D, viewport: Viewport, s
   ctx.fillStyle = BACKGROUND;
   ctx.fillRect(0, 0, viewport.width, viewport.height);
 
-  drawTerrain(ctx, viewport, scene);
-  drawMapEdge(ctx, viewport, scene.snapshot.dim);
-  drawObjects(ctx, viewport, scene.result, scene.hiddenObjects);
-  drawPlayers(ctx, viewport, scene.result);
-  // Last of the content layers, so a mark is never hidden by the very objects
-  // or player flag sitting on the land it is complaining about.
-  drawFailureMarks(ctx, viewport, scene.result);
+  if (scene.base) {
+    drawTerrain(ctx, viewport, scene.base);
+    drawMapEdge(ctx, viewport, scene.base.snapshot.dim);
+    drawObjects(ctx, viewport, scene.base.result, scene.base.hiddenObjects);
+    drawPlayers(ctx, viewport, scene.base.result);
+    // Last of the base-layer content, so a mark is never hidden by the very
+    // objects or player flag sitting on the land it is complaining about.
+    drawFailureMarks(ctx, viewport, scene.base.result);
+  }
+  if (scene.overlayShapes && scene.overlayShapes.length > 0) {
+    drawOverlay(ctx, viewport, scene.overlayShapes);
+  }
   if (scene.highlight) {
     drawTileOutline(ctx, viewport, scene.highlight.x, scene.highlight.y, HIGHLIGHT, 1.5);
   }
@@ -97,16 +144,16 @@ export function drawPreview(ctx: CanvasRenderingContext2D, viewport: Viewport, s
  * projection is screenX = (x + y) * halfWidth and screenY = (y - x) *
  * halfHeight (projection.ts), so a = c = halfWidth, b = -halfHeight,
  * d = halfHeight. Under that matrix the bitmap's unit-square pixel at (x, y)
- * lands exactly on tile (x, y)'s diamond — the image is not "rotated by 45
+ * lands exactly on tile (x, y)'s diamond, the image is not "rotated by 45
  * degrees and hoped for", the transform IS the projection.
  */
-function drawTerrain(ctx: CanvasRenderingContext2D, viewport: Viewport, scene: PreviewScene): void {
+function drawTerrain(ctx: CanvasRenderingContext2D, viewport: Viewport, base: PreviewBaseLayer): void {
   const halfHeight = halfHeightOf(viewport);
   ctx.save();
   // Zoomed in, nearest-neighbour keeps tile edges crisp and honest about
   // where a tile boundary is. Zoomed out, tiles are sub-pixel and
-  // nearest-neighbour would silently DROP whole rows of them — a lake could
-  // disappear — so smoothing goes back on below roughly two pixels a tile.
+  // nearest-neighbour would silently DROP whole rows of them, a lake could
+  // disappear, so smoothing goes back on below roughly two pixels a tile.
   ctx.imageSmoothingEnabled = viewport.halfWidth < 2;
   ctx.transform(
     viewport.halfWidth,
@@ -116,7 +163,7 @@ function drawTerrain(ctx: CanvasRenderingContext2D, viewport: Viewport, scene: P
     viewport.originX,
     viewport.originY,
   );
-  ctx.drawImage(scene.terrain, 0, 0);
+  ctx.drawImage(base.terrain, 0, 0);
   ctx.restore();
 }
 
@@ -139,7 +186,7 @@ function drawMapEdge(ctx: CanvasRenderingContext2D, viewport: Viewport, dim: num
 function drawObjects(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
-  result: PreviewResult,
+  result: PreviewWireResult,
   hidden?: ReadonlySet<string>,
 ): void {
   const radius = Math.max(1.1, Math.min(5, viewport.halfWidth * 0.75));
@@ -164,7 +211,7 @@ function drawObjects(
   }
 }
 
-function drawPlayers(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewResult): void {
+function drawPlayers(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewWireResult): void {
   const size = Math.max(7, Math.min(18, viewport.halfWidth * 2.6));
   for (const marker of result.players) {
     const point = tileToScreen(viewport, marker.x, marker.y);
@@ -198,13 +245,13 @@ function drawPlayers(ctx: CanvasRenderingContext2D, viewport: Viewport, result: 
  * their density, so it may become texture; a mark is one of a handful and its
  * whole job is to be noticed from the zoom level the map opens at.
  */
-function drawFailureMarks(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewResult): void {
+function drawFailureMarks(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewWireResult): void {
   const size = Math.max(9, Math.min(20, viewport.halfWidth * 2.4));
   const half = size / 2;
   for (const mark of result.failureMarks) {
     const point = tileToScreen(viewport, mark.x, mark.y);
     if (offCanvas(point.x, point.y, viewport, size)) continue;
-    // Drawn sitting ON the tile rather than centred over it — the apex points
+    // Drawn sitting ON the tile rather than centred over it, the apex points
     // at the tile the mark is about, which matters once two marks are close
     // enough that only their tips separate them.
     const apexY = point.y - size * 0.86;
@@ -224,6 +271,107 @@ function drawFailureMarks(ctx: CanvasRenderingContext2D, viewport: Viewport, res
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("!", point.x, apexY + size * 0.62);
+    }
+  }
+}
+
+/**
+ * Screen radius of a tile-space circle of radius `rTiles` centred at
+ * (cx, cy). Measured rather than derived from `viewport.halfWidth` alone:
+ * the diamond projection is a linear map of tile space, so a tile-space
+ * circle becomes a screen circle only because `TILE_ASPECT` (projection.ts)
+ * currently makes that map a scaled rotation, true today, and this stays
+ * correct without re-deriving the algebra if that ever changes, since it
+ * just measures how far the transform sends one tile-length in practice.
+ */
+function circleScreenRadius(viewport: Viewport, cx: number, cy: number, rTiles: number): number {
+  const centre = tileToScreen(viewport, cx, cy);
+  const edge = tileToScreen(viewport, cx + rTiles, cy);
+  return Math.hypot(edge.x - centre.x, edge.y - centre.y);
+}
+
+/**
+ * Sec.3.4 layer 2: one block's worth of declarative shapes, in tile
+ * coordinates. Drawn after the base layer and before the hover/selection
+ * outlines (`drawPreview`'s own ordering), additive, and it changes no
+ * existing layer.
+ */
+function drawOverlay(ctx: CanvasRenderingContext2D, viewport: Viewport, shapes: readonly OverlayShape[]): void {
+  for (const shape of shapes) {
+    const color = OVERLAY_COLORS[shape.role];
+    switch (shape.kind) {
+      case "point": {
+        const p = tileToScreen(viewport, shape.x, shape.y);
+        const r = shape.radiusPx ?? 3;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        break;
+      }
+      case "circle": {
+        const p = tileToScreen(viewport, shape.x, shape.y);
+        const r = circleScreenRadius(viewport, shape.x, shape.y, shape.rTiles);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        if (shape.fill) {
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        break;
+      }
+      case "line": {
+        const from = tileToScreen(viewport, shape.from.x, shape.from.y);
+        const to = tileToScreen(viewport, shape.to.x, shape.to.y);
+        ctx.save();
+        if (shape.dashed) ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+        break;
+      }
+      case "polyline": {
+        if (shape.points.length === 0) break;
+        ctx.beginPath();
+        shape.points.forEach((point, i) => {
+          const p = tileToScreen(viewport, point.x, point.y);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        if (shape.closed) ctx.closePath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        break;
+      }
+      case "label": {
+        const p = tileToScreen(viewport, shape.x, shape.y);
+        ctx.fillStyle = color;
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(shape.text, p.x, p.y - 4);
+        break;
+      }
+      case "handle": {
+        const p = tileToScreen(viewport, shape.x, shape.y);
+        const size = 5;
+        ctx.fillStyle = color;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.rect(p.x - size, p.y - size, size * 2, size * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
     }
   }
 }
@@ -256,7 +404,7 @@ function offCanvas(x: number, y: number, viewport: Viewport, margin: number): bo
 
 /** Black or white, whichever the player colour can actually be read against. */
 function readableInk(color: Rgb): string {
-  // Rec. 601 luma — the cheap perceptual brightness, good enough to pick ink.
+  // Rec. 601 luma, the cheap perceptual brightness, good enough to pick ink.
   const luma = (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
   return luma > 150 ? "#101010" : "#ffffff";
 }

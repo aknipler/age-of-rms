@@ -1,10 +1,10 @@
-// S1: land origin placement — docs/preview-design.md Sec.6.1. PURE (CLAUDE.md
+// S1: land origin placement, docs/preview-design.md Sec.6.1. PURE (CLAUDE.md
 // hard rule / preview-design Sec.2).
 //
 // SCOPE OF THIS FILE, STATED UP FRONT: origin placement and zone assignment
 // only. It places every land's origin (and stamps its base square/circle
 // onto the grid), but does NOT grow lands to their size targets or apply
-// `base_elevation` — both are explicitly post-growth steps in Sec.6.1
+// `base_elevation`, both are explicitly post-growth steps in Sec.6.1
 // ("after growth, set elevation = H"), and growth's frontier-weight-bucket
 // machinery (Sec.11) is a large enough piece of work to be its own file
 // addition. `LandOrigin.declaredTargetTiles`/`behaviorVersion` carry what
@@ -14,7 +14,7 @@
 // `assign_to`/`assign_to_player` ARE modelled (Sec.6.1's own sanctioned
 // scope: AT_PLAYER/AT_COLOR/AT_TEAM with Mode, everything but Flags). A
 // `create_land` carrying either takes a ring slot "like a player land"
-// (guide:1016) rather than the neutral-land origin rule — which means
+// (guide:1016) rather than the neutral-land origin rule, which means
 // origin placement needs the FULL ring membership (every create_player_lands
 // occurrence's implicit N players, plus every successfully-resolved
 // assign_to'd land) known before any of them can be placed, since they all
@@ -24,7 +24,7 @@
 // one ring-placement pass over the combined membership.
 //
 // NOT modelled: `Flags` (guide:1008-1012's "reset"/"don't remember"
-// modifiers to the default remembering behaviour — the default itself IS
+// modifiers to the default remembering behaviour, the default itself IS
 // modelled: an assign_to'd player is excluded from later AT_TEAM candidate
 // pools). `AT_COLOR` resolves identically to `AT_PLAYER` (no colour
 // assignment exists in the preview). Both get one `notSimulated` note each
@@ -51,7 +51,7 @@ import { borderBounds, isWaterTerrain, resolveTerrainId, tileIndex, WATER_NAME_P
 import { ok, fail, pushFailure } from "./placement";
 
 // ---------------------------------------------------------------------------
-// [tune] constants — each cites the measurement or the open question behind it.
+// [tune] constants, each cites the measurement or the open question behind it.
 // ---------------------------------------------------------------------------
 
 /** No `circle_radius` at all (or `circle_radius 0`, which falls back here wholesale): MEASURED RMSTEST_24. */
@@ -59,7 +59,7 @@ const DEFAULT_RING_RADIUS_PCT = 40;
 const DEFAULT_RING_VARIANCE_PCT = 10;
 const DEFAULT_RING_JITTER_DEG = 7;
 
-/** Sec.6.1: "reject candidates where both |x-center| and |y-center| exceed 0.35*(half the reference span)" — MEASURED RMSTEST_25. */
+/** Sec.6.1: "reject candidates where both |x-center| and |y-center| exceed 0.35*(half the reference span)", MEASURED RMSTEST_25. */
 const CROSS_SHAPE_COEFFICIENT = 0.35;
 
 /**
@@ -71,8 +71,8 @@ const CROSS_SHAPE_COEFFICIENT = 0.35;
  * 19 origins inside the region the map-frame model forbids, and 0 of 19 in the
  * ~43% of the box that the box-frame model forbids, against ~8 expected from a
  * uniform scatter. So the cross is real and it is measured against the allowed
- * region. With no borders the two frames coincide exactly — `spanX` is `dim`
- * and the centre is `dim / 2` — which is what preserves `RMSTEST_25`'s original
+ * region. With no borders the two frames coincide exactly, `spanX` is `dim`
+ * and the centre is `dim / 2`, which is what preserves `RMSTEST_25`'s original
  * unbordered measurement, and is pinned by its own test rather than left to be
  * noticed.
  *
@@ -89,7 +89,7 @@ interface CrossRegion {
   halfY: number;
 }
 
-/** Built from the INCLUSIVE sampling rectangle — `[minX, maxX]`, so an unbordered map passes `0` and `dim - 1`. */
+/** Built from the INCLUSIVE sampling rectangle, `[minX, maxX]`, so an unbordered map passes `0` and `dim - 1`. */
 function crossRegion(minX: number, maxX: number, minY: number, maxY: number): CrossRegion {
   const spanX = maxX - minX + 1;
   const spanY = maxY - minY + 1;
@@ -101,7 +101,7 @@ function crossRegion(minX: number, maxX: number, minY: number, maxY: number): Cr
   };
 }
 
-/** A candidate is in the cross unless it is outside the band on BOTH axes — i.e. in one of the four corners. */
+/** A candidate is in the cross unless it is outside the band on BOTH axes, i.e. in one of the four corners. */
 function insideCross(cross: CrossRegion, x: number, y: number): boolean {
   return Math.abs(x - cross.centerX) <= cross.halfX || Math.abs(y - cross.centerY) <= cross.halfY;
 }
@@ -111,11 +111,11 @@ const ORIGIN_ATTEMPTS = 100;
 
 /**
  * Negative `circle_radius`: MEASURED mean radius 0.276*dim, CV 0.44
- * (RMSTEST_27) — "neither obvious draw matches... start with a mixture,
+ * (RMSTEST_27), "neither obvious draw matches... start with a mixture,
  * weight [tune] fitted to CV 0.44." Both components share the SAME mean
  * (0.276*dim), so the mixture hits the mean for any weight; solving
  * `p*Var(disc) + (1-p)*Var(uniform) = (0.44*0.276*dim)^2` for the two
- * components' known variances gives p ~= 0.671 (worked in the build log —
+ * components' known variances gives p ~= 0.671 (worked in the build log,
  * this is exactly the "[tune], approximate" territory the spec itself
  * flags, not a second measurement).
  */
@@ -137,7 +137,7 @@ const DEFAULT_CLUMPING_FACTOR = 8;
 const DEFAULT_OTHER_ZONE_AVOIDANCE = 0;
 
 // ---------------------------------------------------------------------------
-// Attribute reading — InstantiatedCommand.attributes is always folded to
+// Attribute reading, InstantiatedCommand.attributes is always folded to
 // InstantiatedAttribute[] (Sec.3 rule 10); none of Sec.6.1's attributes are
 // repeatable, so index [0] is always the one that survived folding.
 // ---------------------------------------------------------------------------
@@ -147,9 +147,14 @@ function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): Instant
   return arg?.value;
 }
 
+// BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
+// a known symbol (a #define with no #const) that resolves to JS `undefined`
+// — that reads as 0, measured. See objects.ts's own copy for the full note.
 function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
-  const v = argValue(cmd, name, argIndex);
-  return typeof v === "number" ? v : fallback;
+  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
+  if (arg === undefined) return fallback;
+  if (typeof arg.value === "number") return arg.value;
+  return arg.value === undefined ? 0 : fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +184,7 @@ function resolveRingParams(cmd: InstantiatedCommand): RingParams {
   const radiusPct = typeof circleRadius.args[0]?.value === "number" ? circleRadius.args[0].value : 0;
   if (radiusPct === 0) {
     // "0 disables circular positioning entirely... behaves EXACTLY as if the
-    // attribute were absent" (guide:844, confirmed RMSTEST_2/5) — including
+    // attribute were absent" (guide:844, confirmed RMSTEST_2/5), including
     // the border-shifted center, not just radius/variance/jitter.
     return {
       centerMode: "borderShifted",
@@ -192,7 +197,7 @@ function resolveRingParams(cmd: InstantiatedCommand): RingParams {
   if (radiusPct < 0) {
     return { centerMode: "mapCenter", scattered: true, radiusPct: 0, variancePct: 0, jitterDeg: 0 };
   }
-  // Explicit positive circle_radius: NO angular jitter — "three corpus maps
+  // Explicit positive circle_radius: NO angular jitter, "three corpus maps
   // write a bare circle_radius with no variance and mean a perfect circle."
   const variancePct = typeof circleRadius.args[1]?.value === "number" ? circleRadius.args[1].value : 0;
   return { centerMode: "mapCenter", scattered: false, radiusPct, variancePct, jitterDeg: 0 };
@@ -225,7 +230,7 @@ function pointOnRing(center: { x: number; y: number }, radiusTiles: number, deg:
 
 /**
  * Sec.6.1's scattered draw for negative `circle_radius`: a mixture of a
- * uniform point in a disc (no sqrt — sampled by Cartesian rejection, since
+ * uniform point in a disc (no sqrt, sampled by Cartesian rejection, since
  * this module may not call Math.sqrt/pow, Sec.8) and a uniform radius at a
  * uniformly random angle. See the `SCATTERED_*` constants' comment for the
  * derivation.
@@ -260,12 +265,12 @@ interface RingSlot {
  * Groups sit at evenly-spaced ring slots; members within a group cluster
  * around their slot at `GROUP_MEMBER_SPACING_FACTOR * baseSize` tiles apart
  * (converted from a tile spacing to an angle using the ring's own nominal
- * radius — arc length = radius x angle) rather than each taking a full ring
+ * radius, arc length = radius x angle) rather than each taking a full ring
  * slot. Angular jitter is NOT applied within a group ("it would fight the
  * spacing the attribute exists to set").
  *
  * `referenceRadiusTiles` is the ring's NOMINAL radius (before per-player
- * variance), not each member's own jittered radius — variance still applies
+ * variance), not each member's own jittered radius, variance still applies
  * per player afterward, but the group's own spacing is measured against one
  * stable reference length rather than one that moves per member.
  */
@@ -342,7 +347,7 @@ function computeZone(
 // ---------------------------------------------------------------------------
 // Origin stamp: square (or inscribed circle) of radius base_size, written
 // onto the grid. Later stamps overwrite earlier ones by processing origins
-// in placement order and simply writing over whatever is there — "the land
+// in placement order and simply writing over whatever is there, "the land
 // placed last will be the one visible" (guide).
 // ---------------------------------------------------------------------------
 
@@ -382,7 +387,7 @@ function neutralOrigin(
   if (landPositionAttr) {
     const px = typeof landPositionAttr.args[0]?.value === "number" ? landPositionAttr.args[0].value : 50;
     const py = typeof landPositionAttr.args[1]?.value === "number" ? landPositionAttr.args[1].value : 50;
-    // Sec.4: round, THEN clamp to [0, dim-1] — the Michi.rms land_position 100 100 fix.
+    // Sec.4: round, THEN clamp to [0, dim-1], the Michi.rms land_position 100 100 fix.
     const x = Math.max(0, Math.min(dim - 1, Math.round((px / 100) * dim)));
     const y = Math.max(0, Math.min(dim - 1, Math.round((py / 100) * dim)));
     return ok({ x, y });
@@ -509,7 +514,7 @@ function commonFields(
 /**
  * Sec.6.1's size-target rule, before the (not-yet-built) growth phase's
  * additive/included adjustment. Exported for consistency-checker-design.md
- * Sec.7.0 item 2 — Sec.3.1 sums it and it is pure, `(cmd, dim,
+ * Sec.7.0 item 2, Sec.3.1 sums it and it is pure, `(cmd, dim,
  * perPlayerDivisor)`, so exporting costs nothing.
  */
 export function declaredTargetTiles(cmd: InstantiatedCommand, dim: number, perPlayerDivisor: number): number {
@@ -523,7 +528,7 @@ export function declaredTargetTiles(cmd: InstantiatedCommand, dim: number, perPl
 // assign_to / assign_to_player (Sec.6.1)
 // ---------------------------------------------------------------------------
 
-/** A `create_land` whose `assign_to`/`assign_to_player` resolved to a real, currently-playing player — awaiting a ring slot alongside `create_player_lands`'s implicit ones. */
+/** A `create_land` whose `assign_to`/`assign_to_player` resolved to a real, currently-playing player, awaiting a ring slot alongside `create_player_lands`'s implicit ones. */
 interface RingExtra {
   cmd: InstantiatedCommand;
   player: number;
@@ -540,7 +545,7 @@ interface AssignmentResolution {
  * Resolves one `assign_to`/`assign_to_player` command to a player number.
  * `assignedPlayers` is the running "already given a land via assign_to"
  * set (guide:1008's default remembering behaviour, which Flags can override
- * but this doesn't model) — AT_TEAM's candidate pool excludes it, and a
+ * but this doesn't model), AT_TEAM's candidate pool excludes it, and a
  * successful resolution here is the caller's job to add to it, not this
  * function's, since a caller that ends up NOT creating the land (e.g. it
  * turned out to belong to a ring that can't take it) should not have
@@ -602,14 +607,14 @@ interface CombinedRingSlot {
   cmd: InstantiatedCommand;
   player: number;
   angleDeg: number;
-  /** guide:857's engine bug: extra player-land positions under grouped_by_team "do not generate properly" — placed degenerately rather than a working position the real engine doesn't have. */
+  /** guide:857's engine bug: extra player-land positions under grouped_by_team "do not generate properly", placed degenerately rather than a working position the real engine doesn't have. */
   buggy: boolean;
 }
 
 /**
  * The full ring membership: every `create_player_lands` occurrence's
  * implicit `playerCount` players, plus every successfully-resolved
- * `assign_to`'d extra — Sec.6.1: an assigned land "takes a ring slot, like
+ * `assign_to`'d extra, Sec.6.1: an assigned land "takes a ring slot, like
  * a player land." Non-grouped: everyone gets a real, evenly-spaced slot on
  * ONE shared ring (implicit slots first, then extras in file order).
  * Grouped: the implicit slots keep the existing by-team clustering
@@ -775,7 +780,7 @@ export function placeLandOrigins(
           span: cmd.span,
           text: "This land targets a player who isn't in the current lobby size (or no eligible team-mate is left to assign), so the engine doesn't create it.",
         });
-        continue; // guide:1015: not created — no origin, placed stays 0
+        continue; // guide:1015: not created, no origin, placed stays 0
       }
       assignedPlayers.add(resolution.player);
       ringExtras.push({ cmd, player: resolution.player });
@@ -803,7 +808,7 @@ export function placeLandOrigins(
   // implicit playerCount slots, plus every resolved assign_to'd extra).
   if (playerLandsCommands.length > 0 || ringExtras.length > 0) {
     // Ring geometry comes from the LAST create_player_lands occurrence
-    // (existing "only the final radius applies" precedent, guide:856) — an
+    // (existing "only the final radius applies" precedent, guide:856), an
     // assign_to'd extra never redefines the shared ring, it only takes a
     // slot on it. With no create_player_lands at all (only standalone
     // assign_to'd lands), fall back to the same defaults the no-attribute
@@ -839,7 +844,7 @@ export function placeLandOrigins(
       let point: { x: number; y: number };
       if (playerSetup.directPlacement && slot.cmd.attributes.has("land_position")) {
         // guide:367: direct_placement disables the ring (and, with it,
-        // guide:857's grouped_by_team bug) entirely — checked first.
+        // guide:857's grouped_by_team bug) entirely, checked first.
         const px = numAttr(slot.cmd, "land_position", 0, 50);
         const py = numAttr(slot.cmd, "land_position", 1, 50);
         point = { x: Math.round((px / 100) * grid.dim), y: Math.round((py / 100) * grid.dim) };
@@ -880,15 +885,15 @@ export function placeLandOrigins(
 }
 
 // ---------------------------------------------------------------------------
-// Growth (Sec.6.1's "Growth — synchronized frontier expansion").
+// Growth (Sec.6.1's "Growth, synchronized frontier expansion").
 //
 // All lands grow in round-robin turns, one tile per unfinished land per
 // round (approximates "growth happens all at once"). Per turn a land either
 // draws from its detached-seed reservoir (cf-dependent fragmentation, MEASURED
 // RMSTEST_38) or samples its frontier by weight (guide:927's clumping
 // regimes, MEASURED RMSTEST_21). Every drawn candidate is then checked
-// against Sec.6.1's three rejection rules — border, zone avoidance, already
-// owned — and a rejected candidate is simply gone (never re-offered): all
+// against Sec.6.1's three rejection rules, border, zone avoidance, already
+// owned, and a rejected candidate is simply gone (never re-offered): all
 // three rejection reasons are static with respect to a fixed grid state, so
 // a candidate rejected once can never become acceptable later, and dropping
 // it permanently is the O(1)-friendly reading of "no sorting, no
@@ -896,7 +901,7 @@ export function placeLandOrigins(
 //
 // PERFORMANCE NOTE, flagged rather than silently accepted: Sec.11 asks for
 // the frontier as Int32Array buckets with membership tracked in a
-// Uint8Array. This implementation uses plain arrays and a Set instead —
+// Uint8Array. This implementation uses plain arrays and a Set instead,
 // behaviourally identical (same draws, same distribution), but without
 // Sec.11's O(1)-guaranteed-by-construction data structures. No benchmark
 // gate exists yet to measure against (Sec.11's own gate isn't built), so
@@ -926,7 +931,7 @@ const NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [1, 0
  * Detached-seed reservoir size, MEASURED RMSTEST_38's piece-count column:
  * 6-10 pieces at cf -20, 1-5 at cf 0, 1-2 at cf 8 (default), a hard 1 by
  * cf >= 20. Piece count is 1 (the origin) + however many reservoir seeds
- * actually get drawn before the reservoir empties — and since a land's
+ * actually get drawn before the reservoir empties. Since a land's
  * turn count (its tile target) is normally far larger than a small
  * reservoir, virtually every reservoir tile DOES eventually get drawn as
  * long as the per-turn draw probability isn't tiny. That makes R(cf), not
@@ -935,7 +940,7 @@ const NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [1, 0
  * Sec.6.1 licenses this explicitly: "what is measured is the piece-count
  * column, and any mechanism reproducing it is admissible."
  */
-/** Exported for direct unit testing — see the build log for why: reservoir effects and weight-bucket effects are entangled at every `clumpingFactor < 20` through the full growth pipeline, since reservoirSize is also non-zero there. */
+/** Exported for direct unit testing. See the build log for why: reservoir effects and weight-bucket effects are entangled at every `clumpingFactor < 20` through the full growth pipeline, since reservoirSize is also non-zero there. */
 export function reservoirSize(clumpingFactor: number): number {
   if (clumpingFactor >= 20) return 0;
   return Math.round(clampNum((7 * (20 - clumpingFactor)) / 40, 0, 7));
@@ -945,7 +950,7 @@ export function reservoirSize(clumpingFactor: number): number {
 const RESERVOIR_DRAW_PROBABILITY = 0.15;
 
 /**
- * How far a detached seed may land from its land's origin — `[tune]`, and see
+ * How far a detached seed may land from its land's origin, `[tune]`, and see
  * `sampleReservoir` for why it is bounded at all. A fraction of `dim` so it
  * scales with the map; the floor keeps it meaningful on a Tiny map.
  */
@@ -956,7 +961,7 @@ function clampNum(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/** Exported for direct unit testing — see reservoirSize's comment just above. */
+/** Exported for direct unit testing. See reservoirSize's comment just above. */
 export function bucketWeights(clumpingFactor: number): readonly [number, number, number, number] {
   if (clumpingFactor < 0) return NEGATIVE_REGIME_WEIGHTS;
   const steepness = (Math.min(clumpingFactor, 15) / 15) * MAX_STEEPNESS;
@@ -1002,15 +1007,15 @@ function addToFrontier(state: GrowthLand, grid: TileGrid, tile: number): void {
   state.buckets[bucketIndex].push(tile);
 }
 
-/** Sec.6.1: reservoir seeds use "the same origin rules the land's own origin used (inside borders, inside the cross unless generate_mode 1, not owned)" — deliberately NOT the origin's min_placement_distance check, which the spec's list omits here. */
+/** Sec.6.1: reservoir seeds use "the same origin rules the land's own origin used (inside borders, inside the cross unless generate_mode 1, not owned)", deliberately NOT the origin's min_placement_distance check, which the spec's list omits here. */
 function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: Rng): void {
   if (count <= 0) return;
   const { dim } = grid;
   const bounds = state.origin.borderBounds;
   // Detached seeds are drawn from a NEIGHBOURHOOD of the land's own origin,
   // not from the whole map. Sec.6.1's own text says "rejection-sampled by the
-  // same origin rules the land's own origin used", which reads as map-wide —
-  // and map-wide is what this did, with a consequence the spec did not
+  // same origin rules the land's own origin used", which reads as map-wide.
+  // And map-wide is what this did, with a consequence the spec did not
   // anticipate. A detached seed is meant to model a land FRAGMENTING; drawn
   // from anywhere, it instead teleports.
   //
@@ -1020,7 +1025,7 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   // (verified: a 4-connected flood from the origin over non-ring tiles never
   // reaches the map edge), and the interior is 14,201 tiles. But the flood's
   // target is 40,000, which it can never reach, so it keeps taking turns
-  // forever — and its two map-wide detached seeds landed OUTSIDE the ring and
+  // forever. And its two map-wide detached seeds landed OUTSIDE the ring and
   // grew without limit, putting DIRT across the open water. Across seeds the
   // land came out at 8,463, 13,777 and 16,703 tiles against an interior of
   // 14,201: sometimes short, sometimes spilling past a wall it cannot cross.
@@ -1028,8 +1033,8 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   // Sec.6.1 licenses this: R and the FORM are both `[tune]`, and "what is
   // measured is the piece-count column, and any mechanism reproducing it is
   // admissible" (RMSTEST_38). A local neighbourhood reproduces that column
-  // exactly as well — the measurement counted PIECES, and a piece 40 tiles
-  // away counts the same as one 150 tiles away — while making a detached seed
+  // exactly as well, the measurement counted PIECES, and a piece 40 tiles
+  // away counts the same as one 150 tiles away, while making a detached seed
   // mean "this land broke apart" rather than "this land also appeared over
   // there". Tracked for confirmation as Sec.15 item 27.
   //
@@ -1044,7 +1049,7 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   const maxY = Math.min(dim - 1, bounds.maxY - 1, state.origin.y + radius);
   if (minX > maxX || minY > maxY) return;
   // The cross is measured against what the BORDERS leave (BUG-009), which is
-  // not the box sampled from here — that one is additionally narrowed to a
+  // not the box sampled from here. That one is additionally narrowed to a
   // neighbourhood of the origin, and taking the cross off it would move the
   // region with the land instead of with the borders.
   const cross = crossRegion(
@@ -1077,7 +1082,7 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
  * The free tiles inside the sampling window that this land could reach on
  * foot, 4-connected, starting from the tiles it already owns.
  *
- * WHY THIS EXISTS — Sec.15 item 27, measured on `AK_Six_Points_v1.4.rms`
+ * WHY THIS EXISTS, Sec.15 item 27, measured on `AK_Six_Points_v1.4.rms`
  * 2026-08-10. That map draws a closed ellipse of 120 zero-tile stamps and
  * floods the inside with `create_land { land_percent 100 }`, and it also lays
  * four `DLC_MANGROVESHALLOW` lands whose borders confine them to two-row
@@ -1090,14 +1095,14 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
  * on a Normal map, and the origin at (180, 98) is nearer than that to BOTH
  * strips and to the ellipse wall. So seeds still landed on the far side of
  * barriers, and the land's final size was 7,741 / 7,897 / 10,855 across three
- * seeds — one clean slice, one slice plus a stranded blob, and one that
+ * seeds; one clean slice, one slice plus a stranded blob, and one that
  * escaped the ellipse entirely and grew in the open sea. **The seed-dependence
  * was never in growth. It was in how many seeds happened to jump a wall.**
  *
  * WHY IT DOES NOT DISTURB THE CALIBRATION. RMSTEST_38 fitted `reservoirSize`
  * against a piece-count column measured on an OPEN map, where every tile in
  * the window is reachable and this filter removes nothing. Fragmentation still
- * happens for the reason it always did — a seed 20 tiles away is its own blob
+ * happens for the reason it always did. A seed 20 tiles away is its own blob
  * whether or not a path exists to it. What the filter removes is not a
  * fragment, it is a teleport.
  *
@@ -1110,7 +1115,7 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
  * member. The typed array brought that to about 3%.
  *
  * WHEN IT IS EVALUATED, which is a real limit and not a detail. Once, at
- * growth start, against a grid holding only origin STAMPS — so a wall that
+ * growth start, against a grid holding only origin STAMPS. So a wall that
  * only exists after a neighbouring land has grown is invisible here, and a
  * seed can still land behind one. It does not bite on the map above because
  * that ellipse is 120 stamps and is therefore already sealed at this moment,
@@ -1219,49 +1224,66 @@ function borderDepth(x: number, y: number, bounds: BorderBounds): number {
 }
 
 /**
- * Sec.6.1: "within other_zone_avoidance_distance (the SMALLER of the two
- * lands' values) of a tile owned by a different zone (zone -12 exempt)."
- * The pairwise radius depends on which specific neighbouring land a nearby
- * tile belongs to, so the window scan uses THIS land's own radius as the
- * outer bound (the pairwise minimum can never exceed it) and re-checks the
- * true pairwise minimum per candidate tile found inside that window.
+ * Sec.6.1: a candidate is rejected if it is within `other_zone_avoidance_distance`
+ * — the SMALLER of the two lands' declared values — of a tile already owned by
+ * a DIFFERENT, non-exempt zone (`zone -12`, "belongs to no zone", is exempt on
+ * either side — see `LandOrigin.zone`'s own comment).
+ *
+ * RESTORED 2026-09-03 (BUG-016 reopened). A 2026-09-02 pass deleted this
+ * function on the strength of RMSTEST_66's positive control, read via
+ * `gap = min_x(right) - max_x(left)` across each land's full bounding box,
+ * which came back -3/-10/-5 and was taken as overlap. It wasn't: growth is a
+ * randomised frontier process, so two lands' bounding boxes can cross on
+ * paper — one bulging right at one y, the other bulging left at a different
+ * y — with the patches themselves never actually approaching each other.
+ * Re-measured with the TRUE tile-to-tile minimum distance instead of bbox
+ * extent: the control pair (DESERT/DIRT2, matched declared distance 6) sat
+ * 5-7 tiles apart across all four real-engine runs, zero tiles of contact in
+ * every one. RMSTEST_73 (one grower against a static, non-competing
+ * different-zone land, placed far enough away that its origin doesn't
+ * already start inside its own declared distance — the confound that made
+ * RMSTEST_72 unreadable) calibrated the model exactly: measured gap =
+ * declared value + 1, for three different declared values (6, 10, 12),
+ * reproducing bit-for-bit across three separate runs. RMSTEST_66's own third
+ * (asymmetric-radius) pair, re-read the same way, confirms "the smaller of
+ * the two wins" rather than "the larger": DIRT3 (declared 12) vs GRASS3
+ * (declared 2) held a 3-7 tile gap across four runs — three of the four
+ * landing on exactly 2+1=3 — nowhere near the 12+1=13 the "larger wins"
+ * reading would predict, and never touched. RMSTEST_74 separately confirmed
+ * the origin-time half of this attribute (20 same-map competing origins, no
+ * merges, far fewer near-misses than pure chance would produce at that
+ * sample size). Full write-up in `docs/known-issues.md` BUG-016 and
+ * `docs/build-log.md`'s 2026-09-03 correction entry.
  */
-function violatesZoneAvoidance(
-  state: GrowthLand,
-  states: readonly GrowthLand[],
-  grid: TileGrid,
-  x: number,
-  y: number,
-): boolean {
-  if (state.origin.zone === -12) return false;
-  const radius = state.origin.otherZoneAvoidanceDistance;
-  if (radius <= 0) return false;
-  const { dim } = grid;
-  const minX = Math.max(0, Math.floor(x - radius));
-  const maxX = Math.min(dim - 1, Math.ceil(x + radius));
-  const minY = Math.max(0, Math.floor(y - radius));
-  const maxY = Math.min(dim - 1, Math.ceil(y + radius));
-  for (let yy = minY; yy <= maxY; yy++) {
-    for (let xx = minX; xx <= maxX; xx++) {
-      const otherLandIndex = grid.landId[tileIndex(grid, xx, yy)];
-      if (otherLandIndex === -1 || otherLandIndex === state.index) continue;
-      const otherZone = grid.zone[tileIndex(grid, xx, yy)];
-      if (otherZone === state.origin.zone || otherZone === -12) continue;
-      const otherRadius = states[otherLandIndex]?.origin.otherZoneAvoidanceDistance ?? radius;
-      const pairRadius = Math.min(radius, otherRadius);
-      const dx = xx - x;
-      const dy = yy - y;
-      if (dx * dx + dy * dy <= pairRadius * pairRadius) return true;
+function violatesZoneAvoidance(state: GrowthLand, grid: TileGrid, origins: readonly LandOrigin[], x: number, y: number): boolean {
+  const ownZone = state.origin.zone;
+  const ownDistance = state.origin.otherZoneAvoidanceDistance;
+  if (ownZone === -12 || ownDistance <= 0) return false; // exempt zone, or nothing declared - nothing to check
+  const r = ownDistance; // the effective (smaller-of-two) distance can never exceed this land's own value
+  const minX = Math.max(0, x - r);
+  const maxX = Math.min(grid.dim - 1, x + r);
+  const minY = Math.max(0, y - r);
+  const maxY = Math.min(grid.dim - 1, y + r);
+  for (let ny = minY; ny <= maxY; ny++) {
+    for (let nx = minX; nx <= maxX; nx++) {
+      const ni = tileIndex(grid, nx, ny);
+      const otherLandId = grid.landId[ni];
+      if (otherLandId === -1 || otherLandId === state.index) continue;
+      const otherZone = grid.zone[ni];
+      if (otherZone === ownZone || otherZone === -12) continue;
+      const effective = Math.min(ownDistance, origins[otherLandId].otherZoneAvoidanceDistance);
+      if (effective <= 0) continue;
+      if (Math.max(Math.abs(nx - x), Math.abs(ny - y)) <= effective) return true;
     }
   }
   return false;
 }
 
-function acceptCandidate(state: GrowthLand, states: readonly GrowthLand[], grid: TileGrid, tile: number, rng: Rng): boolean {
-  if (grid.landId[tile] !== -1) return false; // "already owned" — includes staleness from a rival land claiming it since it entered the frontier/reservoir
+function acceptCandidate(state: GrowthLand, grid: TileGrid, origins: readonly LandOrigin[], tile: number, rng: Rng): boolean {
+  if (grid.landId[tile] !== -1) return false; // "already owned", includes staleness from a rival land claiming it since it entered the frontier/reservoir
   const { x, y } = xyOf(grid, tile);
   if (!borderAccepted(borderDepth(x, y, state.origin.borderBounds), state.origin.borderFuzziness, rng)) return false;
-  if (violatesZoneAvoidance(state, states, grid, x, y)) return false;
+  if (violatesZoneAvoidance(state, grid, origins, x, y)) return false;
   return true;
 }
 
@@ -1276,8 +1298,8 @@ function hasCandidates(state: GrowthLand): boolean {
 }
 
 // Ordinals for growLands' own substreams start far away from
-// placeLandOrigins' range so the two functions — called separately, each
-// starting its own `ordinal` counter at 0 — never derive the same
+// placeLandOrigins' range so the two functions, called separately, each
+// starting its own `ordinal` counter at 0, never derive the same
 // (masterSeed, "S1", ordinal) substream. Origin placement's ordinal count is
 // bounded by the number of lands/players in a script, which never
 // approaches this offset in practice.
@@ -1328,7 +1350,7 @@ export function growLands(
 
   // One pass to count current ownership (post-overwrite: an earlier origin
   // may have lost tiles to a later one's stamp), one pass to seed frontiers
-  // from it — both O(dim^2), not O(numLands * dim^2).
+  // from it, both O(dim^2), not O(numLands * dim^2).
   for (let i = 0; i < dim * dim; i++) {
     const landIndex = grid.landId[i];
     if (landIndex >= 0) states[landIndex].owned++;
@@ -1344,7 +1366,7 @@ export function growLands(
 
   let ordinal = 0;
   const nextSubstream = (): Rng => createSubstream(masterSeed, "S1", GROWTH_ORDINAL_OFFSET + ordinal++);
-  // One substream per land, reused across every round it grows — Sec.8's
+  // One substream per land, reused across every round it grows, Sec.8's
   // "best-effort stability": editing one land's target doesn't reshuffle
   // another's draws.
   const landRngs = states.map(() => nextSubstream());
@@ -1394,7 +1416,7 @@ export function growLands(
 
       const useReservoir = state.reservoir.length > 0 && nextFloat01(rng) < RESERVOIR_DRAW_PROBABILITY;
       const drawn = useReservoir ? popReservoir(state, rng) : drawFromFrontier(state, rng);
-      if (drawn !== undefined && acceptCandidate(state, states, grid, drawn, rng)) {
+      if (drawn !== undefined && acceptCandidate(state, grid, origins, drawn, rng)) {
         claimTile(state, grid, drawn);
         state.owned++;
       }
@@ -1416,7 +1438,7 @@ export function growLands(
 }
 
 // ---------------------------------------------------------------------------
-// terrain_type (Sec.6.1) — like base_elevation below, strictly AFTER growth,
+// terrain_type (Sec.6.1), like base_elevation below, strictly AFTER growth,
 // and for the same reason: a land's terrain covers its FINAL footprint, not
 // the origin stamp it started from.
 // ---------------------------------------------------------------------------
@@ -1428,7 +1450,7 @@ export function growLands(
  * This was missing outright until 2026-08-07, and it is worth saying what
  * that cost, because the shape of the bug is more instructive than the fix.
  * `stampOrigin` and `claimTile` both wrote `landId` and `zone` and neither
- * ever wrote `terrain` — so every stage from S1 on saw a grid that was 100%
+ * ever wrote `terrain`. So every stage from S1 on saw a grid that was 100%
  * `base_terrain`, and the renderer drew one. Nothing failed loudly. Instead
  * the damage surfaced two stages downstream as an avalanche of *correct*
  * diagnostics: `create_terrain { base_terrain DIRT2 }` really did have no
@@ -1441,7 +1463,7 @@ export function growLands(
  * S4 (`create_terrain` paints patches ON TOP of land terrain, which is the
  * whole point of `base_terrain` matching) and before S5's connection
  * painting, both of which are later stages anyway. Within S1, later lands
- * overwrite earlier ones for free — `grid.landId` already resolved every
+ * overwrite earlier ones for free. `grid.landId` already resolved every
  * overlap, so a tile is painted exactly once here, by whichever land holds
  * it.
  *
@@ -1449,6 +1471,28 @@ export function growLands(
  * leaves the base fill showing, which is what the engine does with an
  * attribute it cannot read.
  */
+/**
+ * How many tiles each land actually ended up owning, indexed the same way as
+ * `origins` and `grid.landId`. A later land overwrites an earlier one's
+ * tiles, so this is the only place "how many tiles does land N have" can be
+ * answered correctly. Growth's own running figure of the same quantity
+ * cannot see a later land's overwrite. Shared by `index.ts`'s
+ * `collectLandOutcomes` (Sec.15 item 5's failure marks) and by
+ * `runPreview.ts`'s `PreviewSummary.landOrigins[].tiles`
+ * (land-placement-design.md Sec.3.4 layer 1). One O(dim²) definition rather
+ * than two that could drift.
+ */
+export function countOwnedTiles(origins: readonly LandOrigin[], grid: TileGrid): Int32Array {
+  const owned = new Int32Array(origins.length);
+  for (let index = 0; index < grid.landId.length; index++) {
+    const landId = grid.landId[index];
+    // -1 is base terrain (grid.ts), and a defensive upper bound because
+    // landId is an Int16Array whose values are written by one function.
+    if (landId >= 0 && landId < origins.length) owned[landId]++;
+  }
+  return owned;
+}
+
 export function paintLandTerrain(origins: readonly LandOrigin[], grid: TileGrid): void {
   // Indexed by the same land index `grid.landId` stores, so the grid scan
   // below is one array read per tile rather than a lookup per tile.
@@ -1471,12 +1515,12 @@ export function paintLandTerrain(origins: readonly LandOrigin[], grid: TileGrid)
 }
 
 // ---------------------------------------------------------------------------
-// base_elevation (Sec.6.1) — the last of this file's steps, deliberately
+// base_elevation (Sec.6.1), the last of this file's steps, deliberately
 // AFTER growth: "after growth, set elevation = H on the land's tiles."
 // ---------------------------------------------------------------------------
 
 /**
- * Sec.6.1: negative H maximally elevates (-> 16, CONFIRMED in-game — a -1
+ * Sec.6.1: negative H maximally elevates (-> 16, CONFIRMED in-game, a -1
  * patch matched a 16 patch exactly), H above 16 clamps to 16. `elevation` is
  * a `Uint8Array` (Sec.4), so skipping this clamp isn't cosmetic: an
  * unclamped -1 stores 255 and paints the land blinding white under the
@@ -1493,13 +1537,13 @@ function clampElevation(h: number): number {
  * elevation `H`, with two conditions that skip it entirely (guide:952,
  * guide:959):
  *
- * - `H` is 0 or absent ("default 0 = not elevated") — a real no-op, not
+ * - `H` is 0 or absent ("default 0 = not elevated"), a real no-op, not
  *   worth a grid write.
- * - The land's terrain_type is water ("doesn't work in HD/DE") — reuses
+ * - The land's terrain_type is water ("doesn't work in HD/DE"), reuses
  *   grid.ts's water-name heuristic against the DECLARED terrain_type name
  *   rather than a second `/WATER/` literal.
  * - No `<ELEVATION_GENERATION>` section exists anywhere in the script (even
- *   an empty one satisfies the engine) — base-elevation slopes silently
+ *   an empty one satisfies the engine), base-elevation slopes silently
  *   fail without it, and the game crashes when the map is PLAYED. That
  *   crash is `validate()` territory (tracked in CLAUDE.md, not yet built);
  *   this function's job is only to match the silent-failure half so the
@@ -1543,7 +1587,7 @@ export function applyBaseElevation(
     targetByLand[index] = clampElevation(origin.baseElevation);
   });
 
-  if (targetByLand.every((v) => v === -1)) return notes; // nothing to write — skip the grid scan entirely
+  if (targetByLand.every((v) => v === -1)) return notes; // nothing to write, skip the grid scan entirely
 
   for (let i = 0; i < grid.landId.length; i++) {
     const landIndex = grid.landId[i];

@@ -9,7 +9,7 @@ interface SettingsPlaceholderProps {
 }
 
 // Every unbuilt settings tab renders through this rather than each
-// placeholder file hand-rolling its own markup — same reasoning as
+// placeholder file hand-rolling its own markup, same reasoning as
 // PlaceholderPane, and it keeps the five of them to a few lines each so
 // they're cheap to replace with real controls one at a time.
 export function SettingsPlaceholder({ title, description, planned }: SettingsPlaceholderProps) {

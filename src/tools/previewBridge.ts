@@ -6,14 +6,14 @@
  * app had a string union; `mapSize.tiles` with no source of truth while the data
  * had one; `settings` missing `teams` three weeks after the app grew the
  * concept. Each was caught by a human reading two documents side by side. This
- * module exists so the fourth is caught by `tsc` instead — it stops compiling
+ * module exists so the fourth is caught by `tsc` instead. It stops compiling
  * the day `PreviewSettings` grows a required field, which is precisely the event
  * all three are instances of.
  *
  * Its honest limits, since overselling it is how the next one gets missed:
  * it catches added REQUIRED fields and changed types. It does not catch a new
  * optional field, a field whose meaning changes under a stable type, or the
- * reverse dependency — `ToolContext` gaining a field `PreviewSettings` should
+ * reverse dependency, `ToolContext` gaining a field `PreviewSettings` should
  * have consumed is exactly what `teams` was, and nothing here would have seen
  * it. And it watches ONE seam: the Current/Final cut point broke the contract at
  * a seam where these two types never meet.
@@ -40,19 +40,19 @@ export type PreviewBridgeResult = { ok: true; settings: PreviewSettings } | Prev
  * `number[]` while `PreviewSettings.teams` is `readonly TeamNumber[]`.
  *
  * NARROW with the app's own guards; do NOT cast. A cast here would let a
- * malformed context reach the generator and fail somewhere unrecognisable — and
+ * malformed context reach the generator and fail somewhere unrecognisable, and
  * for a v1.1 external tool the context round-trips through JSON, so "it came
  * from our own UI" stops being true.
  *
  * `overrides.playerCount`, applied AFTER narrowing (consistency-checker-
  * design.md Sec.4.1, Sec.7.2 item 2): without it every "player count" a
- * caller wants to sweep reads back as `ctx.settings.playerCount` — the pane's
- * one live value — because that is the only source this function has. The
+ * caller wants to sweep reads back as `ctx.settings.playerCount`, the pane's
+ * one live value, because that is the only source this function has. The
  * override lives here rather than only on `runPreviewFromContext` so the
  * STATIC layer (which needs a bare `PreviewSettings` per count, never a full
  * `PreviewResult`) has a sanctioned path too; putting it one level up would
  * leave that caller to either re-spread `{ ...bridged.settings, playerCount }`
- * itself — the parallel construction this module exists to prevent — or run
+ * itself, the parallel construction this module exists to prevent, or run
  * at one count and mislabel the rest.
  */
 export function previewSettingsFromContext(
@@ -82,7 +82,7 @@ export function previewSettingsFromContext(
  * assign to `PreviewReferenceData.constants` (`readonly ObjectConstant[]`)
  * (consistency-checker-design.md Sec.4.1, Sec.7.2 item 2): the published
  * element declares `constId?: number | null` while `ObjectConstant` declares
- * it `number | null`, REQUIRED — optionality widens the domain by
+ * it `number | null`, REQUIRED, optionality widens the domain by
  * `undefined`, which is a `TS2322` against this repo's own `tsconfig.json`.
  * This is the one named conversion, in the module whose entire purpose is
  * this class of seam; the call site must never paper over it with
@@ -92,8 +92,8 @@ export function previewSettingsFromContext(
  * NOT free: `grid.ts`/`palette.ts` and four test files narrow it with
  * `!== null`, and the widening produces ~30 fresh compiler errors measured
  * against this tree. Defaulting an absent `constId` to `null` here is inert
- * at runtime — `objectIndex` (`objects.ts`) already guards
- * `c.constId !== null && c.constId !== undefined` — and costs nothing at the
+ * at runtime, `objectIndex` (`objects.ts`) already guards
+ * `c.constId !== null && c.constId !== undefined`, and costs nothing at the
  * many call sites that already assume `ObjectConstant`.
  */
 export function objectConstantsFromPublished(constants: PublishedGameConstants): readonly ObjectConstant[] {
@@ -114,8 +114,8 @@ export function objectConstantsFromPublished(constants: PublishedGameConstants):
  *
  * That is only possible because the `±Infinity` sentinel is scoped to the
  * external wire (Sec.4). Re-scope it to both transports and this line stops
- * compiling — `generatePreview` takes a `ParseResult` and the serialized form is
- * its supertype — which is precisely the change that would otherwise silently
+ * compiling, `generatePreview` takes a `ParseResult` and the serialized form is
+ * its supertype, which is precisely the change that would otherwise silently
  * break the flagship tool at runtime, since every numeric read in the generator
  * is a `typeof v === "number"` guard that a sentinel object falls straight past.
  */

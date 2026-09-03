@@ -112,6 +112,25 @@ noticeable interval. Probing on the first size change parses a partial file and
 fails in a way that also looks like a format problem. The watcher only probes a
 file whose size has held steady across consecutive polls.
 
+**Object names silently swapped for an unrelated constant sharing the same id.
+FIXED 2026-08-30.** `constId` is reused across at least seven unrelated
+namespaces in `game-constants.json` (terrain, object, attribute, terrainAlias,
+objectAlias, civilization, mapType) — it is per-namespace data, not a single
+flat id space. `load_constant_names()` used to bucket everything that was not
+category `"terrain"` into one `objects` dict keyed only by id, so a later row
+in the file silently overwrote an earlier one at the same id. The 2026-08-30
+`--misc-constants` extraction appended `terrainAlias`/`objectAlias` rows after
+the real `object` rows, and reading `RMSTEST_64`'s output printed GOLD (66) as
+"RICE_FARM_SEEDS", STONE (102) as "GRAVEL_DESERT", and three more objects
+under equally wrong names — a full, correctly-shaped histogram with the wrong
+labels on it, which looks like a successful run and is not. **The tell was that
+the ten printed names didn't match any of the ten `create_object` constants the
+script itself declared**, not a crash or a warning. Now filters to exactly
+`category in ("terrain", "object")` before either dict is populated. If a
+future extraction pass adds another namespace, it is invisible by construction
+rather than silently colliding — the two categories this script actually
+reports on are named explicitly, not reached by exclusion.
+
 ## Two more, if you import this as a library rather than run it as a CLI
 
 Both surfaced writing the RMSTEST_20 to 25 analysis, and both present as file

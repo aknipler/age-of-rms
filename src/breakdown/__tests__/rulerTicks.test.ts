@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Diagnostic, Item } from "../../parser/types";
 import { ticksForItems } from "../rulerTicks";
 
-// Sec.3.10 — the diagnostics overview ruler's pure "which top-level items
+// Sec.3.10, the diagnostics overview ruler's pure "which top-level items
 // get a tick, and what severity" logic (DOM measurement/positioning is
 // intentionally NOT covered here, see DiagnosticsRuler.tsx's own doc
 // comment for why that half can't be pure-tested).
@@ -11,7 +11,7 @@ function diag(severity: Diagnostic["severity"], start: number, end: number): Dia
 }
 
 function item(start: number, end: number): Item {
-  // Minimal shape — ticksForItems only reads .span, so a bare cast is
+  // Minimal shape, ticksForItems only reads .span, so a bare cast is
   // fine here (same convention other pure-module tests in this repo use
   // for minimal item-like fixtures, e.g. comments.test.ts).
   return { kind: "directive", span: { start, end } } as unknown as Item;
@@ -44,7 +44,7 @@ describe("ticksForItems", () => {
 
   it("includes a diagnostic nested deep inside an item's span (collapsed-container case, Sec.3.10)", () => {
     // A diagnostic on something inside a command's block still counts
-    // toward the OWNING top-level item's tick — this is what makes
+    // toward the OWNING top-level item's tick, this is what makes
     // "ticks for cards inside collapsed containers still appear" true
     // with zero extra expand-state-aware logic.
     const items = [item(0, 100)];

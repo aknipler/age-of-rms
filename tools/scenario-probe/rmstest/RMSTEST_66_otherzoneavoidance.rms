@@ -1,0 +1,177 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+
+  base_terrain GRASS2
+
+  /* PAIR 1 - SAME-ZONE CONTROL. Both lands zone 30, both radius 8. */
+  create_land
+  {
+  terrain_type SNOW
+  land_position 15 50
+  base_size 2
+  number_of_tiles 900
+  zone 30
+  other_zone_avoidance_distance 8
+  }
+
+  create_land
+  {
+  terrain_type DIRT
+  land_position 23 50
+  base_size 2
+  number_of_tiles 900
+  zone 30
+  other_zone_avoidance_distance 8
+  }
+
+  /* PAIR 2 - DIFFERENT ZONES, SYMMETRIC. Zone 31 radius 6, zone 32 radius 6. */
+  create_land
+  {
+  terrain_type DESERT
+  land_position 45 50
+  base_size 2
+  number_of_tiles 900
+  zone 31
+  other_zone_avoidance_distance 6
+  }
+
+  create_land
+  {
+  terrain_type DIRT2
+  land_position 53 50
+  base_size 2
+  number_of_tiles 900
+  zone 32
+  other_zone_avoidance_distance 6
+  }
+
+  /* PAIR 3 - DIFFERENT ZONES, ASYMMETRIC. Zone 33 radius 12, zone 34 radius 2. */
+  create_land
+  {
+  terrain_type DIRT3
+  land_position 75 50
+  base_size 2
+  number_of_tiles 900
+  zone 33
+  other_zone_avoidance_distance 12
+  }
+
+  create_land
+  {
+  terrain_type GRASS3
+  land_position 83 50
+  base_size 2
+  number_of_tiles 900
+  zone 34
+  other_zone_avoidance_distance 2
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_66 - other_zone_avoidance_distance: same-zone exemption, and which
+radius a mismatched pair actually uses
+docs/known-issues.md BUG-016, src/preview/generator/lands.ts
+(violatesZoneAvoidance, commonFields), docs/preview-design.md Sec.6.1
+================================================================================
+
+THE QUESTION
+Our model (lands.ts:1221-1258, cited from Sec.6.1 as "within
+other_zone_avoidance_distance (the SMALLER of the two lands' values) of a
+tile owned by a DIFFERENT zone; zone -12 exempt") has never been checked
+against the real engine directly - every existing measurement that touches
+this attribute (RMSTEST_25/51) was reading the CROSS-SHAPED ORIGIN REGION and
+only incidentally used other_zone_avoidance_distance as min_placement_distance's
+default at ORIGIN time. Nothing has measured its effect during GROWTH, which is
+where lands.ts actually applies it (a live per-tile check against whatever the
+neighbour has claimed so far, not a one-off distance-at-placement check). Filed
+as a suspicion under BUG-016 while building Venn.rms, which uses this exact
+shape (two same-zone auxiliary lands, non-zero radius, radius differing between
+zone pairs) at lines 284/299/312/326.
+
+THREE PAIRS, EACH ON ONE OF THREE COMPETING QUESTIONS
+
+Pair 1 (SNOW zone 30 radius 8, DIRT zone 30 radius 8, origins 16 apart):
+SAME zone. Sec.6.1's own sentence says the check is against a DIFFERENT zone
+only, so this pair should be able to touch and interleave freely - a land
+avoiding its OWN zone would refuse ever to expand. Read the SNOW/DIRT boundary.
+  gap ~0 (patches meet/interleave)   same-zone exemption confirmed
+  gap ~8 (held apart by the radius)  the exemption is missing; a land is
+                                      avoiding tiles by ZONE NUMBER MATCH
+                                      rather than skipping same-zone entirely
+
+Pair 2 (DESERT zone 31 radius 6, DIRT2 zone 32 radius 6, origins 16 apart):
+Different zones, SYMMETRIC radius. This is the positive control - it has to
+show avoidance actually fires before pair 3's asymmetric read means anything.
+  gap ~6   avoidance fires as expected; proceed to trust pair 3
+  gap ~0   avoidance does not fire during growth at all (only, if anything,
+           at ORIGIN placement, which explicit land_position bypasses
+           entirely - see lands.ts's early return for the declared-position
+           case). If this reads 0, STOP: pair 3 cannot be read meaningfully,
+           because a null result there would be this same defect, not an
+           answer about which radius wins.
+
+Pair 3 (DIRT3 zone 33 radius 12, GRASS3 zone 34 radius 2, origins 16 apart):
+Different zones, ASYMMETRIC radius. The discriminating pair.
+  gap ~2    SMALLER of the two wins - confirms the current model as written
+  gap ~12   LARGER of the two wins - the model has the comparison backwards
+  gap ~0    same failure as pair 2's null reading; avoidance is not enforced
+            here either, so this pair's asymmetry never got exercised
+  something else, stable but not near 2 or 12   each land is applying only
+            ITS OWN radius against the other's tiles (non-pairwise) rather
+            than a pairwise min/max - the boundary is then wherever the two
+            independent constraints happen to settle, which is not a fixed
+            constant and needs a second run design, not a read of this one
+
+READ ARM 2 FIRST. It is the control and gates whether arm 3 is readable at
+all - the same discipline BUG-022's RMSTEST_64 used for its own zero-rule
+arms.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. THREE RUNS.
+Three runs because the boundary is a live contest during growth (round-robin
+frontier sampling is randomised - Sec.6.1), and pair 3 in particular could in
+principle settle asymmetrically depending on which side reaches the middle
+first. A gap that reproduces across three runs is a real number; one that
+scatters is itself a finding (the boundary is order-dependent, which argues
+against a fixed-radius model entirely).
+
+number_of_tiles 900 per land, base_size 2, on 16-tile-apart origins is
+deliberately generous - at that budget an unrestricted circular land reaches
+past the midpoint of every pair, so every pair is a genuine contest for the
+boundary tile, not two lands that ran out of budget before touching.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --bbox SNOW --bbox DIRT
+  python probe_scenario.py "<scenario>" --bbox DESERT --bbox DIRT2
+  python probe_scenario.py "<scenario>" --bbox DIRT3 --bbox GRASS3
+  (--bbox only takes one terrain per invocation; run it once per terrain,
+  six calls total.) Each pair's origins share y=100, so the gap is
+  max_x(left terrain) to min_x(right terrain) on the two bboxes. Cross-check
+  with --patches on each terrain for centroid and area - if a patch's area is
+  far below 900, growth was starved rather than blocked, and the gap reading
+  for that pair needs a re-run at a larger number_of_tiles rather than being
+  taken at face value.
+
+If any pair's two terrains are not both present in the terrain histogram at
+all, that land failed to grow (originFallbackCenter or worse) rather than
+being avoidance-limited - regenerate before reading.
+================================================================================
+*/

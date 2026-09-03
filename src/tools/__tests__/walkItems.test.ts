@@ -1,4 +1,4 @@
-// consistency-checker-design.md Sec.7.0 item 5 — walkItems is UNCONDITIONALLY
+// consistency-checker-design.md Sec.7.0 item 5, walkItems is UNCONDITIONALLY
 // GENEROUS (every branch, every shared block), so this file pins that shape
 // rather than any filtering policy: filtering is every caller's own job.
 
@@ -94,7 +94,7 @@ describe("walkItems", () => {
       const command = out.find((v) => v.item.kind === "command");
       expect(command?.ctx.insideRandom).toBe(true);
       // Nested inside the command's OWN block, two levels down from the
-      // random branch — enclosing reads "commandBlock", not "randomBranch",
+      // random branch, enclosing reads "commandBlock", not "randomBranch",
       // which is exactly the case a single-level check would miss.
       const nestedAttr = out.find((v) => v.item.kind === "attribute" && v.ctx.enclosing === "commandBlock");
       expect(nestedAttr?.ctx.insideRandom).toBe(true);

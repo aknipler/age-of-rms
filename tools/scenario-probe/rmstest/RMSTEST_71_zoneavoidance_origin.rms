@@ -1,0 +1,160 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  /* THE WALL. Zone 1, explicit position so its footprint is known exactly,
+     confined to roughly the left half of the map. */
+  create_land
+  {
+    terrain_type SNOW
+    land_position 25 50
+    base_size 10
+    number_of_tiles 6000
+    zone 1
+    border_fuzziness 0
+    right_border 50
+  }
+
+  /* SIX small zone-2 lands, each a DIFFERENT terrain so they read apart in
+     the histogram, and NONE of them declares land_position - the engine
+     picks every one of these origins itself. This is the whole point: if
+     other_zone_avoidance_distance only ever works by steering ORIGIN
+     SELECTION away from another zone's territory, this is the one design
+     that can show it, because RMSTEST_66 pinned every origin by hand and so
+     could never have exercised this path at all. */
+  create_land
+  {
+    terrain_type DIRT
+    base_size 2
+    number_of_tiles 150
+    zone 2
+    other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+    terrain_type DIRT2
+    base_size 2
+    number_of_tiles 150
+    zone 2
+    other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+    terrain_type DIRT3
+    base_size 2
+    number_of_tiles 150
+    zone 2
+    other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+    terrain_type DESERT
+    base_size 2
+    number_of_tiles 150
+    zone 2
+    other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 2
+    number_of_tiles 150
+    zone 2
+    other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+    terrain_type GRASS3
+    base_size 2
+    number_of_tiles 150
+    zone 2
+    other_zone_avoidance_distance 15
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+/*
+RMSTEST_71 - does other_zone_avoidance_distance keep a RANDOMLY-chosen
+origin away from another zone's territory, even though RMSTEST_66 showed it
+does not stop GROWTH from later overlapping one?
+Feeds: docs/known-issues.md BUG-016 (re-opened), preview-design Sec.6.1,
+lands.ts (the ORIGIN_ATTEMPTS loop, `min_placement_distance`'s
+other_zone_avoidance_distance default), the RMSTEST_66 write-up this test
+exists to correct
+
+THE QUESTION, AND WHY RMSTEST_66 COULD NOT ANSWER IT
+RMSTEST_66 measured that two different-zone lands overlap during growth
+regardless of a matched other_zone_avoidance_distance, and that was read as
+"the attribute does nothing". But every land in that script used an
+explicit land_position - and this project's own code (lands.ts) already
+treats other_zone_avoidance_distance as ORIGIN-time spacing (the default
+for min_placement_distance when an origin is chosen at random), a path an
+explicit land_position skips entirely by construction. So RMSTEST_66 could
+only ever have tested growth-time enforcement, and never touched the one
+mechanism the attribute might actually be FOR: keeping the engine's own
+random origin choice away from ground another zone already owns. Two
+readings, and they are not mutually exclusive with RMSTEST_66's result:
+
+  ORIGIN AVOIDANCE IS REAL -> every one of the six zone-2 lands' origins (and
+                               so their whole small footprint) sits outside a
+                               ~15-tile buffer around every WALL tile, on
+                               every run. Growth still doesn't re-enforce it
+                               once two zones ARE close (RMSTEST_66 stands),
+                               but origin placement never lets that situation
+                               arise on its own.
+  ORIGIN AVOIDANCE IS ALSO FAKE -> some zone-2 lands land inside or right up
+                               against the WALL's own footprint, no
+                               different from an unconstrained placement
+                               would look. BUG-016 was right after all and
+                               the attribute is a genuine no-op end to end.
+
+METHOD
+One big WALL land (zone 1, SNOW) confined to the map's left half by
+right_border, explicit land_position so its extent is exactly known. Six
+small zone-2 lands, one per remaining safe terrain name this project's own
+scripts already use, each WITHOUT land_position - every one of those six
+origins is a live draw from the engine's own placement logic, the path
+RMSTEST_66 bypassed. other_zone_avoidance_distance 15 on all six.
+
+WHY SIX SEPARATE LANDS RATHER THAN ONE
+Six independent origin draws per run instead of one, at almost no extra
+cost, and each stays legible on its own terrain rather than merging into an
+unreadable blob if two happen to land near each other.
+
+GENERATE AT NORMAL (200), any player count. THREE RUNS - same discipline as
+RMSTEST_66, since origin placement is itself randomised and one run cannot
+separate "always respects the buffer" from "got lucky".
+
+READ IT WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  python probe_scenario.py "<scenario>" --patches DIRT
+  python probe_scenario.py "<scenario>" --patches DIRT2
+  python probe_scenario.py "<scenario>" --patches DIRT3
+  python probe_scenario.py "<scenario>" --patches DESERT
+  python probe_scenario.py "<scenario>" --patches GRASS2
+  python probe_scenario.py "<scenario>" --patches GRASS3
+  Take the WALL's patch tiles as the forbidden footprint, and for each of
+  the six zone-2 patches read the minimum tile-to-tile distance to it (their
+  bounding boxes are enough for a first pass; only worth checking exact
+  tiles if a bbox gap sits close to the 15-tile line). A hard floor at or
+  above 15 tiles on every one of the eighteen (six lands x three runs) is
+  the origin-avoidance reading; any of them sitting at a gap that would have
+  been unremarkable under no constraint at all - including inside the WALL's
+  own bbox - is the no-op reading.
+*/

@@ -31,7 +31,7 @@
   font-size: 1rem;
 }
 
-/* The X. Same outcome as Cancel — see the component's comment. */
+/* The X. Same outcome as Cancel, see the component's comment. */
 .dismissButton {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -71,7 +71,7 @@
   background: var(--surface-hover);
 }
 
-/* Default action — visually primary, and the one Enter triggers. */
+/* Default action, visually primary, and the one Enter triggers. */
 .primary {
   font-weight: 600;
 }

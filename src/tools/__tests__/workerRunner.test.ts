@@ -1,20 +1,23 @@
-// consistency-checker-design.md Sec.4.3, Sec.7.2 item 3, Sec.8 item 4 — the
+// consistency-checker-design.md Sec.4.3, Sec.7.2 item 3, Sec.8 item 4, the
 // worker TRANSPORT's own contract, exercised against an injected fake
 // `WorkerLike` rather than a real Worker thread. `checkerWorker.ts` itself
 // (the actual `self.onmessage` entry point) is UI/worker wiring with no
 // automated coverage of its own, matching this repo's existing convention
-// for `preview/worker.ts` — verified by typecheck + lint instead, and its
+// for `preview/worker.ts`, verified by typecheck + lint instead, and its
 // dispatch table is empty until Sec.7.3 registers a worker-runtime tool.
 
 import { describe, expect, it, vi } from "vitest";
 import { TOOLS_API_VERSION, type ToolContext, type ToolImplementation, type ToolManifest } from "../../../tools-api/index";
 import type { ParseResult } from "../../parser/types";
+import type { RegisteredTool } from "../registry";
 import { createWorkerRunner, type WorkerLike } from "../workerRunner";
 
 function manifest(): ToolManifest {
   return { id: "t", name: "T", version: "1.0.0", apiVersion: TOOLS_API_VERSION, description: "d", capabilities: [] };
 }
-const tool: ToolImplementation = { manifest: manifest(), run: () => ({ cancel() {} }) };
+const impl: ToolImplementation = { manifest: manifest(), run: () => ({ cancel() {} }) };
+// createWorkerRunner()'s start() takes a RegisteredTool, not a bare ToolImplementation (external-tools-design.md Sec.10).
+const tool: RegisteredTool = { kind: "builtin", manifest: impl.manifest, impl };
 
 function fakeWorker() {
   const posted: unknown[] = [];
@@ -95,5 +98,16 @@ describe("workerRunner", () => {
     runner.start(tool, {}, () => {});
     runner.start(tool, {}, () => {});
     expect(make).toHaveBeenCalledTimes(2);
+  });
+
+  // Arm narrowing (external-tools-design.md Sec.10, land-placement-slice4-
+  // brief.md item 1's acceptance): "a runner handed the wrong kind must
+  // throw, not silently no-op." A panel never reaches a runner at all
+  // (Sec.3.2), so landing here with one is a caller bug and must be loud.
+  it("throws rather than silently no-op'ing when handed a non-builtin RegisteredTool", () => {
+    const { worker } = fakeWorker();
+    const runner = createWorkerRunner(() => worker);
+    const panelTool: RegisteredTool = { kind: "panel", manifest: manifest(), component: null };
+    expect(() => runner.start(panelTool, {}, () => {})).toThrow(/panel/);
   });
 });

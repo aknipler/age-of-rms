@@ -15,21 +15,21 @@ const SEVERITY_BORDER: Record<DiagnosticSeverity, string> = {
 // That can't be repositioned or suppressed from CSS/JS at all, so it was
 // free to land right on top of a HelpTip popup opened by something
 // nested inside the same row (the label, the value editor, ...) whenever
-// both happened to be hovered at once — one obscuring the other.
+// both happened to be hovered at once, one obscuring the other.
 //
 // Fix, in two parts:
 //  - useDiagnosticHover (below): tracks hover state on the ROW ITSELF
 //    (spread its `handlers` onto the same div that used to carry
 //    `title`), and decides which side of the row the popup should open
 //    on. Diagnostics should ALWAYS be visible (never gated behind the
-//    Preferences help-mode toggle, unlike HelpTip) — but they flip sides
+//    Preferences help-mode toggle, unlike HelpTip), but they flip sides
 //    depending on whether a HelpTip popup could ALSO be open right now:
 //    above the row when help mode is on (HelpTip popups open below their
 //    trigger), below when help mode is off (HelpTip never opens, so
 //    there's nothing to avoid).
 //  - DiagnosticPopup: pure presentation, absolutely positioned WITHIN
 //    the row (the row needs `position: relative`) rather than as its own
-//    hover-capturing overlay — an overlay spanning the whole row would
+//    hover-capturing overlay, an overlay spanning the whole row would
 //    intercept clicks meant for the buttons/inputs nested inside it,
 //    which plain `title` never did.
 export function useDiagnosticHover() {

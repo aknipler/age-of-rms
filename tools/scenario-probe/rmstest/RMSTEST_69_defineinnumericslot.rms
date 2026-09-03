@@ -1,0 +1,181 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+#const COUNT_A 7
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* FLOOR - unconditional, before anything. Sanity that the file parsed and
+     ran at all. */
+  create_object FORAGE
+  {
+    number_of_objects 25
+    set_gaia_object_only
+  }
+
+  /* ARM A, BASELINE - confirms #const COUNT_A 7 resolves normally in a
+     numeric slot before #define ever touches the name. */
+  create_object OLIVE_TREE
+  {
+    number_of_objects COUNT_A
+    set_gaia_object_only
+  }
+
+  /* ARM A - #define layered on a name that ALREADY has a #const value,
+     inside a start_random, exactly Capricious.rms's shape. */
+  start_random
+    percent_chance 100
+      #define COUNT_A
+    percent_chance 0
+  end_random
+
+  /* ARM A, TEST - what does COUNT_A resolve to now? */
+  create_object GOLD
+  {
+    number_of_objects COUNT_A
+    set_gaia_object_only
+  }
+
+  /* ARM B - #define on a name with NO prior #const at all - the bare case,
+     with no fallback value to fall through to even if one exists. */
+  start_random
+    percent_chance 100
+      #define COUNT_B
+    percent_chance 0
+  end_random
+
+  /* ARM B, TEST - what does COUNT_B resolve to with nothing else defining
+     it? */
+  create_object STONE
+  {
+    number_of_objects COUNT_B
+    set_gaia_object_only
+  }
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_69 - #define in a numeric slot: what value, if any, does the engine
+actually read
+docs/known-issues.md BUG-021, src/parser/parser.ts (isDefinedSymbol,
+parser.ts:1086), src/preview/generator/instantiate.ts (constant resolution),
+de-official-map-issues.md Sec.5 (Capricious.rms:880-883,
+includes/herdable.inc)
+================================================================================
+
+THE QUESTION
+Capricious.rms rolls HERDABLE_COUNT with #define, not #const, inside a
+start_random; herdable.inc later reads it with `number_of_objects
+HERDABLE_COUNT`. #define assigns no value in the engine (confirmed elsewhere
+in this project - it is a presence flag, the mechanism guide-documented
+conditionals like #ifdef check), so the roll almost certainly does nothing
+useful - but "does nothing" is not the same claim as "resolves to a specific
+number", and instantiate.ts's behaviour here has never been checked against
+either reading. Our parser is already deliberately permissive:
+isDefinedSymbol() treats a #define'd name and a #const'd name as
+interchangeably "resolved" for diagnostic purposes, and a #define symbol
+carries no valueToken, so no false warning fires and no fabricated value is
+produced - correct under either candidate engine reading, which is exactly
+why this needs a run rather than a code change.
+
+TWO ARMS, BRACKETING BOTH SHAPES BUG-021 NAMES
+Arm A matches Capricious's actual shape: a name that already has a #const
+default (herdable.inc's own), then a #define layered on top inside a
+start_random. Arm B is the bare case - #define on a name with NO #const
+anywhere - which brackets the other side: if #define and #const genuinely
+share one namespace and first-definition-wins the way #const-vs-#const
+already does in this project's own measured model, arm A's #define should be
+inert (the earlier #const wins) but arm B has no earlier definition to fall
+back to at all, so the two arms can disagree even under one single
+consistent model of how #define behaves.
+
+Both #defines sit inside a start_random pinned 100/0, exactly Capricious's
+own shape, in case the engine's numeric-slot answer for #define depends on
+being inside a conditional block rather than at top level - untested either
+way until this runs.
+
+READ-OFF TABLE
+  FORAGE (floor)              expect ~25    file parsed and ran; if 0, stop
+                                             and check for an unrelated
+                                             script error first
+  OLIVE_TREE (arm A baseline) expect ~7     confirms #const COUNT_A resolves
+                                             normally BEFORE #define touches
+                                             it - if this is not ~7, the
+                                             harness itself is broken and
+                                             neither test arm is readable
+  GOLD (arm A test)           expect ~7     COUNT_A still resolves to its
+                                             #const value after the #define -
+                                             first-definition-wins, #define
+                                             is a numeric no-op when a #const
+                                             already exists for the name
+                               expect 0 (or command silently places nothing)
+                                             the #define OVERWRITES the slot
+                                             with something the numeric
+                                             evaluator reads as zero/
+                                             unresolved, even though a #const
+                                             default already existed
+                               expect ~25 (falls through to
+                               number_of_objects's own guide default instead)
+                                             a third reading - the slot is
+                                             genuinely undefined and the
+                                             engine substitutes its own
+                                             argument default rather than 0
+  STONE (arm B test, no
+         #const fallback exists at all)
+                               expect 0 (or nothing placed)  matches "genuinely
+                                             unresolved, no value at all" -
+                                             the CLEANEST reading if it also
+                                             matches GOLD's result
+                               expect ~25 (number_of_objects's own default)
+                                             same third reading as above, now
+                                             confirmed with no fallback #const
+                                             in the picture to complicate it
+
+READING THE COMBINATION
+  GOLD~7, STONE reads 0/default   #define and #const share a namespace and
+    first-definition-wins exactly as this project's #const-vs-#const model
+    already assumes (Sec.2.1's shared-id finding, one level up) - only when a
+    prior #const exists does the name resolve to anything. instantiate.ts
+    should resolve #define-only names the same way STONE reads, and #define-
+    over-#const names the same way GOLD reads (both should already happen for
+    free if the resolver reads the LATEST value bound to the name and #define
+    never binds one - confirm this is what instantiate.ts actually does
+    before closing the bug, per this project's own "check the code, don't
+    reason about it" rule).
+  GOLD and STONE read the SAME as each other, whatever that value is   simpler
+    model: #define's presence has no bearing on the pre-existing #const at
+    all, in either direction. The prior #const value survives untouched
+    where one exists, and where none exists the result is whatever the
+    engine does for a fully unresolved numeric symbol - confirm which by
+    checking GOLD equals the OLIVE_TREE baseline exactly.
+  Either the script fails to parse in-game, or the map comes back visibly
+  broken/blank downstream of the first start_random   record this
+    separately - it would mean an in-block #define does something more
+    disruptive than a numeric-slot question, closer in shape to BUG-012's
+    comment hazard than to an ordinary undefined-symbol case.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. ONE RUN - four fixed values, not
+a statistical question.
+
+READ WITH
+  python probe_scenario.py "<scenario>"
+  The default object histogram is the whole reading - four names against
+  four expected counts.
+================================================================================
+*/

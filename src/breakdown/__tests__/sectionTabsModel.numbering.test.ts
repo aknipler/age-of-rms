@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildSectionTabs } from "../sectionTabsModel";
 import type { ScriptNode, SectionNode, Item } from "../../parser/types";
 
-// Minimal fixtures — only the fields buildSectionTabs actually reads.
+// Minimal fixtures, only the fields buildSectionTabs actually reads.
 function section(name: string, known = true): SectionNode {
   return {
     kind: "section",
@@ -21,12 +21,12 @@ function script(preambleLen: number, sections: SectionNode[]): ScriptNode {
 }
 
 // Tab numbering must be absolute (tied to a section's fixed
-// canonical identity), not derived from which tabs happen to render — a
+// canonical identity), not derived from which tabs happen to render, a
 // missing section (e.g. no <ELEVATION_GENERATION> in the file) must not
 // change the numbers of the sections after it.
 describe("buildSectionTabs — absolute numbering", () => {
   it("numbers Header=0 and the canonical seven 1-7 regardless of which sections are present", () => {
-    // Only PLAYER_SETUP and OBJECTS_GENERATION actually present in source —
+    // Only PLAYER_SETUP and OBJECTS_GENERATION actually present in source,
     // ELEVATION_GENERATION and everything between is "missing" (empty tab).
     const tabs = buildSectionTabs(script(1, [section("PLAYER_SETUP"), section("OBJECTS_GENERATION")]));
     const byId = new Map(tabs.map((t) => [t.id, t.number]));

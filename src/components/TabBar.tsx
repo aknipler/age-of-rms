@@ -16,7 +16,7 @@ interface TabBarProps {
 // Controlled component: App owns `activeTab` state and passes it down,
 // TabBar just renders it and reports clicks back up via onSelect. This
 // "state lives in the parent, children are just props+callbacks" pattern
-// is called lifting state up — it's how React shares state between
+// is called lifting state up, it's how React shares state between
 // siblings (TabBar and the pane below it both need to know the active tab).
 export function TabBar({ activeTab, onSelect }: TabBarProps) {
   return (

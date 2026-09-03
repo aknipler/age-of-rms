@@ -32,7 +32,7 @@ export function cardKindForItem(item: Item): CardKind {
     case "raw":
       return "raw";
     default: {
-      // Exhaustiveness guard — if a new Item kind is ever added, this is a
+      // Exhaustiveness guard, if a new Item kind is ever added, this is a
       // compile error (never expression), not a silent drop (goal #3).
       const exhaustive: never = item;
       throw new Error(`Unhandled Item kind: ${JSON.stringify(exhaustive)}`);
@@ -42,7 +42,7 @@ export function cardKindForItem(item: Item): CardKind {
 
 /**
  * Which card kinds carry their own Delete button today (CommandCard,
- * DirectiveCard, ConditionalCard, RandomCard) — the set the breakdown
+ * DirectiveCard, ConditionalCard, RandomCard), the set the breakdown
  * delete-selected-card hotkey (BreakdownPane.tsx) is allowed to act on.
  * `strayAttribute`, `sharedBlock` and `raw` are deliberately excluded: none
  * of their cards has ever offered a delete action (a stray attribute wants

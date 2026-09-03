@@ -26,7 +26,7 @@
   gap: 0.15rem;
 }
 
-/* The Current cut point. Sized like .reroll — it sits in the same kind of
+/* The Current cut point. Sized like .reroll. It sits in the same kind of
    row and should not read as a different class of control. */
 .pin {
   font-size: 0.68rem;
@@ -69,7 +69,7 @@
 /* Deliberately NOT `white-space: nowrap` with an ellipsis, which is what this
    was. The column is narrow and a tile with a few objects on it always
    overflowed, so the interesting half of the readout was the half that got
-   cut — and a stacked tile is usually the reason you looked. It wraps now,
+   cut, and a stacked tile is usually the reason you looked. It wraps now,
    and the pane grows by a line instead of hiding content. */
 .readout {
   font-size: 0.66rem;
@@ -89,7 +89,7 @@
   gap: 0.4rem;
 }
 
-/* A selected tile is pinned, and it has to say so — otherwise a readout that
+/* A selected tile is pinned, and it has to say so. Otherwise a readout that
    stops following the pointer reads as a frozen UI. */
 .readoutPinned {
   font-weight: 600;
@@ -103,7 +103,7 @@
 }
 
 /* Label column sized to its content, value column takes the rest and wraps
-   inside its own cell — so a long object list pushes the readout taller
+   inside its own cell. So a long object list pushes the readout taller
    rather than wider, and the labels stay aligned down the left. */
 .readoutGrid {
   display: grid;

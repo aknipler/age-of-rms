@@ -17,8 +17,8 @@ export interface ObjectInventoryRow {
  *
  * The distinction is the entire value of this table. `result.objects` only
  * knows what made it onto the map, so an object the script asks for and the
- * generator never places — the common symptom of a terrain restriction or a
- * distance band nothing satisfies — would simply be absent, which reads as
+ * generator never places, the common symptom of a terrain restriction or a
+ * distance band nothing satisfies, would simply be absent, which reads as
  * "the table doesn't list it" rather than "it spawned zero times". Walking the
  * AST is what lets a row say 0.
  *
@@ -28,7 +28,7 @@ export interface ObjectInventoryRow {
  *   `second_object X`                      guide:2211's placeholder idiom, where
  *                                          the SECOND object is the one the
  *                                          author cares about
- *   `create_object G` where G is a group   NOT an object — excluded below
+ *   `create_object G` where G is a group   NOT an object, excluded below
  *
  * That last exclusion is why group names are collected in the same pass: a
  * `create_object_group` declares a name that is then written in `create_object`
@@ -102,7 +102,7 @@ export function tallySpawned(objects: readonly PlacedObject[]): Map<string, numb
  * generation actually placed.
  *
  * The union matters in one direction only, and it is a safety property rather
- * than a nicety — the visibility checkboxes are keyed on these rows, so
+ * than a nicety, the visibility checkboxes are keyed on these rows, so
  * anything drawable that never got a row would be permanently unhideable. A
  * placed object with no matching script name is possible whenever the walk
  * above and the generator disagree about how a name was reached; listing it

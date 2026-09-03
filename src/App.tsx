@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
 import { MapHeader } from "./components/MapHeader";
 import { TabBar } from "./components/TabBar";
 import { ToolsPane } from "./tools/ToolsPane";
-import { CodePane } from "./components/CodePane";
+import { CodePane, getActiveCodeEditor, getActiveToggleLayoutRunner } from "./components/CodePane";
+import { runEditMenuAction, type EditMenuAction } from "./editor/editMenuActions";
 import { BreakdownPane } from "./breakdown/BreakdownPane";
 import { StatusBar } from "./components/StatusBar";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
@@ -14,32 +15,153 @@ import { AppSettingsProvider, useAppSettings } from "./settings/AppSettingsConte
 import { ThemeSettingsProvider } from "./settings/ThemeSettingsContext";
 import { HotkeySettingsProvider, useHotkeySettings } from "./settings/HotkeySettingsContext";
 import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
-import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
+import { GenerationSettingsProvider } from "./generationSettings/GenerationSettingsContext";
 import { PreviewViewProvider, PreviewViewportProvider, usePreviewView } from "./components/preview/PreviewViewContext";
 import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useUpdateCheck } from "./update/useUpdateCheck";
 import { buildBugReportUrl } from "./bugReport";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useDocument } from "./hooks/useDocument";
+import { useDocument, getDocumentModel } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useParsedDocument } from "./useParsedDocument";
 import { ParsedDocumentProvider } from "./ParsedDocumentContext";
-import { PreviewCutProvider } from "./PreviewCutContext";
-import { PreviewResultProvider } from "./PreviewResultContext";
+import { PreviewCutProvider, usePreviewCut } from "./PreviewCutContext";
+import { PreviewResultProvider, PanelPreviewResultProvider, usePreviewResultContext } from "./PreviewResultContext";
+import { ToolHostProvider } from "./tools/ToolHostContext";
+import {
+  PanelPreviewSeedProvider,
+  usePanelPreviewSeed,
+} from "./tools/builtin/landPlacement/panel/panelPreviewSeed";
+import { LandPlacementModelProvider } from "./tools/builtin/landPlacement/panel/landPlacementModel";
+import { resolveLandGenerationCutOffset } from "./tools/builtin/landPlacement/cutOffset";
+import { TutorialProvider, useRegisterNavigator, useTutorial } from "./tutorial/TutorialContext";
+import { TutorialOverlay } from "./tutorial/TutorialOverlay";
+import { WelcomeDialog } from "./tutorial/WelcomeDialog";
+import type { Diagnostic, ParseResult } from "./parser/types";
 import type { TabId } from "./types";
 import styles from "./App.module.css";
 import "./App.css";
 
-// Split out from App so it can call useGenerationSettings — the hook
-// needs to run below GenerationSettingsProvider in the tree, same reason
-// SettingsDialog/HelpTip call useHelpSettings rather than App itself.
+/**
+ * Wires the document's own `PreviewResultProvider` (Breakdown/Code's shared
+ * seed/view/cut) and the Land Placement panel's independent one
+ * (`PanelPreviewResultProvider`) side by side, both still above the tab
+ * switch (slice-4b item 1, §1.2 option (f)).
+ *
+ * A separate component, not inlined into `AppContent`, because
+ * `usePreviewCut()` can only be called from a descendant of
+ * `PreviewCutProvider`'s rendered subtree. `AppContent` is the component
+ * that RENDERS that provider, which makes it the provider's parent, not its
+ * descendant, so it cannot call the hook itself.
+ */
+function PreviewResultProviders({
+  parseResult,
+  children,
+}: {
+  parseResult: ParseResult | null;
+  children: React.ReactNode;
+}) {
+  const documentView = usePreviewView();
+  const documentCut = usePreviewCut();
+  const panelSeed = usePanelPreviewSeed();
+  // Pure and cheap (cutOffset.ts is a plain scan over already-parsed
+  // sections), memoised only so a re-render that doesn't touch the parse
+  // doesn't rebuild the debounce-restarting object identity Current/Final
+  // truncation relies on (see PreviewResultContext.tsx's own note on this).
+  const panelCutOffset = useMemo(
+    () => (parseResult === null ? null : resolveLandGenerationCutOffset(parseResult)),
+    [parseResult],
+  );
+
+  return (
+    <PreviewResultProvider
+      parseResult={parseResult}
+      seed={documentView.seed}
+      view={documentView.view}
+      cutOffset={documentCut.cutOffset}
+    >
+      {/* No Current/Final toggle of its own. The panel always wants a cut,
+          at the end of land generation rather than at the caret, so `view`
+          is pinned to "current" (the channel's own flag for "cutOffset
+          applies") rather than exposed as a user-facing choice. */}
+      <PanelPreviewResultProvider parseResult={parseResult} seed={panelSeed.seed} view="current" cutOffset={panelCutOffset}>
+        {children}
+      </PanelPreviewResultProvider>
+    </PreviewResultProvider>
+  );
+}
+
+/**
+ * Reads the document's own `PreviewResultProvider` context and renders
+ * `StatusBar` from it (status-bar accuracy pass, D1/D3/D11) — the bar's
+ * resource figures now come from a real generation
+ * (`result.resourceTotals`), not a static per-keystroke AST walk, so it has
+ * to live where that context is reachable, which is inside
+ * `PreviewResultProviders`, not a sibling of it the way it used to be.
+ *
+ * A small wrapper rather than inlining into `AppContent`, for the same
+ * reason `PreviewResultProviders` itself is split out: `usePreviewResultContext`/
+ * `usePreviewCut`/`usePreviewView` can only be called from inside the
+ * providers they read, and `AppContent` renders those providers rather than
+ * living below them.
+ */
+function StatusBarContainer({
+  diagnostics,
+  onOpenGenerationSettings,
+  onReportBug,
+}: {
+  diagnostics: Diagnostic[];
+  onOpenGenerationSettings: () => void;
+  onReportBug: () => void;
+}) {
+  const { result, pending } = usePreviewResultContext();
+  const { pinnedOffset, pinnedLine, cursorOffset, cursorLine } = usePreviewCut();
+  const { view } = usePreviewView();
+
+  // D3: truncation must be visible. The condition is wider than "pinned" —
+  // PreviewCutValue.cutOffset is "the pin when there is one, the caret
+  // otherwise", so Current view truncates with no pin at all, which is the
+  // more common case, and needs its own label.
+  let cutLabel: string | undefined;
+  if (view === "current") {
+    if (pinnedOffset !== null && pinnedLine !== null) cutLabel = `Pinned line ${pinnedLine + 1}`;
+    else if (cursorOffset !== null && cursorLine !== null) cutLabel = `Current line ${cursorLine + 1}`;
+  }
+
+  return (
+    <StatusBar
+      diagnostics={diagnostics}
+      total={result?.resourceTotals.total}
+      player={result?.resourceTotals.player}
+      neutral={result?.resourceTotals.neutral}
+      pending={pending}
+      cutLabel={cutLabel}
+      onOpenGenerationSettings={onOpenGenerationSettings}
+      onReportBug={onReportBug}
+    />
+  );
+}
+
+// Split out from App so it can call hooks like useHotkeySettings/
+// usePreviewView, which need to run below their own providers in the tree,
+// same reason SettingsDialog/HelpTip call useHelpSettings rather than App
+// itself.
 function AppContent() {
   // activeTab is "lifted" here because both TabBar (which sets it) and
   // the panes below (which read it) need access to the same value.
   const [activeTab, setActiveTab] = useState<TabId>("breakdown");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [generationSettingsOpen, setGenerationSettingsOpen] = useState(false);
+  // tutorial-design.md Sec.5.3, the "appTab" navigator a step's
+  // `navigate.tab` drives. Registered here (rather than inside
+  // TutorialProvider itself) because setActiveTab only exists below it.
+  const { welcomeOpen } = useTutorial();
+  // NavigatorKey's contract is a bare `(target: string) => void`. Every
+  // step content author writes navigate.tab as a real TabId, so the cast
+  // is the same trust the type Anchor/navigate fields already put in
+  // hand-written content (Sec.5.1).
+  useRegisterNavigator("appTab", (target) => setActiveTab(target as TabId));
   // The author name is read here rather than inside useDocument, so that hook
   // keeps depending on files and nothing else (see UseDocumentOptions).
   // AppContent already sits below AppSettingsProvider, which is what makes
@@ -47,14 +169,13 @@ function AppContent() {
   const { authorName } = useAppSettings();
   const doc = useDocument({ authorName });
   const { saveFile, saveFileAs, newFile, openFile } = doc;
-  const { playerCount } = useGenerationSettings();
   const { hotkeys, recordingId } = useHotkeySettings();
   const { toggleView, reseed } = usePreviewView();
 
   // The app-wide shortcuts: Save (default Ctrl+S, the original binding),
   // Save As, New/Open, and the two Preview actions that make sense regardless of
   // which tab is showing (the preview's view/seed state lives above the
-  // tab switch — PreviewViewContext.tsx — same as the pane itself, which
+  // tab switch (PreviewViewContext.tsx), same as the pane itself, which
   // both Breakdown and Code render via MapSidePanel). Breakdown's own two
   // block-level actions are NOT here: they need `applyEdit` and the
   // selected card, both of which only exist while BreakdownPane is
@@ -107,13 +228,67 @@ function AppContent() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hotkeys, recordingId, saveFile, saveFileAs, newFile, openFile, toggleView, reseed]);
-  // docs/breakdown-design.md Sec.6.2: "one parse, in the worker" — lifted
+
+  // Undo/Redo act on the shared Monaco model directly, the same target
+  // useDocument.ts's own window-level Ctrl+Z/Ctrl+Y listener uses, so the
+  // Edit menu reaches exactly the "one undo stack" both the Breakdown and
+  // Code tabs already share (Sec.6.4). No editor instance is needed for
+  // these, which is why they work from the Edit menu regardless of which
+  // tab is active.
+  function undoDocument() {
+    void getDocumentModel().undo();
+  }
+  function redoDocument() {
+    void getDocumentModel().redo();
+  }
+
+  // Cut/Copy/Paste/Find/Select All/Find and Replace/Toggle Comment, and the
+  // Code tab's own Toggle Command Layout hotkey, unlike Undo/Redo, are
+  // editor actions rather than model actions: they need a live, focused
+  // Monaco instance to run against (a selection to cut, a place to paste,
+  // an AST to re-lay-out). That instance only exists while the Code tab is
+  // mounted (CodePane.tsx). `runOnCodeTab` is the shared "run it now, or
+  // switch to Code and queue it for the moment CodePane hands back a fresh
+  // instance" logic both kinds of action need; what differs between them is
+  // only how each CHECKS readiness and RUNS, which is why this takes those
+  // as two small functions rather than being written twice. A ref, not
+  // state, holds the queued thunk since queuing an action must never itself
+  // trigger a render.
+  const pendingCodeActionRef = useRef<(() => void) | null>(null);
+  function runOnCodeTab(isReady: () => boolean, run: () => void) {
+    if (isReady()) {
+      run();
+      return;
+    }
+    pendingCodeActionRef.current = run;
+    setActiveTab("code");
+  }
+  function performEditMenuAction(action: EditMenuAction) {
+    runOnCodeTab(
+      () => getActiveCodeEditor() !== null,
+      () => runEditMenuAction(getActiveCodeEditor()!, action),
+    );
+  }
+  function toggleCodeLayout() {
+    runOnCodeTab(
+      () => getActiveToggleLayoutRunner() !== null,
+      () => getActiveToggleLayoutRunner()?.(),
+    );
+  }
+  function handleCodeEditorReady() {
+    const run = pendingCodeActionRef.current;
+    if (run === null) return;
+    pendingCodeActionRef.current = null;
+    run();
+  }
+
+  // docs/breakdown-design.md Sec.6.2: "one parse, in the worker", lifted
   // to app level so both CodePane (diagnostics/source, for Monaco
   // markers) and BreakdownPane (the full ParseResult/AST) consume the
   // same parse instead of each parsing independently. Deliberately not
-  // reset when switching tabs — Problems/Breakdown both reflect the last
+  // reset when switching tabs. Problems/Breakdown both reflect the last
   // known parse, like most editors' Problems panels.
-  const parsed = useParsedDocument(doc.content, playerCount);
+  const parsed = useParsedDocument(doc.content);
   // One selection anchor shared by both panes,
   // lifted here (rather than living inside BreakdownPane, which unmounts
   // on every tab switch) specifically so it survives Breakdown <-> Code.
@@ -154,78 +329,118 @@ function AppContent() {
         onOpen={doc.openFile}
         onSave={doc.saveFile}
         onSaveAs={doc.saveFileAs}
+        onUndo={undoDocument}
+        onRedo={redoDocument}
+        onCut={() => performEditMenuAction("cut")}
+        onCopy={() => performEditMenuAction("copy")}
+        onPaste={() => performEditMenuAction("paste")}
+        onSelectAll={() => performEditMenuAction("selectAll")}
+        onFind={() => performEditMenuAction("find")}
+        onFindReplace={() => performEditMenuAction("findReplace")}
+        onToggleComment={() => performEditMenuAction("toggleComment")}
+        onToggleLayout={toggleCodeLayout}
         onOpenSettings={() => setSettingsOpen(true)}
         newHotkeyLabel={formatHotkey(hotkeys.newFile)}
         openHotkeyLabel={formatHotkey(hotkeys.openFile)}
         saveHotkeyLabel={formatHotkey(hotkeys.save)}
         saveAsHotkeyLabel={formatHotkey(hotkeys.saveAs)}
+        toggleLayoutHotkeyLabel={formatHotkey(hotkeys.codeToggleLayout)}
       />
       <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
       <TabBar activeTab={activeTab} onSelect={setActiveTab} />
-      {/* All three providers sit above the tab switch so what they hold
+      {/* All five providers sit above the tab switch so what they hold
           survives it. ParsedDocumentProvider makes parsed.parseResult
           reachable from inside MapSidePanel without threading a prop through
           it (ParsedDocumentContext.tsx); PreviewCutProvider turns the shared
           selection anchor into the line Current cuts at, and owns the pin
-          (PreviewCutContext.tsx); PreviewResultProvider owns the preview
-          worker and its last result, which used to die with PreviewPane on
-          every Breakdown/Code switch (PreviewResultContext.tsx). The cut
-          provider is OUTSIDE the result provider because the result provider
-          reads it — Current generates over a truncated parse. */}
+          (PreviewCutContext.tsx); PreviewResultProviders wires up BOTH the
+          document's preview worker (which used to die with PreviewPane on
+          every Breakdown/Code switch) and the Land Placement panel's own,
+          independent one (PreviewResultContext.tsx, slice-4b item 1). The cut
+          provider is OUTSIDE the result providers because the document one
+          reads it. Current generates over a truncated parse. ToolHostProvider
+          owns the Advanced Tools pane's ToolHost, for the same reason a
+          PANEL tool's model must survive Breakdown/Code <-> Advanced Tools
+          (land-placement-design.md Sec.3.6, ToolHostContext.tsx). It has no
+          data dependency on the other four, so its position in the nesting
+          is arbitrary; it sits innermost only because it is ToolsPane's own
+          concern alone. */}
       <ParsedDocumentProvider parseResult={parsed.parseResult}>
         <PreviewCutProvider
           cursorOffset={selection.selectedAnchor}
           source={parsed.source}
           parseResult={parsed.parseResult}
         >
-          <PreviewResultProvider parseResult={parsed.parseResult}>
-            <main className={styles.main}>
-              {activeTab === "breakdown" && (
-                <BreakdownPane
+          <PreviewResultProviders parseResult={parsed.parseResult}>
+            <ToolHostProvider>
+              {/* The Land Placement panel's own AlpModel + selection, lifted
+                  above the tab switch for the same reason ToolHost itself is
+                  (land-placement-design.md Sec.3.6(b)), landPlacementModel.tsx. */}
+              <LandPlacementModelProvider>
+                <main className={styles.main}>
+                  {activeTab === "breakdown" && (
+                    <BreakdownPane
+                      hasFile={doc.filePath !== null}
+                      source={parsed.source}
+                      parseResult={parsed.parseResult}
+                      applyTextEdit={doc.applyTextEdit}
+                      reparseNow={parsed.reparseNow}
+                      selection={selection}
+                    />
+                  )}
+                  {activeTab === "code" && (
+                    <CodePane
+                      hasFile={doc.filePath !== null}
+                      source={parsed.source}
+                      diagnostics={parsed.diagnostics}
+                      parseResult={parsed.parseResult}
+                      applyTextEdits={doc.applyTextEdits}
+                      selectedItem={selection.selectedItem}
+                      onCursorOffsetChange={selection.setAnchor}
+                      onEditorReady={handleCodeEditorReady}
+                    />
+                  )}
+                  {activeTab === "advanced-tools" && (
+                    <ToolsPane
+                      filePath={doc.filePath}
+                      source={parsed.source}
+                      reparseNow={parsed.reparseNow}
+                      applyTextEdits={doc.applyTextEdits}
+                      onJumpToOffset={selection.setAnchor}
+                    />
+                  )}
+                </main>
+                {/* Sibling of <main>, still inside ParsedDocumentProvider so
+                    a check step's completion test can read the live parse
+                    (tutorial-design.md Sec.5.4). Portals to document.body,
+                    so its position here is about context access, not
+                    layout. */}
+                <TutorialOverlay
                   hasFile={doc.filePath !== null}
-                  source={parsed.source}
-                  parseResult={parsed.parseResult}
-                  applyTextEdit={doc.applyTextEdit}
-                  reparseNow={parsed.reparseNow}
-                  selection={selection}
-                />
-              )}
-              {activeTab === "code" && (
-                <CodePane
-                  hasFile={doc.filePath !== null}
-                  source={parsed.source}
-                  diagnostics={parsed.diagnostics}
-                  parseResult={parsed.parseResult}
+                  activeTab={activeTab}
                   applyTextEdits={doc.applyTextEdits}
-                  selectedItem={selection.selectedItem}
-                  onCursorOffsetChange={selection.setAnchor}
                 />
-              )}
-              {activeTab === "advanced-tools" && (
-                <ToolsPane
-                  filePath={doc.filePath}
-                  source={parsed.source}
-                  reparseNow={parsed.reparseNow}
-                  applyTextEdits={doc.applyTextEdits}
-                  onJumpToOffset={selection.setAnchor}
-                />
-              )}
-            </main>
-          </PreviewResultProvider>
+              </LandPlacementModelProvider>
+            </ToolHostProvider>
+            {/* Moved inside PreviewResultProviders (status-bar accuracy pass):
+                StatusBarContainer reads the document's PreviewResultProvider
+                context directly, which does not exist above this point.
+                UpdatePrompt moves with it, directly above the status bar so
+                an offer to restart the app sits next to the rest of the
+                app's chrome rather than over the work — `.app` is a flex
+                column and neither provider renders DOM of its own, so this
+                is layout-neutral. */}
+            <UpdatePrompt state={update.state} onInstall={update.install} onDismiss={update.dismiss} />
+            <StatusBarContainer
+              diagnostics={parsed.diagnostics}
+              onOpenGenerationSettings={() => setGenerationSettingsOpen(true)}
+              onReportBug={reportBug}
+            />
+          </PreviewResultProviders>
         </PreviewCutProvider>
       </ParsedDocumentProvider>
-      {/* Directly above the status bar, so an offer to restart the app sits
-          next to the rest of the app's chrome rather than over the work. */}
-      <UpdatePrompt state={update.state} onInstall={update.install} onDismiss={update.dismiss} />
-      <StatusBar
-        diagnostics={parsed.diagnostics}
-        total={parsed.resourceTotals.total}
-        player={parsed.resourceTotals.player}
-        neutral={parsed.resourceTotals.neutral}
-        onOpenGenerationSettings={() => setGenerationSettingsOpen(true)}
-        onReportBug={reportBug}
-      />
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {welcomeOpen && <WelcomeDialog />}
       {/* Rendered only while a close-or-open attempt is waiting on the user.
           The hook owns the pending promise; this just collects the answer. */}
       {doc.unsavedAction !== null && (
@@ -245,18 +460,18 @@ function AppContent() {
 function App() {
   return (
     <HelpSettingsProvider>
-      {/* Display preferences that aren't any one subsystem's — read by the
+      {/* Display preferences that aren't any one subsystem's, read by the
           Settings dialog and by every place a script-written constant name is
           rendered, so it has to sit above both. */}
       <AppSettingsProvider>
-        {/* Same store, its own context — see ThemeSettingsContext.tsx for why
+        {/* Same store, its own context; see ThemeSettingsContext.tsx for why
             the palette isn't just another AppSettingsContext field. Above
             everything else in this tree because it writes CSS custom
             properties straight onto documentElement on mount, which every
-            component stylesheet below reads through var(--token-name) —
-            nothing downstream needs to import it directly. */}
+            component stylesheet below reads through var(--token-name).
+            Nothing downstream needs to import it directly. */}
         <ThemeSettingsProvider>
-          {/* Same store, its own context — see HotkeySettingsContext.tsx for why
+          {/* Same store, its own context; see HotkeySettingsContext.tsx for why
               rebindable shortcuts aren't just another AppSettingsContext field. */}
           <HotkeySettingsProvider>
             <GenerationSettingsProvider>
@@ -264,17 +479,29 @@ function App() {
                   canvas zoom/pan survive the tab switch that unmounts the pane
                   holding them. Two providers, not one context, so a drag or wheel
                   tick (which changes viewport on every frame) doesn't re-render
-                  the seed/colour-mode controls — see PreviewViewContext.tsx. */}
+                  the seed/colour-mode controls; see PreviewViewContext.tsx. */}
               <PreviewViewProvider>
                 <PreviewViewportProvider>
                   {/* Also above the tab switch, and for the same reason: both tabs
                       render their own MapSidePanel and the inactive one is
                       unmounted, so a width held inside it would be two widths that
                       reset on every switch (CREATION_PLAN 4.4). Unlike the two
-                      above, this one IS persisted — a layout choice should still be
+                      above, this one IS persisted. A layout choice should still be
                       there tomorrow, where a seed should not. */}
                   <SidePanelLayoutProvider>
-                    <AppContent />
+                    {/* The Land Placement panel's own seed (PreviewResultProviders,
+                        above), same "survive the tab switch" reasoning as
+                        PreviewViewProvider, deliberately its own context rather
+                        than a field on that one (panelPreviewSeed.tsx). */}
+                    <PanelPreviewSeedProvider>
+                      {/* Innermost of the App()-level providers
+                          (tutorial-design.md Sec.5.4), a future step can
+                          read generation settings or preview state, and
+                          nothing above it needs to read tutorial state. */}
+                      <TutorialProvider>
+                        <AppContent />
+                      </TutorialProvider>
+                    </PanelPreviewSeedProvider>
                   </SidePanelLayoutProvider>
                 </PreviewViewportProvider>
               </PreviewViewProvider>

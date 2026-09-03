@@ -5,8 +5,8 @@ interface PlaceholderPaneProps {
 }
 
 // Stands in for Breakdown/Code/Advanced Tools until each is built out in
-// its own phase (see PLAN.md milestones). Deliberately dumb — no state,
-// no logic — so it's cheap to delete once the real pane lands.
+// its own phase (see PLAN.md milestones). Deliberately dumb, no state,
+// no logic, so it's cheap to delete once the real pane lands.
 export function PlaceholderPane({ description }: PlaceholderPaneProps) {
   return (
     <div className={styles.pane}>

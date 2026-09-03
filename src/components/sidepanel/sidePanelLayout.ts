@@ -1,14 +1,14 @@
-// CREATION_PLAN 4.4 — the arithmetic behind the side panel's drag handle,
+// CREATION_PLAN 4.4, the arithmetic behind the side panel's drag handle,
 // kept out of the React component on purpose.
 //
 // Everything here is a pure function of numbers, so it runs unchanged in
 // plain-Node Vitest. The component around it is the part that cannot be
 // tested that way (no jsdom in this project), which is exactly why the rules
-// worth asserting live on this side of the line — same split as
+// worth asserting live on this side of the line, same split as
 // generationSettings/teamModel.ts, whose model is pure so both the UI and the
 // preview worker can read it.
 
-/** 18rem at the browser's default 16px root size — the width 4.2 shipped. */
+/** 18rem at the browser's default 16px root size, the width 4.2 shipped. */
 export const DEFAULT_SIDE_PANEL_WIDTH = 288;
 
 /**
@@ -23,7 +23,7 @@ export const MIN_SIDE_PANEL_WIDTH = 200;
  * A ceiling on the panel, not on the window. The "leave room for the editor"
  * rule is deliberately NOT here: it depends on the window's current width,
  * which this module cannot see and which changes without any drag happening.
- * It lives as `max-width: 70%` in MapSidePanel.module.css instead — one rule,
+ * It lives as `max-width: 70%` in MapSidePanel.module.css instead, one rule,
  * in the one place that always knows the answer. Two rules for one constraint
  * is how they drift apart.
  */
@@ -35,7 +35,7 @@ export const MAX_SIDE_PANEL_WIDTH = 720;
  *
  * Without a margin, every drag that bottoms out at the minimum would collapse
  * the panel, which makes the minimum unreachable. With one, the panel sticks
- * at its minimum for a while and then goes away — the behaviour VS Code, the
+ * at its minimum for a while and then goes away, the behaviour VS Code, the
  * JetBrains IDEs and Explorer's own splitters have all trained people to
  * expect.
  */
@@ -54,7 +54,7 @@ export function clampSidePanelWidth(width: number): number {
  * What a pointer at `rawWidth` pixels from the panel's left edge means.
  *
  * A discriminated union rather than a plain number plus a boolean, so a caller
- * cannot read a width out of a collapse — there is no width in that case, and
+ * cannot read a width out of a collapse, there is no width in that case, and
  * the type says so. (`width` does not exist on the collapsed member, so
  * `outcome.width` is a compile error until `outcome.collapsed` has been
  * narrowed.)

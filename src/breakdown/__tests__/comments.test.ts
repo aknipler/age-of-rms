@@ -4,7 +4,7 @@ import { loadLanguage } from "../../parser/__tests__/testUtils";
 import { extractComments, commentsBetweenItems } from "../comments";
 
 // Show comments in Breakdown too. Comments are
-// pure trivia (parser-design Sec.2) — extractComments re-derives their
+// pure trivia (parser-design Sec.2), extractComments re-derives their
 // spans from the token stream, and commentsBetweenItems decides which
 // items[] gap (if any) each one belongs to.
 describe("extractComments", () => {

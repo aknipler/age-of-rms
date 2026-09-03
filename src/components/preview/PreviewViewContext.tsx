@@ -13,12 +13,12 @@ import type { TilePoint, Viewport } from "../../preview/render/projection";
 
 /**
  * Current vs Final (preview-design Sec.5). Used to live in `fixture.ts` as
- * `FixtureView` — moved here when the fixture was deleted (CREATION_PLAN
+ * `FixtureView`, moved here when the fixture was deleted (CREATION_PLAN
  * 4.3's "swaps the fixture for the worker"), since it was never actually a
  * fixture concept, just borrowed that file because nowhere else existed yet.
  *
- * Sec.5's real semantics — Current is a SECOND generatePreview run over the
- * script truncated at a pinned line, not a stage snapshot — are live as of
+ * Sec.5's real semantics (Current is a SECOND generatePreview run over the
+ * script truncated at a pinned line, not a stage snapshot) are live as of
  * CREATION_PLAN 4.6. The cut line itself is NOT here: it lives in
  * `PreviewCutContext`, which has to render below `AppContent` to read the
  * shared selection anchor, while this provider sits above it. This flag
@@ -33,7 +33,7 @@ export type PreviewViewMode = "current" | "final";
  * and Code tabs are a conditional render in App, so the inactive tab is
  * genuinely unmounted, not hidden. React discards the state of an unmounted
  * component, so a seed you re-rolled to on Breakdown would be back to 1 after
- * a trip to Code and back — state loss that looks exactly like a bug and has
+ * a trip to Code and back, state loss that looks exactly like a bug and has
  * no clue pointing at the tab switch. Same reasoning that lifted
  * useSharedSelection into App (App.tsx) and that keeps the Monaco model at
  * module scope in useDocument.ts.
@@ -43,7 +43,7 @@ export type PreviewViewMode = "current" | "final";
  * describes where you happen to be looking right now, and a seed restored from
  * three sessions ago would be noise rather than a convenience.
  *
- * Zoom and pan are NOT in this interface — see PreviewViewportProvider below.
+ * Zoom and pan are NOT in this interface. See PreviewViewportProvider below.
  * They used to be argued out of here on the grounds that they are "derived
  * from the canvas's own pixel size, which does not exist until it mounts and
  * measures". That reasoning covers the very first mount, correctly, and does
@@ -51,19 +51,19 @@ export type PreviewViewMode = "current" | "final";
  * both tabs, so a remount re-measures the same size and there is no reason to
  * throw the user's framing away. Split into a second context, not folded into
  * this one, because viewport changes on every pixel of a drag or wheel tick
- * and this one is read by PreviewPane's whole control row — coupling them
+ * and this one is read by PreviewPane's whole control row, coupling them
  * would re-render the seed/colour-mode controls on every drag frame.
  */
 export interface PreviewViewValue {
   /** Current vs Final (preview-design Sec.5). */
   view: PreviewViewMode;
   setView: (view: PreviewViewMode) => void;
-  /** Current <-> Final, for the hotkey (App.tsx) — same toggle the radio pair drives. */
+  /** Current <-> Final, for the hotkey (App.tsx), same toggle the radio pair drives. */
   toggleView: () => void;
   /** The seed the arrangement is drawn from. */
   seed: number;
   setSeed: (seed: number) => void;
-  /** Draws a new random seed — the Re-roll button's action, also bound to a hotkey (App.tsx). */
+  /** Draws a new random seed, the Re-roll button's action, also bound to a hotkey (App.tsx). */
   reseed: () => void;
   /** Game (texture) or Minimap (data colour class) terrain colours. */
   colorMode: TerrainColorMode;
@@ -105,7 +105,7 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<PreviewViewMode>("final");
   const toggleView = useCallback(() => setView((v) => (v === "current" ? "final" : "current")), []);
   const [seed, setSeed] = useState(1);
-  // Math.random is fine HERE — Sec.8's ban on it covers
+  // Math.random is fine HERE. Sec.8's ban on it covers
   // src/preview/generator/, where reproducibility is the whole contract.
   // Picking which seed to show a user is not part of that contract;
   // consuming it deterministically is.
@@ -116,7 +116,7 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
 
   // The updater form rather than reading `selectedTile` from the closure:
   // this callback is memoised with an empty dependency list, so a captured
-  // `selectedTile` would be whatever it was on the first render forever — a
+  // `selectedTile` would be whatever it was on the first render forever, a
   // stale closure, and the classic way a toggle stops toggling after one use.
   const toggleSelectedTile = useCallback((tile: TilePoint) => {
     setSelectedTile((current) =>
@@ -128,7 +128,7 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
 
   // A NEW Set every time rather than mutating the existing one. React compares
   // state by reference, so `current.add(name); return current` would change
-  // what the app draws without ever telling anything to re-render — the
+  // what the app draws without ever telling anything to re-render, the
   // classic mutable-state-in-a-hook trap, and it bites harder with Set/Map
   // than with arrays because there is no spread-by-habit to fall back on.
   const toggleObjectHidden = useCallback((objectRef: string) => {
@@ -142,8 +142,8 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
   const showAllObjects = useCallback(() => setHiddenObjects(new Set<string>()), []);
 
   // Memoised so the object identity only changes when a value does. Without
-  // it every App re-render — every keystroke, since the parse result lives up
-  // there — would hand a fresh object to every consumer and re-render the
+  // it every App re-render (every keystroke, since the parse result lives up
+  // there) would hand a fresh object to every consumer and re-render the
   // whole preview column for nothing.
   const value = useMemo(
     () => ({
@@ -190,7 +190,7 @@ export function usePreviewView(): PreviewViewValue {
  * The canvas's camera (PreviewCanvas), held above the tab switch for the same
  * reason as PreviewViewValue above: Breakdown and Code unmount PreviewCanvas
  * on every switch, and without this, a user's zoom/pan reset to "fit" every
- * time they looked away and back — reported as a bug (2026-08-06), not a
+ * time they looked away and back, reported as a bug (2026-08-06), not a
  * feature, which it never was; the original design note undersold how often
  * a user would actually cross the tab boundary mid-inspection.
  *
@@ -218,7 +218,7 @@ export function PreviewViewportProvider({ children }: { children: ReactNode }) {
 
   // NOT memoised the way PreviewViewValue is above. viewport changes on every
   // pixel of a drag or wheel tick, so a memoised object here would still be a
-  // fresh reference on nearly every render regardless — the useMemo would buy
+  // fresh reference on nearly every render regardless, the useMemo would buy
   // nothing but a dependency array to keep in sync, and PreviewCanvas is
   // deliberately the only consumer, so there is no sibling to protect from
   // the churn.

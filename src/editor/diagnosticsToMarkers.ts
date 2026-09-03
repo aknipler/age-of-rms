@@ -10,7 +10,7 @@ const SEVERITY_MAP: Record<DiagnosticSeverity, monaco.MarkerSeverity> = {
 /**
  * Converts the parser's char-offset diagnostics into Monaco's
  * line/column marker format. Takes the model (not raw text) so it can
- * use Monaco's own `getPositionAt` — the same UTF-16-code-unit counting
+ * use Monaco's own `getPositionAt`, the same UTF-16-code-unit counting
  * the parser used when it computed those offsets against this same
  * string, so the two stay consistent.
  */

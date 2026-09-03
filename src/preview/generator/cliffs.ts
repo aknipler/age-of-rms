@@ -1,20 +1,20 @@
-// S3: cliffs — docs/preview-design.md Sec.6.3. PURE (CLAUDE.md hard rule /
+// S3: cliffs, docs/preview-design.md Sec.6.3. PURE (CLAUDE.md hard rule /
 // preview-design Sec.2).
 //
-// Coarse simulation only ("enough for layout honesty, no fine geometry" —
+// Coarse simulation only ("enough for layout honesty, no fine geometry",
 // Sec.6.3's own framing, and Sec.9 item 7 lists cliff fine geometry as a
 // standing, blanket exclusion, so no per-cliff SimulationNote is emitted for
-// it). No `create_cliff` command exists in the language — `<CLIFF_GENERATION>`
+// it). No `create_cliff` command exists in the language. `<CLIFF_GENERATION>`
 // holds only standalone attributes (`min_number_of_cliffs`,
 // `cliff_curliness`, ...) sitting directly in the section, so unlike every
 // other stage there is no single instantiated command to loop over. The
 // section's mere PRESENCE is the generative act ("simply typing the section
-// header will generate default cliffs" — guide, quoted in Sec.6.3), so this
+// header will generate default cliffs", guide, quoted in Sec.6.3), so this
 // file folds the section's standalone commands into one settings record
 // (last-one-wins, mirroring Sec.3 rule 10's attribute-folding policy) and
 // emits exactly one CommandReport for the section as a whole, using the
 // first contained command's span as the representative span (or a zero span
-// for a genuinely empty section — there is nothing else to point at).
+// for a genuinely empty section, there is nothing else to point at).
 //
 // `cliff_type` (visual cliff material) is read by nothing here: the
 // renderer already draws every cliff with one flat colour (Sec.9 item 7),
@@ -47,7 +47,7 @@ import { intersectCandidates, ok, fail, pushFailure, type AttributedPredicate } 
 // [tune] / guide-value constants
 // ---------------------------------------------------------------------------
 
-/** guide:1351: "Count = uniform [min, max)" — max exclusive. Defaults per language.json. */
+/** guide:1351: "Count = uniform [min, max)", max exclusive. Defaults per language.json. */
 const DEFAULT_MIN_CLIFFS = 3;
 const DEFAULT_MAX_CLIFFS = 8;
 /** guide:1365's worked tile counts fix this at "uniform [min,max] inclusive", NOT the count roll's exclusive upper bound. */
@@ -55,7 +55,7 @@ const DEFAULT_MIN_LENGTH = 5;
 const DEFAULT_MAX_LENGTH = 9;
 /** guide default; percent chance of a direction change per segment. */
 const DEFAULT_CURLINESS = 36;
-/** No default declared in language.json (verified: false) — Sec.6.3 states "default 2" as a guide value for both. */
+/** No default declared in language.json (verified: false). Sec.6.3 states "default 2" as a guide value for both. */
 const DEFAULT_MIN_DISTANCE_CLIFFS = 2;
 const DEFAULT_MIN_TERRAIN_DISTANCE = 2;
 
@@ -75,7 +75,7 @@ const DIRECTIONS: ReadonlyArray<{ dx: number; dy: number }> = [
 ];
 
 // ---------------------------------------------------------------------------
-// Attribute folding — CLIFF_GENERATION's standalone commands are top-level
+// Attribute folding, CLIFF_GENERATION's standalone commands are top-level
 // `InstantiatedCommand`s (no enclosing block, so Sec.3's attribute-map
 // folding never runs on them), so a duplicate declaration is a second array
 // entry rather than a second entry in an `attributes` map. Last-one-wins by
@@ -102,7 +102,7 @@ export interface CliffSettings {
   curliness: number;
   minDistanceCliffs: number;
   minTerrainDistance: number;
-  /** Commands whose span identifies the min/max-cliffs authoring mistake, if any — kept apart from the plain numbers so the note can point at the right line. */
+  /** Commands whose span identifies the min/max-cliffs authoring mistake, if any, kept apart from the plain numbers so the note can point at the right line. */
   minCliffsCmd?: InstantiatedCommand;
   maxCliffsCmd?: InstantiatedCommand;
   minLengthCmd?: InstantiatedCommand;
@@ -137,7 +137,7 @@ export function resolveCliffSettings(commands: readonly InstantiatedCommand[]): 
 // predicate order matching Sec.6.3's own listed order: land-origin distance,
 // water, slope, cliff spacing, terrain/water distance). Buckets are the
 // closest existing fit rather than new ones (types.ts: "a stable bucket
-// identity is worth more than forensic precision") — the two genuinely
+// identity is worth more than forensic precision"), the two genuinely
 // distance-based constraints (origin proximity, the two x3-scaled spacings)
 // use `spacingConflict`; the two flat terrain-class exclusions (on water, on
 // a slope) use the generic `noValidTiles`.
@@ -198,7 +198,7 @@ export function eligibleCliffStartTiles(
 // before it is laid. A step that would leave the grid, land on water, or
 // land on an already-cliffed tile (this cliff's own earlier tiles included,
 // which is what makes this self-avoiding for free) truncates the whole walk
-// right there ("may end up shorter" — guide, quoted in Sec.6.3).
+// right there ("may end up shorter", guide, quoted in Sec.6.3).
 //
 // JUDGMENT CALL: Sec.6.3 groups land-origin distance, water, slope,
 // cliff-spacing and terrain-distance under "Start tiles:" and separately
@@ -207,9 +207,9 @@ export function eligibleCliffStartTiles(
 // the full five-predicate set per tile would need a distance-transform
 // rebuild after every single tile (not just every cliff) for negligible
 // visual benefit on a "coarse... layout honesty" feature. This function
-// re-checks only grid bounds, water and self/other-cliff overlap — the
+// re-checks only grid bounds, water and self/other-cliff overlap, the
 // three whose violation would look outright broken on a render (a cliff
-// stepping into the sea or through another cliff) — and leaves the
+// stepping into the sea or through another cliff), and leaves the
 // distance-band constraints (origin proximity, the two spacings) as
 // start-tile-only, matching where Sec.6.3's prose literally places them.
 // ---------------------------------------------------------------------------
@@ -263,10 +263,10 @@ export interface CliffsResult {
 /**
  * Sec.6.3: `<CLIFF_GENERATION>` -> cliffs. Mutates `grid.cliff`; returns one
  * CommandReport for the whole section (there is no per-cliff command to
- * report against — see the file header) plus SimulationNotes for the
+ * report against, see the file header) plus SimulationNotes for the
  * documented failure cases: min > max "crashes the engine", and a sub-3
  * `min_length_of_cliff`, which drops the individual draws that roll below 3
- * (`attempted` therefore exceeds `placed` — see the note beside it).
+ * (`attempted` therefore exceeds `placed`, see the note beside it).
  */
 export function applyCliffs(
   instantiated: InstantiatedScript,
@@ -298,13 +298,13 @@ export function applyCliffs(
     return { reports: [zeroCliffReport()], notes };
   }
 
-  // A sub-3 `min_length_of_cliff` is a PER-DRAW YIELD, not a section switch —
+  // A sub-3 `min_length_of_cliff` is a PER-DRAW YIELD, not a section switch.
   // MEASURED, `RMSTEST_45a/45b/45c`, two runs per arm, twenty cliffs requested
   // (BUG-008). `min 2 / max 2` gave 0 cliff units, `min 3 / max 3` gave 66, and
   // `min 2 / max 4` gave 36. A section gate predicts 0 in that third arm and a
   // clamp predicts the first two matching; neither holds, and a length rolled
   // below 3 simply draws nothing. The zero case is still reached, through every
-  // roll dying rather than through the section being switched off — which is
+  // roll dying rather than through the section being switched off, which is
   // the whole distinction the third arm exists to measure.
   //
   // **The 36-against-66 is deliberately NOT fitted to a rate.** Cliff UNITS are
@@ -350,7 +350,7 @@ export function applyCliffs(
 
     const lengthRng = nextSubstream();
     const len = nextInt(lengthRng, settings.minLength, Math.max(settings.minLength, settings.maxLength));
-    if (len < MIN_LENGTH_FOR_CLIFFS_TO_APPEAR) continue; // this draw yields nothing — see the note above
+    if (len < MIN_LENGTH_FOR_CLIFFS_TO_APPEAR) continue; // this draw yields nothing, see the note above
 
     const walkRng = nextSubstream();
     walkCliff(grid, water, start, len, settings.curliness, walkRng);

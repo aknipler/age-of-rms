@@ -6,7 +6,7 @@ import { shiftSingleAnchor, type OffsetEdit } from "../breakdown/ephemeralAnchor
  * One source offset that survives edits to the document.
  *
  * EXTRACTED FROM useSharedSelection (2026-08-10), which had been the only
- * thing that needed it until the preview's Current cut point gained a pin —
+ * thing that needed it until the preview's Current cut point gained a pin,
  * a second offset with the same problem and, without this, a second copy of
  * the same subtle queue. There is no parallel model here: both anchors are
  * offsets into the one Monaco document, shifted by the same rule, in step
@@ -19,7 +19,7 @@ import { shiftSingleAnchor, type OffsetEdit } from "../breakdown/ephemeralAnchor
  *
  * WHY THE QUEUE (the BUG-001 ordering rule, and the part that looks like
  * overkill until it bites). The shift must NOT be applied when the edit
- * happens — it must wait until the PARSE for that exact text has landed.
+ * happens. It must wait until the PARSE for that exact text has landed.
  * Everything downstream (cards, spans, the cut) is rendered from the last
  * parse, so shifting early points the anchor into text nothing has parsed
  * yet, and the selection flashes onto the wrong card for a frame. So changes
@@ -28,7 +28,7 @@ import { shiftSingleAnchor, type OffsetEdit } from "../breakdown/ephemeralAnchor
  *
  * `shift` is a parameter because the two callers want different things from
  * an anchor caught INSIDE a replaced range: the selection drops (rev 4's
- * rule — don't let it dangle onto whatever now occupies those offsets),
+ * rule, don't let it dangle onto whatever now occupies those offsets),
  * while the preview's pin collapses to the edit's start rather than silently
  * unpinning itself. It is read through a ref so passing an inline function
  * doesn't re-subscribe anything.
@@ -52,7 +52,7 @@ export function useShiftedAnchor(
     const model = getDocumentModel();
     const subscription = model.onDidChangeContent((e) => {
       // Multiple simultaneous changes (e.g. multi-cursor typing) are each
-      // expressed relative to the ORIGINAL pre-event text — applying them
+      // expressed relative to the ORIGINAL pre-event text, applying them
       // highest-offset-first keeps every later (lower-offset) shift's
       // comparison valid, since a higher-offset edit's delta never changes
       // whether the anchor was originally before a lower-offset edit's
@@ -63,7 +63,7 @@ export function useShiftedAnchor(
         .map((c) => ({ start: c.rangeOffset, end: c.rangeOffset + c.rangeLength, newText: c.text }))
         .sort((a, b) => b.start - a.start);
       // model.getValue() here is the text AFTER this exact change (the
-      // event fires post-apply) — no manual string surgery needed to
+      // event fires post-apply), no manual string surgery needed to
       // compute what we're waiting for.
       pendingRef.current.push({ edits, expectedSource: model.getValue() });
     });
@@ -75,7 +75,7 @@ export function useShiftedAnchor(
     if (pending.length === 0) return;
     const matchedUpTo = pending.findIndex((p) => p.expectedSource === source);
     if (matchedUpTo === -1) {
-      // Nothing in the queue matches the parse that just landed — some
+      // Nothing in the queue matches the parse that just landed. Some
       // other change superseded it. Drop rather than wait forever (same
       // trade-off Sec.3.9's original queue made).
       pendingRef.current = [];

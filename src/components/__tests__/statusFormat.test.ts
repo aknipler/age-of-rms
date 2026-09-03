@@ -49,7 +49,7 @@ describe("formatCompact", () => {
 
   // The regression this whole module was written for: the old rule applied
   // one decimal at every magnitude, so a two-million total printed as a
-  // six-digit "2008.6k" — long AND at a scale nobody reads at a glance.
+  // six-digit "2008.6k", long AND at a scale nobody reads at a glance.
   it("prints a multi-million total in millions, not in four-digit thousands", () => {
     expect(formatCompact(2_008_600)).toBe("2m");
   });

@@ -1,0 +1,287 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+
+  base_terrain GRASS2
+
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 2
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 3
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 4
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 5
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 6
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 7
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 8
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 9
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 10
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 11
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 12
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 13
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 14
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 15
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 16
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 17
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 18
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 19
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 20
+  other_zone_avoidance_distance 15
+  }
+  create_land
+  {
+  terrain_type SNOW
+  base_size 2
+  number_of_tiles 50
+  zone 21
+  other_zone_avoidance_distance 15
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_74 - other_zone_avoidance_distance: origin-spacing, but with enough
+statistical power to mean something
+docs/known-issues.md BUG-016 (reopened), preview-design Sec.6.1, lands.ts
+(neutralOrigin, the ORIGIN_ATTEMPTS/minPlacementDistance loop), supersedes
+RMSTEST_71's origin-spacing read
+================================================================================
+
+THE QUESTION
+RMSTEST_71 tried to show that a randomly-placed origin keeps
+other_zone_avoidance_distance away from a prior origin, using one big WALL
+land and six small satellites checking against it (plus each other). Every
+one of those 21 checks (6 vs the wall, 15 pairs among the six) came back
+clean - no violation - and that was read as confirming the mechanism works.
+
+IT DOES NOT SETTLE ANYTHING. A 15-tile Chebyshev exclusion zone around one
+point covers a 31x31 = 961-tile square on a 200x200 (40000-tile) map: about
+2.4% of the map. Even with ZERO enforcement, a single random origin has a
+97.6% chance of landing outside any one exclusion zone by pure luck.
+RMSTEST_71's 21 checks give an expected chance-collision count of only
+~0.5 under the null (no enforcement at all) - so a clean run had roughly a
+1-in-5 to 1-in-3 chance of happening by accident even if the attribute does
+nothing whatsoever for origin placement. RMSTEST_71's result is therefore
+UNDECIDED, not confirmatory, and needs a properly-powered replacement rather
+than a re-read.
+
+METHOD: MANY origins competing for space on ONE map, so a clean pass is
+actually improbable under the null. The guide states origin-spacing applies
+"regardless of zone", so no wall/backdrop land is needed at all - every land
+here just needs to declare the attribute and have no land_position. Twenty
+identical SNOW lands, no land_position (fully random origin), small enough
+targets (base_size 2, number_of_tiles 50 - a ~5x5 origin stamp plus a little
+growth) that each patch's centroid stays close to its true origin, so
+patch-to-patch distance is a good proxy for origin-to-origin distance and
+growth cannot blur the read the way it did for RMSTEST_71's WALL (which grew
+into space its neighbours' origins had correctly kept clear of, per
+BUG-016's fixed-up reading of that script - the confound this design removes
+by giving every land the SAME small target). Different ZONE per land only so
+each is a separate declared command with its own origin roll; the guide says
+zone plays no part in this half of the attribute.
+
+STATISTICAL POWER, why 20 and not 6
+With n lands all avoiding each other at distance d on a map of area A, the
+number of PAIRS checked is C(n,2), each with an approximate per-pair chance
+collision probability p = (2d+1)^2 / A under the null. Expected chance
+collisions = C(n,2) * p, and P(zero collisions | null) is approximately
+exp(-C(n,2)*p) for a Poisson approximation:
+
+  design                    pairs   E[chance collisions]   P(clean | null)
+  RMSTEST_71 (6 vs 1 wall)     21           ~0.5                 ~60%
+  this script, n=20 d=15      190           ~4.6                  ~1%
+  n=25, d=15                  300           ~7.2                ~0.07%
+
+n=20 was chosen over n=25 for placement-packing safety: twenty 31x31
+exclusion zones is ~48% of the map's area, comfortably placeable by
+rejection sampling; twenty-five approaches 60% and risks originFallbackCenter
+fallbacks that would corrupt the read (see STOP RULE below). A clean run at
+n=20 is real evidence FOR the mechanism (only ~1% chance of happening by
+accident with none); a run with even one or two violations is real evidence
+AGAINST it, or of partial/weaker enforcement than 15 tiles.
+
+PREDICTIONS
+  ENFORCED    -> --patches SNOW reports 20 separate patches (none merged),
+                 and every pairwise centroid distance is >= ~15 (RMSTEST_73
+                 calibrated the growth-time half of this attribute at
+                 declared_value + 1, so expect a similar +-1 floor here, not
+                 exactly 15.0).
+  NOT ENFORCED -> some pairs land within 15 tiles of each other by chance
+                 (expected ~4.6 out of 190 pairs); with base_size 2 stamps
+                 that are only 5 tiles wide, two origins closer than about 5
+                 tiles apart will physically overlap/merge into ONE patch
+                 under 4-connectivity, so the total patch count dropping
+                 below 20 is the single cheapest signal to check first.
+  MIXED       -> patch count stays at 20 (nothing merged) but one or more
+                 pairwise centroid distances sit well under 15 - the
+                 mechanism exists but doesn't reach 15 tiles, or acts as a
+                 collision-avoidance floor rather than the declared spacing.
+
+STOP RULE
+If the total SNOW tile count is far below the ~1000 expected (20 lands x 50
+tiles, plus the usual small-clump overshoot), or if --patches SNOW shows one
+patch sitting suspiciously close to the map's exact center relative to the
+others, packing pressure forced one or more lands into originFallbackCenter
+and the run does not test this question - rerun with n reduced (e.g. 15)
+rather than trusting the read.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. TWO RUNS.
+Two runs (not more) because the statistical power argument above already
+does the heavy lifting within a single map; a second run is a cheap
+reproducibility check in the same spirit as RMSTEST_65's two-run confirmation,
+not a contest that needs three like the growth-time scripts.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches SNOW
+  Read the patch COUNT first (20 vs fewer is the headline). Then read the
+  centroid list directly from the tool's output and compute all C(20,2)
+  pairwise Chebyshev distances by hand or with a short script - the probe
+  tool does not do pairwise-among-patches distance itself, only bbox/patch
+  reports per terrain.
+================================================================================
+*/

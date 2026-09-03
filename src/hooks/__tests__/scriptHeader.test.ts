@@ -61,7 +61,7 @@ describe("buildScriptHeader", () => {
     expect(rowFor(text, "Author")).toBe("Author         Ash");
     expect(rowFor(text, "Created")).toBe("Created        03/08/2026");
     expect(rowFor(text, "Last modified")).toBe("Last modified  03/08/2026");
-    expect(rowFor(text, "Built with")).toBe(`Built with     ${HEADER_SIGNATURE} 0.1.1`);
+    expect(rowFor(text, `${HEADER_SIGNATURE} version`)).toBe(`${HEADER_SIGNATURE} version  0.1.1`);
   });
 
   it("names an unset author rather than leaving the row blank", () => {
@@ -69,7 +69,7 @@ describe("buildScriptHeader", () => {
   });
 
   it("zero-pads a single-digit day and month", () => {
-    // Not cosmetic — a row is matched as an exact string on the next save, so
+    // Not cosmetic. A row is matched as an exact string on the next save, so
     // a date that changes width changes what has to be found.
     const { text } = buildScriptHeader({ ...FIELDS, modified: new Date(2026, 0, 5) });
     expect(text).toContain("05/01/2026");
@@ -123,7 +123,7 @@ describe("the stamped header as RMS", () => {
 
   it("produces no lexer diagnostics", () => {
     // Chiefly RMS0001 (unclosed comment) and RMS0003 (a marker glued into a
-    // larger token) — the two ways a decorative banner silently eats a script.
+    // larger token), the two ways a decorative banner silently eats a script.
     expect(tokenize(buildScriptHeader(FIELDS).text).diagnostics).toEqual([]);
   });
 
@@ -170,8 +170,8 @@ describe("refreshScriptHeader", () => {
     const { source, stamped } = stampedDocument();
     const refresh = refreshScriptHeader(source, stamped, laterSave({ appVersion: "0.2.0" }));
 
-    expect(rowFor(applyEdits(source, refresh.edits), "Built with")).toBe(
-      `Built with     ${HEADER_SIGNATURE} 0.2.0`,
+    expect(rowFor(applyEdits(source, refresh.edits), `${HEADER_SIGNATURE} version`)).toBe(
+      `${HEADER_SIGNATURE} version  0.2.0`,
     );
   });
 
@@ -227,7 +227,7 @@ describe("refreshScriptHeader ownership, row by row", () => {
     const { source, stamped } = stampedDocument();
     const edited = handEdit(source, "Author", "Author         Someone else");
     const afterEdit = refreshScriptHeader(edited, stamped, laterSave()).stamped;
-    // Only that row went — otherwise the assertion below would pass for the
+    // Only that row went, otherwise the assertion below would pass for the
     // wrong reason.
     expect(afterEdit.owned.has("author")).toBe(false);
     expect(afterEdit.owned.has("file")).toBe(true);
@@ -319,7 +319,7 @@ describe("refreshScriptHeader and the rules", () => {
 
     expect(resultLines[1]).toBe(" ~~~~~~~~~~ my own divider ~~~~~~~~~~");
     // The surviving rule keeps its old width rather than being redrawn on its
-    // own — half a box is worse than a narrow one, and the app has no way to
+    // own. Half a box is worse than a narrow one, and the app has no way to
     // redraw the half a person has taken over. This is the assertion the
     // test was missing: without it, redrawing the lone rule went unnoticed.
     expect(resultLines[resultLines.indexOf("*/") - 1]).toBe(stamped.rule);

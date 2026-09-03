@@ -1,8 +1,8 @@
-// TileGrid allocation, coordinate/border arithmetic, and derived masks —
+// TileGrid allocation, coordinate/border arithmetic, and derived masks,
 // docs/preview-design.md Sec.4 and Sec.14's "grid.ts: TileGrid, distance
 // transforms, masks". PURE (CLAUDE.md hard rule / preview-design Sec.2):
 // every stage from lands.ts onward builds its grid and reads its masks
-// through this module rather than re-deriving the arithmetic per stage —
+// through this module rather than re-deriving the arithmetic per stage.
 // Sec.4's rounding rules are easy to get subtly wrong (see the two
 // deliberately DIFFERENT rounding helpers below) and a second hand-rolled
 // copy is exactly how that happens.
@@ -17,7 +17,7 @@ import { roundForIntegerSlot } from "./mathEval";
 /**
  * `layer` value meaning "nothing is layered on this tile".
  *
- * NOT 0, which is what it used to be — 0 is GRASS's terrain id. Every read of
+ * NOT 0, which is what it used to be. 0 is GRASS's terrain id. Every read of
  * the layer array therefore could not tell a tile with no layer from a tile
  * layered with GRASS, and both directions of that confusion happen in real
  * scripts: `AD4 - Pag - v1.2.rms` runs `create_terrain DLC_DESERTGRAVEL {
@@ -34,7 +34,7 @@ export const NO_LAYER = 0xffff;
  * One per generation, per Sec.4: "typed arrays, allocated once per
  * generation". `base_terrain`/`base_layer` fill the whole grid before any
  * land is placed (Sec.6.1's "Base fill"); `landId` starts at -1 ("no land
- * claims this tile" — Sec.4's own comment on the field) and `zone` starts at
+ * claims this tile", Sec.4's own comment on the field) and `zone` starts at
  * 0, a neutral placeholder that means nothing until a land actually claims
  * the tile and stamps its own zone onto it (Sec.6.1's zone rules apply to
  * CLAIMED tiles only; an unclaimed base tile has no zone to speak of).
@@ -58,7 +58,7 @@ export function tileIndex(grid: TileGrid, x: number, y: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Coordinate / border arithmetic (Sec.4) — two DIFFERENT rounding rules,
+// Coordinate / border arithmetic (Sec.4), two DIFFERENT rounding rules,
 // deliberately not unified: "Scaling truncates... borders round half up...
 // a single shared helper would silently break one of them."
 // ---------------------------------------------------------------------------
@@ -66,17 +66,17 @@ export function tileIndex(grid: TileGrid, x: number, y: number): number {
 /**
  * Round-half-up, Sec.4's rule for every percent -> tile conversion
  * (`land_position`, borders). A thin alias over mathEval.ts's
- * `roundForIntegerSlot` rather than a second copy of "floor(x + 0.5)" — same
+ * `roundForIntegerSlot` rather than a second copy of "floor(x + 0.5)", same
  * rule (Sec.3.6's "0.5 up"), same reason it exists, so one function owns it.
  */
 export const percentRound = roundForIntegerSlot;
 
 /**
  * `land_position %X %Y` -> a tile coordinate. Round-half-up, THEN clamp to
- * `[0, dim-1]` — Sec.4: "Clamp the converted tile to `[0, dim-1]` after
+ * `[0, dim-1]`, Sec.4: "Clamp the converted tile to `[0, dim-1]` after
  * rounding, not the percentage before it" (measured against `Michi.rms`,
  * which writes `land_position 100 100` and would otherwise round to exactly
- * `dim`, one tile off-grid). Border bounds do NOT go through this — `maxX`/
+ * `dim`, one tile off-grid). Border bounds do NOT go through this, `maxX`/
  * `maxY` legitimately equal `dim` as a half-open loop bound, not a coordinate.
  */
 export function positionPercentToTile(pct: number, dim: number): number {
@@ -86,7 +86,7 @@ export function positionPercentToTile(pct: number, dim: number): number {
 
 /**
  * Sec.4's `set_scale_by_size`/`set_scale_by_groups`/etc formula: "declared x
- * (dim^2/10000), computed exactly from the live dim" — never the guide's
+ * (dim^2/10000), computed exactly from the live dim", never the guide's
  * rounded per-size ratio column, which Sec.4 spends a paragraph banning on
  * determinism grounds. TRUNCATES, not rounds (measured: `500 x 20736/10000`
  * = 1036.8 -> 1036 in three separate in-game runs, never 1037).
@@ -109,13 +109,13 @@ export type { BorderBounds } from "./types";
  * rounds half-up, and the asymmetry the guide's own prose describes
  * ("a value of 3 is needed for the bottom and right borders" to match a top/
  * left value of 2) falls out of `dim - round(...)` on the high edges rather
- * than from a different rounding rule per edge — do not floor/ceil by side.
+ * than from a different rounding rule per edge, do not floor/ceil by side.
  *
  *   min_x = round(left%/100 * dim)      max_x = dim - round(right%/100 * dim)
  *   min_y = round(top%/100 * dim)       max_y = dim - round(bottom%/100 * dim)
  *
  * Negative border values are legal (guide:887) and deliberately not clamped
- * here — clamping belongs to whichever stage decides a resulting empty or
+ * here, clamping belongs to whichever stage decides a resulting empty or
  * inverted range is unplaceable, not to this arithmetic.
  */
 export function borderBounds(borders: BorderPercents, dim: number): BorderBounds {
@@ -135,18 +135,18 @@ export function borderBounds(borders: BorderPercents, dim: number): BorderBounds
 export const UNREACHABLE = 0xffff;
 
 /**
- * Multi-source BFS, 4-connected — matching this codebase's standing
+ * Multi-source BFS, 4-connected, matching this codebase's standing
  * connectivity convention for terrain-shaped structure (CLAUDE.md: "terrain
  * clumps grow by 4-adjacent sampling... connectivity here is a claim about
  * how the thing was built, not a preference"). Distance in tiles from the
  * nearest tile whose `terrain` equals `terrainId`; 0 for a tile that IS that
  * terrain. Every entry is `UNREACHABLE` when the terrain is absent from the
- * grid entirely — a spacing check against it should then treat every
+ * grid entirely, a spacing check against it should then treat every
  * candidate as satisfying the constraint (no distance to violate), not as
  * failing it; that policy belongs to the caller.
  *
  * Sec.11: "distance transforms are computed lazily per (stage, terrainId)
- * and invalidated on stage boundaries" — this function is the thing that
+ * and invalidated on stage boundaries", this function is the thing that
  * gets called lazily and cached; it does no caching of its own, since the
  * cache's key (stage identity) is a caller concept this module doesn't have.
  */
@@ -154,7 +154,7 @@ export function distanceTransform(grid: TileGrid, terrainId: number): Uint16Arra
   const { dim, terrain } = grid;
   const n = dim * dim;
   const dist = new Uint16Array(n).fill(UNREACHABLE);
-  // Index-based ring buffer, not an array of coordinates — Sec.11's "typed
+  // Index-based ring buffer, not an array of coordinates, Sec.11's "typed
   // arrays only, no per-tile objects" applies here exactly as it does to the
   // land-growth frontier.
   const queue = new Int32Array(n);
@@ -191,14 +191,14 @@ export function distanceTransform(grid: TileGrid, terrainId: number): Uint16Arra
 
 /**
  * `distanceTransform`'s sibling: multi-source BFS, 4-connected, over an
- * arbitrary boolean tile mask rather than a single terrain id — for a mask
+ * arbitrary boolean tile mask rather than a single terrain id, for a mask
  * built from more than one terrain (a name-heuristic water mask, several
  * enabled terrains) or from generation state that isn't a terrain at all
  * (S3's own `cliff` mask, which S4's `spacing_to_other_terrain_types` needs
  * treated as foreign terrain per Sec.6.4's pinned approximation, "cliff
  * tiles also count as foreign terrain for this spacing"). Same body as
  * `distanceTransform`, parameterized on the source mask instead of
- * `terrain[i] === terrainId` — kept as a separate function rather than
+ * `terrain[i] === terrainId`, kept as a separate function rather than
  * having `distanceTransform` call it, so an edit to one cannot silently
  * change the other's tested behaviour (Sec.4's own stated reason for
  * keeping `percentRound`/`scaleToMapArea` un-unified applies here too).
@@ -253,23 +253,23 @@ export function distanceTransformFromMask(dim: number, mask: Uint8Array): Uint16
  */
 export interface TerrainConstantForMasks {
   constId: number | null;
-  /** Null for the 53 DE terrains that have no callable constant — see the schema. A null never matches a name lookup, which is the correct outcome, not a gap. */
+  /** Null for the 53 DE terrains that have no callable constant, see the schema. A null never matches a name lookup, which is the correct outcome, not a gap. */
   rmsConstant: string | null;
   category: string;
   /** Community-sourced water flag; absent means fall back to the name heuristic below. */
   isWater?: boolean;
   /** Community-sourced forest flag; absent means fall back to the name heuristic below. */
   isForest?: boolean;
-  /** Community-sourced shallows flag — terrain both land units and ships cross. Orthogonal to `isWater`, read only by the beach depth rule; absent means not hybrid, deliberately with no name heuristic (see `terrainDepth`). */
+  /** Community-sourced shallows flag, terrain both land units and ships cross. Orthogonal to `isWater`, read only by the beach depth rule; absent means not hybrid, deliberately with no name heuristic (see `terrainDepth`). */
   isHybrid?: boolean;
-  /** Community-sourced beach flag — the sand itself, not the ground on either side of it. Read by the `shore` habitat; absent means not beach. */
+  /** Community-sourced beach flag, the sand itself, not the ground on either side of it. Read by the `shore` habitat; absent means not beach. */
   isBeach?: boolean;
-  /** The terrain automatically written where THIS terrain borders anything deeper than itself, or null for a terrain that never grows a beach. Absent means fall back to `DEFAULT_BEACH_TERRAIN` for anything that is not open water — see `beachTerrainFor`. */
+  /** The terrain automatically written where THIS terrain borders anything deeper than itself, or null for a terrain that never grows a beach. Absent means fall back to `DEFAULT_BEACH_TERRAIN` for anything that is not open water, see `beachTerrainFor`. */
   beachTerrain?: number | null;
 }
 
 // ---------------------------------------------------------------------------
-// Terrain reference resolution — ONE implementation, called by every stage
+// Terrain reference resolution, ONE implementation, called by every stage
 // ---------------------------------------------------------------------------
 
 /**
@@ -282,7 +282,7 @@ export interface TerrainConstantForMasks {
  *
  * 1. **A bare id** (`terrain_type 26`). Used because only 78 of DE's 131
  *    terrains have a constant at all; the rest have no other way to be
- *    named. A number IS the id — there is nothing to look up, and in
+ *    named. A number IS the id, there is nothing to look up, and in
  *    particular an id our reference data has never heard of still resolves,
  *    per CLAUDE.md's positive-resolver rule (absence from our data is not
  *    evidence the terrain does not exist).
@@ -294,7 +294,7 @@ export interface TerrainConstantForMasks {
  *    redefines a built-in name does not actually take effect in game and
  *    must not take effect here either.
  *
- * Returns undefined only when the value is a string that matches nothing —
+ * Returns undefined only when the value is a string that matches nothing,
  * which is a real "this map's reference data doesn't know that terrain",
  * unlike the false one every stage used to report for forms 1 and 3.
  */
@@ -314,7 +314,7 @@ export function resolveTerrainId(
   // Form 4 (BUG-015): `#const TERR_CORNER GRASS2`, then `create_terrain
   // TERR_CORNER`. The alias's target is a NAME, so it could never live in
   // `symbols`, and dropping it made this function report that our reference
-  // data does not know GRASS2 — which it does, as id 12.
+  // data does not know GRASS2, which it does, as id 12.
   //
   // ONE HOP, and only against the TERRAIN table. Chasing further would let
   // `#const A B` + `#const B C` walk a chain the engine does not walk (its
@@ -339,14 +339,14 @@ function terrainIdByName(constants: readonly TerrainConstantForMasks[], name: st
 // interim fallback: "(*WATER*, *FOREST*/*JUNGLE*/BAMBOO...)".
 //
 // THE DATA NOW EXISTS and the heuristic has been demoted to what its own spec
-// text always called it — a fallback. `isWater`/`isForest` are transcribed
+// text always called it, a fallback. `isWater`/`isForest` are transcribed
 // from the community DE terrain table (Zetnus, reference-docs/), which lists
 // per-terrain building and pathing rules for all 131 terrains. That matters
 // because the heuristic is not merely incomplete, it is wrong in both
 // directions: it cannot see the 53 unnamed terrains AT ALL (id 15 "Water 2D,
 // Shoreless" and id 90 "Forest, Reeds" have no constant to match), it reads
 // DLC_MANGROVESHALLOW as dry land when it is a shallow, and it reads
-// BLACK_WALKABLE — no water anywhere in the concept — as nothing while
+// BLACK_WALKABLE, no water anywhere in the concept, as nothing while
 // missing "Forest, Oak Bush" entirely.
 //
 // The patterns stay, and stay narrow, for terrains whose entry carries no
@@ -388,7 +388,7 @@ function classify(facts: TerrainFacts | undefined, pattern: RegExp, flag: boolea
 
 /**
  * Is this terrain id water? The single-terrain question `waterMask` answers
- * for a whole grid — used where there is no grid to scan, such as
+ * for a whole grid, used where there is no grid to scan, such as
  * `base_elevation`'s "doesn't work on water lands" rule (guide:959), which
  * has only the land's declared `terrain_type` to go on.
  */
@@ -402,7 +402,7 @@ export function isWaterTerrain(constants: readonly TerrainConstantForMasks[], te
 }
 
 // ---------------------------------------------------------------------------
-// Terrain depth (land / hybrid / water) — read only by the automatic beach rule
+// Terrain depth (land / hybrid / water), read only by the automatic beach rule
 // ---------------------------------------------------------------------------
 
 /**
@@ -414,8 +414,8 @@ export function isWaterTerrain(constants: readonly TerrainConstantForMasks[], te
  *
  * WHY THIS IS NOT `isWater`, and why `isWater` is untouched by it. The two
  * flags answer different questions and disagree in both directions. `isWater`
- * is the placement question every other stage asks — can a house go here, does
- * a cliff avoid it, is an object out of its habitat — and by that reading a
+ * is the placement question every other stage asks, can a house go here, does
+ * a cliff avoid it, is an object out of its habitat, and by that reading a
  * shallow IS water (`SHALLOW.isWater` is true, and cliffs and objects must keep
  * treating it that way). Depth is the question only this rule asks, and by that
  * reading a shallow is neither: `DLC_MANGROVESHALLOW` is buildable, walkable
@@ -427,7 +427,7 @@ export function isWaterTerrain(constants: readonly TerrainConstantForMasks[], te
  * derived from it: all ten hybrid rows land here whichever way their `isWater`
  * flag reads.
  *
- * **No name heuristic, deliberately** — unlike `isWater` and `isForest`, whose
+ * **No name heuristic, deliberately**, unlike `isWater` and `isForest`, whose
  * fallback patterns exist because the community table left gaps this generator
  * had to guess across. It has no gaps here: every one of the 131 rows carries
  * an explicit `isHybrid`, and no pattern could work anyway, since
@@ -439,7 +439,7 @@ export const DEPTH_LAND = 0;
 export const DEPTH_HYBRID = 1;
 export const DEPTH_WATER = 2;
 
-/** The depth of one terrain id — the single-terrain question `waterDepthMask` answers for a whole grid. */
+/** The depth of one terrain id, the single-terrain question `waterDepthMask` answers for a whole grid. */
 export function terrainDepth(constants: readonly TerrainConstantForMasks[], terrainId: number | undefined): number {
   if (terrainId === undefined) return DEPTH_LAND;
   for (const entry of constants) {
@@ -451,7 +451,7 @@ export function terrainDepth(constants: readonly TerrainConstantForMasks[], terr
 }
 
 /**
- * Is this terrain one of the nine beach terrains — the sand itself, rather
+ * Is this terrain one of the nine beach terrains, the sand itself, rather
  * than the ground on either side of it?
  *
  * Distinct from "grows no beach", which is what `beachTerrainFor` returning
@@ -511,7 +511,7 @@ export function waterDepthMask(grid: TileGrid, constants: readonly TerrainConsta
  *
  * This is ENGINE BEHAVIOUR, not a command: nothing in the script asks for it,
  * and the community DE terrain table states it on the beach terrains' own rows
- * — id 2 "automatically placed when land terrains border water", id 37
+ * ; id 2 "automatically placed when land terrains border water", id 37
  * "created when snowy terrains border water". `create_terrain`'s
  * `beach_terrain` attribute (guide:1483) overrides it per command, and that
  * attribute's documented default of BEACH is exactly this rule showing
@@ -519,7 +519,7 @@ export function waterDepthMask(grid: TileGrid, constants: readonly TerrainConsta
  * being two features that happen to write beaches.
  *
  * The fallback for a terrain our data has never heard of is
- * `DEFAULT_BEACH_TERRAIN` unless it is OPEN water — deliberately NOT "no
+ * `DEFAULT_BEACH_TERRAIN` unless it is OPEN water, deliberately NOT "no
  * beach". CLAUDE.md's positive-resolver rule cuts this way: a script can write
  * any bare id it likes and 88 of the 131 known rows say BEACH, so "no beach"
  * would be the rarer answer dressed up as caution, and it fails visibly (a
@@ -528,7 +528,7 @@ export function waterDepthMask(grid: TileGrid, constants: readonly TerrainConsta
  * "Open water" and not "water" is the whole of the hybrid change here. A
  * shallow reads `isWater` true and grows a beach anyway, on the side facing
  * deeper water, so the fallback asks `terrainDepth` rather than
- * `isWaterTerrain` — otherwise the seven shallows that carry an explicit
+ * `isWaterTerrain`, otherwise the seven shallows that carry an explicit
  * `beachTerrain` would be answered from data while an unrecognised shallow was
  * answered "never" by a rule that predates the distinction.
  */
@@ -540,7 +540,7 @@ export function beachTerrainFor(constants: readonly TerrainConstantForMasks[], t
     if (entry.category !== "terrain" || entry.constId !== terrainId) continue;
     // `null` is a real answer ("this terrain grows no beach") and must not be
     // confused with the field being absent, which is why the check is
-    // `!== undefined` rather than a truthiness test — 0 is a terrain id too.
+    // `!== undefined` rather than a truthiness test, 0 is a terrain id too.
     if (entry.beachTerrain !== undefined) return entry.beachTerrain ?? undefined;
     return terrainDepth(constants, terrainId) === DEPTH_WATER ? undefined : DEFAULT_BEACH_TERRAIN;
   }
@@ -553,7 +553,7 @@ export interface MaskResult {
   usedHeuristic: boolean;
 }
 
-/** `isWater` per Sec.4's "water mask" — 1 where the tile's terrain is water. */
+/** `isWater` per Sec.4's "water mask", 1 where the tile's terrain is water. */
 export function waterMask(grid: TileGrid, constants: readonly TerrainConstantForMasks[]): MaskResult {
   const facts = terrainFactIndex(constants);
   const mask = new Uint8Array(grid.dim * grid.dim);
@@ -580,14 +580,14 @@ export function waterMask(grid: TileGrid, constants: readonly TerrainConstantFor
  * Sec.4's forest-zone mask, guide `place_on_forest_zone` semantics: a tile
  * whose OWN terrain is forest-flagged, OR that holds a placed tree object, OR
  * that is adjacent to either. "Adjacency" here is the full 8-neighbourhood
- * (Moore), not the 4-connected rule this module uses for growth/BFS — a zone
+ * (Moore), not the 4-connected rule this module uses for growth/BFS, a zone
  * is a region you can stand at the edge of diagonally and still be "in the
  * treeline", which is a different claim from "grown by 4-adjacent steps".
  * Unmeasured against the engine (no RMSTEST exists for this yet); flagged
  * rather than silently assumed identical to the growth connectivity.
  *
  * `treeObjectTiles` is the objects stage's own output (Sec.6.6, not built
- * yet) — this function takes it as a plain tile-index list rather than
+ * yet), this function takes it as a plain tile-index list rather than
  * reaching into a PlacedObject array, so it has no dependency on that stage
  * existing yet and no dependency on object categories beyond "is a tree".
  */
@@ -651,7 +651,7 @@ export function forestZoneMask(
  * A tile is "sloped" when any of its in-bounds 4-neighbours carries a
  * different `elevation` value. Built for S3's cliff-placement rule ("cliffs
  * avoid any slopes") and reused as-is by S4's `set_flat_terrain_only`
- * ("only paints this terrain onto flat ground") — both stages run after S2,
+ * ("only paints this terrain onto flat ground"), both stages run after S2,
  * so `grid.elevation` is already final by the time either calls this.
  */
 export function computeSlopeMask(grid: TileGrid): Uint8Array {

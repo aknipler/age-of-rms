@@ -1,7 +1,7 @@
 /**
  * Host-side protocol enforcement (tools-api-design.md Sec.4.2, Sec.4.5, Sec.5).
  *
- * Pure — no React, no Monaco, no Tauri — so it runs in plain-Node Vitest and
+ * Pure, no React, no Monaco, no Tauri, so it runs in plain-Node Vitest and
  * could run in the worker shim. Every rule here exists because `ToolMessage` is
  * a TypeScript type, which is a COMPILE-TIME FICTION for an external process: a
  * v1.1 tool can emit malformed JSON, well-formed JSON that is not a
@@ -17,6 +17,8 @@ import {
   TOOLS_API_VERSION,
   type Capability,
   type OutputBlock,
+  type OverlayRole,
+  type OverlayShape,
   type ParamValue,
   type Span,
   type TextEdit,
@@ -46,9 +48,71 @@ function isSpan(v: unknown): v is Span {
   return isRecord(v) && isFiniteNumber(v.start) && isFiniteNumber(v.end);
 }
 
-/** `null` is a legal rowSpans entry — it means "this row has no code to jump to". */
+/** `null` is a legal rowSpans entry, it means "this row has no code to jump to". */
 function isSpanOrNull(v: unknown): v is Span | null {
   return v === null || isSpan(v);
+}
+
+const OVERLAY_ROLES = new Set<OverlayRole>(["primary", "secondary", "warning", "error", "muted"]);
+function isOverlayRole(v: unknown): v is OverlayRole {
+  return typeof v === "string" && OVERLAY_ROLES.has(v as OverlayRole);
+}
+
+/**
+ * The intersection (not a bare `{x,y}`) is deliberate: `checkOverlayShape`
+ * calls this on the WHOLE shape object for point/circle/label/handle, and a
+ * bare-object predicate would narrow away every OTHER field TS already knew
+ * the record could have (radiusPx, rTiles, cursor, ...), reporting them as
+ * nonexistent even though the runtime object still carries them.
+ */
+function isTilePoint(v: unknown): v is Record<string, unknown> & { x: number; y: number } {
+  return isRecord(v) && isFiniteNumber(v.x) && isFiniteNumber(v.y);
+}
+
+/**
+ * Sec.3.4 layer 2. Never trusts the discriminant, same rule as
+ * `checkOutputBlock`, an external tool can send a "handle" shape with no
+ * `id`, which the type says is required and JSON cannot enforce.
+ */
+function checkOverlayShape(shape: unknown, index: number): string | null {
+  if (!isRecord(shape)) return `shape ${index} is not an object`;
+  if (shape.id !== undefined && typeof shape.id !== "string") return `shape ${index} has a non-string id`;
+  if (!isOverlayRole(shape.role)) return `shape ${index} has an out-of-enum role`;
+  switch (shape.kind) {
+    case "point":
+      if (!isTilePoint(shape)) return `shape ${index} (point) has non-numeric x/y`;
+      if (shape.radiusPx !== undefined && !isFiniteNumber(shape.radiusPx)) return `shape ${index} (point) has a non-numeric radiusPx`;
+      return null;
+    case "circle":
+      if (!isTilePoint(shape)) return `shape ${index} (circle) has non-numeric x/y`;
+      if (!isFiniteNumber(shape.rTiles)) return `shape ${index} (circle) has a non-numeric rTiles`;
+      if (shape.fill !== undefined && typeof shape.fill !== "boolean") return `shape ${index} (circle) has a non-boolean fill`;
+      return null;
+    case "line":
+      if (!isTilePoint(shape.from)) return `shape ${index} (line) has a malformed 'from'`;
+      if (!isTilePoint(shape.to)) return `shape ${index} (line) has a malformed 'to'`;
+      if (shape.dashed !== undefined && typeof shape.dashed !== "boolean") return `shape ${index} (line) has a non-boolean dashed`;
+      return null;
+    case "polyline":
+      if (!Array.isArray(shape.points) || !shape.points.every(isTilePoint)) {
+        return `shape ${index} (polyline) has a non-tile-point in points`;
+      }
+      if (shape.closed !== undefined && typeof shape.closed !== "boolean") return `shape ${index} (polyline) has a non-boolean closed`;
+      return null;
+    case "label":
+      if (!isTilePoint(shape)) return `shape ${index} (label) has non-numeric x/y`;
+      if (typeof shape.text !== "string") return `shape ${index} (label) has no text`;
+      return null;
+    case "handle":
+      if (typeof shape.id !== "string") return `shape ${index} (handle) has no id`;
+      if (!isTilePoint(shape)) return `shape ${index} (handle) has non-numeric x/y`;
+      if (shape.cursor !== undefined && shape.cursor !== "move" && shape.cursor !== "ew-resize" && shape.cursor !== "grab") {
+        return `shape ${index} (handle) has an out-of-enum cursor`;
+      }
+      return null;
+    default:
+      return `shape ${index} has an unknown kind ${JSON.stringify(shape.kind)}`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +138,7 @@ export function validateManifest(manifest: ToolManifest): ManifestProblem[] {
   const id = manifest.id;
   const fail = (message: string) => problems.push({ manifestId: id, message });
 
-  // Must REJECT, not warn — otherwise v1.1 tools will depend on leniency.
+  // Must REJECT, not warn, otherwise v1.1 tools will depend on leniency.
   if (manifest.apiVersion !== TOOLS_API_VERSION) {
     fail(`declares apiVersion ${manifest.apiVersion}; this host implements ${TOOLS_API_VERSION}`);
   }
@@ -255,6 +319,23 @@ function checkOutputBlock(block: unknown, index: number): string | null {
       if (typeof block.text !== "string") return `${where} (codeRef) has no text`;
       if (!isSpan(block.span)) return `${where} (codeRef) has a malformed span`;
       return null;
+    case "mapOverlay": {
+      if (!Array.isArray(block.shapes)) return `${where} (mapOverlay) has no shapes`;
+      if (block.interactive !== undefined && typeof block.interactive !== "boolean") {
+        return `${where} (mapOverlay) has a non-boolean interactive`;
+      }
+      // Sec.3.7: over-cap TRUNCATES rather than rejects, so this checks each
+      // shape up to the cap only, a block over the cap is not itself a
+      // protocol violation, `overlayShapesToRender` is what enforces it at
+      // render time, same split `checkOutput`'s block-count cap and
+      // `tableRowsToRender`'s row cap already have.
+      const toCheck = block.shapes.slice(0, LIMITS.maxOverlayShapesPerBlock);
+      for (let i = 0; i < toCheck.length; i++) {
+        const problem = checkOverlayShape(toCheck[i], i);
+        if (problem) return `${where} (mapOverlay) ${problem}`;
+      }
+      return null;
+    }
     default:
       return `${where} has an unknown kind ${JSON.stringify(block.kind)}`;
   }
@@ -339,7 +420,7 @@ export function parseInboundLine(line: string): MessageCheck {
 /**
  * Outbound (host→tool) `run` context cap (Sec.4.2 rule 2). Checked before the
  * context ever reaches a runner, so an in-process built-in and a worker-backed
- * tool fail identically — exceeding it is a host-side error, never a silent
+ * tool fail identically, exceeding it is a host-side error, never a silent
  * truncation.
  */
 export function checkOutboundContextSize(contextJson: unknown): string | null {
@@ -361,7 +442,7 @@ export type EditCheck = { ok: true } | { ok: false; problem: string };
  * and the staleness guard alone does not catch same-version garbage.
  *
  * Note what is not validated here: ordering. "Sorted descending by start" reads
- * as load-bearing and is not — descending order is what manual string splicing
+ * as load-bearing and is not, descending order is what manual string splicing
  * needs, whereas `pushEditOperations` takes ranges in original coordinates and
  * handles ordering itself. What Monaco does require is NON-OVERLAP, which is
  * what this checks.
@@ -399,6 +480,19 @@ export function effectiveCapabilities(declared: readonly Capability[]): Set<Capa
 export function tableRowsToRender(rows: readonly string[][]): { rows: readonly string[][]; hidden: number } {
   if (rows.length <= LIMITS.maxTableRowsRendered) return { rows, hidden: 0 };
   return { rows: rows.slice(0, LIMITS.maxTableRowsRendered), hidden: rows.length - LIMITS.maxTableRowsRendered };
+}
+
+/**
+ * Sec.3.7: "over-budget truncates and says so; it never rejects." `hidden`
+ * is returned even at 0, the pane prints the count UNCONDITIONALLY, because
+ * a filtered overlay and an empty one are different claims and the
+ * sentence's absence must never be what carries the information (the same
+ * lesson `consistency-checker-design.md`'s first human read of its output
+ * paid for).
+ */
+export function overlayShapesToRender(shapes: readonly OverlayShape[]): { shapes: readonly OverlayShape[]; hidden: number } {
+  if (shapes.length <= LIMITS.maxOverlayShapesPerBlock) return { shapes, hidden: 0 };
+  return { shapes: shapes.slice(0, LIMITS.maxOverlayShapesPerBlock), hidden: shapes.length - LIMITS.maxOverlayShapesPerBlock };
 }
 
 export type { OutputBlock, ToolOutput };

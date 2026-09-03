@@ -1,6 +1,6 @@
 import styles from "./SettingsDialog.module.css";
 
-// Static text, no controls — the only settings tab with nothing to set. It
+// Static text, no controls, the only settings tab with nothing to set. It
 // lives here rather than in a Help > About dialog because the tab strip
 // already exists and a second modal would be a whole window's worth of
 // chrome for two paragraphs.

@@ -7,7 +7,7 @@
  * nothing else, so the engine can be driven from a test, a script, or a future
  * settings page without knowing a params form exists.
  *
- * Pure — src/parser types only, no React/Monaco/Tauri — same rule as
+ * Pure, src/parser types only, no React/Monaco/Tauri, same rule as
  * src/parser/**, so it runs in plain-Node Vitest and in a worker.
  */
 
@@ -32,7 +32,7 @@ export type IndentStylePolicy = "preserve" | "tab" | "2 spaces" | "4 spaces";
  * The same shape as Sec.3's inline/expanded question and it gets the same
  * answer. Measured 2026-08-24 over the 49 corpus scripts that have sections:
  * 88 of 265 section bodies are indented, and the split is per FILE, not per
- * author-mood — 33 scripts never indent one, 13 indent every single one
+ * author-mood, 33 scripts never indent one, 13 indent every single one
  * (eleven of them DE official maps), 3 are mixed. So there is no majority to
  * normalise toward, only two conventions, and `preserve` classifies each
  * section from the source.
@@ -45,7 +45,7 @@ export type BraceStylePolicy = "preserve" | "ownLine" | "sameLine";
 /**
  * What happens to horizontal whitespace between two tokens that were on one
  * source line and stay on one output line. `preserve` keeps deliberate column
- * alignment (design Sec.5.2 — 10% of corpus lines have some).
+ * alignment (design Sec.5.2, 10% of corpus lines have some).
  */
 export type IntraLineSpacingPolicy = "preserve" | "collapse";
 
@@ -57,7 +57,7 @@ export interface FormatOptions {
    * Resolved command names always laid out expanded / inline, overriding
    * `blockLayout`. Matched against `CommandNode.def.name`, so `#const L 32`
    * followed by `L { … }` matches "create_land" (live in 24hr_Holler.rms).
-   * A name in both lists is EXPANDED — a manifest cannot express a
+   * A name in both lists is EXPANDED, a manifest cannot express a
    * cross-param constraint, so the tie-break is documented, not validated.
    */
   alwaysExpand: readonly string[];
@@ -102,7 +102,7 @@ export const DEFAULT_FORMAT_OPTIONS: Readonly<FormatOptions> = Object.freeze({
 /**
  * What one tab counts as when measuring a line against `inlineMaxWidth`.
  *
- * A guess about the reader's editor, and unavoidably so — the file does not
+ * A guess about the reader's editor, and unavoidably so. The file does not
  * record a tab stop. It affects ONLY the `compact` fit decision; nothing the
  * formatter writes depends on it.
  */
@@ -143,7 +143,7 @@ export function detectLineEnding(source: string): "\n" | "\r\n" {
  * The 0-based lines whose leading whitespace is evidence about how the AUTHOR
  * indents code.
  *
- * A line qualifies when a token starts it — only whitespace to its left — and
+ * A line qualifies when a token starts it, only whitespace to its left, and
  * that token is not the continuation of a comment already in progress. The
  * exclusion is the whole point: the inside of a multi-line comment is prose,
  * an ASCII-art box or an aligned table, and its columns say nothing about the
@@ -151,12 +151,12 @@ export function detectLineEnding(source: string): "\n" | "\r\n" {
  * is inset by three, and reading every raw line made the unit three spaces.
  *
  * A comment that OPENS on its own line still counts. Authors indent those with
- * the code they introduce, which is the same evidence a command carries — and
+ * the code they introduce, which is the same evidence a command carries, and
  * Sec.4.4's comment groups depend on exactly that being deliberate.
  *
  * Incidence, corpus of 51 scripts, 2026-08-24: this changes the answer on ONE
  * file, `sample.rms`. It is fixed anyway because the failure mode does not
- * scale with the corpus — it scales with how much of a short script is header
+ * scale with the corpus. It scales with how much of a short script is header
  * comment, and a new map is mostly header comment.
  */
 function evidenceLines(source: string, tokens: readonly Token[]): Set<number> {

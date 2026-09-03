@@ -7,21 +7,21 @@ import styles from "./UnsavedChangesDialog.module.css";
  *
  * This is a TypeScript *union of string literals*: a `UnsavedChoice` value can
  * only ever be one of these exact three strings. It's the idiomatic way to
- * model "one of a fixed set of outcomes" — better than a plain `string`
+ * model "one of a fixed set of outcomes", better than a plain `string`
  * (which would let a typo like "discrad" compile) and lighter than an enum.
  * The compiler also uses it to check that every `switch`/`if` chain handles
  * all three cases.
  */
 export type UnsavedChoice = "save" | "discard" | "cancel";
 
-/** Which action prompted the dialog. Only the wording differs — see LABELS. */
+/** Which action prompted the dialog. Only the wording differs, see LABELS. */
 export type UnsavedAction = "close" | "open" | "new";
 
 /**
  * Per-action wording. `Record<UnsavedAction, …>` is a *mapped type*: it forces
  * this object to have exactly one entry per member of the union, so adding a
  * third action (say "new") becomes a compile error here until its labels are
- * written. That's the point — it makes the type system enforce the thing a
+ * written. That's the point, it makes the type system enforce the thing a
  * human would otherwise forget.
  */
 const LABELS: Record<UnsavedAction, { save: string; discard: string; question: string }> = {
@@ -43,7 +43,7 @@ const LABELS: Record<UnsavedAction, { save: string; discard: string; question: s
 };
 
 interface UnsavedChangesDialogProps {
-  /** Which action triggered this — selects the button wording. */
+  /** Which action triggered this, selects the button wording. */
   action: UnsavedAction;
   /** Map name, shown so the user knows *what* is unsaved. */
   mapName: string;
@@ -52,18 +52,18 @@ interface UnsavedChangesDialogProps {
 }
 
 /**
- * Modal shown when an action would discard unsaved changes — closing the
+ * Modal shown when an action would discard unsaved changes, closing the
  * window, or opening a different map.
  *
  * Why this is a custom in-app modal rather than Tauri's native `confirm()`:
  * a native confirm returns a *boolean*, which cannot express three outcomes,
- * and — the actual bug it caused — gives no way to tell an explicit "No"
+ * and, the actual bug it caused, gives no way to tell an explicit "No"
  * click apart from the user dismissing the dialog (Esc / the X). The old
  * code therefore had to collapse to a 2-way choice to avoid silently
  * discarding work. Owning the markup means we control the button semantics
  * exactly, so "dismiss" can safely mean "cancel".
  *
- * Every dismissal path — the X, Esc, and clicking the backdrop — resolves to
+ * Every dismissal path, the X, Esc, and clicking the backdrop, resolves to
  * `"cancel"`: the action is abandoned and nothing is saved or discarded.
  * That is the safe default; the only ways to lose work are explicit clicks.
  */
@@ -84,7 +84,7 @@ export function UnsavedChangesDialog({ action, mapName, onChoice }: UnsavedChang
 
   // Keyboard handling, registered on `window` so it works no matter what
   // has focus. The cleanup function returned from useEffect removes the
-  // listener when the dialog unmounts — without it, every open/close cycle
+  // listener when the dialog unmounts, without it, every open/close cycle
   // would leave another live listener behind (a leak that also causes
   // double-handling).
   useEffect(() => {

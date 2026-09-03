@@ -2,7 +2,7 @@
 // corpus so BUG-005's numbers can be re-derived rather than quoted from memory.
 // Run with: npx vitest run src/parser/__tests__/rms0200.measure.test.ts
 //
-// It asserts only the one thing the fix must not break — that every diagnostic
+// It asserts only the one thing the fix must not break, that every diagnostic
 // carrying a suggestion still says so. Everything else it reports.
 
 import { describe, it, expect } from "vitest";
@@ -81,7 +81,7 @@ describe("RMS0200 corpus split (BUG-005 piece 1)", () => {
     // question from the wording split above. 61/62 produced a model in which an
     // unrecognised word's block MERGES into the command before it, silently
     // rewriting it. Only a word that OPENS A BLOCK can do that, so the sites at
-    // risk are exactly the unknown commands carrying one — a strict subset of
+    // risk are exactly the unknown commands carrying one, a strict subset of
     // RMS0200, and the number that says whether the merge matters on real maps.
     // Split by name, since resolving an alias removes it from this population
     // without touching the merge question at all.
@@ -109,8 +109,8 @@ describe("RMS0200 corpus split (BUG-005 piece 1)", () => {
     // 30 s, not Vitest's 5 s default. This walks and parses all 52 corpus maps;
     // it took 3.5 s alone and 6.3 s inside a full suite run, i.e. it FAILED the
     // default timeout on 2026-08-04 purely from machine load. Same defect class
-    // as the Vanguard benchmark in CLAUDE.md's tracked debt — a wall clock on a
-    // shared machine measures the machine — except this one is a reporter with
+    // as the Vanguard benchmark in CLAUDE.md's tracked debt, a wall clock on a
+    // shared machine measures the machine, except this one is a reporter with
     // no assertion worth timing at all, so the timeout is pure headroom.
   }, 30_000);
 });

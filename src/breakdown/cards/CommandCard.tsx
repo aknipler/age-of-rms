@@ -14,7 +14,7 @@ import styles from "./CommandCard.module.css";
 
 // Split out from CommandCard's args.map() specifically so
 // useDiagnosticHover (a real hook) has a real per-item component
-// instance to attach to — calling a hook once per loop iteration inside
+// instance to attach to. Calling a hook once per loop iteration inside
 // an inline .map() callback breaks React's hook-call-order guarantee the
 // moment the argument count changes (adding/removing a positional arg),
 // which does happen here via AttributeValueEditor's commits.
@@ -31,7 +31,7 @@ function ArgRow({
   commandName: string;
   diagnostics: readonly Diagnostic[];
 }) {
-  // Same per-field highlighting AttributeInstanceRow gets — a positional
+  // Same per-field highlighting AttributeInstanceRow gets, a positional
   // argument's own diagnostic (e.g. an out-of-range value) previously
   // only showed as the card-header ProblemBadge, indistinguishable from
   // a problem on a totally different argument or attribute.
@@ -39,7 +39,7 @@ function ArgRow({
   const argMessage = argSeverity
     ? diagnosticsWithin(diagnostics, arg.span).map((d) => d.message).join("\n")
     : undefined;
-  // Custom-positioned popup instead of a native `title` — see
+  // Custom-positioned popup instead of a native `title`, see
   // DiagnosticTooltip.tsx: a browser tooltip can't be repositioned, so it
   // was free to land on top of a HelpTip popup opened by the argument
   // label/value editor nested in this same row.
@@ -53,7 +53,7 @@ function ArgRow({
       {argSeverity && diagHover.hovering && (
         <DiagnosticPopup message={argMessage!} severity={argSeverity} side={diagHover.side} />
       )}
-      {/* .argLabelSlot (not .argLabel) is the fixed-width column — see
+      {/* .argLabelSlot (not .argLabel) is the fixed-width column, see
           AttributeRow.module.css's .labelSlot comment for why this can't
           live on .argLabel itself (it's nested inside HelpTip, which is
           the actual flex item once help mode is on). */}
@@ -71,7 +71,7 @@ interface CommandCardProps {
   command: CommandNode;
 }
 
-// docs/breakdown-design.md Sec.3.3 — the workhorse card. Collapsed/expanded
+// docs/breakdown-design.md Sec.3.3, the workhorse card. Collapsed/expanded
 // with the all-attributes model in the expanded body. Wired to the patch
 // engine as of 3.4: delete, positional-arg edits, and (via AttributeRow)
 // attribute set/add/delete/toggle all construct real EditIntents.
@@ -86,7 +86,7 @@ export function CommandCard({ command }: CommandCardProps) {
   const known = command.def !== undefined;
   // Sec.3.3's unknown-name boundary has two cases with a did-you-mean
   // Diagnostic.suggestion: a bare RawNode (RawCard's Fix button, wired in
-  // 3.4) and this one — a def-less CommandNode via the word+`{` upgrade.
+  // 3.4) and this one, a def-less CommandNode via the word+`{` upgrade.
   // Both got the same suggestion field from unknownName(), but only
   // RawCard's fix path got wired originally; this closes that gap.
   const suggestion = !known ? diagnosticsWithin(diagnostics, command.span).find((d) => d.suggestion)?.suggestion : undefined;
@@ -102,7 +102,7 @@ export function CommandCard({ command }: CommandCardProps) {
 
   // known-but-block-less (a block-kind command written bare, e.g.
   // `create_terrain FOREST` with no `{ }` at all) still gets the full
-  // all-attributes list, every slot absent — buildCommandBreakdown
+  // all-attributes list, every slot absent. buildCommandBreakdown
   // handles `command.block === undefined` internally. This is what makes
   // the Sec.4.6 brace-synthesis path reachable: clicking "add" on an absent
   // slot targets the CommandNode itself (attributeTarget below) and
@@ -111,7 +111,7 @@ export function CommandCard({ command }: CommandCardProps) {
   // Def-less commands still render positional args + any block contents
   // generically (Other contents), preserving total coverage (Sec.3.3's
   // unknown-name boundary: this path is ONLY reached for a block-attached
-  // unknown command, i.e. word immediately followed by `{` — a bare
+  // unknown command, i.e. word immediately followed by `{`, a bare
   // unknown name never becomes a def-less CommandNode, it's a RawNode,
   // see cardKind.ts/ItemCard.tsx).
   const genericOtherContents = !known && command.block ? command.block.items : [];
@@ -160,11 +160,11 @@ export function CommandCard({ command }: CommandCardProps) {
             type="button"
             className={cardStyles.deleteButton}
             onClick={(e) => {
-              // Deleting a card must never change selection by itself — only
+              // Deleting a card must never change selection by itself. Only
               // deleting the card that IS currently selected should clear it
               // (via the existing anchor-drop rule). Without stopPropagation
               // this click bubbles to ItemCard's wrapper, which would select
-              // THIS card an instant before removing it — stealing selection
+              // THIS card an instant before removing it, stealing selection
               // away from whatever else was actually selected.
               e.stopPropagation();
               applyEdit({ kind: "removeNode", node: command });

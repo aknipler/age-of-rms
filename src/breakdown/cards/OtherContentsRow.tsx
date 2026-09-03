@@ -6,7 +6,7 @@ import { ItemCard } from "./ItemCard";
  * Renders one item of a command block's "Other contents" group (Sec.3.3(c)):
  * known-but-unlisted AttributeNodes get the same typed row as a listed
  * attribute but with NO badge (a badge would be Breakdown-invented
- * validation — the parser attaches no diagnostic to this case at all,
+ * validation, the parser attaches no diagnostic to this case at all,
  * Sec.5's rule). Everything else (nested conditionals, directives, raw
  * runs, wrong-context commands) uses the normal per-kind card via
  * ItemCard, same as a top-level block item.

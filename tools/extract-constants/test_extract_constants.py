@@ -15,32 +15,43 @@ from pathlib import Path
 
 from extract_constants import (
     CLASS_CONST_BASE,
+    MISC_FAMILY_SECTIONS,
     ExtractedObject,
     ExtractedPlacement,
     ExtractedTerrain,
+    MiscConstant,
     build_class_entries,
+    build_misc_entries,
     build_unit_lookup,
     class_constants,
     class_descriptive_name,
     clean_dat_filename,
     corpse_unit_ids,
+    merge_misc_families,
+    misc_descriptive_name,
+    misc_family_constants,
+    parse_constants_inc,
     parse_display_strings,
     roster_descriptive_name,
     storage_note,
+    compute_auto_tree_units,
     derive_habitat,
     format_constant,
     format_game_constants,
     format_preview_color,
     format_resource_amounts,
+    format_terrain_restrictions,
     habitat_note,
     merge_entry,
     merge_terrain_colors,
     merge_terrain_table,
+    merge_terrain_units,
     object_constants,
     parse_jasc_palette,
     parse_random_map_def,
     parse_random_map_def_sections,
     strip_rms_comments,
+    terrain_units_note,
     verify_class_offset,
 )
 
@@ -475,7 +486,11 @@ class TestRoundTripAgainstRepoFile(unittest.TestCase):
             self.skipTest(f"{REPO_GAME_CONSTANTS} not found (unexpected repo layout)")
         original = REPO_GAME_CONSTANTS.read_text(encoding="utf-8")
         data = json.loads(original)
-        reformatted = format_game_constants(data["constants"])
+        # terrainRestrictions (--terrain-units, 2026-09-02) has to round-trip
+        # through here too, or this test would pass while every OTHER mode's
+        # own round-trip silently dropped the table — see format_game_constants's
+        # own comment on why every caller has to pass it through.
+        reformatted = format_game_constants(data["constants"], data.get("terrainRestrictions"))
         self.assertEqual(reformatted, original)
 
 
@@ -804,6 +819,155 @@ class TestMergeTerrainTable(unittest.TestCase):
         self.assertLess(text.index("habitat"), text.index("verified"))
 
 
+class TestComputeAutoTreeUnits(unittest.TestCase):
+    """The `--terrain-units` pure derivation: raw dat slots -> the schema's
+    `autoTreeUnits` shape. No dat access — `wood_by_unit` is precomputed by
+    the caller, same split `derive_habitat` uses against `placement`."""
+
+    def test_converts_permille_density_to_0_1(self):
+        result = compute_auto_tree_units([(411, 1000)], {411: 100.0})
+        self.assertEqual(result, [{"objectId": 411, "density": 1.0}])
+
+    def test_drops_a_cosmetic_zero_wood_slot(self):
+        # PINE_FOREST's real shape: two 0-density decorative bush slots ahead
+        # of the real tree, per the plan's own measured table.
+        result = compute_auto_tree_units([(302, 0), (1053, 0), (350, 1000)], {350: 100.0})
+        self.assertEqual(result, [{"objectId": 350, "density": 1.0}])
+
+    def test_drops_a_slot_whose_unit_carries_no_wood_at_all(self):
+        # wood_by_unit simply has no entry — an unresolved or non-wood unit.
+        result = compute_auto_tree_units([(999, 500)], {})
+        self.assertEqual(result, [])
+
+    def test_preserves_slot_order_for_multi_slot_terrains(self):
+        # OAK_BUSH's real shape (constId 20): three real slots, first-hit-wins.
+        result = compute_auto_tree_units([(302, 200), (1053, 300), (349, 1000)], {302: 100.0, 1053: 100.0, 349: 100.0})
+        self.assertEqual(
+            result,
+            [
+                {"objectId": 302, "density": 0.2},
+                {"objectId": 1053, "density": 0.3},
+                {"objectId": 349, "density": 1.0},
+            ],
+        )
+
+    def test_calibrated_densities_match_the_files_own_prose(self):
+        # DLC_BAOBABFOREST: description says "200 wood per tree; 25% tree
+        # density" — the exact cross-check validate:reference now runs.
+        result = compute_auto_tree_units([(1052, 250)], {1052: 200.0})
+        self.assertEqual(result, [{"objectId": 1052, "density": 0.25}])
+
+    def test_empty_slot_list_gives_empty_result(self):
+        self.assertEqual(compute_auto_tree_units([], {}), [])
+
+
+class TestMergeTerrainUnits(unittest.TestCase):
+    def setUp(self):
+        self.entry = {
+            "constId": 10,
+            "rmsConstant": "FOREST",
+            "descriptiveName": "Forest, Oak",
+            "category": "terrain",
+            "isForest": True,
+            "isHybrid": False,
+            "verified": True,
+            "notes": "constId 10 confirmed via random_map.def.",
+        }
+        self.units = [{"objectId": 411, "density": 1.0}]
+
+    def test_writes_autoTreeUnits(self):
+        updated = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        self.assertEqual(updated["autoTreeUnits"], self.units)
+
+    def test_an_empty_result_removes_the_field_rather_than_writing_an_empty_array(self):
+        entry = dict(self.entry, autoTreeUnits=self.units)
+        updated = merge_terrain_units(entry, [], "2026-09-02")
+        self.assertNotIn("autoTreeUnits", updated)
+        # And touches nothing else — an empty result is "confirmed no wood
+        # here", not a fresh measurement worth a notes clause.
+        self.assertEqual(updated["notes"], entry["notes"])
+
+    def test_appends_a_provenance_clause_to_notes(self):
+        updated = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        self.assertIn(terrain_units_note("2026-09-02"), updated["notes"])
+        self.assertTrue(updated["notes"].startswith("constId 10 confirmed"))
+
+    def test_touches_no_other_field(self):
+        updated = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        self.assertEqual(updated["constId"], 10)
+        self.assertEqual(updated["isForest"], True)
+        self.assertEqual(updated["verified"], True)
+
+    def test_is_idempotent_across_runs(self):
+        once = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        twice = merge_terrain_units(once, self.units, "2026-09-02")
+        self.assertEqual(once, twice)
+
+    def test_is_idempotent_across_a_different_run_date(self):
+        # A re-run on a LATER date must replace, not stack, the clause.
+        once = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        twice = merge_terrain_units(once, self.units, "2026-10-01")
+        self.assertEqual(twice["notes"].count("autoTreeUnits extracted"), 1)
+        self.assertIn("2026-10-01", twice["notes"])
+
+    def test_does_not_mutate_input_entry(self):
+        merge_terrain_units(self.entry, self.units, "2026-09-02")
+        self.assertNotIn("autoTreeUnits", self.entry)
+
+    def test_does_not_alias_the_extracted_list(self):
+        updated = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        self.assertIsNot(updated["autoTreeUnits"], self.units)
+
+    def test_formats_and_round_trips(self):
+        updated = merge_terrain_units(self.entry, self.units, "2026-09-02")
+        text = format_constant(updated)
+        json.loads(text)
+        self.assertIn('"autoTreeUnits": [{"objectId": 411, "density": 1.0}]', text)
+        # isForest and its sibling sit next to each other, per CONSTANT_KEY_ORDER.
+        self.assertLess(text.index("isForest"), text.index("autoTreeUnits"))
+        self.assertLess(text.index("autoTreeUnits"), text.index("isHybrid"))
+
+
+class TestFormatTerrainRestrictions(unittest.TestCase):
+    def test_formats_and_round_trips(self):
+        rows = [
+            {"restrictionId": 0, "permittedTerrainIds": [0, 1, 2]},
+            {"restrictionId": 3, "permittedTerrainIds": []},
+        ]
+        text = format_terrain_restrictions(rows)
+        self.assertEqual(
+            text,
+            '    { "restrictionId": 0, "permittedTerrainIds": [0, 1, 2] },\n'
+            '    { "restrictionId": 3, "permittedTerrainIds": [] }',
+        )
+
+    def test_last_row_has_no_trailing_comma(self):
+        text = format_terrain_restrictions([{"restrictionId": 5, "permittedTerrainIds": [1]}])
+        self.assertFalse(text.rstrip().endswith(","))
+
+
+class TestFormatGameConstantsWithTerrainRestrictions(unittest.TestCase):
+    def test_omits_the_key_entirely_when_none_given(self):
+        text = format_game_constants([{"constId": 0, "rmsConstant": "GRASS", "descriptiveName": "Grass", "category": "terrain", "verified": True}])
+        self.assertNotIn("terrainRestrictions", text)
+        json.loads(text)
+
+    def test_omits_the_key_when_given_an_empty_list(self):
+        text = format_game_constants([], [])
+        self.assertNotIn("terrainRestrictions", text)
+
+    def test_includes_and_round_trips_a_real_table(self):
+        constants = [{"constId": 0, "rmsConstant": "GRASS", "descriptiveName": "Grass", "category": "terrain", "verified": True}]
+        restrictions = [{"restrictionId": 0, "permittedTerrainIds": [0, 1]}]
+        text = format_game_constants(constants, restrictions)
+        parsed = json.loads(text)
+        self.assertEqual(parsed["terrainRestrictions"], restrictions)
+        self.assertEqual(parsed["constants"], constants)
+        # constants close before terrainRestrictions opens, matching the
+        # hand-written file's own key order.
+        self.assertLess(text.index('"constants"'), text.index('"terrainRestrictions"'))
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -1088,3 +1252,309 @@ class TestCorpseUnitIds(unittest.TestCase):
         # claim about a row that does not exist.
         units = {40: FakeRosterUnit(id=40, dead_unit_id=999)}
         self.assertEqual(corpse_unit_ids(units), set())
+
+
+# ---------------------------------------------------------------------------
+# --misc-constants: the six random_map.def families object_constants/
+# attribute_constants skip, plus includes/constants.inc as a second source.
+# ---------------------------------------------------------------------------
+
+#: A miniature random_map.def covering all six families plus a decoy object
+#: section, so a test can check the families are picked up AND that nothing
+#: outside them leaks in.
+MISC_SAMPLE_DEF = """\
+/* random map types for AI */
+/* Numbers come from Object Category ID */
+/* 29 NOV 99 */
+
+#const ARABIA 9
+#const ARENA 29
+
+/* CLIFF TYPES */
+
+#const CT_GRANITE 0
+#const CT_SNOW 2
+
+/* SEASON TYPES */
+
+#const CC_DEFAULT 0
+#const CC_AUTUMN 1
+
+/* WATER DEFINITIONS */
+
+#const WD_DEFAULT 0
+#const WD_CALM 3
+
+/* CIVILIZATIONS */
+
+#const CIVILIZATION_GAIA 0
+#const CIVILIZATION_BRITONS 1
+
+/* ASSIGN TYPES */
+
+#const AT_PLAYER 0
+#const AT_COLOR 1
+
+/* GAIA */
+#const GOLD 66
+
+/*-----------------------------*/
+/* Effect Constants            */
+/*-----------------------------*/
+#const SET_ATTRIBUTE 0
+#const GAIA_SET_ATTRIBUTE -1
+
+/*-----------------------------*/
+/* Effect Type Constants       */
+/*-----------------------------*/
+#const ATTR_DISABLE 0
+#const ATTR_ENABLE 1
+
+/*-----------------------------*/
+/* ModifyTech Constants        */
+/*-----------------------------*/
+#const ATTR_SET_TIME -1
+#const ATTR_SET_FOOD_COST 0
+
+/*-----------------------------*/
+/* PlayerData Constants        */
+/*-----------------------------*/
+#const DATA_CIV_NAME_ID 0
+
+/*-----------------------------*/
+/* ResourceAmount Constants    */
+/*-----------------------------*/
+#const AMOUNT_FOOD 0
+#const AMOUNT_STARTING_GOLD 94
+
+/*-----------------------------*/
+/* Magic Number Constants      */
+/*-----------------------------*/
+#const RANDOM_OBJECT 32767
+"""
+
+
+class TestMiscFamilyConstants(unittest.TestCase):
+    def test_picks_up_all_six_families(self):
+        families = misc_family_constants(MISC_SAMPLE_DEF)
+        self.assertEqual(families["mapType"], {"ARABIA": 9, "ARENA": 29})
+        self.assertEqual(families["cliffType"], {"CT_GRANITE": 0, "CT_SNOW": 2})
+        self.assertEqual(families["colorCorrection"], {"CC_DEFAULT": 0, "CC_AUTUMN": 1})
+        self.assertEqual(families["waterDefinition"], {"WD_DEFAULT": 0, "WD_CALM": 3})
+        self.assertEqual(families["civilization"], {"CIVILIZATION_GAIA": 0, "CIVILIZATION_BRITONS": 1})
+        self.assertEqual(families["assignTarget"], {"AT_PLAYER": 0, "AT_COLOR": 1})
+
+    def test_picks_up_the_six_effect_amount_families(self):
+        families = misc_family_constants(MISC_SAMPLE_DEF)
+        self.assertEqual(families["effectAction"], {"SET_ATTRIBUTE": 0, "GAIA_SET_ATTRIBUTE": -1})
+        self.assertEqual(families["effectFlag"], {"ATTR_DISABLE": 0, "ATTR_ENABLE": 1})
+        self.assertEqual(families["modifyTechAttribute"], {"ATTR_SET_TIME": -1, "ATTR_SET_FOOD_COST": 0})
+        self.assertEqual(families["playerDataAttribute"], {"DATA_CIV_NAME_ID": 0})
+        self.assertEqual(families["resourceAmountType"], {"AMOUNT_FOOD": 0, "AMOUNT_STARTING_GOLD": 94})
+        self.assertEqual(families["magicNumber"], {"RANDOM_OBJECT": 32767})
+
+    def test_effect_type_and_modify_tech_constants_stay_in_their_own_categories(self):
+        # Effect Type Constants and ModifyTech Constants both reuse the
+        # ATTR_ prefix random_map.def's own (separate) Attribute Constants
+        # section uses, for an unrelated meaning. Sourcing by section rather
+        # than name prefix is what keeps them apart: neither ATTR_DISABLE nor
+        # ATTR_SET_TIME leaks into the other's bucket.
+        families = misc_family_constants(MISC_SAMPLE_DEF)
+        self.assertNotIn("ATTR_DISABLE", families["modifyTechAttribute"])
+        self.assertNotIn("ATTR_SET_TIME", families["effectFlag"])
+
+    def test_every_category_from_the_section_map_is_present_even_when_empty(self):
+        families = misc_family_constants("#const UNRELATED 1\n")
+        self.assertEqual(set(families), set(MISC_FAMILY_SECTIONS.values()))
+        self.assertEqual(families["mapType"], {})
+
+    def test_does_not_leak_object_names(self):
+        # GOLD sits in GAIA, one of OBJECT_SECTIONS, not one of the six misc
+        # families — object_constants owns it, this function must not.
+        families = misc_family_constants(MISC_SAMPLE_DEF)
+        for bucket in families.values():
+            self.assertNotIn("GOLD", bucket)
+
+
+#: A miniature constants.inc covering the shapes parse_constants_inc has to
+#: get right: a preamble prefix family, a terrain-ish section, an object-ish
+#: section, a trailing per-constant comment, and an #undefine'd scratch name.
+MISC_SAMPLE_INC = """\
+ /* Constants */
+#const CC_AUTUMN 1
+#const WD_CALM 3
+#const CIVILISATION_BRITONS 1
+
+#define TERRAIN_CONSTANTS /* Terrain Constants */
+if TERRAIN_CONSTANTS
+\t#const GRASS_A 0
+\t#const DIRT_MUD_ALT 44 /* Doesn't allow blending. Legacy terrain. */
+endif
+
+#define UTILITY_CONSTANTS
+if UTILITY_CONSTANTS
+\t#const NOTHING_OBJECT 0
+\teffect_amount SET_ATTRIBUTE NOTHING_OBJECT ATTR_DEAD_ID -1
+\t#undefine NOTHING_OBJECT
+endif
+
+#define REGULAR_UNITS /* Regular Unit Constants */
+if REGULAR_UNITS
+\t#const MILITIA 74
+endif
+"""
+
+
+class TestParseConstantsInc(unittest.TestCase):
+    def test_preamble_prefixes_route_by_name(self):
+        sections = parse_constants_inc(MISC_SAMPLE_INC)
+        self.assertIn(("CC_AUTUMN", 1, None), sections["colorCorrection"])
+        self.assertIn(("WD_CALM", 3, None), sections["waterDefinition"])
+        self.assertIn(("CIVILISATION_BRITONS", 1, None), sections["civilization"])
+
+    def test_define_blocks_route_by_section(self):
+        sections = parse_constants_inc(MISC_SAMPLE_INC)
+        self.assertIn(("GRASS_A", 0, None), sections["terrainAlias"])
+        self.assertIn(("MILITIA", 74, None), sections["objectAlias"])
+
+    def test_captures_the_trailing_comment(self):
+        sections = parse_constants_inc(MISC_SAMPLE_INC)
+        names = {name: comment for name, _, comment in sections["terrainAlias"]}
+        self.assertEqual(names["DIRT_MUD_ALT"], "Doesn't allow blending. Legacy terrain.")
+        self.assertIsNone(names["GRASS_A"])
+
+    def test_excludes_a_name_the_file_undefines_again(self):
+        # NOTHING_OBJECT is a scratch symbol the file itself retracts before
+        # any script sees it — it must not surface as a stable constant.
+        sections = parse_constants_inc(MISC_SAMPLE_INC)
+        all_names = {name for bucket in sections.values() for name, _, _ in bucket}
+        self.assertNotIn("NOTHING_OBJECT", all_names)
+
+    def test_a_section_with_no_category_mapping_is_dropped(self):
+        text = "#define SOME_FUTURE_SECTION /* New Stuff */\nif SOME_FUTURE_SECTION\n\t#const NEW_THING 5\nendif\n"
+        sections = parse_constants_inc(text)
+        all_names = {name for bucket in sections.values() for name, _, _ in bucket}
+        self.assertNotIn("NEW_THING", all_names)
+
+
+class TestMergeMiscFamilies(unittest.TestCase):
+    def test_random_map_def_and_constants_inc_combine(self):
+        combined, conflicts = merge_misc_families(MISC_SAMPLE_DEF, MISC_SAMPLE_INC)
+        self.assertEqual(conflicts, [])
+        # colorCorrection/waterDefinition/civilization each got a name from
+        # BOTH sources (CC_DEFAULT from the def, CC_AUTUMN restated in both).
+        self.assertIn("CC_DEFAULT", combined["colorCorrection"])
+        self.assertIn("CC_AUTUMN", combined["colorCorrection"])
+        self.assertIn("CIVILISATION_BRITONS", combined["civilization"])
+        self.assertIn("GRASS_A", combined["terrainAlias"])
+        self.assertIn("MILITIA", combined["objectAlias"])
+
+    def test_random_map_def_wins_a_same_name_same_category_restatement(self):
+        combined, _ = merge_misc_families(MISC_SAMPLE_DEF, MISC_SAMPLE_INC)
+        # CC_AUTUMN is 1 in both samples; the kept source must be the def.
+        self.assertEqual(combined["colorCorrection"]["CC_AUTUMN"].source, "random_map.def")
+
+    def test_a_genuine_id_disagreement_is_reported_and_the_def_wins(self):
+        inc_with_conflict = MISC_SAMPLE_INC.replace("#const CC_AUTUMN 1", "#const CC_AUTUMN 99")
+        combined, conflicts = merge_misc_families(MISC_SAMPLE_DEF, inc_with_conflict)
+        self.assertEqual(combined["colorCorrection"]["CC_AUTUMN"].const_id, 1)
+        self.assertEqual(len(conflicts), 1)
+        self.assertIn("CC_AUTUMN", conflicts[0])
+        self.assertIn("99", conflicts[0])
+
+    def test_a_name_can_legitimately_land_in_two_different_categories(self):
+        # The FORTRESS case: one source's map-type name is another source's
+        # object name, and both are real — this is not a conflict to resolve.
+        def_text = MISC_SAMPLE_DEF.replace("#const ARENA 29", "#const ARENA 29\n#const FORTRESS 16")
+        inc_text = MISC_SAMPLE_INC.replace("#const MILITIA 74", "#const MILITIA 74\n\t#const FORTRESS 33")
+        combined, conflicts = merge_misc_families(def_text, inc_text)
+        self.assertEqual(conflicts, [])
+        self.assertEqual(combined["mapType"]["FORTRESS"].const_id, 16)
+        self.assertEqual(combined["objectAlias"]["FORTRESS"].const_id, 33)
+
+
+class TestMiscDescriptiveName(unittest.TestCase):
+    def test_strips_the_family_prefix(self):
+        self.assertEqual(misc_descriptive_name("CC_AUTUMN", "colorCorrection"), "Autumn")
+        self.assertEqual(misc_descriptive_name("WD_CALM", "waterDefinition"), "Calm")
+        self.assertEqual(misc_descriptive_name("CT_GRANITE", "cliffType"), "Granite")
+        self.assertEqual(misc_descriptive_name("AT_PLAYER", "assignTarget"), "Player")
+
+    def test_strips_either_civilization_spelling(self):
+        self.assertEqual(misc_descriptive_name("CIVILIZATION_BRITONS", "civilization"), "Britons")
+        self.assertEqual(misc_descriptive_name("CIVILISATION_BRITONS", "civilization"), "Britons")
+
+    def test_no_prefix_family_just_un_shouts_the_name(self):
+        self.assertEqual(misc_descriptive_name("BLACK_FOREST", "mapType"), "Black Forest")
+        self.assertEqual(misc_descriptive_name("GRASS_A", "terrainAlias"), "Grass A")
+        self.assertEqual(misc_descriptive_name("ANIMAL_SKELETON", "objectAlias"), "Animal Skeleton")
+        self.assertEqual(misc_descriptive_name("SET_ATTRIBUTE", "effectAction"), "Set Attribute")
+        self.assertEqual(misc_descriptive_name("GAIA_SET_ATTRIBUTE", "effectAction"), "Gaia Set Attribute")
+        self.assertEqual(misc_descriptive_name("RANDOM_OBJECT", "magicNumber"), "Random Object")
+
+    def test_strips_the_shared_attr_prefix_for_effect_flag_and_modify_tech(self):
+        # Same textual convention as category "attribute", reused across two
+        # more unrelated random_map.def sections — stripped for the same
+        # presentation reason, not because these are attribute rows.
+        self.assertEqual(misc_descriptive_name("ATTR_DISABLE", "effectFlag"), "Disable")
+        self.assertEqual(misc_descriptive_name("ATTR_SET_FOOD_COST", "modifyTechAttribute"), "Set Food Cost")
+
+    def test_strips_amount_and_data_prefixes(self):
+        self.assertEqual(misc_descriptive_name("AMOUNT_STARTING_GOLD", "resourceAmountType"), "Starting Gold")
+        self.assertEqual(misc_descriptive_name("DATA_CIV_NAME_ID", "playerDataAttribute"), "Civ Name Id")
+
+
+class TestBuildMiscEntries(unittest.TestCase):
+    def test_skips_a_name_already_present_anywhere_in_the_file(self):
+        combined = {"mapType": {"ARABIA": MiscConstant("ARABIA", 9, "random_map.def")}}
+        entries = build_misc_entries(combined, existing_names={"ARABIA"}, run_date="2026-08-30")
+        self.assertEqual(entries, [])
+
+    def test_writes_a_new_row_with_no_dat_verified_fields(self):
+        combined = {"mapType": {"ARABIA": MiscConstant("ARABIA", 9, "random_map.def")}}
+        entries = build_misc_entries(combined, existing_names=set(), run_date="2026-08-30")
+        self.assertEqual(len(entries), 1)
+        entry = entries[0]
+        self.assertEqual(entry["constId"], 9)
+        self.assertEqual(entry["idSource"], "extracted")
+        self.assertEqual(entry["rmsConstant"], "ARABIA")
+        self.assertEqual(entry["category"], "mapType")
+        self.assertTrue(entry["verified"])
+        # Never joined against the dat — no deTextureFile/resourceAmounts/etc.
+        self.assertNotIn("deTextureFile", entry)
+        self.assertNotIn("resourceAmounts", entry)
+        self.assertNotIn("description", entry)
+
+    def test_notes_name_the_source_file(self):
+        combined = {"objectAlias": {"MILITIA": MiscConstant("MILITIA", 74, "constants.inc")}}
+        entries = build_misc_entries(combined, existing_names=set(), run_date="2026-08-30")
+        self.assertIn("constants.inc", entries[0]["notes"])
+        self.assertIn("2026-08-30", entries[0]["notes"])
+
+    def test_a_file_comment_is_surfaced_in_notes_not_description(self):
+        combined = {
+            "terrainAlias": {
+                "DIRT_MUD_ALT": MiscConstant("DIRT_MUD_ALT", 44, "constants.inc", comment="Doesn't allow blending.")
+            }
+        }
+        entries = build_misc_entries(combined, existing_names=set(), run_date="2026-08-30")
+        self.assertNotIn("description", entries[0])
+        self.assertIn("Doesn't allow blending.", entries[0]["notes"])
+
+    def test_entries_round_trip_through_the_real_writer(self):
+        combined = {"cliffType": {"CT_GRANITE": MiscConstant("CT_GRANITE", 0, "random_map.def")}}
+        entries = build_misc_entries(combined, existing_names=set(), run_date="2026-08-30")
+        text = format_constant(entries[0])
+        json.loads(text)
+        self.assertIn('"category": "cliffType"', text)
+
+    def test_ordered_by_id_then_name_within_a_category(self):
+        combined = {
+            "mapType": {
+                "BETA": MiscConstant("BETA", 5, "random_map.def"),
+                "ALPHA": MiscConstant("ALPHA", 5, "random_map.def"),
+                "GAMMA": MiscConstant("GAMMA", 1, "random_map.def"),
+            }
+        }
+        entries = build_misc_entries(combined, existing_names=set(), run_date="2026-08-30")
+        self.assertEqual([e["rmsConstant"] for e in entries], ["GAMMA", "ALPHA", "BETA"])

@@ -1,5 +1,5 @@
 /* The current (or, while recording, placeholder) binding. <kbd> styling
-   rather than a button — it's a readout, not a control; the buttons beside
+   rather than a button, it's a readout, not a control; the buttons beside
    it are the controls. */
 .keyChip {
   display: inline-block;
@@ -13,7 +13,7 @@
   font-size: 0.85rem;
 }
 
-/* Same flat black-bordered look as dialog.module.css's .closeButton — there
+/* Same flat black-bordered look as dialog.module.css's .closeButton, there
    is no shared "settings action button" class yet since this is the first
    settings tab with buttons of its own. */
 .button {

@@ -16,7 +16,7 @@ import {
 } from "./sidePanelLayout";
 
 // Same store file as the help (1.7) and generation (2.5) settings, different
-// keys — one settings.json for everything that is "how you want the app to
+// keys, one settings.json for everything that is "how you want the app to
 // behave", per generationSettingsConstants.ts's own note.
 const SIDE_PANEL_STORE_FILE = "settings.json";
 const SIDE_PANEL_WIDTH_KEY = "sidePanelWidth";
@@ -31,7 +31,7 @@ const SIDE_PANEL_COLLAPSED_KEY = "sidePanelCollapsed";
  *
  *  1. Breakdown and Code each render their OWN `MapSidePanel` element, and
  *     the inactive tab is unmounted, not hidden. Local state would therefore
- *     be two independent widths that reset on every switch — the same trap
+ *     be two independent widths that reset on every switch, the same trap
  *     `PreviewViewContext.tsx` exists to document, and CREATION_PLAN 4.4
  *     points at by name.
  *  2. The width is shared BETWEEN the tabs by design. Dragging on Code and
@@ -45,7 +45,7 @@ const SIDE_PANEL_COLLAPSED_KEY = "sidePanelCollapsed";
  * tomorrow.
  */
 export interface SidePanelLayoutValue {
-  /** Current width in CSS pixels. Meaningful even while collapsed — that is what expanding restores. */
+  /** Current width in CSS pixels. Meaningful even while collapsed. That is what expanding restores. */
   width: number;
   collapsed: boolean;
   /**
@@ -69,7 +69,7 @@ export function SidePanelLayoutProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<Store | null>(null);
   // `commitWidth` takes no argument, so it has to read the width at the
   // moment it is called. Reading the `width` state variable would capture
-  // whatever it was when the callback was created — a stale closure, and the
+  // whatever it was when the callback was created, a stale closure, and the
   // one frame that matters is the last one before pointerup. A ref is always
   // current by construction, which is the whole reason to reach for one.
   const widthRef = useRef(width);

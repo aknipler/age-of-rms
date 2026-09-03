@@ -3,7 +3,7 @@ import { parseRms } from "../../parser/parser";
 import { loadLanguage } from "../../parser/__tests__/testUtils";
 import { findItemAtOffsetInScript } from "../selectionResolve";
 
-// Sec.3.9 — findItemAtOffset must resolve to the innermost SELECTABLE item at
+// Sec.3.9, findItemAtOffset must resolve to the innermost SELECTABLE item at
 // a given offset: it descends into if/random branches (those render as
 // separate nested ItemCards) but must NOT descend into a command's own
 // block/attributes (those render as part of the same CommandCard, not a
@@ -24,7 +24,7 @@ describe("selectionResolve", () => {
     const r = parseRms(src, langData);
     const blockInnerOffset = src.indexOf("base_size") + 2;
     const found = findItemAtOffsetInScript(r.script, blockInnerOffset);
-    // Still resolves to the owning command, not something inside the block —
+    // Still resolves to the owning command, not something inside the block,
     // there IS no separate Item for `base_size` (it's an AttributeNode
     // living on the CommandNode's block.attributes, not a sibling Item).
     expect(found?.kind).toBe("command");

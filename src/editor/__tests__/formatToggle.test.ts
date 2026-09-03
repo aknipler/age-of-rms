@@ -6,7 +6,7 @@ import type { SourceEdit } from "../../tools/builtin/formatter/index";
 
 const lang = loadLanguage();
 
-/** Applies edits the same way `useDocument.ts`'s `applyTextEdits` does — order doesn't matter to the caller, so apply descending to keep untouched offsets valid. */
+/** Applies edits the same way `useDocument.ts`'s `applyTextEdits` does. Order doesn't matter to the caller, so apply descending to keep untouched offsets valid. */
 function applyEdits(source: string, edits: readonly SourceEdit[]): string {
   let text = source;
   for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
@@ -55,7 +55,7 @@ describe("toggleCommandLayoutInRange", () => {
   it("a selection spanning two commands toggles each to the OPPOSITE of its own current shape", () => {
     // Node 2's existing indentation matches what the file's own (tab)
     // convention would compute, so expanding node 1 doesn't also have to
-    // touch node 2 — see the dedicated test below for what happens when it
+    // touch node 2. See the dedicated test below for what happens when it
     // would.
     const source =
       "<LAND_GENERATION>\n" +
@@ -74,7 +74,7 @@ describe("toggleCommandLayoutInRange", () => {
 
   it("declines to expand a command when doing so would also re-indent an unrelated sibling", () => {
     // Node 2 is already expanded but with NO indentation at all, and it is
-    // the only indentation evidence in the file — so picking an indent unit
+    // the only indentation evidence in the file, so picking an indent unit
     // to expand node 1 with also normalizes node 2's flush-left attributes,
     // which is exactly the kind of collateral edit this hotkey must refuse
     // to make. Node 2's own toggle (expanded -> inline) has no indentation

@@ -1,5 +1,5 @@
 /**
- * Script Formatter — CREATION_PLAN 5.2b's "script formatter / pretty-printer".
+ * Script Formatter, CREATION_PLAN 5.2b's "script formatter / pretty-printer".
  * Design: docs/formatter-design.md. Section numbers below are that doc's.
  *
  * The first tool in the registry to declare `edit-source`, so it is also the
@@ -8,7 +8,7 @@
  *
  * Everything interesting lives in `formatter/`, which is pure and imports only
  * `src/parser`. This file is the adapter: manifest, params, output blocks. Keep
- * it that way — the engine has to stay drivable from a test and from a future
+ * it that way. The engine has to stay drivable from a test and from a future
  * settings page, neither of which has a `ToolContext`.
  */
 
@@ -36,12 +36,12 @@ const lang = languageDataRaw as unknown as LanguageData;
 
 /**
  * The commands that take a `{ … }` block, read out of language.json rather
- * than written down here — CLAUDE.md's "vocabulary is data-driven, hardcode no
+ * than written down here, CLAUDE.md's "vocabulary is data-driven, hardcode no
  * RMS vocabulary". Twelve today.
  *
  * Read at MODULE LOAD, not from `ctx.referenceData`, because a manifest is
  * static metadata the host renders before any run exists. That is not a
- * capability dodge: at run time this tool reads no reference data at all — the
+ * capability dodge: at run time this tool reads no reference data at all. The
  * parser has already resolved each command's `def`, which is where the name
  * used for matching comes from.
  */
@@ -179,7 +179,7 @@ export const scriptFormatterManifest: ToolManifest = {
  * The host validates and clamps against the manifest before `run` (protocol.ts
  * `resolveParams`), so these readers narrow rather than re-validate. They still
  * fall back to the default on the wrong runtime type, because `ParamValue` is a
- * union and TypeScript cannot know which arm arrived — this is a narrowing
+ * union and TypeScript cannot know which arm arrived. This is a narrowing
  * problem, not a trust problem.
  */
 function pickString<T extends string>(params: Record<string, ParamValue>, key: string, allowed: readonly T[], fallback: T): T {

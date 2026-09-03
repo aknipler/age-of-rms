@@ -1,0 +1,210 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  overflow: auto;
+}
+
+.preconditions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.precondition {
+  padding: 0.35rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.precondition.warning {
+  background: rgba(240, 173, 60, 0.15);
+  border: 1px solid rgba(240, 173, 60, 0.4);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Holds the Tool Explanation button at the right end of the button row.
+   On a wrapped row it stays at the right end of whichever line it lands on,
+   which is the behaviour wanted: it never sits between two + buttons. */
+.toolbarEnd {
+  margin-left: auto;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.canvasColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 20rem;
+}
+
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow: auto;
+}
+
+.tree {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.treeRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.treeRowSelected {
+  background: rgba(94, 174, 255, 0.18);
+}
+
+.roleTag {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.detached {
+  color: #e23e32;
+}
+
+.section {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+.fieldRow label {
+  min-width: 5.5rem;
+}
+
+.tileHint {
+  opacity: 0.65;
+  font-size: 0.75rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chip button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+/* A slot's perimeterShift input, narrow so it fits inside the pill alongside the role label and delete button. */
+.chipShiftInput {
+  width: 3.2rem;
+  font-size: 0.78rem;
+}
+
+.code {
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.75rem;
+  max-height: 10rem;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.4rem;
+  border-radius: 3px;
+}
+
+.rolesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.formulaField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.82rem;
+}
+
+.formulaFieldRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.formulaFieldRow label {
+  min-width: 5.5rem;
+}
+
+.formulaFieldRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.formulaError {
+  color: #e23e32;
+  font-size: 0.75rem;
+}
+
+.formulaPreview summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}

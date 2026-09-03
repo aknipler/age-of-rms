@@ -1,0 +1,195 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  direct_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  /* Player 1, pinned. Everything else is measured relative to this origin. */
+  create_land
+  {
+    terrain_type GRASS
+    number_of_tiles 200
+    base_size 5
+    clumping_factor 20
+    border_fuzziness 0
+    land_position 50 50
+    assign_to AT_PLAYER 1 0 0
+  }
+
+  /* TEST NEAR - 30 tiles north of player 1. Inside the claimed 45-tile band. */
+  create_land
+  {
+    terrain_type DIRT
+    number_of_tiles 100
+    base_size 3
+    clumping_factor 50
+    border_fuzziness 0
+    land_position 50 35
+    zone 40
+  }
+
+  /* TEST FAR - 60 tiles north of player 1. Outside the claimed 45-tile band. */
+  create_land
+  {
+    terrain_type DIRT2
+    number_of_tiles 100
+    base_size 3
+    clumping_factor 50
+    border_fuzziness 0
+    land_position 50 20
+    zone 41
+  }
+
+  /* CONTROL NEAR - 30 tiles south. Same shape, the KNOWN-good attribute. */
+  create_land
+  {
+    terrain_type DIRT3
+    number_of_tiles 100
+    base_size 3
+    clumping_factor 50
+    border_fuzziness 0
+    land_position 50 65
+    zone 42
+  }
+
+  /* CONTROL FAR - 60 tiles south. */
+  create_land
+  {
+    terrain_type DESERT
+    number_of_tiles 100
+    base_size 3
+    clumping_factor 50
+    border_fuzziness 0
+    land_position 50 80
+    zone 43
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+  /* TEST NEAR. If temp_min_distance_to_players works like the real
+     attribute, this places NOTHING - the marker is only 30 tiles out. */
+  create_object STONE
+  {
+    number_of_objects 20
+    set_gaia_object_only
+    terrain_to_place_on DIRT
+    temp_min_distance_to_players 45
+  }
+
+  /* TEST FAR. Outside the band either way - should always place in full. */
+  create_object GOLD
+  {
+    number_of_objects 20
+    set_gaia_object_only
+    terrain_to_place_on DIRT2
+    temp_min_distance_to_players 45
+  }
+
+  /* CONTROL NEAR, same shape, the attribute already confirmed frameless
+     (docs/build-log.md, "frameless min_distance_to_players pinned"). Must
+     place NOTHING, or the harness itself - not the tested attribute - is
+     what's broken. */
+  create_object FORAGE
+  {
+    number_of_objects 20
+    set_gaia_object_only
+    terrain_to_place_on DIRT3
+    min_distance_to_players 45
+  }
+
+  /* CONTROL FAR. Must place in full, or the harness is broken. */
+  create_object CYPRESS_TREE
+  {
+    number_of_objects 20
+    set_gaia_object_only
+    terrain_to_place_on DESERT
+    min_distance_to_players 45
+  }
+
+
+/*
+================================================================================
+RMSTEST_67 - does temp_min_distance_to_players do anything, and if so what
+docs/known-issues.md BUG-019, de-official-map-issues.md Sec.4
+(real_world_world.rms:498), reference/data/language.json (create_object
+attributes)
+================================================================================
+
+THE QUESTION
+real_world_world.rms writes `temp_min_distance_to_players 45`, a name with no
+entry in language.json and no closer match than min_distance_to_players (a
+real attribute) and temp_min_distance_group_placement (a real, differently-
+scoped "temp_"-prefixed attribute, so the naming pattern is not itself
+unprecedented). Two readings, neither confirmed: (a) an author typo for
+min_distance_to_players; (b) a genuine undocumented sibling that behaves the
+same way. Per CLAUDE.md's rule that the guide has to license a reading with a
+sentence, not a naming resemblance, this cannot be decided by looking at the
+name - it has to change generation, and change it the SAME way
+min_distance_to_players does, before language.json gets touched.
+
+METHOD - fixed geometry, not luck
+direct_placement pins player 1 at (100,100); players 2+ get no land, which is
+intentional and removes every other player origin from the picture. Four
+small marker lands sit at fixed, forced offsets - 30 tiles (inside the 45-tile
+band the real map declares) and 60 tiles (outside it) - one pair testing the
+attribute under question, one pair testing the KNOWN attribute as a control
+for the harness itself. Each marker carries a distinct terrain, and each
+paired gaia object is restricted with `terrain_to_place_on` to ONLY its own
+marker, so a placed/not-placed read is unambiguous - no distance math on the
+object positions is needed, just a headcount.
+
+READ CONTROL FIRST. It has to come back clean before the TEST arms mean
+anything - same discipline BUG-022's RMSTEST_64 used ("read arms 1 and 7
+against each other first").
+
+  FORAGE (control near, 30 tiles)   expect 0    if nonzero, the harness itself
+                                                 is broken (marker too far/near,
+                                                 or the frameless reading of
+                                                 min_distance_to_players itself
+                                                 needs revisiting) - STOP, do
+                                                 not read the TEST arms yet
+  CYPRESS_TREE (control far, 60 tiles) expect 20  if not 20, same stop
+
+Once the control reads 0 / 20:
+
+  STONE (test near, 30 tiles)   0    the attribute enforces the same band as
+                                      min_distance_to_players - it is reading
+                                      (b), a genuine sibling, and should be
+                                      added to language.json with the same
+                                      semantics as min_distance_to_players
+                 20 (same as unrestricted)   the attribute does nothing - this
+                                      is reading (a) or a no-op sibling either
+                                      way, and language.json gets an ALIAS
+                                      entry (or nothing at all) rather than a
+                                      distance-checking one
+  GOLD (test far, 60 tiles)     expect 20 regardless of which reading holds -
+                                      it is a redundant confirmation, since
+                                      outside the band both readings agree.
+                                      If it comes back below 20, something
+                                      about the marker/terrain setup is wrong
+                                      and the whole run needs a second look.
+
+GENERATE AT NORMAL (200), 8 PLAYERS, ALL UN-TEAMED (plain FFA - no lobby
+needed; only player 1's land exists, same as RMSTEST_37). ONE RUN - every
+outcome here is a presence/absence at a fixed geometry, not a statistical
+question, same shape as RMSTEST_42's single-run read for BUG-007.
+
+If any of the four marker terrains is missing from the terrain histogram
+entirely, that land failed to grow rather than being distance-limited -
+regenerate before reading anything.
+================================================================================
+*/

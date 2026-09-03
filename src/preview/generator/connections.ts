@@ -1,15 +1,15 @@
-// S5: connections — docs/preview-design.md Sec.6.5. PURE (CLAUDE.md hard
+// S5: connections, docs/preview-design.md Sec.6.5. PURE (CLAUDE.md hard
 // rule / preview-design Sec.2).
 //
 // Per connection command, resolve a NODE SET (which lands are eligible) and
 // a PAIRING rule (which pairs among them get a connection attempt), then A*
 // a path between each pair's regions and paint terrain along it. All six
-// `create_connect_*` commands reduce to "resolve nodes, connect every pair"
-// — even `create_connect_to_nonplayer_land`, whose pairing is bipartite
+// `create_connect_*` commands reduce to "resolve nodes, connect every pair",
+// even `create_connect_to_nonplayer_land`, whose pairing is bipartite
 // (player x neutral) rather than within one set.
 //
 // `create_connect_same_land_zones` GROUPS by `.zone` and connects only
-// WITHIN each group (`sameZonePairs`) — it is NOT a synonym for
+// WITHIN each group (`sameZonePairs`), it is NOT a synonym for
 // `create_connect_all_lands`. An earlier draft of this file read Sec.6.5's
 // compressed "`…all_lands` / `…same_land_zones` -> all land origins, all
 // pairs" as describing identical behaviour for both commands; that was
@@ -20,7 +20,7 @@
 // (Sec.6.1: neutral `create_land` shares zone -10, each player land gets
 // its own `playerNumber - 10`). This is guide/community-sourced, not
 // confirmed in-game the way this project's RMSTEST_* runs confirm other
-// facts — worth an actual RMSTEST if this command's exact behaviour ever
+// facts, worth an actual RMSTEST if this command's exact behaviour ever
 // matters for something load-bearing. `preview-design.md` Sec.6.5 itself
 // still has the wrong reading and should be corrected to match.
 //
@@ -36,7 +36,7 @@
 // non-optimal paths to the rest. `grid.terrain` already holds the terrain
 // UNDER any cliff (cliffs.ts never writes to `terrain`, only to `cliff`),
 // which is exactly Sec.9 item 7's own resolution of "what does the
-// pathfinder see under a cliff" — no special cliff handling is needed
+// pathfinder see under a cliff", no special cliff handling is needed
 // here, the grid already reads that way for free.
 //
 // ACCUMULATE_CONNECTIONS is a standalone stream-state toggle sitting
@@ -47,7 +47,7 @@
 // commands. Once seen, every LATER command in the section reads terrain
 // state (for both `terrain_cost` and `replace_terrain`'s "from" matching)
 // from the output of the commands before it rather than from the state
-// frozen at the start of S5 — "costs/replacements see prior connections'
+// frozen at the start of S5, "costs/replacements see prior connections'
 // output" (Sec.6.5).
 //
 // It accumulates BETWEEN commands and NOT WITHIN one, which is why the
@@ -55,7 +55,7 @@
 // `RMSTEST_43a`/`43b` measured the same map with the flag on and off, four
 // generations each: 456 road tiles in all eight, exactly, while a control
 // quantity that is random but irrelevant (automatic decoration objects)
-// varied normally across the same exports — so every export was a distinct
+// varied normally across the same exports, so every export was a distinct
 // generation and the measured quantity had zero spread. Sec.15 item 22.
 // The earlier live-grid reading let pair N+1 of one command route over
 // pair N's paint; nothing observable depends on it, and freezing per
@@ -80,14 +80,14 @@ import { resolveTerrainId, tileIndex, type TerrainConstantForMasks } from "./gri
 import { pushFailure } from "./placement";
 
 // ---------------------------------------------------------------------------
-// Attribute reading — duplicated per-file convention (see elevation.ts's
+// Attribute reading, duplicated per-file convention (see elevation.ts's
 // header for why: small, stage-agnostic, not worth a shared module).
 // ---------------------------------------------------------------------------
 
 /**
  * The script's own `#const` table (`InstantiatedScript.symbols`), threaded
  * into every terrain lookup below. Optional on the exported readers purely so
- * their unit tests can keep calling them with two arguments — a script that
+ * their unit tests can keep calling them with two arguments, a script that
  * defines no constants and one whose constants are withheld are the same
  * thing to `resolveTerrainId`.
  */
@@ -97,8 +97,8 @@ type Aliases = ReadonlyMap<string, string>;
 
 /**
  * Upper bound for the flat `terrain_cost` table below. Not a claim about
- * which terrains exist — a script can write any id, and ids above this fall
- * back to the Map — only about where a dense array stops paying for itself.
+ * which terrains exist, a script can write any id, and ids above this fall
+ * back to the Map, only about where a dense array stops paying for itself.
  * DE's own table ends at 130 and `grid.terrain` is a `Uint16Array`.
  */
 const MAX_TERRAIN_ID = 255;
@@ -132,7 +132,7 @@ function allPairs(indices: readonly number[]): Array<[number, number]> {
   return pairs;
 }
 
-/** Bipartite pairs between two disjoint sets — `create_connect_to_nonplayer_land`'s "player x neutral pairs only". */
+/** Bipartite pairs between two disjoint sets, `create_connect_to_nonplayer_land`'s "player x neutral pairs only". */
 export function crossPairs(a: readonly number[], b: readonly number[]): Array<[number, number]> {
   const pairs: Array<[number, number]> = [];
   for (const i of a) for (const j of b) pairs.push([i, j]);
@@ -141,7 +141,7 @@ export function crossPairs(a: readonly number[], b: readonly number[]): Array<[n
 
 /**
  * `create_connect_teams_lands`: all pairs WITHIN each canonical team,
- * independently — never across teams, and canonical team 0 (un-teamed)
+ * independently, never across teams, and canonical team 0 (un-teamed)
  * produces no pairs at all, "not the team of everyone left over" (Sec.6.5).
  */
 export function teamPairs(origins: readonly LandOrigin[], teams: InstantiatedScript["teams"]): Array<[number, number]> {
@@ -169,10 +169,10 @@ export function landZonePairs(origins: readonly LandOrigin[], zoneA: number, zon
 
 /**
  * `create_connect_same_land_zones`: all pairs WITHIN each zone,
- * independently — GROUPS by `.zone`, unlike `create_connect_all_lands`,
+ * independently, GROUPS by `.zone`, unlike `create_connect_all_lands`,
  * which ignores zone entirely (see this file's header for the correction
  * this represents). By default every `create_land` shares zone -10 while
- * every player land gets its own zone (`playerNumber - 10`, Sec.6.1) — so
+ * every player land gets its own zone (`playerNumber - 10`, Sec.6.1), so
  * on an unmodified script this connects the neutral lands to each other
  * and does NOT connect player lands to anything, which is the whole point
  * of the command existing as something other than a synonym for
@@ -193,7 +193,7 @@ export function sameZonePairs(origins: readonly LandOrigin[]): Array<[number, nu
 }
 
 // ---------------------------------------------------------------------------
-// Binary min-heap (Sec.11: "A* uses a binary heap") — exported for direct
+// Binary min-heap (Sec.11: "A* uses a binary heap"), exported for direct
 // unit testing, matching this codebase's convention for a risky, easy-to-
 // get-subtly-wrong mechanism (bucketWeights/reservoirSize, growClump, ...).
 // Lazy-deletion: a stale, superseded entry may still sit in the heap when
@@ -209,7 +209,7 @@ export class MinHeap {
     return this.values.length;
   }
 
-  /** Empties the heap so one instance can serve every search in a command — see PathScratch. */
+  /** Empties the heap so one instance can serve every search in a command, see PathScratch. */
   clear(): void {
     this.values.length = 0;
     this.priorities.length = 0;
@@ -281,10 +281,10 @@ export class MinHeap {
  * search was answering, at O(dim^2) for the whole command rather than per
  * pair. Two sets per land, because a land is not symmetric in this:
  *
- * - `target[l]` — components of l's OWN passable tiles. A search enters a
+ * - `target[l]`, components of l's OWN passable tiles. A search enters a
  *   target land by relaxing into one of its tiles, so an impassable land is
  *   unreachable however close it sits.
- * - `source[l]` — components l can set off INTO, which is `target[l]` plus
+ * - `source[l]`, components l can set off INTO, which is `target[l]` plus
  *   the components of every passable tile ADJACENT to l. Source tiles are
  *   seeded at cost 0 whatever their own terrain costs, so a land made of
  *   impassable terrain still departs normally.
@@ -357,7 +357,7 @@ export function buildConnectivityIndex(
   }
 }
 
-/** Whether any route at all could exist from `source` to `target` — the cheap half of the question `findConnectionPaths` answers exactly. */
+/** Whether any route at all could exist from `source` to `target`, the cheap half of the question `findConnectionPaths` answers exactly. */
 export function landsCanConnect(index: ConnectivityIndex, source: number, target: number): boolean {
   const from = index.source[source];
   const to = index.target[target];
@@ -376,7 +376,7 @@ export function landsCanConnect(index: ConnectivityIndex, source: number, target
  * The searches are per SOURCE LAND, so a script with many lands still runs
  * dozens of them (`AD4 - Pag - v1.2.rms`: 27 lands x three
  * `create_connect_all_lands` commands). Each was allocating and then clearing
- * three `dim^2` arrays — about half a megabyte of churn and 120,000 writes
+ * three `dim^2` arrays, about half a megabyte of churn and 120,000 writes
  * per search, before any pathfinding happened. `24hr_Caverns.rms` spent 3.0 s
  * in S5 (measured 2026-08-07).
  *
@@ -387,7 +387,7 @@ export function landsCanConnect(index: ConnectivityIndex, source: number, target
  * into O(source tiles).
  *
  * `generation` starts at 0 and the stamps at 0, so the FIRST search must not
- * read generation 0 as valid — hence `++scratch.generation` before use, never
+ * read generation 0 as valid, hence `++scratch.generation` before use, never
  * `scratch.generation++`.
  */
 export interface PathScratch {
@@ -424,16 +424,16 @@ function landTiles(grid: TileGrid, landCount: number): number[][] {
 /**
  * Multi-source, multi-goal Dijkstra: every tile of `sourceLand` starts at
  * cost 0, and each land in `targetLands` is reached at whichever of its
- * tiles the search closes first — which under Dijkstra is its cheapest.
+ * tiles the search closes first, which under Dijkstra is its cheapest.
  * Returns one path per target that was reached, keyed by land index, as
  * tile indices from source to target inclusive. A target simply ABSENT
- * from the returned map has no route — "impassable moat of cost-0 terrain,
+ * from the returned map has no route, "impassable moat of cost-0 terrain,
  * or unreachable land" (Sec.6.5), which this treats identically: both
  * exhaust the open set without ever closing a tile of that land.
  *
  * One search answers every pair sharing a source, which is the whole point
  * (Sec.15 item 22). The search still expands THROUGH a target's tiles
- * after recording it, since a further target may lie beyond it — the
+ * after recording it, since a further target may lie beyond it, the
  * per-pair version did the same, having never looked at any land but its
  * own target. It stops early once every target is accounted for, so a
  * source whose targets are all nearby does not pay for the far side of the
@@ -517,7 +517,7 @@ export function findConnectionPaths(
     if (cost <= 0) return; // "<=0 -> impassable" (Sec.6.5)
     const tentativeG = gScore[from] + cost;
     // A stale gScore from an earlier search reads as Infinity, which is what
-    // the per-search `.fill(Infinity)` used to write — see PathScratch.
+    // the per-search `.fill(Infinity)` used to write, see PathScratch.
     if (gStamp[neighbor] === gen && tentativeG >= gScore[neighbor]) return;
     gScore[neighbor] = tentativeG;
     gStamp[neighbor] = gen;
@@ -527,7 +527,7 @@ export function findConnectionPaths(
 }
 
 // ---------------------------------------------------------------------------
-// Per-command cost/replacement tables (Sec.6.5) — each `create_connect_*`
+// Per-command cost/replacement tables (Sec.6.5), each `create_connect_*`
 // command declares its OWN, matching language.json's per-command attribute
 // list (not a section-wide default).
 // ---------------------------------------------------------------------------
@@ -549,7 +549,7 @@ export interface TerrainSize {
   variance: number;
 }
 
-/** `terrain_size Terrain Radius Variance` (repeatable, language.json labels the last two args "width"/"spacing" but Sec.6.5's own prose calls them radius/variance — read positionally, the labels are cosmetic). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
+/** `terrain_size Terrain Radius Variance` (repeatable, language.json labels the last two args "width"/"spacing" but Sec.6.5's own prose calls them radius/variance, read positionally, the labels are cosmetic). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
 export function readTerrainSizes(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): Map<number, TerrainSize> {
   const sizes = new Map<number, TerrainSize>();
   for (const attr of cmd.attributes.get("terrain_size") ?? []) {
@@ -611,7 +611,7 @@ export function resolveReplacement(rules: readonly ReplacementRule[], terrainId:
  * Tiles this command has already painted, and how many of the grid's are
  * left. Optional, and purely a saving: a tile's painted value is
  * `resolveReplacement(rules, terrainOf[i])`, and within ONE command both
- * `rules` and `terrainOf` are fixed — so a second disc covering a tile
+ * `rules` and `terrainOf` are fixed, so a second disc covering a tile
  * writes the value already there, and covering it a third time is the same
  * no-op again.
  *
@@ -624,7 +624,7 @@ export function resolveReplacement(rules: readonly ReplacementRule[], terrainId:
  * on a 240-wide map is a disc larger than the map, and its
  * `create_connect_all_lands` walks thousands of path tiles over rainforest,
  * each one re-scanning all 57,600 tiles to write what the first already
- * wrote — measured at 3010 ms of painting against 378 ms of searching.
+ * wrote, measured at 3010 ms of painting against 378 ms of searching.
  */
 export interface PaintCoverage {
   painted: Uint8Array;
@@ -659,8 +659,8 @@ export function applyTerrainAlongPath(
   const { dim } = grid;
   for (const tile of path) {
     // Every tile in the command is already at its final value, so the
-    // remaining discs — and the radius rolls that size them, which nothing
-    // outside this pair's own substream can observe — are all no-ops.
+    // remaining discs, and the radius rolls that size them, which nothing
+    // outside this pair's own substream can observe, are all no-ops.
     if (coverage !== undefined && coverage.remaining === 0) return;
     const terrainHere = terrainOf[tile];
     const size = sizes.get(terrainHere) ?? { radius: 1, variance: 0 };
@@ -763,7 +763,7 @@ export function applyConnections(
   let accumulating = false;
   let blocked = false;
   let sawTeamsCommand = false;
-  // One set of working arrays for every search this stage runs — see PathScratch.
+  // One set of working arrays for every search this stage runs, see PathScratch.
   const pathScratch = createPathScratch(grid.dim);
 
   for (const cmd of commands) {
@@ -790,7 +790,7 @@ export function applyConnections(
     // Frozen for the whole command either way: at the start of S5 by
     // default, at the start of THIS command once `accumulate_connections`
     // has been seen. Accumulation is between commands only (see this file's
-    // header), so a snapshot is what the flag means — the copy costs one
+    // header), so a snapshot is what the flag means, the copy costs one
     // dim^2 read per accumulating command, and two corpus maps have one.
     const terrainOf = accumulating ? grid.terrain.slice() : startOfS5Terrain;
     const costs = readTerrainCosts(cmd, constants, instantiated.symbols, instantiated.aliases);
@@ -807,7 +807,7 @@ export function applyConnections(
 
     const pairs = resolvePairs(cmd, origins, instantiated.teams);
     const failures: PlacementFailure[] = [];
-    const coverage = createPaintCoverage(grid.dim); // per command, like `terrainOf` and for the same reason — see PaintCoverage
+    const coverage = createPaintCoverage(grid.dim); // per command, like `terrainOf` and for the same reason, see PaintCoverage
     let placed = 0;
 
     // Both rebuilt per command, not per pair, and not hoisted above the
@@ -819,7 +819,7 @@ export function applyConnections(
 
     // One search per distinct SOURCE land rather than one per pair. The
     // searches all run first, against the one frozen `terrainOf` above, and
-    // the painting then walks `pairs` in its original order — so the RNG
+    // the painting then walks `pairs` in its original order, so the RNG
     // substream a pair draws, and the order overlapping discs overwrite each
     // other in, are exactly what the pair-at-a-time version produced.
     const targetsBySource = new Map<number, number[]>();
@@ -829,7 +829,7 @@ export function applyConnections(
       else targetsBySource.set(a, [b]);
     }
     // Pairs with no route at all are answered from the component flood
-    // rather than by a search that exhausts its component to find out — see
+    // rather than by a search that exhausts its component to find out, see
     // ConnectivityIndex. They still report `connectionBlocked` below, from
     // the same "absent from the map" branch a failed search produces.
     const connectivity = buildConnectivityIndex(grid, terrainOf, costOf, origins.length);

@@ -6,9 +6,9 @@ import type { MapSize } from "../../generationSettings/generationSettingsConstan
 // typed out in code.
 //
 // The spec is emphatic about this and the reason is specific. Legacy and
-// modern size names are offset by one size — the app's Normal (200x200)
+// modern size names are offset by one size. The app's Normal (200x200)
 // defines LARGE_MAP *and* MAPSIZE_NORMAL, while MAPSIZE_LARGE is the next
-// size up — so anything that infers a dimension from a label's name is wrong
+// size up, so anything that infers a dimension from a label's name is wrong
 // on every size-aware map, silently, by picking the wrong branch. There are
 // already three representations of this relationship (the guide's table, this
 // data, and MAP_SIZES in generationSettingsConstants.ts) and a fourth
@@ -18,12 +18,12 @@ import type { MapSize } from "../../generationSettings/generationSettingsConstan
 
 /**
  * Side length in tiles for a lobby map size, or null if the data cannot
- * answer — which is a real possibility worth surfacing rather than defaulting
+ * answer, which is a real possibility worth surfacing rather than defaulting
  * away, since the whole label environment is built from the same array.
  *
  * Note that `find` is correct here and a uniqueness assertion would be a bug.
- * Every size except Giant matches TWO entries — the legacy and the modern
- * name both carry `mapSize: "Tiny"` and both carry `dimensions: 120` — and
+ * Every size except Giant matches TWO entries; the legacy and the modern
+ * name both carry `mapSize: "Tiny"` and both carry `dimensions: 120`, and
  * they differ only in which label the environment defines, not in the number.
  * `npm run validate:reference` is what asserts the pair agrees.
  */

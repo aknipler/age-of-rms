@@ -55,7 +55,7 @@ function place(source: string, seed = 1, overrides?: Parameters<typeof settings>
   return { grid, dim: instantiated.dim, origins: landResult.origins, ...terrainsResult };
 }
 
-/** Instantiate a bare script and hand back a fresh flat grid, without running S1-S3 — for tests that call applyTerrains directly. */
+/** Instantiate a bare script and hand back a fresh flat grid, without running S1-S3, for tests that call applyTerrains directly. */
 function bareGrid(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
   const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
   const grid = createTileGrid(instantiated.dim, GRASS);
@@ -451,7 +451,7 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
 
   it("uses the terrain's own beach: snow gets ICYSHORE, not BEACH", () => {
     // The community table states this on ICYSHORE's own row, "created when
-    // snowy terrains border water" — the reason the field is per-terrain
+    // snowy terrains border water", the reason the field is per-terrain
     // rather than one global constant.
     const grid = splitGrid(SNOW);
     applyAutomaticBeach(grid, constants);
@@ -498,7 +498,7 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
     const { grid, row } = bands([GRASS, GRASS, SHALLOW, SHALLOW, DEEP_WATER, DEEP_WATER]);
     applyAutomaticBeach(grid, constants);
     // The land tile touching the shallows takes sand. The shallow touching the
-    // deep does NOT — that is the half the engine turned out not to do, and
+    // deep does NOT. That is the half the engine turned out not to do, and
     // this row is the assertion that was inverted to say so.
     expect(row()).toEqual([GRASS, BEACH, SHALLOW, SHALLOW, DEEP_WATER, DEEP_WATER]);
   });
@@ -535,7 +535,7 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
 
   it("the beach a boundary grows is the LAND side's own: snow against navigable ice gets ICYSHORE", () => {
     // Same per-terrain rule the snow case above proves against open water, now
-    // against a hybrid — the beach terrain comes from the tile it lands on.
+    // against a hybrid. The beach terrain comes from the tile it lands on.
     const { grid, row } = bands([SNOW, SNOW, ICE_NAVIGABLE, ICE_NAVIGABLE, DEEP_WATER, DEEP_WATER]);
     applyAutomaticBeach(grid, constants);
     expect(row()).toEqual([SNOW, ICYSHORE, ICE_NAVIGABLE, ICE_NAVIGABLE, DEEP_WATER, DEEP_WATER]);
@@ -599,7 +599,7 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
 
   // guide:1502-1509. The two layers differ in which terrain ends up OWNING
   // the tile, which decides what every later base_terrain, habitat check and
-  // automatic-object rule sees — so these are two behaviours, not one.
+  // automatic-object rule sees, so these are two behaviours, not one.
   it("terrain_mask 2 masks UNDER: the new terrain takes the tile and the base becomes the layer", () => {
     const source = "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nnumber_of_tiles 40\nterrain_mask 2\n}\n";
     const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
@@ -653,7 +653,7 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
   /**
    * Confines the eligible base (GRASS, create_terrain's default) to a SINGLE
    * column directly beside a water column, and makes every other tile a
-   * non-eligible terrain — the clump has nowhere else to grow, so every one of
+   * non-eligible terrain, the clump has nowhere else to grow, so every one of
    * its tiles is guaranteed adjacent to water wherever the seed lands.
    */
   function coastlineFixture(source: string, seed = 2) {
@@ -730,7 +730,7 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
   it("base_terrain BEACH is a no-op where the only beach is the waterline itself", () => {
     // The other half of the same rule, and the observation that settles it:
     // with nothing but a one-tile shore to work on, the command converts it
-    // and the step converts it straight back. Not a broken idiom — there was
+    // and the step converts it straight back. Not a broken idiom. There was
     // no interior for it to act on.
     const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
     const JUNGLEGRASS = constants.find((c) => c.rmsConstant === "DLC_JUNGLEGRASS")!.constId!;
@@ -745,7 +745,7 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
   });
 
   it("honours a beach_terrain naming a NON-beach terrain instead of overwriting it with the default", () => {
-    // guide:1488: a non-beach terrain here is legal and load-bearing — it is
+    // guide:1488: a non-beach terrain here is legal and load-bearing. It is
     // how an author makes a coastline players cannot build docks on. The
     // terrain's own row says it grows a BEACH, so a data-default-only pass
     // would undo the author's instruction.
@@ -782,7 +782,7 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
     const result = applyTerrains(instantiated, grid, constants, [], 2);
     expect(result.notes.some((n) => n.key.startsWith("beachTerrainSkipped"))).toBe(true);
 
-    // The coastline still has its beach — the engine default from land
+    // The coastline still has its beach, the engine default from land
     // generation, which is what the ignored attribute would have overridden.
     // "Skipped" is not "no beach".
     const column = coast(grid, midX);
@@ -832,8 +832,8 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
     // The regression that matters more than the cap above. A `[tune]` cap of
     // `4 * dim` attempts stopped every command at 800 clumps on a 200 map,
     // so `create_terrain X { base_terrain Y land_percent 100 number_of_clumps
-    // 9320 }` — the standard way to convert ALL of one terrain into another,
-    // and the guide's own worked example — converted a twelfth of it. It
+    // 9320 }`, the standard way to convert ALL of one terrain into another,
+    // and the guide's own worked example, converted a twelfth of it. It
     // showed up as a wrong-looking map, never as an error.
     const source = "<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nland_percent 100\nnumber_of_clumps 9320\n}\n";
     const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
@@ -843,7 +843,7 @@ describe("applyTerrains (Sec.6.4 end to end)", () => {
     // And it does what the script asked. Not literally every tile: the
     // budget gives each clump 4 tiles and some exhaust their frontier against
     // neighbours that are already claimed. The number to compare against is
-    // what the old cap produced — 800 clumps x 4 tiles is at most 3,200 of
+    // what the old cap produced, 800 clumps x 4 tiles is at most 3,200 of
     // 40,000, under a tenth.
     let dirt = 0;
     for (const t of grid.terrain) if (t === DIRT) dirt++;

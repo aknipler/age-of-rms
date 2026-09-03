@@ -1,8 +1,8 @@
 /**
  * Shared AST-level scanning helpers for Sec.3's static checks
  * (consistency-checker-design.md Sec.3.0b, Sec.3.2 rule 1, Sec.3.3's producer
- * `#const` resolution). Every function here reads `ParseResult` directly —
- * NEVER `InstantiatedScript` — because the whole point is to be generous
+ * `#const` resolution). Every function here reads `ParseResult` directly,
+ * NEVER `InstantiatedScript`, because the whole point is to be generous
  * about branches S0 did not take (Sec.3.0b: "a suppressing scan is allowed
  * to be over-generous").
  */
@@ -11,11 +11,11 @@ import type { Item, ParseResult, Span } from "../../../parser/types";
 import { walkItems, type WalkContext } from "../../walkItems";
 
 /**
- * Every numeric `#const NAME <decimal>` in the script, over the WHOLE AST —
+ * Every numeric `#const NAME <decimal>` in the script, over the WHOLE AST,
  * `parse.symbols` already covers every branch regardless of selection (the
  * parser builds it independently of S0), so this needs no walk of its own.
  * `all` collects every distinct value a name takes across branches (Sec.3.2
- * rule 1: "collecting every value a name takes in any branch" — a name
+ * rule 1: "collecting every value a name takes in any branch", a name
  * redefined to different numbers in mutually exclusive branches is real RMS,
  * and a suppressing scan must not silently pick one); `first` is the
  * lexical-order single value, for call sites (terrain resolution) that need
@@ -34,7 +34,7 @@ export function scanAstConsts(parse: ParseResult): AstConstMap {
     if (symbol.directiveKind !== "const" || symbol.valueToken === undefined) continue;
     const text = parse.tokens[symbol.valueToken].text;
     const value = Number(text);
-    if (!Number.isFinite(value)) continue; // an expression/name value — rule 1 does not evaluate those (rule 2's S0 union does, for taken branches)
+    if (!Number.isFinite(value)) continue; // an expression/name value, rule 1 does not evaluate those (rule 2's S0 union does, for taken branches)
     let set = all.get(symbol.name);
     if (!set) {
       set = new Set();
@@ -47,7 +47,7 @@ export function scanAstConsts(parse: ParseResult): AstConstMap {
 }
 
 /**
- * Every `RawNode`'s own source text (Sec.3.0b's third construct — opaque by
+ * Every `RawNode`'s own source text (Sec.3.0b's third construct, opaque by
  * construction, so a suppressing scan cannot descend into it and must
  * abstain instead). One entry per raw node; callers run their own
  * containment test (`text.includes("actor_area")`, etc.) per Sec.3.0b's
@@ -61,7 +61,7 @@ export function rawNodeTexts(parse: ParseResult): string[] {
   return out;
 }
 
-/** True when any raw node's own text contains `token` — Sec.3.0b's abstention test, never a population count. */
+/** True when any raw node's own text contains `token`, Sec.3.0b's abstention test, never a population count. */
 export function anyRawNodeContains(parse: ParseResult, token: string): boolean {
   return rawNodeTexts(parse).some((text) => text.includes(token));
 }
@@ -92,7 +92,7 @@ export function tokenText(parse: ParseResult, idx: number): string {
 
 /**
  * A command's identity the way `instantiate.ts`'s `resolveCommand` computes
- * it — `def?.name` first, falling back to the literal token only for a
+ * it, `def?.name` first, falling back to the literal token only for a
  * command `language.json` does not know. AST-level defs already carry the
  * `#const`-alias resolution (BUG-013's fix), so this needs no separate alias
  * handling.
@@ -101,7 +101,7 @@ export function astCommandName(parse: ParseResult, item: Extract<Item, { kind: "
   return item.def?.name ?? tokenText(parse, item.name);
 }
 
-/** `tokens[node.name].text` for an attribute — attribute names are never aliased (Sec.4.3's own scoping: the alias path is commands only). */
+/** `tokens[node.name].text` for an attribute, attribute names are never aliased (Sec.4.3's own scoping: the alias path is commands only). */
 export function astAttributeName(parse: ParseResult, item: Extract<Item, { kind: "attribute" }>): string {
   return tokenText(parse, item.name);
 }

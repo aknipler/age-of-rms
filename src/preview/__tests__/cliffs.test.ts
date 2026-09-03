@@ -43,7 +43,7 @@ function place(source: string, seed = 1, overrides?: Parameters<typeof settings>
   return { grid, dim: instantiated.dim, origins: landResult.origins, ...cliffsResult };
 }
 
-/** Instantiate a bare script and hand back a fresh flat grid, without running S1/S2 — for tests that call applyCliffs directly. */
+/** Instantiate a bare script and hand back a fresh flat grid, without running S1/S2, for tests that call applyCliffs directly. */
 function bareGrid(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
   const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
   const grid = createTileGrid(instantiated.dim, GRASS);
@@ -327,7 +327,7 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
   // A sub-3 `min_length_of_cliff` drops the individual DRAWS that roll below
   // 3; it does not switch the section off (BUG-008, RMSTEST_45a/45b/45c). The
   // three cases below are that measurement's three arms, and the third is the
-  // one that separates a per-draw yield from a section gate — a gate predicts
+  // one that separates a per-draw yield from a section gate. A gate predicts
   // zero there, and the engine produced cliffs.
   const twentyCliffs = "min_number_of_cliffs 20\nmax_number_of_cliffs 21\n";
 
@@ -435,7 +435,7 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
 });
 
 describe("corpus: applyCliffs never throws", () => {
-  // One `it()` per map (see docs/build-log.md — a single `it()` looping over
+  // One `it()` per map (see docs/build-log.md; a single `it()` looping over
   // the whole corpus can exceed vitest's per-test timeout under load even
   // though no individual map is slow).
   const corpusDir = join(REPO_ROOT, "test-maps");

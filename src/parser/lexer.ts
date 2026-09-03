@@ -8,7 +8,7 @@ import {
   unclosedComment,
 } from "./diagnostics";
 
-// Whitespace is pinned as the C `isspace` set — nothing more. Unicode
+// Whitespace is pinned as the C `isspace` set, nothing more. Unicode
 // space-lookalikes (NBSP etc.) are deliberately NOT whitespace; they end
 // up glued inside a token instead, which is what RMS0004 flags. See
 // docs/parser-design.md Sec.2.
@@ -18,7 +18,7 @@ const SECTION_HEADER_PATTERN = /^<[A-Z0-9_]+>$/;
 const RND_PATTERN = /^rnd\(-?\d+,-?\d+\)$/;
 const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
 
-// Checked in this order — exact-match markers before the looser regexes,
+// Checked in this order, exact-match markers before the looser regexes,
 // since e.g. "{" must win over "word" and a token merely *containing* a
 // brace is a lint (RMS0003), not a different token kind.
 const GLUED_MARKERS = ["{", "}", "/*", "*/"];
@@ -32,7 +32,7 @@ const BOM = String.fromCharCode(0xfeff);
 // (0x00A0), Ogham space mark (0x1680), the general punctuation space
 // run (0x2000-0x200B), narrow no-break space (0x202F), medium
 // mathematical space (0x205F), ideographic space (0x3000), and a
-// *non-leading* BOM (0xFEFF) — a leading one is the real BOM, handled
+// *non-leading* BOM (0xFEFF), a leading one is the real BOM, handled
 // above as its own trivia token before this check ever runs. Built from
 // numeric code points at runtime for the same corruption-avoidance
 // reason as BOM.
@@ -71,10 +71,10 @@ function computeLineOffsets(source: string): number[] {
 
 /**
  * Splits `source` into whitespace-separated tokens and classifies each
- * one, per docs/parser-design.md Sec.2 ("The RMS lexical model — the
+ * one, per docs/parser-design.md Sec.2 ("The RMS lexical model, the
  * insight everything rests on"). This is a pure splitter: it does not
- * know what a command, attribute, or expression is — that's the parser's
- * job (Phase 2.3). Never throws, per spec goal #1 — any input (empty,
+ * know what a command, attribute, or expression is, that's the parser's
+ * job (Phase 2.3). Never throws, per spec goal #1, any input (empty,
  * binary garbage, one giant token) produces a result, never an
  * exception.
  */
@@ -85,7 +85,7 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
 
   let cursor = 0;
 
-  // A leading BOM gets its own token — kept in the stream (nothing is
+  // A leading BOM gets its own token, kept in the stream (nothing is
   // ever silently dropped) but marked trivia since it carries no
   // meaning to the engine.
   if (source.length > 0 && source[0] === BOM) {
@@ -117,21 +117,21 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
 /**
  * Comment-span pass: walks the token array matching commentOpen/
  * commentClose with a nesting-depth counter, marking every enclosed
- * token — including the markers themselves — as trivia. Mutates the
+ * token, including the markers themselves, as trivia. Mutates the
  * tokens in place (isTrivia only). See Sec.2 "Comment handling".
  *
  * When `nestedComments` is false, a second `/*` encountered while
- * already inside a comment does not open a new level (depth stays at 1)
- * — so the *next* closer closes the whole thing, emulating non-nesting
+ * already inside a comment does not open a new level (depth stays at 1),
+ * so the *next* closer closes the whole thing, emulating non-nesting
  * behavior without a separate code path.
  *
- * `commentOpenAliases` holds words the engine reads as `/*` — constants
+ * `commentOpenAliases` holds words the engine reads as `/*`, constants
  * whose value is 69, its own id for that marker (Sec.2.1 amendment,
  * measured 2026-08-12). They are treated as openers ONLY once already
  * inside a comment, which is not a simplification but the rule: these
  * are ordinary constants in ordinary positions, and a map naming one in
  * a live `create_object` is not commented out. Classifying them
- * globally — the `aliasTable` route — would truncate every map that
+ * globally, the `aliasTable` route, would truncate every map that
  * places a shore fish.
  */
 function markComments(
@@ -168,7 +168,7 @@ function markComments(
       // deliberately: the opener bookkeeping (`openerIndex`) stays on the
       // OUTERMOST marker, so an unclosed-at-EOF diagnostic still points at
       // the comment the author opened rather than at the word that
-      // swallowed the file — RMS0111 is what names the word.
+      // swallowed the file. RMS0111 is what names the word.
       if (token.kind === "word" && commentOpenAliases?.has(token.text)) {
         if (nestedComments) depth++;
       }
@@ -184,7 +184,7 @@ function markComments(
   }
 }
 
-// RMS0003 / RMS0004 / RMS0216 — beginner-facing lints over whatever
+// RMS0003 / RMS0004 / RMS0216, beginner-facing lints over whatever
 // non-trivia tokens remain after comment marking. Comment *contents*
 // (now trivia) are deliberately skipped: a stray "//" inside a real
 // /* */ comment is not a mistake worth flagging.
@@ -205,7 +205,7 @@ function lintTokens(tokens: Token[], diagnostics: Diagnostic[]): void {
     }
 
     // "//" is only ever a beginner mistake reaching for C-style
-    // comments — RMS comments are exclusively /* */. Scoped to
+    // comments. RMS comments are exclusively /* */. Scoped to
     // word-kind tokens starting with "//" (a lone "//" token, or
     // "//foo" glued together both count; RMS's whitespace splitting
     // means "// this is a comment" tokenizes as several separate words,

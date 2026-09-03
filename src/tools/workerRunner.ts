@@ -12,7 +12,7 @@ import type { ToolContext } from "../../tools-api/index";
 import type { ParseResult } from "../parser/types";
 import type { RunnerHandle, ToolRunner } from "./host";
 
-/** The slice of `Worker` this file touches — narrow enough that a test can inject a fake without a real worker thread. */
+/** The slice of `Worker` this file touches, narrow enough that a test can inject a fake without a real worker thread. */
 export interface WorkerLike {
   postMessage(msg: unknown): void;
   terminate(): void;
@@ -22,17 +22,23 @@ export interface WorkerLike {
 
 /**
  * Factory rather than the bare object, so a test can inject a fake
- * `WorkerLike` — same shape as `host.ts` taking injected `Timers`/`ToolRunner`
+ * `WorkerLike`, same shape as `host.ts` taking injected `Timers`/`ToolRunner`
  * rather than touching real clocks or real workers. `workerRunner` below is
  * the one real instance the app uses.
  */
 export function createWorkerRunner(makeWorker: () => WorkerLike): ToolRunner {
   return {
     start(tool, contextJson, onMessage): RunnerHandle {
+      // Arm narrowing (external-tools-design.md Sec.10), same rule as
+      // inProcessRunner's: a panel never reaches a runner at all (Sec.3.2),
+      // so a caller handing one here is a bug and must be told loudly.
+      if (tool.kind !== "builtin") {
+        throw new Error(`workerRunner: cannot run a "${tool.kind}" tool ("${tool.manifest.id}") — only "builtin" has a run()`);
+      }
       const worker = makeWorker();
       worker.onmessage = (event: MessageEvent) => onMessage(event.data);
       // Sec.8 item 4: "a worker crash... synthesizes error/killed exactly as
-      // the in-process path does" — `inProcessRunner`'s crash path is
+      // the in-process path does", `inProcessRunner`'s crash path is
       // `host.start()`'s try/catch around a SYNCHRONOUS throw, which a
       // worker's ASYNC internal crash never reaches (postMessage already
       // returned normally by the time the worker dies). The `error` event is
@@ -44,7 +50,7 @@ export function createWorkerRunner(makeWorker: () => WorkerLike): ToolRunner {
       };
 
       // `contextJson` is `unknown` at this boundary (host.ts's existing
-      // `ToolRunner` shape, unchanged by this section) — the SAME cast
+      // `ToolRunner` shape, unchanged by this section), the SAME cast
       // `inProcessRunner` already makes (`as never`, even less safe) at the
       // identical seam. This is `postMessage`, not `JSON.stringify`: structured
       // clone preserves `Infinity` and `def` (Sec.4.3), so nothing here

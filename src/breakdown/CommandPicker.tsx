@@ -4,13 +4,13 @@ import { HelpTip } from "../components/HelpTip";
 import styles from "./CommandPicker.module.css";
 
 interface CommandPickerProps {
-  /** The tab's section name (canonical or unknown-section raw name) — filters the list by default, per Sec.3.2. */
+  /** The tab's section name (canonical or unknown-section raw name), filters the list by default, per Sec.3.2. */
   defaultSection?: string;
   onPick: (name: string) => void;
   onClose: () => void;
 }
 
-// docs/breakdown-design.md Sec.3.2 — a searchable list of every command,
+// docs/breakdown-design.md Sec.3.2, a searchable list of every command,
 // filtered to the active tab's section by default with a "show all
 // sections" toggle. This is a pure convenience filter, never a hard
 // restriction: cross-section placement draws a diagnostic for two commands and
@@ -18,7 +18,7 @@ interface CommandPickerProps {
 //
 // The reason has now changed twice, and the filter has stayed advisory through
 // both. RMS0304 shipped 2026-08-10, but it fires only where `sectionLocked` is
-// set — two commands, `create_terrain` and `create_object`, the only two the
+// set, two commands, `create_terrain` and `create_object`, the only two the
 // engine has been measured on. `CommandDef.section`, which is what this filter
 // reads, records where the guide *documents* a command, and 52 of the 53
 // corpus hits a `section`-driven check produces are shipped, working maps. So
@@ -61,21 +61,27 @@ export function CommandPicker({ defaultSection, onPick, onClose }: CommandPicker
           </HelpTip>
         )}
       </div>
-      {/* One HelpTip over the whole list rather than one per entry —
-          matches ReferenceTable.tsx's pattern (a wrap per row here would
-          spam a tooltip over every visible result in a scrollable list). */}
-      <HelpTip id="breakdown.addCommand.entry">
-        <div className={styles.list}>
-          {results.length === 0 && <p className={styles.empty}>No matching commands.</p>}
-          {results.map((c) => (
-            <button key={c.name} type="button" className={styles.entry} onClick={() => onPick(c.name)}>
-              <span className={styles.entryName}>{c.name}</span>
-              <span className={styles.entryDesc}>{c.description ?? ""}</span>
-              <span className={styles.chip}>{c.verified ? "verified" : "unverified"}</span>
-            </button>
-          ))}
-        </div>
-      </HelpTip>
+      {/* One HelpTip over the whole list rather than one per entry.
+          Matches ReferenceTable.tsx's pattern (a wrap per row here would
+          spam a tooltip over every visible result in a scrollable list).
+          .listSlot mirrors SectionView.module.css's .addButtonSlot: HelpTip
+          always renders its own `display: inline-block` wrapper span now
+          (HelpTip.tsx), which isn't a flex participant, so it needs to be
+          made one from the outside, see the CSS comment. */}
+      <div className={styles.listSlot}>
+        <HelpTip id="breakdown.addCommand.entry">
+          <div className={styles.list}>
+            {results.length === 0 && <p className={styles.empty}>No matching commands.</p>}
+            {results.map((c) => (
+              <button key={c.name} type="button" className={styles.entry} onClick={() => onPick(c.name)}>
+                <span className={styles.entryName}>{c.name}</span>
+                <span className={styles.entryDesc}>{c.description ?? ""}</span>
+                <span className={styles.chip}>{c.verified ? "verified" : "unverified"}</span>
+              </button>
+            ))}
+          </div>
+        </HelpTip>
+      </div>
     </div>
   );
 }

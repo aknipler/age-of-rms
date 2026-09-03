@@ -6,7 +6,7 @@ interface MapHeaderProps {
   lastSavedAt: Date | null;
 }
 
-// Real values arrive with file open/save in Phase 1.2 — for now this is
+// Real values arrive with file open/save in Phase 1.2, for now this is
 // fed static placeholder props from App.
 export function MapHeader({ mapName, lastSavedAt }: MapHeaderProps) {
   return (

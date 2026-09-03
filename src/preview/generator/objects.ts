@@ -1,11 +1,11 @@
-// S6: objects — docs/preview-design.md Sec.6.6. PURE (CLAUDE.md hard rule /
+// S6: objects, docs/preview-design.md Sec.6.6. PURE (CLAUDE.md hard rule /
 // preview-design Sec.2). The last generation stage: S1-S5 shape the grid,
 // this one populates it and produces the renderer's object/player layers.
 //
 // TWO ORTHOGONAL "GROUP" CONCEPTS, easy to conflate because both are called
 // "group" in the guide's own vocabulary:
 //   1. OBJECT groups (`create_object_group NAME { add_object ... }`), which
-//      pick WHICH object gets placed at a site — resolved per placement, %
+//      pick WHICH object gets placed at a site, resolved per placement, %
 //      weights ignored (guide:2025 confirms uniform IS engine behaviour, not
 //      an approximation of it).
 //   2. SPATIAL grouping (`number_of_groups`/`group_placement_radius`/
@@ -19,17 +19,17 @@
 // SEC.6.6'S PINNED CANDIDATE-FILTER ORDER (Sec.7: "each stage's attribution
 // order is its own constraint list, in the order written in its
 // subsection") drives `buildCandidatePredicates` below, top to bottom:
-// occupied, (can-overlap — deferred, see below), terrain habitat, implicit
+// occupied, (can-overlap, deferred, see below), terrain habitat, implicit
 // terrain-separation, distance band, avoid_other_land_zones, forest zone,
 // avoid_cliff_zone / min_distance_to_map_edge / max_distance_to_other_zones,
 // actor areas, require_path. `min_distance_group_placement` is deliberately
-// NOT in that static list — see its own section below for why.
+// NOT in that static list. See its own section below for why.
 //
 // SIX NAMED, DELIBERATE SIMPLIFICATIONS (recorded here rather than left
 // implicit, matching terrains.ts's own convention for exactly this reason):
 //
 // 1. CAN-OVERLAP (multi-tile buildings silently dropped by tight grouping /
-//    force_placement, Sec.6.6) is NOT modelled — every object is one tile,
+//    force_placement, Sec.6.6) is NOT modelled. Every object is one tile,
 //    same footprint deferral Sec.9 item 11 already makes for
 //    override_actor_radius_if_required. A `canOverlap` bit does not exist in
 //    game-constants.json (Sec.12 item 3's sibling request), so this is the
@@ -40,7 +40,7 @@
 //    SHEEP in EXACTLY the direction the spec itself predicts ("Sheep and
 //    other herdables are the awkward case the flag exists to settle...a
 //    fallback that guesses from category alone will mis-handle herdables in
-//    one direction or the other") — SHEEP carries resourceAmounts.food, so
+//    one direction or the other"). SHEEP carries resourceAmounts.food, so
 //    this fallback requires set_gaia_object_only for it when the guide says
 //    it is permitted but not required. Named, not fixed: fixing it would
 //    mean hardcoding "SHEEP" as an RMS-vocabulary exception, which CLAUDE.md
@@ -48,24 +48,24 @@
 // 3. HABITAT (`objectHabitat` below) falls back to "land" for any object the
 //    reference data does not carry a `habitat` for, and the reference data
 //    carries two dozen objects out of several hundred. The fallback is the
-//    least-bad of the two available answers, not a good one — see
-//    `objectHabitat` for why "any" was worse — and every wrong answer it
+//    least-bad of the two available answers, not a good one. See
+//    `objectHabitat` for why "any" was worse, and every wrong answer it
 //    gives is a fish, a boat or a sea decoration standing on grass. The fix
 //    is data, one row at a time: the DE ocean-fish family (TUNA, SNAPPER,
 //    SALMON, DORADO, MARLIN1, OYSTERS) got explicit `habitat: "water"` rows
 //    on 2026-08-08 for exactly this reason, and the real fix is still the
 //    dat's own terrain-restriction table (Sec.15 item 23).
 //    Deliberately NOT widened with a name-pattern guess the way grid.ts's
-//    WATER_NAME_PATTERN guesses terrain water — that pattern is Sec.12 item
+//    WATER_NAME_PATTERN guesses terrain water, that pattern is Sec.12 item
 //    6's OWN documented fallback for terrain; item 7 documents no such
 //    pattern for objects, and inventing one here would be exactly the
 //    "confidently wrong" failure CLAUDE.md warns against. A row naming one
 //    object is a claim about that object; a pattern is a claim about every
 //    name nobody has looked at yet.
-// 4. WALLS place normally (Sec.9: "special placement behavior" — the
-//    connected-segment mechanic — is not simulated, not that nothing is
+// 4. WALLS place normally (Sec.9: "special placement behavior", the
+//    connected-segment mechanic, is not simulated, not that nothing is
 //    placed) plus one SimulationNote per wall-type command, detected by
-//    rmsConstant matching /WALL/ — the same class of name-heuristic
+//    rmsConstant matching /WALL/, the same class of name-heuristic
 //    precedent as grid.ts's WATER_NAME_PATTERN/FOREST_NAME_PATTERN, not a
 //    new kind of guess.
 // 5. ACTOR AREAS an object adds via its own `actor_area`/`actor_area_radius`
@@ -75,7 +75,7 @@
 //    literally describes. True per-placement bookkeeping would mean
 //    re-running candidate filtering after every single placement, which
 //    conflicts with Sec.11's whole architecture (a candidate pool computed
-//    ONCE per command/frame and rejection-sampled — the same reason
+//    ONCE per command/frame and rejection-sampled, the same reason
 //    terrains.ts computes its eligible set once per command, not once per
 //    clump). A later command referencing the id still sees it; a later
 //    PLACEMENT within the SAME command does not shrink around it.
@@ -92,12 +92,12 @@
 //
 //   a. **It is not a standalone flag, and an unmet `Requires:` makes the
 //      ATTRIBUTE inert rather than the COMMAND dead.** guide:2509 carries a
-//      `Requires:` line — `set_place_for_every_player` or
+//      `Requires:` line, `set_place_for_every_player` or
 //      `place_on_specific_land_id`. Without one, the flag simply does nothing
 //      and the command places its full count under the terrain rules it would
 //      have had anyway. **MEASURED, RMSTEST_42, four runs, 2026-08-11**: three
 //      commands on one half-land half-water map gave 60 salmon (flagged and
-//      unflagged alike, all 60 in water) and 30 olive trees on grass — so the
+//      unflagged alike, all 60 in water) and 30 olive trees on grass. So the
 //      flagged commands were not voided, and the flagged fish kept its own
 //      water restriction.
 //
@@ -106,7 +106,7 @@
 //      shore fish, and that map cannot discriminate: its command also names a
 //      shallow, which a shore-habitat fish cannot occupy, so "inert" predicts
 //      zero there too. A map that produces zero is consistent with every model
-//      that produces zero. The counter-evidence was in hand and unweighed —
+//      that produces zero. The counter-evidence was in hand and unweighed.
 //      `find_closest` carries the identical `Requires:` line and appears 71
 //      times frameless in working maps.
 //   b. **The shore class is exempt from what it lifts.** Most objects really
@@ -125,10 +125,10 @@
 // REQUIRE_PATH: `docs/preview-design.md` describes a numeric `dev` argument
 // ("dev 0 = any path, 1 = path length <= 1.3x straight-line..."), but
 // `language.json`'s own entry declares an optional `pathType` (otherConstant)
-// argument, not a number — the same class of doc-vs-data drift Sec.12 item 4
+// argument, not a number, the same class of doc-vs-data drift Sec.12 item 4
 // already names for terrain_size. Rather than reading a `dev` that isn't
 // there, this file treats `require_path`'s presence as `dev 0` ("any path
-// exists") always — the loosest reading, which never over-rejects. The
+// exists") always, the loosest reading, which never over-rejects. The
 // per-frame BFS this needs is a genuine `pathBlocked` emitter, which closes
 // one of Sec.7's three "declared but never emitted" bucket gaps (the other
 // two, `borderBlocked`/`zoneAvoidanceBlocked`, are also this file's job).
@@ -137,7 +137,7 @@
 // built ONCE via `intersectCandidates` and reused across every placement
 // that frame makes; per-placement occupancy and `min_distance_group_placement`
 // are enforced by bounded rejection-sampling against the LIVE grid/point list
-// rather than rebuilding the pool — `terrains.ts`'s `eligibleMask`/`claimed`
+// rather than rebuilding the pool, `terrains.ts`'s `eligibleMask`/`claimed`
 // split, applied here as the cached pool / live occupancy-and-spacing check.
 // `MAX_OBJECT_PLACEMENTS_PER_COMMAND` is a flat cap (not dim-scaled, unlike
 // terrains.ts's clump-attempt cap) because a pathological object count is a
@@ -179,11 +179,11 @@ import { createSpacingIndex, type SpacingIndex } from "./spacingIndex";
 const DEFAULT_GROUP_PLACEMENT_RADIUS = 3;
 /** guide: bare `avoid_forest_zone`/`avoid_cliff_zone` -> d=1. */
 const DEFAULT_ZONE_AVOID_DISTANCE = 1;
-/** Flat per-command cap — see file header. */
+/** Flat per-command cap. See file header. */
 const MAX_OBJECT_PLACEMENTS_PER_COMMAND = 20000;
 
 // ---------------------------------------------------------------------------
-// Attribute reading — duplicated per-file convention (see elevation.ts's
+// Attribute reading, duplicated per-file convention (see elevation.ts's
 // header), EXCEPT this pair: consistency-checker-design.md Sec.7.0 item 4
 // names lands.ts/elevation.ts/terrains.ts's copies as the deliberate
 // per-stage convention and this one as the checker's single shared import,
@@ -194,9 +194,22 @@ export function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): 
   return cmd.attributes.get(name)?.[0]?.args[argIndex]?.value;
 }
 
+/**
+ * BUG-021 / RMSTEST_69 (2026-09-02): `fallback` is for the argument being
+ * ABSENT. A `#define`'d-but-never-`#const`'d name in a numeric slot resolves
+ * to a real, present arg whose value is JS `undefined` (instantiate.ts's
+ * symbol table stores exactly that for a valueless symbol) — measured to
+ * place NOTHING, not the argument's own default. An unknown name never
+ * `#define`'d/`#const`'d anywhere resolves to its own bare string instead
+ * (a different branch in instantiate.ts's resolveArg), so it still falls
+ * through to `fallback` below, unchanged — this only narrows the "known
+ * symbol, no value" case.
+ */
 export function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
-  const v = argValue(cmd, name, argIndex);
-  return typeof v === "number" ? v : fallback;
+  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
+  if (arg === undefined) return fallback;
+  if (typeof arg.value === "number") return arg.value;
+  return arg.value === undefined ? 0 : fallback;
 }
 
 /** undefined when the attribute is absent; `fallback` when present but bare. */
@@ -217,10 +230,13 @@ function lastObjectScaleAttribute(cmd: InstantiatedCommand): "mapSize" | "player
 }
 
 // ---------------------------------------------------------------------------
-// Reference-data lookups (Sec.12 items 3/7/8's fallbacks — see file header)
+// Reference-data lookups (Sec.12 items 3/7/8's fallbacks, see file header)
 // ---------------------------------------------------------------------------
 
-/** The slice of game-constants.json this file needs — narrower consumers (grid.ts) don't carry resourceAmounts, so this is its own projection, matching that file's own stated convention. */
+/** The four resources the status bar and the forest-wood aggregate deal in. Declared here (not resourceSummary.ts, which needs `ObjectConstant` and would otherwise import it back) because `ObjectConstant.resourceStorages` needs it below. */
+export type ResourceKey = "food" | "wood" | "gold" | "stone";
+
+/** The slice of game-constants.json this file needs, narrower consumers (grid.ts) don't carry resourceAmounts, so this is its own projection, matching that file's own stated convention. */
 export interface ObjectConstant {
   constId: number | null;
   /** Null for terrain entries with no callable constant. Object entries always have one; the union is here because this one type is passed to every stage, terrain lookups included. */
@@ -229,8 +245,16 @@ export interface ObjectConstant {
   resourceAmounts?: Readonly<Record<string, number>>;
   isWater?: boolean;
   isForest?: boolean;
-  /** Object entries: where this object may stand. Absent means unknown — see `objectHabitat` for the fallback and why it is `land`. */
+  /** Object entries: where this object may stand. Absent means unknown. See `objectHabitat` for the fallback and why it is `land`. */
   habitat?: string;
+  /** Terrain entries only: the units this terrain auto-spawns (forestTrees.ts). Absent means unknown, not "no trees" — see the schema field's own doc comment. */
+  autoTreeUnits?: readonly { objectId: number; density: number }[];
+  /** Object rows: the unit's raw resource-storage slots. `effect_amount ... ATTR_STORAGE_VALUE` (or any attribute carrying `writesStorageSlot`) rewrites one of these (forestTreeSuppression.ts). */
+  resourceStorages?: readonly { type: number; amount: number; resource?: ResourceKey }[];
+  /** Attribute rows only: this effect_amount attribute writes that index of the target's resourceStorages. Only ATTR_STORAGE_VALUE (slot 0) carries it today. */
+  writesStorageSlot?: number;
+  /** objectClass rows only: every unit id in the class, over the whole roster. */
+  memberIds?: readonly number[];
 }
 
 /**
@@ -254,7 +278,7 @@ export interface ObjectConstant {
  * Measured over the 56 corpus maps: 397 distinct names reach `create_object`,
  * and 216 of them are script `#const`s rather than DE names. `AD4 - Pag -
  * v1.2.rms`'s naval placeholder is one, and no amount of completeness in
- * `game-constants.json` could ever have resolved it by name — unit 1546 has
+ * `game-constants.json` could ever have resolved it by name. Unit 1546 has
  * no `#const` in `random_map.def` at all, so the id is the only handle that
  * exists.
  *
@@ -268,7 +292,7 @@ export interface ObjectConstant {
  * **This is a WeakMap keyed on the ARRAY, not a module-level Map.** The array is
  * a module-level import in the app and a different literal in every test, so
  * keying on its identity gives the app one shared index and each test its own,
- * with no cache-invalidation rule to get wrong — the reference data is frozen
+ * with no cache-invalidation rule to get wrong. The reference data is frozen
  * for the lifetime of the array, so an index built from it can never go stale.
  * Weak so a test's array and its index are collected together.
  *
@@ -284,8 +308,8 @@ export interface ObjectConstant {
  * `PublishedGameConstants` (whose element has neither `allowedTerrains` nor
  * `verified` on `ObjectConstant`), and duplicating this index for the second
  * caller would be the second resolver Sec.3.3 forbids. `ObjectRow` is the
- * narrow read this file actually performs — `constId`, `rmsConstant`,
- * `category` — so both element types satisfy it without a cast at the call
+ * narrow read this file actually performs, `constId`, `rmsConstant`,
+ * `category`, so both element types satisfy it without a cast at the call
  * site.
  *
  * The `WeakMap`'s key type is fixed at construction and cannot be generic per
@@ -332,7 +356,7 @@ export function objectEntry<T extends ObjectRow>(
 
   // 3. A NAME-TO-NAME `#const` (BUG-015): `#const LURE BOAR`, then
   //    `create_object LURE`. The object half of the same defect, and the
-  //    LARGER half — 108 corpus definitions name an object constant against
+  //    LARGER half, 108 corpus definitions name an object constant against
   //    96 that name a terrain, which the bug entry only counted terrains for.
   //    One hop, against the object table only; see `resolveTerrainId` for why
   //    the alias arrives unresolved.
@@ -340,7 +364,12 @@ export function objectEntry<T extends ObjectRow>(
   return target === undefined ? undefined : index.byName.get(target);
 }
 
-/** Sec.12 item 3's fallback: an object carrying any resourceAmounts is treated as a must-be-gaia resource. Mis-handles SHEEP by design — see file header note 2. */
+/** Same cached index as `objectEntry`, keyed by `constId` instead of a written name. For a spawn table row (forestTrees.ts's `autoTreeUnits`) that already carries the id, not a name — two of the wood-bearing spawn units carry `rmsConstant: null`, so a name lookup could never reach them. */
+export function objectById<T extends ObjectRow>(id: number, constants: readonly T[]): T | undefined {
+  return objectIndex(constants).byId.get(id);
+}
+
+/** Sec.12 item 3's fallback: an object carrying any resourceAmounts is treated as a must-be-gaia resource. Mis-handles SHEEP by design. See file header note 2. */
 export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): boolean {
   const amounts = objectEntry(objectRef, constants, symbols, aliases)?.resourceAmounts;
   return amounts !== undefined && Object.keys(amounts).length > 0;
@@ -350,7 +379,7 @@ export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectCo
  * The five coarse classes the preview maps the engine's terrain table onto.
  *
  * **`water` and `amphibious` are two classes, not one, and the split is
- * measured** — `empires2_x2_p1.dat`'s restriction 19 (every ordinary fish)
+ * measured**. `empires2_x2_p1.dat`'s restriction 19 (every ordinary fish)
  * permits 15 terrains with NO shallow and NO beach among them, while
  * restrictions 13, 3 and 15 (the great fish, OYSTERS, TRANSPORT_SHIP) permit
  * 38 including every shallow and every beach. A fish genuinely cannot stand on
@@ -359,7 +388,7 @@ export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectCo
  * The corpus looks like it disagrees and does not. `Menindee_AUS_v2.3.rms`
  * puts fish all over its shallows, and the way it does so is
  * `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW ...
- * second_object FISH }` — the placeholder is unit 647, terrain restriction 0,
+ * second_object FISH }`. The placeholder is unit 647, terrain restriction 0,
  * all 131 terrains permitted, and the fish rides in as the second object.
  * guide:2211 recommends exactly this as the way to "bypass terrain
  * restrictions by using an invisible placeholder object as the main object".
@@ -371,7 +400,7 @@ export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectCo
 export type Habitat = "land" | "water" | "amphibious" | "shore" | "any";
 
 /**
- * Where an object is allowed to stand — the preview's coarse stand-in for the
+ * Where an object is allowed to stand, the preview's coarse stand-in for the
  * engine's TERRAIN TABLE, which stores a per-object terrain-restriction id and
  * a per-restriction row of allowed terrains, and which a script can itself
  * rewrite with `effect_amount SET_ATTRIBUTE <object> ATTR_TERRAIN_ID <n>`
@@ -399,12 +428,12 @@ export type Habitat = "land" | "water" | "amphibious" | "shore" | "any";
  *
  * **"Often" was written as "almost always" and that overstatement was the
  * whole of the next bug.** A script placing a fish on OPEN water has no reason
- * to name a terrain — the engine's own terrain table already restricts it, so
+ * to name a terrain. The engine's own terrain table already restricts it, so
  * `terrain_to_place_on` is redundant and authors skip it. `QS_Three_Bays_v1.1`
  * writes nine bare `create_object TUNA` commands and `land` sent all 119 of
  * them ashore, 77 onto the beach. The maps that DO name a terrain are the ones
  * placing fish on SHALLOWS, where the author wants a specific water terrain
- * rather than any — which is why `Menindee_AUS_v2.3` looked like the general
+ * rather than any, which is why `Menindee_AUS_v2.3` looked like the general
  * case and is not. The correct reading of the asymmetry is unchanged and
  * narrower than it was written: `land` is right for the long tail of unknown
  * land decoration, and the water family has to be named in the data one row at
@@ -446,7 +475,7 @@ export function objectCategory(objectRef: string, constants: readonly ObjectCons
 const WALL_NAME_PATTERN = /WALL/;
 
 /**
- * Tree and bush objects, for COLOUR ONLY — `objectCategory` maps a match to
+ * Tree and bush objects, for COLOUR ONLY, `objectCategory` maps a match to
  * `resource-wood`, which the palette draws dark green.
  *
  * A name heuristic, and deliberately confined to a cosmetic decision. The
@@ -466,7 +495,7 @@ const WALL_NAME_PATTERN = /WALL/;
  */
 const TREE_NAME_PATTERN = /TREE|FOREST|BUSH|PLANT_/;
 
-/** Stands in for the loose-grouping lookup on the commands that never read it — see its build site. Never written to. */
+/** Stands in for the loose-grouping lookup on the commands that never read it. See its build site. Never written to. */
 const EMPTY_CANDIDATE_LOOKUP = new Uint8Array(0);
 
 // ---------------------------------------------------------------------------
@@ -514,7 +543,7 @@ export function isTightGrouping(cmd: InstantiatedCommand): boolean {
 // create_object_group member resolution (Sec.6.6 preamble)
 // ---------------------------------------------------------------------------
 
-/** Member names of an object group, in declared order. % weights are read from language.json's shape but deliberately never consulted — guide:2025 confirms the engine ignores them too. */
+/** Member names of an object group, in declared order. % weights are read from language.json's shape but deliberately never consulted, guide:2025 confirms the engine ignores them too. */
 export function objectGroupMembers(groupCmd: InstantiatedCommand): string[] {
   const attrs = groupCmd.attributes.get("add_object") ?? [];
   const out: string[] = [];
@@ -538,7 +567,7 @@ export interface ObjectCounts {
   groupCount: number;
   /** Per-group member count before variance (grouped) or the total independent placement count (ungrouped). */
   perGroupBase: number;
-  /** `group_variance` — 0 when absent. */
+  /** `group_variance`, 0 when absent. */
   variance: number;
 }
 
@@ -578,7 +607,7 @@ export interface ObjectFrame {
   x?: number;
   y?: number;
   reference?: string;
-  /** The land's owning player, when it has one — carried directly rather than re-parsed out of `reference`. */
+  /** The land's owning player, when it has one, carried directly rather than re-parsed out of `reference`. */
   player?: number;
 }
 
@@ -644,7 +673,7 @@ function distanceBandOk(dx: number, dy: number, circular: boolean, min: number |
 }
 
 /**
- * Single-source BFS restricted to a passable mask — distinct from grid.ts's
+ * Single-source BFS restricted to a passable mask, distinct from grid.ts's
  * `distanceTransform*` (both of those are multi-source "distance to nearest
  * mask tile", ignoring terrain entirely along the way). This is "can you
  * WALK there without crossing a blocked tile", which is what both the
@@ -682,14 +711,14 @@ function reachabilityFromPoint(dim: number, startX: number, startY: number, pass
 
 /**
  * Sec.11: "reachability masks are cached per (land, habitat class) for the
- * whole stage" — and, extending the same reasoning, so are the water mask,
+ * whole stage", and, extending the same reasoning, so are the water mask,
  * the forest-zone mask/distance, the cliff distance transform and the
  * per-land edge-distance transform, none of which depend on anything more
  * specific than the (fixed, S6-final) grid. Building this ONCE per
  * `applyObjects` call rather than once per (command, frame) pair is what
  * keeps a script with hundreds of `create_object` commands referencing the
  * same players' lands from redoing the same O(dim^2) work hundreds of times
- * over — exactly the class of bug terrains.ts's own header describes
+ * over, exactly the class of bug terrains.ts's own header describes
  * (per-clump vs per-command eligible-set cost), found here the same way:
  * two real corpus maps (`AK_Namatjira.rms`, `TL Team Acropolis.rms`) timed
  * out under this suite's corpus gate before this cache existed.
@@ -721,14 +750,14 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
     if (habitat === "any") return undefined; // nothing to restrict
     // `ignore_terrain_restrictions` lifts the terrain table outright for every
     // habitat EXCEPT `shore`, which keeps its beach anchor and only gains the
-    // shallows — see `shoreMask`. Returning undefined here rather than at the
+    // shallows. See `shoreMask`. Returning undefined here rather than at the
     // call sites keeps the one exception in one place.
     if (ignoreRestrictions && habitat !== "shore") return undefined;
     const key = `${habitat}|${invert}|${ignoreRestrictions}`;
     const cached = habitatMasks.get(key);
     if (cached) return cached;
     const out = new Uint8Array(n);
-    // "shore" is OPEN WATER TOUCHING A BEACH — see shoreMask.
+    // "shore" is OPEN WATER TOUCHING A BEACH. See shoreMask.
     const shoreBand = habitat === "shore" ? shoreMask(ignoreRestrictions) : undefined;
     // The other three all read the depth scale, so take it once.
     const { depth } = shoreBand ? { depth: undefined } : depthMask();
@@ -738,7 +767,7 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
         permitted = shoreBand[i] !== 0;
       } else if (habitat === "water") {
         // Open water ONLY. A shallow is walkable ground and restriction 19
-        // excludes it outright — see the Habitat docstring for why the corpus
+        // excludes it outright. See the Habitat docstring for why the corpus
         // looks like it says otherwise.
         permitted = depth![i] === DEPTH_WATER;
       } else if (habitat === "amphibious") {
@@ -746,7 +775,7 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
         // plain dry land. Restrictions 13/3/15 permit exactly this shape.
         permitted = depth![i] !== DEPTH_LAND || isBeachById(grid.terrain[i]);
       } else {
-        // "land" — deliberately still `!isWater` and NOT `depth === LAND`.
+        // "land", deliberately still `!isWater` and NOT `depth === LAND`.
         // The two differ on the three shallows the water flag calls dry
         // (DLC_MANGROVESHALLOW, Ice Navigable, DLC_MANGROVEFOREST), and
         // whether a land object may stand on those is unmeasured. Changing it
@@ -770,7 +799,7 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
    *
    *   - **Not the beach tile itself.** SHORE_FISH and DLC_BOXTURTLE stand in
    *     the water, not on the sand. The old band was symmetric about the
-   *     waterline — one tile of water plus one tile of land — so roughly half
+   *     waterline, one tile of water plus one tile of land, so roughly half
    *     of every shore fish and box turtle came out beached.
    *   - **Not a shallow.** `terrainDepth` separates the three, and shallows
    *     are excluded by name: they are walkable ground as far as the game is
@@ -779,7 +808,7 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
    *     (`isBeach`, the nine of them), not "any non-water neighbour". Since
    *     the engine lays a beach at every waterline (terrains.ts), the two
    *     coincide on an ordinary coast and diverge exactly where a script has
-   *     painted its coastline over — `AD4 - Pag - v1.2.rms` replaces BEACH
+   *     painted its coastline over, `AD4 - Pag - v1.2.rms` replaces BEACH
    *     with DIRT along its connection paths, and a shore fish will not
    *     place against that stretch. That is a consequence worth stating
    *     rather than papering over: what the engine anchors on is one row of
@@ -796,7 +825,7 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
    * relaxed band is "anything that is not dry land, orthogonally adjacent to
    * a beach", which is the strict band plus DEPTH_HYBRID.
    *
-   * The beach tile itself stays excluded in BOTH modes — it is dry land, and
+   * The beach tile itself stays excluded in BOTH modes, it is dry land, and
    * "not on land" is the half of the rule the flag does not touch. This is
    * why the exception lives inside the mask rather than at the call site: the
    * flag changes which tiles qualify, it does not switch the habitat off, and
@@ -899,7 +928,7 @@ interface CandidateContext {
   constants: readonly ObjectConstant[];
   cmd: InstantiatedCommand;
   habitat: Habitat;
-  /** True when `habitat` came from a reference-data row rather than the `land` fallback. Decides whether `terrain_to_place_on` can switch the habitat check off — see step 3. */
+  /** True when `habitat` came from a reference-data row rather than the `land` fallback. Decides whether `terrain_to_place_on` can switch the habitat check off. See step 3. */
   habitatIsData: boolean;
   frame: ObjectFrame;
   playerOrigins: readonly LandOrigin[];
@@ -930,7 +959,7 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
   // `ignore_terrain_restrictions` gates ONLY the habitat check at the bottom
   // of this block, not the whole block. guide:2510-2511: it means "objects
   // can be placed on terrains they are normally restricted from" and it
-  // explicitly "can be used in combination with terrain_to_place_on" — the
+  // explicitly "can be used in combination with terrain_to_place_on". The
   // author is lifting the engine's terrain table, not withdrawing their own
   // instruction about where to place. Gating everything is what let
   // `AK_Six_Points_v1.4.rms` scatter 11 DLC_ANIMALSKELETONs across open
@@ -964,7 +993,7 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     // habitat is guessing at, so the author saying so outranks our guess",
     // and it left `AK_Hourglass_v2.0.rms`'s
     // `create_object SHORE_FISH { terrain_to_place_on WATER … }` with no
-    // shore constraint at all — 200000 shore fish spread over open sea.
+    // shore constraint at all. 200000 shore fish spread over open sea.
     //
     // **What refutes it is the placeholder idiom, from the other side.** If
     // `terrain_to_place_on SHALLOW` were enough to put a fish on a shallow,
@@ -980,7 +1009,7 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     // no wider: an UNDECLARED habitat, which is a guess rather than data.**
     // The reference data covers a few dozen objects of several hundred, so an
     // unknown water object falls back to `land`, and an author writing
-    // `terrain_to_place_on SHALLOW` for one is the only signal there is —
+    // `terrain_to_place_on SHALLOW` for one is the only signal there is.
     // narrowing by a guessed `land` would place nothing at all and read as
     // the object failing. Where the habitat came from the dat's own
     // restriction table, there is no guess to defer to and the two narrow
@@ -989,7 +1018,7 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     // **`ignoreTerrain` is no longer a gate here, it is an argument.** It used
     // to skip this block outright, which is right for every habitat but one:
     // the shore class keeps its beach anchor under the flag and only gains the
-    // shallows (measured in game 2026-08-10 — see `shoreMask`). `habitatMask`
+    // shallows (measured in game 2026-08-10, see `shoreMask`). `habitatMask`
     // returns undefined for the cases the flag really does lift, so the shape
     // of the decision stays in the mask rather than being duplicated here.
     if (terrainId === undefined || habitatIsData) {
@@ -1076,7 +1105,7 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     });
   }
   if (cmd.attributes.has("max_distance_to_other_zones") && (habitat === "land" || habitat === "water" || habitat === "amphibious")) {
-    // **MINIMUM distance, despite the name — guide:2527 says so in its own
+    // **MINIMUM distance, despite the name, guide:2527 says so in its own
     // capitals: "Minimum (NOT maximum) distance, in tiles, that objects will
     // stay away from terrains that they are restricted from being placed on",
     // and guide:2528's example is "deep fish away from beaches".** This
@@ -1085,7 +1114,7 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     // `QS_Three_Bays_v1.1.rms`'s "tuna everywhere" command
     // (`max_distance_to_other_zones 4`, no terrain_to_place_on) to a 4-tile
     // ribbon along the shoreline instead of pushing it 4 tiles off the shore
-    // into open sea — the exact inverse of what the line is for. Both halves
+    // into open sea. The exact inverse of what the line is for. Both halves
     // were inverted: UNREACHABLE means no restricted terrain exists anywhere,
     // so the constraint is vacuously satisfied and must PASS, not fail.
     //
@@ -1152,7 +1181,7 @@ export interface ObjectsResult {
 }
 
 // `min_distance_group_placement` used to be a plain array of accepted points
-// re-scanned per candidate — O(placements^2) over a command, and the single
+// re-scanned per candidate, O(placements^2) over a command, and the single
 // largest cost in the whole preview on three corpus maps. `spacingIndex.ts`
 // has the measurements and the replacement; the distance is fixed per
 // command, which is exactly the shape a uniform grid wants.
@@ -1181,12 +1210,12 @@ function selectionKey(tile: number, mode: SelectionMode, dim: number, frame: Obj
  * A per-frame candidate pool, consumed as placements are made.
  *
  * PERFORMANCE (Sec.11): a naive "re-scan the whole pool for the best
- * candidate on every single pick" is O(placements x pool size) — fine for a
+ * candidate on every single pick" is O(placements x pool size). Fine for a
  * handful of objects, catastrophic for the corpus's own worst case
  * (`AK_Namatjira.rms` declares `number_of_groups 999999`, `TL Team
  * Acropolis.rms` declares `number_of_objects 65536`, both scripts also lean
  * on `find_closest*`). Two corpus maps timed out under this suite's own
- * corpus gate before this fix existed — found the same way terrains.ts's own
+ * corpus gate before this fix existed. Found the same way terrains.ts's own
  * iteration-cap bug was found, by the corpus gate itself, not by review.
  *
  * The fix relies on monotonicity: occupancy only grows and spacing points
@@ -1197,7 +1226,7 @@ function selectionKey(tile: number, mode: SelectionMode, dim: number, frame: Obj
  *   - uniform: swap-remove the tested tile out of `items` regardless of
  *     outcome, so every tile is visited AT MOST ONCE for the whole frame.
  *   - closest/center/edge: `items` is sorted once by the selection key, and
- *     `cursor` only moves forward — same "visited at most once" property,
+ *     `cursor` only moves forward, same "visited at most once" property,
  *     without needing a fresh best-of-pool scan per pick.
  * Total cost across a whole frame's worth of picks is O(pool log pool) (the
  * one-time sort) instead of O(picks x pool).
@@ -1206,7 +1235,7 @@ function selectionKey(tile: number, mode: SelectionMode, dim: number, frame: Obj
  * per-pick cost was gone (measured 2026-08-07: 668 ms of `TL Team
  * Acropolis.rms`'s S6 was spent here, across 267 (command, frame) pairs).
  * A pool starts as up to `dim^2` survivors, so the ordered path's original
- * shape — map to 40,000 `{t, k}` objects, sort with a comparator, map back —
+ * shape, map to 40,000 `{t, k}` objects, sort with a comparator, map back,
  * allocated three arrays and 40,000 short-lived objects per frame. Both are
  * now `Int32Array`/`Float64Array`, per Sec.11's "typed arrays only, no
  * per-tile objects", and the sort carries its key WITH the tile in one number
@@ -1227,11 +1256,11 @@ function buildCandidatePool(survivors: Int32Array, mode: SelectionMode, dim: num
   // Pack (key, tile) into one number and sort WITHOUT a comparator: a plain
   // numeric sort on a Float64Array is the engine's fast path, where a
   // comparator is a JS call per comparison. The packing is exact rather than
-  // approximate — `key * dim^2 + tile` with `tile < dim^2` is invertible, and
+  // approximate, `key * dim^2 + tile` with `tile < dim^2` is invertible, and
   // the largest value it can reach (a squared distance under 2*dim^2, times
   // dim^2) is about 3.2e9 on a 200 map, comfortably inside a double's exact
   // integer range. Sorting by the packed value sorts by key first and by tile
-  // second, so ties break deterministically by tile index — which the
+  // second, so ties break deterministically by tile index, which the
   // comparator version did NOT guarantee (Array.prototype.sort's stability
   // preserved survivor order instead, the same order, so this is a
   // clarification rather than a behaviour change).
@@ -1265,7 +1294,7 @@ function takeFromPool(
     while (pool.count > 0) {
       const idx = nextInt(rng, 0, pool.count - 1);
       const candidate = pool.items[idx];
-      // Swap-remove by shrinking `count`, not by `pop()` — the backing array
+      // Swap-remove by shrinking `count`, not by `pop()`, the backing array
       // is a typed array of fixed length, and the tail past `count` is simply
       // ignored.
       pool.count--;
@@ -1353,7 +1382,7 @@ export function applyObjects(
   const commands = instantiated.sections.get("OBJECTS_GENERATION") ?? [];
   // The script's own `#const`s. Every reference-data lookup in this stage takes
   // them, because 216 of the 397 distinct object names the corpus writes are
-  // script constants rather than DE ones — see `objectEntry`.
+  // script constants rather than DE ones. See `objectEntry`.
   const symbols = instantiated.symbols;
   const aliases = instantiated.aliases;
   const { dim } = grid;
@@ -1429,7 +1458,7 @@ export function applyObjects(
 
     // guide:2509's own REQUIRES line. Unmet, the ATTRIBUTE does nothing and
     // the command places normally under the restrictions it would have had
-    // anyway (RMSTEST_42 — see this file's header, and note this replaced a
+    // anyway (RMSTEST_42, see this file's header, and note this replaced a
     // whole-command gate that emptied 47 corpus commands).
     //
     // Read the ATTRIBUTE NAMES, not `frameKind`. `place_on_specific_land_id
@@ -1471,13 +1500,13 @@ export function applyObjects(
     // guide:2205: "Specify ANY object to be placed on top of the main object.
     // If you are placing multiple objects, each will get the specified second
     // object." Drawn as its own PlacedObject on the same tile since
-    // 2026-08-07 — it used to be dropped with a note, and that note was
+    // 2026-08-07, it used to be dropped with a note, and that note was
     // hiding most of the fish on the corpus's water maps. The placeholder
     // idiom is the reason: guide:2211 recommends `second_object` explicitly
     // as the way to "bypass terrain restrictions by using an invisible
     // placeholder object as the main object", so a script that wants fish in
     // an awkward spot places a PLACEHOLDER and hangs the fish off it. Dropping
-    // the second object drops the only thing the author cared about —
+    // the second object drops the only thing the author cared about.
     // `AD4 - Pag - v1.2.rms` came out with no fish at all, and
     // `Menindee_AUS_v2.3.rms` lost every pond fish, both of which read as the
     // fish failing to place rather than as a rendering omission.
@@ -1516,8 +1545,8 @@ export function applyObjects(
     const forcePlacement = cmd.attributes.has("force_placement") && !cmd.attributes.has("set_loose_grouping"); // guide:2739
     const ignoreTerrain = cmd.attributes.has("ignore_terrain_restrictions") && !ignoreTerrainInert;
     const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants, symbols, aliases); // group commands: candidate filtering can't commit to one member's habitat (see file header)
-    // A group's "any" is not data either — there is no single member to have a
-    // row — so it takes the same deference `land` does.
+    // A group's "any" is not data either, there is no single member to have a
+    // row, so it takes the same deference `land` does.
     const habitatIsData = !isObjectGroup && objectHabitatIsDeclared(typeName, constants, symbols, aliases);
     const selectionMode = resolveSelectionMode(cmd);
     const spacingDistance = optionalNumAttr(cmd, "temp_min_distance_group_placement", 0) ?? optionalNumAttr(cmd, "min_distance_group_placement", 0);
@@ -1567,7 +1596,7 @@ export function applyObjects(
       }
       const pool = buildCandidatePool(baseResult.survivors, selectionMode, dim, frame);
       // For loose grouping's "within group_placement_radius of the anchor"
-      // query below — a fixed lookup built once from the full survivor set
+      // query below, a fixed lookup built once from the full survivor set
       // (independent of `pool`, which `takeFromPool` consumes) so that query
       // can be a small local scan instead of a pool-wide filter.
       //

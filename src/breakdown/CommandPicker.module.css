@@ -4,7 +4,14 @@
 
 .panel {
   position: absolute;
-  z-index: 20;
+  /* Above TutorialOverlay's dim layer/ring (900/901) for the same reason
+     TitleBar.module.css's `.dropdown` is, every tutorial step that can
+     open this picker currently spotlights a region wide enough to contain
+     it too (breakdown.main/breakdown.cardList), so this is prevention
+     against that coincidence breaking rather than a reported bug: a
+     narrower future spotlight would otherwise dim this exactly like the
+     File dropdown was. */
+  z-index: 920;
   top: 100%;
   left: 0;
   margin-top: 0.25rem;
@@ -40,9 +47,30 @@
   white-space: nowrap;
 }
 
-.list {
-  overflow-y: auto;
+/* Same defect and same fix as SectionView.module.css's .addButtonSlot:
+   HelpTip's own wrapper span sits between .panel (the flex column with
+   max-height: 20rem) and .list, and that span is `display: inline-block`
+   (HelpTip.module.css), not a flex participant, so .list's `flex: 1` and
+   `overflow-y: auto` below were doing nothing. The span just grew to fit
+   every result row, .panel had no `overflow` of its own to clip it, and
+   the whole thing spilled out of the box instead of scrolling. `> *`
+   targets that span structurally, since HelpTip has no className prop to
+   reach it directly. */
+.listSlot {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
+}
+
+.listSlot > * {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.list {
+  min-height: 0;
 }
 
 .entry {

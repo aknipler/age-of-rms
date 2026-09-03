@@ -8,9 +8,9 @@ import { HelpTip } from "../../components/HelpTip";
 import cardStyles from "./cards.module.css";
 import styles from "./ConditionalCard.module.css";
 
-// docs/breakdown-design.md Sec.3.5 — fully editable.
+// docs/breakdown-design.md Sec.3.5, fully editable.
 // Condition fields commit via setCondition (Sec.4.4's optional-condition
-// handling — an absent condition on if/elseif inserts after the
+// handling, an absent condition on if/elseif inserts after the
 // keyword rather than replacing a nonexistent span); branch add/remove
 // use Sec.4.10; per-branch add-command opens the same CommandPicker as
 // SectionView, anchored `in: "branch"`.

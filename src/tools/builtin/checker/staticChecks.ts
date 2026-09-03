@@ -1,11 +1,11 @@
 /**
  * Sec.3's static-analysis layer (consistency-checker-design.md). Runs against
  * `InstantiatedScript` (S0's output) plus `ParseResult` (for the checks whose
- * SUPPRESSING half must be generous about branches S0 did not take — Sec.3.0b).
+ * SUPPRESSING half must be generous about branches S0 did not take, Sec.3.0b).
  * No `TileGrid`, no S1-S6: every check here reads resolved attribute values.
  *
  * **Positive-resolver rule throughout (CLAUDE.md hard rule).** A reference the
- * reference data has no row for is UNRESOLVED, not ABSENT-therefore-BROKEN —
+ * reference data has no row for is UNRESOLVED, not ABSENT-therefore-BROKEN,
  * every check's third outcome is "cannot determine", which reports nothing.
  */
 
@@ -32,9 +32,9 @@ import {
 
 export type StaticFindingKind =
   | "landOverAllocation" // Sec.3.1
-  | "actorAreaUndeclaredToPlaceIn" // Sec.3.2 — suppresses actorAreaMissing (Sec.5.1)
-  | "actorAreaUndeclaredAvoid" // Sec.3.2 — does NOT suppress
-  | "actorAreaUndeclaredSharedBlockReference" // Sec.3.2 — no owning command, RMS0110's own ambiguity
+  | "actorAreaUndeclaredToPlaceIn" // Sec.3.2, suppresses actorAreaMissing (Sec.5.1)
+  | "actorAreaUndeclaredAvoid" // Sec.3.2, does NOT suppress
+  | "actorAreaUndeclaredSharedBlockReference" // Sec.3.2, no owning command, RMS0110's own ambiguity
   | "terrainImpossible" // Sec.3.3, gated by Sec.3.5
   | "minExceedsMaxObjects" // Sec.3.4 (objects.ts's own comparison, promoted)
   | "cliffsMinExceedsMax"; // Sec.3.4 (cliffs.ts's own comparison, promoted)
@@ -46,7 +46,7 @@ export interface StaticFinding {
   /**
    * Which of Sec.3.0 rule 1's per-player-count passes produced this. Stamped
    * by `runStaticChecks`, never by an individual check, so no check can
-   * forget it — and NOT interpolated into `text`, because Sec.5.1's renderer
+   * forget it, and NOT interpolated into `text`, because Sec.5.1's renderer
    * collapses findings that are identical across counts and a count baked
    * into the sentence defeats that by construction (1024 blocks on
    * `Pa_Site_v1.1.rms`, over `LIMITS.maxBlocksPerOutput`).
@@ -64,13 +64,13 @@ export interface StaticFinding {
 
 /**
  * What an individual check returns: everything but the `playerCount`, which
- * `runStaticChecks` stamps on the way out. Structural typing makes this free —
+ * `runStaticChecks` stamps on the way out. Structural typing makes this free,
  * the checks already build object literals without the field.
  */
 export type UnstampedFinding = Omit<StaticFinding, "playerCount">;
 
 // ---------------------------------------------------------------------------
-// Shared context — computed ONCE per script (player-count-independent),
+// Shared context, computed ONCE per script (player-count-independent),
 // reused across every selected player count's run of these checks.
 // ---------------------------------------------------------------------------
 
@@ -110,14 +110,14 @@ function isRndSourced(attr: { args: InstantiatedArg[] } | undefined): boolean {
 }
 
 /**
- * Sec.3.1. Reads `InstantiatedScript` only — a land inside a shared block or
+ * Sec.3.1. Reads `InstantiatedScript` only, a land inside a shared block or
  * a `RawNode` is invisible to this check and the sum is understated as a
  * result, which is the tolerable (under-report) direction the section names
  * explicitly.
  *
  * Takes NO player count: Sec.3.1's cancellation argument says the sum is
  * player-count invariant, so the count belonged only to the sentence's old
- * "At N players," prefix — and that prefix was what stopped four identical
+ * "At N players," prefix, and that prefix was what stopped four identical
  * findings from collapsing into one block.
  */
 export function checkLandOverAllocation(inst: InstantiatedScript): UnstampedFinding[] {
@@ -157,7 +157,7 @@ export function checkLandOverAllocation(inst: InstantiatedScript): UnstampedFind
     {
       kind: "landOverAllocation",
       severity: "info",
-      // NOT "At N players, ..." — the count is carried on the finding
+      // NOT "At N players, ..."; the count is carried on the finding
       // (`playerCount`, stamped by `runStaticChecks`) and printed by the
       // renderer ONLY when the finding does not hold at every selected
       // count. Sec.3.1's own cancellation argument is that the sum is
@@ -181,7 +181,7 @@ function isActorAreaAttr(parse: ParseResult, item: Item): item is Extract<Item, 
   return item.kind === "attribute" && astAttributeName(parse, item) === "actor_area";
 }
 
-/** Every span S0 actually instantiated a `create_actor_area`/`actor_area` occurrence at, mapped to its resolved numeric id — rule 2's "instantiation's own resolved values", keyed so a specific AST occurrence can be looked up by identity. */
+/** Every span S0 actually instantiated a `create_actor_area`/`actor_area` occurrence at, mapped to its resolved numeric id, rule 2's "instantiation's own resolved values", keyed so a specific AST occurrence can be looked up by identity. */
 function instantiatedActorAreaValuesBySpan(inst: InstantiatedScript): Map<number, number> {
   const bySpan = new Map<number, number>();
   for (const [, commands] of inst.sections) {
@@ -220,14 +220,14 @@ function resolveDeclarationId(
   }
   // Rule 2: a parenthesised expression (or an otherwise-unresolvable name)
   // that S0 DID evaluate, because this exact occurrence sits in a taken
-  // branch — S0 buys what rule 1's #const-name scan cannot (24hr_Caverns.rms's
+  // branch, S0 buys what rule 1's #const-name scan cannot (24hr_Caverns.rms's
   // `actor_area (AA_TC)`).
   const instValue = instValuesBySpan.get(span.start);
   if (instValue !== undefined) return { values: new Set([instValue]), resolved: true };
   return { values: new Set(), resolved: false };
 }
 
-/** Every reachable orphan (shared) block's attribute matching `names`, paired with the block's own span — Sec.3.0b's "the reference side takes shared-block references too, but only where S0 reached the block." */
+/** Every reachable orphan (shared) block's attribute matching `names`, paired with the block's own span, Sec.3.0b's "the reference side takes shared-block references too, but only where S0 reached the block." */
 function collectOrphanBlockAttributes(
   parse: ParseResult,
   names: ReadonlySet<string>,
@@ -258,7 +258,7 @@ function collectOrphanBlockAttributes(
 /**
  * Sec.3.2. Declaration side is generous over the WHOLE AST (every branch,
  * selected or not, descending into shared blocks); reference side stays on
- * the instantiation (strict — a reference in an untaken branch cannot fail on
+ * the instantiation (strict, a reference in an untaken branch cannot fail on
  * this seed), plus shared-block references where S0 reached the block.
  */
 export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ctx: StaticContext): UnstampedFinding[] {
@@ -288,8 +288,8 @@ export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ct
   const findings: UnstampedFinding[] = [];
 
   // Reference side: strict, instantiation-scoped. `avoid_actor_area` is
-  // REPEATABLE (language.json) — a single command can carry several, folded
-  // in occurrence order (Sec.3 rule 10) — so every entry needs checking, not
+  // REPEATABLE (language.json), a single command can carry several, folded
+  // in occurrence order (Sec.3 rule 10), so every entry needs checking, not
   // only the first. `actor_area_to_place_in` is not repeatable and is always
   // length-1 when present, so iterating both the same way is correct for it
   // too.
@@ -351,14 +351,14 @@ export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ct
 
 const CONNECT_COMMAND_PREFIX = "create_connect_";
 
-/** `PublishedGameConstant` already carries every field `TerrainConstantForMasks` reads — this only fixes the `constId?` (optional) vs `constId` (required) seam, WITHOUT dropping `isHybrid`/`isBeach`/`beachTerrain` the way `objectConstantsFromPublished` (previewBridge.ts, built for the Monte Carlo layer's narrower `ObjectConstant` projection) would. */
+/** `PublishedGameConstant` already carries every field `TerrainConstantForMasks` reads, this only fixes the `constId?` (optional) vs `constId` (required) seam, WITHOUT dropping `isHybrid`/`isBeach`/`beachTerrain` the way `objectConstantsFromPublished` (previewBridge.ts, built for the Monte Carlo layer's narrower `ObjectConstant` projection) would. */
 function asTerrainConstants(constants: readonly PublishedGameConstant[]): readonly TerrainConstantForMasks[] {
   return constants.map((c) => ({ ...c, constId: c.constId ?? null }));
 }
 
 // `base_terrain` parses as a standalone CommandNode at a section's top level
 // (index.ts's own `resolveBaseFill` reads it that way) but as an
-// AttributeNode wherever it sits inside a block — an orphan block included,
+// AttributeNode wherever it sits inside a block, an orphan block included,
 // which the design doc's own producer table measures directly ("1877 as
 // AttributeNodes... 1908 over every item kind"). Both forms must count.
 function isTerrainProducerItem(parse: ParseResult, item: Item): boolean {
@@ -392,7 +392,7 @@ function terrainProducerValues(parse: ParseResult, item: Item): unknown[] {
  * ground, plus what the automatic beach pass would grow from each. Base
  * surface comes straight from the instantiation (if-selection already
  * applied); `start_random`'s untaken branches and shared blocks are added by
- * a separate AST walk — Sec.3.3's own asymmetric rule, and the design's own
+ * a separate AST walk, Sec.3.3's own asymmetric rule, and the design's own
  * measurement (0/32 tracked maps put a producer at another if-branch outcome)
  * is why this does not attempt full if-branch reachability tracking.
  */
@@ -400,7 +400,7 @@ export interface TerrainSurface {
   surface: ReadonlySet<number>;
   /** Terrain-producer occurrences this walk actually tried to resolve (an absent attribute is not a producer). */
   producersTotal: number;
-  /** Of those, the ones `resolveTerrainId` could not answer — Sec.3.3 clause 2's numerator. */
+  /** Of those, the ones `resolveTerrainId` could not answer, Sec.3.3 clause 2's numerator. */
   producersUnresolvable: number;
 }
 
@@ -411,7 +411,7 @@ export interface TerrainSurface {
  * (the tier-1 named-terrain half, which reads no surface, keeps running).
  *
  * [tune]: interim, an order of magnitude clear of both anchors in both
- * directions — `24hr_Battle Lines 1.0.rms` at 50 of 67 is what it is for,
+ * directions, `24hr_Battle Lines 1.0.rms` at 50 of 67 is what it is for,
  * `Menindee_AUS_v2.3.rms` at 1 of 539 is what it must not fire on. Set on
  * evidence by `npm run measure:checker`'s per-map ratio row, not by argument.
  * The error direction is the safe one: too high abstains on nothing that
@@ -432,7 +432,7 @@ export function computeTerrainSurface(
   let producersUnresolvable = 0;
   const add = (value: unknown): void => {
     // An ABSENT attribute is not a producer and must not enter the
-    // denominator — otherwise the ratio measures how many optional
+    // denominator, otherwise the ratio measures how many optional
     // attributes a script declines to write.
     if (value === undefined || value === null) return;
     producersTotal++;
@@ -484,7 +484,7 @@ function terrainRow(constants: readonly PublishedGameConstant[], id: number): Pu
   return constants.find((c) => c.category === "terrain" && c.constId === id);
 }
 
-/** Sec.3.5: an unverified row's fields are placeholders, not facts — downgrade to info. */
+/** Sec.3.5: an unverified row's fields are placeholders, not facts, downgrade to info. */
 function gatedSeverity(verified: boolean): "warning" | "info" {
   return verified ? "warning" : "info";
 }
@@ -506,7 +506,7 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
   const row = objectEntry(typeName, opts.constants, inst.symbols);
   if (row === undefined) return []; // case 3: no reference row
 
-  if (ignoreTerrainRestrictionsValid(cmd)) return []; // valid override — the terrain table no longer applies
+  if (ignoreTerrainRestrictionsValid(cmd)) return []; // valid override, the terrain table no longer applies
 
   const terrainRef = argValue(cmd, "terrain_to_place_on", 0);
   const namedTerrainId = terrainRef !== undefined ? resolveTerrainId(opts.terrainConstants, terrainRef, opts.symbols) : undefined;
@@ -588,7 +588,7 @@ export function checkAllObjectTerrainPlacements(inst: InstantiatedScript, opts: 
 }
 
 // ---------------------------------------------------------------------------
-// Sec.3.4: static contradictions (packing bound cut — see the design doc)
+// Sec.3.4: static contradictions (packing bound cut, see the design doc)
 // ---------------------------------------------------------------------------
 
 /** `objects.ts`'s own `minExceedsMax` comparison, promoted to the static layer so it fires once rather than being rediscovered identically on every Monte Carlo run. */
@@ -613,7 +613,7 @@ export function checkMinExceedsMaxObjects(inst: InstantiatedScript): UnstampedFi
   return findings;
 }
 
-/** `cliffs.ts`'s own `min_number_of_cliffs > max_number_of_cliffs` comparison, promoted the same way — its consequence is worse (the note's own words: "crashes the real game"). */
+/** `cliffs.ts`'s own `min_number_of_cliffs > max_number_of_cliffs` comparison, promoted the same way, its consequence is worse (the note's own words: "crashes the real game"). */
 export function checkCliffsMinExceedsMax(inst: InstantiatedScript): UnstampedFinding[] {
   const commands = inst.sections.get("CLIFF_GENERATION");
   if (!commands) return [];

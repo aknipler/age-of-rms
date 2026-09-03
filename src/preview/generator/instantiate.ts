@@ -1,18 +1,18 @@
-// Stage 0: script instantiation — docs/preview-design.md Sec.3. PURE
+// Stage 0: script instantiation, docs/preview-design.md Sec.3. PURE
 // (CLAUDE.md hard rule / preview-design Sec.2).
 //
 // The parser deliberately never evaluates conditionals, randoms, or math
 // (parser-design Sec.1 non-goals; Sec.2.2 assigns that semantics to "the
 // preview generator"). This file is that pass: it walks the AST once,
-// mirroring the engine's token-filter model — pick a branch, roll a random,
-// resolve a constant, fold duplicate attributes — and produces a flat,
+// mirroring the engine's token-filter model, pick a branch, roll a random,
+// resolve a constant, fold duplicate attributes, and produces a flat,
 // per-section list of concrete commands with every value as final as S0 can
 // make it. Every later stage (lands.ts onward) reads InstantiatedScript, not
 // the AST.
 //
 // One walk, not two: `if`/`start_random` branch selection, `#define`/`#const`
 // symbol definitions, and the S0 RNG rolls all happen in the SAME
-// depth-first traversal, in canonical section order (Sec.3 rule 11) — so a
+// depth-first traversal, in canonical section order (Sec.3 rule 11), so a
 // symbol defined only inside a taken branch resolves correctly for
 // everything after it, and a symbol inside an UNTAKEN branch never exists,
 // exactly as the engine would see it.
@@ -48,7 +48,7 @@ import type {
 
 // Absolute last resort only: every MAP_SIZES entry the settings pane can
 // offer has a matching predefinedLabels row with `dimensions`, and
-// `validate:reference` enforces that join — this constant exists so a
+// `validate:reference` enforces that join, this constant exists so a
 // corrupted/emptied data file degrades to *a* map rather than to no map at
 // all (Sec.3 rule 1's own "label data is missing" guard covers the same
 // failure and fires alongside this).
@@ -56,7 +56,7 @@ const FALLBACK_DIM = 200;
 
 // Sec.3 rule 11's parenthetical names these five PLAYER_SETUP commands
 // explicitly as stream state S0 folds into the environment, and rule 7/8
-// name behavior_version/override_map_size the same way — these are pinned
+// name behavior_version/override_map_size the same way, these are pinned
 // engine mechanics the spec itself calls out by name, not a data-driven
 // vocabulary category (contrast CommandDef.repeatable, which IS read from
 // language.json rather than hardcoded here).
@@ -107,7 +107,7 @@ export function instantiateScript(
   env.add("DE_GAME_AGE2");
   // Deliberately NOT set: UP_*, DE_GAME_ROME, every other gameMode
   // (REGICIDE, EMPIRE_WARS, ...), lobbySetting, startingResources,
-  // startingAge — none of these are derivable from PreviewSettings, so
+  // startingAge, none of these are derivable from PreviewSettings, so
   // "standard-lobby defaults for the rest" means they stay undefined/false.
 
   const canonicalTeams = canonicaliseTeams(settings.teams, settings.playerCount);
@@ -158,7 +158,7 @@ export function instantiateScript(
     const type = node.def?.type;
     // integer/percent/flag are Sec.6's "numeric slots"; otherConstant is
     // #const's own value slot, whose description says a string there may be
-    // "another constant" — both get the same symbol-table attempt and the
+    // "another constant", both get the same symbol-table attempt and the
     // same rounding, since both are fundamentally numeric internally.
     // terrainConstant/objectConstant do NOT: those names resolve against
     // game-constants.json elsewhere (CREATION_PLAN A.2's alias table is the
@@ -218,7 +218,7 @@ export function instantiateScript(
   /**
    * Rule 3: roll r uniform 1-100 from this RandomNode's own substream;
    * branches claim cumulative ranges in declaration order, truncated at 99
-   * (guide:3007) — so r=100 is always the no-branch outcome, and a total
+   * (guide:3007), so r=100 is always the no-branch outcome, and a total
    * under 99 leaves an even larger gap. Deterministic given the seed, never
    * re-rolled once chosen.
    */
@@ -255,8 +255,8 @@ export function instantiateScript(
         // BUG-015: a value that stayed a STRING is a name-to-name alias
         // (`#const TERR_CORNER GRASS2`). It cannot go in `symbols`, which
         // holds ids, and dropping it is what made the preview claim our own
-        // reference data does not know a terrain it does. Recorded UNRESOLVED
-        // — see `InstantiatedScript.aliases` for why resolving it here would
+        // reference data does not know a terrain it does. Recorded UNRESOLVED,
+        // see `InstantiatedScript.aliases` for why resolving it here would
         // be worse than the bug.
         if (typeof resolved === "string" && resolved !== symbolName) aliases.set(symbolName, resolved);
       }
@@ -268,7 +268,7 @@ export function instantiateScript(
         text: "This map depends on include files the preview cannot see — the preview is missing whatever they generate.",
       });
     }
-    // #undefine: rule 4, "does nothing" — deliberately no state change.
+    // #undefine: rule 4, "does nothing", deliberately no state change.
   }
 
   // -------------------------------------------------------------------
@@ -281,8 +281,8 @@ export function instantiateScript(
     // onto `node.def`), so identity has to come from the def and fall back to
     // the written word only for commands language.json does not know.
     // Resolving it HERE rather than at the four call sites that compare
-    // `cmd.name` is the point: every consumer — the land-command gate below,
-    // lands.ts, terrains.ts, elevation.ts, objects.ts, connections.ts — gets
+    // `cmd.name` is the point: every consumer, the land-command gate below,
+    // lands.ts, terrains.ts, elevation.ts, objects.ts, connections.ts, gets
     // the answer without knowing the alias rule exists. See docs/known-issues.md
     // BUG-013; the author's literal spelling belongs in a separate field if a
     // message ever needs it.
@@ -357,7 +357,7 @@ export function instantiateScript(
    * AttributeNodes fold into it (rule 10). `out`, when present, is the
    * per-section command array top-level CommandNodes push into. Passing both
    * through unchanged into if/random branches is what makes "if/start_random
-   * anywhere, including mid-command" (Sec.1) fall out for free — the branch
+   * anywhere, including mid-command" (Sec.1) fall out for free, the branch
    * contributes to whichever sink/out the surrounding context already has.
    */
   function walkItems(
@@ -415,7 +415,7 @@ export function instantiateScript(
 
   // -------------------------------------------------------------------
   // Rule 11: merge duplicate sections, process in canonical engine order.
-  // `refDb.data.sections` already IS that order — read from the data
+  // `refDb.data.sections` already IS that order, read from the data
   // rather than retyping the seven names.
   // -------------------------------------------------------------------
   const bySection = new Map<string, Item[]>();
@@ -426,7 +426,7 @@ export function instantiateScript(
   }
 
   // Preamble: content written above the first <SECTION> tag. Not one of the
-  // seven pipeline sections (rule 11), so nothing is collected for it — but
+  // seven pipeline sections (rule 11), so nothing is collected for it, but
   // it still runs, for its symbol/stream-state side effects.
   walkItems(parse.script.preamble, "", undefined, undefined);
 
@@ -439,7 +439,7 @@ export function instantiateScript(
     sections.set(sectionName, out);
   }
   // Unknown section names (RMS0100): not one of the canonical seven, but
-  // "never silently drop content" — still instantiated, after the seven, in
+  // "never silently drop content", still instantiated, after the seven, in
   // first-encountered order (there is no engine-defined slot for them).
   for (const [sectionName, items] of bySection) {
     const out: InstantiatedCommand[] = [];
@@ -449,7 +449,7 @@ export function instantiateScript(
 
   // Only the numeric definitions leave this function. `symbols` internally
   // stores `undefined` for a bare `#define`, where presence alone means
-  // "defined" (rule 4) — but a downstream terrain/object lookup wants an id,
+  // "defined" (rule 4), but a downstream terrain/object lookup wants an id,
   // and handing it a name that maps to nothing would just push the same
   // narrowing onto every consumer.
   const numericSymbols = new Map<string, number>();

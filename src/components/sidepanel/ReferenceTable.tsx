@@ -19,7 +19,7 @@ import styles from "./ReferenceTable.module.css";
 // Breakdown tab, and it was never a real one: of the fifteen fields on
 // BreakdownContextValue this needed exactly two, `gameConstants` and `lang`,
 // both of which are module-level JSON that never changes at runtime. The rest
-// of that context is edit intents, expansion anchors and card selection —
+// of that context is edit intents, expansion anchors and card selection,
 // machinery a read-only lookup table has no business requiring. Dropping it is
 // what lets the Code tab render this component at all, since there is no
 // BreakdownProvider over there and there should not be one.
@@ -53,7 +53,7 @@ type ConstantMode = "terrain" | "objects";
  * Objects tab rendered nothing for months because of the one place they do
  * not: an object row's category is the SINGULAR `"object"`. The filter read
  * `c.category === mode`, which is a valid filter that matches zero rows, so
- * there was no error to see — only an empty table.
+ * there was no error to see, only an empty table.
  *
  * Mapping them explicitly is the point. `ValueEditor.tsx` already writes the
  * category out as a literal rather than reusing a UI string, and passing a
@@ -72,7 +72,7 @@ const CATEGORY_BY_MODE: Record<ConstantMode, string> = {
  * The middle has to disagree: `deTextureFile` is null on every object row, so
  * reusing the terrain columns would have "implemented" Objects as a table
  * with a permanently empty column. `habitat` and `resourceAmounts` are the
- * object-side equivalents — the fields the generator and the status-bar
+ * object-side equivalents, the fields the generator and the status-bar
  * totals actually read.
  */
 interface ConstantColumn {
@@ -96,7 +96,7 @@ const SHARED_COLUMNS: ConstantColumn[] = [
   { header: "Descriptive Name", cell: (c) => c.descriptiveName },
 ];
 
-// Community-table Comments, not this project's own data — 131 of 131 terrain
+// Community-table Comments, not this project's own data. 131 of 131 terrain
 // rows carry one, 668 of 2670 object rows do (the rest are gaia roster rows
 // the community table never annotates, mostly carcasses/blood decals). Its
 // own dash reads as "the community table has nothing to say", the same as
@@ -125,7 +125,7 @@ function formatResourceAmounts(amounts: GameConstantEntry["resourceAmounts"]): s
  * whether the canvas should draw them.
  *
  * Read-only lookups are the rest of this file's job; this one is a CONTROL,
- * and the split shows in where its data comes from — the parse result and the
+ * and the split shows in where its data comes from, the parse result and the
  * generated preview rather than the bundled reference JSON. It lives here
  * anyway because it answers the same question the user is asking when they
  * open this panel ("what is in this map?"), just about their own script
@@ -133,7 +133,7 @@ function formatResourceAmounts(amounts: GameConstantEntry["resourceAmounts"]): s
  */
 function PreviewObjectList({ query }: { query: string }) {
   const parse = useParsedDocumentContext();
-  const result = usePreviewResultContext();
+  const { result } = usePreviewResultContext();
   const { hiddenObjects, toggleObjectHidden, showAllObjects } = usePreviewView();
 
   // Rebuilt only when the script or the generation changes, not on every
@@ -164,7 +164,7 @@ function PreviewObjectList({ query }: { query: string }) {
     <>
       {/* One way back, shown only when there is something to come back from.
           Unticking is per row, so a long list can end up with a dozen hidden
-          objects and no memory of which — re-ticking them one at a time is
+          objects and no memory of which. Re-ticking them one at a time is
           the kind of chore that makes people stop using the control. */}
       {hiddenObjects.size > 0 && (
         <HelpTip id="preview.showAllObjects">
@@ -196,7 +196,7 @@ function PreviewObjectList({ query }: { query: string }) {
                   <input
                     type="checkbox"
                     // Ticked by default, and the DEFAULT is the empty set rather
-                    // than a per-object flag — see PreviewViewContext's
+                    // than a per-object flag. See PreviewViewContext's
                     // hiddenObjects for why that direction is the one that keeps
                     // a newly written object visible without being registered.
                     checked={!hiddenObjects.has(row.objectRef)}
@@ -214,7 +214,7 @@ function PreviewObjectList({ query }: { query: string }) {
 }
 
 /**
- * docs/breakdown-design.md Sec.3.8 — a read-only reference/lookup aid, not
+ * docs/breakdown-design.md Sec.3.8, a read-only reference/lookup aid, not
  * filtered to the current selection (spec explicitly calls that a
  * nice-to-have, not required for 3.2). Terrain/Objects come from
  * game-constants.json; Commands comes from language.json's commands[], with
@@ -227,7 +227,7 @@ export function ReferenceTable() {
   // object?", and per-tab state would answer it by silently clearing.
   const [query, setQuery] = useState("");
   // The Objects tab holds one row per live gaia unit as of CREATION_PLAN 4.10,
-  // and 501 of them are carcasses and blood decals — units something else in
+  // and 501 of them are carcasses and blood decals, units something else in
   // the roster dies into, per the dat's own dead_unit_id/blood_unit_id links.
   // They are real, a script CAN name one by id, and offering them beside DEER
   // in the default listing makes the roster unreadable. Hidden unless asked.
@@ -238,7 +238,7 @@ export function ReferenceTable() {
   const [showCorpses, setShowCorpses] = useState(false);
   // Manually expanded commands in the Commands / Attributes tab. Keyed by
   // name rather than a boolean per row, so it survives the query changing
-  // (search auto-expands on top of this — see `isExpanded` below — without
+  // (search auto-expands on top of this, see `isExpanded` below, without
   // ever collapsing something the user opened by hand).
   const [expandedCommands, setExpandedCommands] = useState<ReadonlySet<string>>(new Set());
   const { hiddenObjects } = usePreviewView();
@@ -250,7 +250,7 @@ export function ReferenceTable() {
 
   // Filter and sort once per mode instead of on every render. The hook has to
   // sit up here and cover all four modes, since hooks cannot run inside the
-  // conditional below — the two non-constant modes just get an empty list.
+  // conditional below. The two non-constant modes just get an empty list.
   //
   // Sorting in place is safe ONLY because `.filter()` has already returned a
   // fresh array. `.sort()` mutates its receiver, so calling it directly on
@@ -285,7 +285,7 @@ export function ReferenceTable() {
   );
 
   // Attributes no command's attributes[] names (today: four legacy
-  // non-functional engine strings) — nowhere to nest, so they get their own
+  // non-functional engine strings), nowhere to nest, so they get their own
   // rows rather than being unreachable from Find.
   const orphanAttrRows = useMemo(
     () => (mode === "commands" ? orphanAttributeRows(languageData.commands, languageData.attributes, query) : []),
@@ -304,7 +304,7 @@ export function ReferenceTable() {
   }
 
   return (
-    <div className={`${styles.section} ${objectsHidden ? styles.sectionWarned : ""}`}>
+    <div className={`${styles.section} ${objectsHidden ? styles.sectionWarned : ""}`} data-tutorial-anchor="sidePanel.reference">
       <div className={styles.panel}>
         <HelpTip id="breakdown.sidePanel.referenceRadio">
           <div className={styles.radioRow}>
@@ -372,8 +372,8 @@ export function ReferenceTable() {
                 </tr>
               </thead>
               <tbody>
-                {/* Index as key, deliberately. The list is fixed per mode —
-                    never reordered, inserted into or removed from once built —
+                {/* Index as key, deliberately. The list is fixed per mode
+                    (never reordered, inserted into or removed from once built),
                     which is exactly the case where an index key is correct
                     rather than merely convenient. `rmsConstant` was the key
                     before and is null on 53 terrain rows, so React saw those
@@ -403,9 +403,9 @@ export function ReferenceTable() {
                   const hasAttributes = (command.attributes?.length ?? 0) > 0;
                   // Searching finds an attribute buried inside a collapsed
                   // command as easily as one that's already open: whenever a
-                  // query is live and `attributes` is non-empty — whether
+                  // query is live and `attributes` is non-empty, whether
                   // that's every attribute (the command itself matched) or
-                  // just the ones that matched (it didn't) — force the row
+                  // just the ones that matched (it didn't), force the row
                   // open on top of whatever the user last clicked, rather
                   // than making them expand every candidate by hand to see
                   // what's actually relevant.
@@ -468,11 +468,11 @@ export function ReferenceTable() {
         )}
         {/*
           reference data is a positive
-          resolver, never a negative authority — a name missing from this table
+          resolver, never a negative authority, a name missing from this table
           proves nothing about the game).
 
           It says nothing about the Preview Obj. List, which is not a slice of
-          the constants DB at all — its rows come from the open script, so
+          the constants DB at all, its rows come from the open script, so
           coverage is not a thing that can be short there.
         */}
         {/* An empty table with a filter in the box reads as broken data unless

@@ -609,7 +609,7 @@ to recur.
 |---|---|---|---|---|
 | `RMSTEST_61_commandalias` | `docs/known-issues.md` BUG-005 piece 2, CREATION_PLAN A.2 | Normal, any players | 1 | default histogram | **RUN 2026-08-12** |
 | `RMSTEST_62_commandalias_swap` | 61's confound | Normal, any players | 1 | default histogram | **RUN 2026-08-12** |
-| `RMSTEST_63_unknownblockmerge` | whether an unknown command's block merges into the previous one | Normal, any players | 1 | default histogram + land POSITION | **NOT RUN — low priority, blocks nothing** |
+| `RMSTEST_63_unknownblockmerge` | whether an unknown command's block merges into the previous one | Normal, any players | 1 | default histogram + land POSITION | **RUN AND READ 2026-08-30** |
 
 **Answer: 32 is `create_land`.** 61 came back `DIRT 6063, DESERT 6233, no SNOW`,
 which reads as "33 is create_land and 32 is inert" — and 62, the same file with
@@ -660,6 +660,76 @@ Three land commands, one real and two aliased, distinguished by terrain. Read
 the header for the four outcomes; the one that matters is snow present and desert
 absent.
 
+**RUN AND READ 2026-08-30.** `--patches SNOW` and `--patches DIRT`: SNOW 6073
+tiles in one patch, centroid (152.4, 147.6) on a 200-tile map — bottom-right,
+where `AX`'s `land_position 75 75` puts it; DIRT **not present**, 0 tiles. That
+is the read-off header's first case exactly: **the merge is real.** The block
+belonging to the unrecognised word `AX` (aliased to 33) merged into the
+`create_land` command above it, and its `land_position`/`terrain_type`
+attributes overrode the command's own — one land was created, not two, and both
+its terrain and its position came from the word the engine does not know. The
+rival buried-origin model is ruled out by construction (the two origins sit at
+opposite corners) and by outcome (a buried origin loses a land but does not
+relocate the survivor to the buried one's position). Confirms 61/62's model
+rather than merely being consistent with it. Nothing was blocked on this run and
+nothing changes as a result — it closes the last standing question about the
+merge model's mechanism, recorded here since the mechanism might matter again if
+`docs/known-issues.md`'s BUG-005-shaped diagnostics are ever extended to warn on
+a block-opening unknown command by name.
+
+### Batch 13 (2026-08-29) — the modulo operator, both halves of it
+
+| Script | Feeds | Size | Runs | Read with | Status |
+|---|---|---|---|---|---|
+| `RMSTEST_64_modzero_and_cast` | `docs/known-issues.md` BUG-022, parser-design Sec.2.2, `mathEval.ts` `mod()`, land-placement-design Sec.5.4 | Normal (200), any players | 1 | default histogram | **RUN AND READ 2026-08-30** |
+
+**Two unmeasured claims share one operator, and on 2026-08-29 both changed at
+once.** `x % 0` has two *sourced* readings that contradict each other — the
+guide's main math text ("Modulo 0 also gives 0") against a Summer 2025 Update
+note at guide line 4550 ("the left operand truncated toward zero") — and the
+repo has now implemented each of them in turn without ever observing either. And
+`%` casting both operands to int was adopted the same day from a Discord report
+and a GitHub example, fixing a real defect in `mod()` but on no observation of
+this project's own.
+
+**Why it is not "blocks nothing" the way 63 is.** The cast is what makes the
+Bhaskara sine macro in `Bulls_Eyes.rms` and `Venn.rms` self-guarding: `θ % 360`
+truncates θ, so the macro's sign trick holds for any input. If the cast is not
+real, that trick collapses to zero on fractional angles and every land built on
+it stacks at the map centre. A wrong answer is silent, and silent in the "your
+map is fine" direction.
+
+**Read arms 1 and 7 against each other first** — they must agree about the zero
+rule, and if they do not, the cast reading is wrong and question (b) needs its
+own run before (a) can be read at all. The script's header carries all ten
+predictions plus three controls, one of which (do decimal literals survive?)
+exists because without it the cast arms would confirm the cast while measuring
+nothing.
+
+**Answer, and it splits down the middle: the cast is real, the zero rule was
+re-guessed wrong.** All ten object counts read back, none zero, none needing a
+substitute constant. FORAGE 100, GOLD 600, STONE 670 (control C — decimals
+survive), CYPRESS_TREE 100 (division by zero is 0, unaffected). OLIVE_TREE 170
+and BIRCH_TREE 30 — arm 1/2's truncating prediction, not the 2026-08-29 guess's
+100/100. DEER 300 and WILD_BOAR 200 — arm 5/6's cast prediction, not the uncast
+310/370. BAMBOO_TREE 600 is the decisive cross-check named in the header: it is
+the one value unique to "cast AND truncate" among all four candidate readings,
+so arms 1/2 and 5/6 are not just individually confirmed, they agree with each
+other. **`x % 0` reverses back to the left operand truncated toward zero** — the
+2026-08-29 owner decision that followed the guide's main math text was wrong,
+and the Summer 2025 Update note this project originally built `mod()` from was
+right. **The cast stays** — it is the one part of the 2026-08-29 change that
+was already correct. `mathEval.ts`'s `mod()`, its tests, `parser-design.md`
+Sec.2.2 and `land-placement-design.md`'s Q5 follow-up 2 are all updated; full
+table in `docs/known-issues.md` BUG-022 (closed).
+
+**One thing this run found that it was not looking for.** `probe_scenario.py`'s
+default histogram printed GOLD as "RICE_FARM_SEEDS" and STONE as "GRAVEL_DESERT"
+on the first read — a `game-constants.json` id collision across namespaces, not
+an engine result. See the tool's own README for the fix; it did not change any
+number in the table above, since every object was cross-checked against the
+correct row by id before the probe was corrected.
+
 ### Two design notes worth reading before running
 
 **`45` is three files rather than three arms on one map, and Sec.15 item 17(b)
@@ -672,6 +742,123 @@ engine runs its sections in a fixed order and elevation precedes terrain, so an
 elevation command filtered on a terrain painted in `<TERRAIN_GENERATION>` would
 match nothing at all and the run would read as "repetition does nothing" under
 either model. The first draft of that script had exactly this bug.
+
+### Batch 14 (2026-08-30, RUN AND READ 2026-09-02) — the forest auto-spawn table
+
+| Script | Feeds | Size | Runs | Read with | Status |
+|---|---|---|---|---|---|
+| `RMSTEST_65_forestmix_and_density` | preview-design Sec.15 item (c), the status-bar forest-wood plan | Normal (200), **2 players** | 2 | default histograms (objects AND terrains) | **RUN AND READ 2026-09-02** |
+
+**Both questions answered, decisively, on two runs.** Arm 1 (SOUTH_AMERICAN_FOREST's six-slot mix): measured 35.07%/9.83%/16.10%/16.47%/16.72%/5.81% of the terrain's tile count against Model A's (sequential first-hit down the slot list) predicted 35.0/9.8/16.6/16.2/16.8/5.6 — TREE_GREEN_OAK (16.7% measured) and DLC_AFRICANBUSH (5.8%) are the discriminators the header named, and both rule out Model D (predicted 0% for each) and Model C (predicted 25.3%/33.7%) on their own; Model B (100% AFRICANBUSH, nothing else) was already dead on arrival. Reproduced on run 2 (34.35/9.87/16.73/16.02/17.27/5.76). Arm 2 (`terrain_unit_density` is per-mille): DLC_BAOBABTREE / DLC_BAOBABFOREST tiles measured 24.98% and 25.59% across the two runs against the documented 25%, confirming the schema's `density` field is correctly normalised 0-1 from a per-mille dat value. **Neither arm changed any code** — `computeForestWood`'s per-species selection assumption (Sec.15 item 23(c), already shipped) is confirmed rather than merely inferred. A separate, tangential finding surfaced while re-reading `computeForestWood` alongside this result — its wood-per-tile AGGREGATION formula sums every slot's density unconditionally rather than cascading them, which is a different question from the one this script answers and is tracked as its own follow-up rather than folded in here.
+
+## Batch 15 (written 2026-08-30, RUN AND READ 2026-09-02) — four open bugs, all settled
+
+Four scripts, one per open `docs/known-issues.md` entry as of the write-up
+(BUG-016, BUG-019, BUG-020, BUG-021). Each is self-contained, deterministic
+(every branching attribute is pinned to a value that removes run-to-run
+variance except RMSTEST_66's contested-boundary pairs), and readable in one
+generation apiece except where noted.
+
+| Script | Settles | Generate at | Runs | Reads with | Result |
+|---|---|---|---|---|---|
+| `RMSTEST_66_otherzoneavoidance` | BUG-016's `other_zone_avoidance_distance` half | Normal (200), any players | 3 (4 exports exist; all four agree) | `--bbox` per terrain (6 calls), `--patches` per terrain as a cross-check | ~~**The positive control OVERLAPS instead of holding a gap** — different-zone lands at matched radius 6 measured -3/-10/-5 tiles across three runs... `other_zone_avoidance_distance` does not restrict growth at all; `lands.ts`'s `violatesZoneAvoidance` check is **removed**.~~ **WRONG, corrected 2026-09-03 — see Batch 17.** The `--bbox` read (`min_x(right) − max_x(left)` over each land's FULL bounding box) cannot tell "these two patches overlap" from "these two patches each reach far in some direction, at different y-values" — growth is non-convex. Re-read with the TRUE tile-to-tile minimum distance: the control pair never touches, sitting 5-7 tiles apart across all four runs (zero 8-connected contact tiles in every one), matching the modelled ~6-tile separation. The asymmetric pair (radius 12 vs 2), same correction, sits 3-7 tiles apart across four runs — three of four exactly at the smaller radius + 1 — confirming "smaller wins", not "unreadable". `violatesZoneAvoidance` is **restored**. |
+| `RMSTEST_67_tempmindistance` | BUG-019 | Normal (200), 8 players, plain FFA, no lobby needed | 1 | default histogram | **The attribute is a no-op.** STONE (test, 30 tiles from the pinned origin, `temp_min_distance_to_players 45`) placed its full count 20/20, same as the unrestricted GOLD control; the matched `min_distance_to_players 45` control correctly placed 0 at 30 tiles and 20 at 60. `language.json` gains a `nonFunctional: true` entry, same shape as `min_distance`. |
+| `RMSTEST_68_nestedstartrandom` | BUG-020 | Normal (200), any players | 1 | default histogram | **The suspected corruption is REFUTED.** All seven markers read exactly as correct nesting predicts — outer branch 0 (STONE) and inner branch 0 (OLIVE_TREE) both absent, everything else present. Nested `start_random` resolves precisely as lexically written for this two-level case. RMS0213's message now states the measured consequence instead of only the prohibition. |
+| `RMSTEST_69_defineinnumericslot` | BUG-021 | Normal (200), any players | 1 | default histogram | **The symbol-table half was already correct** (first-definition-wins, GOLD read 7 unchanged after `#define`) — **the real defect was one layer downstream**: `numAttr` across four stage files could not tell "argument absent" from "argument present, known symbol, no value" and used the same fallback for both, predicting STONE (bare `#define`, no `#const`) would place ~1 object where it measured 0. Fixed by checking the arg node's presence rather than only its resolved value. |
+
+Full corpus (`npm test`, 109 files / 2609 tests) green after all four fixes — no tracked or local map currently exercises any of the four narrow shapes closely enough to move a pinned figure.
+
+**NEEDS MANUAL REVIEW: `RMSTEST_67_tempmindistance` and `RMSTEST_68_nestedstartrandom`.** Ash flagged these two on 2026-09-03 to check by hand before trusting the results above as final.
+
+**BUG-016's other two suspicions are narrower than the entry as filed.** Code
+inspection (not a run - this does not close anything) found: `objects.ts`
+only owns one of the three named attributes (`min_distance_to_players`);
+`spacing_to_other_terrain_types` lives in `terrains.ts` and is already
+**measured**, not suspected — `RMSTEST_31` confirmed it operationally
+(preview-design.md Sec.6.4, item 12 closed 2026-08-04), which the BUG-016
+entry does not mention, so double-check that measurement actually covers
+Venn's combined `spacing_to_other_terrain_types` +
+`spacing_to_specific_terrain` usage before spending a fresh run on it; and
+`min_distance_to_players`'s frameless "every player origin" reading
+(`objects.ts:1026-1036`) already uses `.every(...)` across all player
+origins, which is the overlap/intersection BUG-016 asks for — but Venn's own
+`min_distance_to_players` uses are all frame-referenced
+(`set_place_for_every_player`), where per-frame-origin-only checking is the
+*correct* behaviour (one placement per player, each scoped to that player),
+not the suspected bug. So `other_zone_avoidance_distance` — genuinely
+unmeasured against the engine directly, everywhere else it appears is either
+guide-sourced or an origin-time-only reading from RMSTEST_25/51 — is the one
+piece of BUG-016 with an actual open question and a script. If Venn's
+observed discrepancy turns out not to be explained by RMSTEST_66's read,
+the other two attributes above are where to look next, but re-read what is
+already measured before writing a new script for either.
+
+**Not blocking, not run.** Written together because a session was already in
+this file; none of them requires the others; run in any order.
+
+**Why it is not urgent, in two measurements.** The dat's `terrain_unit_id` /
+`terrain_unit_density` table (read 2026-08-29) answers item (c) outright for
+23 of the 24 wood-bearing terrains. What it does not state is how the engine
+chooses when a terrain lists several trees, and that gap can only change a
+number where a terrain mixes trees of *different* wood values. Of the seven
+multi-slot terrains, six draw only 100-wood units — 20, 88, 89, 106, plus
+19 and 21 whose extra slots sit at density 0 — so every candidate model
+returns exactly 100 wood/tile for them. `SOUTH_AMERICAN_FOREST` is the sole
+exception, because `DLC_ACACIATREE`'s 150 is in its mix. And
+**`SOUTH_AMERICAN_FOREST` is used by 0 of the 53 corpus maps** (`FOREST` 20,
+`SNOW_FOREST` 6, `MEDITERRANEAN_FOREST` 4, `DLC_BAOBABFOREST` 2 — none of
+which depends on the model). Across the four candidate models the figure
+spans 100.0–110.0 wood/tile, so the whole exposure is one unused terrain at
+about 10%.
+
+**What it would still buy.** Arm 2 is the reason to run it at all: it is the
+first DIRECT look at whether `terrain_unit_density` is per-mille. That
+reading currently rests on three `descriptiveName` prose figures agreeing
+with it (25%/50%/80% against densities 250/500/800), which is strong but is
+still prose, and every forest-wood figure in the plan is scaled by it. Arm 2
+rides along on the same generation for free.
+
+**Two things checked while writing it, worth keeping.** `DESERT` is the base
+because it is one of the few terrains with no `terrain_unit` slots of its own,
+so every object in the export comes from one of the two arms — `GRASS` and
+`DIRT` would each have added a cosmetic unit to the histogram. And the two
+arms share no unit, checked against the dat, which is what lets both sit on
+one map and be read from a single map-wide histogram.
+
+**A third constant valued 69, unlisted above.** The table in "A WORD valued 69"
+names `SHORE_FISH` and `ATTR_PROJECTILE_ARC` and calls the scope "exactly two
+engine constants". `game-constants.json` holds a third row at constId 69,
+**`CORRUPTION`**, which by the same mechanism would trip the same trap. Not
+measured — no run has put it in a leading comment — so treat it as a name to
+avoid above a script rather than as a fourth data point.
+
+## Batch 16 (written 2026-09-02, RUN AND READ the same day) — the connection-generation beach question, settled
+
+| Script | Settles | Generate at | Runs | Reads with | Result |
+|---|---|---|---|---|---|
+| `RMSTEST_70_connectionbeach` | item 31, `index.ts`'s "DELIBERATELY no beach pass here" comment | Normal (200), 2 players | 3 | `--patches DIRT`, `--patches BEACH`, `--patches GRASS` | **YES, a pass runs after S5.** |
+
+Found while looking into why `AD4 - Pag - v1.2.rms` shows land bordering water with no beach between. Pag's `<CONNECTION_GENERATION>` section carves DIRT causeways through water with `replace_terrain`, and the shipped generator had never run a beach pass after S5 by design — `preview-design.md` Sec.6.4 already measured the cost (873 unbeached tiles on Pag) but the open question itself had drifted onto item 28's text, which closed on a narrower, already-answered question (the per-command step's own scope, not this one). Item 31 was the new number this batch settled; `RMSTEST_70` is its script.
+
+**Total beach came back 840-961 tiles across three runs** — well past the ~250-300 tiles the two islands' own coastlines alone would produce (perimeter 310+328) — and the largest single patch each run spanned most or all of the map (bbox up to 200x200) at very low circularity, a shape consistent with beach strung along the causeway's route rather than confined to two separate coastal rings. `index.ts` now calls `applyAutomaticBeach` a second time, immediately after `applyConnections`. Pag itself now reads 2688 total beach tiles, up from the pre-fix figure.
+
+**An unplanned second finding, not settled here.** The DIRT causeway itself came out fragmented (dozens of small/single-tile patches) in two of the three runs rather than one contiguous strip, which Sec.6.5's assumed "no `terrain_size` entry → radius 1, variance 0" default should not produce. Opened as Sec.15 item 32, not yet its own script.
+
+## Batch 17 (written and run 2026-09-03) — BUG-016 reopened and re-closed: `other_zone_avoidance_distance` is real after all
+
+Batch 15's `RMSTEST_66` reading of the growth-time half of this attribute was wrong, and this batch is the correction — four scripts, one of them (`RMSTEST_66` itself) re-read rather than re-run.
+
+| Script | Settles | Generate at | Runs | Reads with | Result |
+|---|---|---|---|---|---|
+| `RMSTEST_66` (re-read) | growth-time model, corrected | (as Batch 15) | (existing 4 exports) | TRUE tile-to-tile minimum distance between the two patches, not `--bbox` extent | Control pair (DESERT/DIRT2, matched radius 6): **5-7 tiles apart, zero 8-connected contact, in all four runs.** Asymmetric pair (DIRT3 radius 12 vs GRASS3 radius 2): **3-7 tiles apart, zero contact, three of four runs at exactly 2+1=3** — confirms "smaller wins". Same-zone control (SNOW/DIRT, both zone 30): **freely interleaves, 63-87 tiles of real contact** — the exemption is real and the contrast with the different-zone pairs is exactly what the model predicts. |
+| `RMSTEST_71_zoneavoidance_origin` | origin-time spacing (superseded by `RMSTEST_74` below) | Normal (200), any players | 3 | `--bbox`/`--patches` per terrain | Read via patch-to-WALL distance, several lands landed adjacent (distance 1) to the WALL — but the WALL never declares `other_zone_avoidance_distance` itself and grew hugely with no self-restraint, swallowing space its neighbours' ORIGINS had correctly kept clear of. Re-read against each land's centroid vs. the WALL's actual origin point (50,100): **all 18 origins (6 lands × 3 runs) sit well past the declared 15-tile threshold.** Origin spacing was never refuted; the instrument (patch-to-patch distance) was measuring the wrong thing. Superseded by `RMSTEST_74`, which removes the wall entirely and gets real statistical power. |
+| `RMSTEST_72_other_zone_avoidance_distance_take_2` | growth-time, vs. a static (non-declaring) wall | Normal (200), any players | 4 | `--bbox`/`--patches` per terrain, exact tile-to-tile distance | Three of four petals (SNOW, WATER, SAVANNAH) had `land_position` placed CLOSER to the static ICE wall than their own declared avoidance value, so "zero growth-ward movement" was consistent with any threshold ≥ the origin's own starting gap and settled nothing about the specific number. Superseded by `RMSTEST_73`, which fixes this by starting every grower far enough away. |
+| `RMSTEST_73_other_zone_avoidance_distance_take_3` | growth-time, calibration | Normal (200), any players | 3 | exact tile-to-tile distance vs. two rows of static ICE blocks | **Exact and reproducible: measured gap = declared value + 1**, for DIRT (declared 6 → 7), WATER (declared 10 → 11, checked against both ICE rows independently), and SAVANNAH (declared 12 → 13) — bit-for-bit identical across all three runs. This is the calibration that closes the question `RMSTEST_66`/`72` left open. |
+| `RMSTEST_74_originspacing_powered` | origin-time spacing, properly powered | Normal (200), any players | 3 | `--patches SNOW`, then pairwise Chebyshev distance among all reported centroids | 20 same-map competing origins (no wall — the guide states origin-spacing applies "regardless of zone"), each declaring `other_zone_avoidance_distance 15`. All three runs: **20 of 20 patches, no merges.** Of 190 pairwise checks per run, only 1-2 came in under 15, and only by 1-2 tiles (consistent with the origin check's own Euclidean metric differing slightly from the Chebyshev distance used to read patches, plus each patch's own small footprint around its origin) — far fewer and smaller than the ~4.6 chance collisions per run the null hypothesis predicts at this sample size. |
+
+**The root cause, in one sentence: a bounding-box extent cannot tell "two patches overlap" from "two patches each reach far in some direction, at different places".** `RMSTEST_66`'s original read used `gap = min_x(right land) − max_x(left land)` across each land's WHOLE bounding box. Growth is a randomised frontier process, so DESERT can bulge rightward at one y-value while DIRT2 bulges leftward at a completely different y-value — the two rectangles cross on paper with the actual shapes never coming near each other. The fix, used throughout this batch, is the true minimum tile-to-tile distance between the two patches (or an explicit 4-/8-connected contact count), computed directly from the scenario's terrain grid rather than from any bbox summary. This is now a CLAUDE.md Hard Rule.
+
+**What changed in the app.** `lands.ts`'s `violatesZoneAvoidance` (deleted 2026-09-02) is restored and wired back into `acceptCandidate`; `lands.test.ts`'s matching test is rewritten to assert the correct (avoidance-holds) outcome, plus two new tests for the same-zone exemption and the smaller-of-two-values rule. `docs/known-issues.md` BUG-016 and `docs/preview-design.md` Sec.6.1 are both corrected in place (struck-through claims replaced, not deleted, per this file's own convention). Full corpus (`npm test`, 111/111 files, 2757 tests) green — no tracked corpus map's pinned figures moved. `npm run typecheck` clean.
 
 ## Batch 7's scripts — RECOVERED 2026-08-12
 

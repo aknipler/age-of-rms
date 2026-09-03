@@ -3,7 +3,7 @@
 // The parser speaks in character offsets everywhere and that is right for a
 // parser: spans compose, survive edits under `shiftPointThroughEdits`, and
 // never need a re-index when a line wraps. It is wrong for a DIAGNOSTIC
-// MESSAGE, which a person reads and then has to act on — "already set at
+// MESSAGE, which a person reads and then has to act on. "Already set at
 // offset 86970" names a position no editor displays and no author can find.
 // Every message that points at a SECOND place in the file (the earlier
 // definition, the open brace, the branch that already ran) resolves the line
@@ -36,7 +36,7 @@ export function lineOfOffset(lineOffsets: readonly number[], offset: number): nu
 }
 
 /**
- * The 1-based line number an offset falls on — what a gutter shows, and the
+ * The 1-based line number an offset falls on, what a gutter shows, and the
  * only form that belongs in a message the user reads.
  *
  * Deliberately a separate export from `lineOfOffset` rather than a boolean

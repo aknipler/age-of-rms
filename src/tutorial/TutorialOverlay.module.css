@@ -1,0 +1,150 @@
+/* tutorial-design.md Sec.5.2. Everything here is `position: fixed` and
+   rendered through a portal into document.body, same two reasons
+   HelpTip's popup is (ancestor overflow clipping, and a transformed
+   ancestor becoming the containing block for `position: fixed`
+   descendants). */
+
+/* One full-viewport dim layer with a hole cut per spotlight rect via an SVG
+   mask (TutorialOverlay.tsx explains why this replaced a set of "four bands
+   around the rect" divs per anchor. That approach cannot compose across
+   more than one disjoint rect). */
+.dimSvg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 900;
+}
+
+.dimFill {
+  fill: rgba(0, 0, 0, 0.45);
+}
+
+.ring {
+  position: fixed;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 901;
+}
+
+.callout {
+  position: fixed;
+  width: max-content;
+  max-width: 320px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+  padding: 0.75rem 0.9rem;
+  z-index: 902;
+  pointer-events: auto;
+}
+
+.counter {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  margin-bottom: 0.2rem;
+}
+
+.title {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tick {
+  color: var(--success);
+}
+
+.body p {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.body p:last-child {
+  margin-bottom: 0;
+}
+
+.hint {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin: 0.4rem 0 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--accent);
+  opacity: 0.9;
+}
+
+.exit {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.3rem 0.2rem;
+}
+
+.exit:hover {
+  color: var(--text);
+}
+
+.discordLink {
+  display: inline-block;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin: -0.2rem 0 0.5rem;
+}
+
+.discordLink:hover {
+  opacity: 0.85;
+}

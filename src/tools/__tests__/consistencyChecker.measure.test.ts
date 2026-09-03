@@ -1,5 +1,5 @@
 // Corpus census REPORTER for CREATION_PLAN 5.2 / docs/consistency-checker-design.md
-// (rev 14). NOT A GATE — it prints numbers and diffs them against a PINNED
+// (rev 14). NOT A GATE. It prints numbers and diffs them against a PINNED
 // snapshot, but it never throws or fails the build on drift (see the header
 // rule the design doc itself states: "a reporter's own expected values are as
 // assumable as the numbers it prints", 2026-08-16).
@@ -12,42 +12,42 @@
 //
 // SECTIONS 1-6 (sweepA/sweepB) COST AND ISOLATION. Generation dominates: 32
 // maps x 4 player counts is ~85s, plus 32 maps x 5 seeds at 4 players is
-// ~100s. Both sweeps run EXACTLY ONCE — Sections 1, 2, 3, 5 and 6 all come
+// ~100s. Both sweeps run EXACTLY ONCE. Sections 1, 2, 3, 5 and 6 all come
 // from the single 2/4/6/8 @ seed 1 sweep (sweepA below); Section 4 comes from
 // the single 4p @ seeds 1-5 sweep (sweepB below). Nothing here regenerates
 // per section.
 //
 // SECTIONS 7-11 are rev 13/14's four OWED censuses (consistency-checker-
 // design.md Sec.8's "four censuses are owed to it" paragraph), each taken at
-// a point no earlier sweep crosses. Section 7 (tie-break census) is free —
-// it reuses sweepA's rows. Sections 8/9 (the static block count against
+// a point no earlier sweep crosses. Section 7 (tie-break census) is free.
+// It reuses sweepA's rows. Sections 8/9 (the static block count against
 // `LIMITS.maxBlocksPerOutput`, and Sec.3.3 clause 2's unresolvable-producer
-// ratio) run one AST pass per player count per map — cheap, no generation.
-// Section 10 (presence and drift SWEPT TOGETHER, 2/4/6/8 x seeds 1-5 — sweep
+// ratio) run one AST pass per player count per map, cheap, no generation.
+// Section 10 (presence and drift SWEPT TOGETHER, 2/4/6/8 x seeds 1-5, sweep
 // C) is 640 generations. Section 11 (the note census at the tool's own
-// DEFAULT run count, 2/4/6/8 x 15 seeds per map — sweep D) is 1920
+// DEFAULT run count, 2/4/6/8 x 15 seeds per map, sweep D) is 1920
 // generations, the most expensive thing in this file by a wide margin,
 // because it is the re-take Sec.4.5's cap margin actually depends on: every
 // figure Sec.5.4 pinned before this file existed was taken at ONE generation
 // against a default of sixty. Real compute cost is maybe 30-45 minutes
-// unloaded. MEASURED WALL CLOCK has been far higher twice — ~5.2 hours, then
-// ~24 hours on the very next run — and neither is CPU load: mid-run, the
+// unloaded. MEASURED WALL CLOCK has been far higher twice; ~5.2 hours, then
+// ~24 hours on the very next run, and neither is CPU load: mid-run, the
 // node process backing the second run had accumulated only ~13 minutes of
 // actual CPU time despite having "run" for most of a day. The laptop this
 // session runs on sleeps/powers off while the session (and this test) keeps
 // ticking, so wall clock keeps advancing with near-zero compute happening.
 // Do not use one inflated duration to recalibrate the expected cost of this
-// file, and do not read a timeout failure here as a defect — check
+// file, and do not read a timeout failure here as a defect. Check
 // `consistency-census.json`'s own `generatedAt`/`driftCount` first, since the
 // synchronous sweep writes it and finishes its real work well before Vitest's
 // timeout can even fire (a fully synchronous function blocks the event loop,
-// so the timeout timer cannot preempt it — it only gets evaluated, and only
+// so the timeout timer cannot preempt it. It only gets evaluated, and only
 // then reports stale, once control finally returns). `testTimeout` (here and
 // in vitest.measure.config.ts) is set generously for exactly this reason, not
 // because the sweep itself is that expensive.
 //
 // This is deliberately NOT part of `npm test` (vitest.config.ts excludes
-// this file by name) — run it with `npm run measure:checker`, which points
+// this file by name). Run it with `npm run measure:checker`, which points
 // `vitest run` at vitest.measure.config.ts instead.
 //
 // TWO TRAPS THIS DOCUMENT HAS SHIPPED BEFORE, AND THE REASON EVERY SECTION
@@ -55,7 +55,7 @@
 //
 //   1. Tracked vs on-disk. `test-maps/*.rms` (top-level, non-recursive) is 32
 //      files on a maintainer's disk; `git ls-files test-maps` returns 11 of
-//      those PLUS `test-maps/broken/BCC2-Rekawa.rms` — a 12th tracked file
+//      those PLUS `test-maps/broken/BCC2-Rekawa.rms`, a 12th tracked file
 //      that sits OUTSIDE the 32 (nested under broken/, so it is not one of
 //      "the 32 maps" this document's own figures are measured over; it is a
 //      distinct fixture map). `test-maps/local/`'s 19 maps are excluded
@@ -70,20 +70,20 @@
 //      denominator it was drawn from (maps scanned, reports scanned, rows
 //      keyed) for the same reason.
 //
-// COUNTING CONVENTIONS, STATED ONCE — THREE of them, over the same data, and
+// COUNTING CONVENTIONS, STATED ONCE, THREE of them, over the same data, and
 // mixing them up is exactly the kind of drift this reporter exists to catch.
 // `PlacementFailure.occurrences` records how many coalesced failures one
 // record stands for (absent means 1).
 //   (a) Section 5's bucket SET/COUNTS comparison sums `occurrences ?? 1` per
-//       bucket (`bucketSums`) — the unit the Failure buckets COLUMN itself
+//       bucket (`bucketSums`), the unit the Failure buckets COLUMN itself
 //       renders ("occupancyFull x140").
 //   (b) Section 5's headline "summed failures" and "union exceeds attempted"
-//       figures count FAILURE RECORDS instead — one `PlacementFailure` entry
+//       figures count FAILURE RECORDS instead, one `PlacementFailure` entry
 //       per bucket per report (`pushFailure` coalesces to at most one record
 //       per bucket per report, so `failures.length` already IS that count).
 //       The design doc's own worked example pins this: `13_Rings_v1.2.rms`
 //       LOWER_HILLTOPS at `:128660`, attempted 3, is "2 failure records at
-//       that count and 8 across the matrix" — 8 cannot be an occurrence sum
+//       that count and 8 across the matrix". 8 cannot be an occurrence sum
 //       against an attempted count of 3. A bucket recurring across several
 //       player counts contributes one record PER COUNT, undeduplicated.
 //   (c) Section 1's per-bucket tallies are neither: they count REPORTS whose
@@ -128,7 +128,7 @@ const DRIFT_SEEDS = [1, 2, 3, 4, 5] as const;
 // Corpus population
 // ---------------------------------------------------------------------------
 
-/** Top-level `test-maps/*.rms` only — `readdirSync` without `recursive` already excludes `broken/` and `local/`, which is the point (see header trap 1). */
+/** Top-level `test-maps/*.rms` only. `readdirSync` without `recursive` already excludes `broken/` and `local/`, which is the point (see header trap 1). */
 function listTopLevelMaps(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"))
@@ -136,7 +136,7 @@ function listTopLevelMaps(dir: string): string[] {
     .sort();
 }
 
-/** `git ls-files test-maps`, restricted to top-level entries (nested paths like `broken/BCC2-Rekawa.rms` are a different fixture, not one of "the 32" — see header trap 1). Returns null if git is unavailable, so the caller can degrade gracefully rather than crash a reporter over a missing tool. */
+/** `git ls-files test-maps`, restricted to top-level entries (nested paths like `broken/BCC2-Rekawa.rms` are a different fixture, not one of "the 32", see header trap 1). Returns null if git is unavailable, so the caller can degrade gracefully rather than crash a reporter over a missing tool. */
 function getTrackedTopLevelMaps(): Set<string> | null {
   try {
     const out = execSync("git ls-files test-maps", { cwd: REPO_ROOT, encoding: "utf8" });
@@ -145,7 +145,7 @@ function getTrackedTopLevelMaps(): Set<string> | null {
       const line = rawLine.trim().replace(/\\/g, "/");
       if (!line.startsWith("test-maps/")) continue;
       const rest = line.slice("test-maps/".length);
-      if (rest.length === 0 || rest.includes("/")) continue; // nested path (broken/, local/) — outside this population
+      if (rest.length === 0 || rest.includes("/")) continue; // nested path (broken/, local/), outside this population
       tracked.add(rest);
     }
     return tracked;
@@ -192,7 +192,7 @@ function cellState(cell: RowCell | undefined): CellState {
   return cell.attempted === 0 ? "ZERO" : "RATED";
 }
 
-/** Sums `occurrences ?? 1` per bucket — see the file header's counting-convention note. */
+/** Sums `occurrences ?? 1` per bucket, see the file header's counting-convention note. */
 function bucketSums(failures: readonly PlacementFailure[]): Map<string, number> {
   const sums = new Map<string, number>();
   for (const failure of failures) {
@@ -214,7 +214,7 @@ function bucketCountsEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string
 }
 
 // ---------------------------------------------------------------------------
-// Sweep A: 2/4/6/8 players @ seed 1, ONCE — feeds Sections 1, 2, 3, 5, 6
+// Sweep A: 2/4/6/8 players @ seed 1, ONCE; feeds Sections 1, 2, 3, 5, 6
 // ---------------------------------------------------------------------------
 
 interface SweepA {
@@ -271,7 +271,7 @@ function runSweepA(mapNames: readonly string[], lang: LanguageData, refDb: Previ
 }
 
 // ---------------------------------------------------------------------------
-// Sweep B: 4 players @ seeds 1-5, ONCE — feeds Section 4
+// Sweep B: 4 players @ seeds 1-5, ONCE; feeds Section 4
 // ---------------------------------------------------------------------------
 
 interface SweepB {
@@ -323,7 +323,7 @@ function runSweepB(mapNames: readonly string[], lang: LanguageData, refDb: Previ
 }
 
 // ---------------------------------------------------------------------------
-// Filters — derive the tracked-only column from already-collected data
+// Filters. Derive the tracked-only column from already-collected data
 // ---------------------------------------------------------------------------
 
 function filterRows(rows: ReadonlyMap<string, Row>, pred: (map: string) => boolean): Map<string, Row> {
@@ -363,7 +363,7 @@ function filterSeedData(
 }
 
 // ---------------------------------------------------------------------------
-// Section 1 — zero-attempt census, per player count
+// Section 1, zero-attempt census, per player count
 // ---------------------------------------------------------------------------
 
 interface Section1Result {
@@ -401,7 +401,7 @@ function computeSection1(reports: readonly MapReport[]): Section1Result {
 }
 
 // ---------------------------------------------------------------------------
-// Section 2 — the matrix row census (correct three-state split, plus the naive `?? 0` contrast)
+// Section 2, the matrix row census (correct three-state split, plus the naive `?? 0` contrast)
 // ---------------------------------------------------------------------------
 
 interface Section2Result {
@@ -409,7 +409,7 @@ interface Section2Result {
   zeroEverywhere: number;
   zeroAtSome: number;
   neverZero: number;
-  /** Rows absent at some count(s) yet carrying a zero cell at a present one — measured at 0 in every pinned run; printed so a nonzero value here is visible rather than silently folded into `neverZero`. */
+  /** Rows absent at some count(s) yet carrying a zero cell at a present one, measured at 0 in every pinned run; printed so a nonzero value here is visible rather than silently folded into `neverZero`. */
   absentZeroAnomaly: number;
   naive: { zeroEverywhere: number; zeroAtSome: number; neverZero: number };
 }
@@ -459,7 +459,7 @@ function computeSection2(rows: ReadonlyMap<string, Row>): Section2Result {
 }
 
 // ---------------------------------------------------------------------------
-// Section 3 — presence census (Sec.4.2's `runsContaining === 0` state)
+// Section 3, presence census (Sec.4.2's `runsContaining === 0` state)
 // ---------------------------------------------------------------------------
 
 interface Section3Result {
@@ -506,7 +506,7 @@ function computeSection3(rows: ReadonlyMap<string, Row>): Section3Result {
 }
 
 // ---------------------------------------------------------------------------
-// Section 4 — within-batch presence drift (4 players, seeds 1-5)
+// Section 4, within-batch presence drift (4 players, seeds 1-5)
 // ---------------------------------------------------------------------------
 
 interface Section4Result {
@@ -550,7 +550,7 @@ function computeSection4(
 }
 
 // ---------------------------------------------------------------------------
-// Section 5 — bucket domain (Sec.5.1), corrected three-state worst-count rule
+// Section 5, bucket domain (Sec.5.1), corrected three-state worst-count rule
 // ---------------------------------------------------------------------------
 
 interface Section5Result {
@@ -619,7 +619,7 @@ function computeSection5(rows: ReadonlyMap<string, Row>): Section5Result {
     // is what pins which is which.
     //
     // `worstBuckets`/`unionBuckets` are OCCURRENCE-WEIGHTED per-bucket sums
-    // (`bucketSums`, `occurrences ?? 1`) — the unit the Failure buckets
+    // (`bucketSums`, `occurrences ?? 1`), the unit the Failure buckets
     // COLUMN itself renders ("occupancyFull x140"), so the set/counts
     // comparison below (does the bucket SET or the per-bucket COUNT differ
     // between the two readings) has to compare in that unit.
@@ -627,10 +627,10 @@ function computeSection5(rows: ReadonlyMap<string, Row>): Section5Result {
     // The headline "summed failures" and "union exceeds attempted" figures
     // are a different unit: a plain count of FAILURE RECORDS (one
     // `PlacementFailure` entry = one bucket that fired on one command at one
-    // player count — `pushFailure` coalesces to at most one record per
+    // player count; `pushFailure` coalesces to at most one record per
     // bucket per report, so `failures.length` already IS that count). The
-    // worked example's "8 across the matrix" cannot be an occurrence sum —
-    // `attempted` is 3 there — so union-record-count sums `failures.length`
+    // worked example's "8 across the matrix" cannot be an occurrence sum,
+    // since `attempted` is 3 there, so union-record-count sums `failures.length`
     // per present count WITHOUT deduplicating a bucket that recurs across
     // multiple counts, each occurrence at a different count being a genuinely
     // separate record.
@@ -699,7 +699,7 @@ function computeSection5(rows: ReadonlyMap<string, Row>): Section5Result {
 }
 
 // ---------------------------------------------------------------------------
-// Section 6 — note census (Sec.5.4), at 4 players
+// Section 6, note census (Sec.5.4), at 4 players
 // ---------------------------------------------------------------------------
 
 interface Section6Result {
@@ -765,9 +765,9 @@ function computeSection6(notesByMap: ReadonlyMap<string, readonly SimulationNote
 }
 
 // ---------------------------------------------------------------------------
-// Section 7 — tie-break census (Sec.5.1): how often "worst" is a minimum
+// Section 7, tie-break census (Sec.5.1): how often "worst" is a minimum
 // over more than one player count, and what the Failure buckets cell
-// disagrees about across the tied counts. Reuses sweepA's rows — no new
+// disagrees about across the tied counts. Reuses sweepA's rows, no new
 // generation.
 // ---------------------------------------------------------------------------
 
@@ -795,7 +795,7 @@ function computeSection7(rows: ReadonlyMap<string, Row>): Section7Result {
       else if (state === "RATED") ratedPcs.push(pc);
     }
     // "Restricted to rows with at least two rated counts and no zero-attempt
-    // cell" — the design doc's own domain for this census.
+    // cell", the design doc's own domain for this census.
     if (hasZero || ratedPcs.length < 2) continue;
     qualifyingRows++;
 
@@ -834,14 +834,14 @@ function computeSection7(rows: ReadonlyMap<string, Row>): Section7Result {
 }
 
 // ---------------------------------------------------------------------------
-// Sections 8/9 — static layer census: the per-map block count against
+// Sections 8/9, static layer census: the per-map block count against
 // `LIMITS.maxBlocksPerOutput` (Sec.4.5), and the per-map unresolvable-
 // producer ratio that replaces Sec.3.3 clause 2's interim 1/3 with a
-// measurement. Neither runs the Monte Carlo layer — one AST pass per
+// measurement. Neither runs the Monte Carlo layer, just one AST pass per
 // selected player count per map, `staticOnly`'s own cost.
 // ---------------------------------------------------------------------------
 
-/** `PublishedGameConstant` -> `TerrainConstantForMasks`: the same conversion `staticChecks.ts`'s own (unexported) `asTerrainConstants` performs — duplicated here because this reporter calls `computeTerrainSurface` directly rather than through `runStaticChecks`. */
+/** `PublishedGameConstant` -> `TerrainConstantForMasks`: the same conversion `staticChecks.ts`'s own (unexported) `asTerrainConstants` performs, duplicated here because this reporter calls `computeTerrainSurface` directly rather than through `runStaticChecks`. */
 function asTerrainConstants(constants: readonly PublishedGameConstant[]): readonly TerrainConstantForMasks[] {
   return constants.map((c) => ({ ...c, constId: c.constId ?? null }));
 }
@@ -903,7 +903,7 @@ function runStaticCensus(
     const surfaceAbstained = census === undefined || unresolvableRatio >= UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO;
 
     // +1 for the `keyValue` summary header every real run of the tool emits
-    // first (`buildOutput` in consistencyChecker.ts) — `buildStaticFindingBlocks`
+    // first (`buildOutput` in consistencyChecker.ts). `buildStaticFindingBlocks`
     // covers only the static-finding blocks themselves.
     const blocks = 1 + buildStaticFindingBlocks(findings, [...PLAYER_COUNTS], parse.lineOffsets).length;
 
@@ -915,7 +915,7 @@ function runStaticCensus(
 
 // ---------------------------------------------------------------------------
 // Sweep C + Section 10: the presence and drift censuses SWEPT TOGETHER
-// (2/4/6/8 players @ seeds 1-5, 20 generations/map) — rev 13's owed item:
+// (2/4/6/8 players @ seeds 1-5, 20 generations/map). Rev 13's owed item:
 // neither sweepA (one seed) nor sweepB (one player count) crosses both axes.
 // ---------------------------------------------------------------------------
 
@@ -980,11 +980,11 @@ function filterSweepCRows(rows: ReadonlyMap<string, SweepCRow>, pred: (map: stri
 
 interface Section10Result {
   totalRows: number;
-  /** Rows absent (0 of 5 seeds) at at least one player count while present at another — the union-of-seeds analogue of Section 3's `partial`. */
+  /** Rows absent (0 of 5 seeds) at at least one player count while present at another, the union-of-seeds analogue of Section 3's `partial`. */
   crossCountAbsent: number;
-  /** (row, playerCount) pairs seen in SOME but not all 5 seeds — the union-of-counts analogue of Section 4's `partial`. */
+  /** (row, playerCount) pairs seen in SOME but not all 5 seeds, the union-of-counts analogue of Section 4's `partial`. */
   withinBatchPartial: number;
-  /** The control: rows sweepA (seed 1 only) found ABSENT at some count that this 5-seed union finds present there. Pinned at 0 — rev 12's own hypothesis, confirmed negative. */
+  /** The control: rows sweepA (seed 1 only) found ABSENT at some count that this 5-seed union finds present there. Pinned at 0, rev 12's own hypothesis, confirmed negative. */
   flippedFromAbsent: number;
 }
 
@@ -1007,9 +1007,9 @@ function computeSection10(sweepCRows: ReadonlyMap<string, SweepCRow>, sweepARows
     }
     if (anyAbsent && anyPresent) crossCountAbsent++;
 
-    // The control's population is Section 3's own "partial" rows — ones
+    // The control's population is Section 3's own "partial" rows, ones
     // sweepA (seed 1) already saw at SOME player count and marked absent at
-    // another — never a row sweepC discovers that sweepA never saw at ANY
+    // another. Never a row sweepC discovers that sweepA never saw at ANY
     // count. A brand-new row (a `start_random` arm seed 1 never took) is not
     // a count "flipping" from absent to present; it is the reason
     // `totalRows` itself grows 8358 -> 8511, already pinned separately. The
@@ -1030,7 +1030,7 @@ function computeSection10(sweepCRows: ReadonlyMap<string, SweepCRow>, sweepARows
 // ---------------------------------------------------------------------------
 // Sweep D + Section 11: the note census at the tool's own DEFAULT run count
 // (rev 13's other owed item). One fresh `MonteCarloAggregate` per map, fed
-// 2/4/6/8 x 15 seeded generations — the default matrix — under Sec.5.4's
+// 2/4/6/8 x 15 seeded generations (the default matrix) under Sec.5.4's
 // corrected ordering pipeline (aggregate.ts), which sweepA/sweepB's
 // one-generation-per-count model cannot exercise.
 // ---------------------------------------------------------------------------
@@ -1088,7 +1088,7 @@ function runNoteCensusAtDefaults(
 }
 
 // ---------------------------------------------------------------------------
-// Pin diffing — reporter, never a gate: record drift, never throw on it
+// Pin diffing, reporter, never a gate: record drift, never throw on it
 // ---------------------------------------------------------------------------
 
 interface PinEntry {
@@ -1096,18 +1096,18 @@ interface PinEntry {
   expected: number;
   actual: number;
   ok: boolean;
-  /** True for a `pinMin` entry — printed as "expected >= N" rather than "expected N" on drift. */
+  /** True for a `pinMin` entry, printed as "expected >= N" rather than "expected N" on drift. */
   minOnly?: boolean;
 }
 
 /**
  * `pinMin` exists for Section 10's population figures specifically. The
  * design doc states its own convention for them: "Sec.8's invariant figures
- * are pinned off this, with `≥`" — these counts are a MEASURED FLOOR over a
+ * are pinned off this, with `≥`", these counts are a MEASURED FLOOR over a
  * 5-seed sample, not an exact invariant, so a later run finding MORE
  * qualifying rows/pairs is expected as the corpus's own stochastic surface
  * gets sampled more thoroughly, never a defect. Every other pin in this file
- * is exact by design (Sections 1-9, 11) — `pinMin` is the one place that
+ * is exact by design (Sections 1-9, 11); `pinMin` is the one place that
  * would be wrong to hold to `===`.
  */
 function makePinner(): {
@@ -1150,7 +1150,7 @@ describe("Consistency checker corpus census (CREATION_PLAN 5.2, docs/consistency
       const refDb: PreviewReferenceData = { language, constants: rawConstants.constants };
       // Sections 8/9 need the richer `PublishedGameConstant` shape (`verified`,
       // `allowedTerrains`, ...) that `runStaticChecks`/`computeTerrainSurface`
-      // read — the same JSON, read through the wider generated type rather
+      // read, the same JSON, read through the wider generated type rather
       // than the narrower `ObjectConstant` projection `generatePreview` uses.
       const publishedConstants = rawConstants.constants as unknown as PublishedGameConstant[];
       const terrainConstants = asTerrainConstants(publishedConstants);
@@ -1419,7 +1419,7 @@ describe("Consistency checker corpus census (CREATION_PLAN 5.2, docs/consistency
       pin("Sec7 bucket counts differ among tied counts", 250, section7All.countsDiffer);
       pin("Sec7 bucket counts differ (tracked)", 29, section7Tracked.countsDiffer);
 
-      // ---- Sections 8/9 (static census — no generation) ----
+      // ---- Sections 8/9 (static census, no generation) ----
       lines.push("\n----- Section 8: static block count per map vs LIMITS.maxBlocksPerOutput -----");
       const staticCensus = runStaticCensus(allMaps, lang, language, publishedConstants, terrainConstants);
       const staticResultsTracked = staticCensus.results.filter((r) => trackedPred(r.map));
@@ -1479,7 +1479,7 @@ describe("Consistency checker corpus census (CREATION_PLAN 5.2, docs/consistency
       pin("Sec10 total rows (union of 5 seeds)", 8511, section10All.totalRows);
       pin("Sec10 absent at some count", 373, section10All.crossCountAbsent);
       pin("Sec10 absent at some count (tracked)", 149, section10Tracked.crossCountAbsent);
-      // `pinMin` per the design doc's own convention for these figures — a
+      // `pinMin` per the design doc's own convention for these figures, a
       // measured floor over the 5-seed sample, not an exact invariant (see
       // `makePinner`'s doc comment).
       pinMin("Sec10 within-batch partial pairs", 240, section10All.withinBatchPartial);
@@ -1552,7 +1552,7 @@ describe("Consistency checker corpus census (CREATION_PLAN 5.2, docs/consistency
       writeFileSync(OUTPUT_PATH, JSON.stringify(fullReport, null, 2), "utf8");
 
       // Reporter, not a gate: this suite must never fail on drift. The
-      // assertions below are a sanity floor only — proof the harness actually
+      // assertions below are a sanity floor only, proof the harness actually
       // ran and produced the checks it claims to, never a verdict on whether
       // the corpus matches history (that verdict is the printed drift count,
       // read by a person).

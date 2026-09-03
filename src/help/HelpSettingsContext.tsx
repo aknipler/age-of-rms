@@ -51,7 +51,7 @@ export function HelpSettingsProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
-  // Global ALT tracking. Also clears on window blur — otherwise
+  // Global ALT tracking. Also clears on window blur, otherwise
   // alt-tabbing away from the app leaves altHeld stuck true, since the
   // keyup never reaches this window.
   useEffect(() => {

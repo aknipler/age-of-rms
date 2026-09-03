@@ -5,12 +5,68 @@
       "text": "New, Open, Save, and Save As for .rms files."
     },
     {
+      "id": "titleBar.file.new",
+      "text": "Starts a new, empty .rms script in a new tab."
+    },
+    {
+      "id": "titleBar.file.open",
+      "text": "Opens an existing .rms script from disk."
+    },
+    {
+      "id": "titleBar.file.save",
+      "text": "Saves the current tab. Prompts for a location the first time, same as Save As."
+    },
+    {
+      "id": "titleBar.file.saveAs",
+      "text": "Saves the current tab to a new or different location."
+    },
+    {
       "id": "titleBar.edit",
-      "text": "Not implemented yet."
+      "text": "Undo, redo, cut, copy, paste, select all, find, find and replace, toggle comment, and toggle command layout."
+    },
+    {
+      "id": "titleBar.edit.undo",
+      "text": "Undoes the last edit, in Breakdown or Code alike, they share one undo history."
+    },
+    {
+      "id": "titleBar.edit.redo",
+      "text": "Redoes the last undone edit."
+    },
+    {
+      "id": "titleBar.edit.cut",
+      "text": "Cuts the current selection in the Code tab. Switches you there first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.copy",
+      "text": "Copies the current selection in the Code tab. Switches you there first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.paste",
+      "text": "Pastes the clipboard into the Code tab at the cursor. Switches you there first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.selectAll",
+      "text": "Selects the whole script in the Code tab. Switches you there first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.find",
+      "text": "Opens the Code tab's find widget. Switches you there first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.findReplace",
+      "text": "Opens the Code tab's find and replace widget. Switches you there first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.toggleComment",
+      "text": "Wraps or unwraps the selected lines in a block comment (RMS has no line-comment syntax). Switches you to the Code tab first if you're in Breakdown."
+    },
+    {
+      "id": "titleBar.edit.toggleLayout",
+      "text": "Flips the command under the cursor between one line and one attribute per line, same as Code: Toggle Command Layout in Settings > Hotkeys. Switches you to the Code tab first if you're in Breakdown."
     },
     {
       "id": "titleBar.settings",
-      "text": "App settings, grouped into tabs — General, Hotkeys, Theme, Breakdown, Code, Advanced Tools and Credits."
+      "text": "App settings, grouped into tabs: General, Hotkeys, Theme, Breakdown, Code, Advanced Tools and Credits."
     },
     {
       "id": "titleBar.help",
@@ -18,7 +74,19 @@
     },
     {
       "id": "titleBar.help.deRmsGuide",
-      "text": "Opens Zetnus's guide to the DE random map scripting language in your browser — the reference this app's own command and attribute docs are drawn from."
+      "text": "Opens Zetnus's guide to the DE random map scripting language in your browser. This app's own command and attribute docs are drawn from it."
+    },
+    {
+      "id": "titleBar.help.tutorialRms",
+      "text": "Builds a small map called Golden Hill from scratch, step by step, right in the Breakdown editor. Starts over from step 1 even if you've finished it before."
+    },
+    {
+      "id": "titleBar.help.tutorialApp",
+      "text": "A tour of the preview, reference table, status bar, generation settings and Advanced Tools, for someone who already writes RMS. Starts over from step 1 even if you've finished it before."
+    },
+    {
+      "id": "titleBar.help.whatsNew",
+      "text": "What changed in the newest release with something worth announcing."
     },
     {
       "id": "mapHeader.mapName",
@@ -30,7 +98,7 @@
     },
     {
       "id": "tabBar.breakdown",
-      "text": "Shows your script as editable command blocks instead of raw code — good for building without memorizing syntax."
+      "text": "Shows your script as editable command blocks instead of raw code. Good for building without memorizing syntax."
     },
     {
       "id": "tabBar.code",
@@ -42,15 +110,19 @@
     },
     {
       "id": "statusBar.total",
-      "text": "Total resources across the whole map, summed from every create_object placement the parser can see. Shown as a min-max range when if/start_random blocks make the exact count generation-dependent. Figures are abbreviated to fit the bar, so hover one to read the exact amount."
+      "text": "Total resources across the whole map, read from the actual preview generation currently showing, not a theoretical count of what the script asks for (a create_object with number_of_groups 9999 usually means \"fill the map\", not \"place 9999 objects\", and this bar reports what fits). Includes wood forest terrains spawn automatically. Reseed or edit the script to see a different generation's figures. Figures are abbreviated to fit the bar, so hover one to read the exact amount."
     },
     {
       "id": "statusBar.player",
-      "text": "Resources a single player gets from set_place_for_every_player placements — per player, not multiplied by player count (see Total for the map-wide sum across every player). v1 doesn't yet correlate placement with a specific player's land."
+      "text": "The spread across this generation's own players: the least any one player received and the most, for placements the script tied to a specific player (set_place_for_every_player, or place_on_specific_land_id on that player's own land). A gap here means an unbalanced map, not an estimate."
     },
     {
       "id": "statusBar.neutral",
-      "text": "Resources placed without set_place_for_every_player — everything not counted as Player. v1 doesn't yet check whether these sit inside or outside player territory."
+      "text": "Everything this generation placed that isn't owned by a specific player, including forest terrains' automatic tree wood, which belongs to nobody."
+    },
+    {
+      "id": "statusBar.cut",
+      "text": "Shown when the map preview is drawing less than the whole script: \"Pinned line N\" means Current view is cut at a pin you set, \"Current line N\" means it's following your cursor instead. Switch to Final, or pin further down, to see the whole map."
     },
     {
       "id": "statusBar.problems",
@@ -58,7 +130,7 @@
     },
     {
       "id": "statusBar.generationSettings",
-      "text": "Opens Generation Settings — map size and player count, used to compute the resource totals shown here."
+      "text": "Opens Generation Settings: map size and player count, used to compute the resource totals shown here."
     },
     {
       "id": "statusBar.reportBug",
@@ -78,7 +150,7 @@
     },
     {
       "id": "generationSettings.mapSize",
-      "text": "The map size this script targets. Not yet used by the resource totals — will feed the approximate preview and consistency checker in a later phase."
+      "text": "The map size this script targets. Not yet used by the resource totals. Will feed the approximate preview and consistency checker in a later phase."
     },
     {
       "id": "settings.authorName",
@@ -94,39 +166,39 @@
     },
     {
       "id": "settings.hotkeys.save",
-      "text": "The shortcut for Save, shown here and next to Save in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for Save, shown here and next to Save in the File menu. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.saveAs",
-      "text": "The shortcut for Save As, shown here and next to Save As… in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for Save As, shown here and next to Save As… in the File menu. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.newFile",
-      "text": "The shortcut for New File, shown here and next to New in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for New File, shown here and next to New in the File menu. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.openFile",
-      "text": "The shortcut for Open File, shown here and next to Open… in the File menu. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for Open File, shown here and next to Open… in the File menu. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.previewToggleView",
-      "text": "The shortcut for switching the preview between Current and Final. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for switching the preview between Current and Final. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.previewReseed",
-      "text": "The shortcut for re-rolling the preview's seed. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for re-rolling the preview's seed. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.breakdownDeleteCard",
-      "text": "The shortcut for deleting the selected Breakdown card. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for deleting the selected Breakdown card. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.breakdownAddCommand",
-      "text": "The shortcut for opening the Add Command picker in the Breakdown tab. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for opening the Add Command picker in the Breakdown tab. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.hotkeys.codeToggleLayout",
-      "text": "The shortcut for toggling a command between one line and one attribute per line in the Code tab. Click Change and press a new combination — it must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
+      "text": "The shortcut for toggling a command between one line and one attribute per line in the Code tab. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
       "id": "settings.tab.general",
@@ -134,7 +206,7 @@
     },
     {
       "id": "settings.tab.hotkeys",
-      "text": "Keyboard shortcuts — Save, Save As, New, Open, two Preview actions, two Breakdown card actions and the Code tab's layout toggle, all rebindable here."
+      "text": "Keyboard shortcuts: Save, Save As, New, Open, two Preview actions, two Breakdown card actions and the Code tab's layout toggle, all rebindable here."
     },
     {
       "id": "settings.tab.theme",
@@ -142,7 +214,7 @@
     },
     {
       "id": "settings.theme.picker",
-      "text": "Switch the active theme, or save your current colour edits as a new one. Light and Dark are built in and can't be edited in place — customize below, then Save as new theme. A theme you saved can be updated, renamed or deleted from here too."
+      "text": "Switch the active theme, or save your current colour edits as a new one. Light and Dark are built in and can't be edited in place. Customize below, then Save as new theme. A theme you saved can be updated, renamed or deleted from here too."
     },
     {
       "id": "settings.theme.customize",
@@ -166,7 +238,7 @@
     },
     {
       "id": "breakdown.tab.header",
-      "text": "Global constants and directives (#define/#const/#include) that appear before the first section — the natural home for defining a map-wide constant."
+      "text": "Global constants and directives (#define/#const/#include) that appear before the first section. The natural home for defining a map-wide constant."
     },
     {
       "id": "breakdown.tab.unknown",
@@ -202,7 +274,7 @@
     },
     {
       "id": "breakdown.addCommand",
-      "text": "Opens a searchable list of commands for this section to insert. Filtered to this section by default — toggle \"show all sections\" to search everything."
+      "text": "Opens a searchable list of commands for this section to insert. Filtered to this section by default. Toggle \"show all sections\" to search everything."
     },
     {
       "id": "breakdown.addCommand.showAll",
@@ -214,7 +286,7 @@
     },
     {
       "id": "breakdown.addCommand.entry",
-      "text": "Click a command to insert it. The chip shows whether this command's reference data has been verified against the official docs — \"unverified\" entries may have incomplete or unconfirmed argument details, but are still safe to use."
+      "text": "Click a command to insert it. The chip shows whether this command's reference data has been verified against the official docs. \"Unverified\" entries may have incomplete or unconfirmed argument details, but are still safe to use."
     },
     {
       "id": "breakdown.commandCard.summary",
@@ -234,7 +306,7 @@
     },
     {
       "id": "breakdown.commandCard.argumentName",
-      "text": "This argument's name — hover shows what it's for, sourced from the reference docs (falls back to type/range/default when no description is written yet)."
+      "text": "This argument's name. Hover shows what it's for, sourced from the reference docs (falls back to type/range/default when no description is written yet)."
     },
     {
       "id": "breakdown.attributeRow.value",
@@ -242,19 +314,19 @@
     },
     {
       "id": "breakdown.attributeRow.name",
-      "text": "This attribute's name — hover shows what it does, sourced from the reference docs."
+      "text": "This attribute's name. Hover shows what it does, sourced from the reference docs."
     },
     {
       "id": "breakdown.attributeRow.flag",
-      "text": "A checkbox attribute — checked means the flag is present in the code, unchecked means it's absent. Toggling adds or removes the flag immediately."
+      "text": "A checkbox attribute. Checked means the flag is present in the code, unchecked means it's absent. Toggling adds or removes the flag immediately."
     },
     {
       "id": "breakdown.attributeRow.repeatable",
-      "text": "This attribute appears more than once in the code, so every instance is listed and edited independently — none of them are merged or overwritten."
+      "text": "This attribute appears more than once in the code, so every instance is listed and edited independently. None of them are merged or overwritten."
     },
     {
       "id": "breakdown.attributeRow.absent",
-      "text": "Not present in the code yet. This faint row is a placeholder, not real content — clicking + inserts the attribute into the code."
+      "text": "Not present in the code yet. This faint row is a placeholder, not real content. Clicking + inserts the attribute into the code."
     },
     {
       "id": "breakdown.attributeRow.delete",
@@ -290,11 +362,11 @@
     },
     {
       "id": "breakdown.conditionalCard.removeBranch",
-      "text": "Removes just this branch. Disabled when it's the only branch left — delete the whole conditional instead."
+      "text": "Removes just this branch. Disabled when it's the only branch left. Delete the whole conditional instead."
     },
     {
       "id": "breakdown.randomCard",
-      "text": "A start_random block — each percent_chance branch has a weight and its own contents; exactly one branch runs when the map generates."
+      "text": "A start_random block. Each percent_chance branch has a weight and its own contents; exactly one branch runs when the map generates."
     },
     {
       "id": "breakdown.randomCard.chance",
@@ -314,7 +386,7 @@
     },
     {
       "id": "breakdown.randomCard.removeBranch",
-      "text": "Removes just this branch. Disabled when it's the only branch left — delete the whole random block instead."
+      "text": "Removes just this branch. Disabled when it's the only branch left. Delete the whole random block instead."
     },
     {
       "id": "breakdown.directiveCard",
@@ -322,7 +394,7 @@
     },
     {
       "id": "breakdown.directiveCard.nonFunctional",
-      "text": "This directive is accepted by the game but does nothing in Definitive Edition — safe to leave, but it won't have any effect."
+      "text": "This directive is accepted by the game but does nothing in Definitive Edition. Safe to leave, but it won't have any effect."
     },
     {
       "id": "breakdown.directiveCard.delete",
@@ -334,19 +406,19 @@
     },
     {
       "id": "breakdown.commentCard",
-      "text": "A comment from your script, shown here for reference. Comments aren't editable in Breakdown yet — switch to the Code tab to change them."
+      "text": "A comment from your script, shown here for reference. Comments aren't editable in Breakdown yet. Switch to the Code tab to change them."
     },
     {
       "id": "breakdown.rawCard.why",
-      "text": "This code couldn't be shown as an editable block — usually because it's unusual/exotic RMS the parser intentionally leaves alone rather than risk misrepresenting it. The exact text from your file is shown below, unchanged."
+      "text": "This code couldn't be shown as an editable block, usually because it's unusual/exotic RMS the parser intentionally leaves alone rather than risk misrepresenting it. The exact text from your file is shown below, unchanged."
     },
     {
       "id": "breakdown.rawCard.fix",
-      "text": "Applies the suggested spelling in place — the region usually turns into a normal editable card once it re-parses."
+      "text": "Applies the suggested spelling in place. The region usually turns into a normal editable card once it re-parses."
     },
     {
       "id": "breakdown.commandCard.fix",
-      "text": "This command name isn't recognized, but it's close to a known one — applies the suggested spelling in place. The card usually turns into a fully recognized command once it re-parses."
+      "text": "This command name isn't recognized, but it's close to a known one. Applies the suggested spelling in place. The card usually turns into a fully recognized command once it re-parses."
     },
     {
       "id": "breakdown.rawCard.editInCode",
@@ -354,19 +426,19 @@
     },
     {
       "id": "breakdown.strayAttribute",
-      "text": "An attribute written outside any command's { } block — it has no effect where it sits. Move it inside the intended command's block."
+      "text": "An attribute written outside any command's { } block. It has no effect where it sits. Move it inside the intended command's block."
     },
     {
       "id": "breakdown.problemBadge",
-      "text": "A parser diagnostic (error/warning/info) applies somewhere in this card — the same ones shown as squiggles on the Code tab."
+      "text": "A parser diagnostic (error/warning/info) applies somewhere in this card, the same ones shown as squiggles on the Code tab."
     },
     {
       "id": "breakdown.sidePanel.previewToggle",
-      "text": "Switches the map preview between Current and Final. Final draws the whole script. Current draws only what the script has built up to your cursor, so you can see what a half written script produces — the code it leaves out is dimmed, and the pin button beside this holds the cut point still while you edit elsewhere. The preview draws your actual script, generated in the background as you edit."
+      "text": "Switches the map preview between Current and Final. Final draws the whole script. Current draws only what the script has built up to your cursor, so you can see what a half written script produces. The code it leaves out is dimmed, and the pin button beside this holds the cut point still while you edit elsewhere. The preview draws your actual script, generated in the background as you edit."
     },
     {
       "id": "breakdown.sidePanel.referenceRadio",
-      "text": "Switches the reference table below between Terrain constants, Object constants, Commands / Attributes, and the Preview Obj. List — the objects your own script places, with a tick box for each one the map draws."
+      "text": "Switches the reference table below between Terrain constants, Object constants, Commands / Attributes, and the Preview Obj. List: the objects your own script places, with a tick box for each one the map draws."
     },
     {
       "id": "breakdown.sidePanel.referenceFind",
@@ -374,7 +446,7 @@
     },
     {
       "id": "breakdown.sidePanel.referenceCorpses",
-      "text": "The Objects tab lists every unit in the game's gaia roster, and about 500 of those are carcasses and blood decals — what a unit turns into when it dies, rather than something a script places. They are hidden until you tick this. Nothing is removed: a script can still reach one by its ID number, and the search box finds it once the rows are showing."
+      "text": "The Objects tab lists every unit in the game's gaia roster, and about 500 of those are carcasses and blood decals: what a unit turns into when it dies, rather than something a script places. They are hidden until you tick this. Nothing is removed: a script can still reach one by its ID number, and the search box finds it once the rows are showing."
     },
     {
       "id": "breakdown.sidePanel.referenceTable",
@@ -394,7 +466,7 @@
     },
     {
       "id": "unsavedChanges.discard",
-      "text": "Continues WITHOUT saving — every change made since the last save is permanently discarded."
+      "text": "Continues WITHOUT saving. Every change made since the last save is permanently discarded."
     },
     {
       "id": "generationSettings.teamPreset",
@@ -418,7 +490,7 @@
     },
     {
       "id": "preview.pinLine",
-      "text": "Sets the point Current stops at. Put your cursor where you want the map to stop, then click this to hold the preview there while you keep editing and moving around; click it again to let go, and Current follows your cursor instead. Everything after that point is dimmed in the code and left out of the map, down to the individual attribute — so you can watch a land take shape as you add lines to it. A pin sticks to the code it was set in, so edits above it move it along with them."
+      "text": "Sets the point Current stops at. Put your cursor where you want the map to stop, then click this to hold the preview there while you keep editing and moving around; click it again to let go, and Current follows your cursor instead. Everything after that point is dimmed in the code and left out of the map, down to the individual attribute, so you can watch a land take shape as you add lines to it. A pin sticks to the code it was set in, so edits above it move it along with them."
     },
     {
       "id": "preview.approximateBadge",
@@ -438,11 +510,11 @@
     },
     {
       "id": "preview.failureCount",
-      "text": "How many placements the preview could not make. A failure usually means the script asked for something the map cannot supply, such as a resource on a terrain that was never generated. The notes drawer lists one line per command per kind of failure, with a count beside it, rather than one line per attempt — a single command can fail tens of thousands of times and they all have the same cause."
+      "text": "How many placements the preview could not make. A failure usually means the script asked for something the map cannot supply, such as a resource on a terrain that was never generated. The notes drawer lists one line per command per kind of failure, with a count beside it, rather than one line per attempt. A single command can fail tens of thousands of times and they all have the same cause."
     },
     {
       "id": "preview.colorMode",
-      "text": "Which set of terrain colours to draw with. Game uses the average colour of each terrain's own texture from your install, so snow looks like snow; terrains that share a texture file, such as Forest and Underbrush, share a colour. Minimap uses the colour class stored in the game's own data, which is flatter and only has twelve colours in it, so every snow terrain comes out grass green — but it does tell forest apart from underbrush. Both come from the game files; neither is a claim about what the minimap draws in a real match."
+      "text": "Which set of terrain colours to draw with. Game uses the average colour of each terrain's own texture from your install, so snow looks like snow; terrains that share a texture file, such as Forest and Underbrush, share a colour. Minimap uses the colour class stored in the game's own data, which is flatter and only has twelve colours in it, so every snow terrain comes out grass green, but it does tell forest apart from underbrush. Both come from the game files; neither is a claim about what the minimap draws in a real match."
     },
     {
       "id": "preview.legend",
@@ -482,7 +554,7 @@
     },
     {
       "id": "tools.select",
-      "text": "Picks which tool runs. Switching tools while one is running cancels it first — only one tool runs at a time."
+      "text": "Picks which tool runs. Switching tools while one is running cancels it first. Only one tool runs at a time."
     },
     {
       "id": "tools.run",
@@ -506,11 +578,139 @@
     },
     {
       "id": "tools.apply",
-      "text": "Applies the changes the tool proposed, as a single undo step. Disabled if the code changed since the tool ran — re-run instead."
+      "text": "Applies the changes the tool proposed, as a single undo step. Disabled if the code changed since the tool ran. Re-run instead."
     },
     {
       "id": "tools.log",
       "text": "Problems the host found with what the tool sent, and anything the tool wrote to its error stream."
+    },
+    {
+      "id": "landPlacement.preconditions",
+      "text": "Things about this script that limit what Land Placement can manage: code the app can only show as raw text, a random parameter emitted for a different player count, or a fence that could not be read. Empty on a healthy script."
+    },
+    {
+      "id": "landPlacement.seed",
+      "text": "The seed the panel's own preview is drawn from, separate from Breakdown and Code's seed, so switching tabs never resets it. Re-roll to see a different arrangement at the pinned seed."
+    },
+    {
+      "id": "landPlacement.newRole",
+      "text": "Adds a new role: a shared set of terrain, size, elevation and land-percent values that any number of lands can wear. Editing a role's fields edits every land wearing it."
+    },
+    {
+      "id": "landPlacement.newRing",
+      "text": "Adds a shape (a circle to start, changeable to line, arc, square, triangle or polygon) of lands around the map centre, evenly spaced, all wearing one role. Set the radius, rotation and repeat count once it's created."
+    },
+    {
+      "id": "landPlacement.newLand",
+      "text": "Adds one standalone land, not part of any shape, for a single feature like a home base or a lone resource pocket."
+    },
+    {
+      "id": "landPlacement.frame",
+      "text": "Radial measures this land's angle at its parent, from the ray pointing back at the parent's own anchor, so the whole chain turns together when a root turns. Absolute uses a plain world bearing instead. Radial only has an angle to measure from when the parent itself is polar (a circle, line or arc member, or another radial/absolute polar land) — parented to a square, triangle or polygon member (or anything cartesian/formula), it falls back to a plain bearing and behaves exactly like absolute."
+    },
+    {
+      "id": "landPlacement.canvas",
+      "text": "Land positions, drawn live from the numbers on the right. The map underneath is a real generation at the panel's own pinned seed, cut at the end of land placement. Click a land to select it; drag to pan, wheel to zoom."
+    },
+    {
+      "id": "landPlacement.tree",
+      "text": "Every land and chain anchor in this layout, indented to show which placement each one is measured from. Click a row to select it and edit its numbers below."
+    },
+    {
+      "id": "landPlacement.nodeEditor",
+      "text": "The selected placement's own numbers: its parent, its frame (radial or absolute), its offset, and which role it wears. A land inside a ring is edited through the ring's own controls instead."
+    },
+    {
+      "id": "landPlacement.shapeKind",
+      "text": "The shape this ring's lands are arranged in. Circle spaces them evenly around the radius. Line runs them through the anchor, signed by radius, with Radius shown as the line's own half length. Arc is a circle stopped short, with a Sweep field for how many degrees it spans. Square, Triangle and Polygon all walk their own perimeter, landing on a corner or an edge depending on the count. Rotation works the same way for every shape, including a formula that re-rolls each generation. Polygon adds a Sides field for how many corners it has."
+    },
+    {
+      "id": "landPlacement.shapeSides",
+      "text": "How many sides this polygon has, from 3 up to 12. Past a dozen sides a polygon and a circle look the same at map scale, and Circle gets there with less arithmetic, so this stops short of offering more."
+    },
+    {
+      "id": "landPlacement.perimeterShift",
+      "text": "Slides this land along the shape's perimeter, as a percent of one full lap around it, added on top of its even spacing. A polygon's corners sit further from the centre than its edges, so sliding a land along the shape also changes how far out it sits, not only which way it faces. Signed, and past 100 just wraps around for another lap."
+    },
+    {
+      "id": "landPlacement.perPlayer",
+      "text": "Makes this ring produce one land per player instead of a fixed count: at generation time the script reads how many players are actually in the game and arranges that many lands evenly, always correct at every count. While this is on, Repeats follows the game's own player count instead of a number you set."
+    },
+    {
+      "id": "landPlacement.thetaPerCount",
+      "text": "This land's angle at specific player counts, on top of the rule above. Each row overrides the angle only at the player count it names; every other count still uses the rule above. Free bearings (a random angle with no reference to another player) can still collide, since nothing in the script can guarantee separation between two independent random draws."
+    },
+    {
+      "id": "landPlacement.minSeparation",
+      "text": "Computes the largest random jitter this ring can add to its even spacing while still keeping every pair of neighbouring lands at least this far apart, at the player count you're currently previewing. Refuses rather than guessing when the request is too tight for the count to allow. Doesn't change anything by itself — copy the suggested rnd(...) into a land's angle formula to use it."
+    },
+    {
+      "id": "landPlacement.roles",
+      "text": "Every role this layout uses. A role's terrain, size, elevation, land percent and player assignment are shared by every land wearing it. Change one line here and every one of those lands follows."
+    },
+    {
+      "id": "landPlacement.generatedCode",
+      "text": "The #const lines Apply would write into the script, and how many edits it would make. Nothing here touches the document until Apply is pressed."
+    },
+    {
+      "id": "landPlacement.apply",
+      "text": "Writes the current layout into the script as a single undo step: its own fenced block of #const lines, plus a create_land command for any land that doesn't have one yet. Re-applying with no changes makes zero edits."
+    },
+    {
+      "id": "landPlacement.explain",
+      "text": "Opens a walkthrough of the whole tool. What it writes into the script, why an existing hand-written layout starts empty here, the order to build a layout in, and what every canvas gesture does."
+    },
+    {
+      "id": "landPlacement.explainClose",
+      "text": "Closes the walkthrough. Escape and a click outside the box do the same thing."
+    },
+    {
+      "id": "tutorial.back",
+      "text": "Goes back one step. Never disabled once you're past the first."
+    },
+    {
+      "id": "tutorial.next",
+      "text": "Moves to the next step. Works even if this step isn't done yet. Nothing here is enforced."
+    },
+    {
+      "id": "tutorial.bypass",
+      "text": "Moves on without doing this step. Mechanically the same as Next."
+    },
+    {
+      "id": "tutorial.exit",
+      "text": "Ends the tutorial without marking it finished. Nothing you've written is touched."
+    },
+    {
+      "id": "tutorial.moveAside",
+      "text": "Parks this card in a corner, out of the way of what it's pointing at, and turns off the spotlight until the next step."
+    },
+    {
+      "id": "tutorial.autoFill",
+      "text": "Adds these commands for you, exactly as described, so you can see the result and move on."
+    },
+    {
+      "id": "tutorial.announcementShowMe",
+      "text": "Starts a short tour of what's new, spotlighting the new controls."
+    },
+    {
+      "id": "tutorial.announcementNotNow",
+      "text": "Dismisses this announcement. You can still find it from Help ▸ What's new."
+    },
+    {
+      "id": "tutorial.discordLink",
+      "text": "Opens the RMS Discord invite in your browser, not inside the app."
+    },
+    {
+      "id": "welcome.startRms",
+      "text": "Starts the \"New to RMS\" tutorial. Builds a small map from scratch, step by step."
+    },
+    {
+      "id": "welcome.startApp",
+      "text": "Starts the \"New to the tool\" tutorial: a quick tour of the preview, reference and tools."
+    },
+    {
+      "id": "welcome.skip",
+      "text": "Closes this pane without starting either tutorial. Find them again any time from Help."
     }
   ]
 }

@@ -2811,6 +2811,14 @@
       "notes": "Name only — see create_object's notes."
     },
     {
+      "name": "temp_min_distance_to_players",
+      "description": "Non-functional engine string. The working attribute is min_distance_to_players.",
+      "nonFunctional": true,
+      "replacedBy": "min_distance_to_players",
+      "verified": true,
+      "notes": "Measured 2026-09-02, RMSTEST_67 (docs/known-issues.md BUG-019): a create_object with this attribute set to 45 placed its full count 30 tiles from the pinned player origin — the same as an unrestricted control — while a matched min_distance_to_players 45 command correctly placed nothing there. The attribute does nothing; it is not an alias resolved to the real one, just inert. `verified` is true because this one was actually run against the engine, unlike min_distance's inferred replacedBy. No `arguments`, same reasoning as min_distance: a name with no behaviour has no arity."
+    },
+    {
       "name": "terrain_cost",
       "arguments": [
         {

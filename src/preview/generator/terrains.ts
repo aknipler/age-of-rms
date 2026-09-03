@@ -1,17 +1,17 @@
-// S4: terrains — docs/preview-design.md Sec.6.4. PURE (CLAUDE.md hard rule /
+// S4: terrains, docs/preview-design.md Sec.6.4. PURE (CLAUDE.md hard rule /
 // preview-design Sec.2).
 //
 // Per `create_terrain T { ... }`, sequential in script order (guide:
 // "generated sequentially… positions cannot be directly specified"): resolve
 // a tile budget, then grow `number_of_clumps` clumps restricted to an
 // eligible-tile set (base_terrain/base_layer match, height_limits, two
-// flavours of spacing, flatness, player-start avoidance) — using terrain's
+// flavours of spacing, flatness, player-start avoidance), using terrain's
 // OWN `clumping_factor` regime (Sec.6.4: "do not reuse Sec.6.1's land
 // table"). The eligible set is computed ONCE per COMMAND (matching
 // elevation.ts's own precedent), not once per clump: what genuinely differs
 // clump-to-clump within one command is only "has an earlier clump already
 // claimed this tile", tracked separately as a live `claimed` mask rather
-// than by rebuilding the whole eligible set — see the ITERATION CAP note
+// than by rebuilding the whole eligible set. See the ITERATION CAP note
 // below for why a naive per-clump rebuild is not just slower but
 // unshippable.
 //
@@ -57,7 +57,7 @@
 //
 // **The bound is the eligible pool, which is exact.** Every clump that runs
 // claims at least its own seed tile, so a command can never usefully run
-// more clumps than it has eligible tiles — `min(clumpCount, pool.length)` is
+// more clumps than it has eligible tiles, `min(clumpCount, pool.length)` is
 // a fact about the work, not a guess about a budget, and it terminates a
 // 999999999-clump command after at most `dim^2` iterations on its own. Seed
 // draws come from a shrinking pool with swap-remove, so the whole command
@@ -65,14 +65,14 @@
 //
 // **This replaced a `[tune]` cap of `4 * dim` attempts, and that cap was a
 // real correctness bug, not just a conservative setting.** At `dim` 200 it
-// stopped every command after 800 clumps — 8.6% of a 9320-clump command.
+// stopped every command after 800 clumps, 8.6% of a 9320-clump command.
 // `create_terrain DIRT { base_terrain DESERT land_percent 100
 // number_of_clumps 9320 }` is how a script converts *all* of one terrain
 // into another, and it was converting a twelfth of it, leaving DESERT
 // scattered through regions the author had cleared. One Pag generation
 // emitted 23 `terrainIterationCapped` notes. The lesson worth keeping: a cap
 // chosen so "no non-pathological corpus script hits it" was measured against
-// nothing — the corpus hits it constantly, and it fired as a silent visual
+// nothing, the corpus hits it constantly, and it fired as a silent visual
 // wrong answer rather than as an error.
 //
 // An EARLIER version computed the eligible set per clump instead of per
@@ -113,24 +113,24 @@ import { intersectCandidates, ok, fail, pushFailure, type AttributedPredicate } 
 // [tune] / guide-value constants
 // ---------------------------------------------------------------------------
 
-/** RMSTEST_14: "default 122 tiles on a tiny map", side-length scaled like Sec.6.2's elevation default — NOT re-scaled by set_scale_by_*, same policy as elevation.ts's own default. */
+/** RMSTEST_14: "default 122 tiles on a tiny map", side-length scaled like Sec.6.2's elevation default, NOT re-scaled by set_scale_by_*, same policy as elevation.ts's own default. */
 const DEFAULT_BUDGET_NUMERATOR = 122;
 const DEFAULT_BUDGET_DENOMINATOR = 120;
 
-/** guide:1646: "different than for lands" — lands.ts's own default is 8. */
+/** guide:1646: "different than for lands". lands.ts's own default is 8. */
 const TERRAIN_DEFAULT_CF = 20;
 
 /**
  * RMSTEST_20's saturation point, which happens to equal RMSTEST_21's land
- * saturation point (Sec.6.1) — coincidence in the data, not a reason to
+ * saturation point (Sec.6.1), coincidence in the data, not a reason to
  * import lands.ts's `bucketWeights`. Sec.6.4 explicitly says the two tables
  * are separate measurements ("do not reuse Sec.6.1's land table"), and an
- * edit to one must not risk silently changing the other's tested shape —
+ * edit to one must not risk silently changing the other's tested shape.
  * same reasoning grid.ts gives for keeping `distanceTransform` and
  * `distanceTransformFromMask` un-unified.
  */
 const TERRAIN_SATURATION_CF = 15;
-/** [tune]: no measurement pins the magnitude, only the qualitative shape (Sec.6.4's own table) — same reasoning as lands.ts's MAX_STEEPNESS. */
+/** [tune]: no measurement pins the magnitude, only the qualitative shape (Sec.6.4's own table), same reasoning as lands.ts's MAX_STEEPNESS. */
 const TERRAIN_MAX_STEEPNESS = 3;
 /** cf < 0: "extremely snakey" (guide:1647). Not literally 0 so a clump isn't stuck if bucket 1 empties first. */
 const TERRAIN_NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [1, 0.05, 0.05, 0.05];
@@ -141,7 +141,7 @@ const AVOID_PLAYER_START_DEFAULT = 13;
 const ZERO_SPAN = { start: 0, end: 0 };
 
 // ---------------------------------------------------------------------------
-// Attribute reading — duplicated per-file convention (elevation.ts/lands.ts
+// Attribute reading, duplicated per-file convention (elevation.ts/lands.ts
 // each keep their own small copy rather than sharing one; see either file's
 // header for why).
 // ---------------------------------------------------------------------------
@@ -151,9 +151,14 @@ function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): Instant
   return arg?.value;
 }
 
+// BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
+// a known symbol (a #define with no #const) that resolves to JS `undefined`
+// — that reads as 0, measured. See objects.ts's own copy for the full note.
 function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
-  const v = argValue(cmd, name, argIndex);
-  return typeof v === "number" ? v : fallback;
+  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
+  if (arg === undefined) return fallback;
+  if (typeof arg.value === "number") return arg.value;
+  return arg.value === undefined ? 0 : fallback;
 }
 
 /** guide:1257/1274 (shared with elevation.ts): "only the LAST scale attribute applies" when a script writes both. */
@@ -172,10 +177,10 @@ type Symbols = ReadonlyMap<string, number>;
 type Aliases = ReadonlyMap<string, string>;
 
 // ---------------------------------------------------------------------------
-// Budget / clump count (Sec.6.4) — mirrors elevation.ts's shape, but with
+// Budget / clump count (Sec.6.4), mirrors elevation.ts's shape, but with
 // the terrain-specific scaling rule: EITHER scale attribute scales tiles
 // (guide: set_scale_by_groups "scales the total tile count too" for
-// terrains — elevation only lets set_scale_by_size touch tiles).
+// terrains, elevation only lets set_scale_by_size touch tiles).
 // ---------------------------------------------------------------------------
 
 export function resolveTerrainTileBudget(cmd: InstantiatedCommand, dim: number): number {
@@ -199,7 +204,7 @@ export function resolveClumpCount(cmd: InstantiatedCommand, dim: number): number
 }
 
 // ---------------------------------------------------------------------------
-// Terrain's own clumping_factor regime (Sec.6.4, RMSTEST_20) — see the
+// Terrain's own clumping_factor regime (Sec.6.4, RMSTEST_20). See the
 // TERRAIN_SATURATION_CF comment above for why this is not lands.ts's
 // `bucketWeights` despite the identical shape.
 // ---------------------------------------------------------------------------
@@ -232,7 +237,7 @@ interface SpecificTerrainSpacing {
   distance: number;
 }
 
-/** `spacing_to_specific_terrain` is `repeatable: true` (Sec.3 rule 10) — every occurrence accumulates, not just the last. Unresolvable terrain names are skipped (positive-resolver policy: absence from reference data is not itself a reason to fail the whole command). */
+/** `spacing_to_specific_terrain` is `repeatable: true` (Sec.3 rule 10). Every occurrence accumulates, not just the last. Unresolvable terrain names are skipped (positive-resolver policy: absence from reference data is not itself a reason to fail the whole command). */
 function specificTerrainSpacings(
   cmd: InstantiatedCommand,
   constants: readonly TerrainConstantForMasks[],
@@ -250,7 +255,7 @@ function specificTerrainSpacings(
   return out;
 }
 
-/** `set_avoid_player_start_areas d` — undefined when the attribute is absent entirely (no constraint); `AVOID_PLAYER_START_DEFAULT` when present but bare. */
+/** `set_avoid_player_start_areas d`, undefined when the attribute is absent entirely (no constraint); `AVOID_PLAYER_START_DEFAULT` when present but bare. */
 function avoidPlayerStartDistance(cmd: InstantiatedCommand): number | undefined {
   const attr = cmd.attributes.get("set_avoid_player_start_areas")?.[0];
   if (!attr) return undefined;
@@ -264,7 +269,7 @@ function avoidPlayerStartDistance(cmd: InstantiatedCommand): number | undefined 
 // limits, other-terrain spacing, specific-terrain spacings, flatness,
 // player-start avoidance). Bucket assignment is SPEC-STATED, not a judgment
 // call: "Failures: terrainAbsent (no eligible tiles at all...), spacingConflict
-// (eligible set emptied by spacing)" — only the base-match predicate uses
+// (eligible set emptied by spacing)". Only the base-match predicate uses
 // terrainAbsent, every later predicate uses spacingConflict.
 // ---------------------------------------------------------------------------
 
@@ -272,7 +277,7 @@ export interface EligibilityContext {
   baseTerrainId: number;
   baseLayerId?: number;
   heightLimits?: HeightLimits;
-  /** 0 = no constraint (attribute absent — Sec.6.4 gives no default, unlike cliffs.ts's guide-sourced spacing defaults). */
+  /** 0 = no constraint (attribute absent, Sec.6.4 gives no default, unlike cliffs.ts's guide-sourced spacing defaults). */
   otherTerrainSpacing: number;
   specificSpacings: readonly SpecificTerrainSpacing[];
   flatOnly: boolean;
@@ -387,14 +392,14 @@ export function eligibleTerrainCandidates(
 }
 
 // ---------------------------------------------------------------------------
-// Restricted clump growth — elevation.ts's `growClump` shape, plus TWO
+// Restricted clump growth, elevation.ts's `growClump` shape, plus TWO
 // per-clump membership checks gating every frontier candidate (Sec.6.4:
 // "grow restricted to eligible tiles"): a STATIC `eligible` mask (computed
-// ONCE per command — see applyTerrains below for why) and a live `claimed`
+// ONCE per command, see applyTerrains below for why) and a live `claimed`
 // mask marking tiles an EARLIER clump of this same command already grew
 // into. Two arrays rather than one combined mask because `eligible` is
 // shared read-only across every clump of a command while `claimed` grows
-// clump by clump — merging them would mean rebuilding a combined array per
+// clump by clump, merging them would mean rebuilding a combined array per
 // clump, exactly the O(dim^2)-per-clump cost this split exists to avoid.
 // Kept as its OWN copy rather than adding parameters to elevation.ts's
 // tested, working `growClump`, for the same reason grid.ts keeps its two
@@ -478,7 +483,7 @@ export function growTerrainClump(
 export interface AutomaticBeachOptions {
   /** `create_terrain`'s `beach_terrain`: use this instead of a tile's own `beachTerrain` data, but only within `beachTerrainScope`. */
   beachTerrain?: number;
-  /** The tiles `beachTerrain` speaks for (1 = in scope) — the painting command's own. Everything else on the grid still takes its own data default. */
+  /** The tiles `beachTerrain` speaks for (1 = in scope), the painting command's own. Everything else on the grid still takes its own data default. */
   beachTerrainScope?: Uint8Array;
 }
 
@@ -487,9 +492,9 @@ export interface AutomaticBeachOptions {
  * than itself.
  *
  * NOT driven by the script. The community DE terrain table states it on the
- * beach terrains' own rows — id 2 BEACH is "automatically placed when land
+ * beach terrains' own rows, id 2 BEACH is "automatically placed when land
  * terrains border water", id 37 ICYSHORE is "created when snowy terrains
- * border water" — and `create_terrain`'s `beach_terrain` attribute exists to
+ * border water", and `create_terrain`'s `beach_terrain` attribute exists to
  * OVERRIDE it per command, which is why guide:1483 gives that attribute a
  * default of BEACH. Without this pass a preview shows land meeting open water
  * with no shoreline anywhere, which `AD4 - Pag - v1.2.rms` did on 536 tiles.
@@ -500,10 +505,10 @@ export interface AutomaticBeachOptions {
  * `<TERRAIN_GENERATION>` rather than appearing after it.
  *
  * **This was first built as a single pass after S5 and that was wrong, in a
- * way the corpus states plainly.** `base_terrain BEACH` is an ordinary idiom —
+ * way the corpus states plainly.** `base_terrain BEACH` is an ordinary idiom,
  * 67 uses across the tracked maps, including five consecutive
  * `create_terrain RIVERBANK_TERRAIN_TEMP { base_terrain BEACH land_percent 100
- * number_of_clumps 99999 }` in `AK_Namatjira.rms` — and a beach that does not
+ * number_of_clumps 99999 }` in `AK_Namatjira.rms`, and a beach that does not
  * exist until after S5 matches NONE of them. The commands ran, found an empty
  * eligible pool and painted nothing, which looks like a quiet map rather than
  * an error. Running late also made the pass the LAST writer, so it undid those
@@ -522,13 +527,13 @@ export interface AutomaticBeachOptions {
  * made the per-command step conditional on `beach_terrain` specifically to
  * stop the "undo", which protected the no-op case and broke the real one.
  *
- * THREE DEPTHS ARE READ AND ONLY THE LANDWARD BOUNDARY IS EDGED — corrected
+ * THREE DEPTHS ARE READ AND ONLY THE LANDWARD BOUNDARY IS EDGED, corrected
  * 2026-08-12, and the correction is exactly half of what shipped on
- * 2026-08-08. The map has land, shallows (`isHybrid` — terrain both land units
+ * 2026-08-08. The map has land, shallows (`isHybrid`, terrain both land units
  * and ships cross) and open water. A beach appears where land meets shallows
  * and where land meets open water; where SHALLOWS meet open water the engine
  * lays none (`RMSTEST_52`, BUG-010: 3 and 2 tiles against 336/312 and 30/90 on
- * the other two boundaries — a triple junction, not a boundary).
+ * the other two boundaries, a triple junction, not a boundary).
  *
  * **The three-value depth mask stays and is not an artefact of the withdrawn
  * half.** `isWater` alone cannot express the landward boundary either: the
@@ -586,7 +591,7 @@ export function applyAutomaticBeach(grid: TileGrid, constants: readonly TerrainC
   for (let i = 0; i < n; i++) {
     const own = depth[i];
     // ONLY DRY LAND TAKES A BEACH. A shallow facing open water does not, even
-    // though it is the shallower of the two — MEASURED, `RMSTEST_52`, two runs
+    // though it is the shallower of the two, MEASURED, `RMSTEST_52`, two runs
     // (BUG-010): land/shallows/open water in a known order gave 336 and 312
     // beach tiles on the grass/water boundary, 30 and 90 on grass/shallow, and
     // **3 and 2** where shallow meets water, which is a triple junction rather
@@ -618,7 +623,7 @@ export function applyAutomaticBeach(grid: TileGrid, constants: readonly TerrainC
     // The `beach === terrainId` half was once removed as unreachable, and a
     // mutation test agreed: on the DATA path a beach terrain's own row carries
     // `beachTerrain: null`, so `beachTerrainFor` returns undefined and the
-    // first half already catches it. `beach_terrain` put it back in reach —
+    // first half already catches it. `beach_terrain` put it back in reach.
     // nothing stops a script writing `create_terrain BEACH { beach_terrain
     // BEACH }`, and without the guard that tile counts as written every run.
     if (beach === undefined || beach === terrainId) continue;
@@ -635,7 +640,7 @@ export function applyAutomaticBeach(grid: TileGrid, constants: readonly TerrainC
 export interface TerrainsResult {
   reports: CommandReport[];
   notes: SimulationNote[];
-  /** Tiles this stage turned into beach, across all of its per-command beach passes. Reported, not consumed — index.ts adds it to S1's own count for the drawer note. */
+  /** Tiles this stage turned into beach, across all of its per-command beach passes. Reported, not consumed. index.ts adds it to S1's own count for the drawer note. */
   beached: number;
 }
 
@@ -734,7 +739,7 @@ export function applyTerrains(
     const applyBeach = hasBeachTerrain && !hasConnectionSection && beachTerrainId !== undefined;
     // guide:1485: "If a water terrain is specified, it will fully replace the
     // terrain specified in create_terrain, so this is NOT recommended." That
-    // is the engine cascading — the waterline becomes water, so the next ring
+    // is the engine cascading, the waterline becomes water, so the next ring
     // in is now a waterline too, and so on until the clump is gone. Modelled
     // as the outcome the guide states outright rather than by iterating the
     // shoreline pass, and it is why that pass can safely be single-pass.
@@ -865,7 +870,7 @@ export function applyTerrains(
       }
 
       if (beachDrownsClump) {
-        // The whole clump, not just its edge — see `beachDrownsClump` above.
+        // The whole clump, not just its edge. See `beachDrownsClump` above.
         for (const tile of clumpTiles) grid.terrain[tile] = beachTerrainId!;
       }
 
@@ -900,8 +905,8 @@ export function applyTerrains(
       });
     }
 
-    // A beach step at the end of EVERY create_terrain command, unconditionally
-    // — not only when the command set `beach_terrain`. Whole grid, because a
+    // A beach step at the end of EVERY create_terrain command, unconditionally,
+    // not only when the command set `beach_terrain`. Whole grid, because a
     // command that paints WATER leaves land it never touched newly on the
     // coast; `beach_terrain` is what is scoped to the command's own tiles
     // (guide:1483: "where the CURRENT terrain borders water").

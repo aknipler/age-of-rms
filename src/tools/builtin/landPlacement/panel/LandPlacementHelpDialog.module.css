@@ -1,0 +1,54 @@
+/* Layout only. The overlay/box/title/close chrome comes from
+   ../../../../components/dialog.module.css, which every dialog shares
+   (SettingsDialog.module.css's own header states the same split). */
+
+/* Sized once and scrolled inside, for SettingsDialog's reason: this is a
+   read-through document, and a box that grows to its content would run off
+   the bottom of a short window with no way back to the close button. */
+.helpDialog {
+  width: 42rem;
+  max-width: 92vw;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  flex: 1;
+  min-height: 0; /* lets .body actually scroll instead of stretching the box */
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.heading {
+  margin: 0.9rem 0 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.body > .heading:first-child {
+  margin-top: 0;
+}
+
+.body p {
+  margin: 0 0 0.4rem;
+}
+
+.body ul {
+  margin: 0 0 0.4rem;
+  padding-left: 1.1rem;
+}
+
+.body li {
+  margin-bottom: 0.2rem;
+}
+
+.body code {
+  font-family: monospace;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0 0.2rem;
+  border-radius: 2px;
+}

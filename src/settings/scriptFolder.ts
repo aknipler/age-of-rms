@@ -1,5 +1,5 @@
 // Where the Open dialog starts, split into a pure module so the path rules
-// can be unit-tested in plain Node — same split as nameDisplay.ts and
+// can be unit-tested in plain Node, same split as nameDisplay.ts and
 // sidepanel/sidePanelLayout.ts. Nothing here touches Tauri: the two
 // filesystem questions ("does this exist", "read this file") arrive as an
 // injected `FolderProbe`, which is also what lets the tests drive it with a
@@ -15,7 +15,7 @@
 //
 // SO THE ORDER IS: the folder this app last opened or saved in (ours, not the
 // shell's, so it survives a reinstall and is inspectable in settings.json),
-// then the DE scripts folder if one can be found, then nothing — which hands
+// then the DE scripts folder if one can be found, then nothing, which hands
 // the decision back to the dialog, exactly as before.
 //
 // WINDOWS-ONLY PATHS, deliberately. This is a Windows desktop app (see the
@@ -66,7 +66,7 @@ export interface FolderProbe {
   readTextFile(path: string): Promise<string>;
 }
 
-/** `<library root>\steamapps\common\AoE2DE` — where Steam puts the game inside any of its libraries. */
+/** `<library root>\steamapps\common\AoE2DE`, where Steam puts the game inside any of its libraries. */
 export function installFolderIn(steamLibraryRoot: string): string {
   return `${trimTrailingSlash(steamLibraryRoot)}\\steamapps\\common\\AoE2DE`;
 }
@@ -86,7 +86,7 @@ export function scriptsFolderIn(installFolder: string): string {
  * throughout. A parser would track the shape; this tracks the field.
  *
  * Backslashes are escaped in VDF, so `D:\\SteamLibrary` on disk is
- * `D:\\\\SteamLibrary` in the file — unescaped here, since every consumer
+ * `D:\\\\SteamLibrary` in the file. Unescaped here, since every consumer
  * wants a real path.
  */
 export function parseSteamLibraryPaths(vdf: string): string[] {
@@ -107,7 +107,7 @@ export function parseSteamLibraryPaths(vdf: string): string[] {
  *
  * Probes are sequential rather than `Promise.all`ed on purpose. The list is
  * short, the first candidate is right on most machines, and each probe is an
- * IPC hop into the Rust side — parallelising would trade a rare handful of
+ * IPC hop into the Rust side, parallelising would trade a rare handful of
  * milliseconds for firing every probe on every machine.
  */
 export async function findDeScriptsFolder(probe: FolderProbe): Promise<string | null> {
@@ -119,7 +119,7 @@ export async function findDeScriptsFolder(probe: FolderProbe): Promise<string | 
 
 /**
  * The folders `findDeScriptsFolder` will try, in order. Exported for the
- * tests, which is the only way to assert the ORDER — the resolver itself can
+ * tests, which is the only way to assert the ORDER, the resolver itself can
  * only ever report the one that won.
  */
 export async function candidateScriptFolders(probe: FolderProbe): Promise<string[]> {
@@ -134,7 +134,7 @@ export async function candidateScriptFolders(probe: FolderProbe): Promise<string
 
   for (const steamRoot of STEAM_ROOT_CANDIDATES) {
     // The Steam root is itself library 0, and on a single-drive install it is
-    // the only one — so it is added whether or not the library list reads.
+    // the only one, so it is added whether or not the library list reads.
     add(scriptsFolderIn(installFolderIn(steamRoot)));
     for (const library of await readSteamLibraries(probe, steamRoot)) {
       add(scriptsFolderIn(installFolderIn(library)));
@@ -155,7 +155,7 @@ export async function candidateScriptFolders(probe: FolderProbe): Promise<string
  * has both and they can disagree.
  *
  * A read that throws is caught and treated as "no libraries here". The file
- * being unreadable is not an error this feature should surface — it means the
+ * being unreadable is not an error this feature should surface, it means the
  * probe falls through to the next candidate, which is the whole design.
  */
 async function readSteamLibraries(probe: FolderProbe, steamRoot: string): Promise<string[]> {
@@ -166,8 +166,8 @@ async function readSteamLibraries(probe: FolderProbe, steamRoot: string): Promis
       if (!(await probe.exists(file))) continue;
       libraries.push(...parseSteamLibraryPaths(await probe.readTextFile(file)));
     } catch {
-      // Unreadable (permissions, a half-written file, a drive that went away)
-      // — the next candidate gets its turn.
+      // Unreadable (permissions, a half-written file, a drive that went away),
+      // the next candidate gets its turn.
     }
   }
   return libraries;

@@ -11,13 +11,13 @@ import styles from "./SidePanelResizer.module.css";
 
 interface SidePanelResizerProps {
   /**
-   * The panel this handle resizes. Read for its left edge at drag time —
-   * the new width is "pointer x minus panel left", which is exact regardless
+   * The panel this handle resizes. Read for its left edge at drag time.
+   * The new width is "pointer x minus panel left", which is exact regardless
    * of what padding or borders the surrounding pane happens to have, and
    * survives the pane's own layout changing later.
    *
    * `RefObject<T | null>` rather than `RefObject<T>` because React 19 types
-   * `useRef<HTMLDivElement>(null)` as holding `HTMLDivElement | null` — the
+   * `useRef<HTMLDivElement>(null)` as holding `HTMLDivElement | null`. The
    * ref genuinely is null between render and commit, and the type says so.
    */
   panelRef: RefObject<HTMLDivElement | null>;
@@ -32,7 +32,7 @@ interface SidePanelResizerProps {
  * move fast is `setPointerCapture`: without it, events stop arriving as soon
  * as the pointer leaves this 14px strip, and a fast drag leaves the panel
  * stuck mid-resize. With it, every pointermove until pointerup is delivered
- * here no matter what the pointer is over — including outside the window.
+ * here no matter what the pointer is over, including outside the window.
  *
  * On the HelpTip placement: it wraps the BUTTON, not this strip, and the
  * strip is a plain flex item. HelpTip's wrapper is `position: relative` and
@@ -40,7 +40,7 @@ interface SidePanelResizerProps {
  * would anchor the popup below the whole pane, off the bottom of the app.
  * Same trap DiagnosticsRuler.tsx documents for its ticks, and the same fix:
  * the sized element is the outer div, HelpTip goes inside it. One entry
- * covers resizing and hiding both, because this reads as one control — the
+ * covers resizing and hiding both, because this reads as one control, the
  * call PreviewPane made when it reused `breakdown.sidePanel.previewToggle`
  * rather than minting a second id for one toggle.
  */
@@ -51,7 +51,7 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
   // state variable would usually be fine (React re-attaches the current
   // closure each render), but the collapse path below has to stop the drag
   // and then ignore any further move in the same frame, before any re-render
-  // has happened — a ref is the only value already updated at that point.
+  // has happened. A ref is the only value already updated at that point.
   const draggingRef = useRef(false);
 
   const endDrag = (event: PointerEvent<HTMLDivElement>) => {
@@ -67,7 +67,7 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
     // Stops the browser starting a text selection in whichever pane the
     // pointer wanders over mid-drag. preventDefault on pointerdown also
     // suppresses the focus a click would normally give, so focus is taken
-    // explicitly — the handle is keyboard-operable (see handleKeyDown) and
+    // explicitly. The handle is keyboard-operable (see handleKeyDown) and
     // that only means anything if it can be focused.
     event.preventDefault();
     event.currentTarget.focus();
@@ -95,7 +95,7 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
   const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current) return;
     endDrag(event);
-    // One store write per drag, not one per frame — see commitWidth's doc.
+    // One store write per drag, not one per frame. See commitWidth's doc.
     commitWidth();
   };
 
@@ -149,8 +149,8 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
 /**
  * What is left on screen once the panel is collapsed: a strip the same width
  * as the separator it replaces, holding the button that brings the panel
- * back. Always visible, because a collapse with no way back is a one-way door
- * — and the collapse half of 4.4 is a fix, not a nicety, since 4.2 put this
+ * back. Always visible, because a collapse with no way back is a one-way door,
+ * and the collapse half of 4.4 is a fix, not a nicety, since 4.2 put this
  * column on a Code tab that used to be full width.
  */
 export function SidePanelReopener() {

@@ -1,5 +1,5 @@
 /**
- * Script Statistics — the protocol's trivial exemplar and smoke test
+ * Script Statistics, the protocol's trivial exemplar and smoke test
  * (tools-api-design.md Sec.7).
  *
  * Pure read-ast, finishes instantly. It exists to be the simplest possible
@@ -11,8 +11,8 @@
  * it is the one tool whose entire output is prose about locations: a `span` is a
  * character OFFSET (Monaco and useSharedSelection consume it), while any
  * location named in PROSE is a 1-BASED LINE NUMBER. This repo shipped seven
- * diagnostics to a release saying "already set at offset 86970" — a position no
- * editor displays — so the one actionable fact in each message was unreachable.
+ * diagnostics to a release saying "already set at offset 86970", a position no
+ * editor displays, so the one actionable fact in each message was unreachable.
  * `lineNumberOfOffset` is the in-process fix and it lives one directory over.
  */
 
@@ -156,7 +156,7 @@ export const scriptStats: ToolImplementation = {
   manifest: scriptStatsManifest,
   run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle {
     // Returns immediately; everything flows through `emit`. This tool finishes
-    // inside one chunk, so it never has to yield — but it still emits a
+    // inside one chunk, so it never has to yield, but it still emits a
     // terminal, which is the only thing the host waits for.
     let cancelled = false;
 

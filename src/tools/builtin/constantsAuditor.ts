@@ -1,17 +1,17 @@
 /**
- * Constants Usage — the first of CREATION_PLAN 5.2b's additional built-ins.
+ * Constants Usage, the first of CREATION_PLAN 5.2b's additional built-ins.
  *
  * Lists every `#const`/`#define` in the script with where it is defined and
  * where it is used again, and flags the two things nothing else in the app
  * currently surfaces in one place:
  *
  *  - a symbol defined and never referenced again (dead weight, or a typo in
- *    the name used at the reference site — either way worth a look), and
+ *    the name used at the reference site, either way worth a look), and
  *  - a name referenced in a numeric slot that never got defined (already
  *    live as RMS0202 in the Code editor, one squiggle at a time; this tool
  *    groups the scattered diagnostics by name into one row).
  *
- * Read-ast only, like scriptStats — no generation, no reference data. Pure
+ * Read-ast only, like scriptStats, no generation, no reference data. Pure
  * read-only: it proposes nothing to edit.
  */
 
@@ -52,7 +52,7 @@ export interface ConstantUsage {
   definitions: { span: Span; conditionalDepth: number }[];
   /**
    * `#undefine NAME` lines targeting this symbol. Counted separately from
-   * `useSpans` — #undefine does NOTHING in-engine (parser/types.ts's
+   * `useSpans`. #undefine does NOTHING in-engine (parser/types.ts's
    * `SymbolInfo.undefineAttempted` doc), so a name whose only other
    * appearance is inside one would still be practically unused, and folding
    * it into the use count would hide exactly the case this tool exists to
@@ -90,7 +90,7 @@ function tokenSpan(t: Token): Span {
   return { start: t.start, end: t.end };
 }
 
-/** Exported for its own unit test — the definition/undefine/use split is the whole point of this tool. */
+/** Exported for its own unit test, the definition/undefine/use split is the whole point of this tool. */
 export function auditConstants(parse: ParseResult): ConstantUsage[] {
   const byName = new Map<string, ConstantUsage>();
   const definitionTokens = new Set<number>();
@@ -123,7 +123,7 @@ export function auditConstants(parse: ParseResult): ConstantUsage[] {
 }
 
 // ---------------------------------------------------------------------------
-// Referenced but never defined — RMS0202, grouped by name
+// Referenced but never defined, RMS0202, grouped by name
 // ---------------------------------------------------------------------------
 
 export interface UndefinedReference {
@@ -133,7 +133,7 @@ export interface UndefinedReference {
 
 /**
  * Groups the parser's own RMS0202 diagnostics (unresolved constant in a
- * numeric slot) by the name at fault, rather than recomputing resolution —
+ * numeric slot) by the name at fault, rather than recomputing resolution,
  * that check already exists and already matches the engine's single-pass
  * definedness rule (parser.ts's `isDefinedSymbol` doc); this tool's job is to
  * present it next to the rest of a constant's story, not to re-derive it.
@@ -175,7 +175,7 @@ const KIND_LABEL: Record<ConstantUsage["kind"], string> = {
 interface Row {
   cells: string[];
   jumpSpan: Span;
-  /** Has something worth a second look — what hideHealthy filters on. */
+  /** Has something worth a second look, what hideHealthy filters on. */
   flagged: boolean;
 }
 
@@ -184,8 +184,8 @@ function buildRow(usage: ConstantUsage, lineOffsets: readonly number[]): Row {
   if (usage.useSpans.length === 0) notes.push("never referenced again");
 
   // Only unconditional (depth 0) redefinitions are flagged. Two definitions
-  // of the same name in sibling if/elseif/else branches — the standard
-  // map-size-keyed #const idiom — both read as "conditionalDepth > 0" and
+  // of the same name in sibling if/elseif/else branches, the standard
+  // map-size-keyed #const idiom, both read as "conditionalDepth > 0" and
   // are mutually exclusive at run time, not a duplicate (CLAUDE.md:
   // over-declaration is an RMS idiom, not a mistake; a count is not a
   // conclusion without checking what it counts).
@@ -237,7 +237,7 @@ export function buildConstantsAuditOutput(parse: ParseResult, hideHealthy: boole
       rowSpans: shownRows.map((r) => r.jumpSpan),
     });
   }
-  // Printed unconditionally, including at zero hidden — a filtered table and
+  // Printed unconditionally, including at zero hidden, a filtered table and
   // an empty one are different claims (CLAUDE.md: the sentence's absence
   // must never be what carries the information).
   if (hideHealthy) {

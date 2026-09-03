@@ -1,4 +1,4 @@
-// tools-api-design.md Sec.9 item 2 — the test the spec says to write FIRST,
+// tools-api-design.md Sec.9 item 2, the test the spec says to write FIRST,
 // and the reason is not sequencing pedantry: writing these "four lines" is what
 // found the sentinel-scoping bug in the first place. Under a both-transports
 // sentinel this file does not compile, because `ctx.parseResult` would be a
@@ -43,7 +43,7 @@ const SCRIPT = `
 /**
  * Build the IN-PROCESS context a built-in receives: real `ParseResult`, real
  * numbers, no sentinels. `mapSize.tiles` comes from `resolveMapDim` rather than
- * a literal — the spec withdraws its own earlier instruction to create a
+ * a literal, the spec withdraws its own earlier instruction to create a
  * `MAP_SIZE_TILES` constant, because that resolver already exists and writing a
  * second one is the same mistake one level down.
  */
@@ -130,7 +130,7 @@ describe("runPreviewFromContext", () => {
   // The point of the whole item: ctx.parseResult goes STRAIGHT into
   // generatePreview. If this file ever stops compiling on that line, the
   // sentinel has been re-scoped to both transports and the flagship tool is
-  // broken — silently, at runtime, in the "your map is fine" direction.
+  // broken, silently, at runtime, in the "your map is fine" direction.
   it("feeds the context's own ParseResult to generatePreview unconverted", () => {
     const outcome = runPreviewFromContext(context(), refDb, { seed: 7, collectSnapshots: false });
     expect(outcome.ok).toBe(true);
@@ -164,7 +164,7 @@ describe("runPreviewFromContext", () => {
     expect(a.result.seedUsed).toBe(3);
   });
 
-  // Sec.7.2 item 2 / Sec.4.1: this is the loop's own reason for existing —
+  // Sec.7.2 item 2 / Sec.4.1: this is the loop's own reason for existing,
   // without the override every count in a 2/4/6/8 matrix would generate the
   // same map at ctx.settings.playerCount. SCRIPT's create_player_lands makes
   // one land (and PlayerMarker) per player, so the count is directly
@@ -197,7 +197,7 @@ describe("objectConstantsFromPublished (Sec.7.2 item 2)", () => {
     expect(objectConstantsFromPublished(published)[0].constId).toBe(66);
   });
 
-  // The real published data, cast the same way ToolsPane.tsx casts it —
+  // The real published data, cast the same way ToolsPane.tsx casts it,
   // proves the conversion compiles and runs against the actual schema shape,
   // not just a hand-shaped fixture.
   it("runs over the real reference/data/game-constants.json without throwing", () => {

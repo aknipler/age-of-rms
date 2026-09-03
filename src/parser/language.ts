@@ -1,9 +1,9 @@
 // Typed view of reference/data/language.json plus fast lookup indices.
 // Per docs/parser-design.md goal #4, ALL command/attribute/directive/
-// control-keyword/section knowledge flows through this module — the parser
+// control-keyword/section knowledge flows through this module. The parser
 // hardcodes nothing (with one pinned exception: control-keyword operand
 // arity, Sec.5.1, until `arguments[]` lands on controlKeywords entries in the
-// data — see spec Sec.13).
+// data, see spec Sec.13).
 
 export type ArgumentType =
   | "integer"
@@ -23,12 +23,12 @@ export interface ArgumentDef {
   max?: number;
   default?: number | string;
   description?: string;
-  optional?: boolean; // schema action item (spec Sec.13) — honored if present
-  variadic?: boolean; // schema action item — honored if present
+  optional?: boolean; // schema action item (spec Sec.13), honored if present
+  variadic?: boolean; // schema action item, honored if present
   // Advisory range, distinct from min: a value below cautionBelow is still
-  // valid RMS (no min violation), but is worth flagging live — e.g. a
+  // valid RMS (no min violation), but is worth flagging live, e.g. a
   // negative border value that can crash the game if it pushes the land
-  // origin off-map. RMS0217, added post-spec (2.4 bug-fix session) — see
+  // origin off-map. RMS0217, added post-spec (2.4 bug-fix session), see
   // docs/parser-design.md Sec.10.
   cautionBelow?: number;
   cautionMessage?: string; // required alongside cautionBelow; user-facing text
@@ -55,7 +55,7 @@ export interface CommandDef {
   name: string;
   /**
    * Where the GUIDE DOCUMENTS this command. Deliberately NOT "where the engine
-   * accepts it" — see `sectionLocked`, which is that fact and is a different
+   * accepts it", see `sectionLocked`, which is that fact and is a different
    * field for a reason.
    */
   section: string;
@@ -66,7 +66,7 @@ export interface CommandDef {
    *
    * The two fields look redundant and are not. Enforcing `section` as though
    * it were this flag warned 53 times on the corpus, 52 of them `effect_amount`
-   * used outside <PLAYER_SETUP> by shipped, working maps — so at least one
+   * used outside <PLAYER_SETUP> by shipped, working maps, so at least one
    * command is provably not locked the way its `section` implies, and a
    * blanket rule rebuilds the false-positive class BUG-002 and BUG-005 cost
    * three rounds of work.
@@ -80,8 +80,8 @@ export interface CommandDef {
    * alias resolution and by nothing else; absent means unknown, and unknown
    * resolves nothing.
    *
-   * Same species as `sectionLocked` above — an engine fact on a type whose
-   * other fields are mostly documentation facts — and the sibling of `constId`
+   * Same species as `sectionLocked` above, an engine fact on a type whose
+   * other fields are mostly documentation facts, and the sibling of `constId`
    * in game-constants.json, which records the same integer space for constants.
    * The id space is flat and it collides across categories: 69 is at once
    * SHORE_FISH, ATTR_PROJECTILE_ARC and the engine's own `/*` (validate.ts's
@@ -95,7 +95,7 @@ export interface CommandDef {
   verified: boolean;
   // Set when a patch superseded this command but the engine still accepts it.
   // The string is user-facing replacement guidance, rendered verbatim by
-  // validate()'s RMS0309 — so the deprecation list lives in the data, not in
+  // validate()'s RMS0309, so the deprecation list lives in the data, not in
   // a name check inside validate.ts (CLAUDE.md: vocabulary is data-driven).
   deprecated?: string;
   notes?: string;
@@ -113,7 +113,7 @@ export interface AttributeDef {
   mutexNote?: string;
   // Attribute names, at least one of which must be in the SAME block for this
   // attribute to do anything. A guide "Requires:" line, and the failure is
-  // silent — the attribute is simply inert, and the command runs on without
+  // silent. The attribute is simply inert, and the command runs on without
   // it (MEASURED, RMSTEST_42; an earlier reading had the command placing
   // nothing at all, which was inferred from a map that could not tell the two
   // apart). Drives RMS0315. Same bar as requiresSection: the guide must state
@@ -123,14 +123,14 @@ export interface AttributeDef {
   // What unmet looks like to the author. RMS0315 appends it. Sibling of
   // mutexNote, and data rather than code for the same reason.
   requiresNote?: string;
-  repeatable?: boolean; // cumulative attributes — see spec Sec.8
+  repeatable?: boolean; // cumulative attributes, see spec Sec.8
   maxRepeats?: number;
   // A sections[] name that must appear somewhere in the script for this
-  // attribute to have any effect. Drives validate()'s RMS0311 — the one
-  // error-severity semantic check — so only engine-verified cases belong
+  // attribute to have any effect. Drives validate()'s RMS0311, the one
+  // error-severity semantic check, so only engine-verified cases belong
   // here. `base_elevation` -> `ELEVATION_GENERATION` is the only one today.
   requiresSection?: string;
-  // True for names the DE exe carries as strings with nothing behind them —
+  // True for names the DE exe carries as strings with nothing behind them,
   // the guide's Non-Functional Syntax appendix. Same meaning as the flag on
   // DirectiveDef, and the reason it now exists on attributes too: without an
   // entry these names drew a bare "unknown attribute", which is both wrong
@@ -149,20 +149,20 @@ export interface DirectiveDef {
   description?: string;
   arguments?: ArgumentDef[];
   verified: boolean;
-  nonFunctional?: boolean; // schema action item — #undefine/#include are engine ghosts
+  nonFunctional?: boolean; // schema action item, #undefine/#include are engine ghosts
   notes?: string;
 }
 
 export interface ControlKeywordDef {
   name: string;
   description?: string;
-  arguments?: ArgumentDef[]; // schema action item — absent today, see pinned exception
+  arguments?: ArgumentDef[]; // schema action item, absent today, see pinned exception
   verified: boolean;
   notes?: string;
 }
 
 // Mirrors the `category` enum in reference/schemas/language.schema.json's
-// $defs/predefinedLabel. The schema is authoritative — it is what CI validates
+// $defs/predefinedLabel. The schema is authoritative. It is what CI validates
 // the data against. Mirrored as a union rather than typed `string` so the
 // preview generator's category switch (docs/preview-design.md Sec.3.1) gets
 // exhaustiveness checking: add a category to the data and the schema, and the
@@ -180,14 +180,14 @@ export type PredefinedLabelCategory =
   | "gameVersion";
 
 /**
- * A condition label the engine defines itself — usable as the ConditionLabel of
+ * A condition label the engine defines itself, usable as the ConditionLabel of
  * if/elseif with no #define. Two consumers, one array: validate()'s
  * unknown-constant check treats these as defined, and the preview generator
  * builds its branch-selection environment by deciding which of these are true
  * for the current generation settings. Do not duplicate the list in code.
  */
 export interface PredefinedLabel {
-  name: string; // may lead with a digit — 4_PLAYER_GAME, 2_TEAM_GAME are real
+  name: string; // may lead with a digit, 4_PLAYER_GAME, 2_TEAM_GAME are real
   category: PredefinedLabelCategory;
   description: string;
   verified: boolean;
@@ -195,7 +195,7 @@ export interface PredefinedLabel {
   // the matching MAP_SIZES value, absent for sizes no setting can select (the
   // MORE_MAP_SIZES tier, reachable only by launch option or override_map_size).
   // Both are stored rather than derived because the legacy and modern names are
-  // offset by one size — LARGE_MAP and MAPSIZE_NORMAL are both 200×200, so a
+  // offset by one size, LARGE_MAP and MAPSIZE_NORMAL are both 200×200, so a
   // consumer inferring dimensions from the name gets it wrong on every
   // size-aware map (docs/preview-design.md Sec.4).
   //
@@ -231,7 +231,7 @@ export interface LanguageIndex {
   attributesByName: ReadonlyMap<string, AttributeDef>;
   directivesByName: ReadonlyMap<string, DirectiveDef>;
   controlKeywords: ReadonlySet<string>;
-  /** Union of command + attribute names — the "known name" stop set (spec Sec.6). */
+  /** Union of command + attribute names, the "known name" stop set (spec Sec.6). */
   knownNames: ReadonlySet<string>;
   /**
    * Reverse index over `CommandDef.tokenId`, for resolving a script's own

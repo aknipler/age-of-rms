@@ -6,7 +6,7 @@ import { tokenize } from "../lexer";
 import type { Token, TokenKind } from "../types";
 
 // Built from numeric code points rather than embedded as literal
-// invisible characters in this file — see the same reasoning in
+// invisible characters in this file, see the same reasoning in
 // lexer.ts. Keeping fixture construction consistent with the
 // implementation makes it obvious these tests aren't accidentally
 // testing the wrong character.
@@ -31,7 +31,7 @@ function listRms(dir: string): string[] {
 /**
  * The N biggest maps present, largest first. DERIVED, never named: most of
  * test-maps/ is gitignored, so a hardcoded filename is a test that passes on a
- * maintainer's machine and ENOENTs on a fresh clone — which is exactly how
+ * maintainer's machine and ENOENTs on a fresh clone, which is exactly how
  * `Pa_Site_v1.1.rms` in this file broke CI on 2026-08-10. Sorting by size
  * picks up the most tokens per file it reads; the name tiebreak keeps the
  * selection deterministic when two maps are the same size.
@@ -64,7 +64,7 @@ describe("tokenize — token kinds", () => {
   });
 
   it("does NOT classify a leading-dot float or comma/percent-suffixed numbers as number", () => {
-    // Per docs/parser-design.md Sec.2 the pinned regex is /^-?\d+(\.\d+)?$/ —
+    // Per docs/parser-design.md Sec.2 the pinned regex is /^-?\d+(\.\d+)?$/,
     // no leading-digit requirement relaxed, no comma/percent handling
     // (that's the engine's truncation behavior, a parser/validate()
     // concern per RMS0212, not a lexer one).
@@ -78,7 +78,7 @@ describe("tokenize — token kinds", () => {
   });
 
   it("does not classify a space-split rnd() as rnd — it stays two word tokens", () => {
-    // "rnd(1, 5)" is two whitespace-separated tokens, not one — the
+    // "rnd(1, 5)" is two whitespace-separated tokens, not one, the
     // canonical form has no interior space (spec Sec.2.2, RMS0214 note).
     const { tokens } = tokenize("rnd(1, 5)");
     expect(tokens.map((t) => t.text)).toEqual(["rnd(1,", "5)"]);
@@ -96,7 +96,7 @@ describe("tokenize — token kinds", () => {
   });
 
   it("classifies any #-prefixed token as a directive, known or not", () => {
-    // A "#" token is not automatically a *real* directive — that
+    // A "#" token is not automatically a *real* directive, that
     // judgment is the parser's (RMS0206). The lexer only classifies by
     // shape.
     const { tokens } = tokenize("#define #const #this_is_not_real");
@@ -116,13 +116,13 @@ describe("tokenize — offsets", () => {
   it("offsets are exact across a real-world corpus sample (property check)", () => {
     // A cross-section of the real community corpus in test-maps/,
     // including the named perf benchmark and a file with known real
-    // defects (BCC2's glued "}8050") — offset exactness must hold
+    // defects (BCC2's glued "}8050"), offset exactness must hold
     // regardless of whether the *content* is well-formed. Per
     // docs/parser-design.md Sec.12, this is a non-negotiable CI gate.
     //
     // Collected into a list and asserted ONCE, the way testUtils.checkProperties
     // does, rather than per token. That is a harness decision, not a weaker
-    // check — the comparison is identical and every failure still names its
+    // check, the comparison is identical and every failure still names its
     // file and token. But these files carry tens of thousands of tokens, and an
     // `expect()` per token costs ~7.6s of assertion-object construction against
     // ~0.07s of actual comparison, which pushed a gate that tests a 0.4s
@@ -248,7 +248,7 @@ describe("tokenize — comments", () => {
 
   // Guide fixture strings, docs/parser-design.md Sec.12 (lines 2936-2943 of
   // the archived guide). Interpretation note: the guide's own text wraps
-  // these as prose sentences, e.g. "/*this is NOT a comment*/" — under
+  // these as prose sentences, e.g. "/*this is NOT a comment*/", under
   // RMS's whitespace-splitting model (Sec.2) that string is actually SIX
   // separate tokens ("/*this", "is", "NOT", "a", "comment*/"), not one.
   // We assert the token-level behavior each fixture actually implies,

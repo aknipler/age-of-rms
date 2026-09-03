@@ -1,12 +1,12 @@
 /* Global reset. Component-specific styling lives in each component's
-   .module.css file — this file only sets up the page-level baseline. */
+   .module.css file. This file only sets up the page-level baseline. */
 
 /* The Light theme's values, restated here as static CSS custom properties
-   (src/settings/theme.ts's DEFAULT_LIGHT_THEME, kebab-cased) — every
+   (src/settings/theme.ts's DEFAULT_LIGHT_THEME, kebab-cased). Every
    component stylesheet reads these through var(--token-name). This block is
    what's on screen for the one frame before ThemeSettingsProvider's async
    settings.json load resolves and calls applyThemeTokens (same load-then-
-   apply pattern as every other persisted setting in this app — see
+   apply pattern as every other persisted setting in this app; see
    AppSettingsContext.tsx). Without it, that frame would have no value for
    any --token-name at all, not just the wrong one. Kept byte-for-byte equal
    to DEFAULT_LIGHT_THEME on purpose: a mismatch here would flash the WRONG
@@ -67,20 +67,20 @@ body {
 }
 
 /* Form controls don't inherit text colour OR background from their
-   ancestors the way ordinary elements do — a <button>/<select>/<input> uses
+   ancestors the way ordinary elements do. A <button>/<select>/<input> uses
    system colours (buttontext/field) and ignores the page's `color`/
    `background` unless told otherwise. That's invisible in a codebase where
    every control happened to be black-on-white already, and it surfaces in
    two opposite ways the instant a theme makes `--text` and `--surface`
    differ from the system defaults: a control with no background of its own
-   (a bare `<select>`/`<input>`, styled by nothing but this reset — the
+   (a bare `<select>`/`<input>`, styled by nothing but this reset; the
    Generation Settings dialog's map-size and player-count fields are two)
    picked up the new `color` but kept its native white background, which is
    the SAME unreadable pairing as before, just inverted (light text on a
-   light native box instead of dark text on a dark themed one) — first fixed
-   `color` alone here and this is the other half of the same class of bug.
+   light native box instead of dark text on a dark themed one). First fixed
+   `color` alone here, and this is the other half of the same class of bug.
    `inherit`/`var(--surface-raised)` here are only the DEFAULT underneath a
-   component's own class — plenty override one or both on purpose
+   component's own class. Plenty override one or both on purpose
    (.presetActive, .fixButton, .rowLink, .codeRef, .swatch and others). */
 button,
 select,

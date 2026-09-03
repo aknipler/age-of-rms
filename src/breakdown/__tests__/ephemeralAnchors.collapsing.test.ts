@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { shiftCollapsingAnchor } from "../ephemeralAnchors";
 
 // The preview pin's shift rule (PreviewCutContext, docs/preview-design.md
-// Sec.5) — shiftSingleAnchor's sibling, differing only in what happens to an
+// Sec.5), shiftSingleAnchor's sibling, differing only in what happens to an
 // anchor caught inside a replaced range. The first case below is the one this
 // file exists for: it is the whole bug this rule shipped with, and it is
 // invisible in the app until the view is switched to Current.
@@ -29,7 +29,7 @@ describe("shiftCollapsingAnchor", () => {
 
   it("treats offset 0 as a real anchor, not as absence", () => {
     // A pin at the top of the script is a legitimate pin. Any `!anchor` test
-    // here would read it as unpinned — the same falsy-zero trap
+    // here would read it as unpinned, the same falsy-zero trap
     // resolveCutOffset documents for its own `??`.
     expect(shiftCollapsingAnchor(0, { start: 4, end: 4, newText: "XX" })).toBe(0);
   });

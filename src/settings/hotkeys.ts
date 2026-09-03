@@ -8,8 +8,8 @@
 export const SAVE_HOTKEY_KEY = "saveHotkey";
 
 /**
- * A single key combination. `key` is always `KeyboardEvent.key.toLowerCase()`
- * — lowercased so `s` and Shift+`s` (which the browser reports as `"S"`)
+ * A single key combination. `key` is always `KeyboardEvent.key.toLowerCase()`,
+ * lowercased so `s` and Shift+`s` (which the browser reports as `"S"`)
  * compare equal on the base key, with Shift tracked separately as its own
  * modifier instead.
  */
@@ -27,7 +27,7 @@ export const DEFAULT_SAVE_HOTKEY: Hotkey = { key: "s", ctrl: true, shift: false,
  * hotkey principle, established the day this list grew past Save): every
  * default below is a left-hand-reachable key (digits and QWERTY's left
  * three rows) paired with Ctrl and/or Alt, chosen so a mouse hand never has
- * to leave the mouse. `o` — under the right hand — is otherwise off limits,
+ * to leave the mouse. `o`, under the right hand, is otherwise off limits,
  * with exactly one deliberate exception: Open stays `Ctrl+O`, because that
  * binding is so close to a universal OS convention that fighting it would
  * cost more muscle memory than the one-handed rule is worth.
@@ -39,7 +39,7 @@ export const DEFAULT_SAVE_HOTKEY: Hotkey = { key: "s", ctrl: true, shift: false,
  * `saveAs` is the one deliberate second exception alongside Open: Ctrl+Shift+S
  * is the near-universal Save As convention, it stays one-handed (Shift is
  * a left-pinky modifier same as Ctrl), and it reuses Save's own base letter
- * rather than spending a new one, which is exactly why it doesn't collide —
+ * rather than spending a new one, which is exactly why it doesn't collide.
  * Ctrl+S and Ctrl+Shift+S are different bindings.
  */
 export type HotkeyId =
@@ -62,12 +62,12 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   previewReseed: { key: "r", ctrl: true, shift: false, alt: false },
   breakdownDeleteCard: { key: "d", ctrl: true, shift: false, alt: true },
   breakdownAddCommand: { key: "a", ctrl: true, shift: false, alt: true },
-  // Code tab's own namespace, Ctrl+Alt like Preview/Breakdown's — "F" for
+  // Code tab's own namespace, Ctrl+Alt like Preview/Breakdown's. "F" for
   // Format, left-hand, unused elsewhere.
   codeToggleLayout: { key: "f", ctrl: true, shift: false, alt: true },
 };
 
-/** Where each binding is persisted in the app-settings store — see HotkeySettingsContext.tsx. */
+/** Where each binding is persisted in the app-settings store; see HotkeySettingsContext.tsx. */
 export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   save: SAVE_HOTKEY_KEY,
   saveAs: "saveAsHotkey",
@@ -80,7 +80,7 @@ export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   codeToggleLayout: "codeToggleLayoutHotkey",
 };
 
-/** Type guard for whatever the store handed back — a corrupted or pre-feature settings.json must not crash startup. */
+/** Type guard for whatever the store handed back, a corrupted or pre-feature settings.json must not crash startup. */
 export function isHotkey(value: unknown): value is Hotkey {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -111,7 +111,7 @@ const NAMED_KEY_LABELS: Record<string, string> = {
   arrowright: "→",
 };
 
-/** How a binding's base key reads in the UI — `"s"` -> `"S"`, `"arrowleft"` -> `"←"`, `"f5"` -> `"F5"`. */
+/** How a binding's base key reads in the UI, `"s"` -> `"S"`, `"arrowleft"` -> `"←"`, `"f5"` -> `"F5"`. */
 function keyLabel(key: string): string {
   const named = NAMED_KEY_LABELS[key];
   if (named) return named;
@@ -120,7 +120,7 @@ function keyLabel(key: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
-/** `"Ctrl+S"`, `"Ctrl+Shift+S"` — how a binding is shown in the Settings dialog and the File menu. */
+/** `"Ctrl+S"`, `"Ctrl+Shift+S"`, how a binding is shown in the Settings dialog and the File menu. */
 export function formatHotkey(hotkey: Hotkey): string {
   const parts: string[] = [];
   if (hotkey.ctrl) parts.push("Ctrl");
@@ -130,7 +130,7 @@ export function formatHotkey(hotkey: Hotkey): string {
   return parts.join("+");
 }
 
-/** Whether two bindings are the same combination — used to decide whether "Reset to default" has anything to do. */
+/** Whether two bindings are the same combination, used to decide whether "Reset to default" has anything to do. */
 export function hotkeysEqual(a: Hotkey, b: Hotkey): boolean {
   return a.key === b.key && a.ctrl === b.ctrl && a.shift === b.shift && a.alt === b.alt;
 }
@@ -152,7 +152,7 @@ const MODIFIER_KEYS = new Set(["control", "shift", "alt", "meta", "os"]);
  * one, or `null` when the press cannot become a binding:
  *
  * - a bare modifier (still being held down, nothing pressed with it yet)
- * - no Ctrl and no Alt held — Shift+letter and bare letters both type
+ * - no Ctrl and no Alt held, Shift+letter and bare letters both type
  *   ordinary text everywhere else in the app (the Code tab, any search box),
  *   so allowing either as a whole binding would make typing "s" while
  *   Shift happened to be down, or typing in general, silently trigger Save.

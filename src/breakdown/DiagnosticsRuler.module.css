@@ -8,7 +8,7 @@
   /* Belt-and-suspenders alongside the topFraction clamp in
      DiagnosticsRuler.tsx: a tick's `top` is meant to always land inside
      [0%, 100%], but nothing should be able to render outside this track
-     regardless — this is a fixed-bounds visual element, not a scroll
+     regardless, this is a fixed-bounds visual element, not a scroll
      container, so clipping here is correct, not just defensive. */
   overflow: hidden;
 }
@@ -24,7 +24,7 @@
 }
 
 /*
- * This wrapper — not .tick — is the element positioned against .ruler.
+ * This wrapper, not .tick, is the element positioned against .ruler.
  * HelpTip wraps .tick in its own `position: relative` span (see
  * HelpTip.module.css), which would silently become the containing block
  * for an absolutely-positioned .tick nested directly inside it. Putting

@@ -11,16 +11,26 @@
   padding: 0.15rem 0.25rem;
   border-bottom: 1px dotted var(--border-subtle);
   /* DiagnosticTooltip.tsx's popup anchors to this row (position:
-     absolute, top/bottom: 100%) — needs this to be its containing block,
+     absolute, top/bottom: 100%), needs this to be its containing block,
      same reasoning as DiagnosticsRuler's tickWrapper/.ruler. */
   position: relative;
 }
 
-/* Applied per-element to the absent row's label/value/button — see the
+/* Applied per-element to the absent row's label/value/button, see the
    comment at its call site (AttributeRow.tsx) for why this isn't one
    `opacity` on the row as a whole. */
 .absentDim {
   opacity: 0.5;
+}
+
+/* The whole row is the "click to add" target now, not just the small +
+   button. See AttributeRow.tsx's comment at the call site. */
+.absentRow {
+  cursor: pointer;
+}
+
+.absentRow:hover {
+  background: var(--accent-bg-subtle);
 }
 
 .rowSeverity-error {
@@ -38,12 +48,12 @@
   background: var(--info-bg-subtle);
 }
 
-/* The fixed-width column that keeps every row's value aligned — lives
+/* The fixed-width column that keeps every row's value aligned, lives
    here, NOT on .label, because .label sits inside <HelpTip>, and
    HelpTip's own wrapper span (display: inline-block) is what actually
    becomes the flex item of .row when help mode is on. A width/min-width
-   on .label itself has no effect on THAT flex item's size — it only
-   constrains .label's own content, one level too deep — so the column
+   on .label itself has no effect on THAT flex item's size. It only
+   constrains .label's own content, one level too deep, so the column
    held with help mode off (HelpTip renders no wrapper, .label WAS the
    flex item) and collapsed to fit-content with it on. .labelSlot is a
    wrapper we control that's always the actual flex item, regardless of

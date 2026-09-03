@@ -1,4 +1,4 @@
-// Phase 2.5 — mirrors src/help/HelpSettingsContext.tsx's pattern exactly:
+// Phase 2.5, mirrors src/help/HelpSettingsContext.tsx's pattern exactly:
 // load the persisted store once on mount, read initial values, and every
 // setter both updates local state AND writes back to the store.
 
@@ -33,7 +33,7 @@ import {
 /**
  * What a preset displaced when it was activated, so deselecting it can put
  * things back (Sec.15 item 4's UI contract). Persisted alongside the preset
- * id so the toggle survives an app restart — a stash that only lived in
+ * id so the toggle survives an app restart, a stash that only lived in
  * memory would make "press again to restore" silently lossy across sessions.
  */
 interface TeamStash {
@@ -170,8 +170,8 @@ export function GenerationSettingsProvider({ children }: { children: ReactNode }
         return;
       }
 
-      // Switching straight from one preset to another must NOT re-stash —
-      // the stash holds the hand-built lobby, and overwriting it with 2v2's
+      // Switching straight from one preset to another must NOT re-stash.
+      // The stash holds the hand-built lobby, and overwriting it with 2v2's
       // layout would mean deselecting 3v3 restores 2v2 rather than your work.
       const nextStash = activePreset === null ? { teams: [...teams], playerCount } : stash;
       persist(preset.teams, preset.playerCount ?? playerCount, presetId, nextStash);

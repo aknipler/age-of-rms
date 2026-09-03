@@ -10,7 +10,7 @@
 }
 
 /* HelpTip always renders a <span> wrapper, so it needs to be told to fill
-   the container — otherwise the canvas inside it collapses to the span's
+   the container, otherwise the canvas inside it collapses to the span's
    inline height. Same trap the HelpTip comment describes. */
 .container > span:first-child {
   display: block;

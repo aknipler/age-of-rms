@@ -28,7 +28,15 @@
   min-width: 170px;
   background: var(--surface);
   border: 1px solid var(--border);
-  z-index: 10;
+  /* Above TutorialOverlay's dim layer/ring (900/901, TutorialOverlay.module.css),
+     a tutorial step's spotlight hole only ever covers the File BUTTON
+     (its anchor), never the dropdown that opens below it, so at the
+     dropdown's old z-index (10) the dim overlay painted over it and made
+     it look dimmed/inert even though pointer-events:none on that layer
+     meant it was still clickable underneath. Still below the callout
+     (902), the tutorial nudges its own position clear of this dropdown,
+     so the two are not expected to overlap regardless. */
+  z-index: 910;
   display: flex;
   flex-direction: column;
 }
@@ -55,7 +63,7 @@
 }
 
 /* HelpTip always renders a <span> wrapper (see HelpTip.tsx), so for a
-   wrapped item the span is the flex item, not the button — without this
+   wrapped item the span is the flex item, not the button, without this
    pair a wrapped item would sit at its text width while the unwrapped
    File items fill the menu. Same fix as SettingsDialog.module.css's
    .tabList > span. */

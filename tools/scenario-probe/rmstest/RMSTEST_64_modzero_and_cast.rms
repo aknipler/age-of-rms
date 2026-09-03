@@ -1,0 +1,107 @@
+
+/*
+
+                              cast+zero  cast+trunc  nocast+zero  nocast+trunc
+                              (current)              (        pre-2026-08-29 )
+  FORAGE      100 fixed             100         100          100          100
+  GOLD        600 fixed             600         600          600          600
+  STONE       (5.7 * 100 + 100)     670         670          670          670
+  OLIVE_TREE  (7 % 0 * 10 + 100)    100         170          100          170
+  BIRCH_TREE  (0 - 7.5 % 0 ...)     100          30          100           30
+  CYPRESS_TR  (7 / 0 * 10 + 100)    100         100          100          100
+  ASIAN_PINE  (7 % 3 * 100 + 100)   200         200          200          200
+  DEER        (5.7 % 3 * 100 ...)   300         300          370          370
+  WILD_BOAR   (5 % 2.9 * 100 ...)   200         200          310          310
+  BAMBOO_TREE (5.7 % 0.5 * 100 ..)  100         600          120          120
+
+*/
+
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+<CONNECTION_GENERATION>
+
+<OBJECTS_GENERATION>
+
+  /* Floor Control. Should be exactly 100. */
+  create_object FORAGE
+  {
+    number_of_objects 100
+    set_gaia_object_only
+  }
+
+  /* Ceiling Control. Should be exactly 600 */
+  create_object GOLD
+  {
+    number_of_objects 600
+    set_gaia_object_only
+  }
+
+  /* Decimal Control. Ensure that decimal literals work. Should be 670 if they do. */
+  create_object STONE
+  {
+    number_of_objects (5.7 * 100 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 1: 7 % 0. Should be 100 if modulo zero gives zero, 170 if it gives
+     the left operand truncated toward zero. */
+  create_object OLIVE_TREE
+  {
+    number_of_objects (7 % 0 * 10 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 2: -7.5 % 0. Should be 100 if modulo zero gives zero, 30 if it truncates. */
+  create_object BIRCH_TREE
+  {
+    number_of_objects (0 - 7.5 % 0 * 10 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 3: 7 / 0. 100 if division by zero gives zero. */
+  create_object CYPRESS_TREE
+  {
+    number_of_objects (7 / 0 * 10 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 4: 7 % 3. Should be 200. Both operands are already integers,
+     so the cast cannot move it. */
+  create_object ASIAN_PINE_TREE
+  {
+    number_of_objects (7 % 3 * 100 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 5: 5.7 % 3. Should be 300 if the operands are cast to int
+     first, 370 if the remainder keeps its fractional part. */
+  create_object DEER
+  {
+    number_of_objects (5.7 % 3 * 100 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 6: 5 % 2.9. Should be 200 if cast, 310 if not. */
+  create_object WILD_BOAR
+  {
+    number_of_objects (5 % 2.9 * 100 + 100)
+    set_gaia_object_only
+  }
+
+  /* Test 7: 5.7 % 0.5. Should be 100 if cast plus modulo-zero-gives-zero,
+   600 if cast plus truncate, 120 if no cast at all. Second check of test 1. */
+  create_object BAMBOO_TREE
+  {
+    number_of_objects (5.7 % 0.5 * 100 + 100)
+    set_gaia_object_only
+  }

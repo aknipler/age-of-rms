@@ -28,7 +28,7 @@ describe("clampSidePanelWidth", () => {
 
   it("falls back to the default rather than propagating NaN", () => {
     // A NaN width would reach React as style={{ width: NaN }}, which renders
-    // no width attribute at all — a panel that silently shrinks to its
+    // no width attribute at all, a panel that silently shrinks to its
     // content, which reads as a layout bug with no obvious cause.
     expect(clampSidePanelWidth(Number.NaN)).toBe(DEFAULT_SIDE_PANEL_WIDTH);
     expect(clampSidePanelWidth(Number.POSITIVE_INFINITY)).toBe(DEFAULT_SIDE_PANEL_WIDTH);
@@ -99,8 +99,8 @@ describe("the constants themselves", () => {
 
   it("keeps the collapse margin inside the minimum", () => {
     // If the margin were larger than the minimum, the collapse threshold
-    // would sit at a negative width — off the left of the panel, where the
-    // pointer can only get by leaving the window — and the panel would be
+    // would sit at a negative width, off the left of the panel, where the
+    // pointer can only get by leaving the window, and the panel would be
     // uncollapsable by drag.
     expect(COLLAPSE_DRAG_MARGIN).toBeLessThan(MIN_SIDE_PANEL_WIDTH);
   });

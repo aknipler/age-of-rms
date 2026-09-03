@@ -8,7 +8,7 @@ import styles from "./AdvancedToolsSettings.module.css";
 // feature does not exist while they are using it is the defect this replaces.
 //
 // What it deliberately does NOT offer: default parameter values and a v1.1
-// registry URL. Both are real wants and neither is v1 — params belong to the
+// registry URL. Both are real wants and neither is v1, params belong to the
 // run, and there is no external registry to point at yet.
 export function AdvancedToolsSettings() {
   const tools = registeredTools();
@@ -41,7 +41,7 @@ export function AdvancedToolsSettings() {
 
 // Plain language, not capability ids. This copy is the ancestor of the v1.1
 // consent dialog, where over-claiming is a trust problem rather than a wording
-// one — which is exactly why the capability is named read-generation-settings
+// one, which is exactly why the capability is named read-generation-settings
 // and not read-settings: one settings.json holds several unrelated families and
 // a tool gets only the generation one.
 function describeCapabilities(capabilities: readonly string[]): string {

@@ -24,7 +24,8 @@ import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
 import { generatePreview, type PreviewReferenceData } from "./generator/index";
 import type { ObjectConstant } from "./generator/objects";
-import type { PreviewRequest, PreviewResponse } from "./generator/types";
+import type { TerrainRestriction } from "./generator/forestTreeSuppression";
+import type { PreviewRequest, PreviewResponse, PreviewResult, PreviewWireResult } from "./generator/types";
 
 // Same double-cast reasoning as parserWorker.ts: resolveJsonModule infers a
 // literal type from the file that doesn't necessarily structurally overlap
@@ -32,7 +33,8 @@ import type { PreviewRequest, PreviewResponse } from "./generator/types";
 // always typecheck. `validate:reference` (ajv) is the real guarantee this
 // data is shaped correctly.
 const languageData = languageDataRaw as unknown as LanguageData;
-const constants = (gameConstantsRaw as unknown as { constants: ObjectConstant[] }).constants;
+const gameConstantsParsed = gameConstantsRaw as unknown as { constants: ObjectConstant[]; terrainRestrictions?: TerrainRestriction[] };
+const constants = gameConstantsParsed.constants;
 
 // Built once per worker instance, not per request — refDb never changes
 // mid-session (Sec.10: "the worker imports language.json and
@@ -43,11 +45,24 @@ const constants = (gameConstantsRaw as unknown as { constants: ObjectConstant[] 
 const refDb: PreviewReferenceData = {
   language: buildLanguageIndex(languageData),
   constants,
+  terrainRestrictions: gameConstantsParsed.terrainRestrictions,
 };
+
+/**
+ * Explicit field list, not a `{ grid, ...rest }` destructure-to-discard:
+ * `PreviewWireResult` is `Omit<PreviewResult, "grid">`, so a future field
+ * added to `PreviewResult` and forgotten here is a compile error rather than
+ * a silently-dropped field. See `types.ts`'s `PreviewWireResult` doc for why
+ * `grid` itself is the one field this worker does not relay.
+ */
+function toWireResult(result: PreviewResult): PreviewWireResult {
+  const { dim, seedUsed, snapshots, objects, players, reports, failureMarks, notes, landOrigins, resourceTotals } = result;
+  return { dim, seedUsed, snapshots, objects, players, reports, failureMarks, notes, landOrigins, resourceTotals };
+}
 
 self.onmessage = (event: MessageEvent<PreviewRequest>) => {
   const { id, parse, settings, opts } = event.data;
   const result = generatePreview(parse, refDb, settings, opts);
-  const response: PreviewResponse = { id, ok: true, result };
+  const response: PreviewResponse = { id, ok: true, result: toWireResult(result) };
   self.postMessage(response);
 };

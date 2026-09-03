@@ -18,6 +18,7 @@ import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
 import { buildSectionTabs } from "./sectionTabsModel";
+import { useRegisterNavigator } from "../tutorial/TutorialContext";
 import type { GameConstantsData } from "./gameConstants";
 import styles from "./BreakdownPane.module.css";
 
@@ -33,9 +34,9 @@ interface BreakdownPaneProps {
   hasFile: boolean;
   source: string;
   parseResult: ParseResult | null;
-  /** From useDocument (Sec.6.4) — pushes a TextEdit onto the shared Monaco model. */
+  /** From useDocument (Sec.6.4), pushes a TextEdit onto the shared Monaco model. */
   applyTextEdit: ApplyTextEdit;
-  /** From useParsedDocument (Sec.6.2) — BUG-001 Part B, bypasses the debounce for a programmatic edit's reparse. */
+  /** From useParsedDocument (Sec.6.2), BUG-001 Part B, bypasses the debounce for a programmatic edit's reparse. */
   reparseNow: (source: string) => void;
   /**
    * Card selection is now owned by App (see
@@ -45,7 +46,7 @@ interface BreakdownPaneProps {
   selection: SharedSelectionApi;
 }
 
-// docs/breakdown-design.md — the Breakdown editor. As of 3.4, wired to the
+// docs/breakdown-design.md, the Breakdown editor. As of 3.4, wired to the
 // text-patch engine (Sec.4): every card action becomes an EditIntent,
 // computeEdit() turns it into a TextEdit, and applyTextEdit (Sec.6.4) pushes
 // it onto the shared Monaco model, which drives useParsedDocument's
@@ -54,7 +55,7 @@ interface BreakdownPaneProps {
 // it survives the reparse that replaces `parseResult` on every edit.
 export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, reparseNow, selection }: BreakdownPaneProps) {
   const tabs = useMemo(() => (parseResult ? buildSectionTabs(parseResult.script) : []), [parseResult]);
-  // Comments are pure trivia (see comments.ts) — re-derived from the full
+  // Comments are pure trivia (see comments.ts), re-derived from the full
   // token stream on every parse, same as `tabs` above.
   const comments = useMemo(() => (parseResult ? extractComments(parseResult.tokens) : []), [parseResult]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   // anchor falls within its current span (isAnchoredWithin).
   const [expandedAnchors, setExpandedAnchors] = useState<Set<number>>(new Set());
 
-  // Sec.3.9 — single-select. As of the post-3.9 cross-tab-sync follow-up,
+  // Sec.3.9, single-select. As of the post-3.9 cross-tab-sync follow-up,
   // the anchor itself lives in App (useSharedSelection) so it survives
   // this component unmounting on a tab switch; `selection` below is
   // where all of isSelected/selectCard/clearSelection/selectedItem now
@@ -74,7 +75,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   // own current anchor offset) here as they mount/update; a pending
   // request is resolved by exact-offset lookup once the pane re-renders
   // from the next parse (computeEdit's `caret` is already a valid
-  // NEW-source offset — see applyEdit call site below).
+  // NEW-source offset, see applyEdit call site below).
   const focusableRef = useRef(new Map<number, HTMLElement>());
   const pendingFocusRef = useRef<number | null>(null);
 
@@ -88,7 +89,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   }, []);
 
   // Runs after every re-render driven by a fresh parseResult (i.e. after
-  // a reparse following an edit) — tries to resolve a pending focus
+  // a reparse following an edit), tries to resolve a pending focus
   // request against whatever registered itself at that exact offset this
   // render. If nothing registered there (e.g. the caret pointed inside a
   // still-collapsed card), the request is silently dropped rather than
@@ -118,18 +119,18 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     });
   }, []);
 
-  // BUG-001 (docs/known-issues.md) — Part A: don't shift expandedAnchors
+  // BUG-001 (docs/known-issues.md), Part A: don't shift expandedAnchors
   // eagerly. expandedAnchors used to shift synchronously with the edit
   // (same tick), while `parseResult` only catches up ~150ms+worker-round-
   // trip later (the debounced reparse). For that window the UI rendered
   // NEW anchors against the OLD AST, and a delete's negative Δ moved
-  // every later anchor backward into the wrong (preceding) card's span —
+  // every later anchor backward into the wrong (preceding) card's span,
   // visibly "wrong card expands for a moment, then corrects itself".
   //
   // Fix: queue the shift with the exact source it's only valid once
   // rendered, and apply it in the effect below, once `source` (the
   // currently-rendered parse's source, from useParsedDocument) actually
-  // equals that expected string — i.e. once shift and AST are guaranteed
+  // equals that expected string, i.e. once shift and AST are guaranteed
   // to be in the same coordinate space, so both flip in one commit.
   // `expectedSourceRef` chains sequential edits (each computed from the
   // PREVIOUS edit's expected result, not the possibly-stale `source`
@@ -144,7 +145,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
       if (!parseResult) return null;
       // Rapid-action fix (over-deletes when deleting a bunch of
       // cards fast): `computeEdit` inside applyEditIntent only
-      // knows about THIS `parseResult` — the last CONFIRMED parse — but if
+      // knows about THIS `parseResult`, the last CONFIRMED parse, but if
       // a previous card action already landed on the model while ITS
       // reparse is still in flight (tracked right here in
       // pendingAnchorShiftsRef), that prior edit already shifted the
@@ -152,7 +153,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
       // the still-pending edits lets applyEditIntent rebase this edit
       // through them (or bail out as PatchError-unavailable if the two
       // genuinely overlap) instead of blindly splicing stale offsets into
-      // already-shifted text — which is exactly what corrupted an
+      // already-shifted text, which is exactly what corrupted an
       // unrelated command when deleting several cards back-to-back.
       const priorEdits = pendingAnchorShiftsRef.current.map((p) => p.edit);
       const result = applyEditIntent(parseResult, intent, languageIndex, applyTextEdit, priorEdits);
@@ -163,8 +164,8 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
         expectedSourceRef.current = expectedSource;
         pendingAnchorShiftsRef.current.push({ edit: result.edit, expectedSource });
         // Part B: request an immediate reparse of the exact source we
-        // just computed, instead of waiting on the 150ms typing debounce
-        // — a card action is one discrete event, nothing to coalesce.
+        // just computed, instead of waiting on the 150ms typing debounce;
+        // a card action is one discrete event, nothing to coalesce.
         // Safe even if a second edit supersedes this one before it
         // resolves (see reparseNow's own doc comment).
         reparseNow(expectedSource);
@@ -177,10 +178,10 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   // Breakdown's own delete-selected-card hotkey. Scoped to this component
   // rather than App.tsx's global listener (see AppContent's own comment on
   // why) because it needs `applyEdit` and the current selection, both of
-  // which only exist while this pane is mounted — so the effect's own
+  // which only exist while this pane is mounted, so the effect's own
   // mount lifetime IS the "only while Breakdown is the active tab" guard,
   // no extra check needed. `canDeleteItem` mirrors exactly the set of card
-  // kinds that already carry their own Delete button (cardKind.ts) — the
+  // kinds that already carry their own Delete button (cardKind.ts), the
   // hotkey is a shortcut for that button, not a new capability, so a
   // selection nothing else can delete (a stray attribute, a shared block,
   // a raw node) is silently a no-op rather than acting on a different node
@@ -201,13 +202,13 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
 
   // Resolves queued anchor shifts once their expected source has
   // actually rendered. Walks the queue from the front: if `source`
-  // matches some entry (not necessarily the first — a superseded
+  // matches some entry (not necessarily the first, a superseded
   // intermediate edit's exact source may never itself render, since
   // useParsedDocument drops out-of-order responses), every entry up to
   // and including that match is now safe to apply, in order, in one
-  // state update (one commit — no visible intermediate frame). If
+  // state update (one commit, no visible intermediate frame). If
   // `source` matches nothing in the queue at all, something else changed
-  // the document (e.g. manual Code-tab typing racing a Breakdown edit) —
+  // the document (e.g. manual Code-tab typing racing a Breakdown edit);
   // drop the stale queue rather than waiting forever; the alternative is
   // a permanently stuck queue that stops shifting for every future edit
   // too. Losing a queued shift in that rare collision case is an
@@ -233,10 +234,10 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     });
   }, [source]);
 
-  // Tab switch clears selection (Sec.3.9 — the selected card is no longer
+  // Tab switch clears selection (Sec.3.9, the selected card is no longer
   // on screen, and an off-screen insert anchor is exactly the surprise
   // this feature exists to remove). This is a SECTION-tab switch inside
-  // Breakdown — distinct from the top-level Breakdown/Code tab switch,
+  // Breakdown, distinct from the top-level Breakdown/Code tab switch,
   // which must NOT clear it (that's the whole point of lifting selection
   // to App).
   const handleSelectTab = useCallback(
@@ -247,22 +248,31 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     [selection],
   );
 
+  // tutorial-design.md Sec.5.3, a step whose `navigate.section` names a
+  // Breakdown section tab jumps here through this navigator. Registered
+  // unconditionally (before either PlaceholderPane return below) so it's
+  // live for as long as this component is mounted, and unregisters itself
+  // on unmount (a top-level Breakdown -> Code switch), matching the
+  // "BreakdownPane unmounts on a top-tab switch" rule the engine's
+  // navigate-application effect is already written against.
+  useRegisterNavigator("breakdownSection", handleSelectTab);
+
   // Post-3.9 cross-tab sync, mount-only: BreakdownPane mounting means the
-  // user either just switched TO Breakdown (from Code, or app startup)
-  // — either way, `selection.selectedItem` may already point at
+  // user either just switched TO Breakdown (from Code, or app startup).
+  // Either way, `selection.selectedItem` may already point at
   // something set from the Code tab's last cursor position. Jump to
   // whichever section tab contains it and queue a scroll so the same
   // card that was "in view" in Code is back in view here. Deliberately
   // runs once (mount only): a click on a DIFFERENT card later in the same
-  // Breakdown session must not re-trigger a tab jump — the user is
+  // Breakdown session must not re-trigger a tab jump. The user is
   // already looking at the right tab when that happens.
   //
-  // Uses `selectedItem.span.start` here, NOT the raw `selectedAnchor` —
-  // the anchor is wherever the Code-tab cursor happened to land, which is
+  // Uses `selectedItem.span.start` here, NOT the raw `selectedAnchor`.
+  // The anchor is wherever the Code-tab cursor happened to land, which is
   // usually somewhere in the MIDDLE of a command, not its span.start.
   // ItemCard's `data-anchor` attribute (below) is keyed on span.start, so
   // scrolling by the raw anchor would silently miss every element that
-  // isn't already selected right at its opening character — which is
+  // isn't already selected right at its opening character, which is
   // exactly why the scroll previously landed nowhere (selection itself
   // still worked because isSelected does a range check, not exact match).
   const pendingScrollAnchorRef = useRef<number | null>(null);
@@ -331,7 +341,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     >
       <div className={styles.pane}>
         <MapSidePanel />
-        <div className={styles.main}>
+        <div className={styles.main} data-tutorial-anchor="breakdown.main">
           <SectionTabs
             tabs={tabs}
             activeId={resolvedActiveId ?? ""}

@@ -53,7 +53,7 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     const edit: OffsetEdit = { start: 0, end: 5, newText: "" };
     queueEdit(pending, expectedSourceRef, source, edit);
 
-    // Anchors must NOT have moved yet, synchronously — this is exactly
+    // Anchors must NOT have moved yet, synchronously. This is exactly
     // what eager shifting got wrong (rendering new anchors against the
     // still-old AST for the ~150ms+worker-round-trip window, which
     // visibly jumped expansion to a neighbouring card for one frame).
@@ -85,7 +85,7 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     // (still stale) `source` prop.
     queueEdit(pending, expectedSourceRef, source, { start: 0, end: 4, newText: "ZZ" });
 
-    // Only the FINAL combined source ever actually renders — the
+    // Only the FINAL combined source ever actually renders, the
     // requestId dedup in useParsedDocument means edit 1's own
     // intermediate source is dropped as a superseded/out-of-order
     // response and never becomes `source`.
@@ -93,7 +93,7 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     const result = resolve(pending, expectedSourceRef, finalSource, anchors);
     expect(result.remaining.length).toBe(0); // both shifts applied together, one commit
     expect(result.anchors.has(10)).toBe(false);
-    // "ZZ CCCC": Z0 Z1 ' '2 C3 C4 C5 C6 — C now starts at 3.
+    // "ZZ CCCC": Z0 Z1 ' '2 C3 C4 C5 C6, C now starts at 3.
     expect(result.anchors.has(3)).toBe(true);
   });
 
@@ -105,7 +105,7 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     queueEdit(pending, expectedSourceRef, source, { start: 0, end: 4, newText: "X" });
 
     // Something totally unrelated changed the document (e.g. manual
-    // Code-tab typing racing a Breakdown edit) — the queue must not hang
+    // Code-tab typing racing a Breakdown edit), the queue must not hang
     // forever waiting for a source that will never render.
     const result = resolve(pending, expectedSourceRef, "totally different text", anchors);
     expect(result.remaining.length).toBe(0);

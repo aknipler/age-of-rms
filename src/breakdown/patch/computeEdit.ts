@@ -1,4 +1,4 @@
-// Phase 3.3 — the text-patch engine, docs/breakdown-design.md Sec.4 (rev 4).
+// Phase 3.3, the text-patch engine, docs/breakdown-design.md Sec.4 (rev 4).
 // Pure: no I/O, no React/Monaco/Tauri. Every intent reduces to one span
 // replace or one anchored insert (Sec.4.2), computed from token spans only.
 
@@ -47,7 +47,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       const newText = indent + rendered.text + eol;
       return { edit: { start: at, end: at, newText }, caret: at + indent.length + rendered.caretOffset };
     }
-    // Anchor shares its line with other content — degrade to inline (Sec.4.3 governs).
+    // Anchor shares its line with other content, degrade to inline (Sec.4.3 governs).
     const newText = rendered.text + " ";
     return { edit: { start: anchorTokenStart, end: anchorTokenStart, newText }, caret: anchorTokenStart + rendered.caretOffset };
   }
@@ -69,7 +69,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     const items = section.items;
     if (items.length === 0) {
       const at = tokens[section.header].end;
-      // Sections don't add an indent step — top-level items conventionally
+      // Sections don't add an indent step. Top-level items conventionally
       // sit at the header's own indent (usually column 0).
       const indent = lineIndentOf(src, tokens[section.header].start);
       const newText = eol + indent + rendered.text;
@@ -86,7 +86,69 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     return { edit: { start: at, end: at, newText: " " + rendered.text }, caret: at + 1 + rendered.caretOffset };
   }
 
-  // Sec.3.9/Sec.4.5 — insert immediately after a selected card. Offset is the
+  // The Header tab's fallback target when nothing is selected, mirrors
+  // insertIntoSection, minus the empty-container branch: SectionView only
+  // renders the Header tab at all when `script.preamble.length > 0` (Sec.3.1),
+  // so the empty case is unreachable from the UI today, but it's handled
+  // anyway (insert at offset 0) rather than left to throw.
+  function insertIntoPreamble(rendered: Rendered): EditResult {
+    const items = result.script.preamble;
+    if (items.length === 0) {
+      const newText = rendered.text + eol;
+      return { edit: { start: 0, end: 0, newText }, caret: rendered.caretOffset };
+    }
+    const last = items[items.length - 1];
+    const at = tokens[last.lastToken].end;
+    // A single preamble item has no consecutive pair for inferStyle to compare,
+    // and (unlike a section) there's no opener token to compare it against
+    // either, the preamble starts at file offset 0, not a `<SECTION>` tag.
+    // Default to own-lines, matching inferStyle's own empty-container/empty-file
+    // default one line up.
+    if (items.length === 1) {
+      const indent = lineIndentOf(src, last.span.start);
+      const newText = eol + indent + rendered.text;
+      return { edit: { start: at, end: at, newText }, caret: at + eol.length + indent.length + rendered.caretOffset };
+    }
+    const style = inferStyle(result, tokens[items[0].firstToken].start, undefined, items.map((i) => i.span));
+    if (style.onOwnLines) {
+      const indent = lineIndentOf(src, items[items.length - 1].span.start);
+      const newText = eol + indent + rendered.text;
+      return { edit: { start: at, end: at, newText }, caret: at + eol.length + indent.length + rendered.caretOffset };
+    }
+    return { edit: { start: at, end: at, newText: " " + rendered.text }, caret: at + 1 + rendered.caretOffset };
+  }
+
+  // A canonical tab whose section doesn't exist in the file at all yet (no
+  // SectionNode, so no header token and no items to anchor to), the
+  // fallback for e.g. a brand-new file's PLAYER_SETUP tab. Appends
+  // `<name>` plus the rendered command after everything already in the
+  // file (last section, else preamble, else offset 0) as ONE insert.
+  // Doesn't hunt for a canonically-ordered slot among existing sections:
+  // the engine runs sections in canonical order regardless of file
+  // position (measured, docs/build-log.md), so there's no correctness
+  // reason to, and appending naturally lands in canonical order anyway
+  // for the common case of building a script front-to-back.
+  function insertIntoNewSection(name: string, rendered: Rendered): EditResult {
+    const sections = result.script.sections;
+    const preamble = result.script.preamble;
+    const lastSection = sections[sections.length - 1];
+    const anchorEnd = lastSection
+      ? lastSection.items.length > 0
+        ? tokens[lastSection.items[lastSection.items.length - 1].lastToken].end
+        : tokens[lastSection.header].end
+      : preamble.length > 0
+        ? tokens[preamble[preamble.length - 1].lastToken].end
+        : 0;
+    const prefix = anchorEnd === 0 ? "" : eol;
+    const tag = `<${name}>`;
+    const newText = `${prefix}${tag}${eol}${rendered.text}${eol}`;
+    return {
+      edit: { start: anchorEnd, end: anchorEnd, newText },
+      caret: anchorEnd + prefix.length + tag.length + eol.length + rendered.caretOffset,
+    };
+  }
+
+  // Sec.3.9/Sec.4.5, insert immediately after a selected card. Offset is the
   // anchor's own span.end (keeps a same-line trailing comment attached
   // to the anchor, mirroring Sec.4.6's delete-time rule); style (own-line
   // vs inline, indent) is read from the anchor's OWN line rather than
@@ -194,7 +256,7 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       const def = lang.attributesByName.get(intent.name);
       const rendered = renderAttribute(def, intent.name, intent.kind === "addAttribute" ? intent.value : []);
       if (intent.target.kind === "block") return insertIntoBlock(intent.target, rendered);
-      // Sec.4.6 brace synthesis — the command has no block at all.
+      // Sec.4.6 brace synthesis, the command has no block at all.
       const cmd: CommandNode = intent.target;
       if (cmd.block !== undefined) return insertIntoBlock(cmd.block, rendered);
       const at = tokens[cmd.lastToken].end;
@@ -210,6 +272,8 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       if ("after" in intent.at) return insertAfterItem(intent.at.after, rendered);
       if (intent.at.in === "section") return insertIntoSection(intent.at.section, rendered);
       if (intent.at.in === "block") return insertIntoBlock(intent.at.block, rendered);
+      if (intent.at.in === "preamble") return insertIntoPreamble(rendered);
+      if (intent.at.in === "newSection") return insertIntoNewSection(intent.at.name, rendered);
       return insertIntoBranch(intent.at.branch, rendered);
     }
 

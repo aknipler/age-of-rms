@@ -1,5 +1,5 @@
 // Shared between the React-side HelpSettingsContext and the imperative
-// Monaco hover provider (src/editor/aoe2RmsHover.ts) — both need to agree
+// Monaco hover provider (src/editor/aoe2RmsHover.ts). Both need to agree
 // on the same persisted store file/key so they read/write the same
 // setting instead of silently drifting apart.
 

@@ -7,7 +7,7 @@
 // PURITY (CLAUDE.md hard rule, preview-design Sec.2): nothing under
 // src/preview/generator/ may import React, Monaco or Tauri, so it runs
 // unchanged in a bare web worker and in plain-Node Vitest. The two imports
-// below are the deliberate exceptions Sec.2 names — both are plain modules
+// below are the deliberate exceptions Sec.2 names, both are plain modules
 // with no framework import of their own.
 //
 // Nothing in here is implementation. The generator (4.3) fills these in;
@@ -17,6 +17,7 @@ import type { ArgNode, ParseResult, Span } from "../../parser/types";
 import type { CommandDef } from "../../parser/language";
 import type { MapSize, TeamNumber } from "../../generationSettings/generationSettingsConstants";
 import type { CanonicalTeams } from "../../generationSettings/teamModel";
+import type { ResourceTotals } from "./resourceSummary";
 
 // ---------------------------------------------------------------------------
 // Inputs (Sec.10)
@@ -45,7 +46,7 @@ export interface PreviewSettings {
    * ignored everywhere, team sizes included.
    *
    * These are NOT the numbers that appear in TEAMn_SIZEm / PLAYERx_TEAMy.
-   * S0 canonicalises to lobby order first (Sec.3.1) — dropping teams with
+   * S0 canonicalises to lobby order first (Sec.3.1), dropping teams with
    * fewer than 2 members and renumbering the survivors by lowest player
    * number. src/generationSettings/teamModel.ts is that rule, and the
    * generator imports it rather than re-implementing it.
@@ -56,19 +57,19 @@ export interface PreviewSettings {
 /** Structured-cloneable: plain data only, no functions (Sec.10). */
 export interface PreviewOptions {
   seed: number;
-  /** false in 5.2 batch mode — the only cost knob. Reports are unconditional (Sec.7). */
+  /** false in 5.2 batch mode, the only cost knob. Reports are unconditional (Sec.7). */
   collectSnapshots: boolean;
 }
 
 // ---------------------------------------------------------------------------
-// Script instantiation (Sec.3) — Stage 0's output, consumed by S1 onward.
+// Script instantiation (Sec.3), Stage 0's output, consumed by S1 onward.
 // ---------------------------------------------------------------------------
 
 /**
  * A resolved argument value, aligned 1:1 with the originating ArgNode's
  * position. `undefined` means Sec.3 could not resolve it (an unresolved
  * `#const`/`#define` name feeding a numeric slot, or a math expression whose
- * first operand failed to resolve, Sec.3.6) — the parser has already warned
+ * first operand failed to resolve, Sec.3.6). The parser has already warned
  * about this shape (RMS0200/RMS0210 series); S0 does not warn again, it just
  * hands the gap downstream for that stage to decide how to degrade.
  *
@@ -101,14 +102,14 @@ export interface InstantiatedCommand {
   /**
    * Folded per Sec.3 rule 10: last-wins, EXCEPT attributes `language.json`
    * flags `repeatable`, which accumulate in occurrence order instead. A
-   * non-repeatable name is therefore always length 1 once folding is done —
+   * non-repeatable name is therefore always length 1 once folding is done.
    * the array shape exists so both cases share one field rather than the
    * repeatable case needing a special sibling.
    */
   attributes: ReadonlyMap<string, InstantiatedAttribute[]>;
   /**
    * The `behavior_version` in effect (0-2) when this command was
-   * instantiated (Sec.3 rule 7 — a stream variable, not a per-command
+   * instantiated (Sec.3 rule 7, a stream variable, not a per-command
    * setting). 2 is folded to 1 here already ("we treat 2 as 1", same rule);
    * the note that folding happened lives in `InstantiatedScript.notes`, not
    * on every command that inherits it.
@@ -126,7 +127,7 @@ export interface PlayerSetupState {
 
 export interface InstantiatedScript {
   /**
-   * Post-`override_map_size` (Sec.3 rule 8) — the dimension every later
+   * Post-`override_map_size` (Sec.3 rule 8), the dimension every later
    * stage actually generates against. Can differ from the lobby mapSize's
    * own dimensions.
    */
@@ -135,7 +136,7 @@ export interface InstantiatedScript {
   sections: ReadonlyMap<string, InstantiatedCommand[]>;
   /** `create_object_group` definitions, keyed by the group's `type` name (Sec.3 rule 12). */
   objectGroups: ReadonlyMap<string, InstantiatedCommand>;
-  /** `create_actor_area` definitions, keyed by identifier — multiple areas may share one (Sec.3 rule 12). */
+  /** `create_actor_area` definitions, keyed by identifier, multiple areas may share one (Sec.3 rule 12). */
   actorAreas: ReadonlyMap<number, InstantiatedCommand[]>;
   playerSetup: PlayerSetupState;
   /**
@@ -144,7 +145,7 @@ export interface InstantiatedScript {
    *
    * Exposed because a terrain or object slot is NOT a numeric context in
    * Sec.6's sense, so `resolveArg` deliberately leaves `terrain_type WOODIES`
-   * as the string "WOODIES" — those names are supposed to resolve against
+   * as the string "WOODIES". Those names are supposed to resolve against
    * game-constants.json instead. But only 78 of DE's 131 terrains HAVE a
    * constant, so naming the other 53 means `#const WOODIES 48` and then
    * using WOODIES, which is a mainstream idiom rather than an edge case:
@@ -153,7 +154,7 @@ export interface InstantiatedScript {
    * commands to "reference data doesn't know that terrain".
    *
    * Symbols defined with no value (`#define`, or `#const` with a
-   * non-numeric value) are omitted — a flag is not an id. Resolution order
+   * non-numeric value) are omitted. A flag is not an id. Resolution order
    * is the CALLER's decision and it matters: game-constants first, this
    * second, because the engine loads random_map.def before the script and
    * `#const` is first-definition-wins, so a script redefining a built-in
@@ -169,7 +170,7 @@ export interface InstantiatedScript {
    * so it was dropped and `create_terrain TERR_CORNER` then reported that our
    * reference data does not know a terrain it knows perfectly well. Measured
    * on the corpus: **96 such definitions name a terrain constant and 108 name
-   * an object constant** — the object half is the larger one, which the bug
+   * an object constant**. The object half is the larger one, which the bug
    * entry did not say.
    *
    * A SEPARATE MAP RATHER THAN A WIDER `symbols`, deliberately. Widening
@@ -184,7 +185,7 @@ export interface InstantiatedScript {
    * THE ALIAS IS NOT PRE-RESOLVED, AND THAT IS THE WHOLE SAFETY ARGUMENT.
    * `#const` values share one namespace with flags, attribute ids and command
    * ids, so resolving a name here against the constants roster would happily
-   * turn a flag into a terrain id — a worse failure than the one being fixed,
+   * turn a flag into a terrain id, a worse failure than the one being fixed,
    * and the reason `instantiateScript` is not given the roster. Instead each
    * resolver chases one hop against ITS OWN table: `resolveTerrainId` retries
    * the target as a terrain name, `objectEntry` retries it as an object name,
@@ -208,7 +209,7 @@ export interface InstantiatedScript {
  *
  * Coordinates are the guide's, and they are rotated 45 degrees from what a
  * screenshot suggests: (0,0) is the WEST corner, (max,0) north, (0,max)
- * south, (max,max) east. That rotation is not cosmetic — it is what
+ * south, (max,max) east. That rotation is not cosmetic. It is what
  * docs/elevation-bias-study.md found the whole elevation model had been
  * fitted against the wrong axis of. The renderer owns the projection into
  * screen space; the generator never thinks in pixels.
@@ -239,7 +240,7 @@ export interface TileGrid {
 export type StageId = "S0" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
 
 /**
- * A copy of the RENDERABLE layers at a stage boundary — four of TileGrid's
+ * A copy of the RENDERABLE layers at a stage boundary, four of TileGrid's
  * seven, because landId/zone/occupied are generation bookkeeping the renderer
  * never reads. 6 bytes/tile x 480^2 x 6 snapshots is about 8 MB at the
  * largest map size, which is why the split is worth making.
@@ -268,7 +269,7 @@ export interface BorderBounds {
 }
 
 // ---------------------------------------------------------------------------
-// S1 lands (Sec.6.1) — one record per placed land, output of the origin-
+// S1 lands (Sec.6.1), one record per placed land, output of the origin-
 // placement phase. Growth (lands.ts's growLands) reads and extends this; it
 // does not replace it, so the fields here are what origin placement itself
 // can compute, plus the border/generate_mode state growth's own candidate
@@ -282,15 +283,15 @@ export interface LandOrigin {
   y: number;
   /** The zone this land's tiles claim (Sec.6.1's zone rules); -12 means "belongs to no zone". */
   zone: number;
-  /** From the `land_id` attribute, if given — the name later commands (`place_on_specific_land_id`) target. Distinct from the grid's internal `landId` index. */
+  /** From the `land_id` attribute, if given, the name later commands (`place_on_specific_land_id`) target. Distinct from the grid's internal `landId` index. */
   declaredLandId?: number;
   /** 1-based, present only for a player's own land (ring-placed). Assign_to-based assignment is not yet modelled (see lands.ts). */
   player?: number;
   baseSize: number;
   circularBase: boolean;
-  /** The `terrain_type` reference exactly as the script wrote it — a constant name, or a bare terrain id. Kept alongside `terrainId` so a failure message can quote what the author typed. */
+  /** The `terrain_type` reference exactly as the script wrote it, a constant name, or a bare terrain id. Kept alongside `terrainId` so a failure message can quote what the author typed. */
   terrainType?: string | number;
-  /** `terrain_type` resolved to a terrain id (grid.ts's `resolveTerrainId`). Undefined when the attribute is absent, or names something nothing can resolve — in which case the land claims tiles but paints no terrain, leaving the base fill showing. */
+  /** `terrain_type` resolved to a terrain id (grid.ts's `resolveTerrainId`). Undefined when the attribute is absent, or names something nothing can resolve, in which case the land claims tiles but paints no terrain, leaving the base fill showing. */
   terrainId?: number;
   /** Raw declared value (1-16, or negative meaning "maximally elevated"); clamping and application happen in the elevation step (Sec.6.1: "after growth, set elevation = H"), not here. */
   baseElevation?: number;
@@ -302,7 +303,7 @@ export interface LandOrigin {
    * The `behavior_version` in effect for this land (Sec.6.1: governs whether
    * the origin square counts toward `declaredTargetTiles` or is additional to
    * it). The additive/included adjustment itself is growth's job, not
-   * origin placement's — this field is carried through so growth doesn't
+   * origin placement's, this field is carried through so growth doesn't
    * have to re-derive it from the command.
    */
   behaviorVersion: 0 | 1;
@@ -310,7 +311,7 @@ export interface LandOrigin {
   declaredTargetTiles: number;
   /** True when this origin came from Sec.6.1's K-attempts exhaustion fallback (map center, overlapping whatever is there) rather than a real placement. */
   fromOriginFallback: boolean;
-  /** This land's own border bounds (Sec.4), resolved once here rather than re-read from the command by growth — growth's border rejection and detached-seed reservoir sampling both need it. */
+  /** This land's own border bounds (Sec.4), resolved once here rather than re-read from the command by growth, growth's border rejection and detached-seed reservoir sampling both need it. */
   borderBounds: BorderBounds;
   /** The `generate_mode` attribute's value (default 0); `1` disables the cross-shaped-region restriction for reservoir seeding, same as it does for origin placement. */
   generateMode: number;
@@ -343,7 +344,7 @@ export interface SimulationNote {
 }
 
 // ---------------------------------------------------------------------------
-// Placement instrumentation (Sec.7) — the 5.2 contract
+// Placement instrumentation (Sec.7), the 5.2 contract
 // ---------------------------------------------------------------------------
 
 /**
@@ -352,7 +353,7 @@ export interface SimulationNote {
  * records, and retrofitting them later is the painful path CREATION_PLAN 5.2
  * warns about.
  *
- * This is a *discriminated union* — `ok` is the discriminant, so narrowing on
+ * This is a *discriminated union*, `ok` is the discriminant, so narrowing on
  * it gives you `value` in one branch and `failure` in the other, with no cast
  * and no possibility of reading the wrong field.
  */
@@ -360,7 +361,7 @@ export type PlacementOutcome<T> = { ok: true; value: T } | { ok: false; failure:
 
 /**
  * Deliberately coarse. 5.2's report UI aggregates by bucket, so a stable
- * bucket identity is worth more than forensic precision — a bucket that
+ * bucket identity is worth more than forensic precision, a bucket that
  * splits in two later invalidates every saved report.
  */
 export type FailureBucket =
@@ -374,15 +375,15 @@ export type FailureBucket =
   | "pathBlocked" // require_path found no acceptable path
   | "connectionBlocked" // no route between a connection pair
   | "originFallbackCenter" // land origin placement exhausted -> engine center fallback
-  | "growthShortfall" // land/terrain/elevation grew < target (data: owned, target, blocker)
+  | "growthShortfall" // land/terrain/elevation grew < target (data: owned, target - no per-rejection-rule attribution, see preview-design.md's growthShortfall/blocker correction)
   | "groupPartial" // loose group placed k of n members (data: placed, requested)
   | "zoneAvoidanceBlocked" // other_zone_avoidance rejected a single placement
   | "borderBlocked" // border constraint rejected a single placement
   | "playerOriginAvoidance" // seed set emptied by player-origin avoidance (Sec.6.2/6.4)
   | "gaiaOnlyRequired" // frame-referenced create_object of a non-ownable object without set_gaia_object_only
   | "attributePrerequisite" // an attribute's documented "Requires:" partner is absent, so the engine places nothing
-  | "iterationCapped" // Sec.11 per-command iteration cap hit — truncated, not blocked
-  | "notSimulated"; // feature in Sec.9's list — placement skipped, honesty bucket
+  | "iterationCapped" // Sec.11 per-command iteration cap hit, truncated, not blocked
+  | "notSimulated"; // feature in Sec.9's list, placement skipped, honesty bucket
 
 export interface PlacementFailure {
   bucket: FailureBucket;
@@ -399,7 +400,7 @@ export interface PlacementFailure {
    * How many failures of this bucket this command produced. Absent means one.
    * Records are coalesced by bucket as they are made (`pushFailure`), so
    * `entity`, `reference`, `detail` and `data` describe the FIRST of them and
-   * stand as the example — see `pushFailure` for why keeping the rest is
+   * stand as the example. See `pushFailure` for why keeping the rest is
    * worth nothing and costs a great deal.
    */
   occurrences?: number;
@@ -408,7 +409,7 @@ export interface PlacementFailure {
 }
 
 /**
- * One per instantiated generative command. Unconditional — Sec.7 rejects a
+ * One per instantiated generative command. Unconditional. Sec.7 rejects a
  * `collectReports` option, because reports are goal 2 and cost one record per
  * command rather than per tile. In 5.2's batch mode this is the entire output.
  */
@@ -432,7 +433,7 @@ export interface PlacedObject {
   /** Owning player, absent for gaia/neutral placements. */
   player?: number;
   /**
-   * Renderer glyph/colour class — "resource-gold", "unit", "building", ...
+   * Renderer glyph/colour class, "resource-gold", "unit", "building", ...
    * (Sec.12 item 8). A plain `string`, NOT a closed union, and the contrast
    * with PredefinedLabelCategory next door in the parser is the point: that
    * one is a union because reference/schemas pins its ten members, this one
@@ -458,7 +459,7 @@ export interface PlayerMarker {
  *
  * WHY THIS IS NOT A `PlacementFailure` WITH COORDINATES ADDED. Failures are
  * coalesced by bucket per command (`pushFailure`), which is what makes a
- * quarter of a million object misses affordable — and coalescing throws away
+ * quarter of a million object misses affordable, and coalescing throws away
  * exactly the per-instance position a marker needs. One `create_player_lands`
  * makes eight lands; if six of them fail, the report keeps one record with
  * `occurrences: 6`, and drawing that record's position would put a single
@@ -473,20 +474,20 @@ export interface PlayerMarker {
  * - `growthShortfall` fires **230 times across 35 of the ~52 maps**, median
  *   fill 12% of target. It is the NORMAL outcome, not an exception, because
  *   `land_percent 100` declares a target of the whole map and several lands
- *   declare it at once — the target is an aspiration the engine never promised
+ *   declare it at once, the target is an aspiration the engine never promised
  *   to meet. Marking it would put a warning triangle on almost every land of
  *   almost every map, which is the "speckle the canvas" objection Sec.15
  *   item 5 raised, now with a number on it.
  * - A land that ended with **zero tiles** looked like the strong case: not
  *   smaller than asked but ABSENT, and `Fortress.rms` has one asking for
  *   34,000 tiles. Then all **15** corpus instances were triaged and every
- *   single one has the same cause — the land's origin square was entirely
+ *   single one has the same cause, the land's origin square was entirely
  *   overwritten by a LATER land's stamp, so growth began with no tile to grow
  *   from. That is a limit of OUR growth model (the frontier is defined from
  *   owned tiles, and this land owns none), not a defect anybody could fix in
  *   the script. A red triangle on it would blame the author for our
- *   approximation. It reports as a `SimulationNote` instead — the surface
- *   Sec.9 already provides for exactly this — and Sec.15 item 30 records the
+ *   approximation. It reports as a `SimulationNote` instead, the surface
+ *   Sec.9 already provides for exactly this, and Sec.15 item 30 records the
  *   model gap.
  * - `originFallbackCenter` fires **6 times, on 2 maps**, and models the
  *   ENGINE's own documented give-up behaviour. The land really is somewhere
@@ -526,7 +527,53 @@ export interface PreviewResult {
   /** Failures with a tile to point at (Sec.15 item 5). Bounded by land count, so no cap. */
   failureMarks: FailureMark[];
   notes: SimulationNote[];
+  /**
+   * ALWAYS present, independent of `collectSnapshots`, a direct reference to
+   * the same live grid every stage mutated, not a copy (`captureSnapshot`'s
+   * `.slice()` is what copies, and that's `snapshots`' own cost, unaffected
+   * by this field existing). This is Sec.3.8 of land-placement-design.md's
+   * first `generatePreview` prerequisite: "the live TileGrid never escapes,
+   * so `previewSlice` cannot be served from a `collectSnapshots: false`
+   * result at all." An in-process caller (a built-in tool) reads it with
+   * zero copy; `worker.ts` strips it before `postMessage`, the main preview
+   * pane never reads it, and a TileGrid is the one field here actually worth
+   * not structured-cloning for free on every debounced keystroke
+   * (`PreviewWireResult`, below, Sec.3.4's "one contract, two costs").
+   */
+  grid: TileGrid;
+  /**
+   * S1's own placement result, Sec.3.8's other `generatePreview`
+   * prerequisite: "`landResult.origins` is computed, handed to seven stages
+   * and dropped… a land placement tool needs where the lands went." Kept as
+   * the FULL `LandOrigin[]` (not the reduced tools-api `PreviewSummary`
+   * shape), the reduction to `{x, y, zone, tiles, …}` is a tools-api
+   * concern (Sec.11), and this is the generator's own pure return value.
+   */
+  landOrigins: readonly LandOrigin[];
+  /**
+   * Resource totals read off THIS generation's real `objects`/`players`
+   * (resourceSummary.ts), not a static AST walk over what the script could
+   * produce across every branch — see the status-bar build-log entry for
+   * why that is the right trade (a scripter's `number_of_groups 9999` means
+   * "fill the map", and the simulator's count is what a map actually got).
+   * Folds in the forest-wood aggregate (forestTrees.ts) as Neutral wood.
+   */
+  resourceTotals: ResourceTotals;
 }
+
+/**
+ * What crosses the shared preview worker's `postMessage` boundary,
+ * `PreviewResult` minus `grid`. The main preview pane never reads the final
+ * grid (it reads `snapshots`, whose last entry already carries S6's four
+ * renderable layers), so `worker.ts` strips `grid` before posting rather
+ * than structured-cloning an extra ~11 bytes/tile on every debounced
+ * update for a field nothing on the main thread looks at. An in-process
+ * caller of `generatePreview` (a built-in tool, land-placement-design.md's
+ * layer 1) gets the real `PreviewResult`, `grid` included, with zero copy,
+ * the same "one contract, two costs" split `tools-api-design.md` Sec.1
+ * already runs on, landing here first.
+ */
+export type PreviewWireResult = Omit<PreviewResult, "grid">;
 
 // ---------------------------------------------------------------------------
 // Worker protocol (Sec.10)
@@ -547,10 +594,10 @@ export interface PreviewRequest {
 /**
  * A discriminated union, because a run that produced nothing has to be
  * representable. `abandoned` is the watchdog path only: there is no per-run
- * cancellation in v1 (Sec.10 gives the reasons — generatePreview is
+ * cancellation in v1 (Sec.10 gives the reasons, generatePreview is
  * synchronous, so a worker's onmessage cannot fire mid-run anyway), and stale
  * results are discarded by id on the host instead.
  */
 export type PreviewResponse =
-  | { id: number; ok: true; result: PreviewResult }
+  | { id: number; ok: true; result: PreviewWireResult }
   | { id: number; ok: false; abandoned: true };

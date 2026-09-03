@@ -36,7 +36,7 @@ interface WorstCountResult {
 }
 
 /**
- * Sec.5.1's three-state ranking. ABSENT counts are excluded entirely — not
+ * Sec.5.1's three-state ranking. ABSENT counts are excluded entirely, not
  * ranked as a rate, not as a zero. A ZERO-ATTEMPT count ranks BELOW every
  * rate (the worst outcome the matrix contains), never merely excluded. Ties
  * among rated counts break toward the LOWEST player count, which falls out
@@ -71,7 +71,7 @@ function playerCountList(counts: readonly number[]): string {
 
 /**
  * The per-count annotation Sec.5.1 requires for a row that is absent or
- * zero-attempt at SOME but not all selected counts — stated as part of the
+ * zero-attempt at SOME but not all selected counts, stated as part of the
  * row's reason, never implied by a bare rate. The three populations are not
  * disjoint; a row in more than one says so in one sentence, per clause.
  */
@@ -92,7 +92,7 @@ function buildAnnotation(cells: ReadonlyMap<number, AggregateCell>, selectedCoun
 }
 
 export interface StageReasonContext {
-  /** One `InstantiatedScript` per selected player count — Sec.3.0 rule 1 already builds these for the static layer. */
+  /** One `InstantiatedScript` per selected player count, Sec.3.0 rule 1 already builds these for the static layer. */
   instByCount: ReadonlyMap<number, InstantiatedScript>;
   /** Sec.3.4's own comparison, so the S3 zero-attempt reason and the static finding agree on the SAME script. */
   cliffsContradiction: boolean;
@@ -101,7 +101,7 @@ export interface StageReasonContext {
 }
 
 /**
- * Sec.5.1: "every such row still says why, in words — from the failure
+ * Sec.5.1: "every such row still says why, in words, from the failure
  * buckets where it has them, and where it has none, from what the stage
  * resolved." The seven zero-attempt paths with no bucket at all (S2's
  * `MaxHeight <= 0`, S3's min>max contradiction, S5's empty pairing / bug-
@@ -137,7 +137,7 @@ function findCommandBySpan(inst: InstantiatedScript, span: Span) {
   return undefined;
 }
 
-/** Sec.5.1's Command column: the source slice at `commandSpan`, first line trimmed — EXCEPT S3, which always takes the stage label, because no S3 report has a command of its own by construction. */
+/** Sec.5.1's Command column: the source slice at `commandSpan`, first line trimmed, EXCEPT S3, which always takes the stage label, because no S3 report has a command of its own by construction. */
 function commandLabel(row: AggregateRow, source: string): string {
   if (row.stage === "S3") return "Cliff generation (whole section)";
   const slice = source.slice(row.commandSpan.start, row.commandSpan.end);
@@ -147,7 +147,7 @@ function commandLabel(row: AggregateRow, source: string): string {
 /**
  * Sec.5.1's `{0,0}` backstop applies UNIFORMLY across every stage, S3
  * included: `{0,0}` is what a FAILED borrow looks like, not what a borrowed
- * span looks like — `cliffs.ts` emits one report for the whole section
+ * span looks like. `cliffs.ts` emits one report for the whole section
  * whether or not the borrow found something to take, so a real, non-zero
  * borrowed span is a genuine clickable offset and stays linked even though
  * the COMMAND LABEL (above) always reads the stage name regardless.
@@ -160,8 +160,8 @@ function rowSpanFor(row: AggregateRow): Span | null {
 /**
  * A location named in PROSE is a 1-BASED LINE NUMBER; a `span` stays a
  * character OFFSET, because Monaco and `useSharedSelection` consume it.
- * This repo shipped seven diagnostics reading "already set at offset 86970" —
- * a position no editor displays — so the one actionable fact in each message
+ * This repo shipped seven diagnostics reading "already set at offset 86970",
+ * a position no editor displays, so the one actionable fact in each message
  * was unreachable. `scriptStats.ts` is the standing exemplar; the clickable
  * offset always rides alongside in `rowSpans`.
  */
@@ -177,7 +177,7 @@ export interface FindingTableOptions {
   source: string;
   selectedCounts: readonly number[];
   reasonCtx: StageReasonContext;
-  /** commandSpans of Sec.3.2's `actor_area_to_place_in` findings — Sec.5.1's suppression rule, keyed by `start-end`. */
+  /** commandSpans of Sec.3.2's `actor_area_to_place_in` findings, Sec.5.1's suppression rule, keyed by `start-end`. */
   suppressedActorAreaMissing: ReadonlySet<string>;
   /** Sec.5.1's noise filter: drop rows with nothing to report. The count of dropped rows is always printed (see `buildFindingTables`). */
   hideHealthy: boolean;
@@ -196,7 +196,7 @@ export interface FindingTableOptions {
  * stage reason is one of the seven bucketless zero-attempt paths; and an
  * annotation says the command is absent at some counts, which is a fact about
  * the script the spawn rate cannot express. **A row at 100% with a bucket is
- * not healthy** — it placed everything eventually, having missed on the way,
+ * not healthy**, it placed everything eventually, having missed on the way,
  * and that is exactly the intermittent case this tool exists to surface.
  */
 function isHealthyRow(row: AggregateRow, opts: { selectedCounts: readonly number[]; reasonCtx: StageReasonContext; worst: WorstCountResult }): boolean {
@@ -331,7 +331,7 @@ function findingIdentity(f: StaticFinding): string {
 
 /**
  * Sec.3.0 rule 1 runs the whole static layer once per selected player count,
- * and on this corpus every finding it produces is identical at all four — so
+ * and on this corpus every finding it produces is identical at all four, so
  * rendered per pass, the output is the same block four times over. Collapse
  * on identity, and say the counts ONLY when a finding does not hold at every
  * selected count (which is the case Sec.3.0 rule 1 exists for; the corpus has
@@ -363,7 +363,7 @@ export function buildStaticFindingBlocks(findings: readonly StaticFinding[], sel
   if (findings.length === 0) return [];
   const collapsed = collapseStaticFindings(findings);
 
-  // Group into families by `(kind, severity)` — severity is part of the key
+  // Group into families by `(kind, severity)`, severity is part of the key
   // because `actorAreaUndeclaredSharedBlockReference` files at `error` or
   // `info` depending on which attribute carried the reference, and one
   // `severity` block carries exactly one level.
@@ -389,7 +389,7 @@ export function buildStaticFindingBlocks(findings: readonly StaticFinding[], sel
     }
     // Sec.5.4's own shape, for the same reason: `severity` holds one span and
     // `table.rowSpans` holds many, so a family of N findings is one headline
-    // plus one clickable row each — bounded by the ROW cap, not the block cap.
+    // plus one clickable row each, bounded by the ROW cap, not the block cap.
     blocks.push({ kind: "severity", level: family.level, text: FAMILY_HEADLINE[family.kind](family.items.length) });
     blocks.push({
       kind: "table",
@@ -401,7 +401,7 @@ export function buildStaticFindingBlocks(findings: readonly StaticFinding[], sel
   return blocks;
 }
 
-/** Sec.5.1's suppression rule: an `actor_area_to_place_in` finding subsumes the Monte Carlo layer's `actorAreaMissing` bucket for the SAME commandSpan — never for a bare `avoid_actor_area` finding, and never for a script Sec.3.2 merely abstained on. */
+/** Sec.5.1's suppression rule: an `actor_area_to_place_in` finding subsumes the Monte Carlo layer's `actorAreaMissing` bucket for the SAME commandSpan, never for a bare `avoid_actor_area` finding, and never for a script Sec.3.2 merely abstained on. */
 export function suppressedActorAreaSpans(findings: readonly StaticFinding[]): ReadonlySet<string> {
   const out = new Set<string>();
   for (const f of findings) {
@@ -455,11 +455,11 @@ export function buildNotesBlocks(groups: readonly NoteGroup[], lineOffsets: read
         : "";
     // Sec.5.4: "places" is a claim about SPANS, so a spanless group does not
     // make it. Its count is its distinct occurrences, which is 1 for the
-    // ordinary run-level note — and a note that occurred is reported as
+    // ordinary run-level note, and a note that occurred is reported as
     // having occurred, never as having occurred in "0 places".
     // "Places" is only honest when every occurrence in the group HAS a place.
     // Sec.5.4 measures no mixed group on this corpus, so the third branch is
-    // insurance — but a mixed group counted in "places" would over-claim by
+    // insurance, but a mixed group counted in "places" would over-claim by
     // exactly its spanless occurrences, which is the defect one unit over.
     const allPlaced = group.spans.length > 0 && group.spans.length === group.count;
     const countClause = allPlaced
@@ -469,7 +469,7 @@ export function buildNotesBlocks(groups: readonly NoteGroup[], lineOffsets: read
         : "";
     // The generator's note texts are authored sentences and most already end
     // in a full stop, so appending one unconditionally printed "…with
-    // beach_terrain.." — punctuation invented by the renderer, on text it is
+    // beach_terrain..", punctuation invented by the renderer, on text it is
     // supposed to be passing through verbatim.
     const terminator = /[.!?]$/.test(group.text) && countClause === "" ? "" : ".";
     blocks.push({

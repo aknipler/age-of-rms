@@ -10,13 +10,13 @@ import type { Item, ParseResult, Span } from "../parser/types";
  * (unlike Sec.3.9's original `selectedAnchor`, which lived inside
  * `BreakdownPane` and was destroyed every time that pane unmounted on a
  * tab switch) specifically so it survives Breakdown <-> Code tab
- * switches — that's the whole point: "where you are looking at is the
+ * switches. That's the whole point: "where you are looking at is the
  * same when you switch tabs."
  *
  * Same offset-anchoring scheme as Sec.6.3/Sec.3.9 (a single nullable anchor,
  * shifted-and-dropped by edits), but the shift trigger is now the shared
  * Monaco model's own `onDidChangeContent` rather than Breakdown's
- * `applyEdit` queueing — that's what makes this correct for EVERY edit
+ * `applyEdit` queueing. That's what makes this correct for EVERY edit
  * origin (Breakdown card actions, Code-tab typing, undo/redo), not just
  * Breakdown-instigated ones. The BUG-001 ordering rule still applies: a
  * shift is only ever applied once the matching parse (`source`) has
@@ -24,8 +24,8 @@ import type { Item, ParseResult, Span } from "../parser/types";
  * flash onto the wrong card for a frame after an edit made from the Code
  * tab.
  *
- * That whole mechanism — the model subscription, the pending queue, the
- * shift — moved to `useShiftedAnchor` (2026-08-10) when the preview's Current
+ * That whole mechanism; the model subscription, the pending queue, the
+ * shift; moved to `useShiftedAnchor` (2026-08-10) when the preview's Current
  * cut point gained a pin, which is a second offset with exactly the same
  * problem. One implementation, two instances; the alternative was a second
  * copy of the BUG-001 ordering rule maintained by hand.

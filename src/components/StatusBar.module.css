@@ -1,4 +1,4 @@
-/* The bar itself no longer scrolls — .scrollArea does. Moving the overflow
+/* The bar itself no longer scrolls. .scrollArea does. Moving the overflow
    one level in is what pins the problem indicator and the two buttons: they
    sit outside the scroller, so a wide resource total scrolls under them
    instead of pushing them past the right edge. */
@@ -20,12 +20,28 @@
   /* min-width: 0 is the load-bearing line. A flex item's default minimum
      size is its CONTENT width, so without this the scroller refuses to
      shrink, grows the bar past the window, and the pinned group goes off
-     screen anyway — the exact bug this layout exists to fix. */
+     screen anyway, the exact bug this layout exists to fix. */
   flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
+  transition: opacity 0.15s ease;
+}
+
+/* D11: a generation is in flight, so these figures describe the PREVIOUS
+   generation, not necessarily what the script now reads. Dim rather than
+   blank, since a stale-but-plausible number is still more useful than
+   nothing while typing. Not colour-only: StatusBar sets aria-busy on this
+   element too. */
+.pending {
+  opacity: 0.55;
+}
+
+.cutLabel {
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: help;
 }
 
 /* Never shrinks and never scrolls: whatever else happens to this row, the
@@ -68,7 +84,7 @@
   gap: 0.25rem;
   cursor: help;
   /* The count inherits the level colour along with the icon, which uses
-     `currentColor` — one declaration per level, below. */
+     `currentColor`, one declaration per level, below. */
   font-variant-numeric: tabular-nums;
 }
 
@@ -78,7 +94,7 @@
   display: block;
 }
 
-/* Severity colours are DiagnosticsRuler.module.css's, deliberately — the
+/* Severity colours are DiagnosticsRuler.module.css's, deliberately, the
    ruler and this indicator report the same diagnostics, and two palettes
    for one set of severities would teach the user nothing. */
 .levelNone {

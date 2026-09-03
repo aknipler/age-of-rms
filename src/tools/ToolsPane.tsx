@@ -14,24 +14,22 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { HelpTip } from "../components/HelpTip";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
-import { resolveMapDim } from "../preview/generator/mapDimensions";
+import { usePreviewView } from "../components/preview/PreviewViewContext";
+import { usePreviewCut } from "../PreviewCutContext";
 import { lineNumberOfOffset } from "../parser/lineIndex";
 import languageData from "../../reference/data/language.json";
 import gameConstantsData from "../../reference/data/game-constants.json";
 import type { LanguageData } from "../parser/language";
 import type { Span } from "../parser/types";
-import {
-  TOOLS_API_VERSION,
-  type OutputBlock,
-  type ParamValue,
-  type PublishedGameConstants,
-  type ToolContext,
-  type ToolParamDef,
-} from "../../tools-api/index";
-import { ToolHost, inProcessRunner } from "./host";
-import { effectiveCapabilities, paramsAreSubmittable, resolveParams, tableRowsToRender, validateEdits } from "./protocol";
+import { type OutputBlock, type ParamValue, type PublishedGameConstants, type ToolParamDef } from "../../tools-api/index";
+import { inProcessRunner } from "./host";
+import { useSelectedTool, useToolHostContext } from "./ToolHostContext";
+import { buildToolContext } from "./buildToolContext";
+import { paramsAreSubmittable, resolveParams, tableRowsToRender, validateEdits } from "./protocol";
 import { registeredTools, WORKER_RUNTIME_TOOL_IDS } from "./registry";
 import { workerRunner } from "./workerRunner";
+import { useLandPlacementModel } from "./builtin/landPlacement/panel/landPlacementModel";
+import { LandPlacementPanel } from "./builtin/landPlacement/panel/LandPlacementPanel";
 import styles from "./ToolsPane.module.css";
 
 const lang = languageData as unknown as LanguageData;
@@ -44,7 +42,7 @@ const gameConstants = (gameConstantsData as unknown as { constants: PublishedGam
 
 interface ToolsPaneProps {
   /**
-   * `null` means no file is open. NOT a boolean — `useDocument` goes straight
+   * `null` means no file is open. NOT a boolean. `useDocument` goes straight
    * from one non-null path to a different non-null one on File > Open when a
    * file is already open (`documentModel.setValue()` then `setFilePath`), so a
    * `hasFile: boolean` derived from `filePath !== null` never toggles on that
@@ -63,23 +61,84 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
   const generation = useGenerationSettings();
   const tools = useMemo(() => registeredTools(), []);
 
-  const [selectedId, setSelectedId] = useState<string>(tools[0]?.manifest.id ?? "");
+  // Lifted above the tab switch (ToolHostContext.tsx): which tool the
+  // dropdown shows has to survive a tab switch the same way the ToolHost and
+  // Land Placement's own model do, or returning to this pane always looked
+  // like the tool selection had been forgotten. `submitted` (the params
+  // form) deliberately stays local — a report tool's live run is already
+  // torn down on tab-away (the unmount effect below, `host.reset()`), so
+  // there is no output left to match stale params against when you return.
+  const { selectedId, setSelectedId } = useSelectedTool();
   const [submitted, setSubmitted] = useState<Record<string, unknown>>({});
 
-  const host = useMemo(() => {
-    const h = new ToolHost(inProcessRunner);
-    h.registerEditCapable(tools.filter((t) => t.manifest.capabilities.includes("edit-source")).map((t) => t.manifest.id));
-    return h;
-  }, [tools]);
+  // Lifted above the tab switch (ToolHostContext.tsx), land-placement-design.md
+  // Sec.3.6: "the model has to be lifted above activeTab or a tab switch
+  // destroys it." The object itself now outlives this component; what
+  // happens to it on mount/unmount is decided by the effect right below.
+  const host = useToolHostContext();
+
+  // App.tsx renders `{activeTab === "advanced-tools" && <ToolsPane …/>}`, so a
+  // TAB SWITCH UNMOUNTS THIS COMPONENT even though `host` itself now
+  // survives it. Two different teardowns, chosen by what's actually mounted:
+  //
+  // - No panel mounted (every report tool, today, unconditionally): `reset()`,
+  //   EXACTLY today's behaviour. Without it a worker-backed run outlives the
+  //   pane entirely. Nothing calls kill(), and the run watchdog cannot save
+  //   us because `armWatchdog` re-arms on every message, so a chunking tool
+  //   like the consistency checker never hits its deadline and burns a core
+  //   for the full 8-30 minutes with its result going nowhere. `reset()`
+  //   rather than a `dispose()`: it already terminates the active run
+  //   (taught to on 2026-08-19, for the orphaned-grace-timer bug) and leaves
+  //   the host USABLE, which matters under StrictMode's double-invoked
+  //   mount effects. A host a premature dispose() marked permanently dead
+  //   would refuse every subsequent run in development.
+  // - A panel IS mounted (Sec.3.6's table, "Advanced Tools tab left"):
+  //   `suspendPanel()` instead, the model is retained, not torn down, and
+  //   the run slot is released since `isBusy()` only reads "mounted".
+  //   `resumePanel()` mirrors it on the way back in.
+  useEffect(() => {
+    if (host.getPanelState().phase === "suspended") host.resumePanel();
+    return () => {
+      if (host.getPanelState().phase === "mounted") host.suspendPanel();
+      else host.reset();
+    };
+  }, [host]);
 
   const state = useSyncExternalStore(
     useCallback((cb) => host.subscribe(cb), [host]),
     () => host.getState(),
   );
 
+  // land-placement-design.md Sec.3.6 (slice-4b item 3): the panel lifecycle.
+  // `panelState` is read the same way `state` (RunState) is above, a
+  // useSyncExternalStore subscription to the same `ToolHost`, which already
+  // owns both.
+  const panelState = useSyncExternalStore(
+    useCallback((cb) => host.subscribePanel(cb), [host]),
+    () => host.getPanelState(),
+  );
+  const landPlacementModel = useLandPlacementModel();
+
+  // `PanelState.dirty` (host.ts) mirrors the model store's own `dirty`.
+  // this is the ONE place they are kept in sync, so the tool-switch confirm
+  // below can read `host`'s copy without depending on the model store
+  // directly, matching `setPanelDirty`'s own doc: "the panel's own React
+  // state calls this to keep PanelState.dirty in sync."
+  useEffect(() => {
+    if (panelState.phase !== "unmounted") host.setPanelDirty(landPlacementModel.dirty);
+  }, [host, panelState.phase, landPlacementModel.dirty]);
+
+  // Any unmount (this tool switch's own confirm+unmount below, OR
+  // `documentReplaced()` firing from the noteOpenDocument effect a few lines
+  // down) clears the model here, ONE place, so a document replace does not
+  // need its own duplicate of this logic (Sec.3.6(c): "unmount, discard").
+  useEffect(() => {
+    if (panelState.phase === "unmounted") landPlacementModel.clear();
+  }, [panelState.phase, landPlacementModel]);
+
   const tool = tools.find((t) => t.manifest.id === selectedId);
 
-  // Sec.5: a run is pinned to a document, and the document can be REPLACED —
+  // Sec.5: a run is pinned to a document, and the document can be REPLACED,
   // decided in ToolHost.noteOpenDocument, not here, so the transition that
   // matters (one open file replaced by a different one, which a `hasFile`
   // boolean cannot see) is covered by that method's own tests rather than by
@@ -88,14 +147,32 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
     host.noteOpenDocument(filePath);
   }, [filePath, host]);
 
-  // Selecting a different tool resets the form to that manifest's own defaults,
-  // and cancels an active run after a confirm (one run at a time, app-wide).
+  const [panelBlockedMessage, setPanelBlockedMessage] = useState<string | null>(null);
+
+  // Selecting a different tool resets the form to that manifest's own
+  // defaults. Sec.3.6's table: leaving a MOUNTED panel confirms only when it
+  // is `dirty` (not unconditionally, the way a report-tool run does) and
+  // then unmounts it; leaving a running/cancelling report tool keeps the
+  // old unconditional confirm. Selecting the panel tool itself mounts it.
   const selectTool = (id: string) => {
-    if (host.isBusy() && !window.confirm("A tool is still running. Switching tools cancels it. Continue?")) return;
-    if (host.isBusy()) host.cancel();
+    setPanelBlockedMessage(null);
+    if (panelState.phase === "mounted") {
+      if (landPlacementModel.dirty && !window.confirm("Land Placement has unsaved changes. Switching tools discards them. Continue?")) return;
+      host.unmountPanel();
+    } else if (host.isBusy() && !window.confirm("A tool is still running. Switching tools cancels it. Continue?")) {
+      return;
+    } else if (host.isBusy()) {
+      host.cancel();
+    }
     host.reset();
     setSelectedId(id);
     setSubmitted({});
+
+    const target = tools.find((t) => t.manifest.id === id);
+    if (target?.kind === "panel") {
+      const mounted = host.mountPanel(target.manifest.id, filePath);
+      if (!mounted) setPanelBlockedMessage("Another tool is still running — cancel it before opening Land Placement.");
+    }
   };
 
   const setParam = (key: string, value: ParamValue) => setSubmitted((prev) => ({ ...prev, [key]: value }));
@@ -105,7 +182,7 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
 
     // Sec.4.3 pin 5: the source-equality gate is FALSE for the whole debounce
     // window after every keystroke, so a Run pressed just after typing would do
-    // nothing with no affordance — the shape of bug users report as "the button
+    // nothing with no affordance, the shape of bug users report as "the button
     // is broken". Push a reparse first; the effect below starts the run when the
     // matching parse lands.
     if (parseResult.source !== source) {
@@ -118,37 +195,36 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
 
   const [pendingRun, setPendingRun] = useState(false);
 
+  // Sec.3.3: read-only, granted only under `read-preview-view` (buildToolContext
+  // gates it the same way as every other field). Both providers sit above this
+  // component in App.tsx, so they are always available to read here regardless
+  // of whether the currently-selected tool actually declares the capability.
+  const previewView = usePreviewView();
+  const previewCut = usePreviewCut();
+
   const startRun = useCallback(() => {
     if (!tool || !parseResult) return;
     const { params } = resolveParams(tool.manifest.params, submitted);
-    const granted = effectiveCapabilities(tool.manifest.capabilities);
 
     // Sec.6: capabilities gate what the host PUTS IN the context, even for
     // trusted built-ins. An undeclared field is simply absent, which keeps the
-    // contract honest before v1.1 makes it a trust boundary.
-    const tiles = resolveMapDim(generation.mapSize, lang.predefinedLabels ?? []) ?? 0;
-    const ctx: ToolContext<typeof parseResult> = {
-      apiVersion: TOOLS_API_VERSION,
+    // contract honest before v1.1 makes it a trust boundary. Pulled out to a
+    // pure function (buildToolContext.ts). See its own doc comment.
+    const ctx = buildToolContext({
+      capabilities: tool.manifest.capabilities,
       params,
-      ...(granted.has("read-source") ? { source: parseResult.source } : {}),
-      ...(granted.has("read-ast") ? { parseResult } : {}),
-      ...(granted.has("read-generation-settings")
-        ? {
-            settings: {
-              playerCount: generation.playerCount,
-              mapSize: { name: generation.mapSize, tiles },
-              teams: [...generation.teams],
-            },
-          }
-        : {}),
-      ...(granted.has("read-reference") ? { referenceData: { language: lang, gameConstants } } : {}),
-    };
+      parseResult,
+      generation: { playerCount: generation.playerCount, mapSize: generation.mapSize, teams: generation.teams },
+      lang,
+      gameConstants,
+      previewView: { seed: previewView.seed, cutOffset: previewCut.cutOffset },
+    });
     // Sec.4.3, Sec.7.2 item 3: the runner is picked per run, at the call
     // site, so `host` itself stays one shared instance with an unchanged
-    // `useMemo` — see ToolHost.start's own doc comment for why that matters.
+    // `useMemo`. See ToolHost.start's own doc comment for why that matters.
     const runner = WORKER_RUNTIME_TOOL_IDS.has(tool.manifest.id) ? workerRunner : inProcessRunner;
     host.start(tool, ctx, parseResult.source, runner, { playerCount: generation.playerCount, mapSize: generation.mapSize }, filePath);
-  }, [tool, parseResult, submitted, generation, host, filePath]);
+  }, [tool, parseResult, submitted, generation, host, filePath, previewView.seed, previewCut.cutOffset]);
 
   useEffect(() => {
     if (pendingRun && parseResult && parseResult.source === source) {
@@ -177,7 +253,7 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
 
   if (filePath === null) {
     return (
-      <div className={styles.pane}>
+      <div className={styles.pane} data-tutorial-anchor="tools.pane">
         <p className={styles.empty}>Open a script to run a tool against it.</p>
       </div>
     );
@@ -185,14 +261,59 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
 
   const busy = state.phase === "running" || state.phase === "cancelling";
   const submittable = tool ? paramsAreSubmittable(tool.manifest.params, submitted) : false;
-  // Sec.5.2 — keyed on the OUTPUT's own tool (state.toolId), not the
+  // Sec.5.2, keyed on the OUTPUT's own tool (state.toolId), not the
   // currently selected one: selecting a different tool resets state first, so
   // the two agree while a result is showing, but state.toolId is what the
   // output actually belongs to.
   const outputOwnsSettingsHeader = tools.find((t) => t.manifest.id === state.toolId)?.manifest.ownsSettingsHeader === true;
 
+  // Sec.3.2/Sec.3.6: a panel-kind tool renders its own component instead of
+  // the report-tool run/output UI below. It has no `run()`, no params form
+  // and no Apply-through-ToolHost path (Sec.3.6(a): a panel computes and
+  // applies its own edits synchronously). `component` is `unknown` in the
+  // registry by design (registry.ts's own comment: "no panel component
+  // exists yet... this module must not import React to type it"); this is
+  // the one call site that narrows it back to a real component type.
+  if (tool?.kind === "panel" && panelState.phase === "mounted") {
+    const PanelComponent = tool.component as typeof LandPlacementPanel;
+    return (
+      <div className={styles.pane} data-tutorial-anchor="tools.pane">
+        <div className={styles.controls}>
+          <HelpTip id="tools.select">
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="tool-select">
+                Tool
+              </label>
+              <select id="tool-select" className={styles.select} value={selectedId} onChange={(e) => selectTool(e.target.value)}>
+                {tools.map((t) => (
+                  <option key={t.manifest.id} value={t.manifest.id}>
+                    {t.manifest.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </HelpTip>
+        </div>
+        {parseResult ? (
+          <PanelComponent
+            parseResult={parseResult}
+            source={source}
+            reparseNow={reparseNow}
+            applyTextEdits={applyTextEdits}
+            onJumpToOffset={onJumpToOffset}
+            playerCount={generation.playerCount}
+            mapSize={generation.mapSize}
+            lang={lang}
+          />
+        ) : (
+          <p className={styles.empty}>Waiting for a parse…</p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.pane}>
+    <div className={styles.pane} data-tutorial-anchor="tools.pane">
       <div className={styles.controls}>
         <HelpTip id="tools.select">
           <div className={styles.field}>
@@ -213,6 +334,8 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
             </select>
           </div>
         </HelpTip>
+
+        {panelBlockedMessage && <p className={styles.staleNote}>{panelBlockedMessage}</p>}
 
         {busy ? (
           <HelpTip id="tools.cancel">
@@ -286,11 +409,11 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
                 instead of silently wrong: change the player count mid-run and
                 the pane would otherwise show results for the old value, labelled
                 with nothing. Read from `state.settingsSnapshot` (the settings
-                THIS run was started at), never the live `generation` context —
-                the live context changes after Run and would re-label a finished
+                THIS run was started at), never the live `generation` context.
+                The live context changes after Run and would re-label a finished
                 report with a setting it was never run at (docs/known-issues.md
                 BUG-014). Suppressed for a tool that declares its own header
-                (ownsSettingsHeader) — for a multi-player-count report this echo
+                (ownsSettingsHeader), for a multi-player-count report this echo
                 would duplicate the tool's own header and can only name one
                 player count anyway. */}
             {!outputOwnsSettingsHeader && state.settingsSnapshot && (
@@ -439,7 +562,7 @@ function Block({
       );
     case "table": {
       // Beyond the cap the pane says how many are hidden rather than truncating
-      // silently — a table that quietly stops is indistinguishable from a tool
+      // silently. A table that quietly stops is indistinguishable from a tool
       // that found fewer results.
       const { rows, hidden } = tableRowsToRender(block.rows);
       return (

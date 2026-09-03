@@ -69,7 +69,7 @@ export function ThemeSettings() {
   } = useThemeSettings();
 
   // Local-only: the inline "name this theme" field is UI state, not
-  // something ThemeSettingsContext has any reason to hold — it exists for
+  // something ThemeSettingsContext has any reason to hold, it exists for
   // exactly as long as this form is open.
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const [saveAsName, setSaveAsName] = useState("");
@@ -123,7 +123,7 @@ export function ThemeSettings() {
                 </optgroup>
               )}
             </select>
-            {isDirty && <span className={styles.dirtyNote}>Unsaved changes — previewed live, not yet saved</span>}
+            {isDirty && <span className={styles.dirtyNote}>Unsaved changes, previewed live, not yet saved</span>}
           </div>
 
           <div className={styles.actionRow}>
@@ -196,7 +196,7 @@ export function ThemeSettings() {
             )}
           </div>
           <p className={settingsStyles.hint}>
-            Light and Dark ship with the app and can&apos;t be edited in place — change a colour below and Save as
+            Light and Dark ship with the app and can&apos;t be edited in place. Change a colour below and Save as
             new theme to keep it. A theme you saved can be updated, renamed or deleted here.
           </p>
         </fieldset>

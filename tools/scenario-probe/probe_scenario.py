@@ -54,6 +54,18 @@ def load_constant_names() -> tuple[dict[int, str], dict[int, str]]:
     the scenario file and random_map.def are entirely separate code paths, so
     agreement between them is real corroboration of the Phase 4.0 extraction.
     Unknown ids print as bare numbers rather than guesses.
+
+    ONLY "terrain" and "object" rows go into the two lookups. `constId` is
+    reused across at least seven unrelated namespaces in this file (terrain,
+    object, attribute, terrainAlias, objectAlias, civilization, mapType), and
+    a plain `else objects` used to catch every one of those in the object
+    bucket. The 2026-08-30 `--misc-constants` pass appends terrainAlias /
+    objectAlias / civilization / mapType rows after the real object rows, so a
+    dict keyed only by id let them silently overwrite GOLD/STONE/FORAGE/DEER/
+    WILD_BOAR's names with unrelated ones sharing the same numeric id
+    (RMSTEST_64's read: GOLD (66) printed as "RICE_FARM_SEEDS", a terrainAlias
+    row). Never widen this beyond the two categories this script actually
+    reports on.
     """
     if not GAME_CONSTANTS.is_file():
         return {}, {}
@@ -61,9 +73,11 @@ def load_constant_names() -> tuple[dict[int, str], dict[int, str]]:
     terrains, objects = {}, {}
     for c in data.get("constants", []):
         cid = c.get("constId")
-        if cid is None:
+        category = c.get("category")
+        name = c.get("rmsConstant")
+        if cid is None or not name or category not in ("terrain", "object"):
             continue
-        (terrains if c.get("category") == "terrain" else objects)[cid] = c["rmsConstant"]
+        (terrains if category == "terrain" else objects)[cid] = name
     return terrains, objects
 
 

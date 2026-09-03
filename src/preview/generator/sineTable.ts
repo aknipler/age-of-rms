@@ -1,10 +1,10 @@
-// Precomputed fixed-point sine/cosine table — preview-design.md Sec.8.
+// Precomputed fixed-point sine/cosine table, preview-design.md Sec.8.
 //
 // The generator must never call Math.sin/Math.cos at runtime (ECMAScript
 // leaves their last bits implementation-defined, which would break the
 // byte-for-byte-across-engines determinism goal 5 is built on). This table
 // is computed OFFLINE, once, by scripts/gen-sine-table.mjs and checked in as
-// literal data — regenerating it never changes its values, since the script
+// literal data; regenerating it never changes its values, since the script
 // is deterministic and its output is what "checked in as data" means.
 //
 // SINE_TABLE_SIZE entries span one full turn (index 0 = angle 0). Index a

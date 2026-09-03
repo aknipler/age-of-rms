@@ -1,14 +1,14 @@
 /**
  * The Code tab's "toggle command layout" hotkey: flip one command's block
  * between one-line and one-attribute-per-line, or every command touched by
- * a selection, each independently — the layout it lands on is the OPPOSITE
+ * a selection, each independently. The layout it lands on is the OPPOSITE
  * of whatever it already is, not a fixed target shape.
  *
  * Deliberately built on the Script Formatter's own engine
  * (`src/tools/builtin/formatter`) rather than a second AST-to-text writer:
  * that engine is the one place in this app allowed to re-lay-out code at all
  * (CLAUDE.md's "never re-print code" hard rule, and `breakdown-design.md:63`
- * names it the sanctioned exception), and it is already token-verified —
+ * names it the sanctioned exception), and it is already token-verified,
  * re-tokenises its own output and refuses to emit edits it cannot prove kept
  * every token. Reusing it here means this hotkey inherits that guarantee for
  * free instead of re-earning it.
@@ -18,13 +18,13 @@
  * command called `create_object` in the document, not one occurrence of it),
  * so a plain `formatScript` call can't target ONE occurrence. Instead, run it
  * once per targeted node with that node's own name forced to the opposite of
- * its current shape — every OTHER node sharing that name is either already
+ * its current shape. Every OTHER node sharing that name is either already
  * in its target shape (no-op) or is a different occurrence this call is not
  * for, and since every other option stays at its `"preserve"` default,
  * nothing about the rest of the document is asked to change. That leaves
  * exactly one node different between `parse.source` and the run's output,
  * found by trimming their common prefix and suffix (`trimmedEdit`) rather
- * than by filtering `formatScript`'s own edit list — `GapWriter` coalesces
+ * than by filtering `formatScript`'s own edit list. `GapWriter` coalesces
  * an edit across any short unchanged run between two real changes, so one
  * node's edit can read as spanning into a sibling's untouched text even
  * though nothing there differs; diffing the two full strings sidesteps that
@@ -41,7 +41,7 @@ export interface ToggleLayoutResult {
   /** Commands whose layout actually flipped. */
   toggledCount: number;
   /**
-   * Commands the selection touched but could not be flipped — a block with a
+   * Commands the selection touched but could not be flipped. A block with a
    * nested `if`/`start_random`/command can't safely go on one line (the
    * formatter's own `inline`/`compact` policies refuse to create that shape
    * too, for the same readability reason), and an unclosed block or one with
@@ -52,7 +52,7 @@ export interface ToggleLayoutResult {
   skippedCount: number;
 }
 
-/** Every `CommandNode` with a block, at any depth — descending into `if`/`start_random` branches and shared blocks the same way the block's own contents would render, so a selection spanning a conditional's body still finds the commands inside it. */
+/** Every `CommandNode` with a block, at any depth, descending into `if`/`start_random` branches and shared blocks the same way the block's own contents would render, so a selection spanning a conditional's body still finds the commands inside it. */
 function collectCommandNodes(items: readonly Item[], out: CommandNode[]): void {
   for (const item of items) {
     switch (item.kind) {
@@ -101,7 +101,7 @@ function contains(outer: Span, inner: Span): boolean {
 
 /**
  * The minimal edit that turns `original` into `formatted`, found by trimming
- * their common prefix and suffix — a two-pointer diff, not a general LCS,
+ * their common prefix and suffix, a two-pointer diff, not a general LCS,
  * which is exact here because exactly one region differs (see the file
  * header). `null` means the two strings are identical: the requested shape
  * change was not achievable (an unclosed block, or a multi-line comment
@@ -124,7 +124,7 @@ function trimmedEdit(original: string, formatted: string): SourceEdit | null {
   };
 }
 
-/** Same restriction the formatter's own `inline`/`compact` policies apply: don't CREATE a one-liner out of a block holding a conditional or a nested command — expanding has no such restriction, any block can always be spread out. */
+/** Same restriction the formatter's own `inline`/`compact` policies apply: don't CREATE a one-liner out of a block holding a conditional or a nested command. Expanding has no such restriction, any block can always be spread out. */
 function hasNonAttributeItems(node: CommandNode): boolean {
   return node.block!.items.some((item) => item.kind !== "attribute");
 }
@@ -142,8 +142,8 @@ function resolvedName(parse: ParseResult, node: CommandNode): string {
 
 /**
  * The nodes a selection actually targets: every command whose span overlaps
- * `range`, minus any that sits INSIDE another matched command's own span —
- * real RMS scripts don't nest a full command inside another command's block,
+ * `range`, minus any that sits INSIDE another matched command's own span.
+ * Real RMS scripts don't nest a full command inside another command's block,
  * but the parser's own types allow it, and toggling both an outer block and
  * something inside it in the same pass could ask for two edits over the same
  * text (the outer's inline/expand decision governs everything inside it).
@@ -172,7 +172,7 @@ export function toggleCommandLayoutInRange(parse: ParseResult, range: Span): Tog
   for (const node of nodes) {
     const isInline = isSourceInline(parse, node);
     // The unsafe direction is EXPANDED -> INLINE (collapsing something with a
-    // nested if/random/command onto one line) — going the other way is
+    // nested if/random/command onto one line), going the other way is
     // always fine, any block can be spread out.
     if (!isInline && hasNonAttributeItems(node)) {
       skippedCount++;
@@ -191,7 +191,7 @@ export function toggleCommandLayoutInRange(parse: ParseResult, range: Span): Tog
     }
     const edit = trimmedEdit(parse.source, result.text);
     if (edit === null) {
-      // Nothing the formatter could change here — an unclosed block or a
+      // Nothing the formatter could change here, an unclosed block or a
       // multi-line comment inside it, which `canInline` refuses regardless
       // of the override. Not an error; the node just can't flip.
       skippedCount++;
@@ -199,7 +199,7 @@ export function toggleCommandLayoutInRange(parse: ParseResult, range: Span): Tog
     }
     if (edit.start < node.span.start || edit.end > node.span.end) {
       // The formatter's job outside this node's own shape is still "keep
-      // this INDENTED CONSISTENTLY", not "keep byte-identical" — an already-
+      // this INDENTED CONSISTENTLY", not "keep byte-identical". An already-
       // expanded sibling elsewhere whose actual indentation happens not to
       // match what the shared indent unit computes to gets normalized as a
       // side effect of ANY run, whether or not that sibling's own shape
@@ -208,7 +208,7 @@ export function toggleCommandLayoutInRange(parse: ParseResult, range: Span): Tog
       // file). A hotkey whose whole promise is "only the command(s) you
       // targeted" cannot ship an edit that reaches past them, so it declines
       // rather than silently reformatting something the user never asked
-      // about — the tightest possible diff (`trimmedEdit`) already proves
+      // about. The tightest possible diff (`trimmedEdit`) already proves
       // there was nowhere narrower to land.
       skippedCount++;
       continue;

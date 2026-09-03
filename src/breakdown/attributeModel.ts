@@ -1,4 +1,4 @@
-// Pure logic for the Sec.3.3 "all-attributes model" — kept free of React so
+// Pure logic for the Sec.3.3 "all-attributes model", kept free of React so
 // it's testable the same way as the parser's own pure modules, and so
 // CommandCard just renders what this computes.
 import type { AttributeNode, CommandNode, Item } from "../parser/types";
@@ -11,7 +11,7 @@ export interface AttributeSlot {
    * All AttributeNodes present in the block for this name, in source
    * order. 0 = absent (faint add-row), 1 = present-once (filled row),
    * 2+ = the ground-truth rule: always a list, regardless of
-   * `def.repeatable` — presence in the source is ground truth, the flag
+   * `def.repeatable`. Presence in the source is ground truth, the flag
    * only gates whether "add another" is offered (docs/breakdown-design.md
    * Sec.3.3, rev 2's load-bearing fix).
    */
@@ -25,7 +25,7 @@ export interface CommandBreakdown {
   knownSlots: AttributeSlot[];
   /**
    * Everything else in the block, source order: known-but-unlisted
-   * attributes (resolved def, not in def.attributes[] — normal typed row,
+   * attributes (resolved def, not in def.attributes[], normal typed row,
    * no badge), and non-attribute items (nested conditionals, directives,
    * raw runs, wrong-context commands).
    */
@@ -40,7 +40,7 @@ function isFlagDef(def: AttributeDef): boolean {
 /**
  * Builds the all-attributes breakdown for a command with a resolved
  * block-kind def and a block. Commands with no def (unknown, block-less)
- * have no slots to derive — callers should fall back to generic rendering.
+ * have no slots to derive. Callers should fall back to generic rendering.
  */
 export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex): CommandBreakdown {
   const attributeNames = command.def?.attributes ?? [];

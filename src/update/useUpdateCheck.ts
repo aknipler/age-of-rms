@@ -33,7 +33,7 @@ export function useUpdateCheck(): {
   const [state, setState] = useState<UpdateState>({ status: "idle" });
 
   // The handle used to download and install. Held in a ref, not state, because
-  // nothing renders it — putting it in state would schedule a re-render every
+  // nothing renders it, putting it in state would schedule a re-render every
   // time it changed, for a value no JSX reads.
   const updateRef = useRef<Update | null>(null);
 

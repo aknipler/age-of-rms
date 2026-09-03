@@ -1,6 +1,6 @@
 // The app's themeable surface: a fixed set of CSS custom properties every
 // stylesheet reads through `var(--token-name)` instead of a literal colour.
-// Pure and React/Tauri-free for the same reason hotkeys.ts is — the token
+// Pure and React/Tauri-free for the same reason hotkeys.ts is, the token
 // list, the two built-in palettes and the light/dark <-> custom persistence
 // shape are all ordinary data, testable without mounting anything.
 
@@ -39,7 +39,7 @@ export type ThemeTokenId =
 export type ThemeTokens = Record<ThemeTokenId, string>;
 
 /**
- * UI-only metadata — grouping and labels belong here, not mixed into the
+ * UI-only metadata, grouping and labels belong here, not mixed into the
  * palettes below, same split as HotkeysSettings.tsx's `HOTKEY_ROWS` next to
  * hotkeys.ts's `DEFAULT_HOTKEYS`. `kind` picks the input control: a colour
  * swatch or a plain text field (only `fontMono` today).
@@ -192,7 +192,7 @@ export function isBuiltInThemeId(id: string): id is BuiltInThemeId {
   return id === "light" || id === "dark";
 }
 
-/** A user-saved theme — a name plus a full token set, never a diff against a built-in. */
+/** A user-saved theme, a name plus a full token set, never a diff against a built-in. */
 export interface CustomTheme {
   id: string;
   name: string;
@@ -207,7 +207,7 @@ export const THEME_STORE_KEYS = {
 export const DEFAULT_ACTIVE_THEME_ID: string = "light";
 
 /**
- * Fills in any token missing or non-string from a value read off disk —
+ * Fills in any token missing or non-string from a value read off disk,
  * settings.json is user-editable and a saved theme predating a future token
  * addition must not crash or silently lose the rest of its palette. `fallback`
  * is normally `DEFAULT_LIGHT_THEME`, itself guaranteed complete.
@@ -251,7 +251,7 @@ function camelToKebab(id: string): string {
   return id.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
-/** The one place that writes theme tokens onto the page — every stylesheet reads them back via `var(--token-name)`. */
+/** The one place that writes theme tokens onto the page, every stylesheet reads them back via `var(--token-name)`. */
 export function applyThemeTokens(tokens: ThemeTokens): void {
   const root = document.documentElement.style;
   for (const id of THEME_TOKEN_IDS) {
@@ -263,7 +263,7 @@ export function themeTokensEqual(a: ThemeTokens, b: ThemeTokens): boolean {
   return THEME_TOKEN_IDS.every((id) => a[id] === b[id]);
 }
 
-/** Not crypto-strength — a local id for a settings.json array entry, not a security token. */
+/** Not crypto-strength, a local id for a settings.json array entry, not a security token. */
 export function generateThemeId(): string {
   return `theme-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

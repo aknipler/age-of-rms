@@ -91,7 +91,7 @@ describe("MonteCarloAggregate — CommandReport folding", () => {
 describe("Sec.8 item 3 — the partially-present case, on the CORPUS rather than hand-built", () => {
   // The item's own sentence is "a CORPUS case on one of those maps, not a
   // hand-built one", and the first implementation answered it with two
-  // `addGeneration` calls and a literal report (kept above — it pins the sum
+  // `addGeneration` calls and a literal report (kept above, it pins the sum
   // arithmetic, which is the other half of the item). `sample.rms` is
   // TRACKED, so this runs on a clone; at the defaults it carries 2 rows that
   // appear in some runs of a batch and not others, and the whole point of
@@ -189,7 +189,7 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     // key whose text interpolates a per-run number re-contributed its span
     // once per run. At the defaults (60 generations) that read `count = 58`
     // for ONE place on `AK_Namatjira.rms`, with a 58-row table beside it.
-    // The fixture carries the SAME span deliberately — without it the
+    // The fixture carries the SAME span deliberately. Without it the
     // concatenation is invisible, which is why the two older tests passed.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
@@ -224,7 +224,7 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     //
     // Uses `landOverwrittenBeforeGrowth` rather than the beach note, which
     // the checker no longer passes through at all (see
-    // NOTE_KEYS_NOT_PASSED_THROUGH) — a suppressed key would make this
+    // NOTE_KEYS_NOT_PASSED_THROUGH). A suppressed key would make this
     // fixture green for the wrong reason.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
@@ -244,7 +244,7 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
 
   it("a spanless group's count is its distinct occurrences, and never 0 for a note that occurred", () => {
     // The aggregate's only counter used to be the span map, so a run-level
-    // note rendered as "no teams in this lobby (0 places)" — a true note
+    // note rendered as "no teams in this lobby (0 places)", a true note
     // with a false number welded to it, on most of the corpus.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
@@ -252,7 +252,7 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
     expect(groups[0].spans).toEqual([]);
-    // 20 runs, ONE occurrence — the count must not track the run count either.
+    // 20 runs, ONE occurrence, the count must not track the run count either.
     expect(groups[0].count).toBe(1);
   });
 

@@ -25,14 +25,14 @@ import {
 
 /**
  * Its own context rather than a field on AppSettingsContext, same split as
- * HotkeySettingsContext — what a setting is ABOUT decides which context
+ * HotkeySettingsContext, what a setting is ABOUT decides which context
  * holds it. Also the one context that reaches outside React entirely: every
  * change here writes CSS custom properties straight onto `documentElement`
  * (theme.ts's `applyThemeTokens`), because that is what every component
  * stylesheet reads through `var(--token-name)`, including ones with no React
  * subscriber to this context at all.
  *
- * `draftTokens` is what's LIVE — the Theme settings tab edits it directly
+ * `draftTokens` is what's LIVE, the Theme settings tab edits it directly
  * (`setDraftToken`) so a colour change previews instantly, app-wide, before
  * it is saved anywhere. Switching `activeThemeId` resets the draft to that
  * theme's saved tokens, so unsaved edits are abandoned on switch rather than
@@ -52,7 +52,7 @@ export interface ThemeSettingsValue {
   resetDraft: () => void;
   /** Persists the current draft as a brand new custom theme and makes it active. */
   saveAsNewTheme: (name: string) => void;
-  /** Persists the current draft into the active theme — only meaningful when `isActiveThemeCustom`. */
+  /** Persists the current draft into the active theme, only meaningful when `isActiveThemeCustom`. */
   updateActiveTheme: () => void;
   renameCustomTheme: (id: string, name: string) => void;
   deleteCustomTheme: (id: string) => void;
@@ -69,7 +69,7 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<Store | null>(null);
 
   // Guards the async settle against an unmount between load starting and
-  // finishing — see AppSettingsContext.tsx for why StrictMode's dev
+  // finishing; see AppSettingsContext.tsx for why StrictMode's dev
   // double-invoke makes this necessary rather than defensive.
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +94,7 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // The one effect that touches the DOM — every render of `draftTokens`
+  // The one effect that touches the DOM, every render of `draftTokens`
   // (from a theme switch, a live edit, or the initial load above) re-applies
   // it. Cheap: it's 26 `style.setProperty` calls, not a re-render of
   // anything React owns.
@@ -129,7 +129,7 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
       void store?.set(THEME_STORE_KEYS.customThemes, nextThemes);
       setActiveThemeIdState(next.id);
       void store?.set(THEME_STORE_KEYS.activeThemeId, next.id);
-      // draftTokens already IS next.tokens — no reset needed, the new theme opens showing exactly what was just saved.
+      // draftTokens already IS next.tokens, no reset needed, the new theme opens showing exactly what was just saved.
     },
     [customThemes, draftTokens, store],
   );

@@ -1,6 +1,6 @@
 // Sec.12 fuzz-lite: random token soup must never throw and must satisfy the
 // coverage/span-fidelity properties; plus the adversarial deep-nesting case
-// (spec Sec.5.0). Seeded PRNG — failures reproduce.
+// (spec Sec.5.0). Seeded PRNG, failures reproduce.
 
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
@@ -8,7 +8,7 @@ import { checkProperties, loadLanguage } from "./testUtils";
 
 const lang = loadLanguage();
 
-/** Mulberry32 — tiny deterministic PRNG. */
+/** Mulberry32, a tiny deterministic PRNG. */
 function prng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {

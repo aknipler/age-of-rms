@@ -1,4 +1,4 @@
-/* Layout only — colours come from SettingsDialog.module.css's shared
+/* Layout only, colours come from SettingsDialog.module.css's shared
    .fieldset/.legend/.hint, which the app-wide theme sweep already routes
    through var(--token-name). */
 

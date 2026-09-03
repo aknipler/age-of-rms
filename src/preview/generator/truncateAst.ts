@@ -1,16 +1,16 @@
-// truncateAst() — docs/preview-design.md Sec.5's Current/Final cut point.
+// truncateAst(), docs/preview-design.md Sec.5's Current/Final cut point.
 // PURE, same rule as the rest of src/preview/generator/**: no React, no
 // Monaco, no Tauri, so it runs in the worker and in plain-Node Vitest.
 //
 // WHAT "CURRENT" MEANS, because two revisions of the spec got this wrong
 // before it was pinned (Sec.5, DECIDED 2026-08-01). Current is NOT a stage
 // snapshot. It is "generate as if everything after this point were commented
-// out", which is a PREFIX OF THE SCRIPT, not a point in the pipeline — so it
+// out", which is a PREFIX OF THE SCRIPT, not a point in the pipeline, so it
 // needs its own generation run over a truncated script, and both toggle
 // positions run all of S0-S6.
 //
 // THE CUT IS A CHARACTER OFFSET, NOT A LINE (decided 2026-08-10, and it
-// REPLACES Sec.5's line-granular rule — see this file's `truncateAst` doc for
+// REPLACES Sec.5's line-granular rule. See this file's `truncateAst` doc for
 // what changed and why the old rule was too coarse to be useful).
 //
 // WHY THE TREE IS CUT AND NOT THE TEXT (Sec.5 consequence 2, unchanged and
@@ -24,7 +24,7 @@
 // WHERE THIS LIVES, since Sec.14's file layout predates it: `generator/`
 // rather than beside `worker.ts`, because the eslint purity + determinism
 // gate globs `src/preview/generator/**` and this transforms the same AST the
-// stages consume. It is deliberately NOT called from `index.ts` — that
+// stages consume. It is deliberately NOT called from `index.ts`, that
 // file's own header pins the split ("`truncateAst()` belongs to whoever
 // calls this twice, not here"), so `generatePreview` still takes one parse
 // and knows nothing about Current.
@@ -33,13 +33,13 @@ import type { IfBranch, Item, ParseResult, RandomBranch, SectionNode, Token } fr
 
 /**
  * Re-exported, not defined here. It moved to `src/parser/lineIndex.ts` when
- * the RMS03xx messages started naming a line instead of a character offset —
+ * the RMS03xx messages started naming a line instead of a character offset,
  * the parser needed the same conversion, and two binary searches over the
  * same `lineOffsets` array is the "no parallel model" rule broken over a
  * ten-line function. The export stays on this module because the pin-line UI
  * and this file's own tests already import it from here.
  *
- * Only the UI reads it — the cut itself is an offset. It is what turns a
+ * Only the UI reads it. The cut itself is an offset. It is what turns a
  * pinned offset into the "Pinned line 34" the button prints, so it still has
  * to agree with the gutter exactly.
  */
@@ -50,22 +50,22 @@ export { lineOfOffset } from "../../parser/lineIndex";
  * document's length. `null` means "no cut", and Current then draws the whole
  * script.
  *
- * Sec.5: "The cut point is set explicitly rather than following the caret —
+ * Sec.5: "The cut point is set explicitly rather than following the caret,
  * click a line, click the pin button... Unpinned, Current follows the
  * cursor." The pin wins whenever there is one, and that is the whole
  * precedence rule.
  *
  * Pure and exported for its own tests rather than living inline in
  * `PreviewCutContext`, the same split `sidePanelLayout.ts` already makes
- * against `SidePanelLayoutContext` — both cases here are the kind that only
+ * against `SidePanelLayoutContext`, both cases here are the kind that only
  * ever go wrong once, in the app, with nothing to point at:
  *
  * - `??` and not `||`, because **offset 0 is a real position and a falsy
  *   one**. A pin at the very top of a script under `||` would silently fall
  *   through to the caret and look like a pin button that does not work.
  * - The clamp, because a document can shrink under a pin faster than the pin
- *   can be shifted (the pin follows edits, but a whole-file replacement — an
- *   Open — has nothing to shift through). Clamping to the end keeps a stale
+ *   can be shifted (the pin follows edits, but a whole-file replacement, an
+ *   Open, has nothing to shift through). Clamping to the end keeps a stale
  *   pin meaning "everything" instead of pointing past the text.
  */
 export function resolveCutOffset(
@@ -124,8 +124,8 @@ function truncateItems(items: Item[], ctx: CutContext): Item[] {
 /**
  * The branches of an `if` or a `start_random`, cut at the caret.
  *
- * Generic over both because they are the same shape — a keyword token plus a
- * list of items — and differ only in which field names the keyword. A branch
+ * Generic over both because they are the same shape, a keyword token plus a
+ * list of items, and differ only in which field names the keyword. A branch
  * whose keyword is below the caret has not been written yet and goes; the one
  * the caret is inside keeps the items above it.
  *
@@ -167,7 +167,7 @@ function truncateBranches<B extends { items: Item[] }>(
  *
  * `block.close`, `endif` and `start_random`'s `end` are left pointing at
  * their real tokens even when the items between them are gone. They are
- * facts about the source, which is unchanged — see the span note in
+ * facts about the source, which is unchanged. See the span note in
  * `truncateAst`.
  */
 function truncateItem(item: Item, ctx: CutContext): Item {
@@ -210,14 +210,14 @@ function truncateItem(item: Item, ctx: CutContext): Item {
  * dropped whole.
  *
  * WHAT CHANGED FROM SEC.5, AND WHY (2026-08-10). Sec.5 specified a cut LINE,
- * with "a cursor inside a block includes that whole block" — so a caret three
+ * with "a cursor inside a block includes that whole block", so a caret three
  * attributes into a `create_land` drew the finished land, including the two
  * attributes below the caret that had not been written yet. On a real script
  * that is most of the time: the interesting constructs are blocks, and the
  * whole point of Current is watching one take shape. The cut is now the caret
  * OFFSET and the recursion goes all the way down, so the preview follows the
  * attribute being typed. What survives from the old rule is the part that
- * mattered — the tree is cut, never the text, so what reaches the generator
+ * mattered. The tree is cut, never the text, so what reaches the generator
  * is always a well-formed script.
  *
  * Returns the SAME `parse` object when the cut drops nothing. That identity
@@ -233,7 +233,7 @@ export function truncateAst(parse: ParseResult, cutOffset: number): ParseResult 
   let sectionsChanged = false;
   const sections: SectionNode[] = [];
   for (const section of parse.script.sections) {
-    // A section header below the caret takes its whole section with it — the
+    // A section header below the caret takes its whole section with it. The
     // author has not written that far yet.
     if (section.span.start >= ctx.cut) {
       sectionsChanged = true;
@@ -256,7 +256,7 @@ export function truncateAst(parse: ParseResult, cutOffset: number): ParseResult 
   //
   // Spans first: every span in the truncated tree still points at real text
   // in the real document, which is what `PreviewResult`'s `commandSpan`s are
-  // for — a failure mark the user clicks has to select the line that caused
+  // for. A failure mark the user clicks has to select the line that caused
   // it. Rewriting a block's `close` to its last surviving item would
   // fabricate a document nobody wrote.
   //
@@ -265,7 +265,7 @@ export function truncateAst(parse: ParseResult, cutOffset: number): ParseResult 
   // `#const` inside a block that opens above the caret and closes below it is
   // still in the retained tree, so a positionally-filtered symbol list would
   // disagree with the AST it travels with. Leaving it whole cannot cause that
-  // disagreement, and nothing in the preview reads it — `instantiate.ts`
+  // disagreement, and nothing in the preview reads it. `instantiate.ts`
   // re-derives every `#define`/`#const` from its own walk of `script`
   // (Sec.3, rules 4-6), and `parse.tokens` is the only other field
   // `generatePreview` touches.

@@ -2,14 +2,14 @@
 // constant→display-label map for the section sub-tabs. Zero occurrences of
 // this in reference/data/language.json today, and the spec says a
 // src/breakdown/ constant is fine ("unless a contributor-editable version
-// is wanted, in which case reference/data") — a fixed set of 7 English UI
+// is wanted, in which case reference/data"), a fixed set of 7 English UI
 // labels doesn't need to be contributor-data, so it lives here.
 //
 // Canonical order matches reference/data/language.json's `sections[]`
 // array exactly (verified: PLAYER_SETUP, LAND_GENERATION,
 // ELEVATION_GENERATION, CLIFF_GENERATION, TERRAIN_GENERATION,
 // CONNECTION_GENERATION, OBJECTS_GENERATION). Breakdown-design.md Sec.3.1
-// pins the tab bar to *this* order and these labels — the mockup drew six
+// pins the tab bar to *this* order and these labels, the mockup drew six
 // tabs and conflated Terrain/Connection; the data (and this map) has seven.
 export const SECTION_LABELS: Readonly<Record<string, string>> = {
   PLAYER_SETUP: "Player Setup",
@@ -37,13 +37,13 @@ export function sectionLabel(name: string): string {
 }
 
 /**
- * Fixed display number for the Header tab and each canonical section —
+ * Fixed display number for the Header tab and each canonical section.
  * Tab numbering must be absolute (tied to the section's fixed
  * canonical position), not derived from which tabs happen to render. A
  * missing section (e.g. no <ELEVATION_GENERATION> in the file) still
  * shows an empty tab in its canonical slot (buildSectionTabs always
  * pushes all seven), so in practice numbering never actually shifts
- * today — but deriving it from array position was fragile (correct only
+ * today, but deriving it from array position was fragile (correct only
  * because nothing currently omits a canonical tab) and wrong the moment
  * anything did. This map is the actual fix: numbers come from identity,
  * not position, so the invariant holds even if that ever changes.

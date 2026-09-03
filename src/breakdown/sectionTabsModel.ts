@@ -9,12 +9,12 @@ export interface SectionTab {
   label: string;
   known: boolean;
   /**
-   * Absolute display number — fixed by canonical identity
+   * Absolute display number, fixed by canonical identity
    * (SECTION_NUMBERS: header=0, PLAYER_SETUP=1, ...), NOT by this tab's
    * position in the rendered array, so a missing section never shifts
    * the numbers on the sections after it. Unknown sections (no fixed
    * canonical slot) continue the count after the canonical seven, in
-   * first-appearance order — see buildSectionTabs.
+   * first-appearance order, see buildSectionTabs.
    */
   number: number;
   /** True for the canonical 7 and the Header tab; false for unknown sections (RMS0100). */
@@ -24,7 +24,7 @@ export interface SectionTab {
    * The disjoint source ranges this tab aggregates (a duplicate same-type
    * section tab covers more than one). Problem-badge severity is computed
    * by containment against these, never by min/max offset across them
-   * (Sec.3.1 — the ranges may have unrelated code between them).
+   * (Sec.3.1, the ranges may have unrelated code between them).
    */
   ranges: Span[];
   /** The concrete SectionNodes this tab aggregates, in source order (for provenance / future add-command targeting). */
@@ -58,7 +58,7 @@ export function buildSectionTabs(script: ScriptNode): SectionTab[] {
   }
 
   // Canonical seven, always shown (data-driven order), even if absent
-  // from this file (empty tab) — the tab set is driven by language.json's
+  // from this file (empty tab), the tab set is driven by language.json's
   // sections[], not by what happens to be present.
   for (const name of CANONICAL_SECTION_ORDER) {
     const secs = byName.get(name) ?? [];
@@ -77,7 +77,7 @@ export function buildSectionTabs(script: ScriptNode): SectionTab[] {
   // Unknown sections (RMS0100), aggregated by raw name, in first-appearance
   // order, after the canonical seven. No fixed canonical slot exists for
   // these (the name is arbitrary, typically a typo), so they continue the
-  // absolute count from 8 upward in that same order — still stable per
+  // absolute count from 8 upward in that same order, still stable per
   // name-and-position within the unknown set, just not tied to a
   // predefined identity the way the canonical seven are.
   let nextUnknownNumber = CANONICAL_SECTION_ORDER.length + 1; // 8
