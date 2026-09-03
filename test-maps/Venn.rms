@@ -1,0 +1,1587 @@
+/* Created by Captain Kniples the Fourth */
+/* For The Garrison 2026 tournament */
+/* Created 2026 August */
+/* This is a 1v1 map only */
+
+
+
+/* **************************** CONTROL CONSTANTS **************************** */
+
+#define REGICIDE
+
+#const RADIUS_PLAYER_LANDS 21
+#const RADIUS_AUX_LANDS 33
+#const ROTATION_PLAYER 0 /* rnd(-10000,10000) */
+
+/* min / max distance between players in degrees */
+#const DIST_BW_PLAYERS 180
+
+
+/* Land attributes */
+#const BASE_SIZE_AUX 5
+#const BASE_SIZE_PLAYER 3
+#const BASE_ELEVATION_AUX 9
+#const BASE_ELEVATION_OUTSIDE 1
+#const LAND_PERCENT_PLAYER 100
+#const DIST_TC_FROM_CENTRE 1
+
+#const MAX_DIST_CENTER_WALLS 29
+#const MAX_DIST_BACK_WALLS 23
+
+
+/* **************************** MATH CONSTANTS **************************** */
+/* ifs only */
+if MAPSIZE_MINI			/* */
+elseif MAPSIZE_TINY		/* 2 */
+elseif MAPSIZE_SMALL		/* 3 */
+elseif MAPSIZE_MEDIUM		/* 4 */
+elseif MAPSIZE_NORMAL		/* 6 */
+elseif MAPSIZE_LARGE		/* 8 */
+elseif MAPSIZE_HUGE		/* */
+elseif MAPSIZE_GIANT		/* */
+elseif MAPSIZE_MASSIVE		/* */
+elseif MAPSIZE_ENORMOUS		/* */
+elseif MAPSIZE_COLOSSAL		/* */
+elseif MAPSIZE_INCREDIBLE	/* */
+elseif MAPSIZE_MONSTROUS	
+elseif MAPSIZE_LUDICROUS	
+else
+endif
+
+/* default sizes */
+if MAPSIZE_MINI			#const MAPSIZE 80 /* */
+elseif MAPSIZE_TINY		#const MAPSIZE 120 /* 2 */
+elseif MAPSIZE_SMALL		#const MAPSIZE 144 /* 3 */
+elseif MAPSIZE_MEDIUM		#const MAPSIZE 168 /* 4 */
+elseif MAPSIZE_NORMAL		#const MAPSIZE 200 /* 6 */
+elseif MAPSIZE_LARGE		#const MAPSIZE 220 /* 8 */
+elseif MAPSIZE_HUGE		#const MAPSIZE 240 /* */
+elseif MAPSIZE_GIANT		#const MAPSIZE 252 /* */
+elseif MAPSIZE_MASSIVE		#const MAPSIZE 276 /* */
+elseif MAPSIZE_ENORMOUS		#const MAPSIZE 300 /* */
+elseif MAPSIZE_COLOSSAL		#const MAPSIZE 320 /* */
+elseif MAPSIZE_INCREDIBLE	#const MAPSIZE 360 /* */
+elseif MAPSIZE_MONSTROUS	#const MAPSIZE 400 
+elseif MAPSIZE_LUDICROUS	#const MAPSIZE 480 
+else				#const MAPSIZE 260 
+endif
+
+/* for area scaling */
+#const MAPSIZE_HALF (MAPSIZE / 2)
+#const MAPAREA (MAPSIZE * MAPSIZE)
+
+
+/* Player 1 land */
+#const DEGREES_P1 ROTATION_PLAYER
+#const R_P1 (DEGREES_P1 % 360 + 360 % 360 * -1 + 180)
+#const S_P1 (R_P1 * 2 + 1 % 2)
+#const P_P1 (180 * S_P1 - R_P1 * R_P1)
+#const D_P1 (40500 - P_P1)
+#const SIN_P1 (S_P1 * 4 * P_P1 / D_P1)
+#const CR_P1 (270 - R_P1 % 360 * -1 + 180)
+#const CS_P1 (CR_P1 * 2 + 1 % 2)
+#const CP_P1 (180 * CS_P1 - CR_P1 * CR_P1)
+#const CD_P1 (40500 - CP_P1)
+#const COS_P1 (CS_P1 * 4 * CP_P1 / CD_P1)
+
+#const X_P1 (RADIUS_PLAYER_LANDS * COS_P1 + 50)
+#const Y_P1 (RADIUS_PLAYER_LANDS * SIN_P1 + 50)
+
+#const X_P1_TC (RADIUS_PLAYER_LANDS + DIST_TC_FROM_CENTRE * COS_P1 + 50)
+#const Y_P1_TC (RADIUS_PLAYER_LANDS + DIST_TC_FROM_CENTRE * SIN_P1 + 50)
+
+/* Player 2 land */
+#const DEGREES_P2 (DIST_BW_PLAYERS + ROTATION_PLAYER)
+/* #const DEGREES_P2 DEG_P2_UPPER_BOUND */
+#const R_P2 (DEGREES_P2 % 360 + 360 % 360 * -1 + 180)
+#const S_P2 (R_P2 * 2 + 1 % 2)
+#const P_P2 (180 * S_P2 - R_P2 * R_P2)
+#const D_P2 (40500 - P_P2)
+#const SIN_P2 (S_P2 * 4 * P_P2 / D_P2)
+#const CR_P2 (270 - R_P2 % 360 * -1 + 180)
+#const CS_P2 (CR_P2 * 2 + 1 % 2)
+#const CP_P2 (180 * CS_P2 - CR_P2 * CR_P2)
+#const CD_P2 (40500 - CP_P2)
+#const COS_P2 (CS_P2 * 4 * CP_P2 / CD_P2)
+
+#const X_P2 (RADIUS_PLAYER_LANDS * COS_P2 + 50)
+#const Y_P2 (RADIUS_PLAYER_LANDS * SIN_P2 + 50)
+
+#const X_P2_TC (RADIUS_PLAYER_LANDS + DIST_TC_FROM_CENTRE * COS_P2 + 50)
+#const Y_P2_TC (RADIUS_PLAYER_LANDS + DIST_TC_FROM_CENTRE * SIN_P2 + 50)
+
+/* Neutral Aux lands */
+#const DEGREES_A1 (DEGREES_P1 + 90)
+#const R_A1 (DEGREES_A1 % 360 + 360 % 360 * -1 + 180)
+#const S_A1 (R_A1 * 2 + 1 % 2)
+#const P_A1 (180 * S_A1 - R_A1 * R_A1)
+#const D_A1 (40500 - P_A1)
+#const SIN_A1 (S_A1 * 4 * P_A1 / D_A1)
+#const CR_A1 (270 - R_A1 % 360 * -1 + 180)
+#const CS_A1 (CR_A1 * 2 + 1 % 2)
+#const CP_A1 (180 * CS_A1 - CR_A1 * CR_A1)
+#const CD_A1 (40500 - CP_A1)
+#const COS_A1 (CS_A1 * 4 * CP_A1 / CD_A1)
+/* Open field */
+#const X_A1 (RADIUS_AUX_LANDS * COS_A1 + 50)
+#const Y_A1 (RADIUS_AUX_LANDS * SIN_A1 + 50)
+/* Dense forest */
+#const X_A1_DENSE (49 * COS_A1 + 50)
+#const Y_A1_DENSE (49 * SIN_A1 + 50)
+
+#const DEGREES_A2 (DEGREES_A1 + 180)
+#const R_A2 (DEGREES_A2 % 360 + 360 % 360 * -1 + 180)
+#const S_A2 (R_A2 * 2 + 1 % 2)
+#const P_A2 (180 * S_A2 - R_A2 * R_A2)
+#const D_A2 (40500 - P_A2)
+#const SIN_A2 (S_A2 * 4 * P_A2 / D_A2)
+#const CR_A2 (270 - R_A2 % 360 * -1 + 180)
+#const CS_A2 (CR_A2 * 2 + 1 % 2)
+#const CP_A2 (180 * CS_A2 - CR_A2 * CR_A2)
+#const CD_A2 (40500 - CP_A2)
+#const COS_A2 (CS_A2 * 4 * CP_A2 / CD_A2)
+/* Open field */
+#const X_A2 (RADIUS_AUX_LANDS * COS_A2 + 50)
+#const Y_A2 (RADIUS_AUX_LANDS * SIN_A2 + 50)
+/* Dense forest */
+#const X_A2_DENSE (49 * COS_A2 + 50)
+#const Y_A2_DENSE (49 * SIN_A2 + 50)
+
+
+
+/* **************************** OBJECT CONSTANTS **************************** */
+#const ONGRID_PLACEHOLDER 1613
+
+#const HERDABLE_A 1245 /* Pig */
+#const HERDABLE_B 594 /* Sheep */
+#const HUNTABLE 65
+#const LURABLE  48
+#const THEMED_TREE1 1347 /* cyprus */
+#const THEMED_TREE2 1348 /* italian pine */
+#const THEMED_TREE3 1349 /* olive */
+#const PLACEHOLDER_WALL 278
+#const PLACEHOLDER 1543
+#const TREE_REED 1350
+
+
+#const LAZY_MALE 1285 /* FE Flag */
+effect_amount SET_ATTRIBUTE LAZY_MALE ATTR_DEAD_ID 83
+effect_amount SET_ATTRIBUTE LAZY_MALE ATTR_HITPOINTS 0
+
+#const LAZY_FEMALE 851 /* ES Flag */
+effect_amount SET_ATTRIBUTE LAZY_FEMALE ATTR_DEAD_ID 293
+effect_amount SET_ATTRIBUTE LAZY_FEMALE ATTR_HITPOINTS 0
+
+
+      #const ESCALATION_REVEALER 1874
+      #const PH_NEUTRAL_OFF 346 /* Off-Grid Object - only used for gaia objects */
+      #const PH_PLAYER_OFF 647 /* Off-Grid Object - only used for player objects */
+
+/* **************************** TERRAIN CONSTANTS **************************** */
+#const TERR_FOREST_REEDS 92
+#const TERRAIN_FOREST_SPARSE DLC_DRYGRASS
+#const LAYER_FOREST_SPARSE TERR_FOREST_REEDS
+#const TERRAIN_DENSE_FOREST JUNGLE
+#const LAYER_AUX DIRT2
+#const TERRAIN_AUX_TEMP DLC_BOGLAND
+#const TERRAIN_AUX_FOREST_CUT 71 /* leafy underbrush */
+#const TERRAIN_AUX_NOBUILD_EXT DLC_ROCK
+#const TERRAIN_ROCKS 70 /* gravel */
+#const LAYER_BASE GRASS
+#const LAYER_CENTER DIRT
+#const TERRAIN_TC_LOC 41
+#const LAYER_PLAYER GRASS2
+/* #const TERRAIN_PLAYER2 DIRT */
+#const TERRAIN_GAIA DLC_ROCK
+#const TERRAIN_TEMP DIRT3
+#const TERRAIN_PL_WALLS 70 /* Gravel */
+#const TERRAIN_BASE DLC_DIRT4
+#const TERRAIN_PLAYER DIRT3
+#const TERRAIN_CENTER DLC_CRACKED
+
+/* **************************** EFFECTS **************************** */
+
+/* make the herdable under the TC die and only have 70 food */
+/* note that you should NOT place this herdable type for gaia anywhere else */
+effect_amount GAIA_ADD_ATTRIBUTE HERDABLE_A ATTR_STORAGE_VALUE -30	
+effect_amount GAIA_SET_ATTRIBUTE HERDABLE_A ATTR_HITPOINTS 0
+
+effect_amount MOD_RESOURCE AMOUNT_STARTING_WOOD ATTR_ADD -30
+effect_amount MOD_RESOURCE AMOUNT_STARTING_FOOD ATTR_ADD -90
+
+/* #define DEBUGGING */
+
+
+
+
+
+<PLAYER_SETUP>
+direct_placement
+behavior_version 2
+
+<LAND_GENERATION>
+base_terrain LAYER_BASE
+
+
+create_land
+{
+terrain_type                    LAYER_PLAYER 
+base_size                       9
+land_percent                    100
+land_position                   X_P1 Y_P1
+zone 1
+land_id 12
+}
+
+
+create_land
+{
+terrain_type                    LAYER_PLAYER 
+base_size                       9
+land_percent                    100
+land_position                   X_P2 Y_P2
+zone 2
+land_id 12
+}
+
+create_land
+{
+terrain_type                    TERRAIN_TC_LOC
+base_size                       9
+land_percent                    0
+land_position                   X_P1_TC Y_P1_TC
+assign_to_player                2
+set_circular_base
+zone 3
+}
+
+
+create_land
+{
+terrain_type                    TERRAIN_TC_LOC 
+base_size                       9
+land_percent                    0
+land_position                   X_P2_TC Y_P2_TC
+assign_to_player                1
+set_circular_base
+zone 3
+}
+
+
+#const BORDER_AUX_WIDTH 15
+#const BORDER_AUX_LENGTH 31
+create_land
+{
+terrain_type                    TERRAIN_AUX_TEMP 
+base_size                       BASE_SIZE_AUX
+land_percent                    1.3
+land_position                   X_A1 Y_A1
+left_border                     BORDER_AUX_LENGTH
+right_border                    BORDER_AUX_LENGTH
+top_border                      BORDER_AUX_WIDTH
+bottom_border                   BORDER_AUX_WIDTH
+set_circular_base
+other_zone_avoidance_distance   7
+zone 11
+}
+
+create_land
+{
+terrain_type                    TERRAIN_AUX_TEMP 
+base_size                       BASE_SIZE_AUX
+land_percent                    1.3
+land_position                   X_A2 Y_A2
+left_border                     BORDER_AUX_LENGTH
+right_border                    BORDER_AUX_LENGTH
+top_border                      BORDER_AUX_WIDTH
+bottom_border                   BORDER_AUX_WIDTH
+set_circular_base
+other_zone_avoidance_distance   7
+zone 11
+}
+
+create_land
+{
+terrain_type                    TERRAIN_DENSE_FOREST 
+base_size                       7
+land_percent                    8
+land_position                   X_A1_DENSE Y_A1_DENSE
+left_border                     (BORDER_AUX_LENGTH - 1)
+right_border                    (BORDER_AUX_LENGTH - 1)
+border_fuzziness                13
+other_zone_avoidance_distance   4
+clumping_factor                 30
+zone 12
+}
+
+create_land
+{
+terrain_type                    TERRAIN_DENSE_FOREST 
+base_size                       7
+land_percent                    8
+land_position                   X_A2_DENSE Y_A2_DENSE
+left_border                     (BORDER_AUX_LENGTH - 2)
+right_border                    (BORDER_AUX_LENGTH - 2)
+border_fuzziness                13
+other_zone_avoidance_distance   4
+clumping_factor                 30
+zone 12
+}
+
+
+
+create_land
+{
+terrain_type                    TERRAIN_CENTER
+base_size                       1
+land_percent                    100
+land_position                   50 50
+zone 30
+land_id 5
+}
+
+
+
+create_land
+{
+terrain_type                    TERR_FOREST_REEDS
+base_size                       1
+land_percent                    100
+land_position                   99 99
+zone 31
+other_zone_avoidance_distance 7
+}
+
+create_land
+{
+terrain_type                    TERR_FOREST_REEDS
+base_size                       1
+land_percent                    100
+land_position                   0 99
+zone 31
+other_zone_avoidance_distance 7
+}
+
+create_land
+{
+terrain_type                    TERR_FOREST_REEDS
+base_size                       1
+land_percent                    100
+land_position                   99 0
+zone 31
+other_zone_avoidance_distance 7
+}
+create_land
+{
+terrain_type                    TERR_FOREST_REEDS
+base_size                       1
+land_percent                    100
+land_position                   0 0
+zone 31
+other_zone_avoidance_distance 7
+}
+
+
+
+/* For Wall placement, internal */
+create_land { base_size 0 land_position 50 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 49.167 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 49.167 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 48.333 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 48.333 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 47.5 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 72.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 67.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 63.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 62.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 61.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 60.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 60 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 58.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 57.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 56.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 55.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 55 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 54.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 53.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 52.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 51.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 50.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 50 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 assign_to_player 2 }
+create_land { base_size 0 land_position 43.333 49.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 48.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 47.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 46.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 45.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 45 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 44.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 43.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 42.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 41.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 41.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 40 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 39.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 38.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 37.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 36.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 32.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 27.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 47.5 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 48.333 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 48.333 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 49.167 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 49.167 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 50 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 50.833 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 50.833 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 51.667 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 51.667 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 52.5 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 27.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 32.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 36.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 37.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 38.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 39.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 40 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 41.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 42.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 43.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 44.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 45 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 45.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 46.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 47.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 48.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 49.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 50 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 assign_to_player 1 }
+create_land { base_size 0 land_position 56.667 50.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 51.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 52.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 53.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 54.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 55 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 55.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 56.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 57.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 58.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 58.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 60 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 60.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 61.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 62.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 63.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 67.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 72.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 52.5 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 51.667 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 51.667 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 50.833 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+create_land { base_size 0 land_position 50.833 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 2 }
+
+/* Player 1 outside */
+create_land { base_size 0 land_position 48.333 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 47.5 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 42.5 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 41.667 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 40.833 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 40.833 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 40 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 39.167 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 38.333 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 37.5 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 36.667 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 35.833 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 35.833 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 35 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 34.167 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 33.333 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 32.5 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 32.5 72.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 31.667 72.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 31.667 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 30.833 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 30 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 29.167 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 29.167 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 28.333 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 27.5 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 26.667 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25.833 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25.833 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 24.167 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 23.333 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 23.333 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 22.5 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 21.667 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20.833 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20.833 67.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20.833 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 19.167 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 19.167 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 19.167 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 18.333 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 17.5 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 16.667 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 16.667 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15.833 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15.833 63.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15 63.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15 62.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15 61.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 14.167 61.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 14.167 60.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 13.333 60.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 13.333 60 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 13.333 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 12.5 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 58.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 57.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 56.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 56.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 55.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 55 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 54.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 54.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 53.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 52.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 51.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 50.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 50 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 11 }
+create_land { base_size 0 land_position 10 49.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 48.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 47.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 46.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10 45.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 45.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 45 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 44.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 10.833 43.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 43.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 42.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 41.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 11.667 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 12.5 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 13.333 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 13.333 40 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 14.167 40 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 14.167 39.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15 39.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15 38.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15 37.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15.833 37.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 15.833 36.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 16.667 36.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 16.667 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 17.5 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 18.333 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 18.333 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 19.167 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 19.167 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20.833 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 20.833 32.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 21.667 32.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 21.667 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 22.5 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 23.333 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 23.333 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 24.167 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 25.833 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 26.667 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 27.5 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 28.333 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 28.333 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 29.167 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 30 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 30 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 30.833 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 31.667 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 32.5 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 32.5 27.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 33.333 27.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 33.333 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 34.167 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 35 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 35.833 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 35.833 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 36.667 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 37.5 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 38.333 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 39.167 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 40 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 40.833 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 41.667 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 42.5 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 43.333 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 44.167 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 45.833 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 46.667 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 47.5 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 48.333 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+
+/* Player 2 */
+create_land { base_size 0 land_position 51.667 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 52.5 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 57.5 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 58.333 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 59.167 25 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 59.167 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 60 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 60.833 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 61.667 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 62.5 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 63.333 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 64.167 25.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 64.167 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 65 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 65.833 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 66.667 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 67.5 26.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 67.5 27.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 68.333 27.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 68.333 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 69.167 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 70 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 70.833 28.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 70.833 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 71.667 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 72.5 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 73.333 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 74.167 29.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 74.167 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 75 30 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 75 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 75.833 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 76.667 30.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 76.667 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 77.5 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 78.333 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 79.167 31.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 79.167 32.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 79.167 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80.833 33.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80.833 34.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80.833 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 81.667 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 82.5 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 83.333 35 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 83.333 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 84.167 35.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 84.167 36.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85 36.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85 37.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85 38.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85.833 38.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85.833 39.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 86.667 39.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 86.667 40 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 86.667 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 87.5 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 40.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 41.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 42.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 43.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 43.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 44.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 45 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 45.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 45.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 46.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 47.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 48.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 49.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 50 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 land_id 11 }
+create_land { base_size 0 land_position 90 50.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 51.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 52.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 53.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 90 54.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 54.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 55 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 55.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 89.167 56.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 56.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 57.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 58.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 88.333 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 87.5 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 86.667 59.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 86.667 60 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85.833 60 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85.833 60.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85 60.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85 61.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 85 62.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 84.167 62.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 84.167 63.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 83.333 63.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 83.333 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 82.5 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 81.667 64.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 81.667 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80.833 65 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80.833 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80 65.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 80 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 79.167 66.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 79.167 67.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 78.333 67.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 78.333 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 77.5 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 76.667 68.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 76.667 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 75.833 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 75 69.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 75 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 74.167 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 73.333 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 72.5 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 71.667 70 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 71.667 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 70.833 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 70 70.833 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 70 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 69.167 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 68.333 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 67.5 71.667 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 67.5 72.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 66.667 72.5 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 66.667 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 65.833 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 65 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 64.167 73.333 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 64.167 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 63.333 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 62.5 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 61.667 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 60.833 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 60 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 59.167 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 58.333 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 57.5 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 74.167 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 56.667 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55.833 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 55 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 54.167 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 53.333 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 52.5 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+create_land { base_size 0 land_position 51.667 75 terrain_type TERRAIN_PL_WALLS number_of_tiles 0 }
+
+
+/* ************************************* ELEVATION GENERATION ************************************* */
+
+<ELEVATION_GENERATION>
+
+create_elevation (BASE_ELEVATION_OUTSIDE + 1) {
+  base_terrain LAYER_BASE
+  number_of_tiles 40
+  number_of_clumps 22
+  set_scale_by_size
+}
+create_elevation (BASE_ELEVATION_OUTSIDE + 1) {
+  base_terrain TERR_FOREST_REEDS
+  land_percent 13
+  number_of_clumps 100
+  set_scale_by_size
+}
+
+/* ************************************* TERRAIN GENERATION ************************************* */
+<TERRAIN_GENERATION> 
+
+
+
+create_terrain TERR_FOREST_REEDS { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+
+create_terrain LAYER_AUX { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_AUX { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_AUX { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_AUX { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_AUX { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_AUX { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4056 } 
+
+/* Connect the dense forest and the weak forest */
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+create_terrain TERRAIN_DENSE_FOREST { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+
+create_terrain TERR_FOREST_REEDS { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 spacing_to_other_terrain_types 4 } 
+
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_BASE { base_terrain TERRAIN_DENSE_FOREST base_layer LAYER_BASE land_percent 100 number_of_clumps 4056 } 
+
+/* Mask forest */
+create_terrain TERRAIN_FOREST_SPARSE { base_terrain LAYER_FOREST_SPARSE land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+
+
+create_terrain TERRAIN_AUX_TEMP { base_terrain LAYER_PLAYER land_percent 100 number_of_clumps 1 } 
+#const PLAYER_FOREST_PERCENT (1 / 200)
+#const PL_FOREST_NUM_CLUMPS 3
+create_terrain LAYER_FOREST_SPARSE { base_terrain LAYER_PLAYER number_of_tiles (MAPAREA * PLAYER_FOREST_PERCENT / PL_FOREST_NUM_CLUMPS) number_of_clumps 1 spacing_to_other_terrain_types 2 } 
+create_terrain TERRAIN_TEMP { base_terrain LAYER_PLAYER number_of_tiles (MAPAREA * PLAYER_FOREST_PERCENT / PL_FOREST_NUM_CLUMPS) number_of_clumps 1 spacing_to_other_terrain_types 2 spacing_to_specific_terrain LAYER_FOREST_SPARSE 8 } 
+create_terrain LAYER_FOREST_SPARSE { base_terrain TERRAIN_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain TERRAIN_TEMP { base_terrain LAYER_PLAYER number_of_tiles (MAPAREA * PLAYER_FOREST_PERCENT / PL_FOREST_NUM_CLUMPS) number_of_clumps 1 spacing_to_other_terrain_types 2 spacing_to_specific_terrain LAYER_FOREST_SPARSE 8 } 
+create_terrain LAYER_FOREST_SPARSE { base_terrain TERRAIN_TEMP land_percent 100 number_of_clumps 4056 } 
+
+create_terrain LAYER_FOREST_SPARSE { base_terrain TERRAIN_AUX_TEMP number_of_tiles (MAPAREA * PLAYER_FOREST_PERCENT / PL_FOREST_NUM_CLUMPS) number_of_clumps 1 spacing_to_other_terrain_types 2 } 
+create_terrain TERRAIN_TEMP { base_terrain TERRAIN_AUX_TEMP number_of_tiles (MAPAREA * PLAYER_FOREST_PERCENT / PL_FOREST_NUM_CLUMPS) number_of_clumps 1 spacing_to_other_terrain_types 2 spacing_to_specific_terrain LAYER_FOREST_SPARSE 8 } 
+create_terrain LAYER_FOREST_SPARSE { base_terrain TERRAIN_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain TERRAIN_TEMP { base_terrain TERRAIN_AUX_TEMP number_of_tiles (MAPAREA * PLAYER_FOREST_PERCENT / PL_FOREST_NUM_CLUMPS) number_of_clumps 1 spacing_to_other_terrain_types 2 spacing_to_specific_terrain LAYER_FOREST_SPARSE 8 } 
+create_terrain LAYER_FOREST_SPARSE { base_terrain TERRAIN_TEMP land_percent 100 number_of_clumps 4056 } 
+create_terrain LAYER_PLAYER { base_terrain TERRAIN_AUX_TEMP land_percent 100 number_of_clumps 4026 } 
+
+
+/* Mask Land */
+create_terrain TERRAIN_BASE { base_terrain LAYER_AUX land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+create_terrain TERRAIN_BASE { base_terrain LAYER_BASE land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+create_terrain TERRAIN_PLAYER { base_terrain LAYER_PLAYER land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+create_terrain TERRAIN_CENTER { base_terrain LAYER_CENTER land_percent 100 number_of_clumps 4056 terrain_mask 2 } 
+
+
+
+/* ************************************* CONNECTION GENERATION ************************************* */
+<CONNECTION_GENERATION>
+
+/* create_connect_land_zones 3 4
+{
+  replace_terrain LAYER_PLAYER ICE 
+  replace_terrain TERRAIN_TEMP TERRAIN_GAIA 
+  /* replace_terrain PL_TERRAIN CENTER_HOLE_TERRAIN  */
+  terrain_cost LAYER_PLAYER 122
+  terrain_cost TERRAIN_TEMP 1
+  terrain_size CENTER_NONBUILDABLE_TERRAIN 1 1
+  /* terrain_size PL_TERRAIN 1 0 */
+} */
+
+
+
+
+
+
+/* ************************************* OBJECTS GENERATION ************************************* */
+<OBJECTS_GENERATION>
+
+
+create_object TREE_REED { set_gaia_object_only number_of_groups 4056 terrain_to_place_on TERRAIN_FOREST_SPARSE }
+create_object TREE_REED { set_gaia_object_only number_of_groups 4056 terrain_to_place_on TERRAIN_FOREST_SPARSE }
+create_object TREE_REED { set_gaia_object_only number_of_groups 4056 terrain_to_place_on TERRAIN_FOREST_SPARSE }
+
+
+create_object TOWN_CENTER {
+    set_place_for_every_player
+    terrain_to_place_on TERRAIN_TC_LOC
+    max_distance_to_players 1
+    find_closest
+    actor_area 2800
+    actor_area_radius 0
+}
+
+
+/* Player front walls */
+
+create_object PLACEHOLDER {
+    set_place_for_every_player 
+    number_of_objects 1
+    number_of_groups 1
+    terrain_to_place_on TERRAIN_PL_WALLS
+    /* avoid_other_land_zones 0 */
+    max_distance_to_players 1
+    /* second_object FLAG_A */
+    find_closest
+    actor_area 9033
+    actor_area_radius 14
+}
+
+create_object PLACEHOLDER_WALL {
+    set_place_for_every_player 
+    number_of_objects 22
+    number_of_groups 1
+    terrain_to_place_on TERRAIN_PL_WALLS
+    /* avoid_other_land_zones 0 */
+    second_object WALL
+    set_circular_placement
+    find_closest
+    actor_area_to_place_in 9033
+    actor_area 9034
+    actor_area_radius 1
+}
+
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+create_object PLACEHOLDER_WALL { set_place_for_every_player terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9034 actor_area 9034 actor_area_radius 1 max_distance_to_players MAX_DIST_CENTER_WALLS }
+
+/* Gaia center walls */
+create_object PLACEHOLDER_WALL { set_gaia_object_only number_of_groups 14 place_on_specific_land_id 5 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL find_closest }
+
+/* Player back walls */
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area 9035 actor_area_radius 2 max_distance_to_players MAX_DIST_BACK_WALLS find_closest }
+
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+create_object PLACEHOLDER_WALL { set_place_for_every_player number_of_objects 80 terrain_to_place_on TERRAIN_PL_WALLS second_object WALL actor_area_to_place_in 9035 actor_area 9035 actor_area_radius 2 max_distance_to_players (MAX_DIST_BACK_WALLS + 15) find_closest }
+
+
+
+
+/* 9 Vill start stuff */
+      effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_DEAD_ID -1
+      effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_TERRAIN_ID 0
+      effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_LINE_OF_SIGHT 17
+      effect_amount SET_ATTRIBUTE ESCALATION_REVEALER ATTR_HITPOINTS 0
+
+      create_object ESCALATION_REVEALER
+      {
+          set_place_for_every_player
+          min_distance_to_players 0
+          max_distance_to_players 0
+          actor_area_to_place_in 2800
+      }
+
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2804 actor_area_radius 4 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2805 actor_area_radius 5 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2806 actor_area_radius 6 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2810 actor_area_radius 10 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2812 actor_area_radius 12 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2813 actor_area_radius 13 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2814 actor_area_radius 14 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2816 actor_area_radius 16 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2817 actor_area_radius 17 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2819 actor_area_radius 19 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2820 actor_area_radius 20 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2822 actor_area_radius 22 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2824 actor_area_radius 24 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2827 actor_area_radius 27 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2832 actor_area_radius 32 }
+      create_object ONGRID_PLACEHOLDER { set_place_for_every_player set_gaia_object_only actor_area_to_place_in 2800 actor_area 2836 actor_area_radius 36 }
+
+
+      /* Player resources/units */
+
+      /* these actor areas are used to help position the villagers under the TC */
+      create_object PH_NEUTRAL_OFF /* Near Positioner */
+      {
+        set_place_for_every_player
+        terrain_to_place_on TERRAIN_TC_LOC
+        set_gaia_object_only
+        number_of_objects 5
+        min_distance_to_players 1
+        max_distance_to_players 1
+        find_closest
+        actor_area 5100
+        actor_area_radius 0
+      }
+      create_object PH_NEUTRAL_OFF /* Villager Avoider */
+      {
+        set_place_for_every_player
+        set_gaia_object_only
+        terrain_to_place_on TERRAIN_TC_LOC
+        min_distance_to_players 1
+        max_distance_to_players 1
+        find_closest
+        actor_area 5101
+        actor_area_radius 0
+        avoid_actor_area 5100 /* Near Positioner */
+      }
+      create_object PH_NEUTRAL_OFF /* Far Positioner */
+      {
+        set_place_for_every_player
+        set_gaia_object_only
+        terrain_to_place_on TERRAIN_TC_LOC
+        number_of_objects 5
+        min_distance_to_players 2
+        max_distance_to_players 2
+        temp_min_distance_group_placement 1
+        find_closest
+        actor_area 5103
+        actor_area_radius 1
+      }
+      create_object PH_NEUTRAL_OFF /* Blocking Seventh Villager */
+      {
+        set_place_for_every_player
+        set_gaia_object_only
+        terrain_to_place_on TERRAIN_TC_LOC
+        min_distance_to_players 2
+        max_distance_to_players 2
+        find_closest
+        actor_area 5104
+        actor_area_radius 0
+        avoid_actor_area 5103 /* Far Positioner */
+      }
+
+
+      /* this is the sheep under the TC */
+      create_object PH_NEUTRAL_OFF
+      {
+        set_place_for_every_player
+        second_object HERDABLE_A
+        set_gaia_object_only
+        terrain_to_place_on TERRAIN_TC_LOC
+        min_distance_to_players 1
+        max_distance_to_players 1
+        actor_area_radius 1
+        avoid_actor_area 5100 /* Herdable Positioner */
+        find_closest
+        actor_area 20
+      }
+
+      /* the other 3 starting sheep */
+      create_object HERDABLE_A
+      {
+        set_place_for_every_player
+        terrain_to_place_on TERRAIN_TC_LOC
+        number_of_objects 3
+        set_loose_grouping
+        group_placement_radius 2
+        min_distance_to_players 5
+        max_distance_to_players 6
+        set_circular_placement
+        actor_area 1113
+        actor_area_radius 3
+      } 
+
+      create_object SCOUT
+      {
+        set_place_for_every_player
+        min_distance_to_players 7
+        max_distance_to_players 10
+        min_distance_group_placement 2
+        actor_area_to_place_in 2810
+
+        find_closest
+
+        avoid_actor_area 1510
+      } 
+
+      create_object HERDABLE_B
+      {
+        set_place_for_every_player
+        layer_to_place_on               TERRAIN_PLAYER
+        number_of_objects                 1
+        number_of_groups                  1
+        min_distance_group_placement      1
+        temp_min_distance_group_placement 12
+        avoid_forest_zone                 2
+        max_distance_to_other_zones       1
+        avoid_actor_area                  2816
+        actor_area_to_place_in               2832
+        avoid_actor_area                  9034
+        avoid_actor_area                  9035
+        set_tight_grouping
+        set_gaia_object_only
+      }
+
+
+      /* this code is used to place 6 villagers under the TC in exactly optimal positions around the sheep */
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+      create_object PH_PLAYER_OFF { start_random  percent_chance 50 second_object LAZY_MALE percent_chance 50 second_object LAZY_FEMALE end_random set_place_for_every_player min_distance_to_players 1 find_closest
+        actor_area_to_place_in 20 actor_area 2 actor_area_radius 0 avoid_actor_area 2 avoid_actor_area 5101 avoid_actor_area 5104 }
+
+      /* this straggler will have 3 villagers near it */
+      create_object THEMED_TREE1
+      {
+        set_place_for_every_player
+        set_gaia_object_only
+        find_closest
+        actor_area 11
+        actor_area_radius 1
+        min_distance_to_players 5
+        max_distance_to_players 8
+        avoid_actor_area 1113
+        actor_area_to_place_in 2806
+      }
+
+      /* 3 villagers */
+      create_object VILLAGER
+      {
+        number_of_objects 3
+        set_place_for_every_player
+        actor_area_to_place_in 11 /* Straggler */
+        max_distance_to_players 10
+        place_on_forest_zone
+      }
+
+      /* 2 starting houses */
+      create_object HOUSE
+      {
+        set_place_for_every_player
+        number_of_objects 2
+        find_closest
+        max_distance_to_other_zones 4
+        avoid_forest_zone 2
+        min_distance_to_players 8
+        max_distance_to_players 10
+        avoid_actor_area 1113
+        actor_area_to_place_in 2814
+        min_distance_group_placement 3
+      }
+/* End 9 Villager start stuff */
+
+
+if REGICIDE
+    create_object KING 
+    {
+      set_place_for_every_player
+      terrain_to_place_on               TERRAIN_TC_LOC
+      avoid_forest_zone                 1
+      min_distance_to_players           6
+      max_distance_to_players           12
+      actor_area_to_place_in           2812
+    }
+
+    create_object WATCH_TOWER 
+    {
+      set_place_for_every_player
+      terrain_to_place_on               TERRAIN_PLAYER
+      avoid_forest_zone                 8
+      min_distance_to_players           11
+      max_distance_to_players           15
+      actor_area_to_place_in           2820
+      set_circular_placement
+      find_closest_to_map_edge
+      actor_area                       9700
+      actor_area_radius                8
+    }
+endif
+
+
+
+create_object FORAGE 
+{
+  set_place_for_every_player
+  number_of_objects                 6
+  min_distance_group_placement      4
+  group_placement_radius            1
+  avoid_forest_zone                 2
+  min_distance_to_players           10
+  max_distance_to_players           14
+  actor_area_to_place_in            2816
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+}
+/* Large gold */
+create_object GOLD 
+{
+  place_on_specific_land_id 12
+  number_of_objects                 4
+  number_of_groups                  1
+  min_distance_group_placement      3
+  max_distance_to_other_zones       5
+  avoid_forest_zone                 3
+  group_placement_radius            1
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+  /* actor_area_to_place_in            2814 */
+  max_distance_to_players           15
+  avoid_actor_area                  2812
+  avoid_actor_area                  9700
+  actor_area                        9999
+  actor_area_radius                 6
+} 
+/* Large stone */
+create_object STONE 
+{
+    place_on_specific_land_id 12
+
+  terrain_to_place_on               TERRAIN_PLAYER
+  number_of_objects                 3
+  min_distance_group_placement      4
+  max_distance_to_other_zones       3
+  avoid_forest_zone                 2
+  group_placement_radius            1
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+  max_distance_to_players           16
+  avoid_actor_area                  2813
+  avoid_actor_area                  9999
+  avoid_actor_area                  9997
+  avoid_actor_area                  9700
+
+  actor_area                        9998
+  actor_area_radius                 7
+}
+/* Small gold */
+create_object GOLD 
+{
+    place_on_specific_land_id 12
+
+  terrain_to_place_on               TERRAIN_PLAYER
+  number_of_objects                 2
+  number_of_groups                  1
+  min_distance_group_placement      3
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+
+  max_distance_to_players           17
+  avoid_actor_area                  2814
+  avoid_actor_area                  9999
+  avoid_actor_area                  9700
+
+  actor_area                        9997
+  actor_area_radius                 5
+} 
+/* Small stone */
+create_object STONE 
+{
+    place_on_specific_land_id 12
+
+  terrain_to_place_on               TERRAIN_PLAYER
+  number_of_objects                 2
+  min_distance_group_placement      4
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 2
+  find_closest
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+  max_distance_to_players           17
+  avoid_actor_area                  2814
+  avoid_actor_area                  9999
+  avoid_actor_area                  9998
+  avoid_actor_area                  9997
+  avoid_actor_area                  9700
+}
+
+create_object LURABLE 
+{
+    place_on_specific_land_id 11
+
+  terrain_to_place_on               TERRAIN_PLAYER
+  number_of_objects                 1
+  number_of_groups                  2
+  min_distance_group_placement      2
+  temp_min_distance_group_placement 13
+  avoid_forest_zone                 2
+  max_distance_to_other_zones       3
+  min_distance_to_players           2
+  max_distance_to_players           30
+  /* actor_area_to_place_in            2826 */
+  avoid_actor_area            2816
+  avoid_actor_area            9035
+  find_closest
+  set_gaia_object_only
+  set_circular_placement
+}
+
+
+create_object STONE {
+  layer_to_place_on LAYER_AUX 
+  number_of_objects 5
+  number_of_groups 2
+  set_gaia_object_only
+  max_distance_to_other_zones        3
+  set_circular_placement
+  set_tight_grouping
+  temp_min_distance_group_placement 52
+  actor_area 667
+  actor_area_radius 4
+}
+
+
+create_object GOLD {
+  layer_to_place_on LAYER_AUX 
+  number_of_objects 7
+  number_of_groups 2
+  set_gaia_object_only
+  max_distance_to_other_zones        3
+  set_circular_placement
+  set_tight_grouping
+  temp_min_distance_group_placement 52
+  avoid_actor_area 667
+}
+
+create_object HUNTABLE 
+{
+  layer_to_place_on               LAYER_AUX
+  number_of_objects                 2
+  number_of_groups                  2
+  min_distance_group_placement      2
+  max_distance_to_other_zones       3
+  temp_min_distance_group_placement 55
+  avoid_forest_zone                 2
+  set_gaia_object_only
+  actor_area 555
+  actor_area_radius 8
+}
+
+create_object HUNTABLE 
+{
+  layer_to_place_on               LAYER_AUX
+  number_of_objects                 2
+  number_of_groups                  2
+  min_distance_group_placement      2
+  max_distance_to_other_zones       3
+  temp_min_distance_group_placement 55
+  avoid_forest_zone                 2
+  set_gaia_object_only
+  avoid_actor_area 555
+}
+
+/* back gold */
+create_object GOLD 
+{
+  place_on_specific_land_id 11
+  terrain_to_place_on               TERRAIN_BASE
+  number_of_objects                 3
+  number_of_groups                  1
+  min_distance_group_placement      3
+  temp_min_distance_group_placement 50
+  max_distance_to_other_zones       2
+  avoid_forest_zone                 1
+  max_distance_to_players           35
+  set_tight_grouping
+  set_gaia_object_only
+  set_circular_placement
+  ignore_terrain_restrictions
+
+  actor_area                        9997
+  actor_area_radius                 5
+} 
+
+
+create_object RELIC {
+  number_of_groups 4
+  temp_min_distance_group_placement 4
+  min_distance_group_placement 2
+  terrain_to_place_on TERRAIN_CENTER 
+  set_gaia_object_only
+  avoid_other_land_zones        3
+  place_on_specific_land_id 5
+  set_circular_placement
+}
+
+create_object RELIC {
+  number_of_groups 2
+  temp_min_distance_group_placement 35
+  min_distance_group_placement 2
+  layer_to_place_on LAYER_AUX 
+  set_gaia_object_only
+}
+
+
+
+create_object STONE {
+  number_of_objects 3
+  number_of_groups 1
+  terrain_to_place_on TERRAIN_CENTER 
+  set_gaia_object_only
+  avoid_other_land_zones        3
+  place_on_specific_land_id 5
+  set_circular_placement
+  set_tight_grouping
+  min_distance_to_map_edge 52
+  actor_area 666
+  actor_area_radius 8
+}
+
+
+create_object GOLD {
+  number_of_objects 4
+  number_of_groups 2
+  min_distance_group_placement 4
+  temp_min_distance_group_placement 10
+  terrain_to_place_on TERRAIN_CENTER 
+  set_gaia_object_only
+  avoid_other_land_zones        3
+  place_on_specific_land_id 5
+  avoid_actor_area 666
+  set_circular_placement
+  set_tight_grouping
+}
