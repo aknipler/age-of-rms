@@ -1,9 +1,13 @@
 // Sec.9 P1 acceptance: "a pure function asserted against the three maps
 // Sec.9 names... Rage Forest 2026.rms 70.9%, Pa_Site_v1.1.rms 4.4%,
-// TL Cape of Storms.rms 1.3%." Those figures were measured 2026-08-29 and are
-// a statement about the PARSER, not the maps (Sec.13). If a re-run disagrees,
-// the parser has moved and the number here should be updated along with a
-// build-log note, not treated as this test being wrong.
+// TL Cape of Storms.rms 1.3%." Those three maps are third-party community
+// scripts and were never meant to enter the repo, so the assertion below
+// pins the SHAPE Sec.9 cared about — a RawNode swallowing part of
+// <LAND_GENERATION>, including a create_land the tool can no longer see,
+// while a create_land outside the RawNode stays visible — on an inline
+// fixture instead. It reuses the exact if/endif-inside-a-block degrade
+// already pinned in parser.test.ts's "Sec.5.3 degradation" suite, so the
+// mechanism producing the RawNode is not this file's own invention.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -32,28 +36,20 @@ describe("checkP1 — unit", () => {
   });
 });
 
-describe("checkP1 — corpus (Sec.9, measured 2026-08-29)", () => {
-  it("Rage Forest 2026.rms: 70.9% raw-covered, with unmanageable lands inside it", () => {
-    const parse = parseFile("Rage Forest 2026.rms");
+describe("checkP1 — corpus-shaped fixture (Sec.9)", () => {
+  it("a RawNode swallowing part of <LAND_GENERATION>: partial coverage, the create_land inside it is unmanaged, the one outside is not", () => {
+    const source =
+      "<LAND_GENERATION>\nif A create_land { land_percent 20 endif land_percent 10 }\ncreate_land { land_percent 5 }\n";
+    const parse = parseRms(source, lang);
+    expect(parse.diagnostics.map((d) => d.code)).toContain("RMS0110");
     const result = checkP1(parse);
     expect(result.ok).toBe(false);
-    expect(Number(result.rawFraction.toFixed(3))).toBeCloseTo(0.709, 3);
-    // Sec.9: "30 create_land ... the tool cannot see".
-    expect(result.unmanagedLandCount).toBe(30);
-  });
-
-  it("Pa_Site_v1.1.rms: 4.4% raw-covered", () => {
-    const parse = parseFile("Pa_Site_v1.1.rms");
-    const result = checkP1(parse);
-    expect(result.ok).toBe(false);
-    expect(Number(result.rawFraction.toFixed(3))).toBeCloseTo(0.044, 3);
-  });
-
-  it("TL Cape of Storms.rms: 1.3% raw-covered", () => {
-    const parse = parseFile("TL Cape of Storms.rms");
-    const result = checkP1(parse);
-    expect(result.ok).toBe(false);
-    expect(Number(result.rawFraction.toFixed(3))).toBeCloseTo(0.013, 3);
+    expect(result.rawCoveredChars).toBe(58);
+    expect(result.rawFraction).toBeCloseTo(58 / source.length, 10);
+    // One create_land sits inside the RawNode span (unmanaged); the second,
+    // written after the degraded range closes, stays a normal command and
+    // must not be counted.
+    expect(result.unmanagedLandCount).toBe(1);
   });
 
   it("Bulls_Eyes.rms: no raw node at all — the tool's own reference map is fully manageable", () => {
