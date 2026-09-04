@@ -17,11 +17,11 @@ The preview is an approximation and can always be improved. It reproduces the en
 
 ## Status
 
-In development, and usable. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built. See the [user guide](docs/user-guide.md) for a walkthrough.
+In development, and usable. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built (tools are beta). See the [user guide](docs/user-guide.md) for a walkthrough.
 
 ## Installing
 
-Builds live on the [releases page](https://github.com/aknipler/age-of-rms/releases).
+Builds can be found on the release page [releases page](https://github.com/aknipler/age-of-rms/releases).
 
 **Windows.** Download the `-setup.exe`. It is not code signed yet, so SmartScreen will show "Windows protected your PC" the first time you run it. Choose "More info", then "Run anyway". It installs for the current user only and never asks for administrator rights.
 
@@ -57,9 +57,9 @@ npm run validate:reference  # schema and integrity checks on reference/data
 
 The code is GPL-3.0. See `LICENSE`.
 
-The reference data in `reference/data/game-constants.json` is a separate matter. It is derived from Age of Empires II: Definitive Edition's own data files, and the object and terrain names in it are Microsoft's text rather than ours. Those rows are included under Microsoft's Game Content Usage Rules, a license that is personal and cannot be passed on, so you hold it yourself by owning the game. The GPL-3.0 grant over this repository does not reach them. `NOTICE` sets out what the data is, where each part came from and what it asks of contributors.
+The reference data in `reference/data/game-constants.json` is derived from Age of Empires II: Definitive Edition's own data files, and the object and terrain names in it are Microsoft's text. Those rows are included under Microsoft's Game Content Usage Rules, a license that is personal and cannot be passed on, so you hold it yourself by owning the game. The GPL-3.0 grant over this repository does not reach them. `NOTICE` sets out what the data is, where each part came from and what it asks of contributors.
 
-Two things follow that are worth stating plainly. Age of RMS stays free, with no advertising and no paid tier, because the Game Content Usage Rules require it. And art, audio, binary game files and Microsoft's own written documentation stay out of this repository.
+Age of RMS will always be free, with no advertising and no paid tier (which is good because the Game Content Usage Rules require it). Under the Usage Rules, art, audio, binary game files and Microsoft's own written documentation stay out of this repository.
 
 ## Attribution
 
@@ -69,4 +69,4 @@ Age of Empires II © Microsoft Corporation. Age of RMS was created under Microso
 
 See `CONTRIBUTING.md`. This project is aimed at the AoE2 RMS community, including casual and first-time contributors.
 
-Thinking about writing your own Advanced Tools tool? External tools aren't pluggable yet, but the contract they'll speak already exists and runs today's five built-in tools — see [`docs/tool-author-preview.md`](docs/tool-author-preview.md).
+Thinking about writing your own Advanced Tools tool? External tools aren't pluggable yet, but the design spec is in the works, see [`docs/tool-author-preview.md`](docs/tool-author-preview.md).

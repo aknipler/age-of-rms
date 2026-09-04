@@ -37,7 +37,7 @@ export const appTourTutorial: TutorialDefinition = {
       calloutNudge: { x: 300 },
       navigate: { tab: "breakdown" },
       body: [
-        "The rest of this tour points at panes that need a script open to mean anything: the preview, the reference table, the resource totals. Open one of your own maps if you have one handy; it's the best way to see real numbers in all of them.",
+        "The rest of this tour points at panes that need a script open to mean anything: the preview, the reference table, the resource totals. Open one of your own maps if you have one handy, it's the best way to see real numbers in all of them.",
         "Nothing here either? File ▸ New then File ▸ Save works too. The panes will just start at zero until you write something.",
       ],
       completion: {
@@ -61,7 +61,7 @@ export const appTourTutorial: TutorialDefinition = {
       title: "Current vs Final",
       anchor: { kind: "help", id: "breakdown.sidePanel.previewToggle" },
       body: [
-        "Final generates the whole script. Current generates only up to the line you are on, so you can watch the map being built stage by stage. Pin a line and step through elevation, then terrain, then objects.",
+        "Final generates the whole script. Current generates only up to the line you are on, so you can watch the map being built stage by stage. Current also let's you Pin a line, essentially commenting out the script after the pin.",
       ],
       completion: { kind: "manual" },
     },
@@ -70,7 +70,7 @@ export const appTourTutorial: TutorialDefinition = {
       title: "The notes drawer",
       anchor: { kind: "help", id: "preview.notesDrawer" },
       body: [
-        "Every approximation the preview made, and every placement that failed. When an object is missing from the map this is the first place to look; the Preview Obj. List below then says how many of each object actually landed.",
+        "Every approximation the preview made, and every placement that failed. Perhaps too much information, please provide feedback on ways to highlight the critical information.",
       ],
       completion: { kind: "manual" },
     },
@@ -79,7 +79,7 @@ export const appTourTutorial: TutorialDefinition = {
       title: "The reference table",
       anchor: { kind: "region", id: "sidePanel.reference" },
       body: [
-        "Terrains, objects and commands with the attributes each one takes, searchable.",
+        "Terrains, objects and commands with the attributes each one takes, searchable. Also a list of all the objects placed, their count and you can unselect them to make them invisible in the preview generation.",
       ],
       completion: { kind: "manual" },
     },
@@ -96,7 +96,7 @@ export const appTourTutorial: TutorialDefinition = {
       extraAnchors: [{ kind: "help", id: "statusBar.problems" }],
       moveAsideCorner: "top-right",
       body: [
-        "Live resource totals split into total, player and neutral, and a live problem count from 48 diagnostic codes, including things the game reports no error for, such as an attribute whose required partner is missing.",
+        "Live resource totals split into total, player and neutral, and a live problem count from advanced diagnostics.",
       ],
       completion: { kind: "manual" },
     },
@@ -106,7 +106,7 @@ export const appTourTutorial: TutorialDefinition = {
       anchor: { kind: "help", id: "statusBar.generationSettings" },
       moveAsideCorner: "top-right",
       body: [
-        "Player count, map size and team layout. Properties of the script rather than preferences about the app, which is why they are here and not in Settings. Everything above is computed for whatever you set here.",
+        "Properties of the script (player count, map size and team layout) are available here. Everything above is computed for whatever you set here.",
       ],
       completion: { kind: "manual" },
     },
@@ -120,7 +120,7 @@ export const appTourTutorial: TutorialDefinition = {
       extraAnchors: [{ kind: "help", id: "tabBar.advancedTools" }],
       navigate: { tab: "advanced-tools" },
       body: [
-        "Tools that read or rewrite your script: a generation consistency checker, a constants auditor, a balance summary, a formatter and script statistics. Each proposes edits you review before applying. Nothing is written without an Apply.",
+        "Advanced Tools with plans to make it easy for the community to contribute more. Currently, advanced land placement generation, a generation consistency checker, a constants auditor, a balance summary, a formatter and script statistics. Each proposes edits you review before applying. Nothing is written without an Apply.",
       ],
       completion: { kind: "manual" },
     },
