@@ -49,7 +49,14 @@ export function checkP1(parse: ParseResult): P1Result {
     }
   }
 
-  return { ok: rawSpans.length === 0, rawCoveredChars, rawFraction, unmanagedLandCount };
+  // A RawNode elsewhere in the file that contains no `create_land` is not a
+  // reason to warn: Land Placement's whole job is managing `create_land`
+  // commands, and a raw span with none inside it is nothing this tool
+  // cannot do. `ok` used to be `rawSpans.length === 0`, which fired the
+  // "N% of this script is raw text" message at 0.0%/0 commands on any script
+  // with a stray unrelated raw node — a true statement about the file and a
+  // false alarm about what Land Placement can and cannot manage.
+  return { ok: unmanagedLandCount === 0, rawCoveredChars, rawFraction, unmanagedLandCount };
 }
 
 // ---------------------------------------------------------------------------

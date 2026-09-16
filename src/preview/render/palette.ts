@@ -55,11 +55,11 @@ export type TerrainColorSource = "game" | "minimap" | "hashed" | "unknown";
 
 export const COLOR_MODE_NOTES: Record<TerrainColorMode, string> = {
   game:
-    "Game colours: the average colour of each terrain's own texture, from your game install. " +
-    "Terrains that share a texture file share a colour — FOREST and LEAVES are both g_for.",
+    "Game colours are the average colour of each terrain's own texture, from your game install. " +
+    "Terrains that share a texture file share a colour, so FOREST and LEAVES are both g_for.",
   minimap:
-    "Minimap colours: the game data's own terrain colour class. It is coarse — only 12 colours " +
-    "cover every terrain, so all the snow terrains share grass's green. It does separate forest from underbrush.",
+    "Minimap colours are the game data's own terrain colour class. They are coarse, with only 12 " +
+    "colours covering every terrain, so all the snow terrains share grass's green. They do separate forest from underbrush.",
 };
 
 export const HASHED_COLOR_NOTE =

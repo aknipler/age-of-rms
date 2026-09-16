@@ -21,7 +21,7 @@ export interface AttributeSlot {
 }
 
 export interface CommandBreakdown {
-  /** One entry per def.attributes[] name, in that order (display order, not source order). */
+  /** One entry per def.attributes[] name, alphabetical (display order, not source order). */
   knownSlots: AttributeSlot[];
   /**
    * Everything else in the block, source order: known-but-unlisted
@@ -45,6 +45,7 @@ function isFlagDef(def: AttributeDef): boolean {
 export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex): CommandBreakdown {
   const attributeNames = command.def?.attributes ?? [];
   const listedNames = new Set(attributeNames);
+  const sortedNames = [...attributeNames].sort((a, b) => a.localeCompare(b));
   const items = command.block?.items ?? [];
 
   const instancesByName = new Map<string, AttributeNode[]>();
@@ -61,7 +62,7 @@ export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex)
   }
 
   const knownSlots: AttributeSlot[] = [];
-  for (const name of attributeNames) {
+  for (const name of sortedNames) {
     const def = lang.attributesByName.get(name);
     if (!def) continue; // defensive: def.attributes[] referencing an unknown name shouldn't happen (validate:reference catches it)
     knownSlots.push({ name, def, instances: instancesByName.get(name) ?? [], isFlag: isFlagDef(def) });
@@ -74,4 +75,98 @@ export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex)
   otherContents.sort((a, b) => a.span.start - b.span.start);
 
   return { knownSlots, otherContents };
+}
+
+/** The Breakdown "attribute order" setting's four modes, see BreakdownSettingsContext.tsx. */
+export type AttributeOrderMode = "required" | "alphabetical" | "fileOrder" | "custom";
+
+/**
+ * text < number < boolean, matching ValueEditor.tsx's own split (numberInput
+ * for integer/percent, textInput for everything else) with isFlag pulled out
+ * first since a bare flag never reaches ValueEditor at all.
+ */
+function typeBucket(slot: AttributeSlot): 0 | 1 | 2 {
+  if (slot.isFlag) return 2;
+  const firstType = slot.def.arguments?.[0]?.type;
+  return firstType === "integer" || firstType === "percent" ? 1 : 0;
+}
+
+/** required (def.required, curated data) outranks every type bucket; ties break alphabetically. */
+function requiredFirstGroup(slot: AttributeSlot): number {
+  return slot.def.required ? 0 : typeBucket(slot) + 1;
+}
+
+function compareRequiredFirst(a: AttributeSlot, b: AttributeSlot): number {
+  const diff = requiredFirstGroup(a) - requiredFirstGroup(b);
+  return diff !== 0 ? diff : a.name.localeCompare(b.name);
+}
+
+/**
+ * Present slots (>=1 instance) sort by where their first instance appears in
+ * the source; absent slots (the faint add-rows) have no source position, so
+ * they're appended after every present slot, ordered among themselves the
+ * same way "required" mode orders everything.
+ */
+function compareFileOrder(a: AttributeSlot, b: AttributeSlot): number {
+  const aPresent = a.instances.length > 0;
+  const bPresent = b.instances.length > 0;
+  if (aPresent && bPresent) return a.instances[0].span.start - b.instances[0].span.start;
+  if (aPresent !== bPresent) return aPresent ? -1 : 1;
+  return compareRequiredFirst(a, b);
+}
+
+/**
+ * Orders a command's knownSlots per the Breakdown attribute-order setting.
+ * `customOrder` is this command's own saved slot-name order (set via the
+ * "Set as default" button in CommandCard, when mode is "custom"); a slot
+ * that's since appeared in `attributes[]` but isn't in `customOrder` yet
+ * (a language.json edit, not a drag) falls back to "required" order for
+ * just that slot rather than disappearing or crashing.
+ */
+export function sortKnownSlots(
+  slots: readonly AttributeSlot[],
+  mode: AttributeOrderMode,
+  customOrder?: readonly string[],
+): AttributeSlot[] {
+  const sorted = [...slots];
+  if (mode === "alphabetical") {
+    sorted.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (mode === "fileOrder") {
+    sorted.sort(compareFileOrder);
+  } else if (mode === "custom" && customOrder && customOrder.length > 0) {
+    const rank = new Map(customOrder.map((name, i) => [name, i]));
+    sorted.sort((a, b) => {
+      const ra = rank.get(a.name);
+      const rb = rank.get(b.name);
+      if (ra !== undefined && rb !== undefined) return ra - rb;
+      if (ra !== undefined) return -1;
+      if (rb !== undefined) return 1;
+      return compareRequiredFirst(a, b);
+    });
+  } else {
+    sorted.sort(compareRequiredFirst);
+  }
+  return sorted;
+}
+
+/**
+ * Splits an already-ordered slot list into the compact two-column layout's
+ * two columns, preserving relative order within each (CommandCard.tsx
+ * renders left/right as two independent stacks, so this is the only place
+ * that decides membership). `rightColumnNames`, when given, is this
+ * command's saved custom column arrangement (BreakdownSettingsContext's
+ * CustomAttributeOrder.rightColumn) — set only in attributeOrderMode
+ * "custom", where a drag is free to move any slot into either column.
+ * Every other mode has no drag and always uses the default split below.
+ */
+export function splitAttributeColumns(
+  slots: readonly AttributeSlot[],
+  rightColumnNames?: readonly string[],
+): { left: AttributeSlot[]; right: AttributeSlot[] } {
+  const rightSet = rightColumnNames ? new Set(rightColumnNames) : null;
+  const isRight = (slot: AttributeSlot) => (rightSet ? rightSet.has(slot.name) : slot.isFlag);
+  return {
+    left: slots.filter((slot) => !isRight(slot)),
+    right: slots.filter((slot) => isRight(slot)),
+  };
 }

@@ -9,7 +9,7 @@
    the splitter down to something un-grabbable. */
 
 .resizer {
-  flex: 0 0 14px;
+  flex: 0 0 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +22,13 @@
   user-select: none;
 }
 
-.resizer:hover,
+/* :not(:has(...)) so hovering the collapse button highlights ONLY the
+   button, not the whole bar underneath it (2026-09-16, same fix as
+   PreviewReferenceResizer.module.css) — :hover otherwise cascades to this
+   ancestor from anywhere inside its box, button included, and the two
+   highlights (same colour) were stacking, making the button's own hover
+   state invisible against the bar's identical one. */
+.resizer:hover:not(:has(.collapseButton:hover)),
 .dragging {
   background: var(--accent-bg-subtle);
 }
@@ -33,7 +39,7 @@
 }
 
 .reopener {
-  flex: 0 0 14px;
+  flex: 0 0 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,7 +51,7 @@
    conventional button, and a vertical target is what the eye finds against a
    full-height strip. */
 .collapseButton {
-  width: 14px;
+  width: 7px;
   height: 40px;
   padding: 0;
   border: none;

@@ -5,6 +5,7 @@
 // arithmetic, a cycle check, or truncation logic of its own.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../../../../components/HelpTip";
 import { MAX_PLAYER_COUNT, type MapSize } from "../../../../generationSettings/generationSettingsConstants";
 import type { LanguageData } from "../../../../parser/language";
@@ -197,11 +198,10 @@ export function LandPlacementPanel({
             + Role
           </button>
         </HelpTip>
-        <HelpTip id="landPlacement.newRing">
+        <HelpTip id="landPlacement.newRing" text={model.roles.length === 0 ? "Add a role first. A shape needs a role to assign its lands to." : undefined}>
           <button
             type="button"
             disabled={model.roles.length === 0}
-            title={model.roles.length === 0 ? "Add a role first" : undefined}
             onClick={() => {
               const { model: next, groupId } = addRing(model, model.roles[0].id);
               setModel(next);
@@ -211,11 +211,10 @@ export function LandPlacementPanel({
             + Shape
           </button>
         </HelpTip>
-        <HelpTip id="landPlacement.newLand">
+        <HelpTip id="landPlacement.newLand" text={model.roles.length === 0 ? "Add a role first. A land needs a role to assign it to." : undefined}>
           <button
             type="button"
             disabled={model.roles.length === 0}
-            title={model.roles.length === 0 ? "Add a role first" : undefined}
             onClick={() => {
               const { model: next, id } = addStandalonePlacement(model, model.roles[0].id);
               setModel(next);
@@ -264,7 +263,7 @@ export function LandPlacementPanel({
         <div className={styles.rightColumn}>
           <HelpTip id="landPlacement.tree">
             <div className={styles.tree}>
-              {tree.length === 0 && <p className={styles.fieldRow}>No lands yet — add a ring or a land above.</p>}
+              {tree.length === 0 && <p className={styles.fieldRow}>No lands yet. Add a ring or a land above.</p>}
               {tree.map(({ placement, depth }) => (
                 <TreeRow
                   key={placement.id}
@@ -348,13 +347,13 @@ function PreconditionsStrip({
     messages.push({ text: `Random parameter "${m.label}" was emitted for ${m.emittedFor} players; the script is now set to ${m.livePlayerCount}.` });
   }
   if (!p3.ok) {
-    messages.push({ text: 'A land is assigned to a player, but direct_placement is not declared — the engine may ignore the assignment.' });
+    messages.push({ text: 'A land is assigned to a player, but direct_placement is not declared. The engine may ignore the assignment.' });
   }
   if (p4Collisions.length > 0) {
     messages.push({ text: `These names would collide with existing script symbols: ${p4Collisions.join(", ")}.` });
   }
   if (p5Malformed) {
-    messages.push({ text: "This script has an Advanced Land Placement fence, but it could not be read — starting from an empty model rather than guessing." });
+    messages.push({ text: "This script has an Advanced Land Placement fence, but it could not be read. Starting from an empty model rather than guessing." });
   }
 
   if (messages.length === 0) return null;
@@ -458,7 +457,7 @@ function PlacementEditor({
             value={placement.role ?? ""}
             onChange={(e) => onChangeModel((m) => updatePlacement(m, placement.id, { role: e.target.value || undefined }))}
           >
-            <option value="">(none — chain anchor)</option>
+            <option value="">(none, chain anchor)</option>
             {model.roles.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.label}
@@ -475,7 +474,7 @@ function PlacementEditor({
               onChange={(e) => {
                 const next = e.target.value;
                 if (wouldCreateCycle(model, placement.id, next)) {
-                  window.alert("That would make this placement its own ancestor.");
+                  void message("That would make this placement its own ancestor.");
                   return;
                 }
                 onChangeModel((m) => updatePlacement(m, placement.id, { parent: next }));
@@ -660,7 +659,7 @@ function ThetaPerCountEditor({
     <HelpTip id="landPlacement.thetaPerCount">
       <div className={styles.section}>
         <p className={styles.sectionTitle}>Angle overrides by player count</p>
-        {overrides.length === 0 && <p className={styles.fieldRow}>No per-count overrides — every count uses the rule above.</p>}
+        {overrides.length === 0 && <p className={styles.fieldRow}>No per-count overrides. Every count uses the rule above.</p>}
         {overrides.map(({ count, expr }) => (
           <div key={count} className={styles.fieldRow}>
             <FormulaField
@@ -950,7 +949,7 @@ function GroupEditor({
           min={1}
           value={group.repeats}
           disabled={group.perPlayer}
-          title={group.perPlayer ? "One land per player — the repeat count follows the game's own player count instead." : undefined}
+          title={group.perPlayer ? "One land per player. The repeat count follows the game's own player count instead." : undefined}
           onChange={(e) => edit({ repeats: Math.max(1, Math.trunc(Number(e.target.value))) })}
         />
       </div>

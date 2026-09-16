@@ -9,7 +9,7 @@ import { TOOLS_API_VERSION, type ToolManifest } from "../../../../../tools-api/i
 
 export const landPlacementManifest: ToolManifest = {
   id: "land-placement",
-  name: "Land Placement",
+  name: "Land Placement (Alpha)",
   version: "0.1.0",
   apiVersion: TOOLS_API_VERSION,
   description:

@@ -9,7 +9,14 @@ import { usePreviewView } from "../preview/PreviewViewContext";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
 import { buildObjectInventory } from "./objectInventory";
-import { compareConstantRows, matchesQuery, matchingCommandRows, orphanAttributeRows } from "./referenceRows";
+import {
+  CONSTANT_SORT_LABELS,
+  compareConstantRowsBy,
+  matchesQuery,
+  matchingCommandRows,
+  orphanAttributeRows,
+  type ConstantSortKey,
+} from "./referenceRows";
 import styles from "./ReferenceTable.module.css";
 
 // Read straight from the reference data rather than through
@@ -236,6 +243,12 @@ export function ReferenceTable() {
   // here is deleted, and the count in the label is what tells a user the toggle
   // is worth flipping.
   const [showCorpses, setShowCorpses] = useState(false);
+  // Terrain/Objects only (beta feedback: "allow for different sorting
+  // filters"). One shared pair rather than one per tab, same reasoning as
+  // `query` above: switching tabs mid-comparison should not silently reset
+  // how the table is ordered.
+  const [sortKey, setSortKey] = useState<ConstantSortKey>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   // Manually expanded commands in the Commands / Attributes tab. Keyed by
   // name rather than a boolean per row, so it survives the query changing
   // (search auto-expands on top of this, see `isExpanded` below, without
@@ -266,11 +279,14 @@ export function ReferenceTable() {
       // purpose: a hidden row must stay hidden when a query matches it, or
       // Find silently reintroduces exactly what the toggle is holding back.
       .filter((c) => showCorpses || !c.isCorpse)
-      .sort(compareConstantRows)
+      .sort((a, b) => {
+        const cmp = compareConstantRowsBy(sortKey, a, b);
+        return sortDirection === "asc" ? cmp : -cmp;
+      })
       // Search runs the same `cell` functions the renderer does, so it always
       // covers exactly the columns on screen and nothing else.
       .filter((c) => matchesQuery(query, columns.map((col) => col.cell(c))));
-  }, [mode, query, showCorpses]);
+  }, [mode, query, showCorpses, sortKey, sortDirection]);
 
   // Counted over the whole category rather than over what is on screen, so the
   // label reads the same whatever the search box holds.
@@ -347,6 +363,39 @@ export function ReferenceTable() {
             />
           </div>
         </HelpTip>
+
+        {(mode === "terrain" || mode === "objects") && (
+          <HelpTip id="breakdown.sidePanel.referenceSort">
+            <div className={styles.sortRow}>
+              <label className={styles.sortLabel}>
+                Sort by
+                <select
+                  className={styles.sortSelect}
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as ConstantSortKey)}
+                >
+                  {(Object.keys(CONSTANT_SORT_LABELS) as ConstantSortKey[]).map((key) => (
+                    <option key={key} value={key}>
+                      {CONSTANT_SORT_LABELS[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className={styles.sortDirectionButton}
+                onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+                aria-label={
+                  sortDirection === "asc"
+                    ? "Sorted ascending. Click to sort descending."
+                    : "Sorted descending. Click to sort ascending."
+                }
+              >
+                {sortDirection === "asc" ? "▲" : "▼"}
+              </button>
+            </div>
+          </HelpTip>
+        )}
 
         {mode === "objects" && corpseCount > 0 && (
           <HelpTip id="breakdown.sidePanel.referenceCorpses">
@@ -487,7 +536,7 @@ export function ReferenceTable() {
           )}
         {(mode === "terrain" || mode === "objects") && (
           <p className={styles.note}>
-            The common constants, not all of them — a name missing here may still be valid in game.
+            The common constants, not all of them. A name missing here may still be valid in game.
           </p>
         )}
         {mode === "previewObjects" && objectsHidden && (

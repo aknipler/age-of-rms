@@ -1,16 +1,15 @@
 .tabBar {
   display: flex;
-  border-bottom: 1px solid var(--border);
+  gap: 0.2rem;
   background: var(--surface);
 }
 
 .tab {
-  border: 1px solid var(--border);
-  border-top: none;
-  border-left: none;
-  background: var(--surface);
-  padding: 0.35rem 1rem;
-  font-size: 0.95rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
 }
 

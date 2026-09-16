@@ -111,7 +111,7 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
             <p className={styles.legendNote}>
               A red ▲ marks a land the engine could not place where the script asked, so it sits at
               the map centre instead. Hover the marker for the detail. Lands that merely grew
-              smaller than they asked for carry no marker: that is the usual outcome of land_percent
+              smaller than they asked for carry no marker. That is the usual outcome of land_percent,
               and the map is showing their real size.
             </p>
           )}

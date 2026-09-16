@@ -100,9 +100,9 @@ export function UnsavedChangesDialog({ action, mapName, onChoice }: UnsavedChang
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `decide` is
-    // stable for this component's lifetime (guarded by decidedRef) and the
-    // dialog is unmounted as soon as a choice is made.
+    // `decide` is stable for this component's lifetime (guarded by
+    // decidedRef) and the dialog is unmounted as soon as a choice is made.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

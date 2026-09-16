@@ -2,7 +2,14 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compareConstantRows, matchesQuery, matchingCommandRows, orphanAttributeRows } from "../referenceRows";
+import {
+  compareConstantRows,
+  compareConstantRowsBy,
+  matchesQuery,
+  matchingCommandRows,
+  orphanAttributeRows,
+  type ConstantSortKey,
+} from "../referenceRows";
 import type { GameConstantEntry, GameConstantsData } from "../../../breakdown/gameConstants";
 import type { AttributeDef, CommandDef, LanguageData } from "../../../parser/language";
 
@@ -76,6 +83,52 @@ describe("compareConstantRows", () => {
       // Ascending by descriptive name, which is the tier the user asked for.
       const names = rows.map((r) => r.descriptiveName);
       expect(names).toEqual([...names].sort((x, y) => x.localeCompare(y)));
+    }
+  });
+});
+
+describe("compareConstantRowsBy", () => {
+  it("agrees with compareConstantRows for the 'name' key", () => {
+    const a = row({ descriptiveName: "Wolf" });
+    const b = row({ descriptiveName: "Deer" });
+    expect(compareConstantRowsBy("name", a, b)).toBe(compareConstantRows(a, b));
+  });
+
+  it("sorts by RMS constant first, ignoring descriptive name", () => {
+    const rows = [
+      row({ descriptiveName: "Zebra", rmsConstant: "AAA" }),
+      row({ descriptiveName: "Aardvark", rmsConstant: "ZZZ" }),
+    ].sort((x, y) => compareConstantRowsBy("constant", x, y));
+    expect(rows.map((r) => r.rmsConstant)).toEqual(["AAA", "ZZZ"]);
+  });
+
+  it("falls back to id then name when two rows share no RMS constant", () => {
+    const rows = [
+      row({ descriptiveName: "Zebra", rmsConstant: null, constId: 9 }),
+      row({ descriptiveName: "Aardvark", rmsConstant: null, constId: 1 }),
+    ].sort((x, y) => compareConstantRowsBy("constant", x, y));
+    expect(rows.map((r) => r.constId)).toEqual([1, 9]);
+  });
+
+  it("sorts by constant id first, ignoring descriptive name and RMS constant", () => {
+    const rows = [
+      row({ descriptiveName: "Zebra", rmsConstant: "AAA", constId: 20 }),
+      row({ descriptiveName: "Aardvark", rmsConstant: "ZZZ", constId: 1 }),
+    ].sort((x, y) => compareConstantRowsBy("id", x, y));
+    expect(rows.map((r) => r.constId)).toEqual([1, 20]);
+  });
+
+  it("produces a total order over the real terrain and object tables under every sort key", () => {
+    const keys: ConstantSortKey[] = ["name", "constant", "id"];
+    for (const category of ["terrain", "object"]) {
+      for (const key of keys) {
+        const rows = gameConstants.constants
+          .filter((c) => c.category === category)
+          .sort((a, b) => compareConstantRowsBy(key, a, b));
+        for (let i = 1; i < rows.length; i++) {
+          expect(compareConstantRowsBy(key, rows[i - 1], rows[i])).toBeLessThanOrEqual(0);
+        }
+      }
     }
   });
 });

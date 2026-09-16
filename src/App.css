@@ -41,6 +41,9 @@
   --canvas-bg: #14161a;
   --canvas-text: #ffffff;
   --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  --ui-font-scale: 0.9;
+  --scrollbar-track: #f0f0f0;
+  --scrollbar-thumb: #b3b3b3;
 }
 
 * {
@@ -54,6 +57,15 @@ body,
   margin: 0;
 }
 
+/* Every component stylesheet sizes itself in rem, which resolves against
+   THIS element's font-size, not body's — so scaling it here (Theme
+   Settings' "UI size" slider, ThemeSettingsContext's uiFontScale) scales
+   the whole app's text AND rem-based spacing together, one property, no
+   prop threading. */
+html {
+  font-size: calc(16px * var(--ui-font-scale, 0.9));
+}
+
 body {
   font-family:
     system-ui,
@@ -61,7 +73,6 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
-  font-size: 16px;
   background: var(--bg);
   color: var(--text);
 }
@@ -90,4 +101,34 @@ textarea {
   font-size: inherit;
   color: inherit;
   background-color: var(--surface-raised);
+}
+
+/* Scrollbar colours (item 9, UI pass 2026-09-15), themeable the same way
+   as everything else — var(--scrollbar-track)/var(--scrollbar-thumb),
+   Theme Settings' own two swatches. `scrollbar-color` covers Firefox; the
+   `::-webkit-scrollbar*` pseudo-elements cover WebView2 (Chromium-based,
+   the actual runtime this app ships on) and every other engine that
+   doesn't understand the standard property, so this is two roads to the
+   same result rather than one redundant with the other. */
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
 }

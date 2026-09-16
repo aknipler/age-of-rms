@@ -71,6 +71,37 @@
   border: 1px solid var(--border-subtle);
 }
 
+.sortRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.sortLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-muted);
+}
+
+.sortSelect {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.2rem;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Same small-square shape as the zoom controls' own buttons (PreviewCanvas),
+   a glyph with nothing else in it. */
+.sortDirectionButton {
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

@@ -90,3 +90,23 @@
 .zoomButton:hover {
   background: rgba(0, 0, 0, 0.82);
 }
+
+/* Same look as .zoomButton, sized to its own text instead of the fixed
+   1.25rem square, so it reads as one of this row's controls rather than a
+   different class of button. */
+.exportButton {
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.62rem;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.exportButton:hover {
+  background: rgba(0, 0, 0, 0.82);
+}

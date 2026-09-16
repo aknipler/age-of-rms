@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useThemeSettings } from "../../settings/ThemeSettingsContext";
-import { BUILT_IN_THEMES, THEME_TOKEN_GROUPS, resolveThemeName, type ThemeTokenId } from "../../settings/theme";
+import {
+  BUILT_IN_THEMES,
+  THEME_TOKEN_GROUPS,
+  resolveThemeName,
+  UI_FONT_SCALE_MIN,
+  UI_FONT_SCALE_MAX,
+  type ThemeTokenId,
+} from "../../settings/theme";
 import { HelpTip } from "../HelpTip";
 import settingsStyles from "./SettingsDialog.module.css";
 import hotkeyStyles from "./HotkeysSettings.module.css";
@@ -66,6 +73,8 @@ export function ThemeSettings() {
     updateActiveTheme,
     renameCustomTheme,
     deleteCustomTheme,
+    uiFontScale,
+    setUiFontScale,
   } = useThemeSettings();
 
   // Local-only: the inline "name this theme" field is UI state, not
@@ -75,6 +84,16 @@ export function ThemeSettings() {
   const [saveAsName, setSaveAsName] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+
+  // Also local-only, and deliberately NOT the same live-preview pattern
+  // draftTokens above uses: applying scale on every drag tick resizes the
+  // whole app, this dialog and the slider itself included, which moves the
+  // thumb out from under the pointer mid-drag (2026-09-16, reported as
+  // "hard to control while sliding"). scaleDraft only drives the slider's
+  // own position and the % readout; setUiFontScale (which actually applies
+  // the scale and persists it) is called on release/keyup only, below.
+  const [scaleDraft, setScaleDraft] = useState(uiFontScale);
+  useEffect(() => setScaleDraft(uiFontScale), [uiFontScale]);
 
   function openSaveAs() {
     setSaveAsName(isActiveThemeCustom ? `${resolveThemeName(activeThemeId, customThemes)} copy` : "My theme");
@@ -195,20 +214,31 @@ export function ThemeSettings() {
               </button>
             )}
           </div>
-          <p className={settingsStyles.hint}>
-            Light and Dark ship with the app and can&apos;t be edited in place. Change a colour below and Save as
-            new theme to keep it. A theme you saved can be updated, renamed or deleted here.
-          </p>
+        </fieldset>
+      </HelpTip>
+
+      <HelpTip id="settings.theme.uiScale">
+        <fieldset className={settingsStyles.fieldset}>
+          <legend className={settingsStyles.legend}>UI size</legend>
+          <div className={styles.themePicker}>
+            <input
+              type="range"
+              min={UI_FONT_SCALE_MIN}
+              max={UI_FONT_SCALE_MAX}
+              step={0.01}
+              value={scaleDraft}
+              onChange={(event) => setScaleDraft(Number(event.target.value))}
+              onPointerUp={(event) => setUiFontScale(Number(event.currentTarget.value))}
+              onKeyUp={(event) => setUiFontScale(Number(event.currentTarget.value))}
+            />
+            <span>{Math.round(scaleDraft * 100)}%</span>
+          </div>
         </fieldset>
       </HelpTip>
 
       <HelpTip id="settings.theme.customize">
         <fieldset className={settingsStyles.fieldset}>
           <legend className={settingsStyles.legend}>Customize</legend>
-          <p className={styles.customizeHint}>
-            Every change below previews instantly across the whole app. Nothing is saved until you use Save as new
-            theme or Update above.
-          </p>
           {THEME_TOKEN_GROUPS.map((group) => (
             <div className={styles.group} key={group.label}>
               <h4 className={styles.groupTitle}>{group.label}</h4>

@@ -1,6 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import type { ArgNode, CommandNode, Diagnostic } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
-import { buildCommandBreakdown } from "../attributeModel";
+import { useBreakdownSettings } from "../../settings/BreakdownSettingsContext";
+import { buildCommandBreakdown, sortKnownSlots, splitAttributeColumns, type AttributeSlot } from "../attributeModel";
+import type { AttributeTarget } from "../patch/intents";
 import { renderArgs } from "../renderValue";
 import { diagnosticsWithin, maxSeverityWithin } from "../diagnosticsForSpan";
 import { argumentHelpText } from "../helpText";
@@ -11,6 +14,60 @@ import { OtherContentsRow } from "./OtherContentsRow";
 import { ProblemBadge } from "./ProblemBadge";
 import cardStyles from "./cards.module.css";
 import styles from "./CommandCard.module.css";
+
+/**
+ * One attribute slot plus its drag handle, shared by the flat single-column
+ * layout and both columns of the compact two-column layout, so the three
+ * only differ in which list they render and where a drop lands (see
+ * CommandCard's renderAttributesBody).
+ */
+function AttributeSlotRow({
+  slot,
+  attributeTarget,
+  draggable,
+  onDragStart,
+  onDrop,
+}: {
+  slot: AttributeSlot;
+  attributeTarget: AttributeTarget;
+  draggable: boolean;
+  onDragStart: () => void;
+  onDrop: () => void;
+}) {
+  return (
+    <div
+      className={styles.attributeSlotWrap}
+      draggable={draggable}
+      onDragStart={(e) => {
+        // WebView2 (like Firefox) shows the "no-drop" cursor for the whole
+        // drag and never fires onDrop unless dataTransfer actually carries
+        // something — an empty native drag reads as "nothing to drop".
+        e.dataTransfer.setData("text/plain", slot.name);
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart();
+      }}
+      onDragOver={(e) => {
+        if (draggable) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+    >
+      {draggable && (
+        <HelpTip id="breakdown.commandCard.attributeDragHandle">
+          <span className={styles.dragHandle} title="Drag to reorder" aria-hidden="true">
+            ⠿
+          </span>
+        </HelpTip>
+      )}
+      <AttributeRow slot={slot} target={attributeTarget} />
+    </div>
+  );
+}
 
 // Split out from CommandCard's args.map() specifically so
 // useDiagnosticHover (a real hook) has a real per-item component
@@ -80,6 +137,7 @@ interface CommandCardProps {
 // elsewhere in the document.
 export function CommandCard({ command }: CommandCardProps) {
   const { tokens, lang, diagnostics, applyEdit, isExpanded, toggleExpanded } = useBreakdownContext();
+  const { attributeOrderMode, customAttributeOrder, setCustomAttributeOrderFor, density } = useBreakdownSettings();
   const expanded = isExpanded(command.span);
   const name = tokens[command.name].text;
   const severity = maxSeverityWithin(diagnostics, command.span);
@@ -118,6 +176,160 @@ export function CommandCard({ command }: CommandCardProps) {
   // Sec.4.6 brace synthesis: addAttribute needs a BlockNode when the command
   // has one, else the CommandNode itself (computeEdit synthesizes `{ }`).
   const attributeTarget = command.block ?? command;
+
+  // The Breakdown attribute-order setting (settings.breakdown.attributeOrder):
+  // knownSlots is built alphabetically by buildCommandBreakdown, this is
+  // where the chosen mode actually reorders it for display.
+  const persistedCustomOrder = customAttributeOrder[name];
+  const orderedSlots = breakdown
+    ? sortKnownSlots(breakdown.knownSlots, attributeOrderMode, persistedCustomOrder?.order)
+    : [];
+
+  // A live drag (custom mode only) is kept as a local list of NAMES rather
+  // than mutating orderedSlots directly, so "Set as default" has an exact
+  // value to persist and a plain re-render (no drag in progress) always
+  // reflects the settings/data rather than stale local state. draftOrder is
+  // the flat top-to-bottom order regardless of layout; draftRightColumn is
+  // only meaningful in the compact two-column layout (settings.breakdown
+  // .attributeOrder's density setting), where a drag is free to move a slot
+  // into either column, not just reorder it in place — see
+  // renderAttributesBody below. Both cleared whenever the effective order
+  // changes out from under them: switching commands, changing the global
+  // mode, or another card/session saving a new default for this same
+  // command name.
+  const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+  const [draftRightColumn, setDraftRightColumn] = useState<string[] | null>(null);
+  useEffect(() => {
+    setDraftOrder(null);
+    setDraftRightColumn(null);
+  }, [command.span.start, attributeOrderMode, persistedCustomOrder]);
+
+  const displayedSlots = (() => {
+    if (!draftOrder) return orderedSlots;
+    const byName = new Map(orderedSlots.map((s) => [s.name, s] as const));
+    const matched = draftOrder.map((n) => byName.get(n)).filter((s): s is AttributeSlot => s !== undefined);
+    const matchedNames = new Set(matched.map((s) => s.name));
+    return [...matched, ...orderedSlots.filter((s) => !matchedNames.has(s.name))];
+  })();
+
+  // The compact density's two-column layout (settings.breakdown
+  // .attributeOrder's sibling density setting): booleans on the right,
+  // everything else on the left, by default. Only "custom" mode ever lets a
+  // drag move a slot to the OTHER column (draftRightColumn, falling back to
+  // whatever's already saved); every other mode always uses the plain
+  // isFlag split, since there's no drag to override it with there.
+  const compactColumns =
+    density === "compact"
+      ? splitAttributeColumns(
+          displayedSlots,
+          attributeOrderMode === "custom" ? (draftRightColumn ?? persistedCustomOrder?.rightColumn) : undefined,
+        )
+      : null;
+
+  // Refs rather than state: which row a drag started from doesn't need to
+  // trigger a render on its own, only the drop does. Separate from the
+  // two-column one below since a flat-layout drag index and a
+  // column-scoped one aren't comparable.
+  const dragFromFlat = useRef<number | null>(null);
+  const dragFromColumn = useRef<{ col: "left" | "right"; index: number } | null>(null);
+
+  function renderAttributesBody() {
+    if (compactColumns) {
+      const { left, right } = compactColumns;
+
+      // A column move updates both pieces of custom-order state together:
+      // draftOrder (so the flat/single-column view and sortKnownSlots' own
+      // customOrder stay coherent) and draftRightColumn (so the OTHER
+      // column's membership reflects the move too). Anchoring the insertion
+      // to the target's NEIGHBOR NAME rather than a raw array index is what
+      // makes this correct regardless of which column the drag started in.
+      const handleColumnDrop = (toCol: "left" | "right", toIndex: number) => {
+        const from = dragFromColumn.current;
+        dragFromColumn.current = null;
+        if (!from) return;
+        const draggedSlot = (from.col === "left" ? left : right)[from.index];
+        if (!draggedSlot) return;
+        if (from.col === toCol && from.index === toIndex) return;
+
+        const withoutDragged = displayedSlots.map((s) => s.name).filter((n) => n !== draggedSlot.name);
+        const neighborName = (toCol === "left" ? left : right)[toIndex]?.name;
+        const newOrder =
+          neighborName && neighborName !== draggedSlot.name
+            ? (() => {
+                const pos = withoutDragged.indexOf(neighborName);
+                return [...withoutDragged.slice(0, pos), draggedSlot.name, ...withoutDragged.slice(pos)];
+              })()
+            : [...withoutDragged, draggedSlot.name];
+
+        const nextRightNames = new Set(right.map((s) => s.name));
+        if (toCol === "right") nextRightNames.add(draggedSlot.name);
+        else nextRightNames.delete(draggedSlot.name);
+
+        setDraftOrder(newOrder);
+        setDraftRightColumn([...nextRightNames]);
+      };
+
+      return (
+        <div className={styles.attributesColumns}>
+          <div className={styles.columnsRow}>
+            <div className={styles.column}>
+              {left.map((slot, index) => (
+                <AttributeSlotRow
+                  key={slot.name}
+                  slot={slot}
+                  attributeTarget={attributeTarget}
+                  draggable={attributeOrderMode === "custom"}
+                  onDragStart={() => {
+                    dragFromColumn.current = { col: "left", index };
+                  }}
+                  onDrop={() => handleColumnDrop("left", index)}
+                />
+              ))}
+            </div>
+            <div className={styles.column}>
+              {right.map((slot, index) => (
+                <AttributeSlotRow
+                  key={slot.name}
+                  slot={slot}
+                  attributeTarget={attributeTarget}
+                  draggable={attributeOrderMode === "custom"}
+                  onDragStart={() => {
+                    dragFromColumn.current = { col: "right", index };
+                  }}
+                  onDrop={() => handleColumnDrop("right", index)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {displayedSlots.map((slot, index) => (
+          <AttributeSlotRow
+            key={slot.name}
+            slot={slot}
+            attributeTarget={attributeTarget}
+            draggable={attributeOrderMode === "custom"}
+            onDragStart={() => {
+              dragFromFlat.current = index;
+            }}
+            onDrop={() => {
+              const from = dragFromFlat.current;
+              dragFromFlat.current = null;
+              if (from === null || from === index) return;
+              const next = [...displayedSlots];
+              const [moved] = next.splice(from, 1);
+              next.splice(index, 0, moved);
+              setDraftOrder(next.map((s) => s.name));
+            }}
+          />
+        ))}
+      </>
+    );
+  }
 
   return (
     <div className={cardStyles.card}>
@@ -196,10 +408,38 @@ export function CommandCard({ command }: CommandCardProps) {
 
           {breakdown && breakdown.knownSlots.length > 0 && (
             <section className={styles.group}>
-              <h4 className={styles.groupTitle}>Attributes</h4>
-              {breakdown.knownSlots.map((slot) => (
-                <AttributeRow key={slot.name} slot={slot} target={attributeTarget} />
-              ))}
+              <div className={styles.groupHeader}>
+                <h4 className={styles.groupTitle}>Attributes</h4>
+                {/* Always mounted rather than conditionally rendered, and
+                    hidden with `visibility` instead of unmounted: a
+                    mount/unmount round-trips through the browser's layout
+                    pass and can land the row a subpixel off from its
+                    steady-state height, which read as the header row
+                    nudging everything below it on every drop. Visibility
+                    keeps the box in the layout permanently, so the row's
+                    height never changes. */}
+                <span style={{ visibility: attributeOrderMode === "custom" && draftOrder ? "visible" : "hidden" }}>
+                  <HelpTip id="breakdown.commandCard.setAttributeOrderDefault">
+                    <button
+                      type="button"
+                      className={styles.setDefaultButton}
+                      tabIndex={attributeOrderMode === "custom" && draftOrder ? 0 : -1}
+                      onClick={() => {
+                        if (!draftOrder) return;
+                        setCustomAttributeOrderFor(name, {
+                          order: draftOrder,
+                          rightColumn: draftRightColumn ?? persistedCustomOrder?.rightColumn,
+                        });
+                        setDraftOrder(null);
+                        setDraftRightColumn(null);
+                      }}
+                    >
+                      Set as default
+                    </button>
+                  </HelpTip>
+                </span>
+              </div>
+              {renderAttributesBody()}
             </section>
           )}
 

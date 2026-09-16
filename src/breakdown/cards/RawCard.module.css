@@ -5,10 +5,30 @@
   margin-bottom: 0.3rem;
 }
 
+.toggle {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .kindLabel {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rawPreview {
+  flex: 1;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .code {

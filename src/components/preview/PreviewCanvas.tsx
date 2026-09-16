@@ -61,6 +61,7 @@ export function PreviewCanvas({
       base={{ result, snapshot, palette, hiddenObjects }}
       helpTipId="preview.canvas"
       showApproximateBadge
+      showExportButton
     />
   );
 }

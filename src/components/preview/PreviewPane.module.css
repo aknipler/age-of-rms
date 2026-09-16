@@ -10,20 +10,40 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
+  gap: 0.2rem 0.4rem;
   font-size: 0.72rem;
+  /* Each .controlsGroup below is one flex item here, so wrapping drops
+     the whole seed/re-roll group onto its own row rather than breaking
+     up either group's own controls once the window gets too narrow for
+     both groups to share one line. */
+  flex-wrap: wrap;
+}
+
+/* One cluster of controls within .controls. Two of these (left: settings/
+   view/pin/colour mode, right: seed/re-roll) is what makes .controls' own
+   space-between push the right cluster flush to the pane's right edge
+   instead of spreading every individual control apart evenly. */
+.controlsGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
-.toggle label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
+/* Opens GenerationSettingsDialog. Sized like .pin/.reroll so it reads as
+   one of this row's small controls rather than a different class of
+   button. */
+.settingsButton {
+  font-size: 0.72rem;
+  padding: 0.05rem 0.35rem;
+  cursor: pointer;
+  line-height: 1.3;
 }
 
 /* The Current cut point. Sized like .reroll. It sits in the same kind of
@@ -55,15 +75,29 @@
 }
 
 .seedInput {
-  width: 5rem;
+  width: 3.5rem;
   font-size: 0.7rem;
   padding: 0.05rem 0.2rem;
+  /* No stepper arrows: nobody spins a seed up/down one at a time, the field
+     is either typed into directly or replaced wholesale by Re-roll, and
+     the arrows were the reason the box needed to be as wide as it was. */
+  -moz-appearance: textfield;
 }
 
+.seedInput::-webkit-outer-spin-button,
+.seedInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Icon-only now (a dice, 2026-09-16) — just the glyph, no button-shaped
+   padding around it, since there's no label left to give the click target
+   room. */
 .reroll {
-  font-size: 0.68rem;
-  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+  padding: 0;
   cursor: pointer;
+  line-height: 1.3;
 }
 
 /* Deliberately NOT `white-space: nowrap` with an ellipsis, which is what this

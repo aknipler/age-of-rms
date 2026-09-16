@@ -1,7 +1,6 @@
 import { useHelpSettings } from "../../help/HelpSettingsContext";
 import type { HelpMode } from "../../help/helpConstants";
 import { useAppSettings } from "../../settings/AppSettingsContext";
-import { NAME_LENGTH_LIMIT, SHORTENED_PREFIX_LENGTH } from "../../settings/nameDisplay";
 import { AUTHOR_NAME_MAX_LENGTH } from "../../settings/authorName";
 import { UNKNOWN_AUTHOR } from "../../hooks/scriptHeader";
 import { HelpTip } from "../HelpTip";
@@ -44,10 +43,6 @@ export function GeneralSettings() {
               onChange={(event) => setAuthorName(event.target.value)}
             />
           </div>
-          <p className={styles.hint}>
-            Written into the comment at the top of every script this app creates. Scripts already
-            saved keep the name they were stamped with.
-          </p>
         </fieldset>
       </HelpTip>
 
@@ -66,9 +61,6 @@ export function GeneralSettings() {
               <label htmlFor={`help-mode-${option.value}`}>{option.label}</label>
             </div>
           ))}
-          <p className={styles.hint}>
-            Tips are the small popups that explain a control when you hover it.
-          </p>
         </fieldset>
       </HelpTip>
 
@@ -84,11 +76,6 @@ export function GeneralSettings() {
             />
             <label htmlFor="shorten-long-names">Shorten long #const / #define names</label>
           </div>
-          <p className={styles.hint}>
-            Names longer than {NAME_LENGTH_LIMIT} characters show their first{" "}
-            {SHORTENED_PREFIX_LENGTH} letters followed by an ellipsis. Hover one to read it in
-            full.
-          </p>
         </fieldset>
       </HelpTip>
     </>

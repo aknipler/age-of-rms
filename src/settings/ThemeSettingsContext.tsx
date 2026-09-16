@@ -11,11 +11,14 @@ import { load, type Store } from "@tauri-apps/plugin-store";
 import { APP_SETTINGS_STORE_FILE } from "./nameDisplay";
 import {
   applyThemeTokens,
+  applyUiFontScale,
   DEFAULT_ACTIVE_THEME_ID,
+  DEFAULT_UI_FONT_SCALE,
   generateThemeId,
   isBuiltInThemeId,
   resolveThemeTokens,
   sanitizeCustomThemes,
+  sanitizeUiFontScale,
   themeTokensEqual,
   THEME_STORE_KEYS,
   type CustomTheme,
@@ -56,6 +59,9 @@ export interface ThemeSettingsValue {
   updateActiveTheme: () => void;
   renameCustomTheme: (id: string, name: string) => void;
   deleteCustomTheme: (id: string) => void;
+  /** Global UI scale, applied to the HTML root's font-size (theme.ts's own comment explains why that scales the whole app). Not per-theme — one value regardless of which palette is active. */
+  uiFontScale: number;
+  setUiFontScale: (scale: number) => void;
 }
 
 const ThemeSettingsContext = createContext<ThemeSettingsValue | null>(null);
@@ -67,6 +73,7 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
     resolveThemeTokens(DEFAULT_ACTIVE_THEME_ID, []),
   );
   const [store, setStore] = useState<Store | null>(null);
+  const [uiFontScale, setUiFontScaleState] = useState(DEFAULT_UI_FONT_SCALE);
 
   // Guards the async settle against an unmount between load starting and
   // finishing; see AppSettingsContext.tsx for why StrictMode's dev
@@ -84,10 +91,12 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
         (isBuiltInThemeId(savedActiveRaw) || savedThemes.some((t) => t.id === savedActiveRaw))
           ? savedActiveRaw
           : DEFAULT_ACTIVE_THEME_ID;
+      const savedScaleRaw = await loadedStore.get<unknown>(THEME_STORE_KEYS.uiFontScale);
       if (cancelled) return;
       setCustomThemesState(savedThemes);
       setActiveThemeIdState(savedActive);
       setDraftTokens(resolveThemeTokens(savedActive, savedThemes));
+      if (savedScaleRaw !== undefined) setUiFontScaleState(sanitizeUiFontScale(savedScaleRaw));
     });
     return () => {
       cancelled = true;
@@ -101,6 +110,19 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyThemeTokens(draftTokens);
   }, [draftTokens]);
+
+  useEffect(() => {
+    applyUiFontScale(uiFontScale);
+  }, [uiFontScale]);
+
+  const setUiFontScale = useCallback(
+    (scale: number) => {
+      const next = sanitizeUiFontScale(scale);
+      setUiFontScaleState(next);
+      void store?.set(THEME_STORE_KEYS.uiFontScale, next);
+    },
+    [store],
+  );
 
   const selectTheme = useCallback(
     (id: string) => {
@@ -187,6 +209,8 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
       updateActiveTheme,
       renameCustomTheme,
       deleteCustomTheme,
+      uiFontScale,
+      setUiFontScale,
     }),
     [
       activeThemeId,
@@ -200,6 +224,8 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
       updateActiveTheme,
       renameCustomTheme,
       deleteCustomTheme,
+      uiFontScale,
+      setUiFontScale,
     ],
   );
 

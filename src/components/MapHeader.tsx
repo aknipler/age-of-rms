@@ -1,19 +1,24 @@
+import type { ReactNode } from "react";
 import { HelpTip } from "./HelpTip";
 import styles from "./MapHeader.module.css";
 
 interface MapHeaderProps {
   mapName: string;
   lastSavedAt: Date | null;
+  /** The Breakdown/Code/Advanced Tools tab strip (TabBar), rendered centred
+   * in this same row (item 7, UI pass 2026-09-15) instead of on a row of
+   * its own, to give the editors below a bit more vertical space. */
+  children?: ReactNode;
 }
 
-// Real values arrive with file open/save in Phase 1.2, for now this is
-// fed static placeholder props from App.
-export function MapHeader({ mapName, lastSavedAt }: MapHeaderProps) {
+// mapName/lastSavedAt are owned by useDocument and passed down from App.
+export function MapHeader({ mapName, lastSavedAt, children }: MapHeaderProps) {
   return (
     <div className={styles.mapHeader}>
       <HelpTip id="mapHeader.mapName">
         <h1 className={styles.mapName}>{mapName}</h1>
       </HelpTip>
+      <div className={styles.center}>{children}</div>
       <HelpTip id="mapHeader.lastSaved">
         <span className={styles.lastSaved}>
           Last Saved: {lastSavedAt ? formatTimestamp(lastSavedAt) : "—"}

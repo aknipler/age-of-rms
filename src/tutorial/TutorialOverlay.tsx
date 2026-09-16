@@ -156,7 +156,10 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
     // every other placement, for the rare step where the default position
     // would land on top of something the step opens that ISN'T the anchor
     // (a dropdown triggered by a different control), which this algorithm
-    // has no way to know about on its own.
+    // has no way to know about on its own. Deliberately pure add-then-clamp:
+    // see `overlapsSpotlight` below for why anything cleverer belongs there
+    // instead, checked against the actual result, not guessed from the
+    // nudge amount.
     const nudge = step?.calloutNudge;
     function applyNudge(pos: Placement): Placement {
       if (!nudge) return pos;
@@ -171,8 +174,53 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
       return { top, left };
     }
 
+    // The actual invariant every branch below is trying to guess its way
+    // toward: the callout must not overlap anything spotlighted. Clamping
+    // a nudge to the viewport only guarantees staying ON-SCREEN, not
+    // staying clear of the anchor — for a tab far enough into the strip
+    // (Connections, Objects), the rightmost on-screen position can still
+    // sit to the LEFT of where the tab itself ends on a merely-narrow-ish
+    // window, which is how "beside, nudged, clamped" kept landing back on
+    // top of Hills/Cliffs/Trees/"A road to the hill"'s own tab even after
+    // the clamp-detection heuristic (tuned to the nudge amount, not the
+    // real geometry) was removed. Checked directly against `rects` instead
+    // of inferred from whether a clamp "bit": exact, and correct for any
+    // anchor shape, not just the tab-strip case that prompted it.
+    function overlapsSpotlight(pos: Placement): boolean {
+      const right = pos.left + calloutBox.width;
+      const bottom = pos.top + calloutBox.height;
+      return rects.some((r) => pos.left < r.right && right > r.left && pos.top < r.bottom && bottom > r.top);
+    }
+
+    // Guaranteed clear of everything spotlighted: below the lowest rect
+    // (flipping above only if even that overflows the viewport), pinned as
+    // far right as the viewport allows so it also stays off the breakdown
+    // pane's own left side. The one placement this function trusts without
+    // re-checking, since "below/above the union of every highlighted rect"
+    // cannot overlap any individual one of them by construction.
+    function belowSpotlight(): Placement {
+      const maxBottom = rects.length > 0 ? Math.max(...rects.map((r) => r.bottom)) : (anchorBox?.bottom ?? 0);
+      const minTop = rects.length > 0 ? Math.min(...rects.map((r) => r.top)) : (anchorBox?.top ?? 0);
+      let top = maxBottom + GAP_PX;
+      if (top + calloutBox.height + VIEWPORT_MARGIN_PX > window.innerHeight) {
+        const above = minTop - GAP_PX - calloutBox.height;
+        top =
+          above >= VIEWPORT_MARGIN_PX
+            ? above
+            : Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
+      }
+      const left = Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX);
+      return { top, left };
+    }
+
+    // Every branch below funnels through this: compute a candidate the
+    // normal way, fall back to `belowSpotlight()` if it still overlaps.
+    function commitPosition(pos: Placement): void {
+      setPosition(overlapsSpotlight(pos) ? belowSpotlight() : pos);
+    }
+
     if (!anchorBox) {
-      setPosition(
+      commitPosition(
         applyNudge({
           top: Math.max(VIEWPORT_MARGIN_PX, (window.innerHeight - calloutBox.height) / 2),
           left: Math.max(VIEWPORT_MARGIN_PX, (window.innerWidth - calloutBox.width) / 2),
@@ -198,15 +246,20 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
       if (top + calloutBox.height + VIEWPORT_MARGIN_PX > window.innerHeight) {
         top = Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
       }
-      setPosition(applyNudge({ top, left }));
+      commitPosition(applyNudge({ top, left }));
       return;
     }
 
-    // Neither side has room (a narrow window), same prefer-below /
-    // flip-above / pin-inside-viewport fallback HelpTip.place() uses
-    // (breakdown-design.md's popup, not exported, duplicated deliberately
-    // rather than refactoring HelpTip.tsx beyond the one line Sec.4.1
-    // authorizes).
+    // Neither side has room (a narrow window, or a tab-strip anchor that
+    // wrapped somewhere the beside test can't fit around). Same
+    // prefer-below / flip-above fallback HelpTip.place() uses, but the
+    // left position is pinned as far RIGHT as the viewport allows rather
+    // than to the anchor's own left edge — an anchor near the left of a
+    // narrow pane (a wrapped section tab, the tab strip's own tabs like
+    // Cliff/Terrain) would otherwise drop the callout right back onto the
+    // breakdown pane's own left side, the exact thing beside placement
+    // was trying to avoid in the first place. Pin right, not to the
+    // anchor, whenever beside doesn't fit.
     let top = anchorBox.bottom + GAP_PX;
     if (top + calloutBox.height + VIEWPORT_MARGIN_PX > window.innerHeight) {
       const above = anchorBox.top - GAP_PX - calloutBox.height;
@@ -215,11 +268,8 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
           ? above
           : Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
     }
-    let left = anchorBox.left;
-    if (left + calloutBox.width + VIEWPORT_MARGIN_PX > window.innerWidth) {
-      left = window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX;
-    }
-    setPosition(applyNudge({ top, left: Math.max(VIEWPORT_MARGIN_PX, left) }));
+    const left = Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX);
+    commitPosition(applyNudge({ top, left }));
   }, [anchor, extraAnchors, movedAside, step]);
 
   const showingCallout = active !== null || announcement !== null;
@@ -462,7 +512,7 @@ function StepCallout({
           </HelpTip>
         )}
         {step.bypass && (
-          <HelpTip id="tutorial.bypass" text="Moves on without doing this step — mechanically the same as Next.">
+          <HelpTip id="tutorial.bypass" text="Moves on without doing this step. Mechanically the same as Next.">
             <button type="button" className={styles.button} onClick={onNext}>
               {step.bypass.label}
             </button>

@@ -34,7 +34,9 @@ export type ThemeTokenId =
   | "infoBgSubtle"
   | "canvasBg"
   | "canvasText"
-  | "fontMono";
+  | "fontMono"
+  | "scrollbarTrack"
+  | "scrollbarThumb";
 
 export type ThemeTokens = Record<ThemeTokenId, string>;
 
@@ -110,6 +112,13 @@ export const THEME_TOKEN_GROUPS: ReadonlyArray<{
     label: "Fonts",
     tokens: [{ id: "fontMono", label: "Code / monospace font", kind: "text" }],
   },
+  {
+    label: "Scrollbars",
+    tokens: [
+      { id: "scrollbarTrack", label: "Scrollbar background", kind: "color" },
+      { id: "scrollbarThumb", label: "Scrollbar handle", kind: "color" },
+    ],
+  },
 ];
 
 /** Every token id, derived from the groups so the two can't drift apart. */
@@ -148,6 +157,8 @@ export const DEFAULT_LIGHT_THEME: ThemeTokens = {
   canvasBg: "#14161a",
   canvasText: "#ffffff",
   fontMono: "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
+  scrollbarTrack: "#f0f0f0",
+  scrollbarThumb: "#b3b3b3",
 };
 
 export const DEFAULT_DARK_THEME: ThemeTokens = {
@@ -180,6 +191,12 @@ export const DEFAULT_DARK_THEME: ThemeTokens = {
   canvasBg: "#14161a",
   canvasText: "#ffffff",
   fontMono: "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
+  // "swap the way they currently are" (item 9, UI pass 2026-09-15): a dark
+  // grey TRACK with a lighter grey THUMB, the reverse of this theme's own
+  // surfaceHover/surfaceActive pair (where the darker tone is the hover
+  // background, not a scrollbar's resting state).
+  scrollbarTrack: "#2d2d30",
+  scrollbarThumb: "#8a8a8e",
 };
 
 export type BuiltInThemeId = "light" | "dark";
@@ -202,9 +219,35 @@ export interface CustomTheme {
 export const THEME_STORE_KEYS = {
   activeThemeId: "activeThemeId",
   customThemes: "customThemes",
+  uiFontScale: "uiFontScale",
 } as const;
 
 export const DEFAULT_ACTIVE_THEME_ID: string = "light";
+
+// A global UI-scale preference (item 6, UI pass 2026-09-15), not a per-theme
+// token: every rem-based size in the app (component stylesheets almost all
+// use rem, not px) is relative to the HTML root's own font-size, so scaling
+// that one value scales the whole UI together, menus/tabs included, without
+// threading a scale prop through every component. It applies on top of
+// each component's own base size (TitleBar.module.css/TabBar.module.css
+// already ship smaller defaults for the menu/tab rows specifically), not
+// instead of it. Clamped narrower than a typical browser zoom range because
+// this scales spacing/padding along with text (they're the same rem units),
+// so a wide swing risks clipping fixed-height rows rather than just
+// reflowing text.
+export const UI_FONT_SCALE_MIN = 0.75;
+export const UI_FONT_SCALE_MAX = 1.25;
+export const DEFAULT_UI_FONT_SCALE = 0.9;
+
+export function sanitizeUiFontScale(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_UI_FONT_SCALE;
+  return Math.min(UI_FONT_SCALE_MAX, Math.max(UI_FONT_SCALE_MIN, n));
+}
+
+export function applyUiFontScale(scale: number): void {
+  document.documentElement.style.setProperty("--ui-font-scale", String(scale));
+}
 
 /**
  * Fills in any token missing or non-string from a value read off disk,

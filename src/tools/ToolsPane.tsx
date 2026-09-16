@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../components/HelpTip";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
@@ -154,14 +155,23 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
   // is `dirty` (not unconditionally, the way a report-tool run does) and
   // then unmounts it; leaving a running/cancelling report tool keeps the
   // old unconditional confirm. Selecting the panel tool itself mounts it.
-  const selectTool = (id: string) => {
+  const selectTool = async (id: string) => {
     setPanelBlockedMessage(null);
     if (panelState.phase === "mounted") {
-      if (landPlacementModel.dirty && !window.confirm("Land Placement has unsaved changes. Switching tools discards them. Continue?")) return;
+      if (landPlacementModel.dirty) {
+        // Tauri's WebView2 shell does not reliably honour the raw browser
+        // `window.confirm` (it can resolve without ever showing anything),
+        // which is how this dialog silently discarded work with no prompt at
+        // all in practice. `@tauri-apps/plugin-dialog` is the app's own,
+        // already-depended-on native dialog surface (useDocument.ts uses it
+        // for open/save) and is what actually renders in the packaged app.
+        const proceed = await confirm("Land Placement has unsaved changes. Switching tools discards them. Continue?");
+        if (!proceed) return;
+      }
       host.unmountPanel();
-    } else if (host.isBusy() && !window.confirm("A tool is still running. Switching tools cancels it. Continue?")) {
-      return;
     } else if (host.isBusy()) {
+      const proceed = await confirm("A tool is still running. Switching tools cancels it. Continue?");
+      if (!proceed) return;
       host.cancel();
     }
     host.reset();
@@ -171,7 +181,7 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
     const target = tools.find((t) => t.manifest.id === id);
     if (target?.kind === "panel") {
       const mounted = host.mountPanel(target.manifest.id, filePath);
-      if (!mounted) setPanelBlockedMessage("Another tool is still running — cancel it before opening Land Placement.");
+      if (!mounted) setPanelBlockedMessage("Another tool is still running. Cancel it before opening Land Placement.");
     }
   };
 
@@ -243,7 +253,7 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
     // garbage. ANY violation rejects the whole set.
     const check = validateEdits(state.edits, source.length);
     if (!check.ok) {
-      window.alert(`These changes were rejected: ${check.problem}`);
+      void message(`These changes were rejected: ${check.problem}`);
       return;
     }
     applyTextEdits(state.edits);
@@ -260,6 +270,15 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
   }
 
   const busy = state.phase === "running" || state.phase === "cancelling";
+  // A panel tool (e.g. Land Placement) unmounts unconditionally on File >
+  // Open (host.documentReplaced -> unmountPanel), but nothing here resets
+  // `selectedId` — the dropdown still shows the panel tool selected, and
+  // without this guard the code below falls into the generic report-tool
+  // branch and renders a live "Run" button wired to a tool that has no
+  // run() at all, which throws in inProcessRunner. Re-selecting the SAME
+  // dropdown option also fires no onChange, so "Reopen" below calls
+  // selectTool directly rather than relying on the select element.
+  const panelClosedByDocumentChange = tool?.kind === "panel" && panelState.phase !== "mounted";
   const submittable = tool ? paramsAreSubmittable(tool.manifest.params, submitted) : false;
   // Sec.5.2, keyed on the OUTPUT's own tool (state.toolId), not the
   // currently selected one: selecting a different tool resets state first, so
@@ -337,7 +356,11 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
 
         {panelBlockedMessage && <p className={styles.staleNote}>{panelBlockedMessage}</p>}
 
-        {busy ? (
+        {panelClosedByDocumentChange ? (
+          <button type="button" className={`${styles.button} ${styles.primary}`} onClick={() => void selectTool(tool!.manifest.id)}>
+            Reopen {tool!.manifest.name}
+          </button>
+        ) : busy ? (
           <HelpTip id="tools.cancel">
             <button type="button" className={styles.button} onClick={() => host.cancel()} disabled={state.phase === "cancelling"}>
               {state.phase === "cancelling" ? "Stopping…" : "Cancel"}
@@ -393,12 +416,12 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
       )}
 
       {stale && (
-        <p className={styles.staleNote}>The code changed since this ran — re-run before applying. Tool edits are never rebased.</p>
+        <p className={styles.staleNote}>The code changed since this ran. Re-run before applying. Tool edits are never rebased.</p>
       )}
 
       {state.error && (
         <div className={`${styles.severity} ${styles.error}`}>
-          <strong>{state.error.reason}</strong> — {state.error.message}
+          <strong>{state.error.reason}</strong> · {state.error.message}
         </div>
       )}
 
@@ -440,7 +463,13 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
         </HelpTip>
       )}
 
-      {!state.output && !state.error && !busy && <p className={styles.empty}>Waiting for tool selection…</p>}
+      {panelClosedByDocumentChange && (
+        <p className={styles.empty}>{tool!.manifest.name} closed because the open document changed.</p>
+      )}
+
+      {!panelClosedByDocumentChange && !state.output && !state.error && !busy && (
+        <p className={styles.empty}>Waiting for tool selection…</p>
+      )}
     </div>
   );
 }

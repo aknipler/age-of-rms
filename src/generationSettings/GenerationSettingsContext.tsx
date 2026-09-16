@@ -63,6 +63,20 @@ interface GenerationSettingsValue {
   teamsLocked: boolean;
   /** True while a preset also owns the player count (every preset but FFA). */
   playerCountLocked: boolean;
+  /**
+   * Whether GenerationSettingsDialog is open. Lives here rather than as
+   * local state in App.tsx (which renders the dialog) because the button
+   * that opens it now lives on PreviewPane (beta feedback: it used to be a
+   * status-bar cog, hard to find, moved to sit next to the Current/Final
+   * toggle it actually feeds), and PreviewPane is deliberately prop-less
+   * (MapSidePanel's own contract — see its header) so it can only reach this
+   * flag through a context, not a callback passed down from App. Ephemeral,
+   * not persisted: unlike the rest of this context, there is no reason a
+   * closed dialog should reopen on the next launch.
+   */
+  isDialogOpen: boolean;
+  openDialog: () => void;
+  closeDialog: () => void;
 }
 
 const GenerationSettingsContext = createContext<GenerationSettingsValue | null>(null);
@@ -74,6 +88,10 @@ export function GenerationSettingsProvider({ children }: { children: ReactNode }
   const [activePreset, setActivePresetState] = useState<string | null>(null);
   const [stash, setStashState] = useState<TeamStash | null>(null);
   const [store, setStore] = useState<Store | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const openDialog = useCallback(() => setIsDialogOpen(true), []);
+  const closeDialog = useCallback(() => setIsDialogOpen(false), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,8 +131,25 @@ export function GenerationSettingsProvider({ children }: { children: ReactNode }
     (next: number) => {
       setPlayerCountState(next);
       void store?.set(PLAYER_COUNT_KEY, next);
+      // Typing a count directly is a deliberate override, not a way to
+      // edit the active preset's own count (only FFA leaves this callback
+      // reachable while unlocked; every other preset asserts a specific
+      // count, so a change here can only mean "I want something else").
+      // Clears the preset the same way pressing its own button again
+      // does, restoring whatever teams it had displaced, except the
+      // player count keeps the just-typed value rather than snapping back
+      // to the stash's.
+      if (activePreset !== null) {
+        const restoredTeams = stash?.teams ?? teams;
+        setTeamsState(restoredTeams);
+        setActivePresetState(null);
+        setStashState(null);
+        void store?.set(TEAMS_KEY, restoredTeams);
+        void store?.set(TEAM_PRESET_KEY, null);
+        void store?.set(TEAM_STASH_KEY, null);
+      }
     },
-    [store],
+    [store, activePreset, stash, teams],
   );
 
   const setMapSize = useCallback(
@@ -193,6 +228,9 @@ export function GenerationSettingsProvider({ children }: { children: ReactNode }
       toggleTeamPreset,
       teamsLocked: activePresetDef !== undefined,
       playerCountLocked: activePresetDef?.playerCount != null,
+      isDialogOpen,
+      openDialog,
+      closeDialog,
     }),
     [
       playerCount,
@@ -204,6 +242,9 @@ export function GenerationSettingsProvider({ children }: { children: ReactNode }
       activePreset,
       toggleTeamPreset,
       activePresetDef,
+      isDialogOpen,
+      openDialog,
+      closeDialog,
     ],
   );
 

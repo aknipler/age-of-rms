@@ -1,20 +1,37 @@
 .mapHeader {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 0.75rem 1.25rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1.25rem;
   border-bottom: 1px solid var(--border);
 }
 
 .mapName {
   margin: 0;
-  font-size: 1.4rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.2rem;
   font-style: italic;
   font-weight: 400;
 }
 
+/* Holds the tab strip (TabBar, passed as children). flex: 1 so it takes
+   whatever room mapName/lastSaved don't need, and centres its own content
+   within that, which is what actually puts the tabs in the middle of the
+   row rather than just left-aligned after the map name. */
+.center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
 .lastSaved {
-  font-size: 0.9rem;
+  flex: 0 0 auto;
+  font-size: 0.85rem;
   font-style: italic;
   color: var(--text-secondary);
   white-space: nowrap;

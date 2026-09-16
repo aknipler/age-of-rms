@@ -1,6 +1,56 @@
 .titleBar {
   display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.6rem 0 0.75rem;
+}
+
+.brandIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.brandName {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+  /* min-width keeps a sliver of drag surface even when the window is
+     narrow enough that the menu items and window controls nearly touch. */
+  min-width: 0.5rem;
+  align-self: stretch;
+}
+
+.windowControls {
+  display: flex;
+  align-self: stretch;
+}
+
+.windowButton {
+  border: none;
+  background: transparent;
+  width: 2.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.windowButton:hover {
+  background: var(--surface-hover);
+}
+
+.closeButton:hover {
+  background: var(--danger);
+  color: var(--text-on-accent);
 }
 
 .menuWrapper {
@@ -8,12 +58,12 @@
 }
 
 .menuItem {
-  border: 1px solid var(--border);
-  border-top: none;
-  border-left: none;
-  background: var(--surface);
-  padding: 0.4rem 1rem;
-  font-size: 0.95rem;
+  border: none;
+  border-radius: 4px;
+  margin: 0.2rem 0.1rem;
+  background: transparent;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
   cursor: pointer;
 }
 
@@ -25,7 +75,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  min-width: 170px;
+  min-width: 15rem;
   background: var(--surface);
   border: 1px solid var(--border);
   /* Above TutorialOverlay's dim layer/ring (900/901, TutorialOverlay.module.css),
@@ -53,6 +103,11 @@
   text-align: left;
   cursor: pointer;
   width: 100%;
+  /* "Save As…"/"Find and Replace" were wrapping onto a second line at the
+     old 170px floor. white-space: nowrap guarantees one line regardless
+     of exactly how wide any future item's label gets, the wider
+     min-width above is what actually gives it room to honour that. */
+  white-space: nowrap;
 }
 
 /* The current binding, shown next to Save so a rebind in Settings > Hotkeys

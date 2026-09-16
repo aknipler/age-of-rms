@@ -128,6 +128,54 @@ No entries. BUG-001 was the only Breakdown bug filed; it is fixed and its write-
 
 ## Advanced Tools
 
+### BUG-028 — Export PNG's save dialog opens but no file is written
+
+**Status: FIXED 2026-09-16.** **Area:** `src-tauri/capabilities/default.json`. **Found:** reported by Ash — the Export PNG button opens the save dialog, but the chosen path never gets a file.
+
+`OverlayCanvas.tsx`'s `exportPng` calls `@tauri-apps/plugin-fs`'s `writeFile` (binary), but `default.json` only granted `fs:allow-write-text-file` — a distinct permission from `fs:allow-write-file` in Tauri v2's fs plugin, and the one `writeTextFile` uses. The IPC call was rejected by the permission layer before it ever reached the Rust side, and `exportPng` has no `catch`, so the rejection surfaced as nothing at all: the save dialog (covered by `dialog:default`) completed normally, and the write it should have triggered silently never ran. Added `fs:allow-write-file` to `default.json`'s permission list. Same root cause class as `useDocument.ts`'s own comment on this file: "Nothing in JS can read/write a file the capability doesn't cover, no matter what the code says" — that was written about the text-file path, and the binary path had never been granted at all.
+
+---
+
+### BUG-027 — Land Placement's disabled-button tooltip covers its own HelpTip
+
+**Status: FIXED 2026-09-04.** **Area:** `src/tools/builtin/landPlacement/panel/LandPlacementPanel.tsx` (the `+ Shape`/`+ Land` buttons). **Found:** manual run-sheet section 1, item 12.
+
+Both buttons carried a native `title="Add a role first"` alongside their `HelpTip` wrapper. Two independent hover-tooltip systems on one element: the native one rendered on top of the HelpTip's own popup, hiding it. Folded into one system — the disabled reason is now passed as `HelpTip`'s own `text` override, so hovering shows the disabled reason where a role is missing and the ordinary help text otherwise, never both at once.
+
+---
+
+### BUG-026 — checkP1 false-alarms on a raw node containing no `create_land`
+
+**Status: FIXED 2026-09-04.** **Area:** `src/tools/builtin/landPlacement/preconditions.ts` (`checkP1`). **Found:** manual run-sheet section 1, item 5 — a script with `0.0%` raw coverage and `0` unmanaged `create_land` commands still showed the "Land Placement cannot manage those" warning.
+
+`checkP1`'s `ok` was `rawSpans.length === 0` — false the instant ANY RawNode exists anywhere in the file, including one with nothing inside it Land Placement actually cares about. The one consumer of `.ok` (`LandPlacementPanel.tsx`) renders a message specifically about unmanaged `create_land` commands, so a raw span with zero of them inside produced a warning that was true about the file and false about what the tool can and cannot do. Every existing pinned test in `checkP1.test.ts` already had `rawSpans.length === 0` and `unmanagedLandCount === 0` moving together, so none of them pinned the discriminating case — changed `ok` to `unmanagedLandCount === 0` with no other test changes needed.
+
+---
+
+### BUG-025 — Land Placement's Run button crashes after File > Open replaces the document
+
+**Status: FIXED 2026-09-04.** **Area:** `src/tools/ToolsPane.tsx`. **Found:** manual run-sheet section 1, item 4 — `tool-error — Error: inProcessRunner: cannot run a "panel" tool ("land-placement") — only "builtin" has run()`.
+
+`ToolHost.documentReplaced()` unconditionally unmounts a mounted panel (Sec.3.6(c)), but nothing reset `ToolsPane`'s own `selectedId`, so the dropdown kept showing Land Placement selected after the panel was gone. With `panelState.phase !== "mounted"`, the render fell into the generic report-tool branch and drew a live, enabled "Run" button wired to a tool that has no `run()` at all — `panel`-kind tools are only ever invoked through their own component. Added a `panelClosedByDocumentChange` render branch: instead of Run/Cancel, the pane now shows "‹Tool› closed because the open document changed." with a "Reopen" button that calls `selectTool` directly (a plain `<select>` fires no `onChange` when the already-selected option is re-picked, so re-selecting the same dropdown entry could never have recovered this on its own).
+
+---
+
+### BUG-024 — Land Placement's Apply always reports "1 change" against an untouched model
+
+**Status: FIXED 2026-09-04.** **Area:** `src/tools/builtin/landPlacement/applyEdits.ts` (`computeApplyEdits`). **Found:** manual run-sheet section 1, item 3 — a fresh panel with no roles, shapes or lands still showed "Apply 1 change".
+
+`buildFenceEdits` (fence.ts) always returns an insertion edit when no fence exists yet in the document, regardless of what the model contains — correct for its own job (`fence.test.ts` pins this against an arbitrary body on an arbitrary model, including an empty one, deliberately testing the encoding mechanism rather than whether a real model has content). Nothing above it in `computeApplyEdits` checked whether the model was worth writing at all. Added a guard: when the model has no roles and no placements AND there is no existing fence to reconcile, the fence edit is skipped entirely. A model emptied out from real content still produces an edit, since an existing fence then needs clearing — only the never-touched case is suppressed.
+
+---
+
+### BUG-023 — `window.confirm`/`window.alert` don't reliably render in the packaged Tauri shell
+
+**Status: FIXED 2026-09-04.** **Area:** `src/tools/ToolsPane.tsx` (two `window.confirm`, one `window.alert`), `src/tools/builtin/landPlacement/panel/LandPlacementPanel.tsx` (one `window.alert`). **Found:** manual run-sheet section 1, items 1 and 2 — switching from Land Placement (with unsaved roles/shapes/lands) to the Generation Consistency Checker produced no confirmation dialog at all, silently discarded the panel's work, and killed the checker's own run with no "cancels it, continue?" prompt either.
+
+All four call sites used the browser's raw, synchronous `window.confirm`/`window.alert` rather than the app's own native dialog surface — `tauri-plugin-dialog` / `@tauri-apps/plugin-dialog`, already a dependency and already registered in `src-tauri/src/lib.rs`, and already used for file open/save (`src/hooks/useDocument.ts`). Raw JS dialogs are not guaranteed to show anything at all inside a Tauri WebView2 host; the reported symptom (switch proceeds immediately, no prompt visible, no way to cancel) is consistent with the call resolving without ever blocking. Replaced all four with `@tauri-apps/plugin-dialog`'s async `confirm()`/`message()`, which required making `ToolsPane.selectTool`/`apply` handle a promise rather than a synchronous return; no other logic changed. See CLAUDE.md's Hard rules — this is now a standing rule, not just a fix, since the two remaining call sites were found by grepping the whole of `src/` and nothing else uses either API.
+
+---
+
 ### BUG-018 — formatter's "empty preview under a non-zero edit count" fix has no test coverage
 
 **Status: FIXED 2026-08-30.** **Area:** `src/tools/builtin/scriptFormatter.ts:316-335` (`buildFormatterOutput`), `docs/formatter-design.md` §9. **Found:** code-review of the staged 5.2b commit, 2026-08-25.

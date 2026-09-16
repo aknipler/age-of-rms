@@ -15,3 +15,25 @@
   /* No border-right: the resizer strip beside it carries the dividing line
      now, so the two do not draw two lines a pixel apart. */
 }
+
+/* The preview's own share of the panel's height (previewReferenceSplit.ts).
+   `overflow-y: auto` rather than nothing: PreviewPane's content is a
+   fixed-aspect-ratio canvas plus a readout, not something that shrinks to
+   fit an arbitrary height, so a fraction smaller than its natural size has
+   to scroll rather than clip or overflow the panel. */
+.previewSlot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The reference table's own share. `overflow: hidden` rather than `auto`:
+   ReferenceTable.module.css's `.panel` already scrolls internally, and
+   scrolling here too would nest two scrollbars for one list. */
+.referenceSlot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}

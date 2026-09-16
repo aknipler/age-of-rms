@@ -47,17 +47,25 @@ export function extractComments(tokens: readonly Token[]): Span[] {
 
 /**
  * Comments whose span falls strictly between two consecutive items in
- * `items`, the only placement BlockList can attribute to itself
- * unambiguously without knowing its container's own boundaries (a
- * comment before the very first item of a list, or after the very last,
- * is out of scope for v1, see comments.ts's own module doc and the
- * build log for the reasoning). Returned as a map from `i` (the index of
- * the item the comments render AFTER) to the comments in that gap, in
- * source order.
+ * `items`, the only placement BlockList could attribute to itself
+ * unambiguously without knowing its container's own boundaries. A comment
+ * before the very first item of a list is still out of scope (nothing
+ * inserts one there). A comment AFTER the last item is now included too,
+ * when the caller passes `boundaryEnd`, the offset of whatever closes
+ * this container (a block's `}`, a branch's terminator keyword, the next
+ * SectionNode's header, or EOF), so a trailing comment genuinely inside
+ * this container isn't confused with one that starts the next construct.
+ * Every BlockList call site now has that offset in hand for the same
+ * reason computeEdit's own insert helpers do (Sec.4.5): appending a new
+ * comment/command has to know exactly where "the end of this container"
+ * is. Stored at index `items.length - 1`, the one slot the loop below
+ * never writes (`i` stops at `items.length - 2`), which is also exactly
+ * where BlockList already renders the gap after the last item.
  */
 export function commentsBetweenItems(
   items: readonly { span: Span }[],
   allComments: readonly Span[],
+  boundaryEnd?: number,
 ): Map<number, Span[]> {
   const byIndex = new Map<number, Span[]>();
   for (let i = 0; i < items.length - 1; i++) {
@@ -66,5 +74,29 @@ export function commentsBetweenItems(
     const inGap = allComments.filter((c) => c.start >= gapStart && c.end <= gapEnd);
     if (inGap.length > 0) byIndex.set(i, inGap);
   }
+  if (boundaryEnd !== undefined && items.length > 0) {
+    const gapStart = items[items.length - 1].span.end;
+    const trailing = allComments.filter((c) => c.start >= gapStart && c.end <= boundaryEnd);
+    if (trailing.length > 0) byIndex.set(items.length - 1, trailing);
+  }
   return byIndex;
+}
+
+// Keeps the comment delimiters whitespace-separated from whatever sits
+// between them: the lexer is a plain whitespace splitter (Sec.2 above),
+// so it only recognizes the opening and closing markers as their own
+// tokens when a run of non-whitespace doesn't glue onto them. Given
+// "hello" this returns " hello ", but given content that ALREADY carries
+// its own leading or trailing whitespace (an intentional multi-line
+// doc-comment block, say, that opens with a newline) it only pads
+// whichever side is actually missing, so that formatting survives an
+// edit untouched. computeEdit.ts's editComment case is the only caller,
+// so every write through this app's own UI is safe regardless of what
+// the user typed; CommentCard.tsx separately rejects text that embeds a
+// literal comment marker, a content policy this function has no opinion
+// on.
+export function padCommentContent(text: string): string {
+  if (text === "") return " ";
+  const withLeading = /^\s/.test(text) ? text : ` ${text}`;
+  return /\s$/.test(withLeading) ? withLeading : `${withLeading} `;
 }

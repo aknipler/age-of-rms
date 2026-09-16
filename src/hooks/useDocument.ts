@@ -91,6 +91,29 @@ export function getDocumentModel(): monaco.editor.ITextModel {
 }
 
 /**
+ * Every call site below (the header stamp, a single Breakdown card action,
+ * an Advanced Tools Apply covering N edits) is one discrete, semantically
+ * atomic action, and each one must land as its OWN undo entry rather than
+ * silently merging with whatever the model's undo stack last left open.
+ *
+ * Monaco's `pushEditOperations` APPENDS onto the previous undo entry
+ * whenever that entry is still open (`SingleModelEditStackElement.
+ * canAppend`, monaco-editor's `editStack.js`); the only thing that closes
+ * one is `pushStackElement()`, which a real editor's Cursor controller
+ * calls automatically while the user types, but that controller only
+ * exists while CodePane is mounted. Nothing else in this app ever called
+ * it, so every Breakdown action performed back-to-back (the Code tab never
+ * in between) used to accumulate onto ONE growing entry until it happened
+ * to fork fresh (e.g. right after an undo), and a single Ctrl+Z would then
+ * revert the whole streak at once instead of just the last action.
+ * Reported by a user as "the undo button sometimes undoes a lot of work."
+ */
+function pushOwnUndoEntry(operations: monaco.editor.IIdentifiedSingleEditOperation[]): void {
+  documentModel.pushStackElement();
+  documentModel.pushEditOperations([], operations, () => null);
+}
+
+/**
  * Replace a byte range of the shared model, on the model's own undo stack.
  *
  * Module scope, beside the model, because the header stamp is the one edit
@@ -113,7 +136,7 @@ function replaceRanges(edits: readonly { start: number; end: number; newText: st
   // itself, so the edits need no descending sort. That is what manual string
   // splicing needs. Non-overlap is the requirement, and refreshScriptHeader
   // produces one edit per distinct line.
-  documentModel.pushEditOperations([], operations, () => null);
+  pushOwnUndoEntry(operations);
 }
 
 function replaceRange(start: number, end: number, newText: string): void {
@@ -477,35 +500,35 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   const mapName = filePath ? fileNameFromPath(filePath) : "Untitled Map";
 
   // Applies a byte-level TextEdit (docs/breakdown-design.md Sec.4.1's
-  // TextEdit shape) to the shared document model via pushEditOperations,
+  // TextEdit shape) to the shared document model via pushOwnUndoEntry,
   // which lands on Monaco's own undo/redo stack, the same stack Ctrl+Z
-  // in the Code tab uses (Sec.6.4). This is the one function Breakdown's
-  // patch-application glue (src/breakdown/applyEdit.ts) needs from this
-  // hook; it deliberately takes a structurally-typed edit rather than
-  // importing src/breakdown/patch/intents.ts's TextEdit, so this hook
+  // in the Code tab uses (Sec.6.4), as its own entry (see that function's
+  // doc comment: without the pushStackElement it calls first, this is
+  // exactly the call site that used to let consecutive Breakdown actions
+  // accumulate onto one growing undo entry). This is the one function
+  // Breakdown's patch-application glue (src/breakdown/applyEdit.ts) needs
+  // from this hook; it deliberately takes a structurally-typed edit rather
+  // than importing src/breakdown/patch/intents.ts's TextEdit, so this hook
   // stays free of any dependency on the breakdown feature.
   const applyTextEdit = useCallback((edit: { start: number; end: number; newText: string }) => {
     const startPos = documentModel.getPositionAt(edit.start);
     const endPos = documentModel.getPositionAt(edit.end);
     const range = new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column);
-    documentModel.pushEditOperations(
-      [],
-      [{ range, text: edit.newText, forceMoveMarkers: true }],
-      () => null,
-    );
+    pushOwnUndoEntry([{ range, text: edit.newText, forceMoveMarkers: true }]);
   }, []);
 
   // The N-edit form, for the Advanced Tools pane (docs/tools-api-design.md
-  // Sec.4.5). It exists because calling applyTextEdit N times produces N UNDO
-  // ENTRIES, which breaks that spec's central promise that a tool's Apply is one
-  // undoable action, a user who applied 40 changes should press Ctrl+Z once,
-  // not forty times.
+  // Sec.4.5). It exists because calling applyTextEdit N times, each as its
+  // own pushOwnUndoEntry call, would produce N undo entries, which breaks
+  // that spec's central promise that a tool's Apply is one undoable action:
+  // a user who applied 40 changes should press Ctrl+Z once, not forty times.
   //
-  // Converting all N and passing ONE array is the whole mechanism.
-  // pushEditOperations takes ranges in ORIGINAL coordinates and handles ordering
-  // itself, so the edits need no descending sort. That is what manual string
-  // splicing needs, and presenting it as the mechanism invites a later "fix" of
-  // the wrong thing. What Monaco does require is non-overlap, which the caller
+  // Converting all N and passing ONE array to a single pushOwnUndoEntry
+  // call is the whole mechanism. pushEditOperations takes ranges in
+  // ORIGINAL coordinates and handles ordering itself, so the edits need no
+  // descending sort. That is what manual string splicing needs, and
+  // presenting it as the mechanism invites a later "fix" of the wrong
+  // thing. What Monaco does require is non-overlap, which the caller
   // validates (protocol.ts's validateEdits) before reaching here.
   const applyTextEdits = useCallback((edits: readonly { start: number; end: number; newText: string }[]) => {
     if (edits.length === 0) return;
@@ -518,7 +541,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
         forceMoveMarkers: true,
       };
     });
-    documentModel.pushEditOperations([], operations, () => null);
+    pushOwnUndoEntry(operations);
   }, []);
 
   // Sec.6.4's "one undo stack" promise has a reachability gap: the model's

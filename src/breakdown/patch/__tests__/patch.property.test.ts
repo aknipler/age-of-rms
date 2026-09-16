@@ -1,7 +1,9 @@
 // Phase 3.3, the Sec.4.8 property gate. For seeded random intents over every
 // available corpus map: patched source re-parses with the intended change
-// and no other AST difference; comments outside deleted ranges survive
-// byte-identical. Per-file seeding (filename-derived) so results are
+// and no other AST difference; comments outside a deleted/inserted/edited
+// range survive byte-identical (addComment/editComment are the one pair of
+// intents allowed to touch that range at all, see astDiff.ts's
+// diffOptionsFor). Per-file seeding (filename-derived) so results are
 // identical whether or not gitignored maps are present (spec Sec.4.8 rev 3).
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -18,12 +20,14 @@ import type {
   Item,
   ParseResult,
   SectionNode,
+  Span,
 } from "../../../parser/types";
 import { loadLanguage, REPO_ROOT } from "../../../parser/__tests__/testUtils";
 import { NUMERIC_ARGUMENT_TYPES } from "../../../parser/language";
 import { applyEdit, computeEdit } from "../computeEdit";
 import { PatchError, type EditIntent } from "../intents";
-import { astDiff } from "./astDiff";
+import { astDiff, diffOptionsFor } from "./astDiff";
+import { extractComments } from "../../comments";
 
 const langData = loadLanguage();
 const lang = buildLanguageIndex(langData);
@@ -52,15 +56,33 @@ interface Pools {
   removables: (CommandNode | AttributeNode | DirectiveNode)[];
   closedBlocks: { block: BlockNode; owner: CommandNode }[];
   sections: SectionNode[];
+  // Filtered to comments that actually closed with a real "*/" and have a
+  // non-degenerate inner region: extractComments's own unclosed-at-EOF
+  // fallback has no closing marker at all, so treating its last 2
+  // characters as one would eat real content instead of a delimiter, and
+  // a comment whose "/*"/close sit 4 apart or less (only reachable in
+  // theory; the lexer's whitespace-splitter means "/**/" itself never
+  // tokenizes as two separate markers to begin with, see computeEdit.ts's
+  // addComment case) would give editComment an inverted span.
+  comments: Span[];
 }
 
 /** True when this file offers the generator nothing to do (see the assertion at the end). */
 function isInert(p: Pools): boolean {
-  return p.numericArgs.length === 0 && p.removables.length === 0 && p.closedBlocks.length === 0 && p.sections.length === 0;
+  return (
+    p.numericArgs.length === 0 &&
+    p.removables.length === 0 &&
+    p.closedBlocks.length === 0 &&
+    p.sections.length === 0 &&
+    p.comments.length === 0
+  );
 }
 
 function harvest(r: ParseResult): Pools {
-  const pools: Pools = { numericArgs: [], removables: [], closedBlocks: [], sections: [] };
+  const comments = extractComments(r.tokens).filter(
+    (c) => c.end - c.start > 4 && r.source.slice(c.end - 2, c.end) === "*/",
+  );
+  const pools: Pools = { numericArgs: [], removables: [], closedBlocks: [], sections: [], comments };
   const visitItems = (items: Item[]) => {
     for (const item of items) {
       if (item.kind === "command" || item.kind === "attribute" || item.kind === "directive") {
@@ -116,6 +138,12 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
   // directive at any nesting depth) as anchors, since that's exactly the set
   // of Items Sec.3.9's card-selection can produce as `selectedItem`.
   if (pools.removables.length) kinds.push("addCmdAfter");
+  // addComment reuses the exact same anchor pool/InsertTarget as
+  // addCmdAfter (Add Comment's own button in SectionView resolves the
+  // same way Add Command's does), and editComment needs an existing
+  // comment to replace the inner span of.
+  if (pools.removables.length) kinds.push("addComment");
+  if (pools.comments.length) kinds.push("editComment");
   if (kinds.length === 0) return undefined;
   switch (pick(kinds)) {
     case "set": {
@@ -137,6 +165,22 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
       const anchor = pick(pools.removables);
       if (langData.commands.length === 0) return undefined;
       return { kind: "addCommand", at: { after: anchor }, name: pick(langData.commands).name };
+    }
+    case "addComment": {
+      const anchor = pick(pools.removables);
+      return { kind: "addComment", at: { after: anchor } };
+    }
+    case "editComment": {
+      const span = pick(pools.comments);
+      const innerSpan = { start: span.start + 2, end: span.end - 2 };
+      // A spread of plain replacement texts, none containing a comment
+      // marker (CommentCard's own content policy, not computeEdit's
+      // problem to enforce): empty (padCommentContent's own edge case),
+      // unpadded single/multi-word, already-padded, and one carrying an
+      // internal newline, so a multi-line comment's own edit path gets
+      // fuzzed too.
+      const samples = ["", "note", "a longer replacement note", " already padded ", "line one\nline two"];
+      return { kind: "editComment", innerSpan, text: pick(samples) };
     }
     default: {
       const section = pick(pools.sections);
@@ -192,8 +236,7 @@ describe("Sec.4.8 property gate: patch → reparse → only the intended diff", 
         const { edit } = editResult;
         const patched = applyEdit(original, edit);
         const b = parseRms(patched, langData);
-        const isDeletion = edit.newText === "";
-        const problems = astDiff(a, b, edit, isDeletion ? { deletedRange: { start: edit.start, end: edit.end } } : {});
+        const problems = astDiff(a, b, edit, diffOptionsFor(intent, edit));
         if (problems.length > 0) {
           throw new Error(
             `(${file.name}, iter ${iter}) intent ${intent.kind} → edit [${edit.start},${edit.end})="${edit.newText.slice(0, 40)}"\n${problems.slice(0, 6).join("\n")}`,

@@ -1,0 +1,94 @@
+/* Same shape as SidePanelResizer.module.css, rotated 90 degrees. Sized
+   around its button now (`flex: 0 0 auto`, 2026-09-16), not to a fixed
+   px the button then has to be forced to fill exactly — two rounds of
+   trying to match the button's height to a pre-set 14px/12px bar each
+   left it visibly off (stretched through an inline-block wrapper it
+   didn't resolve through cleanly, then still hanging off one edge even
+   with hand-computed fixed pixels). Letting the bar wrap its content
+   instead needs no percentage, no stretch, and no arithmetic to get
+   right: a flex container with `height: auto` and one child is exactly
+   as tall as that child, by definition, all the way up through
+   HelpTip's own wrapper span (also `height: auto`) and .buttons below —
+   the button touches the border on both sides because there is nothing
+   left over for it not to. */
+
+.resizer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  /* Stops a touch drag scrolling the reference table instead of moving the
+     bar. Pointer capture handles the mouse; this is the touch half. */
+  touch-action: none;
+  user-select: none;
+}
+
+/* :not(:has(...)) so hovering a button highlights ONLY the button, not the
+   whole bar underneath it (2026-09-16) — without it, :hover cascades to
+   this ancestor from anywhere inside its box, button included, and the two
+   highlights stacked made the button's own hover state invisible against
+   the bar's identical one. */
+.resizer:hover:not(:has(.collapseButton:hover)),
+.dragging {
+  background: var(--accent-bg-subtle);
+}
+
+.resizer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* `flex`, not `inline-flex` (2026-09-16): this is a <span>, itself INLINE
+   as the single child of HelpTip's own wrapper span — participating in
+   the wrapper's implicit line box means the browser reserves a "strut", a
+   phantom baseline-aligned box sized off the INHERITED font/line-height,
+   not off .buttons' own 14px-tall button children, and that strut was
+   the actual source of the leftover vertical space (this is also
+   precisely why the single-button `.reopener` case — no `.buttons`
+   wrapper, `.collapseButton` already `display: flex` so it's block-level
+   and opts out of strut logic entirely — never showed the bug: it had no
+   inline box left in the chain for a strut to attach to). `flex` makes
+   this a block box, same fix, one level up. */
+.buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.reopener {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* A short wide pill rather than a square, mirroring SidePanelResizer's own
+   tall pill: a horizontal target is what the eye finds against a
+   full-width strip. Sized up (2026-09-16, was 32x10px). `height: 14px` is
+   the ONLY explicit size left anywhere in this chain — .resizer/.reopener
+   size themselves around it (see .resizer's own comment), rather than the
+   other way around. */
+.collapseButton {
+  width: 44px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapseButton:hover {
+  background: var(--accent-bg-subtle);
+}

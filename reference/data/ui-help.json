@@ -106,7 +106,7 @@
     },
     {
       "id": "tabBar.advancedTools",
-      "text": "A pane for built-in and (later) community-made tools that operate on your script. Arrives in Phase 5."
+      "text": "Built-in tools that operate on your script."
     },
     {
       "id": "statusBar.total",
@@ -127,10 +127,6 @@
     {
       "id": "statusBar.problems",
       "text": "Errors and warnings found by the parser in the current file, re-checked live as you type on the Code tab. The triangle is red when there is at least one error, yellow when the worst is a warning, and blue when there is only information. Click a squiggle in the editor to see the full message."
-    },
-    {
-      "id": "statusBar.generationSettings",
-      "text": "Opens Generation Settings: map size and player count, used to compute the resource totals shown here."
     },
     {
       "id": "statusBar.reportBug",
@@ -217,16 +213,32 @@
       "text": "Switch the active theme, or save your current colour edits as a new one. Light and Dark are built in and can't be edited in place. Customize below, then Save as new theme. A theme you saved can be updated, renamed or deleted from here too."
     },
     {
+      "id": "settings.theme.uiScale",
+      "text": "Scales the app's text and spacing up or down together, menus, tabs and panels included, and isn't tied to which theme is active. Applies when you release the slider, not while dragging it, since resizing everything mid-drag moves the slider itself out from under the pointer. Monaco sets its own font size for the Code tab's editor text directly, so this doesn't reach it."
+    },
+    {
       "id": "settings.theme.customize",
-      "text": "Every colour and the code editor's monospace font, grouped by what they control. Editing one applies it everywhere immediately, so you can see the effect before deciding to keep it."
+      "text": "Every colour, the code editor's monospace font, and the scrollbar colours, grouped by what they control. Editing one applies it everywhere immediately, so you can see the effect before deciding to keep it."
     },
     {
       "id": "settings.tab.breakdown",
-      "text": "Settings for the Breakdown editor, like which sections start expanded. Empty for now."
+      "text": "Settings for the Breakdown editor: density and attribute order today, with more planned."
+    },
+    {
+      "id": "settings.breakdown.attributeOrder",
+      "text": "Sets the order a command card's attribute rows render in. Required first groups the attributes marked required in the reference data ahead of everything else, then sorts the rest by type (text, then number, then boolean). Alphabetical ignores type. File order matches the order attributes appear in the code, with ones not yet written appended at the end. Custom lets you drag rows into your own order per card."
+    },
+    {
+      "id": "settings.breakdown.density",
+      "text": "Comfortable is the default spacing. Compact tightens the padding around cards and rows, and lets a wide-enough command card split its attributes into two columns, booleans on the right, everything else on the left."
     },
     {
       "id": "settings.tab.code",
-      "text": "Settings for the code editor, like tab width and word wrap. Empty for now."
+      "text": "Settings for the code editor: indentation today, with more planned."
+    },
+    {
+      "id": "settings.code.indentation",
+      "text": "How many spaces one tab press or one indent level counts as, and whether pressing Tab actually inserts spaces or a real tab character. Applies to the Code tab's editor immediately."
     },
     {
       "id": "settings.tab.advancedTools",
@@ -289,6 +301,10 @@
       "text": "Click a command to insert it. The chip shows whether this command's reference data has been verified against the official docs. \"Unverified\" entries may have incomplete or unconfirmed argument details, but are still safe to use."
     },
     {
+      "id": "breakdown.addComment",
+      "text": "Inserts a blank comment you can type into right away. It goes after the selected card, or at the end of this tab if nothing is selected, same placement rule as Add command."
+    },
+    {
       "id": "breakdown.commandCard.summary",
       "text": "Click +/− to expand this command and see or edit its arguments and attributes."
     },
@@ -307,6 +323,14 @@
     {
       "id": "breakdown.commandCard.argumentName",
       "text": "This argument's name. Hover shows what it's for, sourced from the reference docs (falls back to type/range/default when no description is written yet)."
+    },
+    {
+      "id": "breakdown.commandCard.attributeDragHandle",
+      "text": "Drag to reorder this attribute within the card. Only available with the Custom attribute order setting selected."
+    },
+    {
+      "id": "breakdown.commandCard.setAttributeOrderDefault",
+      "text": "Saves the order you just dragged as the default for every command of this name, so it's remembered the next time this map (or any map) opens."
     },
     {
       "id": "breakdown.attributeRow.value",
@@ -406,11 +430,23 @@
     },
     {
       "id": "breakdown.commentCard",
-      "text": "A comment from your script, shown here for reference. Comments aren't editable in Breakdown yet. Switch to the Code tab to change them."
+      "text": "A comment from your script. Click into it to edit the text. It can't contain /* or */, since those would end or unbalance the comment."
+    },
+    {
+      "id": "breakdown.commentCard.toggle",
+      "text": "Expands or collapses this comment. Collapsed shows just its first line."
+    },
+    {
+      "id": "breakdown.commentCard.nested",
+      "text": "A comment containing another comment inside it. Shown for reference only. Switch to the Code tab to change it."
     },
     {
       "id": "breakdown.rawCard.why",
       "text": "This code couldn't be shown as an editable block, usually because it's unusual/exotic RMS the parser intentionally leaves alone rather than risk misrepresenting it. The exact text from your file is shown below, unchanged."
+    },
+    {
+      "id": "breakdown.rawCard.toggle",
+      "text": "Expands or collapses this raw code region. Collapsed shows just its first line."
     },
     {
       "id": "breakdown.rawCard.fix",
@@ -433,6 +469,10 @@
       "text": "A parser diagnostic (error/warning/info) applies somewhere in this card, the same ones shown as squiggles on the Code tab."
     },
     {
+      "id": "preview.generationSettings",
+      "text": "Opens Generation Settings: map size, player count and teams, used to compute the resource totals and this preview."
+    },
+    {
       "id": "breakdown.sidePanel.previewToggle",
       "text": "Switches the map preview between Current and Final. Final draws the whole script. Current draws only what the script has built up to your cursor, so you can see what a half written script produces. The code it leaves out is dimmed, and the pin button beside this holds the cut point still while you edit elsewhere. The preview draws your actual script, generated in the background as you edit."
     },
@@ -443,6 +483,10 @@
     {
       "id": "breakdown.sidePanel.referenceFind",
       "text": "Filters the table below to rows containing what you type, matching anywhere in any column the table shows. The text carries across the four tabs, so you can type a name once and check whether it is a terrain or an object. Escape clears it."
+    },
+    {
+      "id": "breakdown.sidePanel.referenceSort",
+      "text": "Changes what the Terrain and Objects tabs sort by: descriptive name, RMS constant, or the numeric constant id. The arrow flips between ascending and descending. Ties within your chosen column still fall back to the table's other columns, so the order below never depends on how the data happened to be listed."
     },
     {
       "id": "breakdown.sidePanel.referenceCorpses",
@@ -470,7 +514,7 @@
     },
     {
       "id": "generationSettings.teamPreset",
-      "text": "Common lobby setups. Selecting one takes over the team assignments (and the player count, except for FFA); press the same button again to release it and get your own configuration back."
+      "text": "Common lobby setups. Selecting one takes over the team assignments (and the player count, except for FFA). Press the same button again to release it and get your own configuration back, or just type a different player count to release it that way."
     },
     {
       "id": "generationSettings.teamButton",
@@ -503,6 +547,10 @@
     {
       "id": "preview.reroll",
       "text": "Draws a new seed and generates a fresh arrangement. Rolling through several is how you tell a layout that holds up from one that got lucky once."
+    },
+    {
+      "id": "preview.exportPng",
+      "text": "Saves exactly what the map preview is currently showing as a PNG image: this zoom, this pan, this Current/Final view. Opens a save dialog first, so nothing is written until you pick a location."
     },
     {
       "id": "preview.notesDrawer",
@@ -539,6 +587,14 @@
     {
       "id": "sidePanel.reopen",
       "text": "Brings the map panel back at the width you last left it."
+    },
+    {
+      "id": "sidePanel.previewReferenceResizer",
+      "text": "Drag to change how much room the map preview and the reference table below it each get. The ▴ button hides the preview entirely, giving the reference table the whole panel; ▾ does the same to the reference table. Dragging the bar all the way to either edge does the same thing. The split is shared by the Breakdown and Code tabs and is remembered between sessions."
+    },
+    {
+      "id": "sidePanel.previewReferenceReopen",
+      "text": "Brings back the pane you hid, at the split you last left it."
     },
     {
       "id": "preview.objectList",
@@ -606,7 +662,7 @@
     },
     {
       "id": "landPlacement.frame",
-      "text": "Radial measures this land's angle at its parent, from the ray pointing back at the parent's own anchor, so the whole chain turns together when a root turns. Absolute uses a plain world bearing instead. Radial only has an angle to measure from when the parent itself is polar (a circle, line or arc member, or another radial/absolute polar land) — parented to a square, triangle or polygon member (or anything cartesian/formula), it falls back to a plain bearing and behaves exactly like absolute."
+      "text": "Radial measures this land's angle at its parent, from the ray pointing back at the parent's own anchor, so the whole chain turns together when a root turns. Absolute uses a plain world bearing instead. Radial only has an angle to measure from when the parent itself is polar (a circle, line or arc member, or another radial/absolute polar land). Parented to a square, triangle or polygon member (or anything cartesian/formula), it falls back to a plain bearing and behaves exactly like absolute."
     },
     {
       "id": "landPlacement.canvas",
@@ -642,7 +698,7 @@
     },
     {
       "id": "landPlacement.minSeparation",
-      "text": "Computes the largest random jitter this ring can add to its even spacing while still keeping every pair of neighbouring lands at least this far apart, at the player count you're currently previewing. Refuses rather than guessing when the request is too tight for the count to allow. Doesn't change anything by itself — copy the suggested rnd(...) into a land's angle formula to use it."
+      "text": "Computes the largest random jitter this ring can add to its even spacing while still keeping every pair of neighbouring lands at least this far apart, at the player count you're currently previewing. Refuses rather than guessing when the request is too tight for the count to allow. Doesn't change anything by itself. Copy the suggested rnd(...) into a land's angle formula to use it."
     },
     {
       "id": "landPlacement.roles",

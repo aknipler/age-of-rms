@@ -78,7 +78,19 @@ export function ConditionalCard({ node }: { node: IfNode }) {
               )}
             </div>
             <div className={styles.branchBody}>
-              <BlockList items={branch.items} />
+              {/* Mirrors computeEdit's own branchTerminator (Sec.4.5): a
+                  trailing comment in this branch sits before the next
+                  branch's keyword, or before `endif` in the last branch. */}
+              <BlockList
+                items={branch.items}
+                trailingBoundary={
+                  node.branches[i + 1]
+                    ? tokens[node.branches[i + 1].keyword].start
+                    : node.endif !== undefined
+                      ? tokens[node.endif].start
+                      : undefined
+                }
+              />
             </div>
             <div className={styles.addWrapper}>
               <HelpTip id="breakdown.conditionalCard.addCommand">

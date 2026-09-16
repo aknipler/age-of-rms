@@ -6,7 +6,7 @@
 // violations; empty array = pass.
 
 import type { ParseResult } from "../../../parser/types";
-import type { TextEdit } from "../intents";
+import type { EditIntent, TextEdit } from "../intents";
 import { checkProperties, collectNodes } from "../../../parser/__tests__/testUtils";
 
 interface NodeKey {
@@ -30,8 +30,36 @@ function keyId(k: NodeKey): string {
 }
 
 export interface DiffOptions {
-  /** Range whose interior trivia is EXPECTED to disappear (delete intents, clause 4 rev-3 scoping). */
+  /** Range of A's own trivia that's EXPECTED to disappear (delete intents), or be replaced (editComment's old content), clause 4 rev-3/rev-4 scoping. */
   deletedRange?: { start: number; end: number };
+  /**
+   * Range of B's (post-edit) trivia that's expected to be genuinely NEW
+   * content absent from A: addComment's whole inserted comment, or
+   * editComment's replacement text. Comments are the one thing an intent
+   * can legitimately add to or change within the trivia stream (every
+   * other intent only ever removes it, clause 4's original scope), so
+   * this is compared separately from `deletedRange` rather than folded
+   * into it: one edit can exclude a range from BOTH sides at once
+   * (editComment removes old content from A's count and adds new content
+   * to B's, at the same span).
+   */
+  insertedRange?: { start: number; end: number };
+}
+
+/**
+ * The right DiffOptions for a given intent and its already-computed edit,
+ * derived the same way by both patch.unit.test.ts and
+ * patch.property.test.ts rather than each hand-rolling it (they used to,
+ * with only a bare `edit.newText === ""` check, before addComment/
+ * editComment needed clause 4 exceptions a plain deletion check can't
+ * express).
+ */
+export function diffOptionsFor(intent: EditIntent, edit: TextEdit): DiffOptions {
+  if (edit.newText === "") return { deletedRange: { start: edit.start, end: edit.end } };
+  const insertedRange = { start: edit.start, end: edit.start + edit.newText.length };
+  if (intent.kind === "addComment") return { insertedRange };
+  if (intent.kind === "editComment") return { deletedRange: intent.innerSpan, insertedRange };
+  return {};
 }
 
 export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: DiffOptions = {}): string[] {
@@ -80,13 +108,17 @@ export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: Di
     // strictly straddling: governed per-intent (clause 3), checked by the caller.
   }
 
-  // Clause 4: trivia outside any deleted range survives byte-identical, in order.
+  // Clause 4: trivia outside any deleted/inserted range survives byte-identical, in order.
   const del = opts.deletedRange;
+  const ins = opts.insertedRange;
   const surviving = a.tokens
     .filter((t) => t.isTrivia)
     .filter((t) => !(del && t.start >= del.start && t.end <= del.end))
     .map((t) => t.text);
-  const actual = b.tokens.filter((t) => t.isTrivia).map((t) => t.text);
+  const actual = b.tokens
+    .filter((t) => t.isTrivia)
+    .filter((t) => !(ins && t.start >= ins.start && t.end <= ins.end))
+    .map((t) => t.text);
   if (surviving.length !== actual.length || surviving.some((t, i) => t !== actual[i])) {
     problems.push(
       `clause4: trivia sequence changed (expected ${surviving.length} comments/markers, got ${actual.length})`,

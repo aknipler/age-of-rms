@@ -5,7 +5,7 @@ import { helpTextFor } from "../help/uiHelpText";
 import styles from "./HelpTip.module.css";
 
 const HOVER_DELAY_MS = 600;
-const FALLBACK_TEXT = "No help written yet — contribute an entry to reference/data/ui-help.json!";
+const FALLBACK_TEXT = "No help written yet. Contribute an entry to reference/data/ui-help.json!";
 
 /** Gap between the anchor and the popup, and the popup's minimum clearance from the viewport edge. */
 const POPUP_GAP_PX = 4;

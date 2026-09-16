@@ -75,11 +75,12 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
   useEffect(() => {
     const worker = new ParserWorker();
     workerRef.current = worker;
+    const sourceByRequestId = sourceByRequestIdRef.current;
 
     worker.onmessage = (event: MessageEvent<ParseResponseMessage>) => {
       const { requestId, diagnostics, parseResult } = event.data;
-      const source = sourceByRequestIdRef.current.get(requestId);
-      sourceByRequestIdRef.current.delete(requestId);
+      const source = sourceByRequestId.get(requestId);
+      sourceByRequestId.delete(requestId);
       if (source === undefined || requestId !== latestRequestIdRef.current) return;
       setState({ source, diagnostics, parseResult });
     };
@@ -87,7 +88,7 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
     return () => {
       worker.terminate();
       workerRef.current = null;
-      sourceByRequestIdRef.current.clear();
+      sourceByRequestId.clear();
     };
   }, []);
 

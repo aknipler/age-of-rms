@@ -1,9 +1,19 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { HelpTip } from "./HelpTip";
 import { useTutorial } from "../tutorial/TutorialContext";
 import { getTutorial, latestFeatureTour } from "../tutorial/registry";
 import styles from "./TitleBar.module.css";
+
+// tauri.conf.json sets decorations: false on the main window (item 5, UI
+// pass 2026-09-15), trading the native OS titlebar for this one row that
+// carries the app icon/name, the File/Edit/Help/Settings menu AND the
+// minimize/maximize/close buttons together, saving the vertical space the
+// native titlebar used to take on its own. `data-tauri-drag-region` on an
+// element (not any of its interactive descendants) is what Tauri's own JS
+// shim hooks to start a window drag on mousedown, and to toggle
+// maximize on a double-click — no manual listener needed for either.
 
 // Zetnus's DE RMS guide, hosted as a Google Doc. It opens in the user's own
 // browser rather than in a webview of ours: a Tauri window has no address
@@ -68,6 +78,11 @@ export function TitleBar({
   saveAsHotkeyLabel,
   toggleLayoutHotkeyLabel,
 }: TitleBarProps) {
+  // Constructed lazily inside the component, not at module scope: it reads
+  // window.__TAURI_INTERNALS__, which doesn't exist until this component
+  // actually mounts inside the real Tauri host (see CLAUDE.md's Environment
+  // section on this exact trap).
+  const appWindow = useMemo(() => getCurrentWindow(), []);
   const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
   // Sec.6, TitleBar calls useTutorial() directly rather than taking new
   // props, the same reasoning App.tsx already records for
@@ -76,6 +91,28 @@ export function TitleBar({
   const rmsBasics = getTutorial("rms-basics");
   const appTour = getTutorial("app-tour");
   const whatsNew = latestFeatureTour();
+
+  // Drives which glyph the maximize/restore button shows. Read once on
+  // mount, then kept live off the window's own resize event rather than
+  // guessed from the button's own clicks — a double-click on the drag
+  // region (Tauri's built-in maximize toggle) or an OS-level snap both
+  // change this without going through this component at all.
+  const [isMaximized, setIsMaximized] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void appWindow.isMaximized().then((v) => {
+      if (!cancelled) setIsMaximized(v);
+    });
+    const unlisten = appWindow.onResized(() => {
+      void appWindow.isMaximized().then((v) => {
+        if (!cancelled) setIsMaximized(v);
+      });
+    });
+    return () => {
+      cancelled = true;
+      void unlisten.then((fn) => fn());
+    };
+  }, [appWindow]);
 
   // Clicking the open menu's own button closes it; clicking a different one
   // switches straight to it.
@@ -95,7 +132,11 @@ export function TitleBar({
   }
 
   return (
-    <div className={styles.titleBar}>
+    <div className={styles.titleBar} data-tauri-drag-region>
+      <div className={styles.brand} data-tauri-drag-region>
+        <img src="/app-icon.png" alt="" className={styles.brandIcon} draggable={false} />
+        <span className={styles.brandName}>Age of RMS</span>
+      </div>
       <div className={styles.menuWrapper}>
         <HelpTip id="titleBar.file">
           <button
@@ -408,6 +449,35 @@ export function TitleBar({
           Settings
         </button>
       </HelpTip>
+      {/* Fills the rest of the row so most of the bar's empty space is
+          still draggable, same as a native titlebar. */}
+      <div className={styles.spacer} data-tauri-drag-region />
+      <div className={styles.windowControls}>
+        <button
+          type="button"
+          className={styles.windowButton}
+          onClick={() => void appWindow.minimize()}
+          aria-label="Minimize"
+        >
+          &#x2212;
+        </button>
+        <button
+          type="button"
+          className={styles.windowButton}
+          onClick={() => void appWindow.toggleMaximize()}
+          aria-label={isMaximized ? "Restore" : "Maximize"}
+        >
+          {isMaximized ? "❐" : "☐"}
+        </button>
+        <button
+          type="button"
+          className={`${styles.windowButton} ${styles.closeButton}`}
+          onClick={() => void appWindow.close()}
+          aria-label="Close"
+        >
+          &#x2715;
+        </button>
+      </div>
     </div>
   );
 }

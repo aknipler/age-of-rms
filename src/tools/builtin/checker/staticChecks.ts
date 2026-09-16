@@ -306,7 +306,7 @@ export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ct
                   severity: "error",
                   span: attr.span,
                   commandSpan: cmd.span,
-                  text: `actor_area_to_place_in ${val} references an actor area that nothing in the script creates — this command places nothing.`,
+                  text: `actor_area_to_place_in ${val} references an actor area that nothing in the script creates, so this command places nothing.`,
                 }
               : {
                   kind: "actorAreaUndeclaredAvoid",
@@ -525,7 +525,7 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
           severity: gatedSeverity(verified),
           span: cmd.span,
           commandSpan: cmd.span,
-          text: `${typeName} cannot be placed on ${terrainLabel(opts.constants, namedTerrainId)} — the exact terrain table for this object does not permit it.${verified ? "" : " (This object's terrain data has not been checked against the game's own files.)"}`,
+          text: `${typeName} cannot be placed on ${terrainLabel(opts.constants, namedTerrainId)}. The exact terrain table for this object does not permit it.${verified ? "" : " (This object's terrain data has not been checked against the game's own files.)"}`,
         });
       }
     } else if (!opts.surfaceAbstained) {
@@ -554,7 +554,7 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
           severity: gatedSeverity(verified),
           span: cmd.span,
           commandSpan: cmd.span,
-          text: `${typeName} cannot be placed on ${terrainLabel(opts.constants, namedTerrainId)} — this object's terrain category (${row.habitat}) does not match.${verified ? "" : " (This pairing's terrain data has not been checked against the game's own files.)"}`,
+          text: `${typeName} cannot be placed on ${terrainLabel(opts.constants, namedTerrainId)}. This object's terrain category (${row.habitat}) does not match.${verified ? "" : " (This pairing's terrain data has not been checked against the game's own files.)"}`,
         });
       }
     } else if (!opts.surfaceAbstained) {
@@ -605,7 +605,7 @@ export function checkMinExceedsMaxObjects(inst: InstantiatedScript): UnstampedFi
           severity: "error",
           span: cmd.span,
           commandSpan: cmd.span,
-          text: `min_distance_to_players (${min}) is greater than max_distance_to_players (${max}) — no tile can satisfy both, so this command places nothing.`,
+          text: `min_distance_to_players (${min}) is greater than max_distance_to_players (${max}), so no tile can satisfy both and this command places nothing.`,
         });
       }
     }
@@ -629,8 +629,8 @@ export function checkCliffsMinExceedsMax(inst: InstantiatedScript): UnstampedFin
       span,
       commandSpan,
       text: maxDefaulted
-        ? `min_number_of_cliffs (${settings.minCliffs}) is greater than the default maximum of ${settings.maxCliffs}, which this script does not set — the real game crashes when this map is generated.`
-        : `min_number_of_cliffs (${settings.minCliffs}) is greater than max_number_of_cliffs (${settings.maxCliffs}) — the real game crashes when this map is generated.`,
+        ? `min_number_of_cliffs (${settings.minCliffs}) is greater than the default maximum of ${settings.maxCliffs}, which this script does not set. The real game crashes when this map is generated.`
+        : `min_number_of_cliffs (${settings.minCliffs}) is greater than max_number_of_cliffs (${settings.maxCliffs}). The real game crashes when this map is generated.`,
     },
   ];
 }

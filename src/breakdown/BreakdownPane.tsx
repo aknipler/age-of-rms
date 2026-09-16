@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
@@ -14,6 +14,7 @@ import type { EditIntent } from "./patch/intents";
 import type { SharedSelectionApi } from "../hooks/useSharedSelection";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
+import { useBreakdownSettings } from "../settings/BreakdownSettingsContext";
 import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
@@ -29,6 +30,23 @@ import styles from "./BreakdownPane.module.css";
 const languageData = languageDataRaw as unknown as LanguageData;
 const languageIndex = buildLanguageIndex(languageData);
 const gameConstants = gameConstantsRaw as unknown as GameConstantsData;
+
+/**
+ * settings.breakdown.density's actual effect: every card-internal
+ * stylesheet (cards.module.css, CommandCard.module.css,
+ * AttributeRow.module.css) reads these as `var(--bd-x, <comfortable
+ * default>)`, so comfortable density sets nothing here and every rule just
+ * falls back to its own default. Same "settings drive CSS custom
+ * properties" pattern ThemeSettingsContext uses for colour tokens, just
+ * scoped to this pane's own DOM subtree via inline style rather than
+ * documentElement, since density is a Breakdown-only concept.
+ */
+const COMPACT_DENSITY_STYLE: Record<string, string> = {
+  "--bd-card-padding": "0.15rem 0.35rem",
+  "--bd-row-padding": "0.05rem 0.2rem",
+  "--bd-row-gap": "0.05rem",
+  "--bd-group-gap": "0.3rem",
+};
 
 interface BreakdownPaneProps {
   hasFile: boolean;
@@ -100,7 +118,10 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     const el = focusableRef.current.get(offset);
     if (el) {
       el.focus();
-      if (el instanceof HTMLInputElement) el.select();
+      // Selects the placeholder text (ValueEditor's default value, or
+      // addComment's single placeholder space in CommentCard's textarea)
+      // so typing replaces it outright instead of landing next to it.
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.select();
     }
     pendingFocusRef.current = null;
   }, [parseResult]);
@@ -187,6 +208,7 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   // a raw node) is silently a no-op rather than acting on a different node
   // the user didn't click.
   const { hotkeys, recordingId } = useHotkeySettings();
+  const { density } = useBreakdownSettings();
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (recordingId !== null) return;
@@ -341,7 +363,11 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     >
       <div className={styles.pane}>
         <MapSidePanel />
-        <div className={styles.main} data-tutorial-anchor="breakdown.main">
+        <div
+          className={styles.main}
+          data-tutorial-anchor="breakdown.main"
+          style={density === "compact" ? (COMPACT_DENSITY_STYLE as CSSProperties) : undefined}
+        >
           <SectionTabs
             tabs={tabs}
             activeId={resolvedActiveId ?? ""}

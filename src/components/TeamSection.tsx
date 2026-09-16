@@ -13,9 +13,13 @@ import styles from "./TeamSection.module.css";
 // team button, matching the lobby's own control: left click advances through
 // - 1 2 3 4 and wraps, right click reverses.
 //
-// Rows are shown for players 1..playerCount only. Assignments for players
-// above the count are RETAINED in context (see DEFAULT_TEAMS' comment) so
-// raising the count brings them back rather than silently zeroing them.
+// All 8 rows always render; rows for players above playerCount are greyed
+// out and their button disabled rather than removed, so the dialog's height
+// stays fixed as the count changes (beta feedback: the whole
+// GenerationSettingsDialog used to grow and shrink under this section).
+// Assignments for players above the count are RETAINED in context (see
+// DEFAULT_TEAMS' comment) so raising the count brings them back rather than
+// silently zeroing them.
 
 function teamGlyph(team: TeamNumber): string {
   return team === NO_TEAM ? "-" : String(team);
@@ -45,8 +49,8 @@ export function TeamSection() {
 
   const summary =
     teamCount === 0
-      ? "No teams — 0_TEAM_GAME"
-      : `${teamCount} teams (${sizes.slice(1, teamCount + 1).join(" v ")}) — ${teamCount}_TEAM_GAME`;
+      ? "No teams (0_TEAM_GAME)"
+      : `${teamCount} teams (${sizes.slice(1, teamCount + 1).join(" v ")}), ${teamCount}_TEAM_GAME`;
 
   return (
     <div className={styles.section}>
@@ -76,44 +80,47 @@ export function TeamSection() {
       </div>
 
       <div className={styles.rows}>
-        {teams.slice(0, playerCount).map((team, index) => (
-          <div className={styles.row} key={index}>
-            <span className={styles.playerLabel}>Player {index + 1}</span>
-            <HelpTip
-              id="generationSettings.teamButton"
-              text={`Player ${index + 1}'s team. Left click to advance, right click to go back. "-" means no team.`}
-            >
-              <button
-                type="button"
-                className={styles.teamButton}
-                disabled={teamsLocked}
-                aria-label={`Player ${index + 1} team: ${team === NO_TEAM ? "none" : team}`}
-                onClick={() => setPlayerTeam(index, cycleTeam(team, 1))}
-                onContextMenu={(event) => {
-                  // Suppress the OS menu so right click is usable as a
-                  // decrement. Only meaningful because the button is the
-                  // whole hit area.
-                  event.preventDefault();
-                  if (!teamsLocked) setPlayerTeam(index, cycleTeam(team, -1));
-                }}
-                onKeyDown={(event) => {
-                  // Right click is unreachable from a keyboard, so the arrows
-                  // carry the decrement. Enter/Space already advance via the
-                  // button's native click.
-                  if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
-                    event.preventDefault();
-                    setPlayerTeam(index, cycleTeam(team, -1));
-                  } else if (event.key === "ArrowUp" || event.key === "ArrowRight") {
-                    event.preventDefault();
-                    setPlayerTeam(index, cycleTeam(team, 1));
-                  }
-                }}
+        {teams.map((team, index) => {
+          const active = index < playerCount;
+          return (
+            <div className={`${styles.row} ${active ? "" : styles.rowInactive}`} key={index}>
+              <span className={styles.playerLabel}>Player {index + 1}</span>
+              <HelpTip
+                id="generationSettings.teamButton"
+                text={`Player ${index + 1}'s team. Left click to advance, right click to go back. "-" means no team.`}
               >
-                {teamGlyph(team)}
-              </button>
-            </HelpTip>
-          </div>
-        ))}
+                <button
+                  type="button"
+                  className={styles.teamButton}
+                  disabled={teamsLocked || !active}
+                  aria-label={`Player ${index + 1} team: ${team === NO_TEAM ? "none" : team}`}
+                  onClick={() => setPlayerTeam(index, cycleTeam(team, 1))}
+                  onContextMenu={(event) => {
+                    // Suppress the OS menu so right click is usable as a
+                    // decrement. Only meaningful because the button is the
+                    // whole hit area.
+                    event.preventDefault();
+                    if (!teamsLocked && active) setPlayerTeam(index, cycleTeam(team, -1));
+                  }}
+                  onKeyDown={(event) => {
+                    // Right click is unreachable from a keyboard, so the arrows
+                    // carry the decrement. Enter/Space already advance via the
+                    // button's native click.
+                    if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+                      event.preventDefault();
+                      setPlayerTeam(index, cycleTeam(team, -1));
+                    } else if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+                      event.preventDefault();
+                      setPlayerTeam(index, cycleTeam(team, 1));
+                    }
+                  }}
+                >
+                  {teamGlyph(team)}
+                </button>
+              </HelpTip>
+            </div>
+          );
+        })}
       </div>
 
       <HelpTip id="generationSettings.teamReadout">
@@ -127,7 +134,7 @@ export function TeamSection() {
 
       {teamsLocked && (
         <div className={styles.lockNote}>
-          {activePreset?.toUpperCase()} preset active — press it again to unlock
+          {activePreset?.toUpperCase()} preset active. Press it again to unlock
           {playerCountLocked ? " the teams and player count." : " the teams."}
         </div>
       )}

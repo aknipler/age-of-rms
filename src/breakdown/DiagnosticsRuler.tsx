@@ -47,6 +47,16 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
     if (!container) return;
     const candidates = ticksForItems(items, diagnostics);
     const scrollHeight = container.scrollHeight || 1;
+    // A native scrollbar's thumb has its own height, so its TOP never
+    // reaches the track's literal bottom, only `1 - (thumb's own height
+    // fraction)` does — the thumb's BOTTOM reaches 100%, at max scroll.
+    // A raw content-position fraction ignores this and can put a tick at
+    // 100%, past where the real scrollbar thumb's own travel range ends
+    // (item 10, UI pass 2026-09-15). Rescaling every tick's fraction by
+    // the same (1 - heightFraction) the viewport indicator below already
+    // uses makes the two tracks' usable ranges match exactly.
+    const heightFraction = Math.min(1, container.clientHeight / scrollHeight);
+    const travelFraction = 1 - heightFraction;
     // getBoundingClientRect, not offsetTop: offsetTop is only meaningful
     // relative to the element's offsetParent, the nearest ANCESTOR with
     // a non-static `position`, which is fragile here (this codebase
@@ -65,14 +75,15 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
       if (!el) continue; // shouldn't happen (every top-level item renders one), but degrade quietly rather than throw
       const elRect = el.getBoundingClientRect();
       const topWithinContent = elRect.top - containerRect.top + container.scrollTop;
-      // Clamp to [0, 1]: the very last item's rect can land a hair past
-      // `scrollHeight` from sub-pixel rounding (border/padding rounding
-      // differs between getBoundingClientRect's fractional pixels and the
-      // integer-rounded scrollHeight), which without clamping renders
-      // that one tick a few px below .ruler's own box, visually poking
-      // into whatever sits below the pane (the StatusBar).
-      const topFraction = Math.min(1, Math.max(0, topWithinContent / scrollHeight));
-      next.push({ ...candidate, topFraction });
+      // Clamp to [0, 1] before rescaling: the very last item's rect can
+      // land a hair past `scrollHeight` from sub-pixel rounding
+      // (border/padding rounding differs between getBoundingClientRect's
+      // fractional pixels and the integer-rounded scrollHeight), which
+      // without clamping renders that one tick a few px below .ruler's
+      // own box, visually poking into whatever sits below the pane (the
+      // StatusBar).
+      const rawFraction = Math.min(1, Math.max(0, topWithinContent / scrollHeight));
+      next.push({ ...candidate, topFraction: rawFraction * travelFraction });
     }
     setTicks(next);
   }, [items, diagnostics, containerRef]);

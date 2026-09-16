@@ -1,0 +1,12 @@
+.select {
+  font: inherit;
+  /* Explicit, not just inherited (2026-09-16 fix, see
+     SettingsDialog.module.css's .legend for the full reasoning) — without
+     it this rendered visibly bigger than the "Density"/"Attribute order"
+     label above it and every other control in the dialog. */
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border-muted, #999);
+  border-radius: 3px;
+  min-width: 14rem;
+}

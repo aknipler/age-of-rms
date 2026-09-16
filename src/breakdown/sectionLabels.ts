@@ -17,7 +17,7 @@ export const SECTION_LABELS: Readonly<Record<string, string>> = {
   ELEVATION_GENERATION: "Elevation",
   CLIFF_GENERATION: "Cliff",
   TERRAIN_GENERATION: "Terrain",
-  CONNECTION_GENERATION: "Terrain Connection",
+  CONNECTION_GENERATION: "Connections",
   OBJECTS_GENERATION: "Objects",
 };
 

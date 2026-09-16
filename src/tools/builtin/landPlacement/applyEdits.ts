@@ -114,8 +114,18 @@ export function computeApplyEdits(
     return { edits: [], emissionProblems: emission.problems };
   }
 
+  // A model with no roles and no placements has nothing to write, and
+  // `buildFenceEdits` cannot see that on its own — asked to insert a fence
+  // where none exists yet, it always returns the insertion edit regardless
+  // of body content, which is correct for its own job (fence.test.ts pins
+  // that against an arbitrary body). Left unguarded here, Apply reported
+  // "1 change" against a script the user had not touched at all, since a
+  // fresh EMPTY_MODEL still has no existing fence to compare against.
+  // Skipped only when there is also no EXISTING fence to reconcile: a model
+  // emptied out from real content must still be free to clear that fence.
+  const modelIsEmpty = model.roles.length === 0 && model.placements.length === 0;
   const fenceInsertionOffset = computeFenceInsertionOffset(parse);
-  const fenceEdits = buildFenceEdits(parse, model, emission.body, fenceInsertionOffset);
+  const fenceEdits = modelIsEmpty && locateFence(parse) === null ? [] : buildFenceEdits(parse, model, emission.body, fenceInsertionOffset);
 
   const existingLands = findCreateLandCommands(parse);
   const skeletonInsertAt = resolveLandGenerationCutOffset(parse);

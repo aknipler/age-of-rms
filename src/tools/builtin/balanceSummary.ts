@@ -268,7 +268,7 @@ export function buildBalanceOutput(stats: BalanceStats, selectedCounts: readonly
     {
       kind: "text",
       text:
-        "A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance — an approximation, since the script itself does not say whose it is.",
+        "A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance, an approximation, since the script itself does not say whose it is.",
     },
   ];
   for (const pc of selectedCounts) {
@@ -340,7 +340,7 @@ async function runBalanceSummary(ctx: ToolContext<ParseResult>, emit: (msg: Tool
       emit({
         type: "progress",
         fraction: totalGenerations > 0 ? completed / totalGenerations : undefined,
-        note: `${pc} players — run ${runIndex + 1} of ${runsPerPlayerCount}`,
+        note: `${pc} players, run ${runIndex + 1} of ${runsPerPlayerCount}`,
       });
       await yieldToEventLoop();
     }

@@ -15,9 +15,12 @@ import { AppSettingsProvider, useAppSettings } from "./settings/AppSettingsConte
 import { ThemeSettingsProvider } from "./settings/ThemeSettingsContext";
 import { HotkeySettingsProvider, useHotkeySettings } from "./settings/HotkeySettingsContext";
 import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
-import { GenerationSettingsProvider } from "./generationSettings/GenerationSettingsContext";
+import { BreakdownSettingsProvider } from "./settings/BreakdownSettingsContext";
+import { CodeSettingsProvider } from "./settings/CodeSettingsContext";
+import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
 import { PreviewViewProvider, PreviewViewportProvider, usePreviewView } from "./components/preview/PreviewViewContext";
 import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
+import { PreviewReferenceSplitProvider } from "./components/sidepanel/PreviewReferenceSplitContext";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useUpdateCheck } from "./update/useUpdateCheck";
 import { buildBugReportUrl } from "./bugReport";
@@ -108,11 +111,9 @@ function PreviewResultProviders({
  */
 function StatusBarContainer({
   diagnostics,
-  onOpenGenerationSettings,
   onReportBug,
 }: {
   diagnostics: Diagnostic[];
-  onOpenGenerationSettings: () => void;
   onReportBug: () => void;
 }) {
   const { result, pending } = usePreviewResultContext();
@@ -137,7 +138,6 @@ function StatusBarContainer({
       neutral={result?.resourceTotals.neutral}
       pending={pending}
       cutLabel={cutLabel}
-      onOpenGenerationSettings={onOpenGenerationSettings}
       onReportBug={onReportBug}
     />
   );
@@ -152,7 +152,13 @@ function AppContent() {
   // the panes below (which read it) need access to the same value.
   const [activeTab, setActiveTab] = useState<TabId>("breakdown");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [generationSettingsOpen, setGenerationSettingsOpen] = useState(false);
+  // Open/close flag lives on GenerationSettingsContext, not here: the
+  // dialog is opened from PreviewPane's own settings button (beta feedback
+  // moved it off the status bar, since that's the pane these settings
+  // actually feed), which reads `openDialog` from the same context directly
+  // rather than through a prop passed down from here. This component only
+  // needs the other half, to render the dialog itself.
+  const { isDialogOpen: generationSettingsOpen, closeDialog: closeGenerationSettings } = useGenerationSettings();
   // tutorial-design.md Sec.5.3, the "appTab" navigator a step's
   // `navigate.tab` drives. Registered here (rather than inside
   // TutorialProvider itself) because setActiveTab only exists below it.
@@ -346,8 +352,9 @@ function AppContent() {
         saveAsHotkeyLabel={formatHotkey(hotkeys.saveAs)}
         toggleLayoutHotkeyLabel={formatHotkey(hotkeys.codeToggleLayout)}
       />
-      <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt} />
-      <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+      <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt}>
+        <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+      </MapHeader>
       {/* All five providers sit above the tab switch so what they hold
           survives it. ParsedDocumentProvider makes parsed.parseResult
           reachable from inside MapSidePanel without threading a prop through
@@ -431,11 +438,7 @@ function AppContent() {
                 column and neither provider renders DOM of its own, so this
                 is layout-neutral. */}
             <UpdatePrompt state={update.state} onInstall={update.install} onDismiss={update.dismiss} />
-            <StatusBarContainer
-              diagnostics={parsed.diagnostics}
-              onOpenGenerationSettings={() => setGenerationSettingsOpen(true)}
-              onReportBug={reportBug}
-            />
+            <StatusBarContainer diagnostics={parsed.diagnostics} onReportBug={reportBug} />
           </PreviewResultProviders>
         </PreviewCutProvider>
       </ParsedDocumentProvider>
@@ -450,9 +453,7 @@ function AppContent() {
           onChoice={doc.resolveUnsavedChoice}
         />
       )}
-      {generationSettingsOpen && (
-        <GenerationSettingsDialog onClose={() => setGenerationSettingsOpen(false)} />
-      )}
+      {generationSettingsOpen && <GenerationSettingsDialog onClose={closeGenerationSettings} />}
     </div>
   );
 }
@@ -474,38 +475,56 @@ function App() {
           {/* Same store, its own context; see HotkeySettingsContext.tsx for why
               rebindable shortcuts aren't just another AppSettingsContext field. */}
           <HotkeySettingsProvider>
-            <GenerationSettingsProvider>
-              {/* Above AppContent, so the preview's seed/view/colour and its
-                  canvas zoom/pan survive the tab switch that unmounts the pane
-                  holding them. Two providers, not one context, so a drag or wheel
-                  tick (which changes viewport on every frame) doesn't re-render
-                  the seed/colour-mode controls; see PreviewViewContext.tsx. */}
-              <PreviewViewProvider>
-                <PreviewViewportProvider>
-                  {/* Also above the tab switch, and for the same reason: both tabs
-                      render their own MapSidePanel and the inactive one is
-                      unmounted, so a width held inside it would be two widths that
-                      reset on every switch (CREATION_PLAN 4.4). Unlike the two
-                      above, this one IS persisted. A layout choice should still be
-                      there tomorrow, where a seed should not. */}
-                  <SidePanelLayoutProvider>
-                    {/* The Land Placement panel's own seed (PreviewResultProviders,
-                        above), same "survive the tab switch" reasoning as
-                        PreviewViewProvider, deliberately its own context rather
-                        than a field on that one (panelPreviewSeed.tsx). */}
-                    <PanelPreviewSeedProvider>
-                      {/* Innermost of the App()-level providers
-                          (tutorial-design.md Sec.5.4), a future step can
-                          read generation settings or preview state, and
-                          nothing above it needs to read tutorial state. */}
-                      <TutorialProvider>
-                        <AppContent />
-                      </TutorialProvider>
-                    </PanelPreviewSeedProvider>
-                  </SidePanelLayoutProvider>
-                </PreviewViewportProvider>
-              </PreviewViewProvider>
-            </GenerationSettingsProvider>
+            {/* Same store, its own context; Breakdown-editor-only settings
+                (today: attribute ordering), same split reasoning as the
+                sibling providers above. */}
+            <BreakdownSettingsProvider>
+              {/* Same store, its own context; Code-tab-only settings (today:
+                  tab size, spaces vs tabs), same split reasoning as its
+                  Breakdown sibling above — CodePane.tsx reads it to set
+                  Monaco's own tabSize/insertSpaces options. */}
+              <CodeSettingsProvider>
+                <GenerationSettingsProvider>
+                  {/* Above AppContent, so the preview's seed/view/colour and its
+                      canvas zoom/pan survive the tab switch that unmounts the pane
+                      holding them. Two providers, not one context, so a drag or wheel
+                      tick (which changes viewport on every frame) doesn't re-render
+                      the seed/colour-mode controls; see PreviewViewContext.tsx. */}
+                  <PreviewViewProvider>
+                    <PreviewViewportProvider>
+                      {/* Also above the tab switch, and for the same reason: both tabs
+                          render their own MapSidePanel and the inactive one is
+                          unmounted, so a width held inside it would be two widths that
+                          reset on every switch (CREATION_PLAN 4.4). Unlike the two
+                          above, this one IS persisted. A layout choice should still be
+                          there tomorrow, where a seed should not. */}
+                      <SidePanelLayoutProvider>
+                        {/* One level in from the side panel's own width/collapse,
+                            same persisted-and-shared-across-tabs reasoning, one
+                            layer down: this one is the preview/reference split
+                            WITHIN that panel rather than the panel's own width
+                            (previewReferenceSplit.ts). */}
+                        <PreviewReferenceSplitProvider>
+                          {/* The Land Placement panel's own seed (PreviewResultProviders,
+                              above), same "survive the tab switch" reasoning as
+                              PreviewViewProvider, deliberately its own context rather
+                              than a field on that one (panelPreviewSeed.tsx). */}
+                          <PanelPreviewSeedProvider>
+                            {/* Innermost of the App()-level providers
+                                (tutorial-design.md Sec.5.4), a future step can
+                                read generation settings or preview state, and
+                                nothing above it needs to read tutorial state. */}
+                            <TutorialProvider>
+                              <AppContent />
+                            </TutorialProvider>
+                          </PanelPreviewSeedProvider>
+                        </PreviewReferenceSplitProvider>
+                      </SidePanelLayoutProvider>
+                    </PreviewViewportProvider>
+                  </PreviewViewProvider>
+                </GenerationSettingsProvider>
+              </CodeSettingsProvider>
+            </BreakdownSettingsProvider>
           </HotkeySettingsProvider>
         </ThemeSettingsProvider>
       </AppSettingsProvider>

@@ -15,7 +15,8 @@ import {
   renderValue,
   type Rendered,
 } from "./formatStyle";
-import { PatchError, type BranchRef, type EditIntent, type EditResult, type TextEdit } from "./intents";
+import { PatchError, type BranchRef, type EditIntent, type EditResult, type InsertTarget, type TextEdit } from "./intents";
+import { padCommentContent } from "../comments";
 
 export function applyEdit(source: string, edit: TextEdit): string {
   return source.slice(0, edit.start) + edit.newText + source.slice(edit.end);
@@ -218,6 +219,18 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     return { edit: { start, end, newText: "" }, caret: start };
   }
 
+  // Shared by addCommand and addComment: both reduce to "render this text,
+  // insert it at this InsertTarget" via the helpers above, differing only
+  // in how `rendered` gets built.
+  function insertAt(at: InsertTarget, rendered: Rendered): EditResult {
+    if ("after" in at) return insertAfterItem(at.after, rendered);
+    if (at.in === "section") return insertIntoSection(at.section, rendered);
+    if (at.in === "block") return insertIntoBlock(at.block, rendered);
+    if (at.in === "preamble") return insertIntoPreamble(rendered);
+    if (at.in === "newSection") return insertIntoNewSection(at.name, rendered);
+    return insertIntoBranch(at.branch, rendered);
+  }
+
   // ---- dispatch ----
 
   switch (intent.kind) {
@@ -268,13 +281,32 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
 
     case "addCommand": {
       const def = lang.commandsByName.get(intent.name);
-      const rendered = renderCommand(def, intent.name);
-      if ("after" in intent.at) return insertAfterItem(intent.at.after, rendered);
-      if (intent.at.in === "section") return insertIntoSection(intent.at.section, rendered);
-      if (intent.at.in === "block") return insertIntoBlock(intent.at.block, rendered);
-      if (intent.at.in === "preamble") return insertIntoPreamble(rendered);
-      if (intent.at.in === "newSection") return insertIntoNewSection(intent.at.name, rendered);
-      return insertIntoBranch(intent.at.branch, rendered);
+      return insertAt(intent.at, renderCommand(def, intent.name));
+    }
+
+    case "addComment": {
+      // "/* */", not "/**/": RMS's comment markers only tokenize as such
+      // when whitespace-separated from their neighbor (parser-design
+      // Sec.2's whitespace-splitter lexical model), so glued delimiters
+      // would lex as one plain word and never become a comment at all.
+      // caretOffset 0 lands the post-reparse caret at the comment's own
+      // span.start, the exact offset CommentCard registers as focusable
+      // (Sec.6.3's anchor convention, see CommentCard.tsx), which is what
+      // lets BreakdownPane's focus effect select the placeholder space so
+      // the user's first keystroke replaces it instead of landing next to it.
+      return insertAt(intent.at, { text: "/* */", caretOffset: 0 });
+    }
+
+    case "editComment": {
+      const { innerSpan } = intent;
+      // padCommentContent guarantees the delimiters stay whitespace-
+      // separated from whatever the caller supplied, regardless of what
+      // that text is, the same "the engine trusts its caller for content,
+      // never for structural safety" split every other renderX helper in
+      // formatStyle.ts already makes (CommentCard.tsx separately owns the
+      // content policy of rejecting an embedded comment marker).
+      const text = padCommentContent(intent.text);
+      return { edit: { start: innerSpan.start, end: innerSpan.end, newText: text }, caret: innerSpan.start + text.length };
     }
 
     case "setCondition": {

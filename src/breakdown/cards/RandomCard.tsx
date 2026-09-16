@@ -40,7 +40,16 @@ export function RandomCard({ node }: { node: RandomNode }) {
       {node.preamble.length > 0 && (
         <div className={styles.branch}>
           <p className={styles.preambleNote}>Before first percent_chance (RMS0106):</p>
-          <BlockList items={node.preamble} />
+          <BlockList
+            items={node.preamble}
+            trailingBoundary={
+              node.branches[0]
+                ? tokens[node.branches[0].chanceKeyword].start
+                : node.end !== undefined
+                  ? tokens[node.end].start
+                  : undefined
+            }
+          />
         </div>
       )}
       {node.branches.map((branch, i) => {
@@ -83,7 +92,16 @@ export function RandomCard({ node }: { node: RandomNode }) {
               )}
             </div>
             <div className={styles.branchBody}>
-              <BlockList items={branch.items} />
+              <BlockList
+                items={branch.items}
+                trailingBoundary={
+                  node.branches[i + 1]
+                    ? tokens[node.branches[i + 1].chanceKeyword].start
+                    : node.end !== undefined
+                      ? tokens[node.end].start
+                      : undefined
+                }
+              />
             </div>
             <div className={styles.addWrapper}>
               <HelpTip id="breakdown.randomCard.addCommand">

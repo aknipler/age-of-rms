@@ -4,21 +4,67 @@
 /* Widened and given a fixed height on purpose: a settings dialog that
    resizes as you move between tabs makes the tab strip jump around under
    the cursor, so the box is sized once for its largest panel and the
-   panel scrolls inside it. */
+   panel scrolls inside it. `position: relative` anchors .closeX below. */
 .settingsDialog {
-  width: 44rem;
-  max-width: 92vw;
-  height: 26rem;
-  max-height: 88vh;
+  width: 72rem;
+  max-width: 94vw;
+  height: 42rem;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
+/* Scoped to this dialog's own title (an element selector, not
+   dialogStyles.title's own class, since a CSS-module class from another
+   file can't be referenced here) — dialog.module.css's `.title` is shared
+   by every dialog, and halving its margin globally would tighten
+   GenerationSettingsDialog/UnsavedChangesDialog too, which weren't asked
+   for. Was 0.75rem. */
+.settingsDialog h2 {
+  margin-bottom: 0.375rem;
+}
+
+/* Replaces the old bottom "Close" button/row with a single X in the
+   corner (2026-09-16). */
+.closeX {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.closeX:hover {
+  background: var(--danger);
+  color: var(--text-on-accent);
+}
+
+/* Negative left/right/bottom margins exactly cancel .dialog's own
+   padding (dialog.module.css, `1rem 1.25rem`) on those three sides only
+   — top is left alone, that spacing is .settingsDialog h2's own
+   margin-bottom above. This is what makes the tab strip flush with the
+   pane's left edge, the options panel flush with its right edge, and
+   both flush with its bottom, all from one rule, since all three "not
+   flush" symptoms shared the same cause: the dialog's own outer padding
+   pushing every edge of .body inward equally. */
 .body {
   flex: 1;
   display: flex;
   min-height: 0; /* lets .panel actually scroll instead of stretching .body */
+  /* No top border (2026-09-16) — the header's own line underneath
+     "Settings" (dialog.module.css's .title) is the only divider between
+     the title and the tab strip/options panel; a second line right below
+     it read as a doubled border. */
   border: 1px solid var(--border);
+  border-top: none;
+  margin: 0 -1.25rem -1rem;
 }
 
 .tabList {
@@ -30,11 +76,13 @@
   overflow-y: auto;
 }
 
-/* Mirrors TabBar.module.css's flat black-bordered look, turned on its
-   side, borders sit on the bottom edge so the strip reads as a stack. */
+/* No border (2026-09-16, was a border-bottom divider between rows,
+   mirroring TabBar.module.css's old look before that was replaced with
+   the same hover-only bevel this now matches) — relies on the
+   hover/active background alone, same as every other button list this
+   session's UI passes touched. */
 .tabButton {
   border: none;
-  border-bottom: 1px solid var(--border);
   background: var(--surface);
   padding: 0.45rem 0.75rem;
   font-size: 0.95rem;
@@ -65,6 +113,21 @@
   overflow-y: auto;
 }
 
+/* HelpTip's wrapper span is `display: inline-block` (HelpTip.module.css),
+   which is right for a tab button or a menu item but wrong for a panel's
+   own top-level fieldsets: two inline-block boxes sit side by side on the
+   same line whenever they both fit the panel's width, which is how Theme's
+   "UI size" fieldset ended up crammed next to "Active theme" and General's
+   "Help tips" next to "Author" — not a one-off layout bug in either panel,
+   the same inline-block default landing differently depending on how wide
+   each fieldset's own content happens to be. Forcing the wrapper to block
+   here, the same fix `.tabList > span` above already applies to the tab
+   strip, makes every panel's fieldsets stack one per row regardless of how
+   narrow any individual one is. */
+.panel > span {
+  display: block;
+}
+
 .panelTitle {
   margin: 0 0 0.5rem;
   font-size: 0.95rem;
@@ -77,13 +140,66 @@
   margin: 0 0 0.75rem;
 }
 
+/* font-size explicit, not inherited (2026-09-16 fix): with nothing set,
+   this inherited the page's full ~1rem, ending up VISIBLY BIGGER than
+   .panelTitle's own 0.95rem just above it — a fieldset's own label reading
+   larger than the tab's heading. 0.85rem matches every other bold
+   sub-label already in this dialog (.groupTitle, .tokenLabel). The
+   margin-bottom is the other half of the same screenshot's report: with
+   none, a legend sat flush against whatever control followed it.
+   line-height explicit too, same reasoning as every other badge/label in
+   this codebase that already had this fixed (.countBadge, .problemBadge,
+   .tab, .warnBadge) — harmless here either way, since it turned out NOT
+   to be what caused the gap below, see the `.legend + div` rule further
+   down for the fix that was. */
 .legend {
   padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.2;
   font-weight: 600;
+  margin-bottom: 0.35rem;
 }
 
+/* Found by comparison, not by re-guessing the same margin again: Code,
+   Theme and Breakdown's fieldsets all put a <select>/<input> directly
+   after the legend, and those read fine after the fix above. Hotkeys
+   (and General) instead put a `<div className={dialogStyles.optionRow}>`
+   there, and `.optionRow` (dialog.module.css) carries its own
+   `padding: 0.3rem 0` — stacking with .legend's margin-bottom into a
+   visibly bigger combined gap than the select-based fieldsets ever had.
+   `div`, not a reference to `.optionRow` by name: dialog.module.css's
+   class is a different CSS module, its hashed name isn't reachable from
+   here, but every legend in this dialog is followed by at most one
+   element, so a plain type selector on the very next sibling is exactly
+   as targeted as naming the class would be, without needing to. Zeroing
+   just the top half leaves the row's own bottom padding (spacing before
+   the hint text after it) untouched. */
+.legend + div {
+  padding-top: 0;
+}
+
+/* Every plain <label> inside a settings panel (GeneralSettings' radio
+   options, CodeSettings' insert-spaces/insert-tabs pair) — none of these
+   carry their own class, so without this they inherited the same
+   too-large ambient size .legend just above did, for the same reason.
+   Scoped to .panel rather than dialog.module.css's shared .optionRow, so
+   GenerationSettingsDialog/UnsavedChangesDialog (which have no
+   panelTitle to read smaller than) are untouched. */
+.panel label {
+  font-size: 0.85rem;
+}
+
+/* margin-top dropped to 0 (2026-09-16) — .hint's only remaining caller is
+   HotkeysSettings.tsx (every other tab's own hint paragraph was removed
+   earlier this session), always immediately after the kbd/button
+   `.optionRow`, which already carries its own `padding: 0.3rem 0`
+   bottom padding (dialog.module.css). The two were stacking into a
+   bigger gap below the buttons than above the legend got, once that side
+   was fixed — same shape of bug as the `.legend + div` fix just above,
+   solved the same way: keep one side's spacing, drop the other's rather
+   than splitting the difference. */
 .hint {
-  margin: 0.25rem 0 0;
+  margin: 0;
   font-size: 0.85rem;
   color: var(--text-muted);
 }
@@ -119,26 +235,15 @@
   color: var(--text-muted);
 }
 
-/* Matches PlaceholderPane's italic grey, so an unbuilt settings tab reads
-   the same way an unbuilt pane does. */
-.placeholder {
-  font-style: italic;
-  color: var(--text-muted);
-}
-
-.placeholderList {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-/* The author-name field. `inherit` on the font rather than a size of its
-   own, because a form control does not inherit the page font by default and
-   a settings dialog with one input in the browser's default font looks like
-   a mistake. */
+/* The author-name field. `font: inherit` for family/weight/style (a form
+   control does not inherit the page font by default and a settings
+   dialog with one input in the browser's default font looks like a
+   mistake), `font-size` then overridden separately (2026-09-16) to match
+   every other control in this dialog rather than the larger ambient size
+   `inherit` alone was pulling in. */
 .textInput {
   font: inherit;
+  font-size: 0.85rem;
   padding: 0.3rem 0.4rem;
   width: 18rem;
   max-width: 100%;

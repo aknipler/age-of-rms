@@ -63,7 +63,7 @@ describe("commentsBetweenItems", () => {
     expect(result.has(1)).toBe(false);
   });
 
-  it("does not attribute a comment before the first item or after the last (v1 scope limit)", () => {
+  it("does not attribute a leading comment, and drops a trailing one too when no boundaryEnd is given", () => {
     const items = [
       { span: { start: 20, end: 25 } },
       { span: { start: 40, end: 45 } },
@@ -71,6 +71,23 @@ describe("commentsBetweenItems", () => {
     const leading = { start: 0, end: 5 };
     const trailing = { start: 50, end: 55 };
     const result = commentsBetweenItems(items, [leading, trailing]);
+    expect(result.size).toBe(0);
+  });
+
+  it("attributes a trailing comment to the last item's own slot when boundaryEnd is given", () => {
+    const items = [
+      { span: { start: 20, end: 25 } },
+      { span: { start: 40, end: 45 } },
+    ];
+    const trailing = { start: 50, end: 55 };
+    const result = commentsBetweenItems(items, [trailing], 60);
+    expect(result.get(1)).toEqual([trailing]);
+  });
+
+  it("does not attribute a comment past boundaryEnd (it belongs to whatever construct follows)", () => {
+    const items = [{ span: { start: 20, end: 25 } }];
+    const outside = { start: 50, end: 55 };
+    const result = commentsBetweenItems(items, [outside], 40);
     expect(result.size).toBe(0);
   });
 

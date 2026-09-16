@@ -121,7 +121,7 @@ function stageReason(row: AggregateRow, worst: WorstCountResult, ctx: StageReaso
   }
   if (row.stage === "S5" && worst.state === "zeroAttempt") {
     if (ctx.connectionBlockedSpans.has(row.commandSpan.start)) {
-      return "this connection was neutralised by the create_connect_to_nonplayer_land command above it — a documented engine bug the preview reproduces";
+      return "this connection was neutralised by the create_connect_to_nonplayer_land command above it, a documented engine bug the preview reproduces";
     }
     return "this command connects nothing, because one side of the pairing is empty";
   }
@@ -246,7 +246,7 @@ export function buildFindingTables(aggregate: MonteCarloAggregate, opts: Finding
       // summed over 15 of 15 by `findWorstCount` above, so the bare
       // percentage is the one number in the table a reader cannot weigh.
       const runsInBatch = aggregate.runsAt(worst.playerCount);
-      const denominator = cell !== undefined && runsInBatch > 0 && cell.runsContaining < runsInBatch ? ` — generated in ${cell.runsContaining} of ${runsInBatch} runs` : "";
+      const denominator = cell !== undefined && runsInBatch > 0 && cell.runsContaining < runsInBatch ? ` (generated in ${cell.runsContaining} of ${runsInBatch} runs)` : "";
       const spawnRate = worst.state === "rated" ? `${((cell!.placed / cell!.attempted) * 100).toFixed(1)}%${denominator}` : `${NON_NUMERIC}${denominator}`;
 
       let buckets = formatBuckets(cell);
@@ -311,7 +311,7 @@ export function buildFindingTables(aggregate: MonteCarloAggregate, opts: Finding
  */
 const FAMILY_HEADLINE: Record<StaticFinding["kind"], (n: number) => string> = {
   landOverAllocation: (n) => `${n} findings about lands declaring more of the map than there is.`,
-  actorAreaUndeclaredToPlaceIn: (n) => `${n} commands name an actor_area_to_place_in that nothing in the script creates — each of them places nothing.`,
+  actorAreaUndeclaredToPlaceIn: (n) => `${n} commands name an actor_area_to_place_in that nothing in the script creates, so each of them places nothing.`,
   actorAreaUndeclaredAvoid: (n) => `${n} avoid_actor_area lines name an actor area that nothing in the script creates, so the lines have no effect.`,
   actorAreaUndeclaredSharedBlockReference: (n) => `${n} lines inside shared blocks reference an actor area that nothing in the script creates.`,
   terrainImpossible: (n) => `${n} objects cannot be placed on the terrain they ask for.`,
@@ -435,7 +435,7 @@ export function buildSummaryHeader(opts: SummaryHeaderOptions): OutputBlock {
       ["Elapsed", `${(opts.elapsedMs / 1000).toFixed(1)}s`],
       [
         "About this report",
-        "The Monte Carlo table's rates are estimates from a limited number of samples, not exact probabilities — a command showing 100% is unobserved-to-fail, not proven reliable. The static checks above them are the tool's only guaranteed findings.",
+        "The Monte Carlo table's rates are estimates from a limited number of samples, not exact probabilities. A command showing 100% is unobserved-to-fail, not proven reliable. The static checks above them are the tool's only guaranteed findings.",
       ],
     ],
   };

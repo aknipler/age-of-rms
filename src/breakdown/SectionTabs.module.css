@@ -1,6 +1,10 @@
 .tabBar {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.2rem;
+  /* Flush top and bottom (2026-09-16, was padding-bottom: 0.3rem with no
+     matching top) — the tabs now sit flush against both edges of the
+     strip rather than only the top one. */
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -9,12 +13,19 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  border: 1px solid var(--border);
-  border-top: none;
-  border-left: none;
-  background: var(--surface);
-  padding: 0.3rem 0.7rem;
-  font-size: 0.85rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  /* Explicit, matching .countBadge/.problemBadge/.warnBadge below, rather
+     than the browser's own "normal" (font-metric-derived, and NOT the
+     same across different font-sizes): without it, a tab that happens to
+     render a severity badge was measurably taller than one that doesn't,
+     since align-items: center sizes the whole row off its tallest child
+     and only the badges had a line-height of their own to rely on
+     (2026-09-16 fix). */
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -34,11 +45,13 @@
   border-radius: 999px;
   background: var(--surface-raised);
   border: 1px solid var(--border-muted);
-  padding: 0 0.4rem;
+  padding: 0.05rem 0.5rem;
   font-size: 0.7rem;
+  line-height: 1.2;
 }
 
 .warnBadge {
   color: var(--danger);
   font-weight: 700;
+  line-height: 1.2;
 }

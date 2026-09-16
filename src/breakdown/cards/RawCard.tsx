@@ -19,10 +19,17 @@ interface RawCardProps {
 // This holds for both v1 (no patch engine yet) and v1.x (these regions
 // stay Code-tab-only even once 3.3/3.4 ship, Sec.1 non-goals).
 export function RawCard({ node, kindLabel }: RawCardProps) {
-  const { source, diagnostics, applyEdit } = useBreakdownContext();
+  const { source, tokens, diagnostics, applyEdit, isExpanded, toggleExpanded } = useBreakdownContext();
   const text = source.slice(node.span.start, node.span.end);
   const nodeDiagnostics = diagnosticsWithin(diagnostics, node.span);
   const worstSeverity = nodeDiagnostics[0]?.severity;
+  // Same anchor-by-span scheme as every other card (Sec.6.3), so a raw
+  // region's collapse state survives a reparse the same way a command's
+  // does, with the sense INVERTED from CommandCard's, same reasoning and
+  // same shared expandedAnchors Set as CommentCard.tsx: open by default,
+  // toggleExpanded(node.span) here means "explicitly closed".
+  const expanded = !isExpanded(node.span);
+  const firstLine = text.split("\n").find((line) => line.trim().length > 0)?.trim();
 
   // Sec.3.3's did-you-mean quick-fix, wired to the patch engine in 3.4
   // (Sec.4.1's `applySuggestion` intent, the common typo path and the whole
@@ -34,50 +41,68 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
   return (
     <div className={cardStyles.card}>
       <div className={styles.header}>
+        <HelpTip id="breakdown.rawCard.toggle">
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={() => toggleExpanded(node.span)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "−" : "+"}
+          </button>
+        </HelpTip>
         <HelpTip id="breakdown.rawCard.why">
           <span className={styles.kindLabel}>{kindLabel} — shown as code</span>
         </HelpTip>
+        {firstLine && <span className={styles.rawPreview}>{firstLine}</span>}
         {worstSeverity && <ProblemBadge severity={worstSeverity} />}
       </div>
-      <pre className={styles.code}>{text}</pre>
-      {nodeDiagnostics.map((d, i) => (
-        <p key={i} className={styles.diagnosticMessage}>
-          {d.code}: {d.message}
-        </p>
-      ))}
-      {suggestion && (
-        <p className={styles.suggestion}>
-          Suggested fix: <code>{suggestion}</code>{" "}
-          {rawNode && (
-            <HelpTip id="breakdown.rawCard.fix">
-              <button
-                type="button"
-                className={styles.fixButton}
-                onClick={() =>
-                  applyEdit({
-                    kind: "applySuggestion",
-                    node: rawNode,
-                    tokenIndex: rawNode.firstToken,
-                    replacement: suggestion,
-                  })
-                }
-              >
-                Fix
-              </button>
-            </HelpTip>
+      {expanded && (
+        <>
+          <pre className={styles.code}>{text}</pre>
+          {nodeDiagnostics.map((d, i) => (
+            <p key={i} className={styles.diagnosticMessage}>
+              {d.code}: {d.message}
+            </p>
+          ))}
+          {suggestion && (
+            <p className={styles.suggestion}>
+              Suggested fix: <code>{suggestion}</code>{" "}
+              {rawNode && (
+                <HelpTip id="breakdown.rawCard.fix">
+                  <button
+                    type="button"
+                    className={styles.fixButton}
+                    onClick={() =>
+                      applyEdit({
+                        kind: "applySuggestion",
+                        node: rawNode,
+                        tokenIndex: rawNode.firstToken,
+                        replacement: suggestion,
+                      })
+                    }
+                  >
+                    Fix
+                  </button>
+                </HelpTip>
+              )}
+            </p>
           )}
-        </p>
-      )}
-      <HelpTip id="breakdown.rawCard.editInCode">
-        <button type="button" className={cardStyles.stubButton} title="Switch to the Code tab (wiring arrives with 3.4)" disabled>
-          Edit in Code tab
-        </button>
-      </HelpTip>
-      {node.kind === "orphanBlock" && (
-        <div className={styles.orphanContents}>
-          <p className={styles.orphanNote}>Contents (read-only, shared-block idiom):</p>
-          <BlockList items={node.block.items} />
-        </div>
+          <HelpTip id="breakdown.rawCard.editInCode">
+            <button type="button" className={cardStyles.stubButton} title="Switch to the Code tab (wiring arrives with 3.4)" disabled>
+              Edit in Code tab
+            </button>
+          </HelpTip>
+          {node.kind === "orphanBlock" && (
+            <div className={styles.orphanContents}>
+              <p className={styles.orphanNote}>Contents (read-only, shared-block idiom):</p>
+              <BlockList
+                items={node.block.items}
+                trailingBoundary={node.block.close !== undefined ? tokens[node.block.close].start : undefined}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

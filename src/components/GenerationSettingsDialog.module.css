@@ -1,0 +1,23 @@
+/* dialog.module.css's shared .dialog has no explicit width, so it
+   shrink-wraps to its widest child. TeamSection's own readout line
+   ("2 teams (4 v 4), 2_TEAM_GAME" vs "8 teams (1 v 1 v ...)" vs one with
+   the "alone on a team" note appended) changes length with the player
+   count and team layout, so the whole dialog used to visibly widen and
+   narrow as you clicked through presets. Fixed width, sized for the
+   longest realistic readout, so it holds still regardless of preset. */
+.fixedWidth {
+  width: 42rem;
+  max-width: 92vw;
+}
+
+/* Player count + Map size, deliberately one explicit row (see the TSX
+   comment) rather than two HelpTip spans left to land side by side by
+   accident. Gap between the two fields, and margin/padding around the row
+   itself so it isn't crowded against the title above or Teams below. */
+.topRow {
+  display: flex;
+  gap: 2rem;
+  margin-top: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}

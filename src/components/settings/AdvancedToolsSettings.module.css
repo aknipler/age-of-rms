@@ -1,7 +1,14 @@
+/* Converted from px to rem throughout (2026-09-16, was the one settings
+   stylesheet still in px) — every sibling tab's own CSS sizes itself in
+   rem, which is what lets the Theme tab's "UI size" slider scale it;
+   fixed px here meant this one tab's text stayed the same size while
+   everything else around it grew or shrank. 16px/14px/12px/10px/8px/4px
+   become 1rem/0.875rem/0.75rem/0.625rem/0.5rem/0.25rem at the standard
+   16px root. */
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1rem;
 }
 
 .intro {
@@ -10,15 +17,15 @@
 }
 
 .heading {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0 0 0.5rem;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -27,7 +34,7 @@
 .item {
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 10px 12px;
+  padding: 0.625rem 0.75rem;
 }
 
 .name {
@@ -36,16 +43,16 @@
 
 .version {
   color: var(--text-muted);
-  font-size: 12px;
-  margin-left: 8px;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
 }
 
 .description {
-  margin: 4px 0 0;
+  margin: 0.25rem 0 0;
 }
 
 .capabilities {
   color: var(--text-muted);
-  font-size: 12px;
-  margin: 4px 0 0;
+  font-size: 0.75rem;
+  margin: 0.25rem 0 0;
 }

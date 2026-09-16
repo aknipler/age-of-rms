@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import type { OverlayShape } from "../../../tools-api/index";
 import type { PreviewWireResult, StageSnapshot } from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
@@ -127,6 +129,13 @@ export interface OverlayCanvasProps {
   helpTipId: string;
   /** The "≈ Approximate preview" badge and banner notes. Meaningful only alongside `base`, since a caller with no generation has nothing for the banner to report on. */
   showApproximateBadge?: boolean;
+  /**
+   * Adds the small "Export" button beside the zoom controls, which saves
+   * exactly what this canvas is currently showing as a PNG. Optional because
+   * this component is also the Land Placement panel's own canvas (no
+   * document, nothing meaningful to export), which never passes it.
+   */
+  showExportButton?: boolean;
 }
 
 export function OverlayCanvas({
@@ -144,6 +153,7 @@ export function OverlayCanvas({
   overlayShapes,
   helpTipId,
   showApproximateBadge,
+  showExportButton,
 }: OverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -221,6 +231,30 @@ export function OverlayCanvas({
     setPersistedUserFramed(false);
     setViewport(fitViewport(dim, container.clientWidth, container.clientHeight));
   }, [dim, setPersistedUserFramed, setViewport]);
+
+  // Exports exactly what the canvas is currently showing: this zoom, this
+  // pan, this seed, this Current/Final view. WYSIWYG rather than re-rendering
+  // the whole map at a "fit" framing, which would need a second, headless
+  // draw pass through drawPreview with its own viewport, for a feature whose
+  // whole point is "let me save what I'm looking at".
+  //
+  // `toBlob` is canvas's own async, callback-shaped API (there is no
+  // synchronous "give me PNG bytes" method), so it is wrapped in a Promise to
+  // read like the rest of this function. `writeFile` (not `writeTextFile`)
+  // takes raw bytes, hence the `Blob -> ArrayBuffer -> Uint8Array` chain: a
+  // PNG is binary, and `useDocument.ts`'s own writes are the text-only case.
+  const exportPng = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (canvas === null) return;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (blob === null) return;
+    const target = await save({
+      filters: [{ name: "PNG Image", extensions: ["png"] }],
+      defaultPath: "map-preview.png",
+    });
+    if (target === null) return; // the user cancelled the save dialog
+    await writeFile(target, new Uint8Array(await blob.arrayBuffer()));
+  }, []);
 
   // --- Drawing ------------------------------------------------------------
 
@@ -438,6 +472,13 @@ export function OverlayCanvas({
         </div>
       )}
       <div className={styles.zoomControls}>
+        {showExportButton && (
+          <HelpTip id="preview.exportPng">
+            <button type="button" className={styles.exportButton} onClick={exportPng}>
+              Export
+            </button>
+          </HelpTip>
+        )}
         <HelpTip id="preview.zoomOut">
           <button
             type="button"

@@ -2,7 +2,11 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface);
-  padding: 0.4rem 0.6rem;
+  /* settings.breakdown.density: BreakdownPane sets --bd-card-padding (and
+     the other --bd-* spacing vars every card-internal stylesheet reads)
+     as an inline style when compact, so comfortable never sees anything
+     but this fallback. */
+  padding: var(--bd-card-padding, 0.4rem 0.6rem);
 }
 
 .strayHeader {
@@ -16,6 +20,7 @@
   border-radius: 999px;
   padding: 0.05rem 0.55rem;
   font-size: 0.75rem;
+  line-height: 1.2;
   border: 1px solid var(--border);
 }
 

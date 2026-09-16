@@ -12,9 +12,9 @@ import type { Diagnostic, DiagnosticSeverity, Span, Token } from "./types";
  * Phase 2.3 parser session doesn't have to re-derive them.
  */
 export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; summary: string }> = {
-  RMS0001: { severity: "warning", summary: "Unclosed /* (nesting-aware) — rest of file is a comment" },
+  RMS0001: { severity: "warning", summary: "Unclosed /* (nesting-aware), rest of file is a comment" },
   RMS0002: { severity: "warning", summary: "*/ without matching /*" },
-  RMS0003: { severity: "warning", summary: "Token contains embedded { } /* */ — missing whitespace" },
+  RMS0003: { severity: "warning", summary: "Token contains embedded { } /* */, missing whitespace" },
   RMS0004: { severity: "warning", summary: "Non-standard space character (NBSP etc.) inside a token" },
   RMS0005: { severity: "info", summary: "Leading byte-order mark (emitted as a trivia token; has no effect)" },
   RMS0100: { severity: "warning", summary: "Unknown section header" },
@@ -25,18 +25,18 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // rejects or mangles", and the rejection half is refuted.
   RMS0101: { severity: "warning", summary: "Unclosed { at EOF" },
   RMS0102: { severity: "warning", summary: "{ with nothing to attach to (OrphanBlockNode)" },
-  RMS0103: { severity: "error", summary: "Section header while { open — block force-closed" },
+  RMS0103: { severity: "error", summary: "Section header while { open, block force-closed" },
   RMS0104: { severity: "warning", summary: "Stray }" },
   RMS0105: { severity: "warning", summary: "Unclosed if / start_random at EOF" },
   RMS0106: { severity: "warning", summary: "Control keyword in wrong context / tokens before first percent_chance" },
-  RMS0107: { severity: "warning", summary: "Nesting deeper than maxNestingDepth — shown as raw code" },
+  RMS0107: { severity: "warning", summary: "Nesting deeper than maxNestingDepth, shown as raw code" },
   RMS0110: {
     severity: "info",
-    summary: "Conditional interleaves with command/block/section structure — shown as raw code (valid RMS)",
+    summary: "Conditional interleaves with command/block/section structure, shown as raw code (valid RMS)",
   },
   RMS0111: {
     severity: "error",
-    summary: "A word inside a comment resolves to 69, which the engine reads as an opening comment marker — everything below it is invisible to the game",
+    summary: "A word inside a comment resolves to 69, which the engine reads as an opening comment marker. Everything below it is invisible to the game",
   },
   RMS0200: { severity: "warning", summary: "Unrecognised command/attribute name, with did-you-mean" },
   RMS0201: { severity: "warning", summary: "Too few arguments (incl. stop-set/assembly early termination)" },
@@ -49,12 +49,12 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   RMS0208: { severity: "warning", summary: "Unclosed/degenerate math expression (degraded to raw)" },
   RMS0209: { severity: "warning", summary: "Unclosed quoted filename (degraded to raw)" },
   RMS0210: { severity: "warning", summary: "Malformed math expression (nested paren / glued operator / rnd inside / unglued operand)" },
-  RMS0211: { severity: "warning", summary: "Quoted path on #includeXS (engine rejects quotes — documented bug)" },
+  RMS0211: { severity: "warning", summary: "Quoted path on #includeXS (engine rejects quotes, documented bug)" },
   RMS0212: { severity: "warning", summary: "Digit-prefixed word in a numeric-typed argument slot only" },
-  RMS0213: { severity: "warning", summary: "Nested start_random (resolves correctly — RMSTEST_68 — but unsupported; avoid for portability)" },
+  RMS0213: { severity: "warning", summary: "Nested start_random (resolves correctly, RMSTEST_68, but unsupported; avoid for portability)" },
   RMS0214: { severity: "warning", summary: "rnd-like token failing the canonical form" },
   RMS0215: { severity: "warning", summary: "Unexpected value where a statement was expected" },
-  RMS0216: { severity: "warning", summary: '"//" is not a comment in RMS — use /* */' },
+  RMS0216: { severity: "warning", summary: '"//" is not a comment in RMS, use /* */' },
   // Added post-spec (2.4 bug-fix session, not in docs/parser-design.md's
   // original Sec.10 table, logged there as an amendment instead of a full
   // rewrite). Distinct from RMS0203: the value is NOT out of the documented
@@ -87,7 +87,7 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // (goal #5). Exactly one code here carries it, RMS0311, whose condition
   // is engine-verified and whose consequence is a map that ships broken.
   RMS0300: { severity: "warning", summary: "Name is not defined anywhere in this file" },
-  RMS0301: { severity: "warning", summary: "Redefinition — the first definition wins in-engine" },
+  RMS0301: { severity: "warning", summary: "Redefinition. The first definition wins in-engine" },
   // Split by what the engine actually does, which is NOT the same for the two
   // kinds of name Sec.8 lumped together (2026-07-31 corpus review, spec Sec.8
   // amended). A game constant really is defined before the script runs, so a
@@ -95,7 +95,7 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // the engine's is a bug, and the warning tier is reserved for that. A
   // predefined LABEL is not defined unconditionally at all (see RMS0312), so
   // it never belonged under this code.
-  RMS0302: { severity: "warning", summary: "User #const of a built-in game constant — the engine keeps its own value" },
+  RMS0302: { severity: "warning", summary: "User #const of a built-in game constant. The engine keeps its own value" },
   RMS0303: { severity: "warning", summary: "Name is used above the line that defines it" },
   // DELIBERATELY NOT BUILT, listed, like the Phase 2.2 codes above it, so the
   // number stays reserved and nobody re-derives it. Sec.8 asks for a
@@ -108,11 +108,11 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // tell a real mistake from a documentation artifact.
   RMS0304: { severity: "warning", summary: "Command sits in a section the engine will not run it from" },
   RMS0305: { severity: "info", summary: "No <PLAYER_SETUP> section" },
-  RMS0306: { severity: "info", summary: "Non-repeatable attribute given more than once — the engine uses the last" },
+  RMS0306: { severity: "info", summary: "Non-repeatable attribute given more than once. The engine uses the last" },
   RMS0307: { severity: "warning", summary: "Mutually exclusive attributes in the same block" },
   RMS0308: { severity: "warning", summary: "percent_chance / rnd range problem" },
   RMS0309: { severity: "info", summary: "effect_percent is obsolete (Update 141935)" },
-  RMS0310: { severity: "info", summary: "Non-functional syntax — parses, but does nothing in DE" },
+  RMS0310: { severity: "info", summary: "Non-functional syntax. Parses, but does nothing in DE" },
   RMS0311: { severity: "error", summary: "base_elevation without an <ELEVATION_GENERATION> section" },
   // Added 2026-07-31 by the corpus review, carved out of RMS0302. Every one of
   // language.json's 138 predefinedLabels is a RUNTIME CONDITION. The engine
@@ -121,7 +121,7 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // switches the condition on by hand, which is the documented way to test a
   // mode-specific branch. Info, never warning: the corpus's six instances are
   // all guarded by a testing flag and all correct.
-  RMS0312: { severity: "info", summary: "User #define of an engine condition label — switches the condition on by hand" },
+  RMS0312: { severity: "info", summary: "User #define of an engine condition label. Switches the condition on by hand" },
   // Added 2026-07-31 by the corpus review. The strongest claim in the whole
   // RMS03xx block and the cheapest to make: every branch of one if/elseif
   // chain is tested against the same set of defines at the same point in the
@@ -129,7 +129,7 @@ export const DIAGNOSTIC_CODES: Record<string, { severity: DiagnosticSeverity; su
   // cannot be reached. No guard algebra, no monotonicity precondition, no
   // reference data. Found DE's own nomad.rms testing INDOMALAYAN_TROPICAL
   // twice in one ladder, 23 lines of biome configuration that never run.
-  RMS0313: { severity: "warning", summary: "elseif repeats a condition from earlier in the same chain — the branch is unreachable" },
+  RMS0313: { severity: "warning", summary: "elseif repeats a condition from earlier in the same chain. The branch is unreachable" },
   // CREATION_PLAN 2.6, built 2026-07-31. RMS0301's claim ("the first
   // definition wins, this value never applies") reached across execution
   // paths rather than along one: an earlier definition guarded by a SUBSET of
@@ -163,13 +163,13 @@ function makeDiagnostic(code: keyof typeof DIAGNOSTIC_CODES, message: string, at
 export function unclosedComment(openToken: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0001",
-    "This /* is never closed — everything after it to the end of the file is treated as a comment.",
+    "This /* is never closed. Everything after it to the end of the file is treated as a comment.",
     toSpan(openToken),
   );
 }
 
 export function strayCommentClose(token: Token): Diagnostic {
-  return makeDiagnostic("RMS0002", "This */ has no matching /* — it's ignored.", toSpan(token));
+  return makeDiagnostic("RMS0002", "This */ has no matching /*. It's ignored.", toSpan(token));
 }
 
 // One of "{", "}", "/*", "*/" is glued to the rest of a token's text
@@ -188,7 +188,7 @@ export function embeddedMarker(token: Token, marker: string): Diagnostic {
   }
   return makeDiagnostic(
     "RMS0003",
-    `"${token.text}" has "${marker}" glued to the rest of the token — did you mean "${suggestion}"?`,
+    `"${token.text}" has "${marker}" glued to the rest of the token. Did you mean "${suggestion}"?`,
     toSpan(token),
   );
 }
@@ -197,7 +197,7 @@ export function nonStandardSpace(token: Token, char: string): Diagnostic {
   const codePoint = (char.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0");
   return makeDiagnostic(
     "RMS0004",
-    `This token contains a non-standard space character (U+${codePoint}) — RMS only treats space, tab, newline, \\v, \\f, and \\r as whitespace.`,
+    `This token contains a non-standard space character (U+${codePoint}). RMS only treats space, tab, newline, \\v, \\f, and \\r as whitespace.`,
     toSpan(token),
   );
 }
@@ -205,13 +205,13 @@ export function nonStandardSpace(token: Token, char: string): Diagnostic {
 export function leadingByteOrderMark(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0005",
-    "This file starts with a byte-order mark (BOM) — it has no effect and is safe to ignore.",
+    "This file starts with a byte-order mark (BOM). It has no effect and is safe to ignore.",
     toSpan(token),
   );
 }
 
 export function slashSlashComment(token: Token): Diagnostic {
-  return makeDiagnostic("RMS0216", '"//" is not a comment in RMS — use /* */ instead.', toSpan(token));
+  return makeDiagnostic("RMS0216", '"//" is not a comment in RMS. Use /* */ instead.', toSpan(token));
 }
 
 // ---- Parser-level diagnostic builders (Phase 2.3) ----
@@ -223,7 +223,7 @@ export function slashSlashComment(token: Token): Diagnostic {
 
 function capToInfo(d: Diagnostic, cap: boolean): Diagnostic {
   if (cap && d.severity === "warning") {
-    return { ...d, severity: "info", message: `${d.message} (According to unverified reference data — take with a grain of salt.)` };
+    return { ...d, severity: "info", message: `${d.message} (According to unverified reference data, take with a grain of salt.)` };
   }
   return d;
 }
@@ -235,7 +235,7 @@ function spanBetween(first: Token, last: Token): Span {
 export function unknownSection(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0100",
-    `Unknown section "${token.text}" — not one of the sections this game version documents. Kept as-is in case it's newer than our data.`,
+    `Unknown section "${token.text}". Not one of the sections this game version documents. Kept as-is in case it's newer than our data.`,
     toSpan(token),
   );
 }
@@ -243,7 +243,7 @@ export function unknownSection(token: Token): Diagnostic {
 export function unclosedBraceAtEof(openToken: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0101",
-    "This { is never closed — add a matching } before the end of the file.",
+    "This { is never closed. Add a matching } before the end of the file.",
     toSpan(openToken),
   );
 }
@@ -251,7 +251,7 @@ export function unclosedBraceAtEof(openToken: Token): Diagnostic {
 export function orphanBlock(openToken: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0102",
-    "This { doesn't belong to any command — did the command above it get misspelled or deleted?",
+    "This { doesn't belong to any command. Did the command above it get misspelled or deleted?",
     toSpan(openToken),
   );
 }
@@ -259,19 +259,19 @@ export function orphanBlock(openToken: Token): Diagnostic {
 export function sectionHeaderInBlock(headerToken: Token, openLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0103",
-    `Section header ${headerToken.text} appears while the { on line ${openLine} is still open — close the block with } before starting a new section.`,
+    `Section header ${headerToken.text} appears while the { on line ${openLine} is still open. Close the block with } before starting a new section.`,
     toSpan(headerToken),
   );
 }
 
 export function strayCloseBrace(token: Token): Diagnostic {
-  return makeDiagnostic("RMS0104", "This } has no matching { — it's ignored.", toSpan(token));
+  return makeDiagnostic("RMS0104", "This } has no matching {. It's ignored.", toSpan(token));
 }
 
 export function unclosedConditionalAtEof(openToken: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0105",
-    `This ${openToken.text} is never closed — add ${openToken.text === "start_random" ? "end_random" : "endif"} before the end of the file.`,
+    `This ${openToken.text} is never closed. Add ${openToken.text === "start_random" ? "end_random" : "endif"} before the end of the file.`,
     toSpan(openToken),
   );
 }
@@ -283,7 +283,7 @@ export function wrongContextKeyword(token: Token, explanation: string): Diagnost
 export function randomPreamble(first: Token, last: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0106",
-    "These tokens sit between start_random and the first percent_chance — the engine expects percent_chance branches immediately.",
+    "These tokens sit between start_random and the first percent_chance. The engine expects percent_chance branches immediately.",
     spanBetween(first, last),
   );
 }
@@ -291,15 +291,15 @@ export function randomPreamble(first: Token, last: Token): Diagnostic {
 export function nestingTooDeep(token: Token, max: number): Diagnostic {
   return makeDiagnostic(
     "RMS0107",
-    `Nesting deeper than ${max} levels — this region is shown as raw code.`,
+    `Nesting deeper than ${max} levels. This region is shown as raw code.`,
     toSpan(token),
   );
 }
 
 export function degradedToRaw(first: Token, last: Token, unclosedAtEof = false): Diagnostic {
   const message = unclosedAtEof
-    ? "This code mixes if/random with command structure in a way that must be shown as raw code — it is valid RMS. This region runs all the way to the end of the file, which usually means the if/start_random it starts with is missing its endif/end_random."
-    : "This code mixes if/random with command structure in a way that must be shown as raw code — it is valid RMS.";
+    ? "This code mixes if/random with command structure in a way that must be shown as raw code. It is valid RMS. This region runs all the way to the end of the file, which usually means the if/start_random it starts with is missing its endif/end_random."
+    : "This code mixes if/random with command structure in a way that must be shown as raw code. It is valid RMS.";
   return makeDiagnostic("RMS0110", message, spanBetween(first, last));
 }
 
@@ -322,7 +322,7 @@ export function degradedToRaw(first: Token, last: Token, unclosedAtEof = false):
 export function commentOpensNestedComment(token: Token, source: string): Diagnostic {
   return makeDiagnostic(
     "RMS0111",
-    `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That opens a second comment, the next */ closes only that one, and every line below here is invisible to the game — the map still generates, silently missing everything after this point. Split the word, or move this comment below the rest of the script.`,
+    `"${token.text}" inside this comment has the value 69, which the game reads as an opening comment marker (${source}). That opens a second comment, the next */ closes only that one, and every line below here is invisible to the game. The map still generates, silently missing everything after this point. Split the word, or move this comment below the rest of the script.`,
     toSpan(token),
   );
 }
@@ -330,7 +330,7 @@ export function commentOpensNestedComment(token: Token, source: string): Diagnos
 export function sharedBlock(openToken: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0110",
-    "This block is shared by the command(s) chosen in the if/random above — shown as a separate block.",
+    "This block is shared by the command(s) chosen in the if/random above, shown as a separate block.",
     toSpan(openToken),
   );
 }
@@ -366,7 +366,7 @@ export function sharedBlock(openToken: Token): Diagnostic {
  */
 export function unknownName(token: Token, context: "command" | "attribute", suggestion?: string): Diagnostic {
   const message = suggestion
-    ? `Unknown ${context} "${token.text}" — the engine will silently ignore it. Did you mean "${suggestion}"?`
+    ? `Unknown ${context} "${token.text}". The engine will silently ignore it. Did you mean "${suggestion}"?`
     : `Age of RMS doesn't recognise the ${context} "${token.text}".`;
   const diagnostic = makeDiagnostic("RMS0200", message, toSpan(token));
   if (suggestion) {
@@ -424,7 +424,7 @@ export function unresolvedConstantInNumericSlot(
   includesPresent: boolean,
 ): Diagnostic {
   const base = includesPresent
-    ? `"${token.text}" isn't defined in this file, so "${argDef.name}" may not get a valid ${argDef.type}. It may come from an include file — Age of RMS can't see inside those yet.`
+    ? `"${token.text}" isn't defined in this file, so "${argDef.name}" may not get a valid ${argDef.type}. It may come from an include file. Age of RMS can't see inside those yet.`
     : `"${token.text}" isn't defined in this file, so "${argDef.name}" won't get a valid ${argDef.type}. Define it first with #const, e.g. "#const ${token.text} 10".`;
   const diagnostic = makeDiagnostic("RMS0202", base, toSpan(token));
   return includesPresent ? { ...diagnostic, severity: "info" } : diagnostic;
@@ -446,7 +446,7 @@ export function argOutOfRange(token: Token, argDef: { name: string; min?: number
 export function unknownDirective(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0206",
-    `Unknown directive "${token.text}" — a leading # doesn't automatically make something a directive; the engine will ignore this token.`,
+    `Unknown directive "${token.text}". A leading # doesn't automatically make something a directive; the engine will ignore this token.`,
     toSpan(token),
   );
 }
@@ -454,33 +454,33 @@ export function unknownDirective(token: Token): Diagnostic {
 export function wrongContext(token: Token, is: "command" | "attribute", suppressedCount?: number): Diagnostic {
   const message =
     suppressedCount !== undefined
-      ? `${suppressedCount} more command-level lines appear inside this block — likely all caused by the unclosed/glued brace above.`
+      ? `${suppressedCount} more command-level lines appear inside this block, likely all caused by the unclosed/glued brace above.`
       : is === "attribute"
-        ? `"${token.text}" is an attribute — it belongs inside a { } block.`
-        : `"${token.text}" is a command — it belongs outside a { } block. (Is the } above missing or glued to another token?)`;
+        ? `"${token.text}" is an attribute. It belongs inside a { } block.`
+        : `"${token.text}" is a command. It belongs outside a { } block. (Is the } above missing or glued to another token?)`;
   return makeDiagnostic("RMS0207", message, toSpan(token));
 }
 
 export function unclosedExpression(first: Token, last: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0208",
-    "This ( never finds its closing ) — math expressions must be closed, e.g. (A + 1).",
+    "This ( never finds its closing ). Math expressions must be closed, e.g. (A + 1).",
     spanBetween(first, last),
   );
 }
 
 export function unclosedQuote(first: Token, last: Token): Diagnostic {
-  return makeDiagnostic("RMS0209", 'This " is never closed — quoted filenames need a closing quote.', spanBetween(first, last));
+  return makeDiagnostic("RMS0209", 'This " is never closed. Quoted filenames need a closing quote.', spanBetween(first, last));
 }
 
 export type ExpressionLintKind = "nestedParen" | "gluedOperator" | "rndInside" | "ungluedOperand" | "commentInside";
 
 const EXPRESSION_LINT_MESSAGES: Record<ExpressionLintKind, string> = {
-  nestedParen: "Nested parentheses inside a math expression — the engine silently drops this operand.",
-  gluedOperator: "Operator glued to an operand — the engine needs spaces around operators: (A + 1), not (A+1).",
-  rndInside: "rnd(...) is not allowed inside a math expression — compute it into a #const first.",
+  nestedParen: "Nested parentheses inside a math expression. The engine silently drops this operand.",
+  gluedOperator: "Operator glued to an operand. The engine needs spaces around operators: (A + 1), not (A+1).",
+  rndInside: "rnd(...) is not allowed inside a math expression. Compute it into a #const first.",
   ungluedOperand: "Operands must be glued to the bounding parentheses: (A + 1), not ( A + 1 ).",
-  commentInside: "Comments break math expressions — move the comment outside the parentheses.",
+  commentInside: "Comments break math expressions. Move the comment outside the parentheses.",
 };
 
 export function expressionLint(kind: ExpressionLintKind, at: Span): Diagnostic {
@@ -490,7 +490,7 @@ export function expressionLint(kind: ExpressionLintKind, at: Span): Diagnostic {
 export function includeXsQuoted(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0211",
-    "#includeXS rejects quoted paths (a documented engine bug) — use a path without spaces instead.",
+    "#includeXS rejects quoted paths (a documented engine bug). Use a path without spaces instead.",
     toSpan(token),
   );
 }
@@ -499,7 +499,7 @@ export function digitPrefixedWord(token: Token): Diagnostic {
   const digits = token.text.match(/^\d+/)?.[0] ?? token.text;
   return makeDiagnostic(
     "RMS0212",
-    `The engine reads "${token.text}" as ${digits} and ignores the rest — remove the extra characters.`,
+    `The engine reads "${token.text}" as ${digits} and ignores the rest. Remove the extra characters.`,
     toSpan(token),
   );
 }
@@ -507,7 +507,7 @@ export function digitPrefixedWord(token: Token): Diagnostic {
 export function nestedRandom(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0213",
-    "Nested start_random resolves correctly (measured, RMSTEST_68), but the engine does not officially support it — use a first random block to #define which additional random block to run instead, for portability.",
+    "Nested start_random resolves correctly (measured, RMSTEST_68), but the engine does not officially support it. Use a first random block to #define which additional random block to run instead, for portability.",
     toSpan(token),
   );
 }
@@ -515,7 +515,7 @@ export function nestedRandom(token: Token): Diagnostic {
 export function malformedRnd(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0214",
-    `"${token.text}" looks like rnd(...) but isn't the exact form rnd(min,max) — rnd() must contain no spaces.`,
+    `"${token.text}" looks like rnd(...) but isn't the exact form rnd(min,max). rnd() must contain no spaces.`,
     toSpan(token),
   );
 }
@@ -532,7 +532,7 @@ export function valueCaution(token: Token, message: string): Diagnostic {
 export function unexpectedValue(first: Token, last: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0215",
-    "Unexpected value — a command, attribute, or directive was expected here.",
+    "Unexpected value. A command, attribute, or directive was expected here.",
     spanBetween(first, last),
   );
 }
@@ -565,7 +565,7 @@ function softenForIncludes(diagnostic: Diagnostic, includesPresent: boolean): Di
   return {
     ...diagnostic,
     severity: "info",
-    message: `${diagnostic.message} It may come from an include file — Age of RMS can't see inside those yet.`,
+    message: `${diagnostic.message} It may come from an include file. Age of RMS can't see inside those yet.`,
   };
 }
 
@@ -574,8 +574,8 @@ export function bareNumericId(token: Token, argDef: { name: string }, resolvedNa
   // entry it came from carries verified provenance. Without that, saying
   // "32 is SNOW" would be asserting a placeholder ID as fact.
   const message = resolvedName
-    ? `${token.text} is the ID for ${resolvedName} — writing ${resolvedName} instead makes this line readable at a glance.`
-    : `"${argDef.name}" was given a bare numeric ID. Named constants read better — check the reference panel for the name of this one.`;
+    ? `${token.text} is the ID for ${resolvedName}. Writing ${resolvedName} instead makes this line readable at a glance.`
+    : `"${argDef.name}" was given a bare numeric ID. Named constants read better. Check the reference panel for the name of this one.`;
   const diagnostic = makeDiagnostic("RMS0204", message, toSpan(token));
   if (resolvedName) diagnostic.suggestion = resolvedName;
   return diagnostic;
@@ -589,7 +589,7 @@ export function crossCategoryConstant(
 ): Diagnostic {
   return makeDiagnostic(
     "RMS0205",
-    `${token.text} is a ${actualCategory} constant, but "${argDef.name}" expects ${expectedCategory === "object" ? "an" : "a"} ${expectedCategory}. The engine reads every constant as a number, so this still runs — it just probably isn't what you meant.`,
+    `${token.text} is a ${actualCategory} constant, but "${argDef.name}" expects ${expectedCategory === "object" ? "an" : "a"} ${expectedCategory}. The engine reads every constant as a number, so this still runs. It just probably isn't what you meant.`,
     toSpan(token),
   );
 }
@@ -603,7 +603,7 @@ export function crossCategoryConstant(
 export function undefinedName(token: Token, suggestion: string, includesPresent: boolean): Diagnostic {
   const diagnostic = makeDiagnostic(
     "RMS0300",
-    `"${token.text}" is never defined, so this branch never runs — did you mean "${suggestion}"?`,
+    `"${token.text}" is never defined, so this branch never runs. Did you mean "${suggestion}"?`,
     toSpan(token),
   );
   diagnostic.suggestion = suggestion;
@@ -613,7 +613,7 @@ export function undefinedName(token: Token, suggestion: string, includesPresent:
 export function duplicateDefinition(token: Token, firstDefinitionLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0301",
-    `"${token.text}" is already defined on line ${firstDefinitionLine}. The engine keeps the FIRST definition and ignores this one — the value here never takes effect.`,
+    `"${token.text}" is already defined on line ${firstDefinitionLine}. The engine keeps the FIRST definition and ignores this one. The value here never takes effect.`,
     toSpan(token),
   );
 }
@@ -635,7 +635,7 @@ export function subsumedDefinition(token: Token, firstDefinitionLine: number, ea
   const message =
     earlierConditions.length === 0
       ? `"${token.text}" is already set unconditionally on line ${firstDefinitionLine}, above this line. That one always runs, and the engine keeps the FIRST definition, so this value never applies. In RMS a default has to come AFTER the conditional versions of a constant, not before them.`
-      : `"${token.text}" is already set on line ${firstDefinitionLine} under ${earlierConditions.map((c) => `"${c}"`).join(" and ")}, which this line also requires. So whenever this line runs, that one has already run — and the engine keeps the FIRST definition, so this value never applies.`;
+      : `"${token.text}" is already set on line ${firstDefinitionLine} under ${earlierConditions.map((c) => `"${c}"`).join(" and ")}, which this line also requires. So whenever this line runs, that one has already run, and the engine keeps the FIRST definition, so this value never applies.`;
   return makeDiagnostic("RMS0314", message, toSpan(token));
 }
 
@@ -649,7 +649,7 @@ export function subsumedDefinition(token: Token, firstDefinitionLine: number, ea
 export function shadowedConstantValueIgnored(token: Token, engineValue: number, writtenValue: number): Diagnostic {
   return makeDiagnostic(
     "RMS0302",
-    `${token.text} is a built-in game constant meaning ${engineValue}. The engine defines it before your script runs and keeps its own definition, so ${writtenValue} never applies — every ${token.text} below this line still means ${engineValue}. Pick a different name for your own constant.`,
+    `${token.text} is a built-in game constant meaning ${engineValue}. The engine defines it before your script runs and keeps its own definition, so ${writtenValue} never applies. Every ${token.text} below this line still means ${engineValue}. Pick a different name for your own constant.`,
     toSpan(token),
   );
 }
@@ -670,7 +670,7 @@ export function redundantConstantDefinition(token: Token, engineValue?: number):
   const message =
     engineValue === undefined
       ? `${token.text} is already a built-in game constant. The engine defines it before your script runs and keeps its own definition, so this line has no effect.`
-      : `${token.text} is already a built-in game constant meaning ${engineValue}, and this line sets it to the same thing — so it changes nothing. Harmless as documentation; deleting it is equally harmless.`;
+      : `${token.text} is already a built-in game constant meaning ${engineValue}, and this line sets it to the same thing, so it changes nothing. Harmless as documentation; deleting it is equally harmless.`;
   return { ...makeDiagnostic("RMS0302", message, toSpan(token)), severity: "info" };
 }
 
@@ -684,7 +684,7 @@ export function redundantConstantDefinition(token: Token, engineValue?: number):
 export function overridesEngineCondition(token: Token): Diagnostic {
   return makeDiagnostic(
     "RMS0312",
-    `${token.text} is a condition the engine sets for you from the game being played. Defining it yourself switches it on by hand, which is the usual way to test a branch — but if this isn't behind a testing flag, every game will take that branch.`,
+    `${token.text} is a condition the engine sets for you from the game being played. Defining it yourself switches it on by hand, which is the usual way to test a branch. But if this isn't behind a testing flag, every game will take that branch.`,
     toSpan(token),
   );
 }
@@ -693,7 +693,7 @@ export function usedBeforeDefinition(token: Token, definedOnLine: number, includ
   return softenForIncludes(
     makeDiagnostic(
       "RMS0303",
-      `"${token.text}" isn't defined until line ${definedOnLine}, below this line. Definitions only count higher up in the file, so the engine ignores this one — move the #define/#const above this line.`,
+      `"${token.text}" isn't defined until line ${definedOnLine}, below this line. Definitions only count higher up in the file, so the engine ignores this one. Move the #define/#const above this line.`,
       toSpan(token),
     ),
     includesPresent,
@@ -703,7 +703,7 @@ export function usedBeforeDefinition(token: Token, definedOnLine: number, includ
 export function missingPlayerSetup(at: Span): Diagnostic {
   return makeDiagnostic(
     "RMS0305",
-    "This script has no <PLAYER_SETUP> section. Most maps need one to place players — add it above the other sections.",
+    "This script has no <PLAYER_SETUP> section. Most maps need one to place players. Add it above the other sections.",
     at,
   );
 }
@@ -719,7 +719,7 @@ export function missingPlayerSetup(at: Span): Diagnostic {
 export function unreachableBranch(token: Token, earlierLine: number): Diagnostic {
   return makeDiagnostic(
     "RMS0313",
-    `"${token.text}" is already tested on line ${earlierLine} in this same if/elseif chain. If it were true, that earlier branch would have run instead — so this branch can never be reached and nothing inside it takes effect.`,
+    `"${token.text}" is already tested on line ${earlierLine} in this same if/elseif chain. If it were true, that earlier branch would have run instead, so this branch can never be reached and nothing inside it takes effect.`,
     toSpan(token),
   );
 }
@@ -790,12 +790,12 @@ export type ChanceLintKind = "unreachable" | "under99" | "zeroFirst" | "reversed
 // reachable range ends. See Validator.checkChances for the corpus effect.
 const CHANCE_LINT_MESSAGES: Record<ChanceLintKind, string> = {
   unreachable:
-    "The percent_chance branches above this one already add up to 99 or more, so this branch can never be picked — the engine only ever rolls into the first 99%. Lower the earlier percentages to make room.",
+    "The percent_chance branches above this one already add up to 99 or more, so this branch can never be picked. The engine only ever rolls into the first 99%. Lower the earlier percentages to make room.",
   under99:
-    "These percent_chance branches add up to less than 99, so there's a chance none of them runs. That's fine if it's deliberate — raise the total to 99 if it isn't.",
-  zeroFirst: "percent_chance 0 on the first branch doesn't skip it — the engine runs it anyway. Remove the branch instead.",
+    "These percent_chance branches add up to less than 99, so there's a chance none of them runs. That's fine if it's deliberate. Raise the total to 99 if it isn't.",
+  zeroFirst: "percent_chance 0 on the first branch doesn't skip it. The engine runs it anyway. Remove the branch instead.",
   reversedRange: "This rnd() has its high end below its low end, so it never varies. The two values look swapped.",
-  constantRange: "Both ends of this rnd() are the same number, so it always returns that number — the rnd() isn't doing anything.",
+  constantRange: "Both ends of this rnd() are the same number, so it always returns that number. The rnd() isn't doing anything.",
 };
 
 export function chanceLint(kind: ChanceLintKind, at: Span): Diagnostic {
@@ -810,7 +810,7 @@ export function chanceLint(kind: ChanceLintKind, at: Span): Diagnostic {
 
 /** `guidance` is the def's own `deprecated` string, the data says what to do instead. */
 export function deprecatedCommand(token: Token, guidance: string): Diagnostic {
-  return makeDiagnostic("RMS0309", `"${token.text}" is obsolete — ${guidance}. It still runs, so this is safe to leave.`, toSpan(token));
+  return makeDiagnostic("RMS0309", `"${token.text}" is obsolete, ${guidance}. It still runs, so this is safe to leave.`, toSpan(token));
 }
 
 /**
@@ -829,7 +829,7 @@ export function deprecatedCommand(token: Token, guidance: string): Diagnostic {
 export function wrongSection(token: Token, belongsIn: string, foundIn: string): Diagnostic {
   return makeDiagnostic(
     "RMS0304",
-    `"${token.text}" only works inside <${belongsIn}>, but this one is in <${foundIn}> — the engine skips it, and the rest of the map generates as though the line were not there. Move it into <${belongsIn}>.`,
+    `"${token.text}" only works inside <${belongsIn}>, but this one is in <${foundIn}>. The engine skips it, and the rest of the map generates as though the line were not there. Move it into <${belongsIn}>.`,
     toSpan(token),
   );
 }
@@ -842,8 +842,8 @@ export function wrongSection(token: Token, belongsIn: string, foundIn: string): 
  */
 export function nonFunctionalSyntax(token: Token, replacedBy?: string): Diagnostic {
   const message = replacedBy
-    ? `"${token.text}" parses, but it does nothing in DE — the engine carries the word with no behavior behind it. You probably want "${replacedBy}".`
-    : `${token.text} parses, but it does nothing in DE — the engine has the word and no behavior behind it. Deleting the line changes nothing.`;
+    ? `"${token.text}" parses, but it does nothing in DE. The engine carries the word with no behavior behind it. You probably want "${replacedBy}".`
+    : `${token.text} parses, but it does nothing in DE. The engine has the word and no behavior behind it. Deleting the line changes nothing.`;
   const diagnostic = makeDiagnostic("RMS0310", message, toSpan(token));
   if (replacedBy) diagnostic.suggestion = replacedBy;
   return diagnostic;
@@ -860,7 +860,7 @@ export function nonFunctionalSyntax(token: Token, replacedBy?: string): Diagnost
 export function missingRequiredSection(token: Token, requiredSection: string): Diagnostic {
   return makeDiagnostic(
     "RMS0311",
-    `"${token.text}" needs a <${requiredSection}> section, and this script has none. The map still generates and looks fine, but the setting never takes effect — and maps in this state have been reported to crash when actually played. The section can be completely empty; adding the header is the whole fix.`,
+    `"${token.text}" needs a <${requiredSection}> section, and this script has none. The map still generates and looks fine, but the setting never takes effect, and maps in this state have been reported to crash when actually played. The section can be completely empty; adding the header is the whole fix.`,
     toSpan(token),
   );
 }

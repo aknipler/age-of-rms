@@ -98,7 +98,7 @@ export function LandPlacementHelpDialog({ onClose }: { onClose: () => void }) {
             parent to have one. Every ring shape, circle, line, arc, square, triangle and polygon alike, is a polar offset with a
             real angle to measure from, so a land chained to any of them keeps working as expected. Only a placement set to a
             cartesian or formula offset has no angle of its own, so a land parented to one of those falls back to a plain world
-            bearing even with Frame set to radial — indistinguishable from absolute.
+            bearing even with Frame set to radial, indistinguishable from absolute.
           </p>
           <p>Distances are percentages of the map dimension rather than tiles. Each field shows its tile equivalent beside it.</p>
 

@@ -9,37 +9,73 @@
 import type { GameConstantEntry } from "../../breakdown/gameConstants";
 import type { AttributeDef, CommandDef } from "../../parser/language";
 
-/**
- * Descriptive name, then RMS constant, then constant id.
- *
- * All three tiers earn their place, which is why this is not just a name sort.
- * Both tables carry genuine ALIASES, 450 is both MARLIN1 and
- * GREAT_FISH_MARLIN, 457 both TUNA and FISH_TUNA, so "Marlin" and "Tuna" each
- * appear twice under identical descriptive names, and the second tier is what
- * decides those pairs. The third separates rows sharing a name AND a constant,
- * which nothing does today; it is there so the order is TOTAL, since a
- * comparator returning 0 for two distinct rows hands their order to the sort's
- * stability rather than to this rule.
- *
- * Terrain gives the third tier work that objects do not: 53 of its 131 rows
- * have no constant at all, so ties on the first two tiers are routine there.
- */
-export function compareConstantRows(a: GameConstantEntry, b: GameConstantEntry): number {
-  const byName = a.descriptiveName.localeCompare(b.descriptiveName);
-  if (byName !== 0) return byName;
+/** Descriptive name tier, shared by every sort key as a tie-break or as the primary key. */
+function byName(a: GameConstantEntry, b: GameConstantEntry): number {
+  return a.descriptiveName.localeCompare(b.descriptiveName);
+}
 
-  const byConstant = (a.rmsConstant ?? "").localeCompare(b.rmsConstant ?? "");
-  if (byConstant !== 0) return byConstant;
+/** RMS-constant tier. Both tables carry genuine ALIASES, 450 is both MARLIN1
+ * and GREAT_FISH_MARLIN, 457 both TUNA and FISH_TUNA, so this is what tells
+ * those pairs apart when descriptive name ties. */
+function byConstant(a: GameConstantEntry, b: GameConstantEntry): number {
+  return (a.rmsConstant ?? "").localeCompare(b.rmsConstant ?? "");
+}
 
-  // A missing id sorts last rather than first. Written out instead of
-  // `(a.constId ?? Infinity) - (b.constId ?? Infinity)` because that
-  // subtraction is NaN when BOTH are null, and a comparator returning NaN does
-  // not throw. It silently leaves the array in whatever order the sort
-  // happened to reach.
+/** Constant-id tier. A missing id sorts last rather than first. Written out
+ * instead of `(a.constId ?? Infinity) - (b.constId ?? Infinity)` because that
+ * subtraction is NaN when BOTH are null, and a comparator returning NaN does
+ * not throw, it silently leaves the array in whatever order the sort
+ * happened to reach. */
+function byId(a: GameConstantEntry, b: GameConstantEntry): number {
   const aId = a.constId ?? Number.POSITIVE_INFINITY;
   const bId = b.constId ?? Number.POSITIVE_INFINITY;
   if (aId === bId) return 0;
   return aId < bId ? -1 : 1;
+}
+
+/**
+ * Descriptive name, then RMS constant, then constant id, the table's
+ * long-standing default order.
+ *
+ * All three tiers earn their place, which is why this is not just a name
+ * sort: the second tier is what separates the alias pairs above, and the
+ * third catches rows sharing a name AND a constant (nothing does today, but
+ * it is there so the order is TOTAL, since a comparator returning 0 for two
+ * distinct rows hands their order to the sort's stability rather than to
+ * this rule). Terrain gives the third tier work that objects do not: 53 of
+ * its 131 rows have no constant at all, so ties on the first two tiers are
+ * routine there.
+ */
+export function compareConstantRows(a: GameConstantEntry, b: GameConstantEntry): number {
+  return byName(a, b) || byConstant(a, b) || byId(a, b);
+}
+
+/** The reference table's user-facing sort choices (beta feedback: "allow for different sorting filters"). */
+export type ConstantSortKey = "name" | "constant" | "id";
+
+export const CONSTANT_SORT_LABELS: Record<ConstantSortKey, string> = {
+  name: "Descriptive Name",
+  constant: "RMS Constant",
+  id: "Const. ID#",
+};
+
+/**
+ * `compareConstantRows` with the requested column moved to the front tier.
+ *
+ * Every key still falls through all three tiers, in some order, so the
+ * result stays a TOTAL order under every choice: sorting by RMS Constant
+ * only decides ties (53 of 131 terrain rows have none) by id then name
+ * rather than leaving them in whatever order `.sort()` happened to produce.
+ */
+export function compareConstantRowsBy(sortKey: ConstantSortKey, a: GameConstantEntry, b: GameConstantEntry): number {
+  switch (sortKey) {
+    case "constant":
+      return byConstant(a, b) || byId(a, b) || byName(a, b);
+    case "id":
+      return byId(a, b) || byName(a, b) || byConstant(a, b);
+    case "name":
+      return compareConstantRows(a, b);
+  }
 }
 
 /**

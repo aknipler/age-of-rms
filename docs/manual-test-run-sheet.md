@@ -195,41 +195,11 @@ Run together, in this order:
   wording varies between launches.
 - Each of the three welcome buttons does exactly what Sec.7.4 says, and the pane never
   appears again.
-- Help ▸ either tutorial item starts that tutorial from step 1, at any time, whether or not
-  it has been completed.
-- In Tutorial A, performing a step's edit in the Breakdown editor advances the tutorial
-  without the user clicking Next.
-- `Next` advances an unsatisfied check step anyway; `Back` returns to it and it is still
-  unsatisfied.
-- Running Tutorial A against a finished Golden Hill does NOT race to the end: each step
-  renders ticked and waits for Next, so it is readable as a reference.
 - Step 0's "Carry on with my own map" advances into step 1 with the user's own file
   untouched.
 - `Escape` and `Exit tutorial` end a run cleanly, with no overlay left behind.
-- With the tutorial open, every control behind the scrim is still clickable.
 - The spotlight follows its anchor when the pane is scrolled or the window resized, and
   degrades to a centred callout when the anchor is not on screen.
-- Following Tutorial A end to end on an empty file produces a script that parses with zero
-  errors and renders a recognisable map in the preview.
-- `npm test`, `npm run typecheck`, `npm run lint` and `npm run validate:reference` all pass.
-
----
-
-## 9. Advanced Tools tab-switch persistence (2026-09-03 fix — no prior sheet, no dependency on sections above)
-
-Fixes the "have to select the tool again" report: `ToolsPane` fully unmounts on every tab
-switch, and which tool the dropdown showed (`selectedId`) used to be a plain local `useState`
-that forgot the selection and fell back to the first tool in the list. It's now lifted into
-`ToolHostContext.tsx` alongside `ToolHost` itself.
-
-1. Select a report tool (e.g. Script Stats), switch to Code, switch back to Advanced Tools.
-   Confirm the dropdown still shows that tool, not the first one in the list.
-2. Select Land Placement, build something (a role, a ring), switch to Code, switch back.
-   Confirm the panel itself reappears showing the same model — not the dropdown reverted to
-   a different tool with the Land Placement panel invisible underneath it.
-3. Confirm the Code tab's own cursor/scroll position also survives an Advanced-Tools round
-   trip (this piece needed no code change — the shared selection anchor already covers it —
-   but has never been checked against a real render).
 
 ---
 

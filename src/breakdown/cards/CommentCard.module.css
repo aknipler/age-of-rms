@@ -3,11 +3,61 @@
   border-style: dashed;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggle {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.summary {
+  flex: 1;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Indents the whole expanded body — every wrapped line, not just the
+   first — to line up under where the summary text starts (toggle width
+   1.5rem + the header's 0.5rem gap). */
+.body {
+  padding-left: 2rem;
+}
+
 .text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   margin: 0;
   font-style: italic;
   color: var(--text-muted);
-  white-space: pre-wrap;
   font-family: inherit;
   font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  overflow: hidden;
+  resize: none;
+}
+
+.text:focus {
+  font-style: normal;
+  border-color: var(--border-muted);
+  outline: none;
+}
+
+.inlineError {
+  display: block;
+  color: var(--danger);
+  font-size: 0.75rem;
 }

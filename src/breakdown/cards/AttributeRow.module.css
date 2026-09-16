@@ -1,14 +1,14 @@
 .slot {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--bd-row-gap, 0.15rem);
 }
 
 .row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.15rem 0.25rem;
+  padding: var(--bd-row-padding, 0.15rem 0.25rem);
   border-bottom: 1px dotted var(--border-subtle);
   /* DiagnosticTooltip.tsx's popup anchors to this row (position:
      absolute, top/bottom: 100%), needs this to be its containing block,

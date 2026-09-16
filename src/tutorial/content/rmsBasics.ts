@@ -55,7 +55,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       anchor: { kind: "region", id: "breakdown.sectionTabs" },
       navigate: { tab: "breakdown" },
       body: [
-        "A random map script runs top to bottom, and these seven numbered tabs are that order: 0. Header, 1. Player Setup, 2. Land, 3. Elevation, 4. Cliff, 5. Terrain, 6. Terrain Connection, 7. Objects.",
+        "A random map script runs top to bottom, and these seven numbered tabs are that order: 0. Header, 1. Player Setup, 2. Land, 3. Elevation, 4. Cliff, 5. Terrain, 6. Connections, 7. Objects.",
         "The game finishes each stage before starting the next, which is why you place land before you place gold on it.",
       ],
       completion: { kind: "manual" },
@@ -206,6 +206,12 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       title: "Hills",
       anchor: { kind: "help", id: "breakdown.tab.elevationGeneration" },
       extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
+      // Same nudge as "random-or-direct" (Player Setup) and the other
+      // tab-anchored steps below: without it, beside-the-tab placement
+      // still lands over a meaningful chunk of the card area for a tab
+      // this far left in the strip (2026-09-16 fix).
+      calloutNudge: { x: 368 },
+      calloutMaxWidthPx: 380,
       navigate: { section: "ELEVATION_GENERATION" },
       body: [
         "create_elevation raises clumps of ground, and its argument is the height to build up to. Let's add some elevation around the map. Add create_elevation 4 with base_terrain GRASS (only grass gets raised), number_of_clumps 10 and number_of_tiles 600.",
@@ -243,6 +249,11 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       title: "Cliffs",
       anchor: { kind: "help", id: "breakdown.tab.cliffGeneration" },
       extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
+      // Same nudge as "hills" above and the other tab-anchored steps
+      // (2026-09-16 fix, reported: covered too much of the pane's left
+      // side).
+      calloutNudge: { x: 368 },
+      calloutMaxWidthPx: 380,
       navigate: { section: "CLIFF_GENERATION" },
       body: [
         "Cliffs are the odd section out: no block, just a handful of standalone settings. Add min_number_of_cliffs 3 and max_number_of_cliffs 6, then min_length_of_cliff 4 and max_length_of_cliff 8.",
@@ -261,6 +272,9 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       title: "Trees",
       anchor: { kind: "help", id: "breakdown.tab.terrainGeneration" },
       extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
+      // Same nudge as "hills"/"cliffs" above (2026-09-16 fix).
+      calloutNudge: { x: 368 },
+      calloutMaxWidthPx: 380,
       navigate: { section: "TERRAIN_GENERATION" },
       body: [
         "Let's talk about create_terrain commands. create_terrain FOREST paints forest over what is already there. The attribute \"base_terrain\" then names the terrain for the forest to be painted on (in this case, let's make it GRASS), land_percent 10 is the total coverage, number_of_clumps 20 is how many groups (10/20 = 0.5 land percent per group), and set_avoid_player_start_areas 8 keeps it off everybody's town centre by 8 tiles.",
@@ -309,6 +323,9 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       title: "A road to the hill",
       anchor: { kind: "help", id: "breakdown.tab.connectionGeneration" },
       extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
+      // Same nudge as "hills"/"cliffs"/"trees" above (2026-09-16 fix).
+      calloutNudge: { x: 368 },
+      calloutMaxWidthPx: 380,
       navigate: { section: "CONNECTION_GENERATION" },
       body: [
         "create_connect_to_nonplayer_land walks a path from every player to every neutral land, paving as it goes. Two lines of paving is all we need: replace_terrain GRASS ROAD and replace_terrain DIRT ROAD, so the road shows up on the grass and again where it climbs the dirt hill.",
@@ -338,6 +355,17 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       title: "Starting units",
       anchor: { kind: "help", id: "breakdown.tab.objectsGeneration" },
       extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
+      // This step's anchor is the "7. Objects" tab, the LAST one in the
+      // strip. On a narrow window that tab wraps onto its own second row
+      // at the strip's left edge (SectionTabs.module.css's flex-wrap),
+      // and the default "beside the anchor" placement would then put the
+      // callout right where the wrapped tab lands, on top of the card
+      // list the extraAnchors region is supposed to leave visible. Same
+      // fixed nudge as the OBJECTS_GENERATION steps below (352px panel
+      // width + gap), so this step's callout clears the pane regardless
+      // of whether the tab strip has wrapped.
+      calloutNudge: { x: 368 },
+      calloutMaxWidthPx: 380,
       navigate: { section: "OBJECTS_GENERATION" },
       body: [
         "Three create_object commands: TOWN_CENTER (max_distance_to_players 0), VILLAGER with number_of_objects 3 (min-max 7-9), and SCOUT (min-max 7-9). Each needs set_place_for_every_player, plus min_distance_to_players / max_distance_to_players to say how far from the centre of the player land they spawn.",
@@ -389,11 +417,21 @@ export const rmsBasicsTutorial: TutorialDefinition = {
     {
       id: "gold-on-the-hill",
       title: "Gold on the hill",
-      anchor: { kind: "region", id: "breakdown.cardList" },
-      // Moved right by the same distance as the LAND_GENERATION steps
-      // (player-lands/hill-in-the-middle). This step's own Add command
-      // press opens the identical CommandPicker dropdown at the same
-      // left-edge-of-the-card-area position.
+      // Anchored to the Add Command button itself, not the whole card-list
+      // region (2026-09-16 fix): `breakdown.cardList` can be tall and its
+      // rect varies with how much is already in it, which is what made the
+      // "beside doesn't fit, fall back above/below the WHOLE region"
+      // branch land somewhere different depending on what the card list
+      // already held on arrival, exactly the "fine on revisit, wrong on
+      // first arrival" symptom this was reported as. `breakdown.addCommand`
+      // is small and stable, matching the LAND_GENERATION steps
+      // (player-lands/hill-in-the-middle) that never had this complaint.
+      anchor: { kind: "help", id: "breakdown.addCommand" },
+      extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
+      // Moved right by the same distance as the LAND_GENERATION steps.
+      // This step's own Add command press opens the identical
+      // CommandPicker dropdown at the same left-edge-of-the-card-area
+      // position.
       calloutNudge: { x: 368 },
       calloutMaxWidthPx: 380,
       navigate: { section: "OBJECTS_GENERATION" },
@@ -428,7 +466,9 @@ export const rmsBasicsTutorial: TutorialDefinition = {
     {
       id: "everyone-elses-resources",
       title: "Everyone else's resources",
-      anchor: { kind: "region", id: "breakdown.cardList" },
+      // Same anchor fix as "gold-on-the-hill" above, same reason.
+      anchor: { kind: "help", id: "breakdown.addCommand" },
+      extraAnchors: [{ kind: "region", id: "breakdown.cardList" }],
       // Same rightward move as "gold-on-the-hill" and the LAND_GENERATION
       // steps. This step's own Add command press opens the same
       // CommandPicker dropdown in the same spot.
@@ -531,8 +571,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
     {
       id: "player-count-and-map-size",
       title: "Player count and map size",
-      anchor: { kind: "help", id: "statusBar.generationSettings" },
-      moveAsideCorner: "top-right",
+      anchor: { kind: "help", id: "preview.generationSettings" },
       body: [
         "The cog sets the player count, map size and team layout that the preview and those totals are calculated for. They belong to the script you are writing rather than to the app, which is why they live here and not in Settings.",
       ],

@@ -10597,3 +10597,1009 @@ member along the perimeter on the canvas, a bounded random jitter in perimeter-f
 `formula`-kind escape for a genuinely symbolic perimeter position, and `perPlayer` for non-circle
 kinds — each parked there with its own reason, none asked for by either of the owner's two original
 asks (escalation Sec.0).
+
+## 2026-09-04 — Land Placement's first real run sheet, section 1: five bugs found and fixed
+
+The first `npm run tauri dev` sitting against `docs/manual-test-run-sheet.md` (owed since the
+panel first mounted, 2026-08-31 — see CLAUDE.md's Environment section on why nothing in an agent
+sandbox can render this) ran all twelve items of section 1. Six confirmed working as built:
+item 6 (land circles match the Breakdown preview at the same seed/player count), item 7 (tree
+selection ↔ canvas highlight), item 10 (`Rage Forest 2026.rms`'s precondition strip correctly
+names its 30 unmanaged `create_land` commands at 70.9%), item 11 (Apply on a fresh script, byte-
+identical outside the fence, idempotent on a second Apply), and both R1/R2 refactor regressions.
+
+The other six surfaced five real defects, all found by using the app rather than by reading the
+code — this repo's own recurring lesson (`docs/known-issues.md` BUG-018's entry, the "first
+showing to a human" Hard rule) landing again on a different tool.
+
+**BUG-023, the root cause behind two reported symptoms at once.** Switching from a dirty Land
+Placement panel to another tool produced no confirmation dialog, silently discarded the panel's
+work, and separately killed a running Generation Consistency Checker with no "cancels it,
+continue?" prompt either — both paths go through the same four call sites (`ToolsPane.tsx`, two
+`window.confirm`s and one `window.alert`; `LandPlacementPanel.tsx`, one `window.alert`), and all
+four used the browser's raw synchronous dialog APIs instead of `@tauri-apps/plugin-dialog`
+(already a dependency, already registered in `src-tauri/src/lib.rs`, already used for file
+open/save in `useDocument.ts`). Raw JS dialogs are not guaranteed to render inside a packaged
+Tauri/WebView2 host, and "switch proceeds immediately, nothing visible, no way to cancel" is
+exactly what a `confirm()` resolving without ever blocking looks like from outside. Replaced all
+four with the plugin's async `confirm()`/`message()`; `selectTool`/`apply` now handle a promise,
+no other logic changed. Recorded as a Hard rule in CLAUDE.md, not only a fix — grepping the whole
+of `src/` found these were the only four call sites, and nothing else uses either raw API, so the
+rule is preventative rather than describing a backlog.
+
+**BUG-024.** A freshly-mounted panel with no roles, shapes or lands still showed "Apply 1
+change". `buildFenceEdits` (fence.ts) always returns an insertion edit when no fence exists yet,
+regardless of the model's own content — correct for its own job, `fence.test.ts` deliberately
+pins that against an arbitrary body on an arbitrary (including empty) model, testing the
+encoding mechanism rather than whether a real model has anything worth writing. Nothing above it
+in `computeApplyEdits` checked that. Guarded: skip the fence edit only when the model has no
+roles and no placements AND there is no existing fence to reconcile — a model emptied out from
+real content still needs to clear that fence, so only the never-touched case changed.
+
+**BUG-025.** File > Open unmounts a mounted panel unconditionally (`ToolHost.documentReplaced`,
+Sec.3.6(c)) but nothing reset `ToolsPane`'s own `selectedId`, so the dropdown kept showing Land
+Placement selected with the panel gone. The render fell into the generic report-tool branch and
+drew a live "Run" button wired to a tool with no `run()` — clicking it threw
+`inProcessRunner: cannot run a "panel" tool`. Added a dedicated `panelClosedByDocumentChange`
+render branch: a "‹Tool› closed because the open document changed." message and a "Reopen"
+button that calls `selectTool` directly, since a plain `<select>` fires no `onChange` when the
+already-selected option is re-picked — re-choosing "Land Placement" from the dropdown could
+never have recovered this on its own.
+
+**BUG-026.** `checkP1`'s `ok` was `rawSpans.length === 0` — false the instant any RawNode exists
+anywhere in the file, even one covering 0.0% of it with zero `create_land` commands inside. The
+one consumer renders a message specifically about unmanaged `create_land` commands, so this was
+a true statement about the file and a false alarm about what Land Placement actually cannot do.
+Every existing `checkP1.test.ts` fixture already had `rawSpans.length === 0` and
+`unmanagedLandCount === 0` moving together, so none of them pinned the discriminating case —
+changed `ok` to `unmanagedLandCount === 0`, no test changes needed.
+
+**BUG-027.** The `+ Shape`/`+ Land` buttons carried a native `title="Add a role first"` alongside
+their `HelpTip` wrapper — two independent hover-tooltip systems on one element, the native one
+covering the HelpTip's own popup. Folded into one: the disabled reason is now `HelpTip`'s own
+`text` override.
+
+**Two real feature gaps, recorded but deliberately not built**, per this repo's own standing rule
+that a spec silent on a combination it never considered gets escalated, not improvised —
+`docs/land-placement-design.md` Sec.4.5 gained a second "Future want" subsection, and
+`CREATION_PLAN.md`'s Land Placement "Remaining" list gained item 5:
+
+1. `docs/land-placement-role-attributes-want.md`-adjacent, but distinct: asked directly, whether
+   the tool can build `Bulls_Eyes.rms`'s own pattern (one player land plus three chained
+   auxiliary lands, repeated per player) today. Answer: partially and not ergonomically. The
+   panel's `+ Shape`/`+ Land` buttons hardcode `model.roles[0].id` with no role picker at all
+   (`modelOps.ts`'s `addRing`/`addStandalonePlacement` both take a `roleId` parameter; nothing
+   calls them with anything else), and there is no UI to add a second `PatternSlot` to an
+   existing group's pattern even though the model and compiler already support a heterogeneous
+   cycle (`pattern: PatternSlot[]; // [P, A, B, A, C]`). Deeper than the missing UI: a
+   `ShapeGroup.pattern` repeats slots AROUND one shared shape, which is not what Bulls_Eyes needs
+   — its aux lands cluster off ONE land, not spread evenly around the whole ring. Chaining a
+   standalone `Placement` to one specific per-player ring member already works and is correctly
+   guarded (manual-test-run-sheet.md section 3 item 7), but nothing replicates that chain across
+   every member automatically; building the map today means hand-creating up to
+   `MAX_PLAYER_COUNT` separate copies of the aux cluster. The missing concept is a repeating
+   COMPOSITE unit (a slot owning a chained sub-tree that travels with it), which does not exist
+   in `model.ts`. Full write-up in the design doc's own new subsection.
+
+`npm run typecheck`, `npm run lint`, and the full `src/tools` suite (50 files / 1027 tests) are
+all clean after the five fixes. Sections 2-10 of the run sheet remain owed.
+
+## 2026-09-04 (later) — Newcomer tutorial run sheet, section 8: seven of twelve items verified
+
+Ash ran seven of `docs/manual-test-run-sheet.md` section 8's twelve acceptance items against a
+real `npm run tauri dev`, all passing as built: Help ▸ either tutorial item starts from step 1
+regardless of prior completion; a step's own Breakdown edit advances Tutorial A without clicking
+Next; `Next` advances an unsatisfied check step anyway and `Back` returns to it still
+unsatisfied; Tutorial A against a finished Golden Hill renders every step ticked and waits for
+Next rather than racing to the end; every control behind the scrim stays clickable with the
+tutorial open; Tutorial A end to end from an empty file produces a script that parses with zero
+errors and renders a recognisable map (Golden Hill, built by the tutorial's own steps); `npm
+test`/`typecheck`/`lint`/`validate:reference` all pass. No defects found. The seven items are
+removed from the run sheet (folded into a "verified" note instead) so the file tracks only what
+is still owed — five items remain: the welcome pane's first-run behaviour, the three welcome
+buttons, Step 0's "carry on with my own map", Escape/Exit tutorial cleanup, and the spotlight's
+scroll/resize/off-screen behaviour.
+
+## 2026-09-04 (later still) — Advanced Tools tab-switch persistence: section 9 verified, zero defects
+
+Ash ran all three items of `docs/manual-test-run-sheet.md` section 9 (the 2026-09-03
+`selectedId`-lifted-to-`ToolHostContext` fix) against a real `npm run tauri dev`. All three
+confirmed working as built: a selected report tool's own dropdown entry survives a Code round
+trip rather than reverting to the first tool in the list; Land Placement's panel reappears
+showing the same model on the way back, rather than the dropdown reverting to a different tool
+with the panel invisible underneath it; the Code tab's cursor/scroll position also survives the
+round trip. No defects found. Section 9 is now folded into a one-line "verified" note in the run
+sheet rather than tracked twice.
+
+## 2026-09-14 — Beta feedback round 2: reference table sort, Windows 10 resource icons, PNG export, preview/reference split
+
+Four independent beta reports, each scoped to its own files.
+
+**Reference table sorting.** `ReferenceTable.tsx`'s Terrain/Objects tabs always sorted by
+descriptive name with no way to change it. `referenceRows.ts`'s `compareConstantRows` is now
+built from three named tier functions (`byName`/`byConstant`/`byId`) composed in different
+orders by a new `compareConstantRowsBy(sortKey, a, b)`, so every sort key still falls through all
+three tiers and stays a TOTAL order (pinned by a new test that re-runs the existing "total order
+over the real terrain and object tables" check under all three keys). The table gained a Sort by
+`<select>` plus an ascending/descending toggle button, shared across tabs like `query` already
+is, gated to Terrain/Objects since Commands and Preview Obj. List have their own row shapes. New
+help id `breakdown.sidePanel.referenceSort`.
+
+**Windows 10 resource icons.** `StatusBar.tsx`'s wood/gold/stone glyphs were the U+1FAxx emoji
+(🪵🪙🪨), added to Unicode in 2020; a report from Windows 10 showed only food's much older 🍖
+rendering, the other three invisible tofu. Same shape as this file's own `ProblemIcon` (built for
+a different reason — colour emoji ignoring `currentColor`): replaced the three with small inline
+SVGs (`WoodIcon`/`GoldIcon`/`StoneIcon`) that render from the app's own bundled font stack rather
+than gambling on the OS emoji font's coverage. Food's 🍖 is unchanged, since the report confirmed
+it already renders everywhere.
+
+**Export PNG.** `PreviewPane.tsx` gained an Export PNG button beside Re-roll. WYSIWYG rather than
+a fresh "fit the whole map" render: it exports exactly the live `<canvas>` bitmap (current
+zoom/pan/seed/Current-or-Final view) via `canvas.toBlob`, then `@tauri-apps/plugin-dialog`'s
+`save()` and `@tauri-apps/plugin-fs`'s `writeFile` (binary, unlike `useDocument.ts`'s own
+text-only `writeTextFile`). `OverlayCanvas` gained an optional `onCanvasReady` ref-callback prop
+to hand the element up without `useImperativeHandle`; threaded through `PreviewCanvas` unchanged
+for every other caller (Land Placement's own canvas doesn't pass it and is unaffected). New help
+id `preview.exportPng`.
+
+**Preview/reference split.** The preview pane and reference table inside `MapSidePanel` had no
+divider at all — the preview took its natural content height and the reference table filled
+whatever was left. New `previewReferenceSplit.ts` (pure, mirrors `sidePanelLayout.ts`) models the
+split as a FRACTION of the shared column's height rather than a pixel size like the side panel's
+own width: the column's total height changes on every window resize, and a fraction answers "how
+should the two split the room" without recomputing anything when the room changes size.
+`resolvePreviewReferenceDrag` collapses either pane once a drag passes `MIN_PANE_FRACTION` by
+`COLLAPSE_DRAG_MARGIN`, symmetric in both directions (unlike the side panel's own one-way
+collapse). `PreviewReferenceSplitContext.tsx` persists `fraction`/`collapsedSide` to the same
+`settings.json` store, shared across the Breakdown/Code tabs' own `MapSidePanel` instances for
+the same reason the side panel's width already is. `PreviewReferenceResizer.tsx` is a horizontal
+drag bar with two explicit collapse buttons (▴ hides the preview, ▾ hides the reference table),
+plus `PreviewReferenceReopener` for whichever side is currently closed — same pointer-capture
+mechanics as `SidePanelResizer`, on the Y axis. `MapSidePanel.tsx` wraps each pane in a slot div
+sized via `flex-basis` from the fraction, omitting the collapsed side's slot entirely rather than
+rendering it at zero height, so a hidden preview does not keep its canvas/worker paying rent. New
+help ids `sidePanel.previewReferenceResizer`/`sidePanel.previewReferenceReopen`.
+
+`npm run typecheck`, `npm run lint`, and `npm run validate:reference` are clean. New test file
+`previewReferenceSplit.test.ts` (14 tests) plus additions to `referenceRows.test.ts` (+5) all
+pass; the full suite ran 2794/2795 with the one failure inside
+`src/breakdown/patch/__tests__/patch.unit.test.ts` (`addComment` losing its `extractComments`
+import mid-edit), which typechecks red on this same tree in a file none of this session's changes
+touch — another session's in-flight work, per this file's own parallel-agent caveats, not
+investigated further here. Never visually verified outside the Tauri host — see Environment;
+`npm run tauri dev` passes over all four items (especially the split's drag/collapse feel and the
+icons rendering under Windows 10's actual emoji font) are owed.
+
+**Also recorded, not yet acted on**: a release-process reminder — whenever a version is about to
+ship, populate `content/whatsNew.ts` (still an empty scaffold per the "Onboarding" row above)
+describing what changed since the last release, so the What's New pane has something to show.
+
+**Add Comment (Breakdown).** `SectionView`'s toolbar gained a second button, "+ Add comment", in
+the same row as Add Command (`.buttonRow`, new in `SectionView.module.css`). It reuses Add
+Command's own `insertTarget` resolution (after the selection, else the tab's last section, else
+the preamble, else the new-section fallback) and inserts a bare `/* */` there via a new
+`addComment` EditIntent, dispatched through the same `insertAt` helper `addCommand` now shares
+too (factored out of `computeEdit.ts`'s old inline if-chain). A second new intent, `editComment`,
+is a plain span replace over the content between the `/*`/`*/` delimiters, comments carry no Item
+at all, they're trivia (parser-design Sec.2), so `CommentCard.tsx` computes that inner span
+itself from its own outer comment span rather than this needing to know about delimiters at all.
+`CommentCard` is no longer read-only: a `<textarea>` shows the comment's content, commits on blur
+(not Enter, since a real comment can span multiple lines), reverts on Escape, and rejects a value
+containing `/*` or `*/` (either would end or unbalance the comment). A NESTED comment (default
+`nestedComments: true` folds it into one outer span, per extractComments) stays the old read-only
+`<pre>` instead: its own content already contains that pair, so the same rejection rule would
+reject every edit including a no-op, and matching nesting depth correctly is real parsing this
+component has no business doing. New help id `breakdown.commentCard.nested` for that case. New
+comments render as
+`/* */`, not `/**/`: the lexer only recognizes the delimiters when whitespace separates them from
+their neighbor (parser-design Sec.2's plain whitespace splitter), so glued markers lex as one word
+and never become a comment at all, caught by a quick debug probe when the caret-matching unit test
+first came back with zero comments after reparse.
+
+The harder half was rendering a newly inserted comment back at all. `comments.ts`'s
+`commentsBetweenItems` only ever attributed a comment to the gap between two EXISTING items,
+comments before the first item or after the last were out of scope by design (its own doc
+comment said so), and the button's own no-selection default placement is exactly "append after
+the last item", the trailing case. Every `BlockList` call site (`SectionView`, `ConditionalCard`'s
+branches, `RandomCard`'s preamble and branches, `RawCard`'s orphan-block contents) now passes a
+`trailingBoundary`, the offset of whatever closes that specific container (a block's `}`, a
+branch's own terminator or the next branch's keyword, the next `SectionNode`'s header, or EOF),
+mirroring the boundaries `computeEdit`'s own insert helpers already compute. `commentsBetweenItems`
+stores the trailing gap at `items.length - 1`, the one slot its own between-items loop never
+writes, so `BlockList`'s existing per-item render loop picks it up with no rendering change of
+its own.
+
+Deliberately NOT done: the Sec.4.8 property gate (`patch.property.test.ts`) was not extended to
+fuzz `addComment`/`editComment`. Its `astDiff` clause 4 asserts every comment survives
+byte-for-byte, a rule written when comments could only be read, and both new intents change the
+trivia sequence on purpose, that is the whole point of them, so wiring them into that fuzzer needs
+a scoped update to the invariant itself (an "expected trivia delta" alongside the existing
+`deletedRange`), not attempted here given how many rounds of scrutiny that specific gate has
+already had elsewhere in this file. Unit coverage instead: new `addComment`/`editComment` describe
+blocks in `patch.unit.test.ts`, asserting directly on `computeEdit`'s output and the reparsed
+source rather than through the shared `run()`/`astDiff` helper, plus two new `comments.ts` cases
+for the trailing-boundary behavior.
+
+`npm run typecheck`, `npm run lint`, and `npm run validate:reference` are clean.
+`comments.test.ts` (10 tests, +2) and `patch.unit.test.ts` (34 tests, +5) pass; `patch.property.
+test.ts` passes in isolation (57/57, ~81s). A full-suite run afterward showed 2 failures, both
+wall-clock timeouts under load (`index.test.ts`'s own corpus sweep, unrelated to this session, and
+`patch.property.test.ts` on `Pa_Site_v1.1.rms`, already confirmed clean moments earlier in
+isolation), matching this file's own established "re-run before investigating" pattern rather
+than a regression. New help id `breakdown.addComment`; `breakdown.commentCard`'s text updated
+since it is no longer true that comments aren't editable. Never visually verified outside the
+Tauri host, see Environment; `npm run tauri dev` and clicking Add Comment (with and without a
+card selected, inside a branch, at the end of a section) is owed.
+
+**Add Comment, follow-up: the Sec.4.8 property gate now covers it.** The "Deliberately NOT done"
+above is done. `astDiff.ts`'s `DiffOptions` gained `insertedRange` alongside the existing
+`deletedRange`, clause 4 excludes both from the comparison (a range of A's trivia expected to
+disappear or be replaced, and a range of B's expected to be genuinely new), and a new
+`diffOptionsFor(intent, edit)` derives the right one per intent kind so `patch.unit.test.ts` and
+`patch.property.test.ts` stop hand-rolling the old bare `edit.newText === ""` check. Both test
+files' `addComment`/`editComment` cases now go through the shared `run()`/`astDiff` pipeline
+instead of asserting on `computeEdit`'s raw output only, and the corpus fuzzer picks up two new
+kinds: `addComment` (reusing the exact same anchor pool as `addCmdAfter`) and `editComment`
+(against a `comments` pool filtered to properly-closed, non-degenerate spans, since an unclosed
+comment's synthetic span has no real `*/` to treat as one).
+
+Building the fuzz coverage found a real bug rather than just proving the checker: `editComment`
+had no structural safety guarantee at all. RMS's lexer is a plain whitespace splitter
+(parser-design Sec.2), so a comment's own delimiters only tokenize as such when a run of
+non-whitespace doesn't glue onto them, and `CommentCard`'s textarea shows the user the FULL inner
+region including its existing padding, with nothing stopping an edit from deleting that padding.
+Committing "hello" over an existing "/* x */" produced "/*hello*/", which doesn't parse as a
+comment at all; it lexes as one plain word and silently corrupts whatever comes after it in the
+file. New `padCommentContent` in `comments.ts` closes it: pads whichever side (leading, trailing,
+or both, for an empty replacement) is actually missing whitespace, so an intentional multi-line
+doc-comment block that already opens with a newline survives an edit untouched, while plain
+unpadded text gets exactly one space on each side. `computeEdit.ts`'s `editComment` case calls it
+unconditionally, the same split every `renderX` helper in `formatStyle.ts` already makes: the
+engine owns structural safety (a supplied value always renders into something tokenizable),
+`CommentCard.tsx` separately owns content policy (rejecting an embedded comment marker outright,
+unrelated to padding). Five new `patch.unit.test.ts` cases pin it directly (unpadded text, a
+fully empty replacement, and an already-padded multi-line block keeping its own formatting), and
+the corpus fuzzer now exercises it against real comments across the whole tracked corpus.
+
+`npm run typecheck` and `npm run lint` are clean (no new warnings in any file this touched).
+`comments.test.ts` (10), `patch.unit.test.ts` (39, +5) and `patch.property.test.ts` (57, now
+genuinely fuzzing `addComment`/`editComment` on every corpus file, not skipping them) all pass in
+combination, 104/104. Still owed: the same `npm run tauri dev` visual pass named above.
+
+**Breakdown attribute order, collapsible comment/raw cards, and compact density, all three landed
+together.** `AttributeDef` gained an optional `required` field in `language.json` (a curated
+judgment call rather than an engine fact, honored only by the sort below, unpopulated on every
+attribute so far). `attributeModel.ts` gained `sortKnownSlots` (four modes, required first then
+by type, alphabetical, file order, custom) and `splitAttributeColumns` for the two-column layout
+below, both pure and covered by a new `attributeModel.test.ts` (10 tests). A new
+`BreakdownSettingsContext` (same `@tauri-apps/plugin-store` pattern `HotkeySettingsContext`
+already uses) holds `attributeOrderMode`, a per-command `customAttributeOrder` (`{ order,
+rightColumn }`, the second field meaningful only in custom mode), and `density`.
+
+`CommandCard.tsx` renders drag handles when the order mode is custom (native HTML5 drag-and-drop,
+no new dependency) with a "Set as default" button next to the Attributes header that persists the
+dragged arrangement under that command's own name. `CommentCard.tsx` and `RawCard.tsx` are now
+collapsible to one line, showing the comment's first line or the raw region's first non-blank
+line as a summary, on the same span-anchored `expandedAnchors` Set `CommandCard` already uses but
+with the sense INVERTED: both start open, and `toggleExpanded(span)` on either of them means
+"explicitly closed" rather than "explicitly opened". Spans never collide across node kinds, so
+sharing the one Set costs nothing and needs no new context field.
+
+Compact density drives a handful of `--bd-*` CSS custom properties, set as an inline style on
+`BreakdownPane`'s main div rather than on `documentElement`, since density is a Breakdown-only
+concept, not app-wide. Compact also splits a command's Attributes section into two columns once
+the card is wide enough (booleans right, everything else left by default), gated by a CSS
+container query on the new `.attributesColumns` wrapper rather than a viewport media query,
+because a card's real rendered width depends on side-panel state and nesting depth, not the
+window. In custom order mode a drag can move an attribute into either column freely, no
+restriction to same-column reordering. `handleColumnDrop` anchors the insertion to the drop
+target's neighbor NAME rather than a raw array index, which is what keeps it correct regardless
+of which column the drag started in.
+
+`npm run typecheck`, `npm run lint`, and `npm run validate:reference` are all clean. Full suite
+113 files / 2808 tests passes. Never visually verified outside the Tauri host, see Environment.
+`npm run tauri dev` covering all four attribute-order modes, drag reorder in both the flat and
+two-column layouts, Set-as-default persistence across a reload, comment/raw collapse, and the
+container query's width threshold is owed.
+
+**Undo bug: "the undo button sometimes undoes a lot of work."** A user-reported symptom, root
+cause traced to `src/hooks/useDocument.ts`: every Breakdown action correctly produced exactly
+one `pushEditOperations` call, but Monaco's own edit stack APPENDS a new edit onto the PREVIOUS
+undo entry whenever that entry is still open
+(`SingleModelEditStackElement.canAppend`/`.close()`, monaco-editor's `editStack.js`, read
+directly from `node_modules` to confirm rather than assumed), and the only thing that closes one
+is `pushStackElement()`. Nothing in this app ever called it (`grep -rn pushStackElement src/`
+returned zero hits). A real editor's Cursor controller calls it automatically while typing, but
+that controller only exists while CodePane is mounted, never while the user stays on the
+Breakdown tab, so every Breakdown action performed back-to-back accumulated onto one growing
+undo entry until it happened to fork fresh (e.g. right after an undo), and one Ctrl+Z then
+reverted the whole streak at once. A comment at the old call site had baked in the wrong
+assumption as fact ("calling applyTextEdit N times produces N UNDO ENTRIES") and nothing ever
+tested it.
+
+Fix: a new `pushOwnUndoEntry` helper closes the previous group before every push
+(`documentModel.pushStackElement(); documentModel.pushEditOperations(...)`), and all three of
+this hook's model-mutating call sites (`replaceRanges`, the header stamp; `applyTextEdit`,
+Breakdown's single-edit path; `applyTextEdits`, the Advanced Tools N-edit batch, which still
+correctly lands as ONE entry since it makes only one `pushOwnUndoEntry` call covering all N
+edits) now route through it instead of calling `pushEditOperations` directly.
+
+New `src/hooks/__tests__/undoGrouping.test.ts` (7 tests), the first test file to touch
+`useDocument.ts` at all. `useDocument.ts` cannot be imported into Vitest: it pulls in
+monaco-editor at module scope, and monaco-editor's package.json declares no Node-resolvable
+entry (only a browser `"module"` field), so the bare specifier fails to resolve, and the explicit
+ESM subpath that does resolve (`monaco-editor/esm/vs/editor/editor.main.js`) hung for over a
+minute on import and was abandoned as impractical for a test run rather than investigated
+further. So the first describe block reads the file's own source text instead (same pattern
+`helpCoverage.test.ts` already uses for a pane it can't render): exactly one
+`.pushEditOperations(` call in the whole file, `pushStackElement()` immediately before it, and
+all 3 call sites routed through the wrapper (4 occurrences of `pushOwnUndoEntry(` counting the
+definition). The second describe block reimplements Monaco's coalescing rule as a small,
+dependency-free `FakeUndoStack`, verified line-for-line against `editStack.js` while writing it,
+and demonstrates the bug and the fix mechanistically (grouped vs. ungrouped pushes, the N-edit
+batch staying one entry, a fresh action after an undo starting clean). Mutation-tested by hand:
+temporarily removing the `pushStackElement()` call, and separately reintroducing a direct
+`pushEditOperations` bypass in `applyTextEdit`, each turned exactly the expected assertions red
+and nothing else, then reverted.
+
+`npm run typecheck` and `npm run lint` are clean (no new warnings). Full suite (this touches
+every edit path in the app: Breakdown, Advanced Tools, the header stamp): 114 files / 2815 tests,
+all pass, up from 113/2808 before this session. Never visually verified outside the Tauri host;
+`npm run tauri dev`, performing several distinct Breakdown actions in a
+row with no Code-tab visit between them, then a single Ctrl+Z, is owed (should undo only the
+last action).
+
+**Populated `content/whatsNew.ts`**, closing the release-process reminder recorded above. One
+`whats-new-0.5.0` feature tour covering this session's user-facing surface: an announcement step
+(no anchor, summarising comment editing, attribute ordering/compact density, the preview/
+reference split, and PNG export), then spotlight steps for `breakdown.addComment`,
+`sidePanel.previewReferenceResizer`, `preview.exportPng`, and `breakdown.sidePanel.referenceSort`,
+gated behind the same `open-a-file` check `appTour.ts` already uses, since half of those anchors
+don't exist in the DOM with no file open. Attribute ordering and compact density are mentioned in
+the announcement body only, not spotlighted, because their controls live behind the Preferences
+dialog and the tour engine has no step for opening one first. The version string is a placeholder
+for whatever `npm version` sets; it must match `package.json` or the trigger in
+`TutorialContext.tsx` never finds this tour. `registry.test.ts` and `TutorialContext.test.tsx`
+(18 tests) and `npm run typecheck` are clean.
+
+## 2026-09-15 — Stale-copy sweep, Land Placement marked alpha, and a UI polish pass (5.4b)
+
+**Three stale references found and fixed.** `ui-help.json`'s `tabBar.advancedTools` tooltip still
+read "Arrives in Phase 5" though the tab shipped with 5.1/5.2; rewritten short, with no phase
+number, per CLAUDE.md's own rule against naming phases in user-facing text. `CLAUDE.md`'s status
+table said `content/whatsNew.ts` "ships as an empty scaffold" a session after the previous entry
+populated it with `whats-new-0.5.0`; corrected. `MapHeader.tsx`'s header comment still described
+`mapName`/`lastSavedAt` as static placeholder props from before file open/save existed; they are
+real values from `useDocument` via `App.tsx`, comment rewritten.
+
+**Land Placement marked alpha and kept unannounced.** `landPlacementManifest.name` is now
+`"Land Placement (Alpha)"`, showing in the tool dropdown and everywhere else `manifest.name`
+renders (`ToolsPane.tsx`, `AdvancedToolsSettings.tsx`). `docs/land-placement-design.md` Sec.4.5
+gained a third "Future want" subsection, per-team land setups, recorded not designed, since every
+per-player primitive in the tool resolves against the runtime player count and nothing resolves
+against team membership. `CREATION_PLAN.md`'s Land Placement section gained a matching item 6 and
+an explicit note that the tool is alpha, has never been announced, and stays that way until the
+wants list is triaged and the manual-test-run-sheet sections finish.
+
+**Recorded: a soft Discord announcement for the app itself has gone out, and feedback from
+users/testers is arriving.** `CREATION_PLAN.md`'s 5.4 entry updated (it previously said the
+announcement was still open); the UI pass below is the first response to that feedback. Land
+Placement is explicitly carved out of it, per the alpha note above.
+
+**Flagged for discussion, not decided: whether Phase 6's external-tool API is worth building at
+all**, versus taking community contributions as PRs against the built-in tool set, given the
+project is open source with a working `tools-api/` contract already. Noted in `CREATION_PLAN.md`
+ahead of 6.2 (the transport, the expensive remaining part) rather than decided unilaterally.
+
+**5.4b UI polish pass, eleven items from a screenshot review, all implemented:**
+
+1. `CommentCard.tsx`/`.module.css`: the header's first-line summary was rendering even while
+   expanded, printing the same text the textarea already showed below it; now shown only while
+   collapsed. Added a `.body` wrapper indenting the whole expanded body (every wrapped line, not
+   just the first) under the toggle button. Textarea auto-grows to its content via a `scrollHeight`
+   ref callback instead of a fixed `rows` count, removing the internal vertical scrollbar an
+   overflowing single line used to need.
+2. `SectionView.module.css`: `.addWrapper` (the Add Command/Add Comment row) gained bottom padding
+   and a `border-bottom`, separating the button row from the scrolling card list below it.
+3, 4, 8. Unified the per-button border scheme across `TitleBar.module.css` (`.menuItem`),
+   `TabBar.module.css` (`.tab`), `SectionTabs.module.css` (`.tab`), and `StatusBar.module.css`
+   (`.settingsCog`, the bug-report button): each used to carry its own partial box border
+   (`border: 1px solid var(--border); border-top: none; border-left: none;`), which is what read
+   as inconsistent box formatting between tabs and as the titlebar/tab-strip's top edge sitting
+   flush against its own border while the bottom didn't. Replaced with no per-button border at all,
+   `border-radius: 4px`, and the existing hover background, so highlighting is a bevelled fill
+   rather than a boxed cell. `SectionTabs.module.css`'s `.countBadge` padding aligned to
+   `cards.module.css`'s `.problemBadge` so the two pill badges on a section tab read as the same
+   weight.
+5. `tauri.conf.json` sets `"decorations": false` on the main window; `src-tauri/capabilities/
+   default.json` gained the six `core:window:allow-*` permissions a custom titlebar needs
+   (minimize, maximize, unmaximize, toggle-maximize, is-maximized, start-dragging).
+   `TitleBar.tsx`/`.module.css` now render the app icon (`public/app-icon.png`, copied from
+   `src-tauri/icons/32x32.png`) and "Age of RMS" name, the File/Edit/Help/Settings menu, and
+   minimize/maximize/close buttons all in one row, wrapped in `data-tauri-drag-region` (Tauri's own
+   JS shim hooks that attribute for both dragging and double-click-to-maximize, no manual listener
+   needed for either). `getCurrentWindow()` is called lazily inside the component via `useMemo`,
+   not at module scope, since it reads `window.__TAURI_INTERNALS__` and would otherwise throw the
+   moment the module loads outside the real Tauri host (the same trap CLAUDE.md's Environment
+   section already documents for the settings contexts). **Highest-risk item in this pass**: native
+   window chrome across three platforms, unverifiable in this sandbox by construction. `npm run
+   tauri dev` is owed before trusting drag/minimize/maximize/close behave correctly on the real
+   Windows build; reverting is a one-line `"decorations": false` → `true` if it doesn't.
+6. `TitleBar.module.css`'s `.menuItem` and `TabBar.module.css`'s `.tab` font-size cut 0.95rem to
+   0.85rem. A new app-wide "UI size" slider lives in Theme Settings (`ThemeSettings.tsx`, a
+   `settings.theme.uiScale` fieldset above Customize), backed by `theme.ts`'s new
+   `uiFontScale`/`applyUiFontScale`/`sanitizeUiFontScale` and a `uiFontScale` field on
+   `ThemeSettingsContext` persisted under its own store key. It sets `--ui-font-scale` on
+   `documentElement`, and `App.css` now sizes `html` as `calc(16px * var(--ui-font-scale, 1))` —
+   every component stylesheet sizes itself in rem, which resolves against the root element's own
+   font-size, so this one property scales text and rem-based spacing together app-wide. Clamped to
+   0.85 to 1.25 rather than a typical browser zoom range, since padding scales along with text
+   here and a wide swing risks clipping fixed-height rows. Does not reach Monaco's own editor text
+   in the Code tab, which sets its font size directly in px; the settings hint says so.
+7. `MapHeader.tsx` now accepts `children` and renders them in a new centred `.center` flex region
+   between the map name and the last-saved timestamp; `App.tsx` passes `<TabBar>` as those
+   children instead of rendering it as a separate row below `MapHeader`, and `TabBar.module.css`'s
+   own `border-bottom` was dropped (the merged row's own border covers it). Saves one row of
+   vertical space for the editors below.
+9. Two new theme tokens, `scrollbarTrack`/`scrollbarThumb` (`theme.ts`, a new "Scrollbars" group
+   in `THEME_TOKEN_GROUPS`, so they show up in Theme Settings' existing Customize section for
+   free). Dark theme's defaults deliberately invert light's own hover/active relationship, a dark
+   grey track (`#2d2d30`) with a lighter grey thumb (`#8a8a8e`), per the request to "swap" the
+   usual look. `App.css` reads both through `scrollbar-color` (Firefox) and
+   `::-webkit-scrollbar*` pseudo-elements (WebView2, the runtime this app actually ships on, and
+   every other Chromium-based engine).
+10. `DiagnosticsRuler.tsx`: each tick's screen position used to be a raw content-position fraction
+    of `scrollHeight`, which can reach 100% (the literal bottom of the track) even though a real
+    scrollbar thumb's own top position never does, since the thumb has height and its BOTTOM
+    reaches 100% at max scroll, not its top. Rescaled every tick's fraction by
+    `1 - (clientHeight / scrollHeight)`, the same factor the viewport indicator already uses for
+    its own top position, so the two tracks' usable ranges now match exactly. Putting the warning
+    ticks directly on the real OS/WebView2 scrollbar (the "if easy, just do that" option) is not
+    feasible without fully custom-drawing the scrollbar; went with the explicitly-offered fallback
+    instead.
+11. `CodePane.module.css`'s `.editorFrame`: left/right margin dropped from `1.25rem` to `0` (the
+    editor now runs to the resizer on its left and the pane's own right edge instead of floating
+    with a gap on both sides), top/bottom margin cut from `0.75rem` to a quarter, `0.1875rem`, and
+    a `border-radius: 4px` added (the frame's own `overflow: hidden` clips Monaco's canvas to it).
+
+**Verification.** `npm run typecheck` and `npm run lint` clean (0 errors; the lint warnings
+present are pre-existing `react-refresh/only-export-components` notices on files this session
+didn't touch, plus one in `ThemeSettingsContext.tsx` matching the same pattern every other context
+file in this codebase already carries). `npm run validate:reference` passes, including the new
+`settings.theme.uiScale` id against `ui-help.schema.json`. Full suite: 114 files / 2815 tests, all
+green, no floor change. **Not visually verified outside the Tauri host** — this pass touches
+almost every visible chrome element in the app, `npm run tauri dev` against a normal editing
+session, plus Settings > Theme's new UI-size slider and the two new scrollbar swatches, is owed
+before calling any of the eleven items actually fixed rather than merely plausible.
+
+## 2026-09-15 (later) — Follow-up notes from the first read of the UI polish pass
+
+Seven more items, all from actually looking at the round above rather than a fresh screenshot pass.
+
+**Settings dialog.** Removed every static `.hint` paragraph that only restated its own fieldset's
+`HelpTip` tooltip (`GeneralSettings.tsx` x3, `BreakdownSettings.tsx` x2 plus the orphaned "Also
+planned: default state of the diagnostics ruler." line, `ThemeSettings.tsx` x3 including the one
+this same session had just added for the UI-size slider) — the tooltip already says it on hover,
+so the paragraph was pure duplication taking up permanent space. One piece of information, the
+"Monaco sets its own font size, this slider doesn't reach it" caveat, existed only in the deleted
+paragraph, so it was folded into `ui-help.json`'s `settings.theme.uiScale` text first rather than
+lost. `HotkeysSettings.tsx`'s row hint was deliberately left alone: it doubles as the live
+"Press a key combination…" prompt while a binding is being recorded, not a static description.
+`SettingsDialog.module.css`'s `.settingsDialog` grew from `44rem`×`26rem` to `64rem`×`42rem`
+("unusually small" for what by now is six tabs of content).
+
+**Add Command/Add Comment row.** `SectionView.module.css`'s `.addWrapper` vertical padding halved
+again, `0.75rem` to `0.375rem` top and bottom. The two buttons no longer stretch to fill half the
+row each (`.addButtonSlot`'s `flex: 1` mechanism removed along with the wrapper `<span>` it needed
+in `SectionView.tsx`, since HelpTip's own wrapper is inline by default and already sizes to its
+button); `.addButton` sizes to its own label now.
+
+**`CONNECTION_GENERATION`'s display label changed** from "Terrain Connection" to "Connections"
+(`sectionLabels.ts`), the tab strip's own wording, plus the one other place that string appeared
+in live UI copy, `rmsBasics.ts`'s "order of a map" tutorial step. `docs/build-log.md` and
+`docs/tutorial-design.md`'s own historical entries were left alone; they describe what was true
+when written, not current UI text.
+
+**Tutorial callout clamping.** Three Tutorial A steps ("Starting units", "Gold on the hill",
+"Everyone else's resources") anchor into `OBJECTS_GENERATION`, whose tab (7 of 7, the last one)
+wraps onto its own second row on a narrow window (`SectionTabs.module.css`'s `flex-wrap`) — narrow
+enough to wrap being exactly narrow enough to also clamp each step's rightward `calloutNudge` back
+down, landing the callout on top of the card list it was nudged clear of in the first place.
+`TutorialOverlay.tsx`'s `applyNudge` now detects when the clamp actually bit (the achieved `left`
+falls short of the intended nudged position) and drops the callout below every spotlighted rect
+(`anchor` + `extraAnchors`) instead of squeezing it sideways onto real content. "Starting units"
+itself never had a nudge before (its anchor is the tab, not the card-list region the other two use
+directly) and picked up the same `{ x: 368 }` the sibling OBJECTS_GENERATION steps already carry,
+so all three now share one mechanism rather than "Starting units" being an unfixed fourth case.
+
+**Code tab.** `CodePane.module.css`'s `.editorFrame` margin dropped from `0.1875rem 0` (this
+session's own earlier quarter-reduction) to `0` on every side — flush top and bottom now, not just
+left/right — and the `border-radius` that made sense on a floating box came off with it, since
+nothing but the editor's own 1px border separates it from its neighbours on any side any more.
+
+**Generation Settings dialog width.** `TeamSection`'s own comment already recorded that all 8
+player rows always render specifically to hold the dialog's HEIGHT fixed across player counts;
+nothing did the same for WIDTH, and the team readout line ("2 teams (4 v 4), 2_TEAM_GAME" versus
+an 8-player FFA line versus one with the "X players are alone on a team" note appended) is long
+enough, and variable enough, that `dialog.module.css`'s shrink-to-content `.dialog` visibly
+resized itself under every preset click. New `GenerationSettingsDialog.module.css` gives just this
+one dialog a fixed `28rem` width (the shared `.dialog` class stays untouched, since
+`UnsavedChangesDialog` also uses it and has no reason to be that wide).
+
+**Verification.** `npm run typecheck`, `npm run lint` (0 new errors, same pre-existing warning
+set) and `npm run validate:reference` all clean. Full suite 114 files / 2815 tests, still green,
+no floor change, nothing pinned the old "Terrain Connection" string or the hint paragraphs that
+would have caught either change breaking something. **Still not visually verified outside the
+Tauri host** — the tutorial-callout fix in particular (`TutorialOverlay.tsx`) is pure DOM-geometry
+arithmetic with no test coverage of its own and deserves a real narrow-window run before trusting
+it.
+
+## 2026-09-15 (later still) — Found the real bug behind the Settings layout complaints
+
+A screenshot of the Settings dialog showed "UI size" crammed next to "Active theme" instead of
+below it, and General's "Help tips" crammed next to "Author" the same way. **Both are the same
+root cause, not two unrelated glitches**: `HelpTip.module.css`'s wrapper span is `display:
+inline-block`, correct for a tab button or menu item, wrong for a panel's own top-level
+fieldsets, since two inline-block boxes sit side by side on the same line whenever they both fit
+the panel's width. Every settings panel already had this latent bug; it only ever looked right by
+accident, because most fieldsets happened to be wide enough (a full row of theme-customize colour
+swatches, a wide attribute-order description) to never fit two per line. Fixed at the root:
+`SettingsDialog.module.css`'s `.panel` gained the exact same `> span { display: block; }` rule
+`.tabList` already carries for the sidebar, so every panel's fieldsets stack one per row
+regardless of how narrow any individual one is. `GenerationSettingsDialog.tsx` had the identical
+accident (Player count and Map size only ever happened to fit one row because the dialog was
+narrow enough that they had nowhere else to go) and is now an explicit flex row
+(`GenerationSettingsDialog.module.css`'s `.topRow`) instead of leaning on it, so the row's spacing
+is actually controllable rather than a side effect. Settings widened `64rem` → `72rem` ("a little
+wider"); Generation Settings widened `28rem` → `42rem` per the same request.
+
+**Tutorial callout fallback corrected**: the previous session's "drop below when the nudge clamps"
+fix pinned the callout to the viewport's own left margin, which is exactly the "left hand side of
+the breakdown pane" it was supposed to stay clear of, just one row down instead of beside it.
+Pinned to `maxLeft` (the furthest right the clamp still allows) instead, so dropping below still
+keeps it off the pane's left side.
+
+`npm run typecheck`, `npm run lint` (0 new errors, same pre-existing warnings) and the full suite
+(114 files / 2815 tests) all clean. Still not visually verified outside the Tauri host.
+
+## 2026-09-16 — Tutorial callout root-cause fix, and the player-count field unlocked
+
+**"Gold on the hill" / "Everyone else's resources" found their actual bug.** Reported as
+"fine on revisit, wrong on first arrival", which was the tell: both anchored to
+`{ kind: "region", id: "breakdown.cardList" }`, the WHOLE scrollable card-list region, and that
+region's bounding rect (tall, and taller still the more the user has already built) changes with
+how much content already sits in it — so the "beside doesn't fit a region this wide, fall back
+above/below the WHOLE thing" branch landed somewhere different depending on what the card list
+already held on arrival, and a revisit (after building more) happened to land better purely by
+chance. Re-anchored both to `breakdown.addCommand` (small, stable, top-of-pane), with
+`breakdown.cardList` moved to `extraAnchors` for the spotlight, matching the LAND_GENERATION
+steps' proven pattern (`breakdown.addCommand` + `extraAnchors: [breakdown.main]`), which never
+drew this complaint.
+
+**The general "neither side fits" fallback in `TutorialOverlay.tsx`'s `place()` pinned `left` to
+the anchor's own left edge**, pulled back only if it would overflow the right side. For a
+tab-strip anchor (Cliff, Terrain, any tab near the pane's left edge, more so if it's wrapped onto
+its own row) that puts the callout right back over the breakdown pane's own left side, precisely
+what beside-placement exists to avoid. Changed to pin `left` to the rightmost position the
+viewport allows whenever this fallback fires at all, not only when a `calloutNudge` was present
+and got clamped (the previous session's fix only covered that narrower case). This is the general
+form of "if it can't go right of the anchor, it should go beneath, as far right as it can",
+requested directly and consistent with the same fallback fix from the session before.
+
+**Generation Settings: player count is no longer locked while a team preset is active.**
+`GenerationSettingsDialog.tsx`'s number input dropped its `disabled={playerCountLocked}` —
+typing a count while, say, 4v4 is selected is a deliberate override, not an attempt to edit the
+preset's own number. `GenerationSettingsContext.tsx`'s `setPlayerCount` (only ever called from
+that one input) now clears the active preset when called while one is set, restoring whatever
+teams it had displaced (the same outcome pressing the preset's own button again produces), except
+the player count itself keeps the just-typed value instead of snapping back to the stash's.
+`ui-help.json`'s `generationSettings.teamPreset` tooltip mentions the second way to release a
+preset now, alongside the original "press it again".
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` and the full suite
+(114 files / 2815 tests) all clean. **None of this is visually verified outside the Tauri host**,
+the tutorial fixes especially — they're DOM-geometry arithmetic with no automated coverage, and
+the specific complaint (wrong on first arrival, fine on revisit) is exactly the kind of thing a
+static check can't catch. A real `tauri dev` walk through Tutorial A, including at a narrowed
+window width, is owed before trusting any of this over the report that prompted it.
+
+## 2026-09-16 (later) — Cliffs, and the three siblings that shared its bug
+
+Reported as "Cliffs covers too much of the left of the breakdown pane." Checking it against
+"random-or-direct" (Player Setup) and "starting-units" (Objects) — both tab-anchored steps that
+already carry `calloutNudge: { x: 368 }` and never drew this complaint — found the actual shape
+of the bug: **four steps anchor to a section tab exactly the same way and never got the nudge**,
+"hills" (Elevation), "cliffs" (Cliff), "trees" (Terrain), and "road-to-hill" (Connections). Cliffs
+was just the one someone happened to hit first; Hills, Trees and the connections step were
+equally exposed. All four now carry the same `calloutNudge: { x: 368 }` /
+`calloutMaxWidthPx: 380` the working steps already use, closing the gap for every tab-anchored
+step in Tutorial A rather than only the one named.
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` and the full suite
+(114 files / 2815 tests) all clean. Still not visually verified outside the Tauri host.
+
+## 2026-09-16 (later still) — The real bug behind "Hills covers Elevation", plus three small requests
+
+**Found why "Hills" started overlapping the Elevation tab it points at.** `TutorialOverlay.tsx`'s
+`applyNudge` had grown a "detect when the nudge gets clamped, then throw the whole position away
+and drop below every spotlighted rect instead" branch, added two sessions ago for the narrow-
+window tab-wrap case. It fired far more broadly than that: the BESIDE-FITS branch also calls
+`applyNudge` on an already-good `{ top: anchorBox.top, left: anchorBox.right + GAP }` position, and
+for any mid-strip tab (Elevation is tab 3 of 7) adding the full `+368` nudge on top of that
+comfortably-placed `left` routinely overflowed the viewport on its own, even though the UN-nudged
+position was fine — tripping the override, which discarded the good `top` and recomputed one from
+`breakdown.cardList`'s own (much taller) bottom edge instead. That override was already redundant:
+the true "nothing fits beside at all" case has its own, independently-fixed right-pinned fallback
+two sessions old. Removed the override entirely; `applyNudge` is back to pure add-then-clamp, which
+turns out to be exactly correct for the "beside fits, nudge overflows" case too — clamping alone
+already pins the overflow to the rightmost safe position without touching `top`.
+
+**Three smaller layout requests, same session:**
+
+- `TitleBar.module.css`'s File/Edit dropdown `min-width` was 170px, not enough for "Save As…" or
+  "Find and Replace" plus their hotkey hint to stay on one line. Raised to `15rem` and added
+  `white-space: nowrap` to `.dropdownItem` so this can't silently regress the next time an item's
+  label or hint text changes length.
+- `PreviewPane.tsx`'s two separate control rows (settings cog + Current + Pin on one, Seed +
+  Re-roll + Minimap on the other) merged into one row, two flex clusters
+  (`.controlsGroup` in `PreviewPane.module.css`) so `.controls`' existing `space-between` pins the
+  Seed/Re-roll cluster to the pane's right edge instead of spreading every individual control
+  apart evenly across two rows.
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` and the full suite
+(114 files / 2815 tests) all clean. Still not visually verified outside the Tauri host — the
+`applyNudge` fix in particular reverses a fix from two sessions ago, on reasoning rather than a
+render, and deserves a real look before the next round of "still doesn't position right" reports
+gets chased as a fourth new bug instead of a regression from a third.
+
+## 2026-09-16 (yet later) — Tutorial callout positioning rebuilt around an actual overlap check
+
+The previous fix's own prediction landed the same day: "Hills, Cliffs, Trees and 'A road to the
+hill' all cover the section header item they want to show." Root cause of THIS round: pure
+clamping (the previous fix) only guarantees the callout stays ON-SCREEN, not that it stays clear
+of the anchor. For a tab far enough into the strip (Connections, Objects), the rightmost
+on-screen position can still sit to the left of where the tab itself ends on a merely-narrow-ish
+window — clamping doesn't know that, it only knows the viewport edge. Three sessions in a row
+tried to fix this by guessing at the geometry from a symptom (a clamp amount, a wrap event); all
+three guesses were wrong in a different way.
+
+**`TutorialOverlay.tsx`'s `place()` now checks the actual invariant instead of inferring it.**
+Every candidate position, from whichever branch computed it (centred, beside, or the
+neither-fits fallback), now runs through `overlapsSpotlight()` — a real rectangle-intersection
+test against `rects` (anchor + extraAnchors, the same list that already drives the spotlight
+cutout) — before being committed. If it overlaps anything, `belowSpotlight()` replaces it: below
+the lowest spotlighted rect (or above, if even that overflows the viewport), pinned right. That
+placement is trusted without re-checking, because "below/above the union of every highlighted
+rect" cannot overlap any individual one of them by construction — the one geometric fact in this
+whole function that doesn't need verifying, everything else now gets checked rather than assumed.
+This replaces the two prior sessions' heuristics (clamp-detection tied to the nudge amount,
+special-casing the "neither side fits" branch) with one mechanism that is correct for any anchor
+shape and window size, not tuned to the specific complaint that prompted it.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean.
+**Still not visually verified outside the Tauri host.** Given the last two rounds each shipped
+looking-plausible and turned out wrong on the next real look, this one specifically should not be
+trusted until someone has actually watched Tutorial A run end to end.
+
+## 2026-09-16 (final round) — Preview pane control polish
+
+A run of small, independent UI requests against the preview pane and its side-panel resizer,
+all in `PreviewPane.tsx`/`.module.css` and `PreviewReferenceResizer.module.css`:
+
+- Seed input: no more spinner arrows (`-webkit-appearance`/`-moz-appearance` overrides — nobody
+  steps a seed up one at a time, the field is typed into or replaced wholesale by Re-roll) and
+  narrowed from `5rem` to `3.5rem` now that the arrows aren't reserving width.
+- `PinControl`'s two labels dropped the word "line": "Pin line 42"/"Pinned line 42 ✕" are now
+  "Pin 42"/"Pinned 42 ✕". The status bar's own separate "(Pinned line 34)" cut label
+  (`App.tsx`) is untouched — different control, wasn't asked about, and "line" earns its keep
+  there as a compact parenthetical next to resource totals.
+- Re-roll is now a dice glyph (🎲) with no button padding around it, `aria-label="Re-roll"`
+  carrying the accessible name now that there's no visible text.
+- `.controls`' two clusters (settings/Current/Pin/Minimap, and seed/re-roll) now wrap onto
+  separate rows via `flex-wrap` on `.controls` itself, rather than only within each cluster —
+  each cluster is one flex item, so a narrow window drops the whole second cluster to its own
+  line instead of squeezing individual controls.
+- `PreviewReferenceResizer`'s two collapse buttons (▴/▾, hide the preview/hide the reference
+  table) grew from a 32×10px pill to 44×14px, the bar itself from 10px to 14px to hold them.
+  Hovering a button no longer also highlights the bar underneath it — `.resizer:hover` gained a
+  `:not(:has(.collapseButton:hover))` guard, since `:hover` otherwise cascades to an ancestor
+  from anywhere inside its box, including a child button, and the two highlights (same colour)
+  were stacking to make the button's own hover state invisible against the bar's.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean after
+each of the four rounds this session made to this area. Still not visually verified outside the
+Tauri host.
+
+## 2026-09-16 (one more round) — Resizer buttons flush by hand-computed pixels, and a tab-height fix
+
+**`PreviewReferenceResizer`'s buttons, take two.** The `align-items: stretch` + `height: 100%`
+approach from the previous round didn't hold up: reported hanging off the bar's bottom edge,
+not flush with the top. The percentage chain it depended on (`.resizer` → HelpTip's own wrapper
+span, `inline-block`, blockified only by virtue of being a flex item → `.buttons` → the button)
+crosses through a layer that ISN'T itself a flex container, and evidently didn't resolve the way
+the spec suggests it should. Replaced with hand-computed fixed pixels instead of trusting the
+cascade: the strip is `flex: 0 0 14px` under this app's global `box-sizing: border-box`, so its
+content box is `14px - 1px - 1px (borders) = 12px`, and both `.buttons` and `.collapseButton` are
+now `height: 12px` exactly, with `.resizer`/`.reopener` back to `align-items: center` (with an
+exact size match, centering and stretching land in the same place, and center doesn't depend on
+percentage resolution working at all).
+
+**`SectionTabs`'s tab height changed depending on whether a severity badge (warning/error/info)
+was present.** Root cause: `.problemBadge` (`cards.module.css`) had no explicit `line-height`,
+unlike `.countBadge` (which already set `1.2` for exactly this reason) — without it, the badge's
+rendered height came from the browser's own font-metric-derived "normal" line-height, taller than
+the other content in the row, so `align-items: center` sized the WHOLE tab off it only when a
+severity badge happened to be present. Added `line-height: 1.2` to `.problemBadge`, `.tab` itself
+and `.warnBadge` (`SectionTabs.module.css`) so every possible piece of content in the row shares
+one consistent metric. Also dropped `.tabBar`'s `padding-bottom: 0.3rem` (added two rounds ago,
+no matching `padding-top`), so the tab strip sits flush top and bottom rather than only the top,
+per the report.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean. Still
+not visually verified outside the Tauri host — the resizer fix particularly, since the thing it
+replaces already looked correct on paper once and wasn't.
+
+## 2026-09-16 (once more) — Resizer buttons, third attempt: stopped trying to match a fixed size
+
+Screenshot from a real run showed the buttons still wrong after the previous round's hand-computed
+12px fix. Two attempts in a row had tried to make the button's height match a PRE-SET bar size
+(first via `align-items: stretch` + a percentage, then via matching fixed pixels on both sides of
+the relationship) and both were visibly off in different ways once actually rendered — reasoning
+about this exact chain (`.resizer` → HelpTip's own wrapper span → `.buttons` → the button) from
+first principles has now failed twice.
+
+**Inverted the relationship instead of refining it again.** `.resizer`/`.reopener` are now
+`flex: 0 0 auto` rather than a fixed `14px`, so the BAR sizes itself around the button (which is
+still the only element with an explicit `height: 14px` anywhere in the chain) instead of the
+button being forced to fill a bar sized independently of it. A flex container with `height: auto`
+and one child is exactly as tall as that child by construction — no percentage resolution, no
+stretch, no arithmetic to verify, at any level, including through HelpTip's wrapper span. This is
+a different KIND of fix from the previous two, not a third guess at the same kind.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean. **This
+is the third attempt at the same reported symptom and the previous two both looked right and
+weren't** — do not treat this build-log entry as confirmation it's fixed. It needs an actual look
+in `npm run tauri dev` before that claim is credible again.
+
+## 2026-09-16 (fourth attempt) — Found the actual mechanism: a line-box strut, not a sizing mismatch
+
+A screenshot narrowed it precisely: the fix worked for `PreviewReferenceReopener` (fully
+collapsed, one button) but not `PreviewReferenceResizer`'s own two-button case in the middle
+position. That's the tell — the only structural difference between the two is `.buttons`, the
+`inline-flex` `<span>` wrapping the pair of buttons, which the single-button case doesn't have.
+
+**The actual mechanism**: `.buttons` is inline-LEVEL (inline-flex is still inline as a box, only
+its own children are flex items), sitting as the sole child of HelpTip's own wrapper span inside
+`.resizer`. An inline-level box inside a block formatting context participates in an implicit
+LINE BOX, and CSS gives every line box a "strut" — a phantom, invisible, baseline-aligned box
+sized off the INHERITED font-size/line-height at that point in the tree, not off the actual
+content. That strut, not `.buttons`' own 14px-tall children, was the real source of the leftover
+space above/below the buttons. The single-button case never showed it because `.collapseButton`
+already had `display: flex` (from the round before), which is block-level and opts out of line-box
+participation entirely — the fix was already half-applied, just not to the one element that still
+needed it. Changed `.buttons` from `inline-flex` to `flex`, same fix, one level up the tree.
+
+`npm run typecheck`, `npm run lint` and the full suite (114/2815) all clean. This explanation is
+falsifiable in a way the previous three weren't — it names a specific CSS mechanism (the line-box
+strut) rather than describing a symptom and patching toward it — but it is still unverified
+outside the Tauri host, and this component in particular has now been wrong on the first try four
+times running.
+
+## 2026-09-16 (last one) — Settings > Code gets real controls
+
+Built the "Tab width and whether tabs insert spaces" item `CodeSettings.tsx`'s own placeholder
+had been listing as planned since the tab was created, and removed the placeholder text for the
+other two (word wrap/minimap, diagnostic severities as editor markers) along with it, per direct
+request rather than waiting for those to ship too.
+
+`src/settings/CodeSettingsContext.tsx` is a new context, same load-from-`settings.json`-then-
+persist-on-change shape as `BreakdownSettingsContext.tsx` (its closest sibling): `tabSize` (2/4/8,
+default 4) and `insertSpaces` (default true), both fed straight into Monaco's own `tabSize`/
+`insertSpaces` editor options in `CodePane.tsx`. No extra effect needed for that wiring —
+`@monaco-editor/react` already re-applies changed `options` on every render the same way `theme`/
+`language` do, unlike the Monaco THEME DEFINITION (`draftTokens`) which needs its own effect
+because that's a different API surface. Provider mounted in `App.tsx` alongside its Breakdown
+sibling. `CodeSettings.tsx` itself is now real controls (a tab-size `<select>`, an insert-spaces/
+insert-tabs radio pair, `dialog.module.css`'s `.optionRow` pattern reused from
+`GeneralSettings.tsx`'s own radio group) instead of `SettingsPlaceholder`.
+
+**`SettingsPlaceholder.tsx` was its last caller.** Grepped the whole tree to confirm before
+deleting it and the two CSS classes (`SettingsDialog.module.css`'s `.placeholder`/
+`.placeholderList`) that existed only to serve it — every settings tab now has real content, so
+the placeholder pattern itself has nothing left to render. `ui-help.json`'s `settings.tab.code`
+entry, which said "Empty for now", updated alongside; a new `settings.code.indentation` entry
+added for the control itself.
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` and the full suite
+(114 files / 2815 tests) all clean. Not visually verified outside the Tauri host — check that
+changing tab size/insert-spaces in Settings actually reaches the Code tab's live editor before
+trusting the wiring, not just that it compiles.
+
+## 2026-09-16 (settings pass) — Settings dialog chrome: close button, flush edges
+
+`SettingsDialog.tsx`'s bottom "Close" button/row is gone, replaced by a `✕` in the dialog's top
+right corner (`.closeX`, absolutely positioned against a `position: relative` now on
+`.settingsDialog`). `dialog.module.css`'s shared `.actions`/`.closeButton` are untouched —
+`GenerationSettingsDialog.tsx` and `UnsavedChangesDialog.tsx` both still use them for their own
+bottom action rows, and this pass was scoped to Settings only.
+
+**All three "not flush" complaints (tab strip left, options panel right, both sections' bottom)
+turned out to share one cause**: `dialog.module.css`'s shared `.dialog` applies `padding: 1rem
+1.25rem` on every side, pushing `.body` (and its two children) inward uniformly. One rule fixes
+all three at once: `.body` gained `margin: 0 -1.25rem -1rem`, negative margins exactly cancelling
+that padding on the left/right/bottom sides only (top is untouched, that spacing belongs to the
+title, handled separately below). The tab strip's own buttons lost their `border-bottom` row
+dividers, relying on hover/active background only, the same bevel-only pattern this session
+already applied to every other button list (TitleBar's menu, TabBar, SectionTabs).
+
+**The gap under the "Settings" header's own line** (`dialog.module.css`'s `.title`, its
+`margin-bottom: 0.75rem`) **halved to 0.375rem, scoped to this dialog only** via a
+`.settingsDialog h2` element selector rather than editing the shared `.title` class directly —
+`.title` is a CSS-module class from a different file, so it can't be targeted by name from
+`SettingsDialog.module.css`, and editing it in place would have tightened the other two dialogs'
+titles too, which weren't part of this request.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean. Kept
+each control's own internal padding (tab button text, panel field spacing) untouched — "flush"
+was read as the SECTION's own outer edge reaching the pane's edge, not stripping every control
+inside it down to zero padding too; flag it if the intent was the latter. Not visually verified
+outside the Tauri host.
+
+## 2026-09-16 (settings pass, continued) — UI scale range/default/commit-on-release, one more border
+
+**UI size slider (`theme.ts`, `ThemeSettings.tsx`).** Default `1` (100%) → `0.9` (90%), the static
+`:root` fallback in `App.css` updated alongside so the one frame before settings.json loads shows
+the same value rather than flashing 100% first. Range floor `0.85` → `0.75`; step `0.05` → `0.01`.
+**Commits on release, not while dragging** — previously every drag tick called
+`setUiFontScale` directly, which resizes the whole app including this dialog and the slider
+itself, moving the thumb out from under the pointer mid-drag (reported as "hard to control while
+sliding"). `ThemeSettings.tsx` now holds a local `scaleDraft` that the slider's `value` and the %
+readout follow live, and calls the context's `setUiFontScale` (which is what actually applies the
+scale and persists it) only from `onPointerUp`/`onKeyUp`, reading the DOM element's own current
+value directly rather than the possibly-stale `scaleDraft` closure. This is a deliberate exception
+to `draftTokens`' live-preview-while-dragging pattern one fieldset up, not an inconsistency —
+colour pickers don't resize the picker itself while you use them, this control does.
+`ui-help.json`'s `settings.theme.uiScale` text updated to say so instead of "applies immediately".
+
+**One more border.** `.body`'s own `border: 1px solid var(--border)` (all four sides) sat right
+underneath the header's own line (`dialog.module.css`'s `.title`, its own `border-bottom`),
+reading as a doubled border. `border-top: none` added, keeping the header's line as the only
+divider between the title and the tab strip/options panel.
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` and the full suite
+(114 files / 2815 tests) all clean. Not visually verified outside the Tauri host — the
+commit-on-release change in particular has no test coverage and is worth confirming the slider
+actually feels different to drag, not just that the values compile correctly.
+
+## 2026-09-16 (settings audit) — Font-size audit across every settings tab
+
+A screenshot of Breakdown's Density/Attribute order fieldsets showed the "Density" legend sitting
+flush against the dropdown below it, and the dropdown's own text visibly bigger than the
+"Breakdown" panel heading above both. Traced both to the same class of bug and swept every
+settings stylesheet for the same pattern rather than patching the two visible instances alone.
+
+**Root cause.** `.panelTitle` (each tab's own "Breakdown"/"Theme"/"Code" heading) is explicitly
+`0.95rem`. Nothing else in these panels had ever been given an explicit size — `.legend`,
+`BreakdownSettings.module.css`/`ThemeSettings.module.css`'s `.select`, `.textInput`, `.nameInput`,
+and every plain `<label>` (GeneralSettings' radio rows, CodeSettings' insert-spaces/insert-tabs
+pair) all just used `font: inherit` or nothing, which pulls in the full ambient ~1rem — bigger
+than the heading meant to sit above them. `.legend` also had no `margin-bottom`, hence the close
+spacing in the screenshot. Fixed all of it to an explicit `0.85rem`, matching what `.hint`,
+`.tokenLabel`, `.groupTitle` and `HotkeysSettings.module.css`'s `.button`/`.keyChip` already used
+— those were never wrong, they're what the rest should have matched. The new `.panel label` rule
+is scoped to `SettingsDialog.module.css`'s own `.panel` (not `dialog.module.css`'s shared
+`.optionRow`), so `GenerationSettingsDialog`/`UnsavedChangesDialog` — which have no panelTitle to
+read smaller than — are untouched.
+
+**Two more found during the sweep, not visible in the screenshot but the same audit:**
+`AdvancedToolsSettings.module.css` was the one settings stylesheet still in flat px (`14px`/`12px`/
+etc.) rather than rem — harmless on its own, except it meant this one tab's text wouldn't move at
+all under the Theme tab's "UI size" slider while every sibling tab scaled with it. Converted
+throughout. And `AdvancedToolsSettings.tsx` never rendered a `settingsStyles.panelTitle` heading
+at all — every other tab opens by naming itself ("Breakdown", "Theme", …), this one went straight
+to "Installed tools" with nothing saying "Advanced Tools" anywhere on the tab. Added the same
+heading every sibling already has.
+
+`npm run typecheck`, `npm run lint`, `npm run validate:reference` and the full suite
+(114 files / 2815 tests) all clean. `CreditsSettings.tsx`'s own prose-sized text
+(`.creditRow`/`.creditThanks`) was deliberately left alone — its own comment already states that
+tab reads as body prose on purpose, not a controls list, which is a different, intentional
+choice rather than an oversight. Not visually verified outside the Tauri host.
+
+## 2026-09-16 (settings audit, continued) — Hotkeys reported the opposite of the last fix
+
+Reported: a large gap between a hotkey row's legend ("Save") and its own button row, the exact
+opposite of the "too close" complaint the last round's `.legend` fix addressed. Rather than just
+shrinking the margin-bottom that fix added, added `line-height: 1.2` to `.legend` too — the same
+missing-line-height mechanism as two earlier bugs this session (`SectionTabs`'s severity badge,
+`PreviewReferenceResizer`'s buttons): with no line-height set, a `<legend>`'s box inherits the
+browser's own font-metric "normal" value, which reserves real space below the glyph that the
+fixed `margin-bottom` then stacks on top of — a bigger combined gap than the margin value alone
+suggests, and one that reads as more noticeable against Hotkeys' short kbd-chip-and-button row
+than it did against Breakdown's taller `<select>`, which is likely why only this tab drew the
+report. `1.2` matches every other badge/label in this codebase already carrying this fix.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean. **Given
+this exact class of bug has now taken multiple attempts to actually land correctly twice already
+this session (the resizer buttons, four rounds), this diagnosis should be read as a reasoned guess
+that fits the pattern, not a confirmed fix** — it has not been seen rendered.
+
+## 2026-09-16 (settings audit, correction) — The line-height guess above was wrong; this is what actually differed
+
+The user came back with the fact that settles it: Code/Theme/Breakdown all read fine after the
+font-size/margin fix, ONLY Hotkeys still showed the large gap. `.legend` is one shared class used
+identically by all four tabs, so whatever caused this could not be inside `.legend` itself — the
+previous entry's `line-height: 1.2` guess is refuted by that alone, cleanly, without needing to
+render anything. Left the line-height rule in place (harmless, matches the rest of the codebase's
+own convention) but rewrote its comment rather than let a wrong explanation stand.
+
+**Compared the actual JSX across every fieldset instead of re-guessing a number.**
+Code/Theme/Breakdown all put a `<select>`/`<input>` directly after the `<legend>`. Hotkeys (and,
+it turns out, General, same pattern, just not the one screenshotted) instead put a
+`<div className={dialogStyles.optionRow}>` there, and `dialog.module.css`'s `.optionRow` carries
+its own `padding: 0.3rem 0` — stacking with `.legend`'s `margin-bottom` into a visibly bigger
+combined gap than the select-based fieldsets ever had. New rule, `.legend + div { padding-top: 0;
+}` — a plain type selector rather than a reference to `.optionRow` by name, since that class lives
+in a different CSS module and its hashed name isn't reachable from this one (the same constraint
+`.settingsDialog h2` worked around two rounds ago). Every legend in this dialog is followed by at
+most one element, so "the next sibling, whatever it is" is exactly as targeted as naming the class
+would be.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean. This
+time the fix is backed by a structural comparison across every fieldset in the dialog, not a
+mechanism guessed from a screenshot — meaningfully more confident than the entry above, though
+still unrendered.
+
+## 2026-09-16 (settings audit, the other side) — Same bug, below the buttons this time
+
+Confirmed working ("Better!"), then a follow-up: the gap between the Hotkeys button row and its
+own descriptive text below was too big too, same shape of problem on the other side of
+`.optionRow`. `.hint` — grepped and confirmed its only remaining caller anywhere is
+`HotkeysSettings.tsx`, every other tab's own hint paragraph having been removed earlier this
+session — had `margin-top: 0.25rem`, stacking with `.optionRow`'s own `padding: 0.3rem 0` bottom
+padding the same way the top side stacked before that fix. `.hint`'s `margin-top` dropped to 0,
+keeping `.optionRow`'s own padding as the sole spacer, the same "keep one side, drop the other"
+resolution as the `.legend + div` fix rather than splitting the difference between two competing
+values. Scoped for free: since `.hint` has exactly one caller left, no selector gymnastics needed
+to avoid touching the other tabs.
+
+`npm run typecheck`, `npm run lint` and the full suite (114 files / 2815 tests) all clean.
+
+## 2026-09-16 (bug report) — Export PNG's dialog opened but wrote nothing: a missing capability, not a missing feature
+
+Reported directly: the Export PNG button in the preview opens the save dialog fine, but no file
+ever lands on disk. `OverlayCanvas.tsx`'s `exportPng` (BUG-028) calls `@tauri-apps/plugin-fs`'s
+binary `writeFile`, and `src-tauri/capabilities/default.json` only listed `fs:allow-write-text-file`
+— the permission `useDocument.ts`'s own `writeToPath` needs, not the one `writeFile` needs. Tauri
+v2's fs plugin splits these two into separate grants (`fs:allow-write-file` for bytes,
+`fs:allow-write-text-file` for strings), and only the text one had ever been added, presumably
+because it was the first (and until PNG export, only) file-writing feature built. The IPC call was
+rejected by the permission layer before reaching Rust, and `exportPng` has no error handling, so the
+rejection vanished as an unhandled promise rejection — the dialog, gated by the separate
+`dialog:default` permission, completed normally throughout, which is exactly why the symptom looked
+like "the dialog works but the write doesn't" rather than a visible crash.
+
+Added `fs:allow-write-file` to `default.json`. No code change needed — `exportPng` itself was
+already correct once the IPC call is actually allowed through. Not yet re-verified inside the real
+Tauri host (see CLAUDE.md's Environment section — `npm run dev` can't render this app past its
+first frame); owed to the next `npm run tauri dev` pass.
+
+## 2026-09-16 (later) — Two items off the 5.4b/beta-round-2 verification backlog confirmed working
+
+A real `npm run tauri dev` run confirmed two items this file had carried as unverified since they
+landed: the custom titlebar (5.4b item 5, `"decorations": false` plus `TitleBar.tsx`'s own icon/
+menu/minimize/maximize/close row) drags, minimizes, maximizes and closes correctly, and the
+preview/reference split (2026-09-14's beta-feedback entry) drags and collapses on both sides as
+designed. Both were the highest-risk items in their respective sessions precisely because native
+window chrome and a new drag/collapse mechanism are exactly the kind of thing that types clean and
+still doesn't feel right on a real render; neither needs revisiting on the strength of this report.
+Still owed from the same backlog: the PNG export fix above, Tutorial A end to end (several rounds
+of callout-positioning fixes since), the Settings > Code tab controls, and the UI size slider.
+
+## 2026-09-16 (later still) — Three more off the same backlog: PNG export, Tutorial A, and the UI size slider
+
+Confirmed working on a real run: the PNG export fix two entries above (the `fs:allow-write-file`
+capability), Tutorial A end to end (closing out the several rounds of callout-positioning fixes
+this session made on reasoning alone, never on a render), and the UI size slider in Theme Settings.
+Only the Settings > Code tab controls (tab width, insert-spaces) remain unverified from this
+backlog.

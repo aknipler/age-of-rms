@@ -142,6 +142,19 @@ export interface AttributeDef {
   // about style. These never worked at all.
   replacedBy?: string;
   notes?: string;
+  /**
+   * Curated authorial judgment ("this attribute is normally necessary for the
+   * command to do anything useful"), not an engine fact. Distinct from every
+   * other flag on this type: `requiresOneOf`/`requiresSection` are measured
+   * engine behaviour, this is not, and the "all attributes" ground-truth rule
+   * (attributeModel.ts) still treats every attribute as optional-presence
+   * regardless of this flag. Read only by the Breakdown attribute-ordering
+   * setting (src/breakdown/attributeModel.ts's sortKnownSlots), to put the
+   * attributes someone would reach for first at the top of the list. Absent
+   * (the default for almost everything today) just means "no judgment made
+   * yet", not "not required".
+   */
+  required?: boolean;
 }
 
 export interface DirectiveDef {

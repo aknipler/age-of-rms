@@ -35,7 +35,7 @@ interface SectionViewProps {
 // just stayed disabled and every disabled tab's tooltip claimed to be the
 // Header tab specifically, whichever tab it actually was.
 export function SectionView({ tab }: SectionViewProps) {
-  const { applyEdit, requestFocus, selectedItem, clearSelection } = useBreakdownContext();
+  const { source, tokens, parseResult, applyEdit, requestFocus, selectedItem, clearSelection } = useBreakdownContext();
   const [pickerOpen, setPickerOpen] = useState(false);
   const targetSection = tab.sections[tab.sections.length - 1];
   // Sec.3.10, the diagnostics ruler measures/queries against this exact
@@ -67,6 +67,26 @@ export function SectionView({ tab }: SectionViewProps) {
     return null;
   }, [selectedItem, targetSection, tab.id, tab.isCanonicalOrHeader]);
 
+  // Where a comment trailing this tab's own item list has to end, for
+  // BlockList's benefit (comments.ts): the Header tab ends at the first
+  // real <SECTION>, any other tab ends at whichever SectionNode comes
+  // after ITS last physical section in file order (tab.items can
+  // aggregate more than one same-named SectionNode, sectionTabsModel.ts's
+  // duplicate-section rule), or end of file if nothing follows either
+  // way. undefined (no boundary, no trailing comments render) only when
+  // this tab has no SectionNode at all yet, matching insertTarget's own
+  // "newSection" fallback above, since there's nothing to be trailing WITHIN.
+  const trailingBoundary = useMemo(() => {
+    if (tab.id === "header") {
+      const firstSection = parseResult.script.sections[0];
+      return firstSection ? tokens[firstSection.header].start : source.length;
+    }
+    if (!targetSection) return undefined;
+    const index = parseResult.script.sections.indexOf(targetSection);
+    const next = parseResult.script.sections[index + 1];
+    return next ? tokens[next.header].start : source.length;
+  }, [tab.id, targetSection, parseResult, tokens, source.length]);
+
   // Add Command's own hotkey, toggles the same picker the button does,
   // with the same insertTarget rule (after the selection, else appended to
   // this tab's last section). Scoped to this component rather than a
@@ -95,11 +115,10 @@ export function SectionView({ tab }: SectionViewProps) {
         data-tutorial-anchor="breakdown.cardList"
       >
         <div className={styles.addWrapper}>
-          {/* .addButtonSlot makes HelpTip's wrapper span a flex item with
-              flex: 1, see its CSS comment (SectionView.module.css) for
-              why .addButton's own width: 100% needs that, rather than a
-              width set directly on this slot. */}
-          <span className={styles.addButtonSlot}>
+          {/* .buttonRow puts Add Command and Add Comment on one row, each
+              sized to its own content (2026-09-15) rather than stretched
+              to fill half the row each. */}
+          <div className={styles.buttonRow}>
             <HelpTip
               id="breakdown.addCommand"
               // insertTarget now resolves for every real tab (selection,
@@ -131,7 +150,27 @@ export function SectionView({ tab }: SectionViewProps) {
                 + Add command
               </button>
             </HelpTip>
-          </span>
+            <HelpTip id="breakdown.addComment" text={insertTarget ? undefined : "Nothing to add a comment to yet"} dismissOnInteract>
+              <button
+                type="button"
+                className={styles.addButton}
+                disabled={!insertTarget}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!insertTarget) return;
+                  // No picker to open, unlike Add Command: a comment has
+                  // no name to choose, so this inserts a blank `/* */`
+                  // straight away and hands focus to it (CommentCard
+                  // registers itself at the same offset addComment's
+                  // caret points at, see computeEdit.ts's own comment).
+                  const result = applyEdit({ kind: "addComment", at: insertTarget });
+                  if (result) requestFocus(result.caret);
+                }}
+              >
+                + Add comment
+              </button>
+            </HelpTip>
+          </div>
           {pickerOpen && insertTarget && (
             <CommandPicker
               // "header" is never a real CommandDef.section value (language.json's
@@ -149,7 +188,7 @@ export function SectionView({ tab }: SectionViewProps) {
           )}
         </div>
         <div className={styles.content}>
-          <BlockList items={tab.items} />
+          <BlockList items={tab.items} trailingBoundary={trailingBoundary} />
         </div>
       </div>
       <DiagnosticsRuler items={tab.items} containerRef={scrollContainerRef} />

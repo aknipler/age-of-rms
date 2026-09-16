@@ -9,7 +9,8 @@ import type { CommandNode, IfNode, RandomNode, RawNode, ParseResult } from "../.
 import { loadLanguage } from "../../../parser/__tests__/testUtils";
 import { applyEdit, computeEdit } from "../computeEdit";
 import { PatchError, type EditIntent } from "../intents";
-import { astDiff } from "./astDiff";
+import { astDiff, diffOptionsFor } from "./astDiff";
+import { extractComments } from "../../comments";
 
 const langData = loadLanguage();
 const lang = buildLanguageIndex(langData);
@@ -19,15 +20,14 @@ function parse(src: string): ParseResult {
 }
 
 /** computeEdit + apply + reparse + astDiff-clean, returning the patched parse. */
-function run(src: string, intent: EditIntent): { out: string; b: ParseResult } {
+function run(src: string, intent: EditIntent): { out: string; b: ParseResult; caret: number } {
   const a = parse(src);
-  const { edit } = computeEdit(a, intent, lang);
+  const { edit, caret } = computeEdit(a, intent, lang);
   const out = applyEdit(src, edit);
   const b = parse(out);
-  const isDeletion = edit.newText === "";
-  const problems = astDiff(a, b, edit, isDeletion ? { deletedRange: { start: edit.start, end: edit.end } } : {});
+  const problems = astDiff(a, b, edit, diffOptionsFor(intent, edit));
   expect(problems).toEqual([]);
-  return { out, b };
+  return { out, b, caret };
 }
 
 const firstCmd = (r: ParseResult) => r.script.sections[0].items[0] as CommandNode;
@@ -212,6 +212,85 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
     const src = "<PLAYER_SETUP>";
     const { out } = run(src, { kind: "addCommand", at: { in: "newSection", name: "LAND_GENERATION" }, name: "create_land" });
     expect(out).toBe("<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_land\n");
+  });
+});
+
+// astDiff's clause 4 now knows addComment/editComment legitimately touch
+// the trivia sequence (diffOptionsFor derives the right deletedRange/
+// insertedRange exception per intent kind, see astDiff.ts), so these go
+// through the same run()/astDiff pipeline as every other intent below,
+// rather than asserting on computeEdit's raw output only.
+describe("addComment (reuses addCommand's own InsertTarget resolution)", () => {
+  it("appends /* */ at a section's own end, same placement as a bare addCommand", () => {
+    const src = "<PLAYER_SETUP>\nrandom_placement";
+    const a = parse(src);
+    const { out, caret } = run(src, { kind: "addComment", at: { in: "section", section: a.script.sections[0] } });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement\n/* */");
+    expect(caret).toBe(out.indexOf("/* */"));
+  });
+
+  it("inserts after a selected item, not just at the section's end", () => {
+    const src = "<PLAYER_SETUP>\nrandom_placement\nnomad_resources";
+    const a = parse(src);
+    const first = a.script.sections[0].items[0];
+    const { out } = run(src, { kind: "addComment", at: { after: first } });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement\n/* */\nnomad_resources");
+  });
+
+  it("the caret lands exactly on the new comment's own span.start, so CommentCard's focus registration matches", () => {
+    const src = "<PLAYER_SETUP>\nrandom_placement";
+    const a = parse(src);
+    const { out, caret } = run(src, { kind: "addComment", at: { in: "section", section: a.script.sections[0] } });
+    const comments = extractComments(parseRms(out, langData).tokens);
+    expect(comments).toHaveLength(1);
+    expect(comments[0].start).toBe(caret);
+  });
+});
+
+describe("editComment (a plain span replace, comments carry no Item at all)", () => {
+  it("replaces exactly the content between the delimiters", () => {
+    const src = "<PLAYER_SETUP>\n/* old */\nrandom_placement";
+    const span = extractComments(parse(src).tokens)[0];
+    const innerSpan = { start: span.start + 2, end: span.end - 2 };
+    const { out } = run(src, { kind: "editComment", innerSpan, text: " new " });
+    expect(out).toBe("<PLAYER_SETUP>\n/* new */\nrandom_placement");
+  });
+
+  it("a length-changing edit shifts later nodes without altering their text", () => {
+    const src = "<PLAYER_SETUP>\n/* x */\nrandom_placement";
+    const span = extractComments(parse(src).tokens)[0];
+    const innerSpan = { start: span.start + 2, end: span.end - 2 };
+    const { out, b } = run(src, { kind: "editComment", innerSpan, text: " a much longer note " });
+    const cmd = b.script.sections[0].items[0];
+    expect(out.slice(cmd.span.start, cmd.span.end)).toBe("random_placement");
+  });
+
+  // padCommentContent (comments.ts), exercised through the real intent:
+  // the delimiters must stay whitespace-separated from the content no
+  // matter what the caller supplies, or the run()/astDiff pipeline above
+  // would itself catch the comment silently stopping being a comment.
+  it("pads unpadded replacement text so the delimiters don't glue onto it", () => {
+    const src = "<PLAYER_SETUP>\n/* old */\nrandom_placement";
+    const span = extractComments(parse(src).tokens)[0];
+    const innerSpan = { start: span.start + 2, end: span.end - 2 };
+    const { out } = run(src, { kind: "editComment", innerSpan, text: "unpadded" });
+    expect(out).toBe("<PLAYER_SETUP>\n/* unpadded */\nrandom_placement");
+  });
+
+  it("pads a fully empty replacement to a single space rather than gluing the delimiters together", () => {
+    const src = "<PLAYER_SETUP>\n/* old */\nrandom_placement";
+    const span = extractComments(parse(src).tokens)[0];
+    const innerSpan = { start: span.start + 2, end: span.end - 2 };
+    const { out } = run(src, { kind: "editComment", innerSpan, text: "" });
+    expect(out).toBe("<PLAYER_SETUP>\n/* */\nrandom_placement");
+  });
+
+  it("keeps an already-padded multi-line block's own formatting instead of collapsing it", () => {
+    const src = "<PLAYER_SETUP>\n/*\n * Author: Old\n */\nrandom_placement";
+    const span = extractComments(parse(src).tokens)[0];
+    const innerSpan = { start: span.start + 2, end: span.end - 2 };
+    const { out } = run(src, { kind: "editComment", innerSpan, text: "\n * Author: New\n " });
+    expect(out).toBe("<PLAYER_SETUP>\n/*\n * Author: New\n */\nrandom_placement");
   });
 });
 

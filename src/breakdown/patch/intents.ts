@@ -12,6 +12,7 @@ import type {
   RandomNode,
   RawNode,
   SectionNode,
+  Span,
 } from "../../parser/types";
 
 /** A byte-level change: replace source[start, end) with newText. start === end is an insertion. */
@@ -78,6 +79,19 @@ export type EditIntent =
   | { kind: "removeNode"; node: AttributeNode | CommandNode | DirectiveNode | IfNode | RandomNode }
   | { kind: "toggleFlag"; target: AttributeTarget; name: string; on: boolean }
   | { kind: "addCommand"; at: InsertTarget; name: string }
+  // Comments are trivia (parser-design Sec.2), not AST nodes, so unlike
+  // every other intent here this doesn't target or produce an Item. It
+  // inserts a bare `/**/` at the same InsertTarget addCommand uses, and
+  // BlockList picks the new span back up on reparse via comments.ts.
+  | { kind: "addComment"; at: InsertTarget }
+  // `innerSpan` is the content strictly between the `/*`/`*/` delimiters
+  // (CommentCard computes it from its own outer comment span), so this
+  // never has to know the delimiter width or reason about nesting depth,
+  // it just replaces a span like setArgValue does. CommentCard rejects a
+  // `text` containing `/*` or `*/` before this ever runs, since those
+  // would change how many comments the source contains, which no other
+  // intent here does either.
+  | { kind: "editComment"; innerSpan: Span; text: string }
   | { kind: "setCondition"; branch: BranchRef; value: string }
   | { kind: "setChance"; branch: BranchRef; value: ArgValueInput }
   | { kind: "addBranch"; parent: IfNode | RandomNode; branch: "elseif" | "else" | "percent_chance" }

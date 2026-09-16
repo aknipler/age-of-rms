@@ -70,7 +70,7 @@ export const appTourTutorial: TutorialDefinition = {
       title: "The notes drawer",
       anchor: { kind: "help", id: "preview.notesDrawer" },
       body: [
-        "Every approximation the preview made, and every placement that failed. Perhaps too much information, please provide feedback on ways to highlight the critical information.",
+        "Every approximation the preview made, and every placement that failed. You may need to scroll down in the preview pane to see this. Perhaps too much information, please provide feedback on ways to highlight the critical information.",
       ],
       completion: { kind: "manual" },
     },
@@ -103,8 +103,7 @@ export const appTourTutorial: TutorialDefinition = {
     {
       id: "generation-settings",
       title: "Generation settings",
-      anchor: { kind: "help", id: "statusBar.generationSettings" },
-      moveAsideCorner: "top-right",
+      anchor: { kind: "help", id: "preview.generationSettings" },
       body: [
         "Properties of the script (player count, map size and team layout) are available here. Everything above is computed for whatever you set here.",
       ],

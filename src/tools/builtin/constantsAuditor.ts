@@ -242,7 +242,7 @@ export function buildConstantsAuditOutput(parse: ParseResult, hideHealthy: boole
   // must never be what carries the information).
   if (hideHealthy) {
     const hidden = allRows.length - shownRows.length;
-    blocks.push({ kind: "text", text: `${hidden} of ${allRows.length} constant${allRows.length === 1 ? "" : "s"} hidden — defined, used, and never targeted by #undefine.` });
+    blocks.push({ kind: "text", text: `${hidden} of ${allRows.length} constant${allRows.length === 1 ? "" : "s"} hidden. Defined, used, and never targeted by #undefine.` });
   }
 
   if (undefinedRefs.length > 0) {

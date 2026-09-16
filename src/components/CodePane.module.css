@@ -24,12 +24,16 @@
 
 /* Was `.codePane`. The margin and border used to sit on the tab's whole
    content area; they belong to the editor box specifically now that something
-   else shares the row. */
+   else shares the row. Margin dropped to 0 on every side (UI pass
+   2026-09-15) so the editor runs flush to the resizer, the pane's right
+   edge, and the top/bottom of the tab, instead of floating with a gap.
+   No border-radius either now that nothing but the editor's own border
+   separates it from its neighbours on any side. */
 .editorFrame {
   flex: 1;
   min-height: 0;
   min-width: 0;
-  margin: 0.75rem 1.25rem;
+  margin: 0;
   border: 1px solid var(--border);
   display: flex;
   overflow: hidden;

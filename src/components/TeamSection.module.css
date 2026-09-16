@@ -50,6 +50,13 @@
   gap: 0.5rem;
 }
 
+/* A player slot above the current player count. Dimmed rather than removed,
+   so all 8 rows always render and the dialog's height stays fixed as the
+   count changes. */
+.rowInactive {
+  opacity: 0.45;
+}
+
 .playerLabel {
   min-width: 5rem;
 }

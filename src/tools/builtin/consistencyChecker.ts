@@ -278,7 +278,7 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
         emit({
           type: "progress",
           fraction: totalGenerations > 0 ? completed / totalGenerations : undefined,
-          note: `${pc} players — run ${runIndex + 1} of ${runsPerPlayerCount}`,
+          note: `${pc} players, run ${runIndex + 1} of ${runsPerPlayerCount}`,
         });
         // Sec.4.1: chunk unit is ONE generation, generatePreview is
         // synchronous and cannot yield inside itself, so the macrotask

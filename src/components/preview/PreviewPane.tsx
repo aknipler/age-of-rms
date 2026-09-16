@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { usePreviewView } from "./PreviewViewContext";
+import { useGenerationSettings } from "../../generationSettings/GenerationSettingsContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import { createTerrainPalette, type TerrainConstant } from "../../preview/render/palette";
 import { usePreviewResultContext } from "../../PreviewResultContext";
@@ -66,14 +67,15 @@ function TileReadout({ tile }: { tile: TileInfo }) {
       <ReadoutRow label="Tile">
         ({tile.x}, {tile.y})
       </ReadoutRow>
-      <ReadoutRow label="Terrain">
-        {tile.terrainName ?? `terrain ${tile.terrain}`}
-        {/* The layer is what a terrain_mask or base_layer painted on top. It
-            is often the thing you are actually LOOKING at, since the tile is
-            drawn as a heavy blend of the two, so a readout naming only the
-            terrain reads as a colour bug. */}
-        {tile.layer !== null && ` + ${tile.layerName ?? `terrain ${tile.layer}`} layer`}
-      </ReadoutRow>
+      <ReadoutRow label="Terrain">{tile.terrainName ?? `terrain ${tile.terrain}`}</ReadoutRow>
+      {/* The layer is what a terrain_mask or base_layer painted on top. It
+          is often the thing you are actually LOOKING at, since the tile is
+          drawn as a heavy blend of the two, so a readout naming only the
+          terrain reads as a colour bug. Its own row, not appended to
+          Terrain's, so it reads as a second fact rather than a run-on. */}
+      {tile.layer !== null && (
+        <ReadoutRow label="Layer">{tile.layerName ?? `terrain ${tile.layer}`}</ReadoutRow>
+      )}
       <ReadoutRow label="Elevation">
         {tile.elevation}
         {tile.cliff && " · cliff"}
@@ -123,7 +125,7 @@ function PinControl() {
     return (
       <HelpTip id="preview.pinLine">
         <button type="button" className={`${styles.pin} ${styles.pinActive}`} onClick={unpin}>
-          Pinned line {pinnedLine + 1} ✕
+          Pinned {pinnedLine + 1} ✕
         </button>
       </HelpTip>
     );
@@ -142,7 +144,7 @@ function PinControl() {
         onClick={pinCursor}
         disabled={cursorLine === null}
       >
-        {cursorLine === null ? "Pin line" : `Pin line ${cursorLine + 1}`}
+        {cursorLine === null ? "Pin" : `Pin ${cursorLine + 1}`}
       </button>
     </HelpTip>
   );
@@ -180,6 +182,7 @@ export function PreviewPane() {
     clearSelectedTile,
     hiddenObjects,
   } = usePreviewView();
+  const { openDialog: openGenerationSettings } = useGenerationSettings();
   // Hover is local because it dies with the pane and should: a pointer
   // position means nothing once you have switched tabs. The SELECTION lives in
   // the context above the tab switch, for the same reason the seed does.
@@ -245,89 +248,90 @@ export function PreviewPane() {
   return (
     <div className={styles.pane} data-tutorial-anchor="sidePanel.preview">
       <div className={styles.controls}>
-        {/*
-          The id is the existing `breakdown.sidePanel.previewToggle` rather
-          than a new `preview.toggle`. Sec.5 lists the latter "if the pane
-          hosts its own toggle distinct from the Breakdown side panel". It
-          does not; this IS that toggle, in that panel, and a second id for
-          one control would leave the audit checking two entries for the same
-          thing. Its copy is rewritten this session, as Sec.5 requires.
-        */}
-        <HelpTip id="breakdown.sidePanel.previewToggle">
-          <span className={styles.toggle}>
-            View:
-            <label>
+        {/* Left cluster: settings, view toggle, pin, colour mode. Right
+            cluster: seed + re-roll. Two flex children of `.controls`
+            (itself `justify-content: space-between`) rather than one flat
+            row, so the right cluster sits pinned to the pane's right edge
+            regardless of how many controls are in the left one
+            (2026-09-16, beta feedback: these used to be two separate
+            rows). */}
+        <div className={styles.controlsGroup}>
+          {/*
+            Beta feedback: the status bar's settings cog was hard to find, and
+            testers expected map size / player count controls to live in the
+            preview pane itself, since that's what they change. Placed before
+            the View toggle rather than in a row of its own, since it opens a
+            dialog and does not need to show any state inline.
+          */}
+          <HelpTip id="preview.generationSettings">
+            <button
+              type="button"
+              className={styles.settingsButton}
+              onClick={openGenerationSettings}
+              aria-label="Generation settings"
+            >
+              ⚙
+            </button>
+          </HelpTip>
+          {/*
+            The id is the existing `breakdown.sidePanel.previewToggle` rather
+            than a new `preview.toggle`. Sec.5 lists the latter "if the pane
+            hosts its own toggle distinct from the Breakdown side panel". It
+            does not; this IS that toggle, in that panel, and a second id for
+            one control would leave the audit checking two entries for the same
+            thing.
+          */}
+          <HelpTip id="breakdown.sidePanel.previewToggle">
+            <label className={styles.toggle}>
               <input
-                type="radio"
-                name="preview-view"
+                type="checkbox"
                 checked={view === "current"}
-                onChange={() => setView("current")}
+                onChange={(event) => setView(event.target.checked ? "current" : "final")}
               />
               Current
             </label>
-            <label>
+          </HelpTip>
+          {view === "current" && <PinControl />}
+          {/*
+            Two real colour sources, not a cosmetic skin. Each resolves what the
+            other collapses (see palette.ts's header). Game is the default, so
+            unticked is Game and ticked is Minimap, the game data's own coarser
+            colour class.
+          */}
+          <HelpTip id="preview.colorMode">
+            <label className={styles.toggle}>
               <input
-                type="radio"
-                name="preview-view"
-                checked={view === "final"}
-                onChange={() => setView("final")}
-              />
-              Final
-            </label>
-          </span>
-        </HelpTip>
-        {view === "current" && <PinControl />}
-      </div>
-
-      <div className={styles.controls}>
-        <HelpTip id="preview.seedChip">
-          <label className={styles.seed}>
-            Seed
-            <input
-              type="number"
-              className={styles.seedInput}
-              value={seed}
-              min={0}
-              onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isFinite(next)) setSeed(Math.max(0, Math.trunc(next)));
-              }}
-            />
-          </label>
-        </HelpTip>
-        <HelpTip id="preview.reroll">
-          <button type="button" className={styles.reroll} onClick={reseed}>
-            Re-roll
-          </button>
-        </HelpTip>
-        {/*
-          Two real colour sources, not a cosmetic skin. Each resolves what the
-          other collapses (see palette.ts's header). Game is the default
-          because it is per-terrain; minimap is the game data's own colour
-          class, which is coarser but separates forest from underbrush.
-        */}
-        <HelpTip id="preview.colorMode">
-          <span className={styles.toggle}>
-            <label>
-              <input
-                type="radio"
-                name="preview-colors"
-                checked={colorMode === "game"}
-                onChange={() => setColorMode("game")}
-              />
-              Game
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="preview-colors"
+                type="checkbox"
                 checked={colorMode === "minimap"}
-                onChange={() => setColorMode("minimap")}
+                onChange={(event) => setColorMode(event.target.checked ? "minimap" : "game")}
               />
               Minimap
             </label>
-          </span>
-        </HelpTip>
+          </HelpTip>
+        </div>
+
+        <div className={styles.controlsGroup}>
+          <HelpTip id="preview.seedChip">
+            <label className={styles.seed}>
+              Seed
+              <input
+                type="number"
+                className={styles.seedInput}
+                value={seed}
+                min={0}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  if (Number.isFinite(next)) setSeed(Math.max(0, Math.trunc(next)));
+                }}
+              />
+            </label>
+          </HelpTip>
+          <HelpTip id="preview.reroll">
+            <button type="button" className={styles.reroll} onClick={reseed} aria-label="Re-roll">
+              🎲
+            </button>
+          </HelpTip>
+        </div>
       </div>
 
       <PreviewCanvas

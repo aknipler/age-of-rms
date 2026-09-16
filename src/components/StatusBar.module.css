@@ -78,6 +78,13 @@
   line-height: 1;
 }
 
+/* Wood/gold/stone's icon (StatusBar.tsx); food stays the plain 🍖 glyph. */
+.resourceIcon {
+  width: 0.85em;
+  height: 0.85em;
+  display: block;
+}
+
 .problems {
   display: inline-flex;
   align-items: center;
@@ -114,8 +121,9 @@
 }
 
 .settingsCog {
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: none;
+  border-radius: 4px;
+  background: transparent;
   padding: 0.1rem 0.5rem;
   font-size: 0.9rem;
   line-height: 1.3;

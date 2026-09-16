@@ -35,7 +35,7 @@ export function namedEntryHelpText(name: string, description: string | undefined
   return (
     docSummary(name) ??
     description ??
-    `No documentation yet for "${name}" — contribute an entry to reference/data/doc-strings.json.`
+    `No documentation yet for "${name}". Contribute an entry to reference/data/doc-strings.json.`
   );
 }
 

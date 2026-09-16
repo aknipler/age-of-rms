@@ -12,6 +12,7 @@ import { usePreviewView } from "./preview/PreviewViewContext";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
 import { useThemeSettings } from "../settings/ThemeSettingsContext";
+import { useCodeSettings } from "../settings/CodeSettingsContext";
 import type { Diagnostic, Item, ParseResult } from "../parser/types";
 import styles from "./CodePane.module.css";
 
@@ -178,6 +179,13 @@ export function CodePane({
   // custom one), see monacoTheme.ts for why this can't be expressed as a
   // fixed Monaco theme the way the Monarch tokenizer's coloring used to be.
   const { draftTokens } = useThemeSettings();
+  // Settings > Code's tab size / spaces-vs-tabs, passed straight through to
+  // Monaco's own options below. @monaco-editor/react re-applies changed
+  // `options` via updateOptions on every render, the same way `theme` and
+  // `language` already react to prop changes, so no separate effect is
+  // needed here the way the theme colours (a Monaco THEME DEFINITION, not
+  // an editor option) require one.
+  const { tabSize, insertSpaces } = useCodeSettings();
   // Belongs to ONE editor instance and dies with it, so it is a ref that is
   // reset on unmount rather than a value that outlives the mount.
   const cutDecorationsRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
@@ -424,6 +432,8 @@ export function CodePane({
             fontFamily: '"Cascadia Code", Consolas, monospace',
             wordWrap: "off",
             scrollBeyondLastLine: false,
+            tabSize,
+            insertSpaces,
           }}
         />
       </div>

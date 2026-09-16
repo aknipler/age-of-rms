@@ -92,7 +92,7 @@ export class PreviewHandleStore {
   sliceRequest(toolId: string, msg: Extract<ToolToHost, { type: "sliceRequest" }>): HostToTool {
     const entry = this.byTool.get(toolId);
     if (!entry || entry.handle !== msg.handle) {
-      return { type: "generateFailed", reason: "this handle is stale — a newer generate has already superseded it" };
+      return { type: "generateFailed", reason: "this handle is stale, a newer generate has already superseded it" };
     }
 
     const { rect } = msg;
@@ -106,7 +106,7 @@ export class PreviewHandleStore {
     // cap and maxOutboundRunBytes, reused rather than a fresh constant.
     const bytesThisSlice = area * BYTES_PER_SLICED_TILE;
     if (entry.bytesServed + bytesThisSlice > LIMITS.maxOutboundRunBytes) {
-      return { type: "generateFailed", reason: "this generation's slice budget is exhausted — request a smaller rect or call generate again" };
+      return { type: "generateFailed", reason: "this generation's slice budget is exhausted, request a smaller rect or call generate again" };
     }
 
     const { dim, grid } = entry.result;

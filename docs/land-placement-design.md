@@ -1096,6 +1096,72 @@ before assuming), whether a per-land override composes with `ZonePolicy.perRepea
 a stated rule rather than an emergent one), and whether all 12 missing attributes are worth
 building at once or whether some (`land_id`, say) are dead weight nobody has asked for.
 
+#### Future want: a repeating multi-land pattern per player, the way `Bulls_Eyes.rms` is built by hand (recorded, not designed)
+
+A stated want, not yet scoped, raised directly against the panel's own "+ Shape"/"+ Land" buttons
+(`LandPlacementPanel.tsx`): `Bulls_Eyes.rms`'s actual pattern is one player land plus three
+auxiliary lands **clustered around that one land**, repeated once per player. Two separate gaps
+sit under the single symptom the user reported ("add slot always chooses the same role, and
+always the same shape"):
+
+1. **No UI gap, a real one**: `addRing`/`addStandalonePlacement` (`modelOps.ts`) both take a
+   `roleId` argument, and the panel's own `+ Shape`/`+ Land` buttons hardcode
+   `model.roles[0].id` unconditionally — there is no role picker at creation time, at all,
+   regardless of how many roles exist. Separately, there is no "add a slot to an existing
+   group's pattern" control anywhere in the panel today — `ShapeGroup.pattern` (`model.ts`) is
+   typed as a heterogeneous cycle (`pattern: PatternSlot[]; // ONE repeat of the cycle: [P, A, B,
+   A, C]`, each slot carrying its own `role`), and the compiler/expansion side already supports
+   it, but nothing in `LandPlacementPanel.tsx` ever pushes a second `PatternSlot` onto an
+   existing group. Both are straightforward panel work, not a model change.
+
+2. **A real geometric mismatch, the harder half**: even with an "add slot" control built, a
+   `ShapeGroup`'s `pattern` repeats its slots AT POSITIONS AROUND ONE SHARED SHAPE — `[P, A, B, A,
+   C]` on a ring divides the ring into five slot positions per repeat, each getting its own
+   angular share of the SAME circle. `Bulls_Eyes`' actual pattern is different in kind: the three
+   aux lands sit chained off the ONE land they belong to (parent = that specific placement, a
+   `radial` frame relative to it), not spread around the shared ring alongside every player's
+   own land. A `ShapeGroup.pattern` cannot express "these three lands travel with THIS repeat's
+   own P", only "these five roles each get one evenly-spaced slot on this shape".
+
+   The primitive that IS already there: a standalone `Placement` can be parented to one specific
+   per-player ring member (`parent: "ring#i#P"`) and correctly inherits that member's own
+   per-player guard on emission — confirmed working, manual-test-run-sheet.md section 3 item 7.
+   But nothing replicates that chain automatically across every member of a `perPlayer` group;
+   building a Bulls_Eyes-shaped map today means hand-creating up to `MAX_PLAYER_COUNT` separate
+   copies of the three-land aux cluster, each individually re-parented to a different specific
+   ring member — the model can represent the RESULT, but authoring it is not what "a pattern
+   that repeats per player" is asking for.
+
+   The missing concept is closer to a repeating COMPOSITE unit — one main placement plus a fixed
+   set of chained children, the whole group treated as one thing that then repeats per player —
+   which does not exist anywhere in `model.ts` today. `ShapeGroup.perPlayer` lives on the shape
+   and its members are flat leaves; there is no notion of a member owning its own sub-tree that
+   travels with it.
+
+This needs its own design pass before anything is built, on the same standing rule every other
+Land Placement gap in this file has followed. In particular: whether the right primitive is a new
+"chain template" attached to a `PatternSlot` (each slot optionally carrying a set of child-offset
+templates, expanded alongside the slot itself, per-player or not) or something else entirely;
+whether `perPlayer`, today a `ShapeGroup`-level flag, needs to become expressible on a
+composite/cluster rather than only on the outermost ring; and whether the two gaps above (the
+missing role picker, the missing pattern-slot editor) are worth shipping on their own first,
+since they are useful independent of the composite-repeat question and would already let a
+`[P, A, B, A, C]`-shaped ring (evenly spread around one shape) be built by hand, which is a
+real, smaller case the compiler already supports today.
+
+#### Future want: per-team land setups (recorded 2026-09-15, not designed)
+
+A stated want, not yet scoped. Every per-player primitive in this tool (`ShapeGroup.perPlayer`,
+`thetaPerCount`, the per-player ring member parenting the composite-pattern want above already
+leans on) resolves against the runtime PLAYER count. Nothing resolves against TEAM membership —
+placing one land role per team rather than per player, or clustering a team's players' lands
+together on a ring, has no primitive to build on today. Needs its own design pass: whether team
+membership is knowable at the same compile stage `perPlayer` resolves at (`teamModel.ts` already
+models team presets for the generation-settings pane, per CLAUDE.md's repo map — worth checking
+before assuming a new resolution mechanism is needed), and whether a "one repeat per team, N
+players per repeat" shape is expressible as a variant of the existing pattern/repeat model or
+needs a third axis alongside `perPlayer` and `thetaPerCount`.
+
 #### Angles
 
 For `N = pattern.length × repeats` lands on a ring, slot `j` of repeat `i` sits at

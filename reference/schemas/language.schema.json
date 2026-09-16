@@ -275,6 +275,10 @@
         "replacedBy": {
           "type": "string",
           "description": "Name of the working attribute this dead string corresponds to, rendered into RMS0310's message. Distinct from a deprecation: a deprecated command still works, these never did. Only meaningful alongside nonFunctional."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Curated authorial judgment that this attribute is normally necessary for the command to do anything useful, not an engine fact and not enforced anywhere — every attribute stays optional-presence per the all-attributes ground-truth rule. Read only by the Breakdown attribute-ordering setting to sort these first. Absent means no judgment has been made yet, not 'not required'."
         }
       }
     },

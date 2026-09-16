@@ -63,6 +63,9 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
         <h2 className={dialogStyles.title} id="settings-dialog-title">
           Settings
         </h2>
+        <button type="button" className={styles.closeX} onClick={onClose} aria-label="Close settings">
+          ✕
+        </button>
 
         <div className={styles.body}>
           <div className={styles.tabList} role="tablist" aria-orientation="vertical">
@@ -105,12 +108,6 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
           >
             <ActivePanel key={active.id} />
           </div>
-        </div>
-
-        <div className={dialogStyles.actions}>
-          <button type="button" className={dialogStyles.closeButton} onClick={onClose}>
-            Close
-          </button>
         </div>
       </div>
     </div>

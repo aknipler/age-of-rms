@@ -25,12 +25,12 @@
   margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--bd-group-gap, 0.6rem);
 }
 
 .group {
   border-top: 1px solid var(--border-subtle);
-  padding-top: 0.3rem;
+  padding-top: var(--bd-group-gap, 0.3rem);
 }
 
 .groupTitle {
@@ -39,6 +39,96 @@
   letter-spacing: 0.03em;
   color: var(--text-muted);
   margin: 0 0 0.25rem;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* Reserves the setDefaultButton's own box height (border + padding, see
+     below) up front, so the row is the same height whether or not that
+     button is currently rendered (draftOrder is only non-null mid-drag). */
+  min-height: 1.25rem;
+}
+
+.groupHeader .groupTitle {
+  margin: 0;
+}
+
+.setDefaultButton {
+  box-sizing: border-box;
+  height: 1.25rem;
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 0.4rem;
+}
+
+/* Only rendered draggable in custom attribute-order mode, see CommandCard.tsx. */
+.attributeSlotWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+/*
+ * The compact density's two-column attribute layout (booleans right,
+ * everything else left, see CommandCard.tsx's renderAttributesBody). A
+ * container query rather than a viewport media query, deliberately: this
+ * card's actual rendered width depends on side-panel state and nesting
+ * depth (e.g. inside a start_random block), not on the window, so only the
+ * card's own container can answer "is there room for two columns".
+ * Comfortable density never renders this wrapper at all (flat list, see
+ * CommandCard.tsx), so it never needs to establish a container context.
+ */
+.attributesColumns {
+  container-type: inline-size;
+}
+
+.columnsRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bd-row-gap, 0.15rem);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bd-row-gap, 0.15rem);
+  min-width: 0;
+}
+
+@container (min-width: 30rem) {
+  .columnsRow {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .columnsRow > .column {
+    flex: 1 1 50%;
+  }
+}
+
+/* AttributeRow's own root div (.row or .slot, always the last child here)
+   is a block element everywhere else, sized by its parent's block width.
+   Without this it would shrink to its own max-content width as a flex
+   item instead, since flex containers don't imply flex-grow on children. */
+.attributeSlotWrap > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.attributeSlotWrap[draggable="true"] {
+  cursor: grab;
+}
+
+.dragHandle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  cursor: grab;
+  user-select: none;
 }
 
 .argRow {
