@@ -20,9 +20,18 @@ import {
   type ToolParamDef,
   type ToolRunHandle,
 } from "../../../tools-api/index";
-import { objectConstantsFromPublished, previewSettingsFromContext, runPreviewFromContext } from "../previewBridge";
+import {
+  objectConstantsFromPublished,
+  previewSettingsFromContext,
+  runPreviewFromContext,
+} from "../previewBridge";
 import { MonteCarloAggregate } from "./checker/aggregate";
-import { buildStaticContext, runStaticChecks, type StaticContext, type StaticFinding } from "./checker/staticChecks";
+import {
+  buildStaticContext,
+  runStaticChecks,
+  type StaticContext,
+  type StaticFinding,
+} from "./checker/staticChecks";
 import {
   buildFindingTables,
   buildNotesBlocks,
@@ -57,7 +66,10 @@ const PLAYER_COUNT_PARAMS: ToolParamDef = {
   label: "Player counts",
   help: "Which player counts to run the Monte Carlo layer at. The static checks below always run once per selected count regardless.",
   default: DEFAULT_PLAYER_COUNTS.map(String),
-  options: DEFAULT_PLAYER_COUNTS.map((n) => ({ value: String(n), label: String(n) })),
+  options: DEFAULT_PLAYER_COUNTS.map((n) => ({
+    value: String(n),
+    label: String(n),
+  })),
   minSelected: 1,
 };
 
@@ -69,7 +81,12 @@ export const consistencyCheckerManifest: ToolManifest = {
   description:
     "Static checks (undefined actor areas, terrain the engine's own table refuses, land over-allocation, static contradictions) plus a Monte Carlo pass across a player-count matrix, reporting spawn rates, worst player count and failure buckets per command.",
   // read-source is implied by read-ast; declared anyway per the scriptStats convention of the manifest being the copy-paste template.
-  capabilities: ["read-source", "read-ast", "read-generation-settings", "read-reference"],
+  capabilities: [
+    "read-source",
+    "read-ast",
+    "read-generation-settings",
+    "read-reference",
+  ],
   // Sec.5.2: the report's own header states the player-count MATRIX it ran at,
   // which the pane's single-count echo would both duplicate and, reading the
   // LIVE context, mislabel after a settings change (BUG-014).
@@ -126,7 +143,9 @@ function yieldToEventLoop(): Promise<void> {
 
 function resolvePlayerCounts(raw: unknown): number[] {
   const values = Array.isArray(raw) ? raw : PLAYER_COUNT_PARAMS.default;
-  const counts = (values as unknown[]).map((v) => Number(v)).filter((n) => Number.isFinite(n));
+  const counts = (values as unknown[])
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
   return [...new Set(counts)].sort((a, b) => a - b);
 }
 
@@ -145,7 +164,8 @@ interface OutputInputs {
 }
 
 function buildOutput(inputs: OutputInputs): OutputBlock[] {
-  const { ctx, parse, staticFindings, aggregate, selectedCounts, reasonCtx } = inputs;
+  const { ctx, parse, staticFindings, aggregate, selectedCounts, reasonCtx } =
+    inputs;
   const mapSizeName = ctx.settings?.mapSize.name ?? "?";
   return [
     buildSummaryHeader({
@@ -156,7 +176,11 @@ function buildOutput(inputs: OutputInputs): OutputBlock[] {
       totalGenerations: inputs.totalGenerations,
       elapsedMs: Date.now() - inputs.startedAt,
     }),
-    ...buildStaticFindingBlocks(staticFindings, selectedCounts, parse.lineOffsets),
+    ...buildStaticFindingBlocks(
+      staticFindings,
+      selectedCounts,
+      parse.lineOffsets,
+    ),
     ...buildFindingTables(aggregate, {
       source: parse.source,
       selectedCounts,
@@ -168,20 +192,31 @@ function buildOutput(inputs: OutputInputs): OutputBlock[] {
   ];
 }
 
-async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void, isCancelled: () => boolean): Promise<void> {
+async function runChecker(
+  ctx: ToolContext<ParseResult>,
+  emit: (msg: ToolMessage) => void,
+  isCancelled: () => boolean,
+): Promise<void> {
   const parse = ctx.parseResult;
   if (!parse || !ctx.settings || !ctx.referenceData) {
     emit({
       type: "error",
-      message: "This tool needs the parsed script, generation settings and reference data, which the host did not provide.",
+      message:
+        "This tool needs the parsed script, generation settings and reference data, which the host did not provide.",
       reason: "host-error",
     });
     return;
   }
 
   const selectedCounts = resolvePlayerCounts(ctx.params.playerCounts);
-  const runsPerPlayerCount = typeof ctx.params.runsPerPlayerCount === "number" ? ctx.params.runsPerPlayerCount : DEFAULT_RUNS_PER_PLAYER_COUNT;
-  const baseSeed = typeof ctx.params.baseSeed === "number" ? ctx.params.baseSeed : DEFAULT_BASE_SEED;
+  const runsPerPlayerCount =
+    typeof ctx.params.runsPerPlayerCount === "number"
+      ? ctx.params.runsPerPlayerCount
+      : DEFAULT_RUNS_PER_PLAYER_COUNT;
+  const baseSeed =
+    typeof ctx.params.baseSeed === "number"
+      ? ctx.params.baseSeed
+      : DEFAULT_BASE_SEED;
   const staticOnly = ctx.params.staticOnly === true;
   // `!== false` rather than `=== true`: the default is ON, so an absent param
   // (an older saved param set, or a host that sends only what changed) must
@@ -193,7 +228,10 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
   // Sec.4.1: this conversion happens ONCE, before any loop, never per
   // generation, or the WeakMap index objectEntry builds gets silently rebuilt
   // every single run.
-  const refDb: PreviewReferenceData = { language: languageIndex, constants: objectConstantsFromPublished(constants) };
+  const refDb: PreviewReferenceData = {
+    language: languageIndex,
+    constants: objectConstantsFromPublished(constants),
+  };
 
   // -------------------------------------------------------------------
   // Sec.3.0 rule 1: the static layer, once per selected player count, at
@@ -223,24 +261,37 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
       });
       return;
     }
-    const inst = instantiateScript(parse, languageIndex, bridged.settings, baseSeed);
+    const inst = instantiateScript(
+      parse,
+      languageIndex,
+      bridged.settings,
+      baseSeed,
+    );
     instByCount.set(pc, inst);
     staticFindings.push(...runStaticChecks(inst, parse, constants, astCtx, pc));
     emit({ type: "progress", note: `Static checks at ${pc} players` });
     if (isCancelled()) {
-      emit({ type: "error", message: "The static checks were cancelled.", reason: "cancelled" });
+      emit({
+        type: "error",
+        message: "The static checks were cancelled.",
+        reason: "cancelled",
+      });
       return;
     }
     await yieldToEventLoop();
   }
 
-  const cliffsContradiction = staticFindings.some((f) => f.kind === "cliffsMinExceedsMax");
+  const cliffsContradiction = staticFindings.some(
+    (f) => f.kind === "cliffsMinExceedsMax",
+  );
   const connectionBlockedSpans = new Set<number>();
 
   const aggregate = new MonteCarloAggregate();
   aggregate.setSourceLength(parse.source.length);
 
-  const totalGenerations = staticOnly ? 0 : selectedCounts.length * runsPerPlayerCount;
+  const totalGenerations = staticOnly
+    ? 0
+    : selectedCounts.length * runsPerPlayerCount;
   let completed = 0;
 
   if (!staticOnly) {
@@ -250,11 +301,20 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
       // comparison over one seed set, not four unrelated seed ranges.
       for (let runIndex = 0; runIndex < runsPerPlayerCount; runIndex++) {
         if (isCancelled()) {
-          emit({ type: "error", message: "The run was cancelled.", reason: "cancelled" });
+          emit({
+            type: "error",
+            message: "The run was cancelled.",
+            reason: "cancelled",
+          });
           return;
         }
         const seed = baseSeed + runIndex;
-        const outcome = runPreviewFromContext(ctx, refDb, { seed, collectSnapshots: false }, { playerCount: pc });
+        const outcome = runPreviewFromContext(
+          ctx,
+          refDb,
+          { seed, collectSnapshots: false },
+          { playerCount: pc },
+        );
         if (!outcome.ok) {
           // Unreachable as long as the static loop above ran: every
           // `PreviewBridgeFailure` reason is a property of `ctx`, which that
@@ -269,7 +329,11 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
           });
           return;
         }
-        aggregate.addGeneration(pc, outcome.result.reports, outcome.result.notes);
+        aggregate.addGeneration(
+          pc,
+          outcome.result.reports,
+          outcome.result.notes,
+        );
         for (const note of outcome.result.notes) {
           const match = /^connectionBlockedByBug:(\d+)$/.exec(note.key);
           if (match) connectionBlockedSpans.add(Number(match[1]));
@@ -277,7 +341,8 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
         completed++;
         emit({
           type: "progress",
-          fraction: totalGenerations > 0 ? completed / totalGenerations : undefined,
+          fraction:
+            totalGenerations > 0 ? completed / totalGenerations : undefined,
           note: `${pc} players, run ${runIndex + 1} of ${runsPerPlayerCount}`,
         });
         // Sec.4.1: chunk unit is ONE generation, generatePreview is
@@ -297,8 +362,14 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
         // its consumer: `stageReason` looks up `worst.playerCount`, and a
         // record whose domain exceeds its consumer's is one edit from the
         // defect the line below is about.
-        const partialInstByCount = new Map([...instByCount].filter(([pc]) => countsSoFar.includes(pc)));
-        const reasonCtx: StageReasonContext = { instByCount: partialInstByCount, cliffsContradiction, connectionBlockedSpans };
+        const partialInstByCount = new Map(
+          [...instByCount].filter(([pc]) => countsSoFar.includes(pc)),
+        );
+        const reasonCtx: StageReasonContext = {
+          instByCount: partialInstByCount,
+          cliffsContradiction,
+          connectionBlockedSpans,
+        };
         emit({
           type: "partial",
           output: {
@@ -323,18 +394,37 @@ async function runChecker(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage
     }
   }
 
-  const reasonCtx: StageReasonContext = { instByCount, cliffsContradiction, connectionBlockedSpans };
+  const reasonCtx: StageReasonContext = {
+    instByCount,
+    cliffsContradiction,
+    connectionBlockedSpans,
+  };
   emit({
     type: "result",
     output: {
-      blocks: buildOutput({ ctx, parse, staticFindings, aggregate, selectedCounts, reasonCtx, runsPerPlayerCount, baseSeed, totalGenerations, startedAt, hideHealthy }),
+      blocks: buildOutput({
+        ctx,
+        parse,
+        staticFindings,
+        aggregate,
+        selectedCounts,
+        reasonCtx,
+        runsPerPlayerCount,
+        baseSeed,
+        totalGenerations,
+        startedAt,
+        hideHealthy,
+      }),
     },
   });
 }
 
 export const consistencyChecker: ToolImplementation = {
   manifest: consistencyCheckerManifest,
-  run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle {
+  run(
+    ctx: ToolContext<ParseResult>,
+    emit: (msg: ToolMessage) => void,
+  ): ToolRunHandle {
     let cancelled = false;
     runChecker(ctx, emit, () => cancelled).catch((e: unknown) => {
       emit({ type: "error", message: String(e), reason: "tool-error" });

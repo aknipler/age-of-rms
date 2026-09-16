@@ -12,16 +12,31 @@ import { describe, expect, it } from "vitest";
 import { parseRms } from "../../parser/parser";
 import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
-import { lineOfOffset, resolveCutOffset, truncateAst } from "../generator/truncateAst";
+import {
+  lineOfOffset,
+  resolveCutOffset,
+  truncateAst,
+} from "../generator/truncateAst";
 import { generatePreview, type PreviewReferenceData } from "../generator/index";
 import type { ObjectConstant } from "../generator/objects";
-import type { CommandNode, IfNode, Item, ParseResult, SectionNode } from "../../parser/types";
+import type {
+  CommandNode,
+  IfNode,
+  Item,
+  ParseResult,
+  SectionNode,
+} from "../../parser/types";
 import { DEFAULT_TEAMS } from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
 const language: LanguageIndex = buildLanguageIndex(lang);
 const constants = (
-  JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8")) as {
+  JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as {
     constants: ObjectConstant[];
   }
 ).constants;
@@ -79,14 +94,16 @@ function parse(source = SCRIPT): ParseResult {
 /** The offset just AFTER `needle`, "the caret sits at the end of this text". Throws rather than returning -1, so a fixture edit that moves the text fails loudly. */
 function after(needle: string, source = SCRIPT): number {
   const index = source.indexOf(needle);
-  if (index === -1) throw new Error(`the fixture does not contain ${JSON.stringify(needle)}`);
+  if (index === -1)
+    throw new Error(`the fixture does not contain ${JSON.stringify(needle)}`);
   return index + needle.length;
 }
 
 /** The offset just BEFORE `needle`, "the caret sits at the very start of this text". */
 function before(needle: string, source = SCRIPT): number {
   const index = source.indexOf(needle);
-  if (index === -1) throw new Error(`the fixture does not contain ${JSON.stringify(needle)}`);
+  if (index === -1)
+    throw new Error(`the fixture does not contain ${JSON.stringify(needle)}`);
   return index;
 }
 
@@ -124,13 +141,15 @@ function landItems(result: ParseResult): Item[] {
 /** The `create_land` with the three attributes, always index 1, after `base_terrain`. */
 function firstLand(result: ParseResult): CommandNode {
   const item = landItems(result)[1];
-  if (item.kind !== "command") throw new Error(`expected a command, got ${item.kind}`);
+  if (item.kind !== "command")
+    throw new Error(`expected a command, got ${item.kind}`);
   return item;
 }
 
 function conditional(result: ParseResult): IfNode {
   const item = landItems(result).find((i) => i.kind === "if");
-  if (item === undefined || item.kind !== "if") throw new Error("the fixture's `if` is missing");
+  if (item === undefined || item.kind !== "if")
+    throw new Error("the fixture's `if` is missing");
   return item;
 }
 
@@ -166,7 +185,9 @@ describe("lineOfOffset", () => {
   it("agrees with the parser's own lineOffsets on every line start of a real parse", () => {
     const result = parse();
     for (let line = 0; line < result.lineOffsets.length; line++) {
-      expect(lineOfOffset(result.lineOffsets, result.lineOffsets[line])).toBe(line);
+      expect(lineOfOffset(result.lineOffsets, result.lineOffsets[line])).toBe(
+        line,
+      );
     }
   });
 });
@@ -235,7 +256,10 @@ describe("truncateAst", () => {
   it("keeps an attribute the caret is in the MIDDLE of, since a leaf cannot be half-written", () => {
     const result = parse();
     const cut = truncateAst(result, after("land_perc"));
-    expect(names(firstLand(cut).block!.items, cut)).toEqual(["terrain_type", "land_percent"]);
+    expect(names(firstLand(cut).block!.items, cut)).toEqual([
+      "terrain_type",
+      "land_percent",
+    ]);
   });
 
   it("cuts inside a conditional branch without touching the branches above it", () => {
@@ -263,7 +287,8 @@ describe("truncateAst", () => {
     const result = parse();
     const cut = truncateAst(result, after("base_terrain DESERT"));
     const random = landItems(cut).find((item) => item.kind === "random");
-    if (random === undefined || random.kind !== "random") throw new Error("the fixture's start_random is missing");
+    if (random === undefined || random.kind !== "random")
+      throw new Error("the fixture's start_random is missing");
     expect(random.branches).toHaveLength(1);
   });
 
@@ -276,7 +301,11 @@ describe("truncateAst", () => {
       "OBJECTS_GENERATION",
     ]);
     const cut = truncateAst(result, after("base_terrain GRASS"));
-    expect(sectionNames(cut)).toEqual(["PLAYER_SETUP", "ELEVATION_GENERATION", "LAND_GENERATION"]);
+    expect(sectionNames(cut)).toEqual([
+      "PLAYER_SETUP",
+      "ELEVATION_GENERATION",
+      "LAND_GENERATION",
+    ]);
   });
 
   it("keeps a section header the caret is inside, with none of its items", () => {
@@ -331,18 +360,27 @@ describe("truncateAst", () => {
     expect(cut.tokens).toBe(result.tokens);
     expect(cut.lineOffsets).toBe(result.lineOffsets);
     const land = section(cut, "LAND_GENERATION")!;
-    expect(cut.source.slice(land.span.start, land.span.start + "<LAND_GENERATION>".length)).toBe(
-      "<LAND_GENERATION>",
-    );
+    expect(
+      cut.source.slice(
+        land.span.start,
+        land.span.start + "<LAND_GENERATION>".length,
+      ),
+    ).toBe("<LAND_GENERATION>");
   });
 
   it("changes what generatePreview produces — the objects below the cut are not placed", () => {
     const result = parse();
-    const settings = { playerCount: 2, mapSize: "Tiny" as const, teams: DEFAULT_TEAMS };
+    const settings = {
+      playerCount: 2,
+      mapSize: "Tiny" as const,
+      teams: DEFAULT_TEAMS,
+    };
     const opts = { seed: 7, collectSnapshots: false };
 
     const final = generatePreview(result, refDb, settings, opts);
-    expect(final.objects.filter((o) => o.objectRef === "GOLD").length).toBeGreaterThan(0);
+    expect(
+      final.objects.filter((o) => o.objectRef === "GOLD").length,
+    ).toBeGreaterThan(0);
 
     const current = generatePreview(
       truncateAst(result, after("land_percent 12")),
@@ -359,7 +397,11 @@ describe("truncateAst", () => {
 
   it("an attribute below the caret does not reach the generator", () => {
     const result = parse();
-    const settings = { playerCount: 2, mapSize: "Tiny" as const, teams: DEFAULT_TEAMS };
+    const settings = {
+      playerCount: 2,
+      mapSize: "Tiny" as const,
+      teams: DEFAULT_TEAMS,
+    };
     const opts = { seed: 7, collectSnapshots: true };
 
     // `base_elevation 3` is the last attribute of the first land. Cutting

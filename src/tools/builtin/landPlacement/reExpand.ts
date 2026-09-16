@@ -126,7 +126,10 @@ export interface ReExpandResult {
  * if left unfiltered, this filter is not optional (Sec.4.5, condition 3's
  * own paragraph).
  */
-function isReferencedOutsideFence(parse: ParseResult, names: readonly string[]): boolean {
+function isReferencedOutsideFence(
+  parse: ParseResult,
+  names: readonly string[],
+): boolean {
   if (names.length === 0) return false;
   const fenceSpan = locateFence(parse)?.span ?? null;
   const usage = auditConstants(parse);
@@ -135,7 +138,10 @@ function isReferencedOutsideFence(parse: ParseResult, names: readonly string[]):
     const entry = byName.get(name);
     if (!entry) continue;
     for (const span of entry.useSpans) {
-      const insideFence = fenceSpan !== null && span.start >= fenceSpan.start && span.end <= fenceSpan.end;
+      const insideFence =
+        fenceSpan !== null &&
+        span.start >= fenceSpan.start &&
+        span.end <= fenceSpan.end;
       if (!insideFence) return true;
     }
   }
@@ -169,7 +175,10 @@ export function reExpand(
   const oldFresh = expandShapeGroup(oldGroup);
   const oldBaseByKey = new Map<string, Placement>();
   for (let idx = 0; idx < oldFresh.placements.length; idx++) {
-    oldBaseByKey.set(keyText(memberKeyAt(idx, oldGroup.pattern)), oldFresh.placements[idx]);
+    oldBaseByKey.set(
+      keyText(memberKeyAt(idx, oldGroup.pattern)),
+      oldFresh.placements[idx],
+    );
   }
 
   const nextPlacements = new Map(byId);
@@ -205,13 +214,22 @@ export function reExpand(
       // Recompute wholesale, the branch that has to survive a SYMBOLIC
       // group (Sec.4.5), since freshPlacement.offset already carries
       // whatever rotation/radius Expr G_new specifies, symbolic or not.
-      nextPlacements.set(oldPlacement.id, { ...oldPlacement, offset: freshPlacement.offset });
+      nextPlacements.set(oldPlacement.id, {
+        ...oldPlacement,
+        offset: freshPlacement.offset,
+      });
       report.recomputedIds.push(oldPlacement.id);
       continue;
     }
 
-    if (oldPlacement.offset.kind === "polar" && freshPlacement.offset.kind === "polar") {
-      if (!isFullyNumericLiteral(oldPlacement.offset.r) || !isFullyNumericLiteral(oldPlacement.offset.theta)) {
+    if (
+      oldPlacement.offset.kind === "polar" &&
+      freshPlacement.offset.kind === "polar"
+    ) {
+      if (
+        !isFullyNumericLiteral(oldPlacement.offset.r) ||
+        !isFullyNumericLiteral(oldPlacement.offset.theta)
+      ) {
         report.positionDetachedIds.push(oldPlacement.id);
         continue;
       }
@@ -223,14 +241,28 @@ export function reExpand(
         report.positionDetachedIds.push(oldPlacement.id);
         continue;
       }
-      const r = deltaComponent(oldPlacement.offset.r, oldBase.offset.r, freshPlacement.offset.r);
-      const theta = deltaComponent(oldPlacement.offset.theta, oldBase.offset.theta, freshPlacement.offset.theta);
-      nextPlacements.set(oldPlacement.id, { ...oldPlacement, offset: { kind: "polar", r, theta } });
+      const r = deltaComponent(
+        oldPlacement.offset.r,
+        oldBase.offset.r,
+        freshPlacement.offset.r,
+      );
+      const theta = deltaComponent(
+        oldPlacement.offset.theta,
+        oldBase.offset.theta,
+        freshPlacement.offset.theta,
+      );
+      nextPlacements.set(oldPlacement.id, {
+        ...oldPlacement,
+        offset: { kind: "polar", r, theta },
+      });
       report.deltaAppliedIds.push(oldPlacement.id);
       continue;
     }
 
-    if (oldPlacement.offset.kind === "cartesian" && freshPlacement.offset.kind === "cartesian") {
+    if (
+      oldPlacement.offset.kind === "cartesian" &&
+      freshPlacement.offset.kind === "cartesian"
+    ) {
       // shape-kinds-slice-b-brief.md item 1: the identical treatment,
       // componentwise, dx against dx and dy against dy, through the SAME
       // deltaComponent helper and behind the SAME isFullyNumericLiteral
@@ -242,7 +274,10 @@ export function reExpand(
       // `ShapeGroup`, and a model saved before this slice whose nudged
       // perimeter member still carries the old cartesian shape (hazard 3:
       // that pair hits the MIXED branch below instead, deliberately).
-      if (!isFullyNumericLiteral(oldPlacement.offset.dx) || !isFullyNumericLiteral(oldPlacement.offset.dy)) {
+      if (
+        !isFullyNumericLiteral(oldPlacement.offset.dx) ||
+        !isFullyNumericLiteral(oldPlacement.offset.dy)
+      ) {
         report.positionDetachedIds.push(oldPlacement.id);
         continue;
       }
@@ -251,9 +286,20 @@ export function reExpand(
         report.positionDetachedIds.push(oldPlacement.id);
         continue;
       }
-      const dx = deltaComponent(oldPlacement.offset.dx, oldBase.offset.dx, freshPlacement.offset.dx);
-      const dy = deltaComponent(oldPlacement.offset.dy, oldBase.offset.dy, freshPlacement.offset.dy);
-      nextPlacements.set(oldPlacement.id, { ...oldPlacement, offset: { kind: "cartesian", dx, dy } });
+      const dx = deltaComponent(
+        oldPlacement.offset.dx,
+        oldBase.offset.dx,
+        freshPlacement.offset.dx,
+      );
+      const dy = deltaComponent(
+        oldPlacement.offset.dy,
+        oldBase.offset.dy,
+        freshPlacement.offset.dy,
+      );
+      nextPlacements.set(oldPlacement.id, {
+        ...oldPlacement,
+        offset: { kind: "cartesian", dx, dy },
+      });
       report.deltaAppliedIds.push(oldPlacement.id);
       continue;
     }
@@ -291,5 +337,9 @@ export function reExpand(
     }
   }
 
-  return { placements: [...nextPlacements.values()], members: nextMembers, report };
+  return {
+    placements: [...nextPlacements.values()],
+    members: nextMembers,
+    report,
+  };
 }

@@ -4,7 +4,10 @@
 // 3.3 scope; this is display-only and much simpler.
 import type { ArgNode, ArgValue, Token } from "../parser/types";
 
-export function renderArgValue(value: ArgValue, tokens?: readonly Token[]): string {
+export function renderArgValue(
+  value: ArgValue,
+  tokens?: readonly Token[],
+): string {
   if (typeof value === "number") {
     if (value === Infinity) return "inf";
     if (value === -Infinity) return "-inf";
@@ -23,6 +26,9 @@ export function renderArg(arg: ArgNode, tokens: readonly Token[]): string {
   return renderArgValue(arg.value, tokens);
 }
 
-export function renderArgs(args: readonly ArgNode[], tokens: readonly Token[]): string {
+export function renderArgs(
+  args: readonly ArgNode[],
+  tokens: readonly Token[],
+): string {
   return args.map((a) => renderArg(a, tokens)).join(" ");
 }

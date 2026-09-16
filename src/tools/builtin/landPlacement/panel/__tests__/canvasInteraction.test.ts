@@ -37,9 +37,27 @@ const ROLE_P: LandRole = {
 
 function threePlacementModel(): AlpModel {
   const placements: Placement[] = [
-    { id: "P1", parent: "center", frame: "radial", label: "P1", offset: { kind: "polar", r: num(20), theta: num(0) } },
-    { id: "P2", parent: "center", frame: "radial", label: "P2", offset: { kind: "polar", r: num(30), theta: num(90) } },
-    { id: "CHILD", parent: "P1", frame: "radial", label: "CHILD", offset: { kind: "polar", r: num(10), theta: num(0) } },
+    {
+      id: "P1",
+      parent: "center",
+      frame: "radial",
+      label: "P1",
+      offset: { kind: "polar", r: num(20), theta: num(0) },
+    },
+    {
+      id: "P2",
+      parent: "center",
+      frame: "radial",
+      label: "P2",
+      offset: { kind: "polar", r: num(30), theta: num(90) },
+    },
+    {
+      id: "CHILD",
+      parent: "P1",
+      frame: "radial",
+      label: "CHILD",
+      offset: { kind: "polar", r: num(10), theta: num(0) },
+    },
   ];
   return { v: 1, placements, roles: [], randomParams: [], groups: [] };
 }
@@ -64,7 +82,10 @@ function emit(model: AlpModel): EmissionOk {
  * tight enough to fail hard on an actual "the child jumped across the map"
  * regression, which is the property this test exists to catch.
  */
-function expectApproxSamePosition(actual: { x: number; y: number }, expected: { x: number; y: number }): void {
+function expectApproxSamePosition(
+  actual: { x: number; y: number },
+  expected: { x: number; y: number },
+): void {
   expect(Math.abs(actual.x - expected.x)).toBeLessThan(1);
   expect(Math.abs(actual.y - expected.y)).toBeLessThan(1);
 }
@@ -79,7 +100,7 @@ describe("buildSnapContext (item 3)", () => {
     expect(ctx.parentAnchor).toEqual(resolvedPercentOf("P1", emission));
   });
 
-  it("omits parentAnchor for a root node parented to \"center\" — snapToCentre already covers that case", () => {
+  it('omits parentAnchor for a root node parented to "center" — snapToCentre already covers that case', () => {
     const model = threePlacementModel();
     const emission = emit(model);
     const ctx = buildSnapContext(model, "P1", emission, 200);
@@ -115,7 +136,13 @@ describe("computeRimDragReparent (item 5)", () => {
     const before = emit(model);
     const childBefore = resolvedPercentOf("CHILD", before)!;
 
-    const result = computeRimDragReparent(model, before, "CHILD", "center", 200);
+    const result = computeRimDragReparent(
+      model,
+      before,
+      "CHILD",
+      "center",
+      200,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -129,7 +156,10 @@ describe("computeRimDragReparent (item 5)", () => {
     const emission = emit(model);
     // P1 is CHILD's own parent; re-parenting P1 under CHILD would be a cycle.
     const result = computeRimDragReparent(model, emission, "P1", "CHILD", 200);
-    expect(result).toEqual({ ok: false, reason: "that would make this placement its own ancestor" });
+    expect(result).toEqual({
+      ok: false,
+      reason: "that would make this placement its own ancestor",
+    });
   });
 
   it("refuses re-parenting a placement onto itself", () => {
@@ -159,8 +189,20 @@ describe("computeRimDragReparent (item 5)", () => {
     };
     const { placements: groupPlacements, members } = expandShapeGroup(group);
     const finishedGroup: ShapeGroup = { ...group, members };
-    const p2: Placement = { id: "P2", parent: "center", frame: "radial", label: "P2", offset: { kind: "polar", r: num(30), theta: num(90) } };
-    const model: AlpModel = { v: 1, placements: [...groupPlacements, p2], roles: [ROLE_P], randomParams: [], groups: [finishedGroup] };
+    const p2: Placement = {
+      id: "P2",
+      parent: "center",
+      frame: "radial",
+      label: "P2",
+      offset: { kind: "polar", r: num(30), theta: num(90) },
+    };
+    const model: AlpModel = {
+      v: 1,
+      placements: [...groupPlacements, p2],
+      roles: [ROLE_P],
+      randomParams: [],
+      groups: [finishedGroup],
+    };
 
     const namer = new NameAllocator();
     const scriptSymbols = new Map([["ROTATION_PLAYER", 45]]);
@@ -179,7 +221,12 @@ describe("computeRimDragReparent (item 5)", () => {
     // the sym leaf entirely, which is exactly what this test would catch.
     expect(JSON.stringify(updated.offset.theta)).toContain("ROTATION_PLAYER");
 
-    const after = emitAlpModel(result.model, new NameAllocator(), scriptSymbols, 2) as EmissionOk;
+    const after = emitAlpModel(
+      result.model,
+      new NameAllocator(),
+      scriptSymbols,
+      2,
+    ) as EmissionOk;
     expect(after.ok).toBe(true);
     const childAfter = resolvedPercentOf(childId, after)!;
     expectApproxSamePosition(childAfter, childBefore);
@@ -199,9 +246,20 @@ describe("computeRimDragReparent (item 5)", () => {
       perPlayer: false,
     };
     const { placements: groupPlacements, members } = expandShapeGroup(group);
-    const model: AlpModel = { v: 1, placements: groupPlacements, roles: [ROLE_P], randomParams: [], groups: [{ ...group, members }] };
+    const model: AlpModel = {
+      v: 1,
+      placements: groupPlacements,
+      roles: [ROLE_P],
+      randomParams: [],
+      groups: [{ ...group, members }],
+    };
     const scriptSymbols = new Map([["ROTATION_PLAYER", 45]]);
-    const emission = emitAlpModel(model, new NameAllocator(), scriptSymbols, 2) as EmissionOk;
+    const emission = emitAlpModel(
+      model,
+      new NameAllocator(),
+      scriptSymbols,
+      2,
+    ) as EmissionOk;
     expect(emission.ok).toBe(true);
 
     const placement = model.placements[0];
@@ -212,17 +270,30 @@ describe("computeRimDragReparent (item 5)", () => {
   it("resolvedOffsetOf returns undefined for a formula offset — that kind has its own absorb path already, unrelated to this one", () => {
     const model = threePlacementModel();
     const emission = emit(model);
-    const formulaPlacement: Placement = { id: "F", parent: "center", frame: "radial", label: "F", offset: { kind: "formula", x: num(10), y: num(20) } };
+    const formulaPlacement: Placement = {
+      id: "F",
+      parent: "center",
+      frame: "radial",
+      label: "F",
+      offset: { kind: "formula", x: num(10), y: num(20) },
+    };
     expect(resolvedOffsetOf(formulaPlacement, emission)).toBeUndefined();
   });
 });
 
 // shape-kinds-slice-c-brief.md item 3: what is left of slice 5's own item 6.
 describe("computeLineEndDrag", () => {
-  const frameCtx: GroupFrameContext = { anchor: { x: 50, y: 50 }, parentDegreesResolved: undefined };
+  const frameCtx: GroupFrameContext = {
+    anchor: { x: 50, y: 50 },
+    parentDegreesResolved: undefined,
+  };
 
   it("sets radius to the drop distance and rotation to the drop bearing plus 180, folded", () => {
-    const group = { radius: num(20), rotation: num(0), frame: "absolute" as const };
+    const group = {
+      radius: num(20),
+      rotation: num(0),
+      frame: "absolute" as const,
+    };
     // Drop straight down from the anchor (bearing 90), distance 15.
     const outcome = computeLineEndDrag(group, frameCtx, { x: 50, y: 65 });
     expect(outcome.ok).toBe(true);
@@ -232,9 +303,16 @@ describe("computeLineEndDrag", () => {
   });
 
   it("dragging it to where it already is changes nothing", () => {
-    const group = { radius: num(20), rotation: num(30), frame: "absolute" as const };
+    const group = {
+      radius: num(20),
+      rotation: num(30),
+      frame: "absolute" as const,
+    };
     const rad = ((30 + 180) * Math.PI) / 180;
-    const nearEndNow = { x: 50 + 20 * Math.cos(rad), y: 50 + 20 * Math.sin(rad) };
+    const nearEndNow = {
+      x: 50 + 20 * Math.cos(rad),
+      y: 50 + 20 * Math.sin(rad),
+    };
     const outcome = computeLineEndDrag(group, frameCtx, nearEndNow);
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
@@ -243,7 +321,11 @@ describe("computeLineEndDrag", () => {
   });
 
   it("declines, naming ONLY the radius, when radius alone is symbolic", () => {
-    const group = { radius: sym("SOME_PARAM"), rotation: num(0), frame: "absolute" as const };
+    const group = {
+      radius: sym("SOME_PARAM"),
+      rotation: num(0),
+      frame: "absolute" as const,
+    };
     const outcome = computeLineEndDrag(group, frameCtx, { x: 60, y: 50 });
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
@@ -252,7 +334,11 @@ describe("computeLineEndDrag", () => {
   });
 
   it("declines, naming ONLY the rotation, when rotation alone is symbolic", () => {
-    const group = { radius: num(20), rotation: sym("ROTATION_PLAYER"), frame: "absolute" as const };
+    const group = {
+      radius: num(20),
+      rotation: sym("ROTATION_PLAYER"),
+      frame: "absolute" as const,
+    };
     const outcome = computeLineEndDrag(group, frameCtx, { x: 60, y: 50 });
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
@@ -261,7 +347,11 @@ describe("computeLineEndDrag", () => {
   });
 
   it("declines naming BOTH when both fields are symbolic — the same symbolicDeclineReason wording, not a second phrasing", () => {
-    const group = { radius: sym("R"), rotation: sym("ROT"), frame: "absolute" as const };
+    const group = {
+      radius: sym("R"),
+      rotation: sym("ROT"),
+      frame: "absolute" as const,
+    };
     const outcome = computeLineEndDrag(group, frameCtx, { x: 60, y: 50 });
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
@@ -271,7 +361,10 @@ describe("computeLineEndDrag", () => {
 });
 
 describe("computeArcSweepDrag", () => {
-  const frameCtx: GroupFrameContext = { anchor: { x: 50, y: 50 }, parentDegreesResolved: undefined };
+  const frameCtx: GroupFrameContext = {
+    anchor: { x: 50, y: 50 },
+    parentDegreesResolved: undefined,
+  };
   const group = { frame: "absolute" as const };
 
   it("is the drop bearing minus the group's own resolved rotation", () => {

@@ -18,7 +18,11 @@ interface UpdatePromptProps {
  * Renders nothing in the `idle` state, which is also what a failed check
  * leaves behind, so an offline start looks exactly like an up-to-date one.
  */
-export function UpdatePrompt({ state, onInstall, onDismiss }: UpdatePromptProps) {
+export function UpdatePrompt({
+  state,
+  onInstall,
+  onDismiss,
+}: UpdatePromptProps) {
   if (state.status === "idle") return null;
 
   return (
@@ -29,7 +33,11 @@ export function UpdatePrompt({ state, onInstall, onDismiss }: UpdatePromptProps)
             Version {state.version} is available. You have {__APP_VERSION__}.
           </span>
           <HelpTip id="update.install">
-            <button type="button" className={styles.primary} onClick={onInstall}>
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={onInstall}
+            >
               Update and restart
             </button>
           </HelpTip>
@@ -42,12 +50,16 @@ export function UpdatePrompt({ state, onInstall, onDismiss }: UpdatePromptProps)
       )}
 
       {state.status === "downloading" && (
-        <span className={styles.message}>Downloading the update. The app will restart itself.</span>
+        <span className={styles.message}>
+          Downloading the update. The app will restart itself.
+        </span>
       )}
 
       {state.status === "error" && (
         <>
-          <span className={styles.message}>The update could not be installed. {state.message}</span>
+          <span className={styles.message}>
+            The update could not be installed. {state.message}
+          </span>
           <HelpTip id="update.dismiss">
             <button type="button" className={styles.button} onClick={onDismiss}>
               Dismiss

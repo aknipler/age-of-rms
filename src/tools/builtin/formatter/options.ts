@@ -192,7 +192,10 @@ function evidenceLines(source: string, tokens: readonly Token[]): Set<number> {
  * "detect" a unit no one typed. The 5%-or-two-lines floor is what keeps a
  * stray one-space line from being read as the unit.
  */
-export function detectIndentUnit(source: string, tokens: readonly Token[]): string {
+export function detectIndentUnit(
+  source: string,
+  tokens: readonly Token[],
+): string {
   const evidence = evidenceLines(source, tokens);
   let tabLines = 0;
   let spaceLines = 0;
@@ -225,7 +228,11 @@ export function detectIndentUnit(source: string, tokens: readonly Token[]): stri
   return " ".repeat(unit === 0 ? 4 : unit);
 }
 
-export function resolveIndentUnit(source: string, tokens: readonly Token[], style: IndentStylePolicy): string {
+export function resolveIndentUnit(
+  source: string,
+  tokens: readonly Token[],
+  style: IndentStylePolicy,
+): string {
   switch (style) {
     case "tab":
       return "\t";

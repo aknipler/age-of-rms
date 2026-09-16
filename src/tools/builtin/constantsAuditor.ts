@@ -17,7 +17,14 @@
 
 import { lineNumberOfOffset } from "../../parser/lineIndex";
 import type { ParseResult, Span, Token } from "../../parser/types";
-import type { OutputBlock, ToolContext, ToolImplementation, ToolManifest, ToolMessage, ToolRunHandle } from "../../../tools-api/index";
+import type {
+  OutputBlock,
+  ToolContext,
+  ToolImplementation,
+  ToolManifest,
+  ToolMessage,
+  ToolRunHandle,
+} from "../../../tools-api/index";
 import { TOOLS_API_VERSION } from "../../../tools-api/index";
 
 export const constantsAuditorManifest: ToolManifest = {
@@ -25,7 +32,8 @@ export const constantsAuditorManifest: ToolManifest = {
   name: "Constants Usage",
   version: "1.0.0",
   apiVersion: TOOLS_API_VERSION,
-  description: "Lists every #const and #define in the script, and flags names that are never used again or that are used but never defined.",
+  description:
+    "Lists every #const and #define in the script, and flags names that are never used again or that are used but never defined.",
   capabilities: ["read-ast", "read-source"],
   params: [
     {
@@ -76,7 +84,8 @@ function findUndefineTargets(tokens: readonly Token[]): Map<number, string> {
   const targets = new Map<number, string>();
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    if (t.isTrivia || t.kind !== "directive" || t.text !== "#undefine") continue;
+    if (t.isTrivia || t.kind !== "directive" || t.text !== "#undefine")
+      continue;
     for (let j = i + 1; j < tokens.length; j++) {
       if (tokens[j].isTrivia) continue;
       if (tokens[j].kind === "word") targets.set(j, tokens[j].text);
@@ -99,20 +108,34 @@ export function auditConstants(parse: ParseResult): ConstantUsage[] {
     definitionTokens.add(symbol.nameToken);
     let entry = byName.get(symbol.name);
     if (!entry) {
-      entry = { name: symbol.name, kind: symbol.directiveKind, definitions: [], undefineAttemptSpans: [], useSpans: [] };
+      entry = {
+        name: symbol.name,
+        kind: symbol.directiveKind,
+        definitions: [],
+        undefineAttemptSpans: [],
+        useSpans: [],
+      };
       byName.set(symbol.name, entry);
     } else if (entry.kind !== symbol.directiveKind) {
       entry.kind = "mixed";
     }
-    entry.definitions.push({ span: tokenSpan(parse.tokens[symbol.nameToken]), conditionalDepth: symbol.conditionalDepth });
+    entry.definitions.push({
+      span: tokenSpan(parse.tokens[symbol.nameToken]),
+      conditionalDepth: symbol.conditionalDepth,
+    });
   }
 
   const undefineTargets = findUndefineTargets(parse.tokens);
   for (const [tokenIdx, name] of undefineTargets) {
-    byName.get(name)?.undefineAttemptSpans.push(tokenSpan(parse.tokens[tokenIdx]));
+    byName
+      .get(name)
+      ?.undefineAttemptSpans.push(tokenSpan(parse.tokens[tokenIdx]));
   }
 
-  const excluded = new Set<number>([...definitionTokens, ...undefineTargets.keys()]);
+  const excluded = new Set<number>([
+    ...definitionTokens,
+    ...undefineTargets.keys(),
+  ]);
   for (let i = 0; i < parse.tokens.length; i++) {
     const tok = parse.tokens[i];
     if (tok.isTrivia || tok.kind !== "word" || excluded.has(i)) continue;
@@ -142,7 +165,9 @@ export interface UndefinedReference {
  * the message text, so a wording change in diagnostics.ts cannot silently
  * break this tool.
  */
-export function findUndefinedReferences(parse: ParseResult): UndefinedReference[] {
+export function findUndefinedReferences(
+  parse: ParseResult,
+): UndefinedReference[] {
   const tokenByStart = new Map<number, Token>();
   for (const t of parse.tokens) {
     if (!t.isTrivia) tokenByStart.set(t.start, t);
@@ -189,30 +214,49 @@ function buildRow(usage: ConstantUsage, lineOffsets: readonly number[]): Row {
   // are mutually exclusive at run time, not a duplicate (CLAUDE.md:
   // over-declaration is an RMS idiom, not a mistake; a count is not a
   // conclusion without checking what it counts).
-  const unconditionalDefs = usage.definitions.filter((d) => d.conditionalDepth === 0).length;
-  if (unconditionalDefs > 1) notes.push(`defined unconditionally ${unconditionalDefs} times`);
+  const unconditionalDefs = usage.definitions.filter(
+    (d) => d.conditionalDepth === 0,
+  ).length;
+  if (unconditionalDefs > 1)
+    notes.push(`defined unconditionally ${unconditionalDefs} times`);
 
   if (usage.undefineAttemptSpans.length > 0) {
-    notes.push(`#undefine has no effect in-engine (×${usage.undefineAttemptSpans.length})`);
+    notes.push(
+      `#undefine has no effect in-engine (×${usage.undefineAttemptSpans.length})`,
+    );
   }
   if (usage.kind === "mixed") notes.push("defined as both #const and #define");
 
-  const definedAt = usage.definitions.map((d) => lineNumberOfOffset(lineOffsets, d.span.start)).join(", ");
+  const definedAt = usage.definitions
+    .map((d) => lineNumberOfOffset(lineOffsets, d.span.start))
+    .join(", ");
   return {
-    cells: [usage.name, KIND_LABEL[usage.kind], definedAt, String(usage.useSpans.length), notes.join("; ")],
+    cells: [
+      usage.name,
+      KIND_LABEL[usage.kind],
+      definedAt,
+      String(usage.useSpans.length),
+      notes.join("; "),
+    ],
     jumpSpan: usage.definitions[0].span,
     flagged: notes.length > 0,
   };
 }
 
-export function buildConstantsAuditOutput(parse: ParseResult, hideHealthy: boolean): OutputBlock[] {
+export function buildConstantsAuditOutput(
+  parse: ParseResult,
+  hideHealthy: boolean,
+): OutputBlock[] {
   const constants = auditConstants(parse);
   const undefinedRefs = findUndefinedReferences(parse);
 
   const blocks: OutputBlock[] = [{ kind: "heading", text: "Constants usage" }];
 
   if (constants.length === 0 && undefinedRefs.length === 0) {
-    blocks.push({ kind: "text", text: "This script defines no #const or #define symbols, and references no undefined ones." });
+    blocks.push({
+      kind: "text",
+      text: "This script defines no #const or #define symbols, and references no undefined ones.",
+    });
     return blocks;
   }
 
@@ -242,7 +286,10 @@ export function buildConstantsAuditOutput(parse: ParseResult, hideHealthy: boole
   // must never be what carries the information).
   if (hideHealthy) {
     const hidden = allRows.length - shownRows.length;
-    blocks.push({ kind: "text", text: `${hidden} of ${allRows.length} constant${allRows.length === 1 ? "" : "s"} hidden. Defined, used, and never targeted by #undefine.` });
+    blocks.push({
+      kind: "text",
+      text: `${hidden} of ${allRows.length} constant${allRows.length === 1 ? "" : "s"} hidden. Defined, used, and never targeted by #undefine.`,
+    });
   }
 
   if (undefinedRefs.length > 0) {
@@ -250,7 +297,13 @@ export function buildConstantsAuditOutput(parse: ParseResult, hideHealthy: boole
     blocks.push({
       kind: "table",
       columns: ["Name", "Referenced at", "Times"],
-      rows: undefinedRefs.map((u) => [u.name, u.spans.map((s) => String(lineNumberOfOffset(parse.lineOffsets, s.start))).join(", "), String(u.spans.length)]),
+      rows: undefinedRefs.map((u) => [
+        u.name,
+        u.spans
+          .map((s) => String(lineNumberOfOffset(parse.lineOffsets, s.start)))
+          .join(", "),
+        String(u.spans.length),
+      ]),
       rowSpans: undefinedRefs.map((u) => u.spans[0]),
     });
   }
@@ -260,18 +313,34 @@ export function buildConstantsAuditOutput(parse: ParseResult, hideHealthy: boole
 
 export const constantsAuditor: ToolImplementation = {
   manifest: constantsAuditorManifest,
-  run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle {
+  run(
+    ctx: ToolContext<ParseResult>,
+    emit: (msg: ToolMessage) => void,
+  ): ToolRunHandle {
     let cancelled = false;
 
     queueMicrotask(() => {
       if (cancelled) return;
       const parse = ctx.parseResult;
       if (!parse) {
-        emit({ type: "error", message: "This tool needs the parsed script, which the host did not provide.", reason: "host-error" });
+        emit({
+          type: "error",
+          message:
+            "This tool needs the parsed script, which the host did not provide.",
+          reason: "host-error",
+        });
         return;
       }
       emit({ type: "progress", fraction: 1, note: "Auditing constants" });
-      emit({ type: "result", output: { blocks: buildConstantsAuditOutput(parse, ctx.params.hideHealthy !== false) } });
+      emit({
+        type: "result",
+        output: {
+          blocks: buildConstantsAuditOutput(
+            parse,
+            ctx.params.hideHealthy !== false,
+          ),
+        },
+      });
     });
 
     return {

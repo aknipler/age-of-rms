@@ -107,7 +107,13 @@ import {
   waterDepthMask,
   type TerrainConstantForMasks,
 } from "./grid";
-import { intersectCandidates, ok, fail, pushFailure, type AttributedPredicate } from "./placement";
+import {
+  intersectCandidates,
+  ok,
+  fail,
+  pushFailure,
+  type AttributedPredicate,
+} from "./placement";
 
 // ---------------------------------------------------------------------------
 // [tune] / guide-value constants
@@ -133,7 +139,12 @@ const TERRAIN_SATURATION_CF = 15;
 /** [tune]: no measurement pins the magnitude, only the qualitative shape (Sec.6.4's own table), same reasoning as lands.ts's MAX_STEEPNESS. */
 const TERRAIN_MAX_STEEPNESS = 3;
 /** cf < 0: "extremely snakey" (guide:1647). Not literally 0 so a clump isn't stuck if bucket 1 empties first. */
-const TERRAIN_NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [1, 0.05, 0.05, 0.05];
+const TERRAIN_NEGATIVE_REGIME_WEIGHTS: readonly [
+  number,
+  number,
+  number,
+  number,
+] = [1, 0.05, 0.05, 0.05];
 
 /** guide, Sec.6.4: "set_avoid_player_start_areas d (default 13 when bare)". */
 const AVOID_PLAYER_START_DEFAULT = 13;
@@ -146,7 +157,11 @@ const ZERO_SPAN = { start: 0, end: 0 };
 // header for why).
 // ---------------------------------------------------------------------------
 
-function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): InstantiatedValue {
+function argValue(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex = 0,
+): InstantiatedValue {
   const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
   return arg?.value;
 }
@@ -154,7 +169,12 @@ function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): Instant
 // BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
 // a known symbol (a #define with no #const) that resolves to JS `undefined`
 // — that reads as 0, measured. See objects.ts's own copy for the full note.
-function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
+function numAttr(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex: number,
+  fallback: number,
+): number {
   const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
   if (arg === undefined) return fallback;
   if (typeof arg.value === "number") return arg.value;
@@ -162,10 +182,13 @@ function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallb
 }
 
 /** guide:1257/1274 (shared with elevation.ts): "only the LAST scale attribute applies" when a script writes both. */
-function lastScaleAttribute(cmd: InstantiatedCommand): "size" | "groups" | undefined {
+function lastScaleAttribute(
+  cmd: InstantiatedCommand,
+): "size" | "groups" | undefined {
   const sizeAttr = cmd.attributes.get("set_scale_by_size")?.[0];
   const groupsAttr = cmd.attributes.get("set_scale_by_groups")?.[0];
-  if (sizeAttr && groupsAttr) return sizeAttr.span.start > groupsAttr.span.start ? "size" : "groups";
+  if (sizeAttr && groupsAttr)
+    return sizeAttr.span.start > groupsAttr.span.start ? "size" : "groups";
   if (sizeAttr) return "size";
   if (groupsAttr) return "groups";
   return undefined;
@@ -183,10 +206,15 @@ type Aliases = ReadonlyMap<string, string>;
 // terrains, elevation only lets set_scale_by_size touch tiles).
 // ---------------------------------------------------------------------------
 
-export function resolveTerrainTileBudget(cmd: InstantiatedCommand, dim: number): number {
+export function resolveTerrainTileBudget(
+  cmd: InstantiatedCommand,
+  dim: number,
+): number {
   const explicitTiles = argValue(cmd, "number_of_tiles", 0);
   if (typeof explicitTiles === "number") {
-    return lastScaleAttribute(cmd) !== undefined ? scaleToMapArea(explicitTiles, dim) : explicitTiles;
+    return lastScaleAttribute(cmd) !== undefined
+      ? scaleToMapArea(explicitTiles, dim)
+      : explicitTiles;
   }
   // NOTE: read directly, NOT via numAttr's own fallback -- land_percent's
   // OWN declared default (100) must not leak in here. The terrain-level
@@ -198,9 +226,14 @@ export function resolveTerrainTileBudget(cmd: InstantiatedCommand, dim: number):
   return (DEFAULT_BUDGET_NUMERATOR * dim) / DEFAULT_BUDGET_DENOMINATOR;
 }
 
-export function resolveClumpCount(cmd: InstantiatedCommand, dim: number): number {
+export function resolveClumpCount(
+  cmd: InstantiatedCommand,
+  dim: number,
+): number {
   const declared = numAttr(cmd, "number_of_clumps", 0, 1);
-  return lastScaleAttribute(cmd) === "groups" ? Math.max(1, scaleToMapArea(declared, dim)) : Math.max(1, declared);
+  return lastScaleAttribute(cmd) === "groups"
+    ? Math.max(1, scaleToMapArea(declared, dim))
+    : Math.max(1, declared);
 }
 
 // ---------------------------------------------------------------------------
@@ -209,9 +242,13 @@ export function resolveClumpCount(cmd: InstantiatedCommand, dim: number): number
 // `bucketWeights` despite the identical shape.
 // ---------------------------------------------------------------------------
 
-export function terrainBucketWeights(clumpingFactor: number): readonly [number, number, number, number] {
+export function terrainBucketWeights(
+  clumpingFactor: number,
+): readonly [number, number, number, number] {
   if (clumpingFactor < 0) return TERRAIN_NEGATIVE_REGIME_WEIGHTS;
-  const steepness = (Math.min(clumpingFactor, TERRAIN_SATURATION_CF) / TERRAIN_SATURATION_CF) * TERRAIN_MAX_STEEPNESS;
+  const steepness =
+    (Math.min(clumpingFactor, TERRAIN_SATURATION_CF) / TERRAIN_SATURATION_CF) *
+    TERRAIN_MAX_STEEPNESS;
   return [1, 1 + steepness, 1 + 2 * steepness, 1 + 3 * steepness];
 }
 
@@ -229,7 +266,9 @@ function readHeightLimits(cmd: InstantiatedCommand): HeightLimits | undefined {
   if (!attr) return undefined;
   const min = attr.args[0]?.value;
   const max = attr.args[1]?.value;
-  return typeof min === "number" && typeof max === "number" ? { min, max } : undefined;
+  return typeof min === "number" && typeof max === "number"
+    ? { min, max }
+    : undefined;
 }
 
 interface SpecificTerrainSpacing {
@@ -249,14 +288,21 @@ function specificTerrainSpacings(
   for (const attr of attrs) {
     const distance = attr.args[1]?.value;
     if (typeof distance !== "number") continue;
-    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
+    const terrainId = resolveTerrainId(
+      constants,
+      attr.args[0]?.value,
+      symbols,
+      aliases,
+    );
     if (terrainId !== undefined) out.push({ terrainId, distance });
   }
   return out;
 }
 
 /** `set_avoid_player_start_areas d`, undefined when the attribute is absent entirely (no constraint); `AVOID_PLAYER_START_DEFAULT` when present but bare. */
-function avoidPlayerStartDistance(cmd: InstantiatedCommand): number | undefined {
+function avoidPlayerStartDistance(
+  cmd: InstantiatedCommand,
+): number | undefined {
   const attr = cmd.attributes.get("set_avoid_player_start_areas")?.[0];
   if (!attr) return undefined;
   const v = attr.args[0]?.value;
@@ -306,13 +352,18 @@ export function eligibleTerrainCandidates(
   const predicates: AttributedPredicate[] = [
     {
       bucket: "terrainAbsent",
-      test: (i) => grid.terrain[i] === ctx.baseTerrainId && (ctx.baseLayerId === undefined || grid.layer[i] === ctx.baseLayerId),
+      test: (i) =>
+        grid.terrain[i] === ctx.baseTerrainId &&
+        (ctx.baseLayerId === undefined || grid.layer[i] === ctx.baseLayerId),
     },
   ];
 
   if (ctx.heightLimits) {
     const { min, max } = ctx.heightLimits;
-    predicates.push({ bucket: "spacingConflict", test: (i) => grid.elevation[i] >= min && grid.elevation[i] <= max });
+    predicates.push({
+      bucket: "spacingConflict",
+      test: (i) => grid.elevation[i] >= min && grid.elevation[i] <= max,
+    });
   }
 
   if (ctx.otherTerrainSpacing > 0) {
@@ -332,21 +383,28 @@ export function eligibleTerrainCandidates(
     // paint ON a slope" rule below, since this block does not run then.
     const foreign = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
-      const isOwnBase = grid.terrain[i] === ctx.baseTerrainId && (ctx.baseLayerId === undefined || grid.layer[i] === ctx.baseLayerId);
-      if (!isOwnBase || grid.cliff[i] !== 0 || (ctx.flatOnly && slope[i] !== 0)) foreign[i] = 1;
+      const isOwnBase =
+        grid.terrain[i] === ctx.baseTerrainId &&
+        (ctx.baseLayerId === undefined || grid.layer[i] === ctx.baseLayerId);
+      if (!isOwnBase || grid.cliff[i] !== 0 || (ctx.flatOnly && slope[i] !== 0))
+        foreign[i] = 1;
     }
     const foreignDistance = distanceTransformFromMask(dim, foreign);
     const minSpacing = ctx.otherTerrainSpacing;
     predicates.push({
       bucket: "spacingConflict",
-      test: (i) => foreignDistance[i] === UNREACHABLE || foreignDistance[i] >= minSpacing,
+      test: (i) =>
+        foreignDistance[i] === UNREACHABLE || foreignDistance[i] >= minSpacing,
     });
   }
 
   for (const spacing of ctx.specificSpacings) {
     const dist = distanceTransform(grid, spacing.terrainId);
     const minDistance = spacing.distance;
-    predicates.push({ bucket: "spacingConflict", test: (i) => dist[i] === UNREACHABLE || dist[i] >= minDistance });
+    predicates.push({
+      bucket: "spacingConflict",
+      test: (i) => dist[i] === UNREACHABLE || dist[i] >= minDistance,
+    });
   }
 
   if (ctx.flatOnly) {
@@ -433,10 +491,17 @@ export function growTerrainClump(
   const inFrontier = new Set<number>();
 
   function addFrontier(tile: number): void {
-    if (inFrontier.has(tile) || owned.has(tile) || eligible[tile] === 0 || claimed[tile] !== 0) return;
+    if (
+      inFrontier.has(tile) ||
+      owned.has(tile) ||
+      eligible[tile] === 0 ||
+      claimed[tile] !== 0
+    )
+      return;
     inFrontier.add(tile);
     let neighborsOwned = 0;
-    for (const n of fourNeighbors(dim, tile)) if (owned.has(n)) neighborsOwned++;
+    for (const n of fourNeighbors(dim, tile))
+      if (owned.has(n)) neighborsOwned++;
     const bucketIndex = Math.max(1, Math.min(4, neighborsOwned)) - 1;
     buckets[bucketIndex].push(tile);
   }
@@ -445,7 +510,10 @@ export function growTerrainClump(
 
   while (owned.size < target) {
     const sizes = buckets.map((b) => b.length);
-    const totalWeight = sizes.reduce((sum, size, i) => sum + size * weights[i], 0);
+    const totalWeight = sizes.reduce(
+      (sum, size, i) => sum + size * weights[i],
+      0,
+    );
     if (totalWeight <= 0) break; // frontier exhausted (eligibility boundary reached) -- growthShortfall, not an error
     let roll = nextFloat01(rng) * totalWeight;
     let bucketIndex = 0;
@@ -578,7 +646,11 @@ export interface AutomaticBeachOptions {
  *     is unmeasured, and leaving the layer is the reading that changes
  *     nothing else.
  */
-export function applyAutomaticBeach(grid: TileGrid, constants: readonly TerrainConstantForMasks[], options: AutomaticBeachOptions = {}): number {
+export function applyAutomaticBeach(
+  grid: TileGrid,
+  constants: readonly TerrainConstantForMasks[],
+  options: AutomaticBeachOptions = {},
+): number {
   const { beachTerrain, beachTerrainScope } = options;
   const { dim } = grid;
   const n = dim * dim;
@@ -608,7 +680,10 @@ export function applyAutomaticBeach(grid: TileGrid, constants: readonly TerrainC
 
     const terrainId = grid.terrain[i];
     let beach: number | undefined;
-    if (beachTerrain !== undefined && (beachTerrainScope === undefined || beachTerrainScope[i] !== 0)) {
+    if (
+      beachTerrain !== undefined &&
+      (beachTerrainScope === undefined || beachTerrainScope[i] !== 0)
+    ) {
       // The author's own `beach_terrain`, on the tiles their command painted.
       // Takes precedence over the terrain's data default, which is the whole
       // point of the attribute.
@@ -662,7 +737,9 @@ export function applyTerrains(
   const { dim } = grid;
   const symbols = instantiated.symbols;
   const aliases = instantiated.aliases;
-  const hasConnectionSection = instantiated.sections.has("CONNECTION_GENERATION");
+  const hasConnectionSection = instantiated.sections.has(
+    "CONNECTION_GENERATION",
+  );
   const playerOrigins = origins.filter((o) => o.player !== undefined);
   // Computed ONCE per applyTerrains call: elevation is final by S4 (S2
   // already ran), so no command in this loop can change a tile's slope.
@@ -690,8 +767,16 @@ export function applyTerrains(
 
     const baseTerrainRef = argValue(cmd, "base_terrain", 0) ?? "GRASS";
     const baseLayerRef = argValue(cmd, "base_layer", 0);
-    const baseTerrainId = resolveTerrainId(constants, baseTerrainRef, symbols, aliases);
-    const baseLayerId = baseLayerRef !== undefined ? resolveTerrainId(constants, baseLayerRef, symbols, aliases) : undefined;
+    const baseTerrainId = resolveTerrainId(
+      constants,
+      baseTerrainRef,
+      symbols,
+      aliases,
+    );
+    const baseLayerId =
+      baseLayerRef !== undefined
+        ? resolveTerrainId(constants, baseLayerRef, symbols, aliases)
+        : undefined;
 
     const clumpCount = resolveClumpCount(cmd, dim);
     const failures: PlacementFailure[] = [];
@@ -704,7 +789,13 @@ export function applyTerrains(
         entity: "terrain patch",
         detail: `This map's reference data doesn't know the terrain "${String(terrainId === undefined ? terrainRef : baseTerrainRef)}", so this create_terrain command could not run.`,
       });
-      reports.push({ commandSpan: cmd.span, stage: "S4", attempted: clumpCount, placed: 0, failures });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S4",
+        attempted: clumpCount,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
@@ -714,8 +805,18 @@ export function applyTerrains(
     const weights = terrainBucketWeights(cf);
 
     const heightLimits = readHeightLimits(cmd);
-    const otherTerrainSpacing = numAttr(cmd, "spacing_to_other_terrain_types", 0, 0);
-    const specificSpacings = specificTerrainSpacings(cmd, constants, symbols, aliases);
+    const otherTerrainSpacing = numAttr(
+      cmd,
+      "spacing_to_other_terrain_types",
+      0,
+      0,
+    );
+    const specificSpacings = specificTerrainSpacings(
+      cmd,
+      constants,
+      symbols,
+      aliases,
+    );
     const flatOnly = cmd.attributes.has("set_flat_terrain_only");
     const avoidPlayerDistance = avoidPlayerStartDistance(cmd);
     // guide:1502-1509 distinguishes the two masking layers, and they differ in
@@ -730,20 +831,29 @@ export function applyTerrains(
     // guide:2486 confirms the direction from the object side: `layer_to_place_on`
     // "works for terrain_mask 1, but not when set to 2 ... because the layer
     // has become the main terrain".
-    const maskLayer = cmd.attributes.has("terrain_mask") ? numAttr(cmd, "terrain_mask", 0, 1) : 0;
+    const maskLayer = cmd.attributes.has("terrain_mask")
+      ? numAttr(cmd, "terrain_mask", 0, 1)
+      : 0;
     const masksOver = maskLayer === 1;
     const masksUnder = maskLayer === 2;
 
     const hasBeachTerrain = cmd.attributes.has("beach_terrain");
-    const beachTerrainId = resolveTerrainId(constants, argValue(cmd, "beach_terrain", 0), symbols, aliases);
-    const applyBeach = hasBeachTerrain && !hasConnectionSection && beachTerrainId !== undefined;
+    const beachTerrainId = resolveTerrainId(
+      constants,
+      argValue(cmd, "beach_terrain", 0),
+      symbols,
+      aliases,
+    );
+    const applyBeach =
+      hasBeachTerrain && !hasConnectionSection && beachTerrainId !== undefined;
     // guide:1485: "If a water terrain is specified, it will fully replace the
     // terrain specified in create_terrain, so this is NOT recommended." That
     // is the engine cascading, the waterline becomes water, so the next ring
     // in is now a waterline too, and so on until the clump is gone. Modelled
     // as the outcome the guide states outright rather than by iterating the
     // shoreline pass, and it is why that pass can safely be single-pass.
-    const beachDrownsClump = applyBeach && isWaterTerrain(constants, beachTerrainId);
+    const beachDrownsClump =
+      applyBeach && isWaterTerrain(constants, beachTerrainId);
 
     if (maskLayer !== 0) {
       notes.push({
@@ -782,8 +892,21 @@ export function applyTerrains(
     // keep this an O(dim^2)-once cost rather than O(dim^2) per clump, which
     // is what made a real corpus script (`24hr_Blind Valley.rms`,
     // `number_of_clumps 9320` under `set_scale_by_groups`) take minutes.
-    const ctx: EligibilityContext = { baseTerrainId, baseLayerId, heightLimits, otherTerrainSpacing, specificSpacings, flatOnly, avoidPlayerDistance };
-    const candidateResult = eligibleTerrainCandidates(grid, ctx, slope, playerOrigins);
+    const ctx: EligibilityContext = {
+      baseTerrainId,
+      baseLayerId,
+      heightLimits,
+      otherTerrainSpacing,
+      specificSpacings,
+      flatOnly,
+      avoidPlayerDistance,
+    };
+    const candidateResult = eligibleTerrainCandidates(
+      grid,
+      ctx,
+      slope,
+      playerOrigins,
+    );
     if (!candidateResult.ok) {
       pushFailure(failures, {
         ...candidateResult.failure,
@@ -794,7 +917,13 @@ export function applyTerrains(
             ? `No tile on the map currently matches this patch's base_terrain ("${String(baseTerrainRef)}")${baseLayerRef !== undefined ? ` or base_layer ("${String(baseLayerRef)}")` : ""}, so no seed could be placed.`
             : `Every candidate tile fails one of this patch's height/spacing/flatness constraints.`,
       });
-      reports.push({ commandSpan: cmd.span, stage: "S4", attempted: clumpCount, placed: 0, failures });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S4",
+        attempted: clumpCount,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
@@ -846,7 +975,15 @@ export function applyTerrains(
       }
 
       const growthRng = nextSubstream();
-      const clumpTiles = growTerrainClump(dim, seed, tilesPerClump, eligibleMask, claimed, weights, growthRng);
+      const clumpTiles = growTerrainClump(
+        dim,
+        seed,
+        tilesPerClump,
+        eligibleMask,
+        claimed,
+        weights,
+        growthRng,
+      );
 
       for (const tile of clumpTiles) {
         claimed[tile] = 1;
@@ -931,7 +1068,13 @@ export function applyTerrains(
       beachTerrainScope: scopedBeach ? claimed : undefined,
     });
 
-    reports.push({ commandSpan: cmd.span, stage: "S4", attempted: maxAttempts, placed, failures });
+    reports.push({
+      commandSpan: cmd.span,
+      stage: "S4",
+      attempted: maxAttempts,
+      placed,
+      failures,
+    });
   }
 
   return { reports, notes, beached };

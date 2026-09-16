@@ -30,7 +30,11 @@ export interface BuildToolContextInput {
   capabilities: readonly Capability[];
   params: Record<string, ParamValue>;
   parseResult: ParseResult;
-  generation: { playerCount: number; mapSize: MapSize; teams: readonly number[] };
+  generation: {
+    playerCount: number;
+    mapSize: MapSize;
+    teams: readonly number[];
+  };
   lang: LanguageData;
   gameConstants: PublishedGameConstants;
   /**
@@ -42,9 +46,15 @@ export interface BuildToolContextInput {
   previewView: { seed: number; cutOffset: number | null };
 }
 
-export function buildToolContext(input: BuildToolContextInput): ToolContext<ParseResult> {
+export function buildToolContext(
+  input: BuildToolContextInput,
+): ToolContext<ParseResult> {
   const granted = effectiveCapabilities(input.capabilities);
-  const tiles = resolveMapDim(input.generation.mapSize, input.lang.predefinedLabels ?? []) ?? 0;
+  const tiles =
+    resolveMapDim(
+      input.generation.mapSize,
+      input.lang.predefinedLabels ?? [],
+    ) ?? 0;
 
   return {
     apiVersion: TOOLS_API_VERSION,
@@ -60,7 +70,16 @@ export function buildToolContext(input: BuildToolContextInput): ToolContext<Pars
           },
         }
       : {}),
-    ...(granted.has("read-reference") ? { referenceData: { language: input.lang, gameConstants: input.gameConstants } } : {}),
-    ...(granted.has("read-preview-view") ? { previewView: input.previewView } : {}),
+    ...(granted.has("read-reference")
+      ? {
+          referenceData: {
+            language: input.lang,
+            gameConstants: input.gameConstants,
+          },
+        }
+      : {}),
+    ...(granted.has("read-preview-view")
+      ? { previewView: input.previewView }
+      : {}),
   };
 }

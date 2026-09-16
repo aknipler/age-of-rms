@@ -52,7 +52,13 @@ export interface ScriptHeaderFields {
  * idiom for "these exact strings", and unlike an enum it survives into plain
  * JavaScript as ordinary data.
  */
-export const HEADER_FIELDS = ["file", "author", "created", "modified", "builtWith"] as const;
+export const HEADER_FIELDS = [
+  "file",
+  "author",
+  "created",
+  "modified",
+  "builtWith",
+] as const;
 export type HeaderField = (typeof HEADER_FIELDS)[number];
 
 /**
@@ -81,7 +87,11 @@ const LABELS: Record<HeaderField, string> = {
  * written from then on, and silently re-attributing a script somebody already
  * saved is not a thing a text editor should do.
  */
-const REFRESHED_FIELDS: readonly HeaderField[] = ["file", "modified", "builtWith"];
+const REFRESHED_FIELDS: readonly HeaderField[] = [
+  "file",
+  "modified",
+  "builtWith",
+];
 
 /** Shown in place of an author who has not filled the setting in. */
 export const UNKNOWN_AUTHOR = "Unknown";
@@ -145,7 +155,10 @@ export interface HeaderEdit {
  * free text.
  */
 function sanitizeField(value: string): string {
-  return value.replace(/[\r\n]+/g, " ").replace(/\/\*|\*\//g, "").trim();
+  return value
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\/\*|\*\//g, "")
+    .trim();
 }
 
 /** `23/08/2026`, the same day/month/year order MapHeader's "Last Saved" already uses. */
@@ -179,10 +192,9 @@ function renderRows(fields: ScriptHeaderFields): Record<HeaderField, string> {
   // signature), so the assertion puts it back. The alternative is a hand-
   // written object literal repeating all five keys, which is the thing
   // HEADER_FIELDS exists to avoid.
-  return Object.fromEntries(HEADER_FIELDS.map((field) => [field, renderRow(field, fields)])) as Record<
-    HeaderField,
-    string
-  >;
+  return Object.fromEntries(
+    HEADER_FIELDS.map((field) => [field, renderRow(field, fields)]),
+  ) as Record<HeaderField, string>;
 }
 
 /**
@@ -194,12 +206,24 @@ function renderRows(fields: ScriptHeaderFields): Record<HeaderField, string> {
  * and the box is decoration, so the decoration is what gives way.
  */
 function ruleFor(rows: Readonly<Record<HeaderField, string>>): string {
-  const widest = HEADER_FIELDS.reduce((longest, field) => Math.max(longest, rows[field].length), 0);
+  const widest = HEADER_FIELDS.reduce(
+    (longest, field) => Math.max(longest, rows[field].length),
+    0,
+  );
   return ` ${"=".repeat(Math.max(MIN_RULE_WIDTH, widest - 1))}`;
 }
 
-function assemble(rows: Readonly<Record<HeaderField, string>>, rule: string): string {
-  return ["/*", rule, ...HEADER_FIELDS.map((field) => rows[field]), rule, "*/"].join("\n");
+function assemble(
+  rows: Readonly<Record<HeaderField, string>>,
+  rule: string,
+): string {
+  return [
+    "/*",
+    rule,
+    ...HEADER_FIELDS.map((field) => rows[field]),
+    rule,
+    "*/",
+  ].join("\n");
 }
 
 /** A freshly written header: the text to insert, and the record that makes later refreshes possible. */
@@ -268,7 +292,10 @@ function splitLines(source: string): SourceLine[] {
  * text that was never ours. Two matches is treated exactly like none: the row
  * stops being ours and is left alone from then on.
  */
-function uniqueLine(lines: readonly SourceLine[], text: string): SourceLine | null {
+function uniqueLine(
+  lines: readonly SourceLine[],
+  text: string,
+): SourceLine | null {
   let found: SourceLine | null = null;
   for (const line of lines) {
     if (line.text !== text) continue;
@@ -329,7 +356,11 @@ export function refreshScriptHeader(
     // rebuild an identical row. Comparing first keeps those saves off the
     // undo stack entirely rather than pushing a no-op edit for every Ctrl+S.
     if (rendered !== previous) {
-      edits.push({ start: at.start, end: at.start + previous.length, newText: rendered });
+      edits.push({
+        start: at.start,
+        end: at.start + previous.length,
+        newText: rendered,
+      });
     }
   }
 
@@ -342,7 +373,11 @@ export function refreshScriptHeader(
     const matches = lines.filter((line) => line.text === stamped.rule);
     if (matches.length === 2) {
       for (const match of matches) {
-        edits.push({ start: match.start, end: match.start + stamped.rule.length, newText: rule });
+        edits.push({
+          start: match.start,
+          end: match.start + stamped.rule.length,
+          newText: rule,
+        });
       }
       return { edits, stamped: { fields, rows, rule, owned } };
     }

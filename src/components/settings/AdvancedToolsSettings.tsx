@@ -22,8 +22,9 @@ export function AdvancedToolsSettings() {
           tab that didn't say which tab you were on. */}
       <h3 className={settingsStyles.panelTitle}>Advanced Tools</h3>
       <p className={styles.intro}>
-        Tools run against the open script and return a report, and sometimes proposed changes. Changes are never applied on your
-        behalf; the pane shows an Apply button and one undo step covers the whole set.
+        Tools run against the open script and return a report, and sometimes
+        proposed changes. Changes are never applied on your behalf; the pane
+        shows an Apply button and one undo step covers the whole set.
       </p>
 
       <HelpTip id="settings.tab.advancedTools">
@@ -34,8 +35,12 @@ export function AdvancedToolsSettings() {
               <li key={tool.manifest.id} className={styles.item}>
                 <span className={styles.name}>{tool.manifest.name}</span>
                 <span className={styles.version}>v{tool.manifest.version}</span>
-                <p className={styles.description}>{tool.manifest.description}</p>
-                <p className={styles.capabilities}>Reads: {describeCapabilities(tool.manifest.capabilities)}</p>
+                <p className={styles.description}>
+                  {tool.manifest.description}
+                </p>
+                <p className={styles.capabilities}>
+                  Reads: {describeCapabilities(tool.manifest.capabilities)}
+                </p>
               </li>
             ))}
           </ul>
@@ -52,10 +57,15 @@ export function AdvancedToolsSettings() {
 // a tool gets only the generation one.
 function describeCapabilities(capabilities: readonly string[]): string {
   const parts: string[] = [];
-  if (capabilities.includes("read-ast") || capabilities.includes("read-source")) parts.push("your script");
-  if (capabilities.includes("read-generation-settings")) parts.push("player count and map size");
-  if (capabilities.includes("read-reference")) parts.push("the built-in reference data");
-  if (capabilities.includes("read-selection")) parts.push("where your cursor is");
-  if (capabilities.includes("edit-source")) parts.push("and can propose changes to your script");
+  if (capabilities.includes("read-ast") || capabilities.includes("read-source"))
+    parts.push("your script");
+  if (capabilities.includes("read-generation-settings"))
+    parts.push("player count and map size");
+  if (capabilities.includes("read-reference"))
+    parts.push("the built-in reference data");
+  if (capabilities.includes("read-selection"))
+    parts.push("where your cursor is");
+  if (capabilities.includes("edit-source"))
+    parts.push("and can propose changes to your script");
   return parts.length > 0 ? parts.join(", ") : "nothing";
 }

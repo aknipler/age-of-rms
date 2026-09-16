@@ -82,12 +82,16 @@ export function formatExact(n: number): string {
 
 /** Collapses to a single figure when min === max, the common case for a script with no conditional placement. */
 export function formatCompactRange(min: number, max: number): string {
-  return min === max ? formatCompact(min) : `${formatCompact(min)}-${formatCompact(max)}`;
+  return min === max
+    ? formatCompact(min)
+    : `${formatCompact(min)}-${formatCompact(max)}`;
 }
 
 /** Exact-value partner to `formatCompactRange`, for the hover readout. */
 export function formatExactRange(min: number, max: number): string {
-  return min === max ? formatExact(min) : `${formatExact(min)} to ${formatExact(max)}`;
+  return min === max
+    ? formatExact(min)
+    : `${formatExact(min)} to ${formatExact(max)}`;
 }
 
 /**
@@ -110,7 +114,9 @@ export interface ProblemSummary {
   label: string;
 }
 
-export function summariseProblems(diagnostics: readonly Diagnostic[]): ProblemSummary {
+export function summariseProblems(
+  diagnostics: readonly Diagnostic[],
+): ProblemSummary {
   let errors = 0;
   let warnings = 0;
   let infos = 0;
@@ -121,11 +127,18 @@ export function summariseProblems(diagnostics: readonly Diagnostic[]): ProblemSu
   }
 
   const level: ProblemLevel =
-    errors > 0 ? "error" : warnings > 0 ? "warning" : infos > 0 ? "info" : "none";
+    errors > 0
+      ? "error"
+      : warnings > 0
+        ? "warning"
+        : infos > 0
+          ? "info"
+          : "none";
 
   const parts: string[] = [];
   if (errors > 0) parts.push(`${errors} error${errors === 1 ? "" : "s"}`);
-  if (warnings > 0) parts.push(`${warnings} warning${warnings === 1 ? "" : "s"}`);
+  if (warnings > 0)
+    parts.push(`${warnings} warning${warnings === 1 ? "" : "s"}`);
   if (infos > 0) parts.push(`${infos} info`);
 
   return {

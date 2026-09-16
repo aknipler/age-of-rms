@@ -38,7 +38,10 @@ function listRms(dir: string): string[] {
  */
 function largestCorpusFiles(n: number): string[] {
   return listRms(TEST_MAPS_DIR)
-    .map((name) => ({ name, size: statSync(resolve(TEST_MAPS_DIR, name)).size }))
+    .map((name) => ({
+      name,
+      size: statSync(resolve(TEST_MAPS_DIR, name)).size,
+    }))
     .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name))
     .slice(0, n)
     .map((e) => e.name);
@@ -87,12 +90,21 @@ describe("tokenize — token kinds", () => {
 
   it("classifies exact brace and comment-marker tokens", () => {
     const { tokens } = tokenize("{ } /* */");
-    expect(kindsOf(tokens)).toEqual(["openBrace", "closeBrace", "commentOpen", "commentClose"]);
+    expect(kindsOf(tokens)).toEqual([
+      "openBrace",
+      "closeBrace",
+      "commentOpen",
+      "commentClose",
+    ]);
   });
 
   it("classifies section headers, including ones with digits", () => {
     const { tokens } = tokenize("<PLAYER_SETUP> <LAND_GENERATION> <FOO2>");
-    expect(kindsOf(tokens)).toEqual(["sectionHeader", "sectionHeader", "sectionHeader"]);
+    expect(kindsOf(tokens)).toEqual([
+      "sectionHeader",
+      "sectionHeader",
+      "sectionHeader",
+    ]);
   });
 
   it("classifies any #-prefixed token as a directive, known or not", () => {
@@ -133,7 +145,10 @@ describe("tokenize — offsets", () => {
     // biggest: offset exactness must hold on malformed content too, which is
     // precisely what a known-defective file is for (BCC2's glued "}8050" fires
     // RMS0101 by design).
-    const files = [...largestCorpusFiles(4), ...listRms(BROKEN_DIR).map((n) => `broken/${n}`)];
+    const files = [
+      ...largestCorpusFiles(4),
+      ...listRms(BROKEN_DIR).map((n) => `broken/${n}`),
+    ];
     expect(files.length).toBeGreaterThan(0);
     const mismatches: string[] = [];
     for (const file of files) {
@@ -142,7 +157,9 @@ describe("tokenize — offsets", () => {
       for (const token of tokens) {
         const slice = source.slice(token.start, token.end);
         if (slice !== token.text) {
-          mismatches.push(`${file}: token ${JSON.stringify(token.text)} at ${token.start} slices to ${JSON.stringify(slice)}`);
+          mismatches.push(
+            `${file}: token ${JSON.stringify(token.text)} at ${token.start} slices to ${JSON.stringify(slice)}`,
+          );
         }
       }
     }
@@ -183,8 +200,18 @@ describe("tokenize — leading BOM (RMS0005)", () => {
   it("emits the BOM as its own trivia token and does not merge it into the next token", () => {
     const source = `${BOM}<PLAYER_SETUP>`;
     const { tokens, diagnostics } = tokenize(source);
-    expect(tokens[0]).toMatchObject({ text: BOM, start: 0, end: 1, isTrivia: true });
-    expect(tokens[1]).toMatchObject({ text: "<PLAYER_SETUP>", start: 1, kind: "sectionHeader", isTrivia: false });
+    expect(tokens[0]).toMatchObject({
+      text: BOM,
+      start: 0,
+      end: 1,
+      isTrivia: true,
+    });
+    expect(tokens[1]).toMatchObject({
+      text: "<PLAYER_SETUP>",
+      start: 1,
+      kind: "sectionHeader",
+      isTrivia: false,
+    });
     expect(codesOf(diagnostics)).toContain("RMS0005");
   });
 
@@ -201,13 +228,20 @@ describe("tokenize — comments", () => {
   it("marks a simple closed comment span as trivia, including the markers", () => {
     const { tokens, diagnostics } = tokenize("/* hello world */ create_land");
     const [open, hello, world, close, create] = tokens;
-    expect([open.isTrivia, hello.isTrivia, world.isTrivia, close.isTrivia]).toEqual([true, true, true, true]);
+    expect([
+      open.isTrivia,
+      hello.isTrivia,
+      world.isTrivia,
+      close.isTrivia,
+    ]).toEqual([true, true, true, true]);
     expect(create.isTrivia).toBe(false);
     expect(diagnostics).toHaveLength(0);
   });
 
   it("nests by default (depth 2, properly closed)", () => {
-    const { tokens, diagnostics } = tokenize("/* outer /* inner */ still-outer */ create_land");
+    const { tokens, diagnostics } = tokenize(
+      "/* outer /* inner */ still-outer */ create_land",
+    );
     // Everything up to and including the second */ is trivia; only the
     // trailing create_land is real code.
     const create = tokens[tokens.length - 1];
@@ -235,9 +269,12 @@ describe("tokenize — comments", () => {
   });
 
   it("closes at the first */ when nestedComments: false", () => {
-    const { tokens, diagnostics } = tokenize("/* outer /* inner */ still-outer */ create_land", {
-      nestedComments: false,
-    });
+    const { tokens, diagnostics } = tokenize(
+      "/* outer /* inner */ still-outer */ create_land",
+      {
+        nestedComments: false,
+      },
+    );
     // The FIRST */ (after "inner") ends the comment; "still-outer" and
     // the trailing "*/" become ordinary (non-trivia) code, and that
     // trailing "*/" is then a stray closer.
@@ -293,7 +330,9 @@ describe("tokenize — line offsets", () => {
   it("computes the same token boundaries for CRLF as for LF (the \\r is just whitespace)", () => {
     const lf = tokenize("create_land {\n  land_percent 50\n}");
     const crlf = tokenize("create_land {\r\n  land_percent 50\r\n}");
-    expect(lf.tokens.map((t) => t.text)).toEqual(crlf.tokens.map((t) => t.text));
+    expect(lf.tokens.map((t) => t.text)).toEqual(
+      crlf.tokens.map((t) => t.text),
+    );
   });
 });
 
@@ -306,10 +345,15 @@ describe("tokenize — degenerate inputs", () => {
   });
 
   it("handles a file that is one giant token", () => {
-    const source = "a".repeat(5000) + "```weird-but-legal-word```" + "b".repeat(5000);
+    const source =
+      "a".repeat(5000) + "```weird-but-legal-word```" + "b".repeat(5000);
     const { tokens } = tokenize(source);
     expect(tokens).toHaveLength(1);
-    expect(tokens[0]).toMatchObject({ start: 0, end: source.length, text: source });
+    expect(tokens[0]).toMatchObject({
+      start: 0,
+      end: source.length,
+      text: source,
+    });
   });
 
   it("never throws on binary-garbage-ish input", () => {
@@ -339,14 +383,20 @@ describe("comment-opening aliases (Sec.2.1 amendment — a word the engine reads
     // RMSTEST_56b, the control. Without this the test above proves nothing
     // about the WORD as opposed to the comment.
     const src = "/* place a fish here */ base_terrain SNOW";
-    expect(live(src, { commentOpenAliases: ALIASES })).toEqual(["base_terrain", "SNOW"]);
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual([
+      "base_terrain",
+      "SNOW",
+    ]);
   });
 
   it("is not triggered by the bare number, which the engine lexes as a number", () => {
     // RMSTEST_57 came back with a normal map. This is the negative case that
     // makes the rule precise rather than superstitious.
     const src = "/* 69 */ base_terrain SNOW";
-    expect(live(src, { commentOpenAliases: ALIASES })).toEqual(["base_terrain", "SNOW"]);
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual([
+      "base_terrain",
+      "SNOW",
+    ]);
   });
 
   it("applies to any namespace, not just object constants", () => {
@@ -380,6 +430,9 @@ describe("comment-opening aliases (Sec.2.1 amendment — a word the engine reads
 
   it("needs one closer per alias, since the alias opened a real level", () => {
     const src = "/* SHORE_FISH */ */ base_terrain SNOW";
-    expect(live(src, { commentOpenAliases: ALIASES })).toEqual(["base_terrain", "SNOW"]);
+    expect(live(src, { commentOpenAliases: ALIASES })).toEqual([
+      "base_terrain",
+      "SNOW",
+    ]);
   });
 });

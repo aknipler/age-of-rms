@@ -17,16 +17,31 @@ import {
 } from "../generator/lands";
 import type { LandOrigin, TileGrid } from "../generator/types";
 import type { ObjectConstant } from "../generator/objects";
-import { DEFAULT_TEAMS, type MapSize, type TeamNumber } from "../../generationSettings/generationSettingsConstants";
+import {
+  DEFAULT_TEAMS,
+  type MapSize,
+  type TeamNumber,
+} from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
 const refDb: LanguageIndex = buildLanguageIndex(lang);
 const constants: readonly ObjectConstant[] = (
-  JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8")) as { constants: ObjectConstant[] }
+  JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as { constants: ObjectConstant[] }
 ).constants;
 const GRASS = 0;
 
-function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: readonly TeamNumber[] } = {}) {
+function settings(
+  overrides: {
+    playerCount?: number;
+    mapSize?: MapSize;
+    teams?: readonly TeamNumber[];
+  } = {},
+) {
   return {
     playerCount: overrides.playerCount ?? 8,
     mapSize: overrides.mapSize ?? "Normal",
@@ -34,8 +49,17 @@ function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: 
   };
 }
 
-function place(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]): LandPlacementResult & { dim: number } {
-  const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+function place(
+  source: string,
+  seed = 1,
+  overrides?: Parameters<typeof settings>[0],
+): LandPlacementResult & { dim: number } {
+  const instantiated = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const grid = createTileGrid(instantiated.dim, GRASS);
   const result = placeLandOrigins(instantiated, grid, constants, seed);
   return { ...result, dim: instantiated.dim };
@@ -45,8 +69,17 @@ function distance(a: LandOrigin, b: { x: number; y: number }): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function placeAndGrow(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]): LandPlacementResult & { dim: number; grid: TileGrid } {
-  const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+function placeAndGrow(
+  source: string,
+  seed = 1,
+  overrides?: Parameters<typeof settings>[0],
+): LandPlacementResult & { dim: number; grid: TileGrid } {
+  const instantiated = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const grid = createTileGrid(instantiated.dim, GRASS);
   const result = placeLandOrigins(instantiated, grid, constants, seed);
   growLands(result.origins, grid, result.reports, seed);
@@ -57,18 +90,33 @@ function placeGrowElevate(
   source: string,
   seed = 1,
   overrides?: Parameters<typeof settings>[0],
-): LandPlacementResult & { dim: number; grid: TileGrid; elevationNotes: LandPlacementResult["notes"] } {
-  const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+): LandPlacementResult & {
+  dim: number;
+  grid: TileGrid;
+  elevationNotes: LandPlacementResult["notes"];
+} {
+  const instantiated = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const grid = createTileGrid(instantiated.dim, GRASS);
   const result = placeLandOrigins(instantiated, grid, constants, seed);
   growLands(result.origins, grid, result.reports, seed);
-  const elevationNotes = applyBaseElevation(instantiated, result.origins, grid, constants);
+  const elevationNotes = applyBaseElevation(
+    instantiated,
+    result.origins,
+    grid,
+    constants,
+  );
   return { ...result, dim: instantiated.dim, grid, elevationNotes };
 }
 
 function ownedCount(grid: TileGrid, landIndex: number): number {
   let n = 0;
-  for (let i = 0; i < grid.landId.length; i++) if (grid.landId[i] === landIndex) n++;
+  for (let i = 0; i < grid.landId.length; i++)
+    if (grid.landId[i] === landIndex) n++;
   return n;
 }
 
@@ -84,14 +132,20 @@ function reachableUnowned(grid: TileGrid, landIndex: number): number {
   const { dim } = grid;
   const visited = new Uint8Array(dim * dim);
   const queue: number[] = [];
-  for (let i = 0; i < dim * dim; i++) if (grid.landId[i] === landIndex) queue.push(i);
+  for (let i = 0; i < dim * dim; i++)
+    if (grid.landId[i] === landIndex) queue.push(i);
   let found = 0;
   let head = 0;
   while (head < queue.length) {
     const i = queue[head++];
     const x = i % dim;
     const y = (i - x) / dim;
-    const neighbors = [x > 0 ? i - 1 : -1, x < dim - 1 ? i + 1 : -1, y > 0 ? i - dim : -1, y < dim - 1 ? i + dim : -1];
+    const neighbors = [
+      x > 0 ? i - 1 : -1,
+      x < dim - 1 ? i + 1 : -1,
+      y > 0 ? i - dim : -1,
+      y < dim - 1 ? i + dim : -1,
+    ];
     for (const n of neighbors) {
       if (n < 0 || visited[n] || grid.landId[n] !== -1) continue;
       visited[n] = 1;
@@ -116,7 +170,12 @@ function countComponents(grid: TileGrid, landIndex: number): number {
       const i = stack.pop()!;
       const x = i % dim;
       const y = (i - x) / dim;
-      const neighbors = [x > 0 ? i - 1 : -1, x < dim - 1 ? i + 1 : -1, y > 0 ? i - dim : -1, y < dim - 1 ? i + dim : -1];
+      const neighbors = [
+        x > 0 ? i - 1 : -1,
+        x < dim - 1 ? i + 1 : -1,
+        y > 0 ? i - dim : -1,
+        y < dim - 1 ? i + dim : -1,
+      ];
       for (const n of neighbors) {
         if (n >= 0 && grid.landId[n] === landIndex && !visited[n]) {
           visited[n] = 1;
@@ -130,7 +189,9 @@ function countComponents(grid: TileGrid, landIndex: number): number {
 
 describe("neutral (unassigned) create_land origin", () => {
   it("places exactly at land_position, rounded then clamped to [0, dim-1]", () => {
-    const { origins, dim } = place("<LAND_GENERATION>\ncreate_land {\nland_position 50 50\n}\n");
+    const { origins, dim } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\n}\n",
+    );
     expect(origins).toHaveLength(1);
     expect(origins[0].x).toBe(Math.round(dim / 2));
     expect(origins[0].y).toBe(Math.round(dim / 2));
@@ -138,7 +199,9 @@ describe("neutral (unassigned) create_land origin", () => {
   });
 
   it("clamps land_position 100 100 to dim-1, not dim (Michi.rms fix)", () => {
-    const { origins, dim } = place("<LAND_GENERATION>\ncreate_land {\nland_position 100 100\n}\n");
+    const { origins, dim } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 100 100\n}\n",
+    );
     expect(origins[0].x).toBe(dim - 1);
     expect(origins[0].y).toBe(dim - 1);
   });
@@ -149,14 +212,19 @@ describe("neutral (unassigned) create_land origin", () => {
   // the old map-frame way on purpose, and must keep passing.
   it("a random-sampled origin always lands inside the border bounds and the cross-shape region", () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const { origins, dim } = place("<LAND_GENERATION>\ncreate_land {\nbase_size 3\n}\n", seed);
+      const { origins, dim } = place(
+        "<LAND_GENERATION>\ncreate_land {\nbase_size 3\n}\n",
+        seed,
+      );
       const origin = origins[0];
       expect(origin.fromOriginFallback).toBe(false);
       expect(origin.x).toBeGreaterThanOrEqual(0);
       expect(origin.x).toBeLessThan(dim);
       const center = dim / 2;
       const crossHalf = 0.35 * (dim / 2);
-      const cornered = Math.abs(origin.x - center) > crossHalf && Math.abs(origin.y - center) > crossHalf;
+      const cornered =
+        Math.abs(origin.x - center) > crossHalf &&
+        Math.abs(origin.y - center) > crossHalf;
       expect(cornered).toBe(false);
     }
   });
@@ -166,7 +234,8 @@ describe("neutral (unassigned) create_land origin", () => {
     // map-frame cross forbids that whole square except an L-shaped sliver
     // along its outer edges, which is the crowding RMSTEST_51 refuted: 16 of
     // 19 measured origins sat inside the forbidden part.
-    const source = "<LAND_GENERATION>\ncreate_land {\nbase_size 3\nright_border 60\nbottom_border 60\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nbase_size 3\nright_border 60\nbottom_border 60\n}\n";
     let sawMapFrameForbidden = false;
     for (let seed = 1; seed <= 40; seed++) {
       const { origins, dim } = place(source, seed);
@@ -179,14 +248,20 @@ describe("neutral (unassigned) create_land origin", () => {
       // Inside the box-frame cross, the rule as it now stands.
       const boxCenter = (boxMax + 1) / 2;
       const boxHalf = 0.35 * ((boxMax + 1) / 2);
-      const outsideBoxCross = Math.abs(origin.x - boxCenter) > boxHalf && Math.abs(origin.y - boxCenter) > boxHalf;
+      const outsideBoxCross =
+        Math.abs(origin.x - boxCenter) > boxHalf &&
+        Math.abs(origin.y - boxCenter) > boxHalf;
       expect(outsideBoxCross).toBe(false);
 
       // And at least one origin lands where the map-frame model could never
       // have put it, which is what separates the two frames.
       const mapCenter = dim / 2;
       const mapHalf = 0.35 * (dim / 2);
-      if (Math.abs(origin.x - mapCenter) > mapHalf && Math.abs(origin.y - mapCenter) > mapHalf) sawMapFrameForbidden = true;
+      if (
+        Math.abs(origin.x - mapCenter) > mapHalf &&
+        Math.abs(origin.y - mapCenter) > mapHalf
+      )
+        sawMapFrameForbidden = true;
     }
     expect(sawMapFrameForbidden).toBe(true);
   });
@@ -194,11 +269,18 @@ describe("neutral (unassigned) create_land origin", () => {
   it("generate_mode 1 disables the cross-shape restriction (corners become reachable across enough seeds)", () => {
     let sawCorner = false;
     for (let seed = 1; seed <= 60; seed++) {
-      const { origins, dim } = place("<LAND_GENERATION>\ncreate_land {\nbase_size 3\ngenerate_mode 1\n}\n", seed);
+      const { origins, dim } = place(
+        "<LAND_GENERATION>\ncreate_land {\nbase_size 3\ngenerate_mode 1\n}\n",
+        seed,
+      );
       const center = dim / 2;
       const crossHalf = 0.35 * (dim / 2);
       const origin = origins[0];
-      if (Math.abs(origin.x - center) > crossHalf && Math.abs(origin.y - center) > crossHalf) sawCorner = true;
+      if (
+        Math.abs(origin.x - center) > crossHalf &&
+        Math.abs(origin.y - center) > crossHalf
+      )
+        sawCorner = true;
     }
     expect(sawCorner).toBe(true);
   });
@@ -216,11 +298,15 @@ describe("neutral (unassigned) create_land origin", () => {
     expect(second.x).toBe(Math.round(dim / 2));
     expect(second.y).toBe(Math.round(dim / 2));
     const secondReport = reports[1];
-    expect(secondReport.failures.some((f) => f.bucket === "originFallbackCenter")).toBe(true);
+    expect(
+      secondReport.failures.some((f) => f.bucket === "originFallbackCenter"),
+    ).toBe(true);
   });
 
   it("one CommandReport per create_land, attempted=1, placed=1 even on fallback", () => {
-    const { reports } = place("<LAND_GENERATION>\ncreate_land {\nland_position 50 50\n}\n");
+    const { reports } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\n}\n",
+    );
     expect(reports).toHaveLength(1);
     expect(reports[0]).toMatchObject({ attempted: 1, placed: 1 });
   });
@@ -230,7 +316,8 @@ describe("neutral (unassigned) create_land origin", () => {
   // word, so the whole map generated blank with no diagnostic. The identity is
   // resolved once in `instantiate.ts`; this is the proof it arrives here.
   it("grows a land declared through a `#const` alias rather than the literal create_land", () => {
-    const source = "#const L 32\n<LAND_GENERATION>\nL {\nland_position 50 50\nland_percent 20\nnumber_of_tiles 500\n}\n";
+    const source =
+      "#const L 32\n<LAND_GENERATION>\nL {\nland_position 50 50\nland_percent 20\nnumber_of_tiles 500\n}\n";
     const { origins, reports, grid, dim } = placeAndGrow(source);
     expect(origins).toHaveLength(1);
     expect(origins[0].x).toBe(Math.round(dim / 2));
@@ -241,9 +328,13 @@ describe("neutral (unassigned) create_land origin", () => {
 
 describe("player lands (create_player_lands) ring", () => {
   it("default ring: evenly spaced, roughly the measured 40% radius, centered near the map center", () => {
-    const { origins, dim } = place("<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands {\nbase_size 3\n}\n", 7, {
-      playerCount: 8,
-    });
+    const { origins, dim } = place(
+      "<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands {\nbase_size 3\n}\n",
+      7,
+      {
+        playerCount: 8,
+      },
+    );
     expect(origins).toHaveLength(8);
     const center = { x: dim / 2, y: dim / 2 };
     const radii = origins.map((o) => distance(o, center));
@@ -252,7 +343,8 @@ describe("player lands (create_player_lands) ring", () => {
     // comfortably within that band rather than needing an exact figure.
     expect(meanRadius).toBeGreaterThan(0.25 * dim);
     expect(meanRadius).toBeLessThan(0.55 * dim);
-    for (const origin of origins) expect(origin.player).toBeGreaterThanOrEqual(1);
+    for (const origin of origins)
+      expect(origin.player).toBeGreaterThanOrEqual(1);
   });
 
   it("explicit circle_radius R with variance 0 puts every player at EXACTLY radius R, no jitter", () => {
@@ -268,9 +360,19 @@ describe("player lands (create_player_lands) ring", () => {
   });
 
   it("circle_radius 0 behaves EXACTLY as if the attribute were absent, for the same seed", () => {
-    const withZero = place("<LAND_GENERATION>\ncreate_player_lands {\ncircle_radius 0\n}\n", 5, { playerCount: 4 });
-    const withoutAttr = place("<LAND_GENERATION>\ncreate_player_lands {\n}\n", 5, { playerCount: 4 });
-    expect(withZero.origins.map((o) => [o.x, o.y])).toEqual(withoutAttr.origins.map((o) => [o.x, o.y]));
+    const withZero = place(
+      "<LAND_GENERATION>\ncreate_player_lands {\ncircle_radius 0\n}\n",
+      5,
+      { playerCount: 4 },
+    );
+    const withoutAttr = place(
+      "<LAND_GENERATION>\ncreate_player_lands {\n}\n",
+      5,
+      { playerCount: 4 },
+    );
+    expect(withZero.origins.map((o) => [o.x, o.y])).toEqual(
+      withoutAttr.origins.map((o) => [o.x, o.y]),
+    );
   });
 
   it("negative circle_radius scatters origins (not a perfect ring) but keeps them on the grid", () => {
@@ -302,13 +404,15 @@ describe("player lands (create_player_lands) ring", () => {
       { playerCount: 8, teams },
     );
     const center = { x: dim / 2, y: dim / 2 };
-    const angleOf = (o: LandOrigin) => Math.atan2(o.y - center.y, o.x - center.x);
+    const angleOf = (o: LandOrigin) =>
+      Math.atan2(o.y - center.y, o.x - center.x);
     const team1Angles = origins.filter((o) => o.player! <= 4).map(angleOf);
     const team2Angles = origins.filter((o) => o.player! >= 5).map(angleOf);
     const spread = (angles: number[]) => {
       const sorted = [...angles].sort((a, b) => a - b);
       let max = 0;
-      for (let i = 1; i < sorted.length; i++) max = Math.max(max, sorted[i] - sorted[i - 1]);
+      for (let i = 1; i < sorted.length; i++)
+        max = Math.max(max, sorted[i] - sorted[i - 1]);
       return max;
     };
     // Within a 4-member team the angular spread end-to-end should be a small
@@ -322,7 +426,8 @@ describe("player lands (create_player_lands) ring", () => {
   });
 
   it("direct_placement uses create_player_lands' own land_position for every player", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\ncreate_player_lands {\nland_position 25 75\n}\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\ncreate_player_lands {\nland_position 25 75\n}\n";
     const { origins, dim } = place(source, 1, { playerCount: 3 });
     const expectedX = Math.round(0.25 * dim);
     const expectedY = Math.round(0.75 * dim);
@@ -333,7 +438,11 @@ describe("player lands (create_player_lands) ring", () => {
   });
 
   it("one CommandReport for the whole create_player_lands command, attempted=playerCount", () => {
-    const { reports } = place("<LAND_GENERATION>\ncreate_player_lands {\n}\n", 1, { playerCount: 5 });
+    const { reports } = place(
+      "<LAND_GENERATION>\ncreate_player_lands {\n}\n",
+      1,
+      { playerCount: 5 },
+    );
     expect(reports).toHaveLength(1);
     expect(reports[0]).toMatchObject({ attempted: 5, placed: 5 });
   });
@@ -341,7 +450,11 @@ describe("player lands (create_player_lands) ring", () => {
 
 describe("zone assignment (Sec.6.1)", () => {
   it("player lands default to zone playerNumber - 10", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_player_lands {\n}\n", 1, { playerCount: 3 });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_player_lands {\n}\n",
+      1,
+      { playerCount: 3 },
+    );
     const byPlayer = new Map(origins.map((o) => [o.player, o.zone]));
     expect(byPlayer.get(1)).toBe(-9);
     expect(byPlayer.get(2)).toBe(-8);
@@ -349,12 +462,16 @@ describe("zone assignment (Sec.6.1)", () => {
   });
 
   it("neutral create_land defaults to the shared zone -10", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nland_position 10 10\n}\n");
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 10 10\n}\n",
+    );
     expect(origins[0].zone).toBe(-10);
   });
 
   it("an explicit zone attribute wins over any default", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nzone 42\n}\n");
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nzone 42\n}\n",
+    );
     expect(origins[0].zone).toBe(42);
   });
 
@@ -369,21 +486,31 @@ describe("zone assignment (Sec.6.1)", () => {
   });
 
   it("set_zone_randomly draws from [-8, playerCount-9], deterministically for a given seed", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nset_zone_randomly\n}\n", 3, {
-      playerCount: 6,
-    });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nset_zone_randomly\n}\n",
+      3,
+      {
+        playerCount: 6,
+      },
+    );
     expect(origins[0].zone).toBeGreaterThanOrEqual(-8);
     expect(origins[0].zone).toBeLessThanOrEqual(6 - 9);
-    const again = place("<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nset_zone_randomly\n}\n", 3, {
-      playerCount: 6,
-    });
+    const again = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nset_zone_randomly\n}\n",
+      3,
+      {
+        playerCount: 6,
+      },
+    );
     expect(again.origins[0].zone).toBe(origins[0].zone);
   });
 });
 
 describe("origin stamp", () => {
   it("stamps a (2*base_size+1) square by default", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\n}\n");
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\n}\n",
+    );
     // 2*2+1 = 5-wide square: base_size is stored, the stamp itself is
     // verified via the grid in the next test (this one just checks the
     // record base_size survives resolution unchanged).
@@ -392,12 +519,24 @@ describe("origin stamp", () => {
   });
 
   it("a square stamp claims its corner tiles; a circular stamp (set_circular_base) does not", () => {
-    const squareSource = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\n}\n";
-    const circularSource = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nset_circular_base\n}\n";
-    const instantiatedSquare = instantiateScript(parseRms(squareSource, lang), refDb, settings(), 1);
+    const squareSource =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\n}\n";
+    const circularSource =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nset_circular_base\n}\n";
+    const instantiatedSquare = instantiateScript(
+      parseRms(squareSource, lang),
+      refDb,
+      settings(),
+      1,
+    );
     const gridSquare = createTileGrid(instantiatedSquare.dim, GRASS);
     placeLandOrigins(instantiatedSquare, gridSquare, constants, 1);
-    const instantiatedCircle = instantiateScript(parseRms(circularSource, lang), refDb, settings(), 1);
+    const instantiatedCircle = instantiateScript(
+      parseRms(circularSource, lang),
+      refDb,
+      settings(),
+      1,
+    );
     const gridCircle = createTileGrid(instantiatedCircle.dim, GRASS);
     placeLandOrigins(instantiatedCircle, gridCircle, constants, 1);
 
@@ -409,11 +548,21 @@ describe("origin stamp", () => {
   });
 
   it("later origins overwrite earlier overlapping stamps ('the land placed last will be the one visible')", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 5\n}\ncreate_land {\nland_position 50 50\nbase_size 2\n}\n";
-    const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(), 1);
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 5\n}\ncreate_land {\nland_position 50 50\nbase_size 2\n}\n";
+    const instantiated = instantiateScript(
+      parseRms(source, lang),
+      refDb,
+      settings(),
+      1,
+    );
     const grid = createTileGrid(instantiated.dim, GRASS);
     placeLandOrigins(instantiated, grid, constants, 1);
-    const center = tileIndex(grid, Math.round(instantiated.dim / 2), Math.round(instantiated.dim / 2));
+    const center = tileIndex(
+      grid,
+      Math.round(instantiated.dim / 2),
+      Math.round(instantiated.dim / 2),
+    );
     expect(grid.landId[center]).toBe(1); // the SECOND land, not the first
   });
 });
@@ -431,11 +580,14 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
     // ring instead centers roughly on the map, so it must land far from that.
     const ignoredX = Math.round(0.1 * dim);
     const ignoredY = Math.round(0.1 * dim);
-    expect(Math.hypot(origins[0].x - ignoredX, origins[0].y - ignoredY)).toBeGreaterThan(dim * 0.1);
+    expect(
+      Math.hypot(origins[0].x - ignoredX, origins[0].y - ignoredY),
+    ).toBeGreaterThan(dim * 0.1);
   });
 
   it("direct_placement restores land_position on an assigned land (guide:1016's exception)", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nassign_to_player 1\n}\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\ncreate_land {\nland_position 10 10\nassign_to_player 1\n}\n";
     const { origins, dim } = place(source, 1, { playerCount: 2 });
     expect(origins[0].x).toBe(Math.round(0.1 * dim));
     expect(origins[0].y).toBe(Math.round(0.1 * dim));
@@ -453,54 +605,81 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
   });
 
   it("AT_PLAYER and AT_COLOR resolve to the same player; AT_COLOR notes the difference", () => {
-    const atPlayer = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_PLAYER 2 -1 0\n}\n", 1, { playerCount: 4 });
+    const atPlayer = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_PLAYER 2 -1 0\n}\n",
+      1,
+      { playerCount: 4 },
+    );
     expect(atPlayer.origins[0].player).toBe(2);
-    expect(atPlayer.notes.some((n) => n.key.startsWith("atColor:"))).toBe(false);
+    expect(atPlayer.notes.some((n) => n.key.startsWith("atColor:"))).toBe(
+      false,
+    );
 
-    const atColor = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_COLOR 2 -1 0\n}\n", 1, { playerCount: 4 });
+    const atColor = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_COLOR 2 -1 0\n}\n",
+      1,
+      { playerCount: 4 },
+    );
     expect(atColor.origins[0].player).toBe(2);
     expect(atColor.notes.some((n) => n.key.startsWith("atColor:"))).toBe(true);
   });
 
   it("AT_TEAM with a positive n resolves to a player from that canonical team", () => {
     const teams: TeamNumber[] = [1, 1, 0, 0, 0, 0, 0, 0]; // players 1-2 canonical team 1
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\n", 1, {
-      playerCount: 4,
-      teams,
-    });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\n",
+      1,
+      {
+        playerCount: 4,
+        teams,
+      },
+    );
     expect([1, 2]).toContain(origins[0].player);
   });
 
   it("AT_TEAM 0 resolves to an un-teamed player", () => {
     const teams: TeamNumber[] = [1, 1, 0, 0, 0, 0, 0, 0];
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 0 -1 0\n}\n", 1, {
-      playerCount: 4,
-      teams,
-    });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 0 -1 0\n}\n",
+      1,
+      {
+        playerCount: 4,
+        teams,
+      },
+    );
     expect([3, 4]).toContain(origins[0].player);
   });
 
   it("AT_TEAM negative n (not -10) resolves to a player NOT on that team", () => {
     const teams: TeamNumber[] = [1, 1, 2, 2, 0, 0, 0, 0];
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM -1 -1 0\n}\n", 1, {
-      playerCount: 4,
-      teams,
-    });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM -1 -1 0\n}\n",
+      1,
+      {
+        playerCount: 4,
+        teams,
+      },
+    );
     // canonical team 1 is players 1-2; "-1" excludes them, leaving 3 and 4.
     expect([3, 4]).toContain(origins[0].player);
   });
 
   it("AT_TEAM -10 accepts any player", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM -10 -1 0\n}\n", 1, {
-      playerCount: 4,
-    });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM -10 -1 0\n}\n",
+      1,
+      {
+        playerCount: 4,
+      },
+    );
     expect(origins[0].player).toBeGreaterThanOrEqual(1);
     expect(origins[0].player).toBeLessThanOrEqual(4);
   });
 
   it("remembers assigned players: two AT_TEAM commands for the same team never resolve to the same player", () => {
     const teams: TeamNumber[] = [1, 1, 0, 0, 0, 0, 0, 0];
-    const source = "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\n";
     const { origins } = place(source, 1, { playerCount: 4, teams });
     expect(origins).toHaveLength(2);
     expect(origins[0].player).not.toBe(origins[1].player);
@@ -509,10 +688,14 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
 
   it("Mode -1 picks lobby order (lowest eligible player); Mode 0 draws from the S1 substream", () => {
     const teams: TeamNumber[] = [1, 1, 1, 0, 0, 0, 0, 0];
-    const lobbyOrder = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\n", 1, {
-      playerCount: 4,
-      teams,
-    });
+    const lobbyOrder = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 -1 0\n}\n",
+      1,
+      {
+        playerCount: 4,
+        teams,
+      },
+    );
     expect(lobbyOrder.origins[0].player).toBe(1); // lowest of {1,2,3}
 
     // Mode 0 (random): sweep seeds and confirm it sometimes picks something
@@ -520,27 +703,39 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
     // than silently behaving like Mode -1.
     let sawNonLobbyOrder = false;
     for (let seed = 1; seed <= 20; seed++) {
-      const result = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 0 0\n}\n", seed, {
-        playerCount: 4,
-        teams,
-      });
+      const result = place(
+        "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 1 0 0\n}\n",
+        seed,
+        {
+          playerCount: 4,
+          teams,
+        },
+      );
       if (result.origins[0].player !== 1) sawNonLobbyOrder = true;
     }
     expect(sawNonLobbyOrder).toBe(true);
   });
 
   it("a non-zero Flags argument is noted as unmodelled", () => {
-    const { notes } = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_PLAYER 1 -1 1\n}\n", 1, { playerCount: 2 });
+    const { notes } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_PLAYER 1 -1 1\n}\n",
+      1,
+      { playerCount: 2 },
+    );
     expect(notes.some((n) => n.key.startsWith("assignFlags:"))).toBe(true);
   });
 
   it("an AT_TEAM domain with no eligible player left is not created", () => {
     // Only 2 players, both on canonical team 1 -- AT_TEAM 0 (un-teamed) has no candidate.
     const teams: TeamNumber[] = [1, 1, 0, 0, 0, 0, 0, 0];
-    const { origins, notes } = place("<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 0 -1 0\n}\n", 1, {
-      playerCount: 2,
-      teams,
-    });
+    const { origins, notes } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to AT_TEAM 0 -1 0\n}\n",
+      1,
+      {
+        playerCount: 2,
+        teams,
+      },
+    );
     expect(origins).toHaveLength(0);
     expect(notes.some((n) => n.key.startsWith("landNotCreated:"))).toBe(true);
   });
@@ -572,31 +767,48 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
       "create_player_lands {\n}",
       "create_land {\nassign_to_player 1\n}",
     ].join("\n");
-    const { origins, reports, dim } = place(source, 1, { playerCount: 8, teams });
+    const { origins, reports, dim } = place(source, 1, {
+      playerCount: 8,
+      teams,
+    });
     expect(origins).toHaveLength(9); // 8 implicit + 1 extra
     const extra = origins[8];
     expect(extra.player).toBe(1);
     expect(extra.x).toBe(Math.round(dim / 2));
     expect(extra.y).toBe(Math.round(dim / 2));
-    const extraReport = reports.find((r) => r.commandSpan.start !== reports[0].commandSpan.start);
-    expect(extraReport?.failures.some((f) => f.bucket === "notSimulated")).toBe(true);
+    const extraReport = reports.find(
+      (r) => r.commandSpan.start !== reports[0].commandSpan.start,
+    );
+    expect(extraReport?.failures.some((f) => f.bucket === "notSimulated")).toBe(
+      true,
+    );
   });
 
   it("a standalone assign_to'd land (no create_player_lands at all) still gets ring-placed, not treated as neutral", () => {
-    const { origins, dim } = place("<LAND_GENERATION>\ncreate_land {\nland_position 5 5\nassign_to_player 1\n}\n", 1, {
-      playerCount: 2,
-    });
+    const { origins, dim } = place(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 5 5\nassign_to_player 1\n}\n",
+      1,
+      {
+        playerCount: 2,
+      },
+    );
     expect(origins).toHaveLength(1);
     // The default ring center/radius apply even with no create_player_lands
     // command to have declared them -- confirms the "no governing command"
     // fallback path, not merely that SOME point was produced.
     const ignoredX = Math.round(0.05 * dim);
     const ignoredY = Math.round(0.05 * dim);
-    expect(Math.hypot(origins[0].x - ignoredX, origins[0].y - ignoredY)).toBeGreaterThan(dim * 0.1);
+    expect(
+      Math.hypot(origins[0].x - ignoredX, origins[0].y - ignoredY),
+    ).toBeGreaterThan(dim * 0.1);
   });
 
   it("zone still defaults to playerNumber - 10 for an assigned land", () => {
-    const { origins } = place("<LAND_GENERATION>\ncreate_land {\nassign_to_player 3\n}\n", 1, { playerCount: 4 });
+    const { origins } = place(
+      "<LAND_GENERATION>\ncreate_land {\nassign_to_player 3\n}\n",
+      1,
+      { playerCount: 4 },
+    );
     expect(origins[0].zone).toBe(3 - 10);
   });
 });
@@ -628,7 +840,10 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
         if (grid.landId[i] !== 0) continue;
         const x = i % dim;
         const y = (i - x) / dim;
-        farthest = Math.max(farthest, Math.max(Math.abs(x - centre), Math.abs(y - centre)));
+        farthest = Math.max(
+          farthest,
+          Math.max(Math.abs(x - centre), Math.abs(y - centre)),
+        );
       }
       // Seed radius is 0.12 * dim = 24 here, plus whatever a 200-tile land
       // grows around it. Generous, and still far inside the ~90 a map-wide
@@ -664,7 +879,12 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
         `create_land {@land_position 30 ${percent}@base_size 1@number_of_tiles 0@terrain_type SNOW@}`,
       );
     }
-    const source = ["<LAND_GENERATION>", "base_terrain WATER", ...wall, "create_land {@land_position 24 50@base_size 2@number_of_tiles 4000@terrain_type DIRT@clumping_factor 8@}"]
+    const source = [
+      "<LAND_GENERATION>",
+      "base_terrain WATER",
+      ...wall,
+      "create_land {@land_position 24 50@base_size 2@number_of_tiles 4000@terrain_type DIRT@clumping_factor 8@}",
+    ]
       .join("\n")
       .replace(/@/g, "\n");
 
@@ -711,12 +931,20 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
     // That is the script meeting a map size it was not written for (its own
     // header says 4v4), not a defect, and asserting a sealed wall there would
     // pin an artefact.
-    const source = readFileSync(join(REPO_ROOT, "test-maps", "AK_Six_Points_v1.4.rms"), "utf8");
+    const source = readFileSync(
+      join(REPO_ROOT, "test-maps", "AK_Six_Points_v1.4.rms"),
+      "utf8",
+    );
     const ownedPerSeed: number[] = [];
     for (const seed of [1, 7, 13]) {
       const { grid, dim, origins } = placeAndGrow(source, seed);
       // The flood is the `zone 2` land at `land_position 90 49`.
-      const flood = origins.findIndex((o) => o.zone === 2 && o.x === Math.round(dim * 0.9) && o.y === Math.round(dim * 0.49));
+      const flood = origins.findIndex(
+        (o) =>
+          o.zone === 2 &&
+          o.x === Math.round(dim * 0.9) &&
+          o.y === Math.round(dim * 0.49),
+      );
       expect(flood).toBeGreaterThanOrEqual(0);
 
       expect(countComponents(grid, flood)).toBe(1);
@@ -803,7 +1031,11 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
       for (let x = 0; x < dim; x++) {
         if (grid.landId[tileIndex(grid, x, y)] !== 0) continue;
         owned++;
-        if (firstOutside === undefined && (x < lo || x >= hi || y < lo || y >= hi)) firstOutside = { x, y };
+        if (
+          firstOutside === undefined &&
+          (x < lo || x >= hi || y < lo || y >= hi)
+        )
+          firstOutside = { x, y };
       }
     }
     expect(firstOutside).toBeUndefined();
@@ -872,7 +1104,8 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
             const ny = y + dy;
             if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
             const j = tileIndex(grid, nx, ny);
-            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
+            if (grid.landId[j] === 1)
+              minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
           }
         }
       }
@@ -909,7 +1142,8 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
             const ny = y + dy;
             if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
             const j = tileIndex(grid, nx, ny);
-            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
+            if (grid.landId[j] === 1)
+              minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
           }
         }
       }
@@ -940,7 +1174,8 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
             const ny = y + dy;
             if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
             const j = tileIndex(grid, nx, ny);
-            if (grid.landId[j] === 1) minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
+            if (grid.landId[j] === 1)
+              minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
           }
         }
       }
@@ -965,8 +1200,10 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
   });
 
   it("high clumping_factor produces a single connected piece; very negative clumping_factor fragments", () => {
-    const roundSource = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor 100\n}\n";
-    const snakeySource = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor -20\n}\n";
+    const roundSource =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor 100\n}\n";
+    const snakeySource =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor -20\n}\n";
     let fragmentedSeeds = 0;
     for (let seed = 1; seed <= 8; seed++) {
       const round = placeAndGrow(roundSource, seed);
@@ -993,11 +1230,14 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
         "}",
       ].join("\n"),
     );
-    expect(reports[0].failures.some((f) => f.bucket === "growthShortfall")).toBe(true);
+    expect(
+      reports[0].failures.some((f) => f.bucket === "growthShortfall"),
+    ).toBe(true);
   });
 
   it("behavior_version 1 treats the declared target as INCLUSIVE of the origin square", () => {
-    const source = "<PLAYER_SETUP>\nbehavior_version 1\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\n}\n";
+    const source =
+      "<PLAYER_SETUP>\nbehavior_version 1\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\n}\n";
     const { grid } = placeAndGrow(source);
     const owned = ownedCount(grid, 0);
     // Origin square is 5x5=25 tiles; version 1 means the final count should
@@ -1010,7 +1250,11 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
 
 describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
   /** placeAndGrow + the paint pass, i.e. everything S1 does to `grid.terrain`. */
-  function placeGrowPaint(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
+  function placeGrowPaint(
+    source: string,
+    seed = 1,
+    overrides?: Parameters<typeof settings>[0],
+  ) {
     const grown = placeAndGrow(source, seed, overrides);
     paintLandTerrain(grown.origins, grown.grid);
     return grown;
@@ -1026,7 +1270,8 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
   it("paints the land's terrain over its whole grown footprint, not just the origin stamp", () => {
     // base_size 2 is a 5x5 origin stamp; number_of_tiles 200 means growth
     // claims far more than that, and every claimed tile must be painted.
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\nterrain_type WATER\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\nterrain_type WATER\n}\n";
     const { grid } = placeGrowPaint(source);
     let owned = 0;
     for (let i = 0; i < grid.landId.length; i++) {
@@ -1038,7 +1283,8 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
   });
 
   it("leaves every unclaimed tile on the base fill", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\nterrain_type WATER\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\nterrain_type WATER\n}\n";
     const { grid } = placeGrowPaint(source);
     // Same rewrite as the f=100 border test above: a 200-tile land leaves
     // ~39,800 unclaimed tiles, so the assertion-per-tile form was ~39,800
@@ -1057,25 +1303,29 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
   // two produced a map identical to the third (nothing painted at all), and
   // the whole map read as one flat base_terrain.
   it("resolves a terrain named by a built-in constant the extraction never had (DEEP_WATER)", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type DEEP_WATER\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type DEEP_WATER\n}\n";
     const { grid } = placeGrowPaint(source);
     expect(terrainHistogram(grid).get(22)).toBeGreaterThan(50);
   });
 
   it("resolves a bare terrain id, which is the only way to name 53 of DE's terrains", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type 26\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type 26\n}\n";
     const { grid } = placeGrowPaint(source);
     expect(terrainHistogram(grid).get(26)).toBeGreaterThan(50);
   });
 
   it("resolves a script's own #const, the idiom those 53 terrains force (TL Black Forest's WOODIES)", () => {
-    const source = "#const WOODIES 48\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type WOODIES\n}\n";
+    const source =
+      "#const WOODIES 48\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type WOODIES\n}\n";
     const { grid } = placeGrowPaint(source);
     expect(terrainHistogram(grid).get(48)).toBeGreaterThan(50);
   });
 
   it("does not let a #const shadow a built-in name — the engine defines random_map.def first", () => {
-    const source = "#const WATER 48\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type WATER\n}\n";
+    const source =
+      "#const WATER 48\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type WATER\n}\n";
     const { grid } = placeGrowPaint(source);
     const hist = terrainHistogram(grid);
     expect(hist.get(1)).toBeGreaterThan(50); // still WATER
@@ -1083,13 +1333,15 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
   });
 
   it("paints nothing for a land with no terrain_type, leaving the base fill intact", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\n}\n";
     const { grid } = placeGrowPaint(source);
     expect([...terrainHistogram(grid).keys()]).toEqual([GRASS]);
   });
 
   it("paints nothing for an unresolvable terrain_type rather than guessing an id", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type NOT_A_TERRAIN\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 100\nterrain_type NOT_A_TERRAIN\n}\n";
     const { grid } = placeGrowPaint(source);
     expect([...terrainHistogram(grid).keys()]).toEqual([GRASS]);
   });
@@ -1112,7 +1364,8 @@ describe("terrain_type painting (Sec.6.1, applied after growth)", () => {
 
 describe("base_elevation (Sec.6.1, applied after growth)", () => {
   it("sets every tile of the grown land to the declared elevation", () => {
-    const source = "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 100\nbase_elevation 7\n}\n";
+    const source =
+      "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 100\nbase_elevation 7\n}\n";
     const { grid } = placeGrowElevate(source);
     for (let i = 0; i < grid.landId.length; i++) {
       if (grid.landId[i] === 0) expect(grid.elevation[i]).toBe(7);
@@ -1120,45 +1373,59 @@ describe("base_elevation (Sec.6.1, applied after growth)", () => {
   });
 
   it("clamps a negative H to 16 (CONFIRMED in-game: -1 matches 16 exactly)", () => {
-    const source = "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation -1\n}\n";
+    const source =
+      "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation -1\n}\n";
     const { grid } = placeGrowElevate(source);
-    const owned = [...grid.landId].some((v, i) => v === 0 && grid.elevation[i] !== 16);
+    const owned = [...grid.landId].some(
+      (v, i) => v === 0 && grid.elevation[i] !== 16,
+    );
     expect(owned).toBe(false);
   });
 
   it("clamps an H above 16 down to 16", () => {
-    const source = "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 40\n}\n";
+    const source =
+      "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 40\n}\n";
     const { grid } = placeGrowElevate(source);
-    const owned = [...grid.landId].some((v, i) => v === 0 && grid.elevation[i] !== 16);
+    const owned = [...grid.landId].some(
+      (v, i) => v === 0 && grid.elevation[i] !== 16,
+    );
     expect(owned).toBe(false);
   });
 
   it("H=0 (or absent) is a real no-op — elevation stays at the grid default", () => {
-    const source = "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 0\n}\n";
+    const source =
+      "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 0\n}\n";
     const { grid } = placeGrowElevate(source);
     const anyRaised = [...grid.elevation].some((v) => v !== 0);
     expect(anyRaised).toBe(false);
   });
 
   it("skips a land whose terrain_type is water (guide:959)", () => {
-    const source = "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\nterrain_type WATER\n}\n";
+    const source =
+      "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\nterrain_type WATER\n}\n";
     const { grid } = placeGrowElevate(source);
     const anyRaised = [...grid.elevation].some((v) => v !== 0);
     expect(anyRaised).toBe(false);
   });
 
   it("has no effect and notes it when <ELEVATION_GENERATION> is absent from the script", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\n}\n";
     const { grid, elevationNotes } = placeGrowElevate(source);
     const anyRaised = [...grid.elevation].some((v) => v !== 0);
     expect(anyRaised).toBe(false);
-    expect(elevationNotes.some((n) => n.key.startsWith("baseElevationNoSection:"))).toBe(true);
+    expect(
+      elevationNotes.some((n) => n.key.startsWith("baseElevationNoSection:")),
+    ).toBe(true);
   });
 
   it("an EMPTY <ELEVATION_GENERATION> section is enough (guide:952) — elevation still applies", () => {
-    const source = "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\n}\n";
+    const source =
+      "<ELEVATION_GENERATION>\n<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\n}\n";
     const { grid } = placeGrowElevate(source);
-    const anyRaised = [...grid.elevation].some((v, i) => grid.landId[i] === 0 && v === 10);
+    const anyRaised = [...grid.elevation].some(
+      (v, i) => grid.landId[i] === 0 && v === 10,
+    );
     expect(anyRaised).toBe(true);
   });
 
@@ -1172,7 +1439,8 @@ describe("base_elevation (Sec.6.1, applied after growth)", () => {
     const { grid } = placeGrowElevate(source);
     let sawUnelevatedSecondLand = false;
     for (let i = 0; i < grid.landId.length; i++) {
-      if (grid.landId[i] === 1 && grid.elevation[i] === 0) sawUnelevatedSecondLand = true;
+      if (grid.landId[i] === 1 && grid.elevation[i] === 0)
+        sawUnelevatedSecondLand = true;
       if (grid.landId[i] === 1) expect(grid.elevation[i]).not.toBe(12);
     }
     expect(sawUnelevatedSecondLand).toBe(true);
@@ -1201,11 +1469,18 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
   for (const name of corpusFiles) {
     it(name, () => {
       const source = readFileSync(join(corpusDir, name), "utf8");
-      const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(), 12345);
+      const instantiated = instantiateScript(
+        parseRms(source, lang),
+        refDb,
+        settings(),
+        12345,
+      );
       const grid = createTileGrid(instantiated.dim, GRASS);
       const result = placeLandOrigins(instantiated, grid, constants, 12345);
       growLands(result.origins, grid, result.reports, 12345);
-      expect(() => applyBaseElevation(instantiated, result.origins, grid, constants)).not.toThrow();
+      expect(() =>
+        applyBaseElevation(instantiated, result.origins, grid, constants),
+      ).not.toThrow();
     });
   }
 
@@ -1217,16 +1492,25 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
   // rather than the test quietly not existing. The unit tests above are the
   // real gate.
   const petra = join(corpusDir, "24hr_Petra.rms");
-  it.runIf(existsSync(petra))("24hr_Petra.rms generates lands despite having no literal create_land (BUG-013)", () => {
-    const source = readFileSync(petra, "utf8");
-    expect(source).not.toMatch(/^\s*create_land\b/m);
-    const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(), 12345);
-    const grid = createTileGrid(instantiated.dim, GRASS);
-    const result = placeLandOrigins(instantiated, grid, constants, 12345);
-    growLands(result.origins, grid, result.reports, 12345);
-    expect(result.origins.length).toBeGreaterThan(0);
-    let owned = 0;
-    for (let i = 0; i < grid.landId.length; i++) if (grid.landId[i] >= 0) owned++;
-    expect(owned).toBeGreaterThan(0);
-  });
+  it.runIf(existsSync(petra))(
+    "24hr_Petra.rms generates lands despite having no literal create_land (BUG-013)",
+    () => {
+      const source = readFileSync(petra, "utf8");
+      expect(source).not.toMatch(/^\s*create_land\b/m);
+      const instantiated = instantiateScript(
+        parseRms(source, lang),
+        refDb,
+        settings(),
+        12345,
+      );
+      const grid = createTileGrid(instantiated.dim, GRASS);
+      const result = placeLandOrigins(instantiated, grid, constants, 12345);
+      growLands(result.origins, grid, result.reports, 12345);
+      expect(result.origins.length).toBeGreaterThan(0);
+      let owned = 0;
+      for (let i = 0; i < grid.landId.length; i++)
+        if (grid.landId[i] >= 0) owned++;
+      expect(owned).toBeGreaterThan(0);
+    },
+  );
 });

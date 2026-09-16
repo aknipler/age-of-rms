@@ -1,4 +1,7 @@
-import type { PreviewWireResult, StageSnapshot } from "../../preview/generator/types";
+import type {
+  PreviewWireResult,
+  StageSnapshot,
+} from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
 import type { TilePoint } from "../../preview/render/projection";
 import { usePreviewViewport } from "./PreviewViewContext";
@@ -46,7 +49,8 @@ export function PreviewCanvas({
 }: PreviewCanvasProps) {
   // Held above the tab switch (PreviewViewContext.tsx) so zoom/pan survive
   // Breakdown <-> Code instead of resetting to "fit" on every remount.
-  const { viewport, setViewport, userFramed, setUserFramed } = usePreviewViewport();
+  const { viewport, setViewport, userFramed, setUserFramed } =
+    usePreviewViewport();
 
   return (
     <OverlayCanvas

@@ -22,7 +22,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../../../parser/parser";
 import { tokenize } from "../../../../parser/lexer";
-import { loadLanguage, REPO_ROOT } from "../../../../parser/__tests__/testUtils";
+import {
+  loadLanguage,
+  REPO_ROOT,
+} from "../../../../parser/__tests__/testUtils";
 import { formatScript, type FormatScriptOptions } from "../index";
 
 const lang = loadLanguage();
@@ -64,7 +67,9 @@ const OPTION_SETS: { name: string; options: FormatScriptOptions }[] = [
 ];
 
 function errorCount(source: string): number {
-  return parseRms(source, lang).diagnostics.filter((d) => d.severity === "error").length;
+  return parseRms(source, lang).diagnostics.filter(
+    (d) => d.severity === "error",
+  ).length;
 }
 
 describe.each(OPTION_SETS)("formatter corpus — $name", ({ options }) => {

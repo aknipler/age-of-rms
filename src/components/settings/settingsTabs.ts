@@ -34,11 +34,36 @@ interface SettingsTab {
 // placeholders for now; each names what it will hold so the shape of the
 // dialog is legible before the settings themselves exist.
 export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
-  { id: "general", label: "General", helpId: "settings.tab.general", Panel: GeneralSettings },
-  { id: "hotkeys", label: "Hotkeys", helpId: "settings.tab.hotkeys", Panel: HotkeysSettings },
-  { id: "theme", label: "Theme", helpId: "settings.tab.theme", Panel: ThemeSettings },
-  { id: "breakdown", label: "Breakdown", helpId: "settings.tab.breakdown", Panel: BreakdownSettings },
-  { id: "code", label: "Code", helpId: "settings.tab.code", Panel: CodeSettings },
+  {
+    id: "general",
+    label: "General",
+    helpId: "settings.tab.general",
+    Panel: GeneralSettings,
+  },
+  {
+    id: "hotkeys",
+    label: "Hotkeys",
+    helpId: "settings.tab.hotkeys",
+    Panel: HotkeysSettings,
+  },
+  {
+    id: "theme",
+    label: "Theme",
+    helpId: "settings.tab.theme",
+    Panel: ThemeSettings,
+  },
+  {
+    id: "breakdown",
+    label: "Breakdown",
+    helpId: "settings.tab.breakdown",
+    Panel: BreakdownSettings,
+  },
+  {
+    id: "code",
+    label: "Code",
+    helpId: "settings.tab.code",
+    Panel: CodeSettings,
+  },
   {
     id: "advanced-tools",
     label: "Advanced Tools",
@@ -47,7 +72,12 @@ export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
   },
   // Last in the strip: it's the one tab nothing is configured from, so it
   // shouldn't sit between two that are.
-  { id: "credits", label: "Credits", helpId: "settings.tab.credits", Panel: CreditsSettings },
+  {
+    id: "credits",
+    label: "Credits",
+    helpId: "settings.tab.credits",
+    Panel: CreditsSettings,
+  },
 ];
 
 export const DEFAULT_SETTINGS_TAB: SettingsTabId = "general";

@@ -38,18 +38,18 @@ says what it should be instead.
 
 ## 2. What the repo actually says about them, which is almost nothing
 
-- **`docs/land-placement-design.md` Sec.1, line 49** is the only prose mention: *"Drop lands in
-  standard shapes, circle, square, triangle, ..."*. That is the goal statement in "what was asked
+- **`docs/land-placement-design.md` Sec.1, line 49** is the only prose mention: _"Drop lands in
+  standard shapes, circle, square, triangle, ..."_. That is the goal statement in "what was asked
   for", written before the model existed. It names three of the six and defines none.
 - **Sec.4.5** is the section that owns `ShapeGroup` and it discusses `pattern`, `repeats`,
   `rotation`, `radius`, the member ordering invariant and the merge rule. It never mentions
   `kind` at all.
-- **Sec.7.3** says *"Shape buttons create a group at map centre; then a radius ring handle, a
-  rotation handle, and a count stepper"*. Plural "buttons", so more than one kind was intended to
+- **Sec.7.3** says _"Shape buttons create a group at map centre; then a radius ring handle, a
+  rotation handle, and a count stepper"_. Plural "buttons", so more than one kind was intended to
   be creatable, and the two gizmo handles it names are radius and rotation, which are circle
   vocabulary.
-- **`model.ts` carries one real clue.** `radius` is commented as *"default **circumradius**,
-  PERCENT"*. Circumradius is the word for the distance from a regular polygon's centre to its
+- **`model.ts` carries one real clue.** `radius` is commented as _"default **circumradius**,
+  PERCENT"_. Circumradius is the word for the distance from a regular polygon's centre to its
   vertices, so the author was thinking of a polygon inscribed in the ring rather than of some
   separate side-length parameterisation. The word appears nowhere else in the repo and was never
   implemented, so treat it as a hint about intent, not as a decision.
@@ -372,7 +372,7 @@ together", which is exactly what the two existing handles already do between the
 built for `square`/`triangle`/`polygon` for this reason, and the type alone should not be read as
 implying otherwise; if a vertex handle starts to look necessary later, the question to ask first is
 what it would set that radius and rotation do not. What was left of the item, one handle per
-*polar* kind slice A introduced, shipped: a line's own second end (mirrored through the anchor,
+_polar_ kind slice A introduced, shipped: a line's own second end (mirrored through the anchor,
 `gizmoGeometry.ts`'s `lineEndHandlePosition`) and an arc's own sweep (at its last member,
 `arcSweepHandlePosition`), both interpreted as pure functions in `canvasInteraction.ts`
 (`computeLineEndDrag`/`computeArcSweepDrag`). `docs/land-placement-design.md` Sec.7.3's handle list

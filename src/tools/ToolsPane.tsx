@@ -10,7 +10,13 @@
  * model tractable at all.
  */
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../components/HelpTip";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
@@ -22,11 +28,21 @@ import languageData from "../../reference/data/language.json";
 import gameConstantsData from "../../reference/data/game-constants.json";
 import type { LanguageData } from "../parser/language";
 import type { Span } from "../parser/types";
-import { type OutputBlock, type ParamValue, type PublishedGameConstants, type ToolParamDef } from "../../tools-api/index";
+import {
+  type OutputBlock,
+  type ParamValue,
+  type PublishedGameConstants,
+  type ToolParamDef,
+} from "../../tools-api/index";
 import { inProcessRunner } from "./host";
 import { useSelectedTool, useToolHostContext } from "./ToolHostContext";
 import { buildToolContext } from "./buildToolContext";
-import { paramsAreSubmittable, resolveParams, tableRowsToRender, validateEdits } from "./protocol";
+import {
+  paramsAreSubmittable,
+  resolveParams,
+  tableRowsToRender,
+  validateEdits,
+} from "./protocol";
 import { registeredTools, WORKER_RUNTIME_TOOL_IDS } from "./registry";
 import { workerRunner } from "./workerRunner";
 import { useLandPlacementModel } from "./builtin/landPlacement/panel/landPlacementModel";
@@ -39,7 +55,9 @@ const lang = languageData as unknown as LanguageData;
 // the hand-written/generated interface closely enough for a single-step
 // cast, and `validate:reference` (ajv) is the real guarantee this data is
 // shaped correctly, not a runtime assertion here.
-const gameConstants = (gameConstantsData as unknown as { constants: PublishedGameConstants }).constants;
+const gameConstants = (
+  gameConstantsData as unknown as { constants: PublishedGameConstants }
+).constants;
 
 interface ToolsPaneProps {
   /**
@@ -53,11 +71,19 @@ interface ToolsPaneProps {
   source: string;
   /** Bypasses the typing debounce, exactly as Breakdown's discrete-edit path does. */
   reparseNow: (source: string) => void;
-  applyTextEdits: (edits: readonly { start: number; end: number; newText: string }[]) => void;
+  applyTextEdits: (
+    edits: readonly { start: number; end: number; newText: string }[],
+  ) => void;
   onJumpToOffset: (offset: number) => void;
 }
 
-export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJumpToOffset }: ToolsPaneProps) {
+export function ToolsPane({
+  filePath,
+  source,
+  reparseNow,
+  applyTextEdits,
+  onJumpToOffset,
+}: ToolsPaneProps) {
   const parseResult = useParsedDocumentContext();
   const generation = useGenerationSettings();
   const tools = useMemo(() => registeredTools(), []);
@@ -126,7 +152,8 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
   // directly, matching `setPanelDirty`'s own doc: "the panel's own React
   // state calls this to keep PanelState.dirty in sync."
   useEffect(() => {
-    if (panelState.phase !== "unmounted") host.setPanelDirty(landPlacementModel.dirty);
+    if (panelState.phase !== "unmounted")
+      host.setPanelDirty(landPlacementModel.dirty);
   }, [host, panelState.phase, landPlacementModel.dirty]);
 
   // Any unmount (this tool switch's own confirm+unmount below, OR
@@ -148,7 +175,9 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
     host.noteOpenDocument(filePath);
   }, [filePath, host]);
 
-  const [panelBlockedMessage, setPanelBlockedMessage] = useState<string | null>(null);
+  const [panelBlockedMessage, setPanelBlockedMessage] = useState<string | null>(
+    null,
+  );
 
   // Selecting a different tool resets the form to that manifest's own
   // defaults. Sec.3.6's table: leaving a MOUNTED panel confirms only when it
@@ -165,12 +194,16 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
         // all in practice. `@tauri-apps/plugin-dialog` is the app's own,
         // already-depended-on native dialog surface (useDocument.ts uses it
         // for open/save) and is what actually renders in the packaged app.
-        const proceed = await confirm("Land Placement has unsaved changes. Switching tools discards them. Continue?");
+        const proceed = await confirm(
+          "Land Placement has unsaved changes. Switching tools discards them. Continue?",
+        );
         if (!proceed) return;
       }
       host.unmountPanel();
     } else if (host.isBusy()) {
-      const proceed = await confirm("A tool is still running. Switching tools cancels it. Continue?");
+      const proceed = await confirm(
+        "A tool is still running. Switching tools cancels it. Continue?",
+      );
       if (!proceed) return;
       host.cancel();
     }
@@ -181,11 +214,15 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
     const target = tools.find((t) => t.manifest.id === id);
     if (target?.kind === "panel") {
       const mounted = host.mountPanel(target.manifest.id, filePath);
-      if (!mounted) setPanelBlockedMessage("Another tool is still running. Cancel it before opening Land Placement.");
+      if (!mounted)
+        setPanelBlockedMessage(
+          "Another tool is still running. Cancel it before opening Land Placement.",
+        );
     }
   };
 
-  const setParam = (key: string, value: ParamValue) => setSubmitted((prev) => ({ ...prev, [key]: value }));
+  const setParam = (key: string, value: ParamValue) =>
+    setSubmitted((prev) => ({ ...prev, [key]: value }));
 
   const run = () => {
     if (!tool || !parseResult) return;
@@ -224,7 +261,11 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
       capabilities: tool.manifest.capabilities,
       params,
       parseResult,
-      generation: { playerCount: generation.playerCount, mapSize: generation.mapSize, teams: generation.teams },
+      generation: {
+        playerCount: generation.playerCount,
+        mapSize: generation.mapSize,
+        teams: generation.teams,
+      },
       lang,
       gameConstants,
       previewView: { seed: previewView.seed, cutOffset: previewCut.cutOffset },
@@ -232,9 +273,27 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
     // Sec.4.3, Sec.7.2 item 3: the runner is picked per run, at the call
     // site, so `host` itself stays one shared instance with an unchanged
     // `useMemo`. See ToolHost.start's own doc comment for why that matters.
-    const runner = WORKER_RUNTIME_TOOL_IDS.has(tool.manifest.id) ? workerRunner : inProcessRunner;
-    host.start(tool, ctx, parseResult.source, runner, { playerCount: generation.playerCount, mapSize: generation.mapSize }, filePath);
-  }, [tool, parseResult, submitted, generation, host, filePath, previewView.seed, previewCut.cutOffset]);
+    const runner = WORKER_RUNTIME_TOOL_IDS.has(tool.manifest.id)
+      ? workerRunner
+      : inProcessRunner;
+    host.start(
+      tool,
+      ctx,
+      parseResult.source,
+      runner,
+      { playerCount: generation.playerCount, mapSize: generation.mapSize },
+      filePath,
+    );
+  }, [
+    tool,
+    parseResult,
+    submitted,
+    generation,
+    host,
+    filePath,
+    previewView.seed,
+    previewCut.cutOffset,
+  ]);
 
   useEffect(() => {
     if (pendingRun && parseResult && parseResult.source === source) {
@@ -278,13 +337,18 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
   // run() at all, which throws in inProcessRunner. Re-selecting the SAME
   // dropdown option also fires no onChange, so "Reopen" below calls
   // selectTool directly rather than relying on the select element.
-  const panelClosedByDocumentChange = tool?.kind === "panel" && panelState.phase !== "mounted";
-  const submittable = tool ? paramsAreSubmittable(tool.manifest.params, submitted) : false;
+  const panelClosedByDocumentChange =
+    tool?.kind === "panel" && panelState.phase !== "mounted";
+  const submittable = tool
+    ? paramsAreSubmittable(tool.manifest.params, submitted)
+    : false;
   // Sec.5.2, keyed on the OUTPUT's own tool (state.toolId), not the
   // currently selected one: selecting a different tool resets state first, so
   // the two agree while a result is showing, but state.toolId is what the
   // output actually belongs to.
-  const outputOwnsSettingsHeader = tools.find((t) => t.manifest.id === state.toolId)?.manifest.ownsSettingsHeader === true;
+  const outputOwnsSettingsHeader =
+    tools.find((t) => t.manifest.id === state.toolId)?.manifest
+      .ownsSettingsHeader === true;
 
   // Sec.3.2/Sec.3.6: a panel-kind tool renders its own component instead of
   // the report-tool run/output UI below. It has no `run()`, no params form
@@ -303,7 +367,12 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
               <label className={styles.label} htmlFor="tool-select">
                 Tool
               </label>
-              <select id="tool-select" className={styles.select} value={selectedId} onChange={(e) => selectTool(e.target.value)}>
+              <select
+                id="tool-select"
+                className={styles.select}
+                value={selectedId}
+                onChange={(e) => selectTool(e.target.value)}
+              >
                 {tools.map((t) => (
                   <option key={t.manifest.id} value={t.manifest.id}>
                     {t.manifest.name}
@@ -354,15 +423,26 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
           </div>
         </HelpTip>
 
-        {panelBlockedMessage && <p className={styles.staleNote}>{panelBlockedMessage}</p>}
+        {panelBlockedMessage && (
+          <p className={styles.staleNote}>{panelBlockedMessage}</p>
+        )}
 
         {panelClosedByDocumentChange ? (
-          <button type="button" className={`${styles.button} ${styles.primary}`} onClick={() => void selectTool(tool!.manifest.id)}>
+          <button
+            type="button"
+            className={`${styles.button} ${styles.primary}`}
+            onClick={() => void selectTool(tool!.manifest.id)}
+          >
             Reopen {tool!.manifest.name}
           </button>
         ) : busy ? (
           <HelpTip id="tools.cancel">
-            <button type="button" className={styles.button} onClick={() => host.cancel()} disabled={state.phase === "cancelling"}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => host.cancel()}
+              disabled={state.phase === "cancelling"}
+            >
               {state.phase === "cancelling" ? "Stopping…" : "Cancel"}
             </button>
           </HelpTip>
@@ -382,19 +462,27 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
         {canApply && (
           <HelpTip id="tools.apply">
             <button type="button" className={styles.button} onClick={apply}>
-              Apply {state.edits?.length} change{state.edits?.length === 1 ? "" : "s"}
+              Apply {state.edits?.length} change
+              {state.edits?.length === 1 ? "" : "s"}
             </button>
           </HelpTip>
         )}
       </div>
 
-      {tool && <p className={styles.description}>{tool.manifest.description}</p>}
+      {tool && (
+        <p className={styles.description}>{tool.manifest.description}</p>
+      )}
 
       {tool?.manifest.params && tool.manifest.params.length > 0 && (
         <HelpTip id="tools.params">
           <div className={styles.params}>
             {tool.manifest.params.map((def) => (
-              <ParamRow key={def.key} def={def} value={submitted[def.key]} onChange={(v) => setParam(def.key, v)} />
+              <ParamRow
+                key={def.key}
+                def={def}
+                value={submitted[def.key]}
+                onChange={(v) => setParam(def.key, v)}
+              />
             ))}
           </div>
         </HelpTip>
@@ -405,18 +493,28 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
           <div>
             <div className={styles.progressTrack}>
               {state.progress?.fraction !== undefined ? (
-                <div className={styles.progressFill} style={{ width: `${Math.round(state.progress.fraction * 100)}%` }} />
+                <div
+                  className={styles.progressFill}
+                  style={{
+                    width: `${Math.round(state.progress.fraction * 100)}%`,
+                  }}
+                />
               ) : (
                 <div className={styles.progressIndeterminate} />
               )}
             </div>
-            {state.progress?.note && <p className={styles.progressNote}>{state.progress.note}</p>}
+            {state.progress?.note && (
+              <p className={styles.progressNote}>{state.progress.note}</p>
+            )}
           </div>
         </HelpTip>
       )}
 
       {stale && (
-        <p className={styles.staleNote}>The code changed since this ran. Re-run before applying. Tool edits are never rebased.</p>
+        <p className={styles.staleNote}>
+          The code changed since this ran. Re-run before applying. Tool edits
+          are never rebased.
+        </p>
       )}
 
       {state.error && (
@@ -441,11 +539,17 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
                 player count anyway. */}
             {!outputOwnsSettingsHeader && state.settingsSnapshot && (
               <p className={styles.description}>
-                Run at {state.settingsSnapshot.playerCount} players, {state.settingsSnapshot.mapSize}
+                Run at {state.settingsSnapshot.playerCount} players,{" "}
+                {state.settingsSnapshot.mapSize}
               </p>
             )}
             {state.output.blocks.map((block, i) => (
-              <Block key={i} block={block} lineOffsets={parseResult?.lineOffsets} onJump={onJumpToOffset} />
+              <Block
+                key={i}
+                block={block}
+                lineOffsets={parseResult?.lineOffsets}
+                onJump={onJumpToOffset}
+              />
             ))}
           </div>
         </HelpTip>
@@ -464,17 +568,28 @@ export function ToolsPane({ filePath, source, reparseNow, applyTextEdits, onJump
       )}
 
       {panelClosedByDocumentChange && (
-        <p className={styles.empty}>{tool!.manifest.name} closed because the open document changed.</p>
+        <p className={styles.empty}>
+          {tool!.manifest.name} closed because the open document changed.
+        </p>
       )}
 
-      {!panelClosedByDocumentChange && !state.output && !state.error && !busy && (
-        <p className={styles.empty}>Waiting for tool selection…</p>
-      )}
+      {!panelClosedByDocumentChange &&
+        !state.output &&
+        !state.error &&
+        !busy && <p className={styles.empty}>Waiting for tool selection…</p>}
     </div>
   );
 }
 
-function ParamRow({ def, value, onChange }: { def: ToolParamDef; value: unknown; onChange: (v: ParamValue) => void }) {
+function ParamRow({
+  def,
+  value,
+  onChange,
+}: {
+  def: ToolParamDef;
+  value: unknown;
+  onChange: (v: ParamValue) => void;
+}) {
   // Tool-authored help renders INSIDE the row rather than through ui-help.json:
   // these rows are generated from `manifest.params`, so their text comes from
   // the manifest. `tools.params` documents the FORM. Revisit before v1.1, when
@@ -489,7 +604,11 @@ function ParamRow({ def, value, onChange }: { def: ToolParamDef; value: unknown;
     case "boolean":
       return (
         <label className={styles.paramRow}>
-          <input type="checkbox" checked={typeof value === "boolean" ? value : def.default} onChange={(e) => onChange(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={typeof value === "boolean" ? value : def.default}
+            onChange={(e) => onChange(e.target.checked)}
+          />
           {label}
         </label>
       );
@@ -523,7 +642,11 @@ function ParamRow({ def, value, onChange }: { def: ToolParamDef; value: unknown;
       return (
         <label className={styles.paramRow}>
           {label}
-          <select className={styles.select} value={typeof value === "string" ? value : def.default} onChange={(e) => onChange(e.target.value)}>
+          <select
+            className={styles.select}
+            value={typeof value === "string" ? value : def.default}
+            onChange={(e) => onChange(e.target.value)}
+          >
             {def.options.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -533,7 +656,9 @@ function ParamRow({ def, value, onChange }: { def: ToolParamDef; value: unknown;
         </label>
       );
     case "multiSelect": {
-      const picked = new Set(Array.isArray(value) ? (value as string[]) : def.default);
+      const picked = new Set(
+        Array.isArray(value) ? (value as string[]) : def.default,
+      );
       return (
         <div className={styles.paramRow}>
           {label}
@@ -547,7 +672,11 @@ function ParamRow({ def, value, onChange }: { def: ToolParamDef; value: unknown;
                     const next = new Set(picked);
                     if (e.target.checked) next.add(o.value);
                     else next.delete(o.value);
-                    onChange(def.options.filter((x) => next.has(x.value)).map((x) => x.value));
+                    onChange(
+                      def.options
+                        .filter((x) => next.has(x.value))
+                        .map((x) => x.value),
+                    );
                   }}
                 />
                 {o.label}
@@ -608,7 +737,11 @@ function Block({
               {rows.map((row, i) => {
                 const span = block.rowSpans?.[i] ?? null;
                 return (
-                  <tr key={i} className={span ? styles.rowLink : undefined} onClick={span ? () => jump(span) : undefined}>
+                  <tr
+                    key={i}
+                    className={span ? styles.rowLink : undefined}
+                    onClick={span ? () => jump(span) : undefined}
+                  >
                     {row.map((cell, j) => (
                       <td key={j}>{cell}</td>
                     ))}
@@ -617,7 +750,11 @@ function Block({
               })}
             </tbody>
           </table>
-          {hidden > 0 && <p className={styles.description}>Showing the first {rows.length} of {rows.length + hidden} rows.</p>}
+          {hidden > 0 && (
+            <p className={styles.description}>
+              Showing the first {rows.length} of {rows.length + hidden} rows.
+            </p>
+          )}
         </div>
       );
     }
@@ -628,7 +765,11 @@ function Block({
           {block.span && lineOffsets && (
             <>
               {" "}
-              <button type="button" className={styles.codeRef} onClick={() => jump(block.span!)}>
+              <button
+                type="button"
+                className={styles.codeRef}
+                onClick={() => jump(block.span!)}
+              >
                 line {lineNumberOfOffset(lineOffsets, block.span.start)}
               </button>
             </>
@@ -637,7 +778,11 @@ function Block({
       );
     case "codeRef":
       return (
-        <button type="button" className={styles.codeRef} onClick={() => jump(block.span)}>
+        <button
+          type="button"
+          className={styles.codeRef}
+          onClick={() => jump(block.span)}
+        >
           {block.text}
         </button>
       );

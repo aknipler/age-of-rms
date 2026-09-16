@@ -7,12 +7,22 @@ import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
 import { createSubstream, nextInt } from "../generator/rng";
 import type { InstantiatedScript } from "../generator/types";
-import { DEFAULT_TEAMS, type MapSize, type TeamNumber } from "../../generationSettings/generationSettingsConstants";
+import {
+  DEFAULT_TEAMS,
+  type MapSize,
+  type TeamNumber,
+} from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
 const refDb: LanguageIndex = buildLanguageIndex(lang);
 
-function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: readonly TeamNumber[] } = {}) {
+function settings(
+  overrides: {
+    playerCount?: number;
+    mapSize?: MapSize;
+    teams?: readonly TeamNumber[];
+  } = {},
+) {
   return {
     playerCount: overrides.playerCount ?? 8,
     mapSize: overrides.mapSize ?? "Normal",
@@ -26,13 +36,19 @@ function run(
   overrides?: Parameters<typeof settings>[0],
   db: LanguageIndex = refDb,
 ): InstantiatedScript {
-  return instantiateScript(parseRms(source, lang), db, settings(overrides), seed);
+  return instantiateScript(
+    parseRms(source, lang),
+    db,
+    settings(overrides),
+    seed,
+  );
 }
 
 /** Flattened commands across every instantiated section, in canonical order. */
 function commandNames(result: InstantiatedScript): string[] {
   const names: string[] = [];
-  for (const cmds of result.sections.values()) for (const cmd of cmds) names.push(cmd.name);
+  for (const cmds of result.sections.values())
+    for (const cmd of cmds) names.push(cmd.name);
   return names;
 }
 
@@ -57,7 +73,8 @@ describe("Sec.3 rule 1: environment", () => {
   });
 
   it("sets <playerCount>_PLAYER_GAME for the active player count only", () => {
-    const source = "<PLAYER_SETUP>\nif 4_PLAYER_GAME\ndirect_placement\nendif\nif 8_PLAYER_GAME\nrandom_placement\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif 4_PLAYER_GAME\ndirect_placement\nendif\nif 8_PLAYER_GAME\nrandom_placement\nendif\n";
     const names = commandNames(run(source, 1, { playerCount: 4 }));
     expect(names).toContain("direct_placement");
     expect(names).not.toContain("random_placement");
@@ -86,7 +103,13 @@ describe("Sec.3 rule 1: environment", () => {
       "endif",
     ].join("\n");
     const names = commandNames(run(source));
-    expect(names).toEqual(expect.arrayContaining(["direct_placement", "random_placement", "grouped_by_team"]));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "direct_placement",
+        "random_placement",
+        "grouped_by_team",
+      ]),
+    );
     expect(names).not.toContain("nomad_resources");
     expect(names.filter((n) => n === "override_map_size")).toHaveLength(0);
   });
@@ -95,7 +118,8 @@ describe("Sec.3 rule 1: environment", () => {
     // Player 1 picks team 3, player 2 picks team 3 too -> canonical team 1
     // (lowest player number in the surviving group), per teamModel.ts.
     const teams: TeamNumber[] = [3, 3, 0, 0, 0, 0, 0, 0];
-    const source = "<PLAYER_SETUP>\nif PLAYER1_TEAM1\ndirect_placement\nendif\nif PLAYER1_TEAM3\nrandom_placement\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif PLAYER1_TEAM1\ndirect_placement\nendif\nif PLAYER1_TEAM3\nrandom_placement\nendif\n";
     const names = commandNames(run(source, 1, { playerCount: 2, teams }));
     expect(names).toContain("direct_placement");
     expect(names).not.toContain("random_placement");
@@ -103,10 +127,17 @@ describe("Sec.3 rule 1: environment", () => {
 
   it("falls back to a default dim and warns when predefinedLabels is empty", () => {
     const noLabels = buildLanguageIndex({ ...lang, predefinedLabels: [] });
-    const result = instantiateScript(parseRms("<PLAYER_SETUP>\n", lang), noLabels, settings(), 1);
+    const result = instantiateScript(
+      parseRms("<PLAYER_SETUP>\n", lang),
+      noLabels,
+      settings(),
+      1,
+    );
     expect(result.dim).toBe(200);
     expect(result.notes.map((n) => n.key)).toContain("labels");
-    expect(result.notes.find((n) => n.key === "labels")?.prominence).toBe("banner");
+    expect(result.notes.find((n) => n.key === "labels")?.prominence).toBe(
+      "banner",
+    );
   });
 
   it("resolves dim from the mapSize/dimensions join, not a hardcoded table", () => {
@@ -117,22 +148,26 @@ describe("Sec.3 rule 1: environment", () => {
 
 describe("Sec.3 rule 2: if/elseif/else", () => {
   it("selects the first branch whose label is defined", () => {
-    const source = "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\ndirect_placement\nelseif RANDOM_MAP\nrandom_placement\nelse\nnomad_resources\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\ndirect_placement\nelseif RANDOM_MAP\nrandom_placement\nelse\nnomad_resources\nendif\n";
     expect(commandNames(run(source))).toEqual(["random_placement"]);
   });
 
   it("falls through to else when nothing else matches", () => {
-    const source = "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\ndirect_placement\nelse\nnomad_resources\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\ndirect_placement\nelse\nnomad_resources\nendif\n";
     expect(commandNames(run(source))).toEqual(["nomad_resources"]);
   });
 
   it("takes no branch (and instantiates nothing) when there is no else and nothing matches", () => {
-    const source = "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\ndirect_placement\nendif\nrandom_placement\n";
+    const source =
+      "<PLAYER_SETUP>\nif NOT_A_REAL_LABEL\ndirect_placement\nendif\nrandom_placement\n";
     expect(commandNames(run(source))).toEqual(["random_placement"]);
   });
 
   it("a #define'd flag participates in the environment (rule 4 feeding rule 2)", () => {
-    const source = "#define MY_FLAG\n<PLAYER_SETUP>\nif MY_FLAG\ndirect_placement\nendif\n";
+    const source =
+      "#define MY_FLAG\n<PLAYER_SETUP>\nif MY_FLAG\ndirect_placement\nendif\n";
     expect(commandNames(run(source))).toEqual(["direct_placement"]);
   });
 });
@@ -143,7 +178,8 @@ describe("Sec.3 rule 3: start_random / percent_chance", () => {
   }
 
   it("is deterministic for a given seed, and matches the same S0/ordinal-0 substream math as rng.ts", () => {
-    const source = "<PLAYER_SETUP>\nstart_random\npercent_chance 50\ndirect_placement\npercent_chance 50\nrandom_placement\nend_random\n";
+    const source =
+      "<PLAYER_SETUP>\nstart_random\npercent_chance 50\ndirect_placement\npercent_chance 50\nrandom_placement\nend_random\n";
     for (const seed of [1, 2, 3, 42, 999]) {
       const roll = expectedRoll(seed, 0);
       const names = commandNames(run(source, seed));
@@ -157,7 +193,8 @@ describe("Sec.3 rule 3: start_random / percent_chance", () => {
     // exist since nextInt is uniform over a 100-wide range).
     let seed = 0;
     while (expectedRoll(seed, 0) !== 100) seed++;
-    const source = "<PLAYER_SETUP>\nstart_random\npercent_chance 60\ndirect_placement\npercent_chance 60\nrandom_placement\nend_random\n";
+    const source =
+      "<PLAYER_SETUP>\nstart_random\npercent_chance 60\ndirect_placement\npercent_chance 60\nrandom_placement\nend_random\n";
     expect(commandNames(run(source, seed))).toEqual([]);
   });
 
@@ -179,8 +216,10 @@ describe("Sec.3 rule 3: start_random / percent_chance", () => {
     ].join("\n");
     const seed = 1;
     const names = commandNames(run(source, seed));
-    const firstPick = expectedRoll(seed, 0) <= 50 ? "direct_placement" : "random_placement";
-    const secondPick = expectedRoll(seed, 1) <= 50 ? "grouped_by_team" : "nomad_resources";
+    const firstPick =
+      expectedRoll(seed, 0) <= 50 ? "direct_placement" : "random_placement";
+    const secondPick =
+      expectedRoll(seed, 1) <= 50 ? "grouped_by_team" : "nomad_resources";
     expect(names).toEqual([firstPick, secondPick]);
   });
 });
@@ -190,17 +229,20 @@ describe("Sec.3 rule 4: #define / #const / #undefine", () => {
     // Both values chosen inside override_map_size's legal 36-480 range and
     // far apart, so a broken "last write wins" implementation is caught
     // rather than coincidentally agreeing after clamping.
-    const source = "#const N 60\n#const N 200\n<PLAYER_SETUP>\noverride_map_size N\n";
+    const source =
+      "#const N 60\n#const N 200\n<PLAYER_SETUP>\noverride_map_size N\n";
     expect(run(source).dim).toBe(60);
   });
 
   it("#const aliasing another constant resolves through the growing symbol table", () => {
-    const source = "#const BASE 40\n#const ALIAS BASE\n<PLAYER_SETUP>\noverride_map_size ALIAS\n";
+    const source =
+      "#const BASE 40\n#const ALIAS BASE\n<PLAYER_SETUP>\noverride_map_size ALIAS\n";
     expect(run(source).dim).toBe(40);
   });
 
   it("#undefine does nothing — the name stays defined", () => {
-    const source = "#define MY_FLAG\n#undefine MY_FLAG\n<PLAYER_SETUP>\nif MY_FLAG\ndirect_placement\nendif\n";
+    const source =
+      "#define MY_FLAG\n#undefine MY_FLAG\n<PLAYER_SETUP>\nif MY_FLAG\ndirect_placement\nendif\n";
     expect(commandNames(run(source))).toEqual(["direct_placement"]);
   });
 
@@ -220,7 +262,9 @@ describe("Sec.3 rule 4: #define / #const / #undefine", () => {
       // Unresolved ON PURPOSE: `#const` values share one namespace with flags,
       // attribute ids and command ids, so only the caller's slot says which
       // table this belongs to. instantiateScript is not even given the roster.
-      const result = run("#const TERR_CORNER GRASS2\n<LAND_GENERATION>\nbase_terrain TERR_CORNER\n");
+      const result = run(
+        "#const TERR_CORNER GRASS2\n<LAND_GENERATION>\nbase_terrain TERR_CORNER\n",
+      );
       expect(result.aliases.get("TERR_CORNER")).toBe("GRASS2");
       expect(result.symbols.has("TERR_CORNER")).toBe(false);
     });
@@ -268,14 +312,16 @@ describe("Sec.3 rule 6: math expressions", () => {
   });
 
   it("drops a nested-paren operand exactly like mathEval's own contract", () => {
-    const source = "#const GOLD_COUNT 6\n<PLAYER_SETUP>\noverride_map_size (GOLD_COUNT + (5 + 2))\n";
+    const source =
+      "#const GOLD_COUNT 6\n<PLAYER_SETUP>\noverride_map_size (GOLD_COUNT + (5 + 2))\n";
     expect(run(source).dim).toBe(36); // (6+2)=8, clamped up to the 36 floor
   });
 });
 
 describe("Sec.3 rule 7: behavior_version stream state", () => {
   it("tags every command instantiated afterward with the current behavior_version", () => {
-    const source = "<PLAYER_SETUP>\nbehavior_version 1\ndirect_placement\n<LAND_GENERATION>\ncreate_land {\nbase_size 5\n}\n";
+    const source =
+      "<PLAYER_SETUP>\nbehavior_version 1\ndirect_placement\n<LAND_GENERATION>\ncreate_land {\nbase_size 5\n}\n";
     const result = run(source);
     const land = result.sections.get("LAND_GENERATION")?.[0];
     expect(land?.behaviorVersion).toBe(1);
@@ -283,14 +329,21 @@ describe("Sec.3 rule 7: behavior_version stream state", () => {
 
   it("defaults to 0 before any behavior_version command", () => {
     const source = "<LAND_GENERATION>\ncreate_land {\nbase_size 5\n}\n";
-    expect(run(source).sections.get("LAND_GENERATION")?.[0]?.behaviorVersion).toBe(0);
+    expect(
+      run(source).sections.get("LAND_GENERATION")?.[0]?.behaviorVersion,
+    ).toBe(0);
   });
 
   it("treats version 2 as version 1 and notes it", () => {
-    const source = "<PLAYER_SETUP>\nbehavior_version 2\n<LAND_GENERATION>\ncreate_land {\nbase_size 5\n}\n";
+    const source =
+      "<PLAYER_SETUP>\nbehavior_version 2\n<LAND_GENERATION>\ncreate_land {\nbase_size 5\n}\n";
     const result = run(source);
-    expect(result.sections.get("LAND_GENERATION")?.[0]?.behaviorVersion).toBe(1);
-    expect(result.notes.some((n) => n.key.startsWith("behaviorVersion2:"))).toBe(true);
+    expect(result.sections.get("LAND_GENERATION")?.[0]?.behaviorVersion).toBe(
+      1,
+    );
+    expect(
+      result.notes.some((n) => n.key.startsWith("behaviorVersion2:")),
+    ).toBe(true);
   });
 });
 
@@ -311,7 +364,9 @@ describe("Sec.3 rule 8: override_map_size", () => {
     ].join("\n");
     const result = run(source);
     expect(result.dim).toBe(100);
-    expect(result.notes.some((n) => n.key.startsWith("overrideMapSizeLate:"))).toBe(true);
+    expect(
+      result.notes.some((n) => n.key.startsWith("overrideMapSizeLate:")),
+    ).toBe(true);
   });
 
   it("only the dim from the lobby's mapSize is used when no override is present", () => {
@@ -321,14 +376,20 @@ describe("Sec.3 rule 8: override_map_size", () => {
 
 describe("Sec.3 rule 9: unknown commands and includes", () => {
   it("skips an unknown command and notes it, rather than instantiating or crashing on it", () => {
-    const source = "<PLAYER_SETUP>\ntotally_not_a_real_command 1 2 3\ndirect_placement\n";
+    const source =
+      "<PLAYER_SETUP>\ntotally_not_a_real_command 1 2 3\ndirect_placement\n";
     const result = run(source);
     expect(commandNames(result)).toEqual(["direct_placement"]);
-    expect(result.notes.some((n) => n.prominence === "drawer" && n.key.startsWith("unsimulated:"))).toBe(true);
+    expect(
+      result.notes.some(
+        (n) => n.prominence === "drawer" && n.key.startsWith("unsimulated:"),
+      ),
+    ).toBe(true);
   });
 
   it("emits one deduplicated banner note for #include_drs, however many times it appears", () => {
-    const source = '<PLAYER_SETUP>\n#include_drs "a.inc"\n#include_drs "b.inc"\n';
+    const source =
+      '<PLAYER_SETUP>\n#include_drs "a.inc"\n#include_drs "b.inc"\n';
     const result = run(source);
     const includeNotes = result.notes.filter((n) => n.key === "includes");
     expect(includeNotes).toHaveLength(1);
@@ -342,7 +403,8 @@ describe("command identity comes from the resolved def, not the written word (BU
   // writes the real def onto the node. `24hr_Petra.rms` builds its whole map
   // this way, 384 commands, no literal `create_land` anywhere in the file.
   it("names an aliased command by its def, so a `#const L 32` block instantiates as create_land", () => {
-    const source = "#const L 32\n<LAND_GENERATION>\nL {\nland_percent 20\nnumber_of_tiles 500\n}\n";
+    const source =
+      "#const L 32\n<LAND_GENERATION>\nL {\nland_percent 20\nnumber_of_tiles 500\n}\n";
     const result = run(source);
     expect(commandNames(result)).toEqual(["create_land"]);
     const land = result.sections.get("LAND_GENERATION")?.[0];
@@ -352,16 +414,24 @@ describe("command identity comes from the resolved def, not the written word (BU
   it("treats an aliased land as a land command for the stream state that gates on one", () => {
     // `override_map_size` is ignored once a land command has run (rule 8), and
     // that gate is one of the four consumers that compared the written word.
-    const source = ["#const L 32", "<LAND_GENERATION>", "L {\nbase_size 3\n}", "override_map_size 300"].join("\n");
+    const source = [
+      "#const L 32",
+      "<LAND_GENERATION>",
+      "L {\nbase_size 3\n}",
+      "override_map_size 300",
+    ].join("\n");
     const result = run(source);
     expect(result.dim).not.toBe(300);
-    expect(result.notes.some((n) => n.key.startsWith("overrideMapSizeLate:"))).toBe(true);
+    expect(
+      result.notes.some((n) => n.key.startsWith("overrideMapSizeLate:")),
+    ).toBe(true);
   });
 
   it("still uses the written word for a command language.json has no def for", () => {
     // The fallback half. An unknown command has no def, so nothing else can
     // supply its name, and rule 9 skips it by that name.
-    const source = "<PLAYER_SETUP>\ntotally_not_a_real_command 1\ndirect_placement\n";
+    const source =
+      "<PLAYER_SETUP>\ntotally_not_a_real_command 1\ndirect_placement\n";
     expect(commandNames(run(source))).toEqual(["direct_placement"]);
   });
 });
@@ -370,13 +440,16 @@ describe("Sec.3 rule 10: duplicate attributes", () => {
   it("last-wins for a non-repeatable attribute", () => {
     const source = "<LAND_GENERATION>\ncreate_land {\nzone 1\nzone 2\n}\n";
     const result = run(source);
-    const zone = result.sections.get("LAND_GENERATION")?.[0]?.attributes.get("zone");
+    const zone = result.sections
+      .get("LAND_GENERATION")?.[0]
+      ?.attributes.get("zone");
     expect(zone).toHaveLength(1);
     expect(zone?.[0]?.args[0]?.value).toBe(2);
   });
 
   it("accumulates for an attribute language.json flags repeatable (add_object)", () => {
-    const source = "<OBJECTS_GENERATION>\ncreate_object_group GOLD {\nadd_object GOLD 50\nadd_object STONE 50\n}\n";
+    const source =
+      "<OBJECTS_GENERATION>\ncreate_object_group GOLD {\nadd_object GOLD 50\nadd_object STONE 50\n}\n";
     const result = run(source);
     const group = result.sections.get("OBJECTS_GENERATION")?.[0];
     const addObject = group?.attributes.get("add_object");
@@ -387,38 +460,54 @@ describe("Sec.3 rule 10: duplicate attributes", () => {
 
 describe("Sec.3 rule 11: section merge + canonical order", () => {
   it("merges two same-named sections into one command list", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\ncreate_land {\nbase_size 3\n}\n<PLAYER_SETUP>\nrandom_placement\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\ncreate_land {\nbase_size 3\n}\n<PLAYER_SETUP>\nrandom_placement\n";
     const result = run(source);
     const playerSetup = result.sections.get("PLAYER_SETUP") ?? [];
-    expect(playerSetup.map((c) => c.name)).toEqual(["direct_placement", "random_placement"]);
+    expect(playerSetup.map((c) => c.name)).toEqual([
+      "direct_placement",
+      "random_placement",
+    ]);
   });
 
   it("processes sections in canonical engine order regardless of file order", () => {
-    const source = "<OBJECTS_GENERATION>\ncreate_actor_area 1 1 1 1\n<PLAYER_SETUP>\ndirect_placement\n";
+    const source =
+      "<OBJECTS_GENERATION>\ncreate_actor_area 1 1 1 1\n<PLAYER_SETUP>\ndirect_placement\n";
     const result = run(source);
     const order = Array.from(result.sections.keys());
-    expect(order.indexOf("PLAYER_SETUP")).toBeLessThan(order.indexOf("OBJECTS_GENERATION"));
+    expect(order.indexOf("PLAYER_SETUP")).toBeLessThan(
+      order.indexOf("OBJECTS_GENERATION"),
+    );
   });
 
   it("keeps an unrecognized section name, placed after the canonical seven", () => {
-    const source = "<TOTALLY_MADE_UP>\ndirect_placement\n<PLAYER_SETUP>\nrandom_placement\n";
+    const source =
+      "<TOTALLY_MADE_UP>\ndirect_placement\n<PLAYER_SETUP>\nrandom_placement\n";
     const result = run(source);
     const order = Array.from(result.sections.keys());
-    expect(order.indexOf("PLAYER_SETUP")).toBeLessThan(order.indexOf("TOTALLY_MADE_UP"));
-    expect(result.sections.get("TOTALLY_MADE_UP")?.map((c) => c.name)).toEqual(["direct_placement"]);
+    expect(order.indexOf("PLAYER_SETUP")).toBeLessThan(
+      order.indexOf("TOTALLY_MADE_UP"),
+    );
+    expect(result.sections.get("TOTALLY_MADE_UP")?.map((c) => c.name)).toEqual([
+      "direct_placement",
+    ]);
   });
 });
 
 describe("Sec.3 rule 12: object groups and actor areas", () => {
   it("collects a create_object_group by its type name", () => {
-    const source = "<OBJECTS_GENERATION>\ncreate_object_group FOREST_MIX {\nadd_object OAK_TREE 100\n}\n";
+    const source =
+      "<OBJECTS_GENERATION>\ncreate_object_group FOREST_MIX {\nadd_object OAK_TREE 100\n}\n";
     const result = run(source);
     expect(result.objectGroups.has("FOREST_MIX")).toBe(true);
-    expect(result.objectGroups.get("FOREST_MIX")?.attributes.get("add_object")).toHaveLength(1);
+    expect(
+      result.objectGroups.get("FOREST_MIX")?.attributes.get("add_object"),
+    ).toHaveLength(1);
   });
 
   it("collects multiple create_actor_area commands sharing one identifier", () => {
-    const source = "<OBJECTS_GENERATION>\ncreate_actor_area 1 1 7 3\ncreate_actor_area 2 2 7 4\n";
+    const source =
+      "<OBJECTS_GENERATION>\ncreate_actor_area 1 1 7 3\ncreate_actor_area 2 2 7 4\n";
     const result = run(source);
     expect(result.actorAreas.get(7)).toHaveLength(2);
   });
@@ -426,7 +515,8 @@ describe("Sec.3 rule 12: object groups and actor areas", () => {
 
 describe("PLAYER_SETUP stream state (Sec.3 rule 11's parenthetical)", () => {
   it("folds direct_placement/random_placement/grouped_by_team/nomad_resources into playerSetup", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\ngrouped_by_team\nnomad_resources\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\ngrouped_by_team\nnomad_resources\n";
     const result = run(source);
     expect(result.playerSetup).toEqual({
       directPlacement: true,
@@ -463,7 +553,10 @@ const MAPS_DIR = join(REPO_ROOT, "test-maps");
 const LOCAL_DIR = join(MAPS_DIR, "local");
 const corpusMaps = [
   ...listRms(MAPS_DIR).map((name) => ({ name, path: join(MAPS_DIR, name) })),
-  ...listRms(LOCAL_DIR).map((name) => ({ name: `local/${name}`, path: join(LOCAL_DIR, name) })),
+  ...listRms(LOCAL_DIR).map((name) => ({
+    name: `local/${name}`,
+    path: join(LOCAL_DIR, name),
+  })),
 ];
 
 describe("corpus: instantiateScript never throws", () => {
@@ -480,7 +573,12 @@ describe("corpus: instantiateScript never throws", () => {
         [8, "Normal"],
         [4, "Giant"],
       ] as const) {
-        const result = instantiateScript(parsed, refDb, settings({ playerCount, mapSize }), 12345);
+        const result = instantiateScript(
+          parsed,
+          refDb,
+          settings({ playerCount, mapSize }),
+          12345,
+        );
         expect(result.dim).toBeGreaterThan(0);
       }
     });

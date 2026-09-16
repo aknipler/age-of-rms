@@ -32,7 +32,10 @@ export interface PercentPoint {
 const DEG_PER_RAD = 180 / Math.PI;
 
 /** World bearing (degrees) from `anchor` to `point`, matching frame.ts's own `x = r*cos + anchorX, y = r*sin + anchorY` convention exactly, so a bearing computed here and fed back through evalExpr's own sin/cos lands on the same point (up to the macro's own documented approximation error). */
-function worldBearingDegrees(anchor: PercentPoint, point: PercentPoint): number {
+function worldBearingDegrees(
+  anchor: PercentPoint,
+  point: PercentPoint,
+): number {
   return Math.atan2(point.y - anchor.y, point.x - anchor.x) * DEG_PER_RAD;
 }
 
@@ -94,15 +97,23 @@ export function dragPolar(
 }
 
 /** `cartesian` never consults `frame` (frame.ts's own rule). dx/dy are always plain world-axis deltas from the anchor. */
-export function dragCartesian(anchor: PercentPoint, droppedAt: PercentPoint): CartesianDragResult {
-  return { kind: "cartesian", dx: droppedAt.x - anchor.x, dy: droppedAt.y - anchor.y };
+export function dragCartesian(
+  anchor: PercentPoint,
+  droppedAt: PercentPoint,
+): CartesianDragResult {
+  return {
+    kind: "cartesian",
+    dx: droppedAt.x - anchor.x,
+    dy: droppedAt.y - anchor.y,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // The `formula` offset kind's own, narrower invertibility (Sec.7.3).
 // ---------------------------------------------------------------------------
 
-export type InvertResult = { ok: true; expr: Expr } | { ok: false; reason: string };
+export type InvertResult =
+  { ok: true; expr: Expr } | { ok: false; reason: string };
 
 /**
  * Whether, and how, a SINGLE coordinate's formula can absorb a drag delta.
@@ -123,12 +134,18 @@ export type InvertResult = { ok: true; expr: Expr } | { ok: false; reason: strin
  * declining rather than guessing ("the handle is a read-only marker and the
  * panel says why").
  */
-export function tryInvertFormulaCoordinate(expr: Expr, delta: number): InvertResult {
+export function tryInvertFormulaCoordinate(
+  expr: Expr,
+  delta: number,
+): InvertResult {
   if (expr.k === "num") {
     return { ok: true, expr: num(expr.v + delta) };
   }
   if (expr.k === "sym") {
-    return { ok: false, reason: `"${expr.name}" alone has no constant term for the drag to adjust — give it a "+ N" to make it draggable.` };
+    return {
+      ok: false,
+      reason: `"${expr.name}" alone has no constant term for the drag to adjust — give it a "+ N" to make it draggable.`,
+    };
   }
   if (expr.k === "bin" && (expr.op === "+" || expr.op === "-")) {
     const adjustLiteral = (literal: Expr, sign: 1 | -1): Expr | null =>
@@ -137,16 +154,22 @@ export function tryInvertFormulaCoordinate(expr: Expr, delta: number): InvertRes
     if (expr.op === "+") {
       if (expr.l.k === "num" && expr.r.k === "sym") {
         const adjusted = adjustLiteral(expr.l, 1);
-        return adjusted ? { ok: true, expr: bin("+", adjusted, expr.r) } : declineNonLiteral();
+        return adjusted
+          ? { ok: true, expr: bin("+", adjusted, expr.r) }
+          : declineNonLiteral();
       }
       if (expr.r.k === "num" && expr.l.k === "sym") {
         const adjusted = adjustLiteral(expr.r, 1);
-        return adjusted ? { ok: true, expr: bin("+", expr.l, adjusted) } : declineNonLiteral();
+        return adjusted
+          ? { ok: true, expr: bin("+", expr.l, adjusted) }
+          : declineNonLiteral();
       }
     } else if (expr.l.k === "sym" && expr.r.k === "num") {
       // sym - num: the drag SUBTRACTS from the position, so it ADDS to what's being subtracted... i.e. increasing the position means DECREASING this literal.
       const adjusted = adjustLiteral(expr.r, -1);
-      return adjusted ? { ok: true, expr: bin("-", expr.l, adjusted) } : declineNonLiteral();
+      return adjusted
+        ? { ok: true, expr: bin("-", expr.l, adjusted) }
+        : declineNonLiteral();
     }
   }
   return declineNonLiteral();
@@ -155,7 +178,8 @@ export function tryInvertFormulaCoordinate(expr: Expr, delta: number): InvertRes
 function declineNonLiteral(): InvertResult {
   return {
     ok: false,
-    reason: "this formula isn't a simple reference plus a constant — edit it in the formula field instead of dragging.",
+    reason:
+      "this formula isn't a simple reference plus a constant — edit it in the formula field instead of dragging.",
   };
 }
 
@@ -171,7 +195,12 @@ export interface FormulaDragFailure {
   reasons: readonly string[];
 }
 
-export function tryInvertFormulaOffset(x: Expr, y: Expr, dx: number, dy: number): FormulaDragResult | FormulaDragFailure {
+export function tryInvertFormulaOffset(
+  x: Expr,
+  y: Expr,
+  dx: number,
+  dy: number,
+): FormulaDragResult | FormulaDragFailure {
   const rx = tryInvertFormulaCoordinate(x, dx);
   const ry = tryInvertFormulaCoordinate(y, dy);
   if (rx.ok && ry.ok) return { ok: true, x: rx.expr, y: ry.expr };
@@ -217,8 +246,12 @@ export function tryInvertFormulaOffset(x: Expr, y: Expr, dx: number, dy: number)
 // ---------------------------------------------------------------------------
 
 /** The subset of `[label, expr]` pairs whose expression depends on something outside itself. Order is the caller's, so the message reads in field order. */
-function symbolicComponents(components: ReadonlyArray<readonly [string, Expr]>): string[] {
-  return components.filter(([, e]) => evalClosed(e) === undefined).map(([label]) => label);
+function symbolicComponents(
+  components: ReadonlyArray<readonly [string, Expr]>,
+): string[] {
+  return components
+    .filter(([, e]) => evalClosed(e) === undefined)
+    .map(([label]) => label);
 }
 
 /**
@@ -240,8 +273,7 @@ export function symbolicDeclineReason(labels: readonly string[]): string {
 // ---------------------------------------------------------------------------
 
 export type DragOutcome =
-  | { ok: true; placement: Placement }
-  | { ok: false; reason: string };
+  { ok: true; placement: Placement } | { ok: false; reason: string };
 
 /**
  * shape-kinds-slice-b-brief.md item 2 / escalation §6: the placement's own
@@ -296,13 +328,26 @@ export function applyDrag(
       ["Radius", placement.offset.r],
       ["Angle", placement.offset.theta],
     ]);
-    if (isPerPlayerMember && !symbolic.includes("Angle")) symbolic.push("Angle");
+    if (isPerPlayerMember && !symbolic.includes("Angle"))
+      symbolic.push("Angle");
 
-    const target = dragPolar(anchor, droppedAt, placement.frame, parentDegreesResolved);
+    const target = dragPolar(
+      anchor,
+      droppedAt,
+      placement.frame,
+      parentDegreesResolved,
+    );
     if (symbolic.length === 0) {
-      return { ok: true, placement: { ...placement, offset: { kind: "polar", r: num(target.r), theta: num(target.theta) } } };
+      return {
+        ok: true,
+        placement: {
+          ...placement,
+          offset: { kind: "polar", r: num(target.r), theta: num(target.theta) },
+        },
+      };
     }
-    if (resolvedOffset?.kind !== "polar") return { ok: false, reason: symbolicDeclineReason(symbolic) };
+    if (resolvedOffset?.kind !== "polar")
+      return { ok: false, reason: symbolicDeclineReason(symbolic) };
 
     // Item 2's absorb path (escalation §6). Both components run through the
     // SAME inverter a numeric-literal drag already degenerates to (a bare
@@ -313,19 +358,35 @@ export function applyDrag(
     // (hazard 5): a perPlayer member's theta is discarded wholesale by the
     // emitter regardless of its own shape (Sec.8.2), so absorbing a delta
     // into it would report success and change nothing on the map.
-    const rResult = tryInvertFormulaCoordinate(placement.offset.r, target.r - resolvedOffset.r);
+    const rResult = tryInvertFormulaCoordinate(
+      placement.offset.r,
+      target.r - resolvedOffset.r,
+    );
     const thetaResult: InvertResult = isPerPlayerMember
       ? { ok: false, reason: symbolicDeclineReason(["Angle"]) }
-      : tryInvertFormulaCoordinate(placement.offset.theta, target.theta - resolvedOffset.theta);
+      : tryInvertFormulaCoordinate(
+          placement.offset.theta,
+          target.theta - resolvedOffset.theta,
+        );
 
     const reasons: string[] = [];
     if (!rResult.ok) reasons.push(`Radius: ${rResult.reason}`);
-    if (!thetaResult.ok) reasons.push(isPerPlayerMember ? thetaResult.reason : `Angle: ${thetaResult.reason}`);
+    if (!thetaResult.ok)
+      reasons.push(
+        isPerPlayerMember ? thetaResult.reason : `Angle: ${thetaResult.reason}`,
+      );
     if (reasons.length > 0) return { ok: false, reason: reasons.join("; ") };
 
     return {
       ok: true,
-      placement: { ...placement, offset: { kind: "polar", r: (rResult as { ok: true; expr: Expr }).expr, theta: (thetaResult as { ok: true; expr: Expr }).expr } },
+      placement: {
+        ...placement,
+        offset: {
+          kind: "polar",
+          r: (rResult as { ok: true; expr: Expr }).expr,
+          theta: (thetaResult as { ok: true; expr: Expr }).expr,
+        },
+      },
     };
   }
   if (placement.offset.kind === "cartesian") {
@@ -336,14 +397,27 @@ export function applyDrag(
 
     const target = dragCartesian(anchor, droppedAt);
     if (symbolic.length === 0) {
-      return { ok: true, placement: { ...placement, offset: { kind: "cartesian", dx: num(target.dx), dy: num(target.dy) } } };
+      return {
+        ok: true,
+        placement: {
+          ...placement,
+          offset: { kind: "cartesian", dx: num(target.dx), dy: num(target.dy) },
+        },
+      };
     }
-    if (resolvedOffset?.kind !== "cartesian") return { ok: false, reason: symbolicDeclineReason(symbolic) };
+    if (resolvedOffset?.kind !== "cartesian")
+      return { ok: false, reason: symbolicDeclineReason(symbolic) };
 
     // The identical treatment, componentwise (item 1's own delta rule one
     // module over): dx against dx, dy against dy, same inverter.
-    const dxResult = tryInvertFormulaCoordinate(placement.offset.dx, target.dx - resolvedOffset.dx);
-    const dyResult = tryInvertFormulaCoordinate(placement.offset.dy, target.dy - resolvedOffset.dy);
+    const dxResult = tryInvertFormulaCoordinate(
+      placement.offset.dx,
+      target.dx - resolvedOffset.dx,
+    );
+    const dyResult = tryInvertFormulaCoordinate(
+      placement.offset.dy,
+      target.dy - resolvedOffset.dy,
+    );
 
     const reasons: string[] = [];
     if (!dxResult.ok) reasons.push(`Across: ${dxResult.reason}`);
@@ -352,16 +426,34 @@ export function applyDrag(
 
     return {
       ok: true,
-      placement: { ...placement, offset: { kind: "cartesian", dx: (dxResult as { ok: true; expr: Expr }).expr, dy: (dyResult as { ok: true; expr: Expr }).expr } },
+      placement: {
+        ...placement,
+        offset: {
+          kind: "cartesian",
+          dx: (dxResult as { ok: true; expr: Expr }).expr,
+          dy: (dyResult as { ok: true; expr: Expr }).expr,
+        },
+      },
     };
   }
   // formula: x/y are the absolute position itself, so the delta this drag
   // contributes is relative to the node's OWN prior position, never `anchor`.
   const dx = droppedAt.x - previousPosition.x;
   const dy = droppedAt.y - previousPosition.y;
-  const inverted = tryInvertFormulaOffset(placement.offset.x, placement.offset.y, dx, dy);
+  const inverted = tryInvertFormulaOffset(
+    placement.offset.x,
+    placement.offset.y,
+    dx,
+    dy,
+  );
   if (!inverted.ok) {
     return { ok: false, reason: inverted.reasons.join("; ") };
   }
-  return { ok: true, placement: { ...placement, offset: { kind: "formula", x: inverted.x, y: inverted.y } } };
+  return {
+    ok: true,
+    placement: {
+      ...placement,
+      offset: { kind: "formula", x: inverted.x, y: inverted.y },
+    },
+  };
 }

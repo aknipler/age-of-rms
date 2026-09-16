@@ -24,7 +24,8 @@ export const appTourTutorial: TutorialDefinition = {
   id: "app-tour",
   kind: "app",
   title: "Tour of Age of RMS",
-  blurb: "Preview, reference, status bar, settings and tools, in about three minutes.",
+  blurb:
+    "Preview, reference, status bar, settings and tools, in about three minutes.",
   steps: [
     {
       id: "open-a-file",

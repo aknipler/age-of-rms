@@ -48,7 +48,10 @@ function role(over: Partial<LandRole> = {}): LandRole {
 
 /** Bulls_Eyes' 8 lands, this time every one wearing a role (unlike emitModel.test.ts's roleless fixture) so the overlay has circles to draw. */
 function bullsEyesModel(): AlpModel {
-  const player = (id: string, thetaSym: import("../../../../../tools-api/index").Expr): Placement => ({
+  const player = (
+    id: string,
+    thetaSym: import("../../../../../tools-api/index").Expr,
+  ): Placement => ({
     id,
     parent: "center",
     frame: "radial",
@@ -57,7 +60,12 @@ function bullsEyesModel(): AlpModel {
     repeatIndex: id === "P1" ? 0 : 1,
     offset: { kind: "polar", r: sym("RADIUS_PLAYER_LANDS"), theta: thetaSym },
   });
-  const aux = (id: string, parent: string, baselineDelta: number, varName: string): Placement => ({
+  const aux = (
+    id: string,
+    parent: string,
+    baselineDelta: number,
+    varName: string,
+  ): Placement => ({
     id,
     parent,
     frame: "radial",
@@ -67,7 +75,10 @@ function bullsEyesModel(): AlpModel {
     offset: {
       kind: "polar",
       r: sym("RADIUS_AUX_LANDS"),
-      theta: baselineDelta === 0 ? add(sym("ROTATION_AUX"), sym(varName)) : add(add(num(baselineDelta), sym("ROTATION_AUX")), sym(varName)),
+      theta:
+        baselineDelta === 0
+          ? add(sym("ROTATION_AUX"), sym(varName))
+          : add(add(num(baselineDelta), sym("ROTATION_AUX")), sym(varName)),
     },
   });
   const placements: Placement[] = [
@@ -90,7 +101,13 @@ describe("buildOverlayShapes — Bulls_Eyes-shaped model", () => {
   if (!emission.ok) throw new Error("fixture must emit cleanly");
 
   it("draws one circle per land (8) and one line per chain link (6 — the aux lands only)", () => {
-    const shapes = buildOverlayShapes({ model, quantities: emission.quantities, resolved: emission.resolved, roleNamesByPlacement: emission.roleNamesByPlacement, mapDim: 200 });
+    const shapes = buildOverlayShapes({
+      model,
+      quantities: emission.quantities,
+      resolved: emission.resolved,
+      roleNamesByPlacement: emission.roleNamesByPlacement,
+      mapDim: 200,
+    });
     const circles = shapes.filter((s) => s.kind === "circle");
     const lines = shapes.filter((s) => s.kind === "line");
     expect(circles).toHaveLength(8);
@@ -99,13 +116,31 @@ describe("buildOverlayShapes — Bulls_Eyes-shaped model", () => {
 
   it("circle coordinates land in [0, dim-1] and match resolved X/Y converted to tiles", () => {
     const dim = 200;
-    const shapes = buildOverlayShapes({ model, quantities: emission.quantities, resolved: emission.resolved, roleNamesByPlacement: emission.roleNamesByPlacement, mapDim: dim });
+    const shapes = buildOverlayShapes({
+      model,
+      quantities: emission.quantities,
+      resolved: emission.resolved,
+      roleNamesByPlacement: emission.roleNamesByPlacement,
+      mapDim: dim,
+    });
     const p1 = shapes.find((s) => s.kind === "circle" && s.id === "P1");
     expect(p1).toBeDefined();
     if (p1?.kind !== "circle") throw new Error("expected circle");
     const q = emission.quantities.get("P1")!;
-    const expectedX = Math.max(0, Math.min(dim - 1, Math.round((emission.resolved.get(q.xName)! / 100) * dim)));
-    const expectedY = Math.max(0, Math.min(dim - 1, Math.round((emission.resolved.get(q.yName)! / 100) * dim)));
+    const expectedX = Math.max(
+      0,
+      Math.min(
+        dim - 1,
+        Math.round((emission.resolved.get(q.xName)! / 100) * dim),
+      ),
+    );
+    const expectedY = Math.max(
+      0,
+      Math.min(
+        dim - 1,
+        Math.round((emission.resolved.get(q.yName)! / 100) * dim),
+      ),
+    );
     expect(p1.x).toBe(expectedX);
     expect(p1.y).toBe(expectedY);
     expect(Number.isFinite(p1.x)).toBe(true);
@@ -113,14 +148,26 @@ describe("buildOverlayShapes — Bulls_Eyes-shaped model", () => {
   });
 
   it("circle radius is the role's resolved base_size, unconverted (base_size is not a percent quantity)", () => {
-    const shapes = buildOverlayShapes({ model, quantities: emission.quantities, resolved: emission.resolved, roleNamesByPlacement: emission.roleNamesByPlacement, mapDim: 200 });
+    const shapes = buildOverlayShapes({
+      model,
+      quantities: emission.quantities,
+      resolved: emission.resolved,
+      roleNamesByPlacement: emission.roleNamesByPlacement,
+      mapDim: 200,
+    });
     const p1 = shapes.find((s) => s.kind === "circle" && s.id === "P1");
     if (p1?.kind !== "circle") throw new Error("expected circle");
     expect(p1.rTiles).toBe(12); // role().baseSize
   });
 
   it("gizmos (handles) draw only for the selected placement(s)", () => {
-    const none = buildOverlayShapes({ model, quantities: emission.quantities, resolved: emission.resolved, roleNamesByPlacement: emission.roleNamesByPlacement, mapDim: 200 });
+    const none = buildOverlayShapes({
+      model,
+      quantities: emission.quantities,
+      resolved: emission.resolved,
+      roleNamesByPlacement: emission.roleNamesByPlacement,
+      mapDim: 200,
+    });
     expect(none.filter((s) => s.kind === "handle")).toHaveLength(0);
 
     const selected = buildOverlayShapes({
@@ -133,7 +180,9 @@ describe("buildOverlayShapes — Bulls_Eyes-shaped model", () => {
     });
     const handles = selected.filter((s) => s.kind === "handle");
     expect(handles).toHaveLength(2);
-    expect(handles.map((h) => (h.kind === "handle" ? h.id : null)).sort()).toEqual(["P1", "P2_A1"]);
+    expect(
+      handles.map((h) => (h.kind === "handle" ? h.id : null)).sort(),
+    ).toEqual(["P1", "P2_A1"]);
   });
 });
 
@@ -142,7 +191,14 @@ describe("buildOverlayShapes — truncation (Sec.3.7, via the existing overlaySh
     const shapes: import("../../../../../tools-api/index").OverlayShape[] = [];
     const over = LIMITS.maxOverlayShapesPerBlock + 250;
     for (let i = 0; i < over; i++) {
-      shapes.push({ id: `s${i}`, kind: "circle", x: i % 100, y: 0, rTiles: 1, role: "primary" });
+      shapes.push({
+        id: `s${i}`,
+        kind: "circle",
+        x: i % 100,
+        y: 0,
+        rTiles: 1,
+        role: "primary",
+      });
     }
     const { shapes: rendered, hidden } = overlayShapesToRender(shapes);
     expect(rendered).toHaveLength(LIMITS.maxOverlayShapesPerBlock);
@@ -160,7 +216,13 @@ describe("buildOverlayShapes — truncation (Sec.3.7, via the existing overlaySh
     const namer = new NameAllocator({ prefix: "" });
     const emission = emitAlpModel(model, namer, SCRIPT_SYMBOLS, 2);
     if (!emission.ok) throw new Error("fixture must emit cleanly");
-    const shapes = buildOverlayShapes({ model, quantities: emission.quantities, resolved: emission.resolved, roleNamesByPlacement: emission.roleNamesByPlacement, mapDim: 200 });
+    const shapes = buildOverlayShapes({
+      model,
+      quantities: emission.quantities,
+      resolved: emission.resolved,
+      roleNamesByPlacement: emission.roleNamesByPlacement,
+      mapDim: 200,
+    });
     const { hidden } = overlayShapesToRender(shapes);
     expect(hidden).toBe(0);
     expect(shapes.length).toBeLessThan(LIMITS.maxOverlayShapesPerBlock);
@@ -169,18 +231,48 @@ describe("buildOverlayShapes — truncation (Sec.3.7, via the existing overlaySh
 
 describe("buildOverlayShapes — degenerate inputs", () => {
   it("an empty model draws nothing", () => {
-    const model: AlpModel = { v: 1, placements: [], roles: [], randomParams: [], groups: [] };
-    expect(buildOverlayShapes({ model, quantities: new Map(), resolved: new Map(), roleNamesByPlacement: new Map(), mapDim: 200 })).toEqual([]);
+    const model: AlpModel = {
+      v: 1,
+      placements: [],
+      roles: [],
+      randomParams: [],
+      groups: [],
+    };
+    expect(
+      buildOverlayShapes({
+        model,
+        quantities: new Map(),
+        resolved: new Map(),
+        roleNamesByPlacement: new Map(),
+        mapDim: 200,
+      }),
+    ).toEqual([]);
   });
 
   it("a placement with no resolved position (unresolved) draws nothing for it, honestly, rather than guessing", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "P1", parent: "center", frame: "radial", label: "P1", offset: { kind: "polar", r: num(1), theta: num(0) } }],
+      placements: [
+        {
+          id: "P1",
+          parent: "center",
+          frame: "radial",
+          label: "P1",
+          offset: { kind: "polar", r: num(1), theta: num(0) },
+        },
+      ],
       roles: [],
       randomParams: [],
       groups: [],
     };
-    expect(buildOverlayShapes({ model, quantities: new Map(), resolved: new Map(), roleNamesByPlacement: new Map(), mapDim: 200 })).toEqual([]);
+    expect(
+      buildOverlayShapes({
+        model,
+        quantities: new Map(),
+        resolved: new Map(),
+        roleNamesByPlacement: new Map(),
+        mapDim: 200,
+      }),
+    ).toEqual([]);
   });
 });

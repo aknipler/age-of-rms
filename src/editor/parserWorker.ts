@@ -69,7 +69,9 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   // valued 69 inside a comment opens a nested one in the engine, so everything
   // after it is invisible and the AST has to say so. Built from reference data
   // here rather than inside the parser, which holds no RMS vocabulary.
-  const result = parseRms(source, languageData, { commentOpenAliases: COMMENT_OPEN_ALIASES });
+  const result = parseRms(source, languageData, {
+    commentOpenAliases: COMMENT_OPEN_ALIASES,
+  });
   // The semantic pass (docs/parser-design.md Sec.8) runs here, in the worker,
   // for the same reason the parse does: it's another whole-file walk, and the
   // UI thread should never do one. Its diagnostics are ADDITIVE. The parser's

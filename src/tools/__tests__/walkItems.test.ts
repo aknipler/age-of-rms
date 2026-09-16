@@ -19,7 +19,9 @@ function visited(source: string): { item: Item; ctx: WalkContext }[] {
 
 describe("walkItems", () => {
   it("descends into a command's own block", () => {
-    const out = visited("<LAND_GENERATION>\ncreate_land { terrain_type GRASS }");
+    const out = visited(
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS }",
+    );
     const command = out.find((v) => v.item.kind === "command");
     const attr = out.find((v) => v.item.kind === "attribute");
     expect(command?.ctx.enclosing).toBe("top");
@@ -28,7 +30,9 @@ describe("walkItems", () => {
   });
 
   it("visits every if branch, not only a selected one — there is no selection to know", () => {
-    const out = visited("<OBJECTS_GENERATION>\nif REGICIDE create_object KING else create_object SCOUT endif");
+    const out = visited(
+      "<OBJECTS_GENERATION>\nif REGICIDE create_object KING else create_object SCOUT endif",
+    );
     // Both branches' commands are present; the walker has no notion of which
     // one S0 would select.
     expect(out.filter((v) => v.item.kind === "if")).toHaveLength(1);
@@ -65,14 +69,18 @@ describe("walkItems", () => {
 
   it("does not descend into a raw node — it has no children", () => {
     // Interleaved if/random overlap degrades to one RawNode (parser.test.ts).
-    const out = visited("if A start_random percent_chance 100 endif end_random");
+    const out = visited(
+      "if A start_random percent_chance 100 endif end_random",
+    );
     expect(out.some((v) => v.item.kind === "raw")).toBe(true);
     // Nothing else was extracted from inside the raw span.
     expect(out).toHaveLength(1);
   });
 
   it("hands back the branch object so a caller can correlate against S0's own selection", () => {
-    const out = visited("<OBJECTS_GENERATION>\nif REGICIDE create_object KING endif");
+    const out = visited(
+      "<OBJECTS_GENERATION>\nif REGICIDE create_object KING endif",
+    );
     const command = out.find((v) => v.item.kind === "command");
     expect(command?.ctx.enclosing).toBe("ifBranch");
     const branch = command?.ctx.branch as IfBranch | undefined;
@@ -81,7 +89,9 @@ describe("walkItems", () => {
 
   describe("insideRandom", () => {
     it("is false outside any start_random", () => {
-      const out = visited("<LAND_GENERATION>\ncreate_land { terrain_type GRASS }");
+      const out = visited(
+        "<LAND_GENERATION>\ncreate_land { terrain_type GRASS }",
+      );
       for (const v of out) expect(v.ctx.insideRandom).toBe(false);
     });
 
@@ -89,19 +99,27 @@ describe("walkItems", () => {
       const out = visited(
         "<OBJECTS_GENERATION>\nstart_random\nmax_distance_to_players 8\npercent_chance 50 create_object KING { actor_area 1 }\nend_random",
       );
-      const attr = out.find((v) => v.item.kind === "attribute" && v.ctx.enclosing === "randomPreamble");
+      const attr = out.find(
+        (v) =>
+          v.item.kind === "attribute" && v.ctx.enclosing === "randomPreamble",
+      );
       expect(attr?.ctx.insideRandom).toBe(true);
       const command = out.find((v) => v.item.kind === "command");
       expect(command?.ctx.insideRandom).toBe(true);
       // Nested inside the command's OWN block, two levels down from the
       // random branch, enclosing reads "commandBlock", not "randomBranch",
       // which is exactly the case a single-level check would miss.
-      const nestedAttr = out.find((v) => v.item.kind === "attribute" && v.ctx.enclosing === "commandBlock");
+      const nestedAttr = out.find(
+        (v) =>
+          v.item.kind === "attribute" && v.ctx.enclosing === "commandBlock",
+      );
       expect(nestedAttr?.ctx.insideRandom).toBe(true);
     });
 
     it("does not become true merely from sitting inside an if branch", () => {
-      const out = visited("<OBJECTS_GENERATION>\nif REGICIDE create_object KING endif");
+      const out = visited(
+        "<OBJECTS_GENERATION>\nif REGICIDE create_object KING endif",
+      );
       const command = out.find((v) => v.item.kind === "command");
       expect(command?.ctx.insideRandom).toBe(false);
     });

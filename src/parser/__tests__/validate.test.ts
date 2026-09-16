@@ -9,13 +9,20 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
-import { validate, type GameConstantsForValidate, type ValidateReferenceDb } from "../validate";
+import {
+  validate,
+  type GameConstantsForValidate,
+  type ValidateReferenceDb,
+} from "../validate";
 import type { Diagnostic } from "../types";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
 
 const lang = loadLanguage();
 const gameConstants = JSON.parse(
-  readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+  readFileSync(
+    join(REPO_ROOT, "reference", "data", "game-constants.json"),
+    "utf8",
+  ),
 ) as GameConstantsForValidate;
 const refDb: ValidateReferenceDb = { language: lang, gameConstants };
 
@@ -34,14 +41,20 @@ function only(source: string, code: string): Diagnostic[] {
 
 describe("RMS0300 — undefined condition labels", () => {
   it("flags a label that is one character off a defined one", () => {
-    const found = only("#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n", "RMS0300");
+    const found = only(
+      "#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n",
+      "RMS0300",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
     expect(found[0].suggestion).toBe("BIG_MAP");
   });
 
   it("treats a wrong-case label as a typo — RMS is case-sensitive", () => {
-    const found = only("<PLAYER_SETUP>\nif Death_Match\nrandom_placement\nendif\n", "RMS0300");
+    const found = only(
+      "<PLAYER_SETUP>\nif Death_Match\nrandom_placement\nendif\n",
+      "RMS0300",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].suggestion).toBe("DEATH_MATCH");
   });
@@ -50,23 +63,28 @@ describe("RMS0300 — undefined condition labels", () => {
     // The corpus rule: our 138 predefinedLabels came from a guide that
     // predates labels DE-official maps already branch on (THEME_AFRICAN,
     // MAPSIZE_ABOVE_GIANT). Absence from our data is not evidence.
-    expect(codes("<PLAYER_SETUP>\nif THEME_MANGROVE\nrandom_placement\nendif\n")).not.toContain("RMS0300");
+    expect(
+      codes("<PLAYER_SETUP>\nif THEME_MANGROVE\nrandom_placement\nendif\n"),
+    ).not.toContain("RMS0300");
   });
 
   it("accepts predefined labels, game constants, and user defines", () => {
-    const source = "#define MY_FLAG\n<PLAYER_SETUP>\nif DEATH_MATCH\nelseif MY_FLAG\nelseif SNOW\nrandom_placement\nendif\n";
+    const source =
+      "#define MY_FLAG\n<PLAYER_SETUP>\nif DEATH_MATCH\nelseif MY_FLAG\nelseif SNOW\nrandom_placement\nendif\n";
     expect(codes(source)).not.toContain("RMS0300");
   });
 
   it("stays quiet when the definition is present but commented out", () => {
     // Toggling a feature by commenting its #define is idiomatic; the dead
     // branch is deliberate, not a misspelling.
-    const source = "/* #define DEBUG_MODE */\n#define DEBUG_MOD\n<PLAYER_SETUP>\nif DEBUG_MODE\nrandom_placement\nendif\n";
+    const source =
+      "/* #define DEBUG_MODE */\n#define DEBUG_MOD\n<PLAYER_SETUP>\nif DEBUG_MODE\nrandom_placement\nendif\n";
     expect(codes(source)).not.toContain("RMS0300");
   });
 
   it("softens to info when the file has an include", () => {
-    const source = '#include_drs "shared.rms"\n#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n';
+    const source =
+      '#include_drs "shared.rms"\n#define BIG_MAP\n<PLAYER_SETUP>\nif BIG_MAPP\nrandom_placement\nendif\n';
     const found = only(source, "RMS0300");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
@@ -84,7 +102,8 @@ describe("RMS0301 — redefinition on the same execution path", () => {
   it("flags two #consts inside one branch — both run, so the second is dead", () => {
     // The case `conditionalDepth` could not express: depth 1 for both, but
     // the same branch rather than two exclusive ones. Corpus-real, 30 sites.
-    const source = "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 10\n#const TREES 20\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 10\n#const TREES 20\nendif\n";
     const found = only(source, "RMS0301");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
@@ -92,7 +111,8 @@ describe("RMS0301 — redefinition on the same execution path", () => {
 
   it("distinguishes one percent_chance branch from two", () => {
     // Same branch: both run together whenever it is picked, second is dead.
-    const sameBranch = "<LAND_GENERATION>\nstart_random\npercent_chance 100 #const TREES 10 #const TREES 20\nend_random\n";
+    const sameBranch =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 100 #const TREES 10 #const TREES 20\nend_random\n";
     expect(only(sameBranch, "RMS0301")).toHaveLength(1);
 
     // Different branches of one start_random are mutually exclusive, exactly
@@ -104,14 +124,16 @@ describe("RMS0301 — redefinition on the same execution path", () => {
 
   it("ignores redefinition across exclusive conditional branches", () => {
     // Sec.8: only one branch's tokens ever survive, so this is legitimate.
-    const source = "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 10\nelse\n#const TREES 20\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 10\nelse\n#const TREES 20\nendif\n";
     expect(codes(source)).not.toContain("RMS0301");
   });
 
   it("ignores a definition nested one level deeper than the first", () => {
     // The inner one is conditional RELATIVE to the outer, so it can run in a
     // world where the outer one didn't. Not a total claim, not reported.
-    const source = "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 10\nif REGICIDE\n#const TREES 20\nendif\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 10\nif REGICIDE\n#const TREES 20\nendif\nendif\n";
     expect(codes(source)).not.toContain("RMS0301");
   });
 
@@ -148,7 +170,8 @@ describe("RMS0314 — shadowed by an earlier definition on a containing path", (
   it("flags a default written above the conditional versions", () => {
     // The habit that transfers from C and Python and is backwards in RMS:
     // first definition wins, so a default has to come LAST.
-    const source = "#const TREES 1\n<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 2\nendif\n";
+    const source =
+      "#const TREES 1\n<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 2\nendif\n";
     const found = only(source, "RMS0314");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
@@ -156,7 +179,8 @@ describe("RMS0314 — shadowed by an earlier definition on a containing path", (
   });
 
   it("stays silent when the default is correctly written last", () => {
-    const source = "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 2\nendif\n#const TREES 1\n";
+    const source =
+      "<PLAYER_SETUP>\nif DEATH_MATCH\n#const TREES 2\nendif\n#const TREES 1\n";
     expect(codes(source)).not.toContain("RMS0314");
   });
 
@@ -276,7 +300,8 @@ describe("RMS0313 — unreachable elseif branch", () => {
   });
 
   it("is case-sensitive, because RMS conditions are", () => {
-    const source = "<PLAYER_SETUP>\nif DEATH_MATCH\nrandom_placement\nelseif Death_Match\nrandom_placement\nendif\n";
+    const source =
+      "<PLAYER_SETUP>\nif DEATH_MATCH\nrandom_placement\nelseif Death_Match\nrandom_placement\nendif\n";
     expect(codes(source)).not.toContain("RMS0313");
   });
 });
@@ -309,7 +334,10 @@ describe("RMS0302 — redefining a built-in game constant", () => {
   });
 
   it("reports the definition that actually differs, not just the first", () => {
-    const found = only("<PLAYER_SETUP>\n#const SNOW 32\nif DEATH_MATCH\n#const SNOW 11\nendif\n", "RMS0302");
+    const found = only(
+      "<PLAYER_SETUP>\n#const SNOW 32\nif DEATH_MATCH\n#const SNOW 11\nendif\n",
+      "RMS0302",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
   });
@@ -344,7 +372,8 @@ describe("RMS0312 — defining an engine condition label", () => {
   });
 
   it("covers the guarded testing idiom three DE-official maps use", () => {
-    const source = "#define EW_TESTING\n<PLAYER_SETUP>\nif EW_TESTING\n#define EMPIRE_WARS\nendif\nif EMPIRE_WARS\nrandom_placement\nendif\n";
+    const source =
+      "#define EW_TESTING\n<PLAYER_SETUP>\nif EW_TESTING\n#define EMPIRE_WARS\nendif\nif EMPIRE_WARS\nrandom_placement\nendif\n";
     const found = only(source, "RMS0312");
     expect(found).toHaveLength(1);
     // And the branch it enables must not then be reported as undefined.
@@ -358,18 +387,26 @@ describe("RMS0312 — defining an engine condition label", () => {
 
 describe("RMS0303 — use before definition", () => {
   it("flags a condition label used above its #define", () => {
-    const found = only("<PLAYER_SETUP>\nif LATER\nrandom_placement\nendif\n#define LATER\n", "RMS0303");
+    const found = only(
+      "<PLAYER_SETUP>\nif LATER\nrandom_placement\nendif\n#define LATER\n",
+      "RMS0303",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
   });
 
   it("flags a constant used above its #const in a constant slot", () => {
-    const source = "<TERRAIN_GENERATION>\ncreate_terrain MY_TERRAIN\n{\nnumber_of_clumps 4\n}\n#const MY_TERRAIN 10\n";
+    const source =
+      "<TERRAIN_GENERATION>\ncreate_terrain MY_TERRAIN\n{\nnumber_of_clumps 4\n}\n#const MY_TERRAIN 10\n";
     expect(codes(source)).toContain("RMS0303");
   });
 
   it("accepts the normal order", () => {
-    expect(codes("#define EARLY\n<PLAYER_SETUP>\nif EARLY\nrandom_placement\nendif\n")).not.toContain("RMS0303");
+    expect(
+      codes(
+        "#define EARLY\n<PLAYER_SETUP>\nif EARLY\nrandom_placement\nendif\n",
+      ),
+    ).not.toContain("RMS0303");
   });
 });
 
@@ -383,24 +420,37 @@ describe("RMS0303 — use before definition", () => {
  */
 describe("RMS0304 — a command in a section the engine will not run it from", () => {
   it("flags create_terrain in <OBJECTS_GENERATION> (RMSTEST_33a)", () => {
-    const found = only("<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n", "RMS0304");
+    const found = only(
+      "<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n",
+      "RMS0304",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
   });
 
   it("flags create_object in <TERRAIN_GENERATION> (RMSTEST_33b)", () => {
-    const found = only("<TERRAIN_GENERATION>\ncreate_object GOLD { number_of_objects 4 }\n", "RMS0304");
+    const found = only(
+      "<TERRAIN_GENERATION>\ncreate_object GOLD { number_of_objects 4 }\n",
+      "RMS0304",
+    );
     expect(found).toHaveLength(1);
   });
 
   it("names both the section it needs and the section it is in", () => {
-    const found = only("<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n", "RMS0304");
+    const found = only(
+      "<OBJECTS_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n",
+      "RMS0304",
+    );
     expect(found[0].message).toContain("<TERRAIN_GENERATION>");
     expect(found[0].message).toContain("<OBJECTS_GENERATION>");
   });
 
   it("says nothing when the command is where it belongs", () => {
-    expect(codes("<TERRAIN_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n")).not.toContain("RMS0304");
+    expect(
+      codes(
+        "<TERRAIN_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n",
+      ),
+    ).not.toContain("RMS0304");
   });
 
   it("says nothing about effect_amount outside <PLAYER_SETUP>", () => {
@@ -408,29 +458,41 @@ describe("RMS0304 — a command in a section the engine will not run it from", (
     // section-driven check produces on this corpus are this line, in shipped
     // maps that work. effect_amount carries no sectionLocked flag, so nothing
     // is claimed about it in either direction.
-    const source = "<OBJECTS_GENERATION>\neffect_amount SET_ATTRIBUTE GOLD ATTR_TERRAIN_ID 1\n";
+    const source =
+      "<OBJECTS_GENERATION>\neffect_amount SET_ATTRIBUTE GOLD ATTR_TERRAIN_ID 1\n";
     expect(codes(source)).not.toContain("RMS0304");
   });
 
   it("says nothing about a command whose lock has never been measured", () => {
     // create_player_lands in <PLAYER_SETUP> is the 53rd corpus hit, in our own
     // test-maps/sample.rms. Unmeasured means silent, not "probably fine".
-    expect(codes("<PLAYER_SETUP>\ncreate_player_lands { base_size 5 }\n")).not.toContain("RMS0304");
+    expect(
+      codes("<PLAYER_SETUP>\ncreate_player_lands { base_size 5 }\n"),
+    ).not.toContain("RMS0304");
   });
 
   it("flags a locked command nested inside a conditional", () => {
     // A command inside `if X` still belongs to the enclosing section, so the
     // check has to see through branches rather than only scan direct items.
-    const source = "<OBJECTS_GENERATION>\nif DEATH_MATCH\ncreate_terrain SNOW { number_of_clumps 4 }\nendif\n";
+    const source =
+      "<OBJECTS_GENERATION>\nif DEATH_MATCH\ncreate_terrain SNOW { number_of_clumps 4 }\nendif\n";
     expect(codes(source)).toContain("RMS0304");
   });
 
   it("says nothing in the preamble, where nothing has been measured", () => {
-    expect(codes("create_terrain SNOW { number_of_clumps 4 }\n<TERRAIN_GENERATION>\n")).not.toContain("RMS0304");
+    expect(
+      codes(
+        "create_terrain SNOW { number_of_clumps 4 }\n<TERRAIN_GENERATION>\n",
+      ),
+    ).not.toContain("RMS0304");
   });
 
   it("says nothing inside a section header it does not recognise", () => {
-    expect(codes("<SOME_FUTURE_SECTION>\ncreate_terrain SNOW { number_of_clumps 4 }\n")).not.toContain("RMS0304");
+    expect(
+      codes(
+        "<SOME_FUTURE_SECTION>\ncreate_terrain SNOW { number_of_clumps 4 }\n",
+      ),
+    ).not.toContain("RMS0304");
   });
 
   it("stays silent after a degraded region, which may have swallowed a header", () => {
@@ -439,7 +501,8 @@ describe("RMS0304 — a command in a section the engine will not run it from", (
     // conditionals are open, so a command after one cannot be trusted to be
     // in the section it appears to be in, and warning would report the
     // recovery as the author's mistake.
-    const source = "<OBJECTS_GENERATION>\n!!! ??? %%%\ncreate_terrain SNOW { number_of_clumps 4 }\n";
+    const source =
+      "<OBJECTS_GENERATION>\n!!! ??? %%%\ncreate_terrain SNOW { number_of_clumps 4 }\n";
     expect(codes(source)).not.toContain("RMS0304");
   });
 
@@ -452,20 +515,28 @@ describe("RMS0304 — a command in a section the engine will not run it from", (
 
 describe("RMS0305 — missing <PLAYER_SETUP>", () => {
   it("notes a sectioned script with no PLAYER_SETUP", () => {
-    const found = only("<LAND_GENERATION>\ncreate_land { base_size 5 }\n", "RMS0305");
+    const found = only(
+      "<LAND_GENERATION>\ncreate_land { base_size 5 }\n",
+      "RMS0305",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
   });
 
   it("says nothing when it is present, or when there are no sections at all", () => {
-    expect(codes("<PLAYER_SETUP>\nrandom_placement\n")).not.toContain("RMS0305");
+    expect(codes("<PLAYER_SETUP>\nrandom_placement\n")).not.toContain(
+      "RMS0305",
+    );
     expect(codes("#const TREES 10\n")).not.toContain("RMS0305");
   });
 });
 
 describe("RMS0306 — repeated non-repeatable attributes", () => {
   it("notes a second use of a non-cumulative attribute in one block", () => {
-    const found = only("<LAND_GENERATION>\ncreate_land { base_size 5 base_size 7 }\n", "RMS0306");
+    const found = only(
+      "<LAND_GENERATION>\ncreate_land { base_size 5 base_size 7 }\n",
+      "RMS0306",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
   });
@@ -515,12 +586,20 @@ describe("messages that point at a second place in the file name a LINE", () => 
     expect(found[0].message).not.toContain("offset");
     // Raised on the LATER use, the one the engine keeps, so the reader is
     // looking at the surviving value while the message names the dead one.
-    expect(source.slice(found[0].span.start, found[0].span.end)).toBe("max_distance_to_players");
+    expect(source.slice(found[0].span.start, found[0].span.end)).toBe(
+      "max_distance_to_players",
+    );
     expect(source.slice(0, found[0].span.start).split("\n")).toHaveLength(6);
   });
 
   it("RMS0301 names the line of the definition the engine keeps", () => {
-    const source = ["/* header */", "", "#const TREE_COUNT 10", "#const TREE_COUNT 40", ""].join("\n");
+    const source = [
+      "/* header */",
+      "",
+      "#const TREE_COUNT 10",
+      "#const TREE_COUNT 40",
+      "",
+    ].join("\n");
     const found = only(source, "RMS0301");
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain("already defined on line 3");
@@ -565,13 +644,18 @@ describe("messages that point at a second place in the file name a LINE", () => 
 
 describe("RMS0307 — mutually exclusive attributes", () => {
   it("flags a mutex pair in one block, exactly once", () => {
-    const found = only("<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 100 }\n", "RMS0307");
+    const found = only(
+      "<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 100 }\n",
+      "RMS0307",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
   });
 
   it("accepts either one on its own", () => {
-    expect(codes("<LAND_GENERATION>\ncreate_land { land_percent 5 }\n")).not.toContain("RMS0307");
+    expect(
+      codes("<LAND_GENERATION>\ncreate_land { land_percent 5 }\n"),
+    ).not.toContain("RMS0307");
   });
 
   it("claims no shared purpose the guide does not state", () => {
@@ -579,7 +663,10 @@ describe("RMS0307 — mutually exclusive attributes", () => {
     // ways". False for the pair that produces most of this check's corpus
     // output: set_scale_by_size scales the tile count, set_scale_by_groups
     // scales the clump count. The guide says only that they are exclusive.
-    const found = only("<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 100 }\n", "RMS0307");
+    const found = only(
+      "<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 100 }\n",
+      "RMS0307",
+    );
     expect(found[0].message).not.toContain("same thing");
     expect(found[0].message).toContain("mutually exclusive");
   });
@@ -606,7 +693,10 @@ describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", (
   // command that also names a shallow its fish cannot occupy and so predicts
   // zero under either model.
   it("flags ignore_terrain_restrictions written on its own", () => {
-    const found = only("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 10 ignore_terrain_restrictions }\n", "RMS0315");
+    const found = only(
+      "<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 10 ignore_terrain_restrictions }\n",
+      "RMS0315",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
     expect(found[0].message).toContain("this line does nothing");
@@ -616,13 +706,17 @@ describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", (
 
   it("stays quiet with set_place_for_every_player", () => {
     expect(
-      codes("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { set_place_for_every_player number_of_objects 10 ignore_terrain_restrictions }\n"),
+      codes(
+        "<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { set_place_for_every_player number_of_objects 10 ignore_terrain_restrictions }\n",
+      ),
     ).not.toContain("RMS0315");
   });
 
   it("stays quiet with place_on_specific_land_id, the other half of the either/or", () => {
     expect(
-      codes("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { place_on_specific_land_id 3 number_of_objects 10 ignore_terrain_restrictions }\n"),
+      codes(
+        "<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { place_on_specific_land_id 3 number_of_objects 10 ignore_terrain_restrictions }\n",
+      ),
     ).not.toContain("RMS0315");
   });
 
@@ -639,7 +733,10 @@ describe("RMS0315 — an attribute whose guide 'Requires:' partner is absent", (
   });
 
   it("names both partners, from the data rather than from the message", () => {
-    const found = only("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { ignore_terrain_restrictions }\n", "RMS0315");
+    const found = only(
+      "<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { ignore_terrain_restrictions }\n",
+      "RMS0315",
+    );
     expect(found[0].message).toContain("set_place_for_every_player");
     expect(found[0].message).toContain("place_on_specific_land_id");
   });
@@ -650,7 +747,8 @@ describe("RMS0308 — percent_chance and rnd ranges", () => {
   // guide:3010's "the 100th percent is never chosen". This shipped as 100
   // because Sec.8 used both numbers in one sentence.
   it("flags branches after the running total reaches 99", () => {
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance 60 create_land { base_size 5 }\npercent_chance 40 create_land { base_size 6 }\npercent_chance 10 create_land { base_size 7 }\nend_random\n";
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 60 create_land { base_size 5 }\npercent_chance 40 create_land { base_size 6 }\npercent_chance 10 create_land { base_size 7 }\nend_random\n";
     const found = only(source, "RMS0308");
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain("never be picked");
@@ -659,7 +757,8 @@ describe("RMS0308 — percent_chance and rnd ranges", () => {
   it("flags a branch that starts at exactly 99 — the corpus has a live one", () => {
     // `TL Cape of Storms.rms` writes 45/54/1: the third branch begins at
     // cumulative 99 and can never run. At a threshold of 100 this was silent.
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance 45 create_land { base_size 5 }\npercent_chance 54 create_land { base_size 6 }\npercent_chance 1 create_land { base_size 7 }\nend_random\n";
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 45 create_land { base_size 5 }\npercent_chance 54 create_land { base_size 6 }\npercent_chance 1 create_land { base_size 7 }\nend_random\n";
     const found = only(source, "RMS0308");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
@@ -669,33 +768,49 @@ describe("RMS0308 — percent_chance and rnd ranges", () => {
   it("says nothing about a total of exactly 99 — that is full coverage", () => {
     // `24hr_Mont Saint Michel.rms` has a 33/33/33 block. At a threshold of 100
     // it drew a false "there's a chance none of them runs".
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance 33 create_land { base_size 5 }\npercent_chance 33 create_land { base_size 6 }\npercent_chance 33 create_land { base_size 7 }\nend_random\n";
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 33 create_land { base_size 5 }\npercent_chance 33 create_land { base_size 6 }\npercent_chance 33 create_land { base_size 7 }\nend_random\n";
     expect(only(source, "RMS0308")).toEqual([]);
   });
 
   it("notes a total under 99 as info, not a warning", () => {
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance 30 create_land { base_size 5 }\nend_random\n";
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 30 create_land { base_size 5 }\nend_random\n";
     const found = only(source, "RMS0308");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
   });
 
   it("flags percent_chance 0 on the first branch", () => {
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance 0 create_land { base_size 5 }\npercent_chance 100 create_land { base_size 6 }\nend_random\n";
-    expect(only(source, "RMS0308").some((d) => d.message.includes("runs it anyway"))).toBe(true);
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 0 create_land { base_size 5 }\npercent_chance 100 create_land { base_size 6 }\nend_random\n";
+    expect(
+      only(source, "RMS0308").some((d) => d.message.includes("runs it anyway")),
+    ).toBe(true);
   });
 
   it("makes no cumulative claim when a chance is not a literal", () => {
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance rnd(1,50) create_land { base_size 5 }\npercent_chance 40 create_land { base_size 6 }\nend_random\n";
-    expect(only(source, "RMS0308").some((d) => d.message.includes("never be picked"))).toBe(false);
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance rnd(1,50) create_land { base_size 5 }\npercent_chance 40 create_land { base_size 6 }\nend_random\n";
+    expect(
+      only(source, "RMS0308").some((d) =>
+        d.message.includes("never be picked"),
+      ),
+    ).toBe(false);
   });
 
   it("separates a reversed rnd from a merely constant one", () => {
-    const reversed = only("<LAND_GENERATION>\ncreate_land { base_size rnd(9,2) }\n", "RMS0308");
+    const reversed = only(
+      "<LAND_GENERATION>\ncreate_land { base_size rnd(9,2) }\n",
+      "RMS0308",
+    );
     expect(reversed).toHaveLength(1);
     expect(reversed[0].severity).toBe("warning");
 
-    const constant = only("<LAND_GENERATION>\ncreate_land { base_size rnd(5,5) }\n", "RMS0308");
+    const constant = only(
+      "<LAND_GENERATION>\ncreate_land { base_size rnd(5,5) }\n",
+      "RMS0308",
+    );
     expect(constant).toHaveLength(1);
     expect(constant[0].severity).toBe("info");
   });
@@ -703,7 +818,10 @@ describe("RMS0308 — percent_chance and rnd ranges", () => {
 
 describe("RMS0309 / RMS0310 — obsolete and non-functional syntax", () => {
   it("notes a deprecated command using the guidance from the data", () => {
-    const found = only("<PLAYER_SETUP>\neffect_percent MOD_RESOURCE AMOUNT_STARTING_FOOD ATTR_ADD 50\n", "RMS0309");
+    const found = only(
+      "<PLAYER_SETUP>\neffect_percent MOD_RESOURCE AMOUNT_STARTING_FOOD ATTR_ADD 50\n",
+      "RMS0309",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
     expect(found[0].message).toContain("effect_amount");
@@ -714,20 +832,32 @@ describe("RMS0309 / RMS0310 — obsolete and non-functional syntax", () => {
     // (guide, Non-Functional Syntax). Before it had an entry it drew a bare
     // "unknown attribute", wrong, since the engine does carry the word, and
     // useless, since it named nothing to use instead.
-    const source = "<OBJECTS_GENERATION>\ncreate_object GOLD { min_distance 5 }\n";
+    const source =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { min_distance 5 }\n";
     const found = only(source, "RMS0310");
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
     expect(found[0].suggestion).toBe("min_distance_to_players");
     // And it must no longer be reported as an unknown name.
-    expect(parseRms(source, lang).diagnostics.map((d) => d.code)).not.toContain("RMS0200");
+    expect(parseRms(source, lang).diagnostics.map((d) => d.code)).not.toContain(
+      "RMS0200",
+    );
   });
 
   it("covers all four dead strings, each naming its own replacement", () => {
     const cases: [string, string][] = [
-      ["<OBJECTS_GENERATION>\ncreate_object GOLD { max_distance 5 }\n", "max_distance_to_players"],
-      ["<LAND_GENERATION>\ncreate_land { set_position 50 50 }\n", "land_position"],
-      ["<LAND_GENERATION>\ncreate_land { percent_of_land 20 }\n", "land_percent"],
+      [
+        "<OBJECTS_GENERATION>\ncreate_object GOLD { max_distance 5 }\n",
+        "max_distance_to_players",
+      ],
+      [
+        "<LAND_GENERATION>\ncreate_land { set_position 50 50 }\n",
+        "land_position",
+      ],
+      [
+        "<LAND_GENERATION>\ncreate_land { percent_of_land 20 }\n",
+        "land_percent",
+      ],
     ];
     for (const [source, replacement] of cases) {
       const found = only(source, "RMS0310");
@@ -743,32 +873,41 @@ describe("RMS0309 / RMS0310 — obsolete and non-functional syntax", () => {
   });
 
   it("keeps the #undefine'd symbol defined — it is a no-op in DE", () => {
-    const source = "#define ALPHA\n#undefine ALPHA\n<PLAYER_SETUP>\nif ALPHA\nrandom_placement\nendif\n";
+    const source =
+      "#define ALPHA\n#undefine ALPHA\n<PLAYER_SETUP>\nif ALPHA\nrandom_placement\nendif\n";
     expect(codes(source)).not.toContain("RMS0300");
   });
 });
 
 describe("RMS0311 — base_elevation without <ELEVATION_GENERATION>", () => {
   it("is an error, and the only one this pass raises", () => {
-    const found = only("<LAND_GENERATION>\ncreate_land { base_elevation 4 }\n", "RMS0311");
+    const found = only(
+      "<LAND_GENERATION>\ncreate_land { base_elevation 4 }\n",
+      "RMS0311",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("error");
   });
 
   it("reports once per file, not once per use", () => {
-    const source = "<LAND_GENERATION>\ncreate_land { base_elevation 4 }\ncreate_land { base_elevation 6 }\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land { base_elevation 4 }\ncreate_land { base_elevation 6 }\n";
     expect(only(source, "RMS0311")).toHaveLength(1);
   });
 
   it("is satisfied by an empty section — presence is the whole requirement", () => {
-    const source = "<LAND_GENERATION>\ncreate_land { base_elevation 4 }\n<ELEVATION_GENERATION>\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land { base_elevation 4 }\n<ELEVATION_GENERATION>\n";
     expect(codes(source)).not.toContain("RMS0311");
   });
 });
 
 describe("RMS0204 / RMS0205 — constant IDs and categories", () => {
   it("names the constant behind a bare ID", () => {
-    const found = only("<TERRAIN_GENERATION>\ncreate_terrain 10 { number_of_clumps 4 }\n", "RMS0204");
+    const found = only(
+      "<TERRAIN_GENERATION>\ncreate_terrain 10 { number_of_clumps 4 }\n",
+      "RMS0204",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("info");
     expect(found[0].suggestion).toBe("FOREST");
@@ -777,23 +916,35 @@ describe("RMS0204 / RMS0205 — constant IDs and categories", () => {
   it("says nothing about an ID it cannot resolve", () => {
     // The constants DB holds 31 of the game's several hundred; "use a named
     // constant" is useless advice when we can't supply the name.
-    expect(codes("<TERRAIN_GENERATION>\ncreate_terrain 987 { number_of_clumps 4 }\n")).not.toContain("RMS0204");
+    expect(
+      codes(
+        "<TERRAIN_GENERATION>\ncreate_terrain 987 { number_of_clumps 4 }\n",
+      ),
+    ).not.toContain("RMS0204");
   });
 
   it("flags an object constant in a terrain slot", () => {
-    const found = only("<TERRAIN_GENERATION>\ncreate_terrain GOLD { number_of_clumps 4 }\n", "RMS0205");
+    const found = only(
+      "<TERRAIN_GENERATION>\ncreate_terrain GOLD { number_of_clumps 4 }\n",
+      "RMS0205",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("warning");
   });
 
   it("accepts a terrain constant in a terrain slot", () => {
-    expect(codes("<TERRAIN_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n")).not.toContain("RMS0205");
+    expect(
+      codes(
+        "<TERRAIN_GENERATION>\ncreate_terrain SNOW { number_of_clumps 4 }\n",
+      ),
+    ).not.toContain("RMS0205");
   });
 });
 
 describe("pass-level guarantees", () => {
   it("returns diagnostics sorted by source position", () => {
-    const source = "#const TREES 10\n#const TREES 20\n<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 9 }\n";
+    const source =
+      "#const TREES 10\n#const TREES 20\n<LAND_GENERATION>\ncreate_land { land_percent 5 number_of_tiles 9 }\n";
     const found = check(source);
     expect(found.length).toBeGreaterThan(1);
     const starts = found.map((d) => d.span.start);
@@ -801,7 +952,15 @@ describe("pass-level guarantees", () => {
   });
 
   it("never throws on degenerate input", () => {
-    for (const source of ["", "   ", "}}}", "<PLAYER_SETUP>", "if\nendif", "#const", "start_random"]) {
+    for (const source of [
+      "",
+      "   ",
+      "}}}",
+      "<PLAYER_SETUP>",
+      "if\nendif",
+      "#const",
+      "start_random",
+    ]) {
       expect(() => check(source)).not.toThrow();
     }
   });
@@ -832,7 +991,10 @@ describe("RMS0111 — a word inside a comment that the engine reads as an openin
   // leading comment containing a word valued 69 blanks the map, while the bare
   // literal 69 does not. Reported rather than modelled, decided 2026-08-11.
   it("flags an object constant valued 69", () => {
-    const found = only("/* place SHORE_FISH here */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
+    const found = only(
+      "/* place SHORE_FISH here */\n<PLAYER_SETUP>\nrandom_placement\n",
+      "RMS0111",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe("error");
     expect(found[0].message).toContain("SHORE_FISH");
@@ -840,27 +1002,40 @@ describe("RMS0111 — a word inside a comment that the engine reads as an openin
   });
 
   it("flags an ATTRIBUTE constant valued 69 too — the namespace is irrelevant, the VALUE is the rule", () => {
-    const found = only("/* tweak ATTR_PROJECTILE_ARC later */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
+    const found = only(
+      "/* tweak ATTR_PROJECTILE_ARC later */\n<PLAYER_SETUP>\nrandom_placement\n",
+      "RMS0111",
+    );
     expect(found).toHaveLength(1);
   });
 
   it("stays silent on the bare literal 69 — RMSTEST_57 generated a normal map", () => {
     // Numeric literals are lexed as numbers and never reach the symbol table.
-    expect(codes("/* about 69 tiles */\n<PLAYER_SETUP>\nrandom_placement\n")).not.toContain("RMS0111");
+    expect(
+      codes("/* about 69 tiles */\n<PLAYER_SETUP>\nrandom_placement\n"),
+    ).not.toContain("RMS0111");
   });
 
   it("stays silent when the same word is real code rather than a comment", () => {
-    expect(codes("<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 5 }\n")).not.toContain("RMS0111");
+    expect(
+      codes(
+        "<OBJECTS_GENERATION>\ncreate_object SHORE_FISH { number_of_objects 5 }\n",
+      ),
+    ).not.toContain("RMS0111");
   });
 
   it("flags the script's own #const valued 69", () => {
-    const found = only("#const MY_FISH 69\n/* MY_FISH goes in the bay */\n<PLAYER_SETUP>\nrandom_placement\n", "RMS0111");
+    const found = only(
+      "#const MY_FISH 69\n/* MY_FISH goes in the bay */\n<PLAYER_SETUP>\nrandom_placement\n",
+      "RMS0111",
+    );
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain("this script defines it as 69");
   });
 
   it("reports only the FIRST hit — everything after it is inside the engine's nested comment", () => {
-    const source = "/* SHORE_FISH here */\n/* and ATTR_PROJECTILE_ARC there */\n<PLAYER_SETUP>\nrandom_placement\n";
+    const source =
+      "/* SHORE_FISH here */\n/* and ATTR_PROJECTILE_ARC there */\n<PLAYER_SETUP>\nrandom_placement\n";
     expect(only(source, "RMS0111")).toHaveLength(1);
   });
 });

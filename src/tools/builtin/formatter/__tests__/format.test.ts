@@ -44,7 +44,9 @@ describe("block layout — the two philosophies (Sec.3)", () => {
   });
 
   it("preserve keeps an expanded command expanded, and indents it", () => {
-    expect(fmt(expanded)).toBe("<LAND_GENERATION>\ncreate_land\n{\n  terrain_type GRASS\n  land_percent 20\n}\n");
+    expect(fmt(expanded)).toBe(
+      "<LAND_GENERATION>\ncreate_land\n{\n  terrain_type GRASS\n  land_percent 20\n}\n",
+    );
   });
 
   it("preserve is the default, so the two shapes coexist in one file", () => {
@@ -61,32 +63,42 @@ describe("block layout — the two philosophies (Sec.3)", () => {
   });
 
   it("inline puts the whole command on one line", () => {
-    expect(fmt(expanded, { blockLayout: "inline" })).toBe("<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n");
+    expect(fmt(expanded, { blockLayout: "inline" })).toBe(
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n",
+    );
   });
 
   it("compact inlines what fits and expands what does not", () => {
-    const narrow = fmt(expanded, { blockLayout: "compact", inlineMaxWidth: 40 });
+    const narrow = fmt(expanded, {
+      blockLayout: "compact",
+      inlineMaxWidth: 40,
+    });
     expect(narrow).toContain("create_land\n{\n");
     const wide = fmt(expanded, { blockLayout: "compact", inlineMaxWidth: 200 });
-    expect(wide).toContain("create_land { terrain_type GRASS land_percent 20 }");
+    expect(wide).toContain(
+      "create_land { terrain_type GRASS land_percent 20 }",
+    );
   });
 });
 
 describe("when one line is refused (Sec.3.3)", () => {
   it("preserve keeps a one-line block that holds a conditional — 810 corpus blocks do", () => {
-    const source = "<LAND_GENERATION>\ncreate_land { if TINY_MAP base_size 2 else base_size 3 endif }\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land { if TINY_MAP base_size 2 else base_size 3 endif }\n";
     expect(fmt(source)).toBe(source);
   });
 
   it("inline declines to CREATE one out of a block holding a conditional", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nif TINY_MAP\nbase_size 2\nendif\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nif TINY_MAP\nbase_size 2\nendif\n}\n";
     expect(fmt(source, { blockLayout: "inline" })).toBe(
       "<LAND_GENERATION>\ncreate_land\n{\n  if TINY_MAP\n    base_size 2\n  endif\n}\n",
     );
   });
 
   it("a comment spanning lines inside the block forces expansion whatever the policy", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\n/* one\n   two */\nland_percent 5\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\n/* one\n   two */\nland_percent 5\n}\n";
     const out = fmt(source, { blockLayout: "inline" });
     expect(out).toContain("create_land\n{\n");
     expect(out).toContain("/* one\n     two */");
@@ -100,7 +112,8 @@ describe("when one line is refused (Sec.3.3)", () => {
 });
 
 describe("per-command overrides (Sec.6.1)", () => {
-  const inline = "<LAND_GENERATION>\ncreate_land { land_percent 20 }\ncreate_terrain GRASS { land_percent 5 }\n";
+  const inline =
+    "<LAND_GENERATION>\ncreate_land { land_percent 20 }\ncreate_terrain GRASS { land_percent 5 }\n";
 
   it("alwaysExpand overrides the policy for the named command only", () => {
     expect(fmt(inline, { alwaysExpand: ["create_land"] })).toBe(
@@ -109,7 +122,10 @@ describe("per-command overrides (Sec.6.1)", () => {
   });
 
   it("alwaysExpand beats alwaysInline, as options.ts documents", () => {
-    const out = fmt(inline, { alwaysExpand: ["create_land"], alwaysInline: ["create_land"] });
+    const out = fmt(inline, {
+      alwaysExpand: ["create_land"],
+      alwaysInline: ["create_land"],
+    });
     expect(out).toContain("create_land\n{\n");
   });
 
@@ -124,17 +140,23 @@ describe("per-command overrides (Sec.6.1)", () => {
 
 describe("conditionals and start_random (Sec.5)", () => {
   it("indents if bodies by default — 47,063 of 55,327 corpus lines do", () => {
-    const source = "<LAND_GENERATION>\nif TINY_MAP\nland_percent 5\nelse\nland_percent 9\nendif\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\nif TINY_MAP\n  land_percent 5\nelse\n  land_percent 9\nendif\n");
+    const source =
+      "<LAND_GENERATION>\nif TINY_MAP\nland_percent 5\nelse\nland_percent 9\nendif\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\nif TINY_MAP\n  land_percent 5\nelse\n  land_percent 9\nendif\n",
+    );
   });
 
   it("leaves them level with the keyword when asked", () => {
     const source = "<LAND_GENERATION>\nif TINY_MAP\n  land_percent 5\nendif\n";
-    expect(fmt(source, { indentConditionals: false })).toBe("<LAND_GENERATION>\nif TINY_MAP\nland_percent 5\nendif\n");
+    expect(fmt(source, { indentConditionals: false })).toBe(
+      "<LAND_GENERATION>\nif TINY_MAP\nland_percent 5\nendif\n",
+    );
   });
 
   it("puts percent_chance one level in and its body two", () => {
-    const source = "<LAND_GENERATION>\nstart_random\npercent_chance 50\nland_percent 5\npercent_chance 50\nland_percent 9\nend_random\n";
+    const source =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 50\nland_percent 5\npercent_chance 50\nland_percent 9\nend_random\n";
     expect(fmt(source)).toBe(
       "<LAND_GENERATION>\nstart_random\n  percent_chance 50\n    land_percent 5\n  percent_chance 50\n    land_percent 9\nend_random\n",
     );
@@ -143,25 +165,36 @@ describe("conditionals and start_random (Sec.5)", () => {
 
 describe("section bodies (Sec.5.0)", () => {
   it("keeps a section body that was indented", () => {
-    const source = "<LAND_GENERATION>\n  land_percent 5\n  base_terrain GRASS\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\n  land_percent 5\n  base_terrain GRASS\n");
+    const source =
+      "<LAND_GENERATION>\n  land_percent 5\n  base_terrain GRASS\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\n  land_percent 5\n  base_terrain GRASS\n",
+    );
   });
 
   it("keeps a section body that was flush", () => {
     const source = "<LAND_GENERATION>\nland_percent 5\nbase_terrain GRASS\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\nland_percent 5\nbase_terrain GRASS\n");
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\nland_percent 5\nbase_terrain GRASS\n",
+    );
   });
 
   it("classifies per section, so a mixed script keeps both halves", () => {
-    const source = "<LAND_GENERATION>\n  land_percent 5\n<TERRAIN_GENERATION>\nbase_terrain GRASS\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\n  land_percent 5\n\n<TERRAIN_GENERATION>\nbase_terrain GRASS\n");
+    const source =
+      "<LAND_GENERATION>\n  land_percent 5\n<TERRAIN_GENERATION>\nbase_terrain GRASS\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\n  land_percent 5\n\n<TERRAIN_GENERATION>\nbase_terrain GRASS\n",
+    );
   });
 
   it("reads the minimum column, so a leading comment group does not fake it", () => {
     // The comment group indents `land_percent`; the section itself is flush,
     // and `base_terrain` at column 0 is what proves it.
-    const source = "<LAND_GENERATION>\n/* lands */\n  land_percent 5\nbase_terrain GRASS\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\n/* lands */\n  land_percent 5\nbase_terrain GRASS\n");
+    const source =
+      "<LAND_GENERATION>\n/* lands */\n  land_percent 5\nbase_terrain GRASS\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\n/* lands */\n  land_percent 5\nbase_terrain GRASS\n",
+    );
   });
 
   it("imposes either convention when asked", () => {
@@ -174,22 +207,32 @@ describe("section bodies (Sec.5.0)", () => {
 
 describe("comments (Sec.4)", () => {
   it("keeps a trailing comment on the line it trails", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5 /* half */\n}\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\ncreate_land\n{\n  land_percent 5 /* half */\n}\n");
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5 /* half */\n}\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\ncreate_land\n{\n  land_percent 5 /* half */\n}\n",
+    );
   });
 
   it("indents an own-line comment with what follows it", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\n/* why */\nland_percent 5\n}\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\ncreate_land\n{\n  /* why */\n  land_percent 5\n}\n");
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\n/* why */\nland_percent 5\n}\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\ncreate_land\n{\n  /* why */\n  land_percent 5\n}\n",
+    );
   });
 
   it("indents a comment written last inside a block with the block, not with the brace", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5\n/* trailing thought */\n}\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\ncreate_land\n{\n  land_percent 5\n  /* trailing thought */\n}\n");
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5\n/* trailing thought */\n}\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\ncreate_land\n{\n  land_percent 5\n  /* trailing thought */\n}\n",
+    );
   });
 
   it("shifts a multi-line comment as a block, keeping its internal alignment", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\n/* +-----+\n   | box |\n   +-----+ */\nland_percent 5\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\n/* +-----+\n   | box |\n   +-----+ */\nland_percent 5\n}\n";
     const out = fmt(source);
     // Two spaces of block indent added to every line of the comment, and the
     // three edges still line up with each other.
@@ -197,8 +240,11 @@ describe("comments (Sec.4)", () => {
   });
 
   it("collapses nothing inside a comment even when told to collapse spacing", () => {
-    const source = "<LAND_GENERATION>\n/* a     b */\ncreate_land { land_percent 5 }\n";
-    expect(fmt(source, { intraLineSpacing: "collapse" })).toContain("/* a     b */");
+    const source =
+      "<LAND_GENERATION>\n/* a     b */\ncreate_land { land_percent 5 }\n";
+    expect(fmt(source, { intraLineSpacing: "collapse" })).toContain(
+      "/* a     b */",
+    );
   });
 });
 
@@ -225,50 +271,75 @@ describe("comment-headed groups (Sec.4.4)", () => {
   });
 
   it("a comment level with what follows opens no group", () => {
-    const source = "<LAND_GENERATION>\n/* corners */\ncreate_land { land_percent 1 }\n";
+    const source =
+      "<LAND_GENERATION>\n/* corners */\ncreate_land { land_percent 1 }\n";
     expect(fmt(source)).toBe(source);
   });
 });
 
 describe("spacing, blank lines and file edges (Sec.5.1-5.3)", () => {
   it("preserves hand-aligned columns by default", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nterrain_type      GRASS\nland_percent      20\n}\n";
-    expect(fmt(source)).toContain("  terrain_type      GRASS\n  land_percent      20\n");
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nterrain_type      GRASS\nland_percent      20\n}\n";
+    expect(fmt(source)).toContain(
+      "  terrain_type      GRASS\n  land_percent      20\n",
+    );
   });
 
   it("collapses them when asked", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nterrain_type      GRASS\n}\n";
-    expect(fmt(source, { intraLineSpacing: "collapse" })).toContain("  terrain_type GRASS\n");
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nterrain_type      GRASS\n}\n";
+    expect(fmt(source, { intraLineSpacing: "collapse" })).toContain(
+      "  terrain_type GRASS\n",
+    );
   });
 
   it("caps runs of blank lines", () => {
-    const source = "<LAND_GENERATION>\nland_percent 5\n\n\n\n\nland_percent 9\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\nland_percent 5\n\nland_percent 9\n");
-    expect(fmt(source, { maxBlankLines: 0 })).toBe("<LAND_GENERATION>\nland_percent 5\nland_percent 9\n");
+    const source =
+      "<LAND_GENERATION>\nland_percent 5\n\n\n\n\nland_percent 9\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\nland_percent 5\n\nland_percent 9\n",
+    );
+    expect(fmt(source, { maxBlankLines: 0 })).toBe(
+      "<LAND_GENERATION>\nland_percent 5\nland_percent 9\n",
+    );
   });
 
   it("puts a blank line before a section header but not before the first thing in the file", () => {
-    const source = "<LAND_GENERATION>\nland_percent 5\n<TERRAIN_GENERATION>\nland_percent 9\n";
-    expect(fmt(source)).toBe("<LAND_GENERATION>\nland_percent 5\n\n<TERRAIN_GENERATION>\nland_percent 9\n");
+    const source =
+      "<LAND_GENERATION>\nland_percent 5\n<TERRAIN_GENERATION>\nland_percent 9\n";
+    expect(fmt(source)).toBe(
+      "<LAND_GENERATION>\nland_percent 5\n\n<TERRAIN_GENERATION>\nland_percent 9\n",
+    );
   });
 
   it("strips trailing whitespace", () => {
-    expect(fmt("<LAND_GENERATION>   \nland_percent 5\t\n")).toBe("<LAND_GENERATION>\nland_percent 5\n");
+    expect(fmt("<LAND_GENERATION>   \nland_percent 5\t\n")).toBe(
+      "<LAND_GENERATION>\nland_percent 5\n",
+    );
   });
 
   it("keeps CRLF, and keeps it everywhere it writes a break", () => {
-    const out = fmt("<LAND_GENERATION>\r\ncreate_land\r\n{\r\nland_percent 5\r\n}\r\n");
-    expect(out).toBe("<LAND_GENERATION>\r\ncreate_land\r\n{\r\n  land_percent 5\r\n}\r\n");
+    const out = fmt(
+      "<LAND_GENERATION>\r\ncreate_land\r\n{\r\nland_percent 5\r\n}\r\n",
+    );
+    expect(out).toBe(
+      "<LAND_GENERATION>\r\ncreate_land\r\n{\r\n  land_percent 5\r\n}\r\n",
+    );
     expect(out).not.toMatch(/[^\r]\n/);
   });
 
   it("preserves a missing final newline rather than adding one", () => {
-    expect(fmt("<LAND_GENERATION>\nland_percent 5")).toBe("<LAND_GENERATION>\nland_percent 5");
+    expect(fmt("<LAND_GENERATION>\nland_percent 5")).toBe(
+      "<LAND_GENERATION>\nland_percent 5",
+    );
   });
 
   it("keeps a leading byte-order mark", () => {
     const bom = String.fromCharCode(0xfeff);
-    expect(fmt(`${bom}<LAND_GENERATION>\nland_percent 5\n`).startsWith(bom)).toBe(true);
+    expect(
+      fmt(`${bom}<LAND_GENERATION>\nland_percent 5\n`).startsWith(bom),
+    ).toBe(true);
   });
 
   it("handles an empty script", () => {
@@ -291,7 +362,8 @@ describe("unparseable regions", () => {
   });
 
   it("leaves everything after an unclosed comment exactly as written", () => {
-    const source = "<LAND_GENERATION>\n/* opened and never closed\n    still inside\n        deeper\n";
+    const source =
+      "<LAND_GENERATION>\n/* opened and never closed\n    still inside\n        deeper\n";
     expect(fmt(source)).toBe(source);
   });
 });
@@ -305,20 +377,25 @@ describe("edits (Sec.7)", () => {
   });
 
   it("returns ascending, non-overlapping edits", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5\nland_percent 9\n}\ncreate_land\n{\nland_percent 1\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5\nland_percent 9\n}\ncreate_land\n{\nland_percent 1\n}\n";
     const result = edits(source);
     expect(result.edits.length).toBeGreaterThan(0);
     for (let i = 1; i < result.edits.length; i++) {
-      expect(result.edits[i].start).toBeGreaterThanOrEqual(result.edits[i - 1].end);
+      expect(result.edits[i].start).toBeGreaterThanOrEqual(
+        result.edits[i - 1].end,
+      );
     }
   });
 
   it("applying the edits reproduces the formatted text exactly", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5\n}\n\n\n\nif TINY_MAP\nland_percent 9\nendif\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nland_percent 5\n}\n\n\n\nif TINY_MAP\nland_percent 9\nendif\n";
     const result = edits(source);
     let applied = source;
     for (const edit of [...result.edits].sort((a, b) => b.start - a.start)) {
-      applied = applied.slice(0, edit.start) + edit.newText + applied.slice(edit.end);
+      applied =
+        applied.slice(0, edit.start) + edit.newText + applied.slice(edit.end);
     }
     expect(applied).toBe(result.text);
   });
@@ -334,7 +411,9 @@ describe("detection helpers (Sec.5.3)", () => {
   it("takes the smallest space width that occurs often enough, not the most common", () => {
     // Level 2 outnumbers level 1 here; the unit is still 2. Two lines is the
     // floor at which a width stops being an outlier.
-    const source = ["a", "  b", "  c", "    d", "    e", "    f", "    g"].join("\n");
+    const source = ["a", "  b", "  c", "    d", "    e", "    f", "    g"].join(
+      "\n",
+    );
     expect(indentUnit(source)).toBe("  ");
   });
 
@@ -362,7 +441,14 @@ describe("detection helpers (Sec.5.3)", () => {
   it("still reads a comment that opens its own line", () => {
     // Own-line comments are indented WITH the code they introduce, which is
     // the same evidence a command carries, and Sec.4.4 depends on it.
-    const source = ["<LAND_GENERATION>", "create_land", "{", "  /* why */", "  land_percent 5", "}"].join("\n");
+    const source = [
+      "<LAND_GENERATION>",
+      "create_land",
+      "{",
+      "  /* why */",
+      "  land_percent 5",
+      "}",
+    ].join("\n");
     expect(indentUnit(source)).toBe("  ");
   });
 });

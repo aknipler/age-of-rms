@@ -2,14 +2,23 @@ import { Fragment, useMemo, useState } from "react";
 import { usePreviewView } from "./PreviewViewContext";
 import { useGenerationSettings } from "../../generationSettings/GenerationSettingsContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
-import { createTerrainPalette, type TerrainConstant } from "../../preview/render/palette";
+import {
+  createTerrainPalette,
+  type TerrainConstant,
+} from "../../preview/render/palette";
 import { usePreviewResultContext } from "../../PreviewResultContext";
 import { usePreviewCut } from "../../PreviewCutContext";
 import type { TilePoint } from "../../preview/render/projection";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
 import { PreviewCanvas } from "./PreviewCanvas";
-import { describeTile, indexMarksByTile, indexObjectsByTile, tallyObjects, type TileInfo } from "./tileInfo";
+import {
+  describeTile,
+  indexMarksByTile,
+  indexObjectsByTile,
+  tallyObjects,
+  type TileInfo,
+} from "./tileInfo";
 import { PreviewNotes } from "./PreviewNotes";
 import styles from "./PreviewPane.module.css";
 
@@ -17,7 +26,9 @@ import styles from "./PreviewPane.module.css";
 // literal type from the file that does not always structurally overlap the
 // hand-written interface, and `npm run validate:reference` (ajv) is the real
 // guarantee the data is shaped correctly.
-const terrainConstants = (gameConstantsRaw as unknown as { constants: TerrainConstant[] }).constants;
+const terrainConstants = (
+  gameConstantsRaw as unknown as { constants: TerrainConstant[] }
+).constants;
 
 /**
  * One labelled line of the tile readout.
@@ -28,7 +39,13 @@ const terrainConstants = (gameConstantsRaw as unknown as { constants: TerrainCon
  * one you clicked BECAUSE something odd is on it). Splitting by kind also
  * means the eye can find "elevation" without reading the terrain first.
  */
-function ReadoutRow({ label, children }: { label: string; children: React.ReactNode }) {
+function ReadoutRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <>
       <dt className={styles.readoutLabel}>{label}</dt>
@@ -67,14 +84,18 @@ function TileReadout({ tile }: { tile: TileInfo }) {
       <ReadoutRow label="Tile">
         ({tile.x}, {tile.y})
       </ReadoutRow>
-      <ReadoutRow label="Terrain">{tile.terrainName ?? `terrain ${tile.terrain}`}</ReadoutRow>
+      <ReadoutRow label="Terrain">
+        {tile.terrainName ?? `terrain ${tile.terrain}`}
+      </ReadoutRow>
       {/* The layer is what a terrain_mask or base_layer painted on top. It
           is often the thing you are actually LOOKING at, since the tile is
           drawn as a heavy blend of the two, so a readout naming only the
           terrain reads as a colour bug. Its own row, not appended to
           Terrain's, so it reads as a second fact rather than a run-on. */}
       {tile.layer !== null && (
-        <ReadoutRow label="Layer">{tile.layerName ?? `terrain ${tile.layer}`}</ReadoutRow>
+        <ReadoutRow label="Layer">
+          {tile.layerName ?? `terrain ${tile.layer}`}
+        </ReadoutRow>
       )}
       <ReadoutRow label="Elevation">
         {tile.elevation}
@@ -92,7 +113,10 @@ function TileReadout({ tile }: { tile: TileInfo }) {
         hover away rather than in a key the reader has to hold in their head.
       */}
       {tile.marks.map((mark) => (
-        <ReadoutRow key={`${mark.kind}-${mark.commandSpan.start}`} label="Problem">
+        <ReadoutRow
+          key={`${mark.kind}-${mark.commandSpan.start}`}
+          label="Problem"
+        >
           <span className={styles.readoutProblem}>{mark.label}</span>
         </ReadoutRow>
       ))}
@@ -124,7 +148,11 @@ function PinControl() {
   if (pinnedLine !== null) {
     return (
       <HelpTip id="preview.pinLine">
-        <button type="button" className={`${styles.pin} ${styles.pinActive}`} onClick={unpin}>
+        <button
+          type="button"
+          className={`${styles.pin} ${styles.pinActive}`}
+          onClick={unpin}
+        >
           Pinned {pinnedLine + 1} ✕
         </button>
       </HelpTip>
@@ -194,7 +222,10 @@ export function PreviewPane() {
   // id, and that cache is only valid for one mode. Keeping one palette and
   // passing the mode per call would move the mode into 40,000 per-tile lookups
   // for a value that changes once per click.
-  const palette = useMemo(() => createTerrainPalette(terrainConstants, colorMode), [colorMode]);
+  const palette = useMemo(
+    () => createTerrainPalette(terrainConstants, colorMode),
+    [colorMode],
+  );
   // The LAST snapshot, not the first: Sec.5 orders snapshots S1-S6 and "the
   // S6 snapshot is the final grid" -- the fixture only ever produced one
   // snapshot (tagged S6) so index 0 happened to be correct there, but the
@@ -233,8 +264,21 @@ export function PreviewPane() {
   const shown = selectedTile ?? hovered;
   const tile = useMemo(() => {
     if (snapshot === undefined || shown === null) return null;
-    if (shown.x < 0 || shown.y < 0 || shown.x >= snapshot.dim || shown.y >= snapshot.dim) return null;
-    return describeTile(snapshot, palette, objectsByTile, marksByTile, shown.x, shown.y);
+    if (
+      shown.x < 0 ||
+      shown.y < 0 ||
+      shown.x >= snapshot.dim ||
+      shown.y >= snapshot.dim
+    )
+      return null;
+    return describeTile(
+      snapshot,
+      palette,
+      objectsByTile,
+      marksByTile,
+      shown.x,
+      shown.y,
+    );
   }, [snapshot, palette, objectsByTile, marksByTile, shown]);
 
   // null while the very first generation is still in flight (debounce +
@@ -286,7 +330,9 @@ export function PreviewPane() {
               <input
                 type="checkbox"
                 checked={view === "current"}
-                onChange={(event) => setView(event.target.checked ? "current" : "final")}
+                onChange={(event) =>
+                  setView(event.target.checked ? "current" : "final")
+                }
               />
               Current
             </label>
@@ -303,7 +349,9 @@ export function PreviewPane() {
               <input
                 type="checkbox"
                 checked={colorMode === "minimap"}
-                onChange={(event) => setColorMode(event.target.checked ? "minimap" : "game")}
+                onChange={(event) =>
+                  setColorMode(event.target.checked ? "minimap" : "game")
+                }
               />
               Minimap
             </label>
@@ -321,13 +369,19 @@ export function PreviewPane() {
                 min={0}
                 onChange={(event) => {
                   const next = Number(event.target.value);
-                  if (Number.isFinite(next)) setSeed(Math.max(0, Math.trunc(next)));
+                  if (Number.isFinite(next))
+                    setSeed(Math.max(0, Math.trunc(next)));
                 }}
               />
             </label>
           </HelpTip>
           <HelpTip id="preview.reroll">
-            <button type="button" className={styles.reroll} onClick={reseed} aria-label="Re-roll">
+            <button
+              type="button"
+              className={styles.reroll}
+              onClick={reseed}
+              aria-label="Re-roll"
+            >
               🎲
             </button>
           </HelpTip>
@@ -347,17 +401,28 @@ export function PreviewPane() {
       <div className={styles.readout}>
         {tile === null ? (
           <span className={styles.readoutHint}>
-            {dim}×{dim} · click a tile to pin it · drag to pan · wheel to zoom · double-click to fit
+            {dim}×{dim} · click a tile to pin it · drag to pan · wheel to zoom ·
+            double-click to fit
           </span>
         ) : (
           <>
             <div className={styles.readoutHeader}>
-              <span className={selectedTile !== null ? styles.readoutPinned : styles.readoutHint}>
+              <span
+                className={
+                  selectedTile !== null
+                    ? styles.readoutPinned
+                    : styles.readoutHint
+                }
+              >
                 {selectedTile !== null ? "Selected tile" : "Hovered tile"}
               </span>
               {selectedTile !== null && (
                 <HelpTip id="preview.clearSelection">
-                  <button type="button" className={styles.clearSelection} onClick={clearSelectedTile}>
+                  <button
+                    type="button"
+                    className={styles.clearSelection}
+                    onClick={clearSelectedTile}
+                  >
                     Clear
                   </button>
                 </HelpTip>
@@ -368,7 +433,11 @@ export function PreviewPane() {
         )}
       </div>
 
-      <PreviewNotes result={result} palette={palette} terrainsInUse={terrainsInUse} />
+      <PreviewNotes
+        result={result}
+        palette={palette}
+        terrainsInUse={terrainsInUse}
+      />
     </div>
   );
 }

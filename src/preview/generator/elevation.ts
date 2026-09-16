@@ -38,7 +38,13 @@ import type {
 import { createSubstream, nextFloat01, nextInt, type Rng } from "./rng";
 import { resolveTerrainId, scaleToMapArea } from "./grid";
 import { createSpacingIndex, type SpacingIndex } from "./spacingIndex";
-import { intersectCandidates, ok, fail, pushFailure, type AttributedPredicate } from "./placement";
+import {
+  intersectCandidates,
+  ok,
+  fail,
+  pushFailure,
+  type AttributedPredicate,
+} from "./placement";
 import type { PlacementOutcome } from "./types";
 import { bucketWeights } from "./lands";
 
@@ -84,15 +90,25 @@ const SEED_SPACING_ATTEMPTS = 100;
 // direction reads oddly; see lands.ts's own copy for the same shape).
 // ---------------------------------------------------------------------------
 
-function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): InstantiatedValue {
-  const arg: InstantiatedArg | undefined = cmd.attributes.get(name)?.[0]?.args[argIndex];
+function argValue(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex = 0,
+): InstantiatedValue {
+  const arg: InstantiatedArg | undefined =
+    cmd.attributes.get(name)?.[0]?.args[argIndex];
   return arg?.value;
 }
 
 // BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
 // a known symbol (a #define with no #const) that resolves to JS `undefined`
 // — that reads as 0, measured. See objects.ts's own copy for the full note.
-function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
+function numAttr(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex: number,
+  fallback: number,
+): number {
   const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
   if (arg === undefined) return fallback;
   if (typeof arg.value === "number") return arg.value;
@@ -100,10 +116,13 @@ function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallb
 }
 
 /** guide:1257/1274: "only the LAST scale attribute applies" when a script writes both, resolved by source position, since Sec.3's attribute folding only dedupes repeats of the SAME name. */
-function lastScaleAttribute(cmd: InstantiatedCommand): "size" | "groups" | undefined {
+function lastScaleAttribute(
+  cmd: InstantiatedCommand,
+): "size" | "groups" | undefined {
   const sizeAttr = cmd.attributes.get("set_scale_by_size")?.[0];
   const groupsAttr = cmd.attributes.get("set_scale_by_groups")?.[0];
-  if (sizeAttr && groupsAttr) return sizeAttr.span.start > groupsAttr.span.start ? "size" : "groups";
+  if (sizeAttr && groupsAttr)
+    return sizeAttr.span.start > groupsAttr.span.start ? "size" : "groups";
   if (sizeAttr) return "size";
   if (groupsAttr) return "groups";
   return undefined;
@@ -115,16 +134,27 @@ function lastScaleAttribute(cmd: InstantiatedCommand): "size" | "groups" | undef
  * formula entirely, even if `set_scale_by_size` is present. Only an
  * EXPLICIT `number_of_tiles` goes through Sec.4's scaling.
  */
-export function resolveTileBudget(cmd: InstantiatedCommand, dim: number): number {
+export function resolveTileBudget(
+  cmd: InstantiatedCommand,
+  dim: number,
+): number {
   const explicit = argValue(cmd, "number_of_tiles", 0);
   if (typeof explicit !== "number") return defaultTileBudget(dim);
-  return lastScaleAttribute(cmd) === "size" ? scaleToMapArea(explicit, dim) : explicit;
+  return lastScaleAttribute(cmd) === "size"
+    ? scaleToMapArea(explicit, dim)
+    : explicit;
 }
 
 /** `number_of_clumps` has no RMSTEST_14-style special default (it is plain `1`, guide-declared), so `set_scale_by_groups` applies to it whether declared or defaulted. */
-export function resolveClumpCount(cmd: InstantiatedCommand, dim: number): number {
+export function resolveClumpCount(
+  cmd: InstantiatedCommand,
+  dim: number,
+): number {
   const declared = numAttr(cmd, "number_of_clumps", 0, 1);
-  const scaled = lastScaleAttribute(cmd) === "groups" ? scaleToMapArea(declared, dim) : declared;
+  const scaled =
+    lastScaleAttribute(cmd) === "groups"
+      ? scaleToMapArea(declared, dim)
+      : declared;
   return Math.max(1, scaled);
 }
 
@@ -137,7 +167,10 @@ export function resolveClumpCount(cmd: InstantiatedCommand, dim: number): number
 export function seedRatio(clumpCount: number, mapArea: number): number {
   const density = clumpCount / mapArea;
   const excess = Math.max(0, density - DENSITY_KNEE);
-  return Math.min(SEED_RATIO_MAX, SEED_BASE_RATIO + DENSITY_AMPLIFICATION * excess);
+  return Math.min(
+    SEED_RATIO_MAX,
+    SEED_BASE_RATIO + DENSITY_AMPLIFICATION * excess,
+  );
 }
 
 /** RMSTEST_22a: "model it as max(6, share) before growth", the overshoot floor for a clump's own tile share. */
@@ -180,7 +213,12 @@ function fourNeighbors(dim: number, tile: number): number[] {
  * in Sec.6.2 or `create_elevation`'s attribute list gates growth candidates
  * beyond "still on the grid," unlike lands.ts's borders/zones.
  */
-export function growClump(dim: number, seed: number, target: number, rng: Rng): Set<number> {
+export function growClump(
+  dim: number,
+  seed: number,
+  target: number,
+  rng: Rng,
+): Set<number> {
   const owned = new Set<number>([seed]);
   if (target <= 1) return owned;
   const weights = bucketWeights(CLUMP_GROWTH_CF);
@@ -191,7 +229,8 @@ export function growClump(dim: number, seed: number, target: number, rng: Rng): 
     if (inFrontier.has(tile) || owned.has(tile)) return;
     inFrontier.add(tile);
     let neighborsOwned = 0;
-    for (const n of fourNeighbors(dim, tile)) if (owned.has(n)) neighborsOwned++;
+    for (const n of fourNeighbors(dim, tile))
+      if (owned.has(n)) neighborsOwned++;
     const bucketIndex = Math.max(1, Math.min(4, neighborsOwned)) - 1;
     buckets[bucketIndex].push(tile);
   }
@@ -200,7 +239,10 @@ export function growClump(dim: number, seed: number, target: number, rng: Rng): 
 
   while (owned.size < target) {
     const sizes = buckets.map((b) => b.length);
-    const totalWeight = sizes.reduce((sum, size, i) => sum + size * weights[i], 0);
+    const totalWeight = sizes.reduce(
+      (sum, size, i) => sum + size * weights[i],
+      0,
+    );
     if (totalWeight <= 0) break; // frontier exhausted (e.g. a tiny map), take what growth reached
     let roll = nextFloat01(rng) * totalWeight;
     let bucketIndex = 0;
@@ -228,12 +270,16 @@ export function growClump(dim: number, seed: number, target: number, rng: Rng): 
  * every clump tile touching a non-clump tile OR the map edge (both count as
  * "the edge", there is no clump tile beyond either).
  */
-export function clumpEdgeDistances(dim: number, clumpTiles: ReadonlySet<number>): Map<number, number> {
+export function clumpEdgeDistances(
+  dim: number,
+  clumpTiles: ReadonlySet<number>,
+): Map<number, number> {
   const dist = new Map<number, number>();
   const queue: number[] = [];
   for (const tile of clumpTiles) {
     const neighbors = fourNeighbors(dim, tile);
-    const isBoundary = neighbors.length < 4 || neighbors.some((n) => !clumpTiles.has(n));
+    const isBoundary =
+      neighbors.length < 4 || neighbors.some((n) => !clumpTiles.has(n));
     if (isBoundary) {
       dist.set(tile, 0);
       queue.push(tile);
@@ -277,7 +323,9 @@ export function eligibleSeedCandidates(
   const predicates: AttributedPredicate[] = [
     {
       bucket: "terrainAbsent",
-      test: (i) => grid.terrain[i] === terrainId && (layerId === undefined || grid.layer[i] === layerId),
+      test: (i) =>
+        grid.terrain[i] === terrainId &&
+        (layerId === undefined || grid.layer[i] === layerId),
     },
     {
       bucket: "playerOriginAvoidance",
@@ -287,7 +335,11 @@ export function eligibleSeedCandidates(
         for (const origin of playerOrigins) {
           const dx = x - origin.x;
           const dy = y - origin.y;
-          if (dx * dx + dy * dy < PLAYER_ORIGIN_MIN_DISTANCE * PLAYER_ORIGIN_MIN_DISTANCE) return false;
+          if (
+            dx * dx + dy * dy <
+            PLAYER_ORIGIN_MIN_DISTANCE * PLAYER_ORIGIN_MIN_DISTANCE
+          )
+            return false;
         }
         return true;
       },
@@ -352,7 +404,8 @@ export function drawSeed(
 
   for (let attempt = 0; attempt < SEED_SPACING_ATTEMPTS; attempt++) {
     let side = nextFloat01(rng) < pFavored ? pool.favored : pool.disfavored;
-    if (side.length === 0) side = pool.favored.length > 0 ? pool.favored : pool.disfavored;
+    if (side.length === 0)
+      side = pool.favored.length > 0 ? pool.favored : pool.disfavored;
     if (side.length === 0) return undefined;
     const tile = side[nextInt(rng, 0, side.length - 1)];
     const { x, y } = xyOf(dim, tile);
@@ -393,16 +446,36 @@ export function applyElevation(
   for (const cmd of commands) {
     if (cmd.name !== "create_elevation") continue;
     // MaxHeight is create_elevation's own positional argument, not an attribute.
-    const maxHeight = typeof cmd.args[0]?.value === "number" ? cmd.args[0].value : 0;
+    const maxHeight =
+      typeof cmd.args[0]?.value === "number" ? cmd.args[0].value : 0;
     if (maxHeight <= 0) {
-      reports.push({ commandSpan: cmd.span, stage: "S2", attempted: 0, placed: 0, failures: [] });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S2",
+        attempted: 0,
+        placed: 0,
+        failures: [],
+      });
       continue;
     }
 
     const terrainRef = argValue(cmd, "base_terrain", 0) ?? "GRASS";
     const layerRef = argValue(cmd, "base_layer", 0);
-    const terrainId = resolveTerrainId(constants, terrainRef, instantiated.symbols, instantiated.aliases);
-    const layerId = layerRef !== undefined ? resolveTerrainId(constants, layerRef, instantiated.symbols, instantiated.aliases) : undefined;
+    const terrainId = resolveTerrainId(
+      constants,
+      terrainRef,
+      instantiated.symbols,
+      instantiated.aliases,
+    );
+    const layerId =
+      layerRef !== undefined
+        ? resolveTerrainId(
+            constants,
+            layerRef,
+            instantiated.symbols,
+            instantiated.aliases,
+          )
+        : undefined;
 
     const clumpCount = resolveClumpCount(cmd, dim);
     const tileBudget = resolveTileBudget(cmd, dim);
@@ -421,11 +494,22 @@ export function applyElevation(
         entity: "elevation clump",
         detail: `This map's reference data doesn't know the terrain "${String(terrainRef)}", so no seed tile could be matched to it.`,
       });
-      reports.push({ commandSpan: cmd.span, stage: "S2", attempted: clumpCount, placed: 0, failures });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S2",
+        attempted: clumpCount,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
-    const candidateResult = eligibleSeedCandidates(grid, terrainId, layerId, playerOrigins);
+    const candidateResult = eligibleSeedCandidates(
+      grid,
+      terrainId,
+      layerId,
+      playerOrigins,
+    );
     if (!candidateResult.ok) {
       pushFailure(failures, {
         ...candidateResult.failure,
@@ -435,7 +519,13 @@ export function applyElevation(
             ? `No tile on the map currently has this clump's base_terrain ("${String(terrainRef)}"), so no seed could be placed.`
             : `Every tile matching this clump's base_terrain sits within ${PLAYER_ORIGIN_MIN_DISTANCE} tiles of a player land's origin, so no seed could be placed.`,
       });
-      reports.push({ commandSpan: cmd.span, stage: "S2", attempted: clumpCount, placed: 0, failures });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S2",
+        attempted: clumpCount,
+        placed: 0,
+        failures,
+      });
       continue;
     }
     const pool = buildSeedPool(dim, candidateResult.value);
@@ -465,7 +555,10 @@ export function applyElevation(
       const clumpTiles = growClump(dim, seed, tilesPerClump, growthRng);
       const edgeDistances = clumpEdgeDistances(dim, clumpTiles);
       for (const tile of clumpTiles) {
-        const ring = Math.min(h, Math.floor((edgeDistances.get(tile) ?? 0) / spacing));
+        const ring = Math.min(
+          h,
+          Math.floor((edgeDistances.get(tile) ?? 0) / spacing),
+        );
         // `MaxHeight` is an ABSOLUTE CEILING, not an increment. A command
         // raises a tile toward `MaxHeight` and never past it, and never
         // lowers one that is already higher.
@@ -493,7 +586,13 @@ export function applyElevation(
       placed++;
     }
 
-    reports.push({ commandSpan: cmd.span, stage: "S2", attempted: clumpCount, placed, failures });
+    reports.push({
+      commandSpan: cmd.span,
+      stage: "S2",
+      attempted: clumpCount,
+      placed,
+      failures,
+    });
   }
 
   return { reports };

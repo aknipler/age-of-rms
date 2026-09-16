@@ -32,7 +32,9 @@ export interface TileCircle {
 }
 
 /** Only `circle` shapes carrying an `id` are hit-testable. A chain-edge `line` or a `label` is not something a click can select. */
-export function circlesFromOverlay(shapes: readonly OverlayShape[]): TileCircle[] {
+export function circlesFromOverlay(
+  shapes: readonly OverlayShape[],
+): TileCircle[] {
   const out: TileCircle[] = [];
   for (const shape of shapes) {
     if (shape.kind === "circle" && shape.id !== undefined) {
@@ -49,7 +51,10 @@ export function circlesFromOverlay(shapes: readonly OverlayShape[]): TileCircle[
  * correct because `OverlayShape` circles are genuinely circular in tile
  * space (drawOverlay.ts only converts to an on-screen radius for drawing).
  */
-export function hitTestCircles(tile: { x: number; y: number }, circles: readonly TileCircle[]): string | null {
+export function hitTestCircles(
+  tile: { x: number; y: number },
+  circles: readonly TileCircle[],
+): string | null {
   let best: TileCircle | null = null;
   for (const circle of circles) {
     const dx = tile.x - circle.x;
@@ -97,7 +102,11 @@ const RIM_MAX_RADIUS_FRACTION = 0.35;
  * tie-break for the same reason (a small land nested inside a larger one's
  * radius should still offer its own rim first).
  */
-export function hitTestRim(tile: { x: number; y: number }, circles: readonly TileCircle[], thicknessTiles: number): string | null {
+export function hitTestRim(
+  tile: { x: number; y: number },
+  circles: readonly TileCircle[],
+  thicknessTiles: number,
+): string | null {
   let best: TileCircle | null = null;
   let bestRimDistance = Infinity;
   for (const circle of circles) {
@@ -108,7 +117,10 @@ export function hitTestRim(tile: { x: number; y: number }, circles: readonly Til
     // the rim gesture (start a chain) firing in its place. The exception
     // belongs inside the function that computes the rule rather than at the
     // call site that knows about small lands.
-    const band = Math.min(thicknessTiles, circle.rTiles * RIM_MAX_RADIUS_FRACTION);
+    const band = Math.min(
+      thicknessTiles,
+      circle.rTiles * RIM_MAX_RADIUS_FRACTION,
+    );
     const distance = Math.hypot(tile.x - circle.x, tile.y - circle.y);
     const rimDistance = Math.abs(distance - circle.rTiles);
     if (rimDistance > band) continue;

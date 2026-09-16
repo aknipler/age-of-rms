@@ -19,19 +19,33 @@
  * a seam where these two types never meet.
  */
 
-import { generatePreview, type PreviewReferenceData } from "../preview/generator/index";
-import type { PreviewOptions, PreviewResult, PreviewSettings } from "../preview/generator/types";
+import {
+  generatePreview,
+  type PreviewReferenceData,
+} from "../preview/generator/index";
+import type {
+  PreviewOptions,
+  PreviewResult,
+  PreviewSettings,
+} from "../preview/generator/types";
 import type { ObjectConstant } from "../preview/generator/objects";
-import { isMapSize, isTeams } from "../generationSettings/generationSettingsConstants";
+import {
+  isMapSize,
+  isTeams,
+} from "../generationSettings/generationSettingsConstants";
 import type { ParseResult } from "../parser/types";
-import type { PublishedGameConstants, ToolContext } from "../../tools-api/index";
+import type {
+  PublishedGameConstants,
+  ToolContext,
+} from "../../tools-api/index";
 
 export type PreviewBridgeFailure =
   | { ok: false; reason: "no-settings" }
   | { ok: false; reason: "bad-map-size"; value: string }
   | { ok: false; reason: "bad-teams" };
 
-export type PreviewBridgeResult = { ok: true; settings: PreviewSettings } | PreviewBridgeFailure;
+export type PreviewBridgeResult =
+  { ok: true; settings: PreviewSettings } | PreviewBridgeFailure;
 
 /**
  * Bridge the two shape mismatches, both deliberate and both cheap:
@@ -96,7 +110,9 @@ export function previewSettingsFromContext(
  * `c.constId !== null && c.constId !== undefined`, and costs nothing at the
  * many call sites that already assume `ObjectConstant`.
  */
-export function objectConstantsFromPublished(constants: PublishedGameConstants): readonly ObjectConstant[] {
+export function objectConstantsFromPublished(
+  constants: PublishedGameConstants,
+): readonly ObjectConstant[] {
   return constants.map((c) => ({
     constId: c.constId ?? null,
     rmsConstant: c.rmsConstant,
@@ -128,5 +144,8 @@ export function runPreviewFromContext(
   const bridged = previewSettingsFromContext(ctx, overrides);
   if (!bridged.ok) return bridged;
   if (!ctx.parseResult) return { ok: false, reason: "no-settings" };
-  return { ok: true, result: generatePreview(ctx.parseResult, refDb, bridged.settings, opts) };
+  return {
+    ok: true,
+    result: generatePreview(ctx.parseResult, refDb, bridged.settings, opts),
+  };
 }

@@ -39,7 +39,11 @@ export function createDragCoalescer(): DragCoalescer {
   return {
     push(event) {
       const last = queue[queue.length - 1];
-      if (event.event === "drag" && last !== undefined && last.event === "drag") {
+      if (
+        event.event === "drag" &&
+        last !== undefined &&
+        last.event === "drag"
+      ) {
         queue[queue.length - 1] = event;
       } else {
         queue.push(event);

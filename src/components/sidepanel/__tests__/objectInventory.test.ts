@@ -71,7 +71,10 @@ describe("buildObjectInventory", () => {
       ),
       [],
     );
-    expect(result.map((row) => row.objectRef)).toEqual(["FISH", "FISH_PLACEHOLDER"]);
+    expect(result.map((row) => row.objectRef)).toEqual([
+      "FISH",
+      "FISH_PLACEHOLDER",
+    ]);
   });
 
   it("collects names from inside if and start_random branches", () => {
@@ -84,13 +87,20 @@ describe("buildObjectInventory", () => {
       ),
       [],
     );
-    expect(result.map((row) => row.objectRef)).toEqual(["BOAR", "DEER", "GOLD"]);
+    expect(result.map((row) => row.objectRef)).toEqual([
+      "BOAR",
+      "DEER",
+      "GOLD",
+    ]);
   });
 
   it("keeps a placed object that the walk never found", () => {
     // The union's whole job: the checkboxes are keyed on these rows, so an
     // object the canvas draws but the table skipped would be undismissable.
-    const result = buildObjectInventory(parse(`<OBJECTS_GENERATION>`), placed("RELIC", 2));
+    const result = buildObjectInventory(
+      parse(`<OBJECTS_GENERATION>`),
+      placed("RELIC", 2),
+    );
     expect(result).toEqual([{ objectRef: "RELIC", spawned: 2 }]);
   });
 

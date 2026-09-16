@@ -25,7 +25,11 @@ interface CommandPickerProps {
 // the filter is a convenience over documentation and the diagnostic is a claim
 // about the engine, and they are deliberately not the same set. Each entry
 // shows name + one-line description + a verified/unverified chip.
-export function CommandPicker({ defaultSection, onPick, onClose }: CommandPickerProps) {
+export function CommandPicker({
+  defaultSection,
+  onPick,
+  onClose,
+}: CommandPickerProps) {
   const { lang } = useBreakdownContext();
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(!defaultSection);
@@ -34,7 +38,12 @@ export function CommandPicker({ defaultSection, onPick, onClose }: CommandPicker
     const q = query.trim().toLowerCase();
     return lang.data.commands
       .filter((c) => showAll || c.section === defaultSection)
-      .filter((c) => !q || c.name.toLowerCase().includes(q) || (c.description ?? "").toLowerCase().includes(q))
+      .filter(
+        (c) =>
+          !q ||
+          c.name.toLowerCase().includes(q) ||
+          (c.description ?? "").toLowerCase().includes(q),
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [lang, query, showAll, defaultSection]);
 
@@ -55,7 +64,11 @@ export function CommandPicker({ defaultSection, onPick, onClose }: CommandPicker
         {defaultSection && (
           <HelpTip id="breakdown.addCommand.showAll">
             <label className={styles.toggle}>
-              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={showAll}
+                onChange={(e) => setShowAll(e.target.checked)}
+              />
               show all sections
             </label>
           </HelpTip>
@@ -71,12 +84,21 @@ export function CommandPicker({ defaultSection, onPick, onClose }: CommandPicker
       <div className={styles.listSlot}>
         <HelpTip id="breakdown.addCommand.entry">
           <div className={styles.list}>
-            {results.length === 0 && <p className={styles.empty}>No matching commands.</p>}
+            {results.length === 0 && (
+              <p className={styles.empty}>No matching commands.</p>
+            )}
             {results.map((c) => (
-              <button key={c.name} type="button" className={styles.entry} onClick={() => onPick(c.name)}>
+              <button
+                key={c.name}
+                type="button"
+                className={styles.entry}
+                onClick={() => onPick(c.name)}
+              >
                 <span className={styles.entryName}>{c.name}</span>
                 <span className={styles.entryDesc}>{c.description ?? ""}</span>
-                <span className={styles.chip}>{c.verified ? "verified" : "unverified"}</span>
+                <span className={styles.chip}>
+                  {c.verified ? "verified" : "unverified"}
+                </span>
               </button>
             ))}
           </div>

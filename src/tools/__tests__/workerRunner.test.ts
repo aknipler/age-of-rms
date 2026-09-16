@@ -7,15 +7,30 @@
 // dispatch table is empty until Sec.7.3 registers a worker-runtime tool.
 
 import { describe, expect, it, vi } from "vitest";
-import { TOOLS_API_VERSION, type ToolContext, type ToolImplementation, type ToolManifest } from "../../../tools-api/index";
+import {
+  TOOLS_API_VERSION,
+  type ToolContext,
+  type ToolImplementation,
+  type ToolManifest,
+} from "../../../tools-api/index";
 import type { ParseResult } from "../../parser/types";
 import type { RegisteredTool } from "../registry";
 import { createWorkerRunner, type WorkerLike } from "../workerRunner";
 
 function manifest(): ToolManifest {
-  return { id: "t", name: "T", version: "1.0.0", apiVersion: TOOLS_API_VERSION, description: "d", capabilities: [] };
+  return {
+    id: "t",
+    name: "T",
+    version: "1.0.0",
+    apiVersion: TOOLS_API_VERSION,
+    description: "d",
+    capabilities: [],
+  };
 }
-const impl: ToolImplementation = { manifest: manifest(), run: () => ({ cancel() {} }) };
+const impl: ToolImplementation = {
+  manifest: manifest(),
+  run: () => ({ cancel() {} }),
+};
 // createWorkerRunner()'s start() takes a RegisteredTool, not a bare ToolImplementation (external-tools-design.md Sec.10).
 const tool: RegisteredTool = { kind: "builtin", manifest: impl.manifest, impl };
 
@@ -37,7 +52,10 @@ describe("workerRunner", () => {
   it("posts a run message carrying the tool's id and the raw context, unconverted", () => {
     const { worker, posted } = fakeWorker();
     const runner = createWorkerRunner(() => worker);
-    const ctx = { apiVersion: TOOLS_API_VERSION, params: {} } as ToolContext<ParseResult>;
+    const ctx = {
+      apiVersion: TOOLS_API_VERSION,
+      params: {},
+    } as ToolContext<ParseResult>;
     runner.start(tool, ctx, () => {});
     expect(posted).toEqual([{ type: "run", toolId: "t", context: ctx }]);
   });
@@ -89,7 +107,13 @@ describe("workerRunner", () => {
 
     worker.onerror?.({ message: "out of memory" } as ErrorEvent);
 
-    expect(received).toEqual([{ type: "error", message: expect.stringContaining("out of memory"), reason: "tool-error" }]);
+    expect(received).toEqual([
+      {
+        type: "error",
+        message: expect.stringContaining("out of memory"),
+        reason: "tool-error",
+      },
+    ]);
   });
 
   it("each run gets its own fresh worker (one worker per run, matching inProcessRunner's no-shared-state rule)", () => {
@@ -107,7 +131,11 @@ describe("workerRunner", () => {
   it("throws rather than silently no-op'ing when handed a non-builtin RegisteredTool", () => {
     const { worker } = fakeWorker();
     const runner = createWorkerRunner(() => worker);
-    const panelTool: RegisteredTool = { kind: "panel", manifest: manifest(), component: null };
+    const panelTool: RegisteredTool = {
+      kind: "panel",
+      manifest: manifest(),
+      component: null,
+    };
     expect(() => runner.start(panelTool, {}, () => {})).toThrow(/panel/);
   });
 });

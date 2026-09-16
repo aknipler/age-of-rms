@@ -4,9 +4,7 @@
   "title": "Game Constants",
   "description": "Terrain and object constants used by AoE2:DE RMS scripts. Fields mirror the Breakdown reference-table columns from PLAN.md's UI section (constant ID, RMS constant, descriptive name, DE texture file), plus per-object resource amounts used for the status-bar resource totals. Machine-extracted from the game's data files by tools/extract-constants — a maintainer re-runs it against their own local DE install after a game patch and PRs the diff; see that tool's README and PLAN.md 'Reference DB approach'. Entries with verified: false have not yet been through that extraction and remain hand-curated placeholders.",
   "type": "object",
-  "required": [
-    "constants"
-  ],
+  "required": ["constants"],
   "additionalProperties": false,
   "properties": {
     "constants": {
@@ -26,10 +24,7 @@
   "$defs": {
     "terrainRestriction": {
       "type": "object",
-      "required": [
-        "restrictionId",
-        "permittedTerrainIds"
-      ],
+      "required": ["restrictionId", "permittedTerrainIds"],
       "additionalProperties": false,
       "properties": {
         "restrictionId": {
@@ -50,34 +45,20 @@
     },
     "constant": {
       "type": "object",
-      "required": [
-        "rmsConstant",
-        "descriptiveName",
-        "category",
-        "verified"
-      ],
+      "required": ["rmsConstant", "descriptiveName", "category", "verified"],
       "additionalProperties": false,
       "properties": {
         "constId": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "The internal DE numeric ID for this terrain/object. Null until confirmed. Do not guess this value. It must come from the game's data files or a trusted community dump, not general knowledge."
         },
         "idSource": {
           "type": "string",
-          "enum": [
-            "extracted",
-            "patch-notes"
-          ],
+          "enum": ["extracted", "patch-notes"],
           "description": "Provenance of constId. 'extracted' = read from the game's own random_map.def by tools/extract-constants; 'patch-notes' = taken from a dated official patch note. Consumed by the parser's RMS0204/RMS0205 message gating (parser-design Sec.6), which only uses resolved-ID wording when provenance is trusted. Absent means unknown provenance - do not backfill by hand."
         },
         "rmsConstant": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "pattern": "^[A-Z][A-Z0-9_]*$",
           "description": "The exact identifier used in RMS scripts, e.g. GRASS, GOLD. NULL for the terrains that have no callable constant at all — of the 131 DE terrains only 78 are named, and a script reaches the rest by writing the bare id (terrain_type 26) or defining its own #const. Null therefore means 'this terrain exists and can be placed, just not by name', which is different information from an absent entry, and every name lookup must simply fail to match it rather than treat it as a wildcard."
         },
@@ -86,10 +67,7 @@
           "description": "Human-readable name for the reference table UI, e.g. \"Grass 1\", \"Gold Mine\"."
         },
         "description": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "Free-text note for the reference table's Description column, transcribed from the community reference spreadsheets in reference-docs/ — Zetnus's 'AoE2 Terrains' Comments column for terrain rows (all 131 covered), and 'Definitive Constants List''s per-sheet Comments/Description columns for object rows ('DE only' preferred when it disagrees with 'Animals'/'Resources', since it is consistently the more complete of the two; 668 of 2670 object rows covered — the rest are gaia roster entries, mostly carcasses and blood decals, the community table never annotates). Like isWater/isForest/beachTerrain above, this is a one-time transcription rather than something tools/extract-constants derives from a local install, so the script only has to carry it through (CONSTANT_KEY_ORDER). Null means the community table has no comment for this constant, not that there is nothing to say — same positive-resolver caveat as the rest of this file.",
           "$comment": "Terrain and object rows carry this; objectClass, attribute, and the fourteen extracted name-only categories (mapType, civilization, waterDefinition, colorCorrection, cliffType, assignTarget, terrainAlias, objectAlias, effectAction, effectFlag, modifyTechAttribute, playerDataAttribute, resourceAmountType, magicNumber) do not, since neither community spreadsheet has a matching sheet for them."
         },
@@ -118,10 +96,7 @@
           "description": "objectClass rows are genie unit classes, which an RMS author can target directly (effect_amount SET_ATTRIBUTE TREE_CLASS ...). They live in this array rather than a separate one because a class IS an RMS constant, so every consumer that resolves a written name against constants[] picks them up unchanged. The fourteen categories from mapType through magicNumber are the families tools/extract-constants reads from random_map.def and includes/constants.inc but does NOT (and must not) join against empires2_x2_p1.dat: mapType (ai_info_map_type's argument, e.g. ARABIA, ARENA), civilization (set_gaia_civilization's argument; carries both random_map.def's American CIVILIZATION_* spelling and constants.inc's British CIVILISATION_* spelling as separate rows, since both are independently writable identifiers), waterDefinition (water_definition's argument, WD_*), colorCorrection (color_correction's argument, CC_*; random_map.def's own section header calls this family 'SEASON TYPES'), cliffType (cliff_type's argument, CT_*), assignTarget (assign_to's argument, AT_*), terrainAlias (a second, legacy naming scheme for terrain ids read from constants.inc's TERRAIN_CONSTANTS/PLACEHOLDER_TERRAINS sections — e.g. GRASS_A, DIRT_A — distinct from the dat-verified terrain rows above), objectAlias (the same for unit/building/decoration ids, from constants.inc's REGULAR_UNITS/SPECIAL_UNITS/ANIMAL_OBJCETS/REGULAR_BUILDINGS/SPECIAL_BUILDINGS/AESTHETIC_OBJECTS/RESOURCE_CONSTANTS/UTILITY_CONSTANTS sections), effectAction (random_map.def's own 'Effect Constants' section — the value for effect_amount/effect_percent's first argument, e.g. SET_ATTRIBUTE, GAIA_MODIFY_TECH), effectFlag (random_map.def's 'Effect Type Constants' section — ATTR_DISABLE/ATTR_ENABLE/etc., a value written into effect_amount's third argument for specific effectAction values such as ENABLE_OBJECT; the shared ATTR_ prefix is the file's own naming convention and does not make these attribute rows), modifyTechAttribute (random_map.def's 'ModifyTech Constants' section — the third-argument value when effectAction is MODIFY_TECH/GAIA_MODIFY_TECH), playerDataAttribute (random_map.def's 'PlayerData Constants' section — the third-argument value when effectAction is SET_PLAYER_DATA/GAIA_SET_PLAYER_DATA), resourceAmountType (random_map.def's 'ResourceAmount Constants' section, AMOUNT_* — the third-argument value for several effectAction values, most directly SET_TECH_COST/ADD_TECH_COST), and magicNumber (random_map.def's own 'Magic Number Constants' section — currently just RANDOM_OBJECT; the file gives this family no further documentation, so nothing beyond the name and id is claimed here). The hard constraint on all fourteen: their numeric ids are NOT unique across families or against terrain/object ids (id 61 is simultaneously a dolphin, DLC_JUNGLEROAD and ATTR_CHARGE_EVENT; RICE_FARM is independently defined twice inside constants.inc itself, once as a terrain id and once as an object id), so a row in one of these fourteen categories is a name -> id pair sourced from the game's own definitions and nothing more — never a claim about what kind of engine record that id resolves to."
         },
         "deTextureFile": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "DE texture filename shown in the reference table (e.g. g_grs). Null until confirmed."
         },
         "isWater": {
@@ -164,10 +139,7 @@
           "$comment": "Every one of the 131 terrain rows carries this field explicitly, so absence really does mean an uncovered terrain rather than a gap in transcription."
         },
         "beachTerrain": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "description": "Terrain entries only. The terrain id the engine automatically writes onto a tile of THIS terrain when it borders anything deeper than itself, or null when this terrain never grows a beach. Not an RMS command — it is engine behaviour that runs whether or not a script asks for it, and create_terrain's own beach_terrain attribute overrides it for that command's tiles (guide:1483, whose stated default of BEACH is this field). Derived from the community DE table (Zetnus, 'AoE2 Terrains', reference-docs/) by four of its own columns: the beach terrains themselves (Building Allowed 'walls only', or a Descriptive Name starting 'Beach') are null, since a beach does not grow a beach and the guide's beach_terrain DLC_BEACH2 example would otherwise be a no-op; the four terrains whose Comments read 'no beaches' (15, 27, 28, 36) are null; open water is null; snowy and icy terrains take 37 (ICYSHORE, whose row reads 'created when snowy terrains border water'); everything else takes 2 (BEACH, 'automatically placed when land terrains border water'). THE SHALLOWS ARE NOT WATER FOR THIS FIELD. All ten isHybrid rows carry a beach, because a shallow borders open water on its far side and the boundary is edged there too — the seven that had null (4, 59, 90, 93, 94, 111, 115) had it only because the first derivation pass read their isWater flag and stopped. ONE EXTRAPOLATION, flagged: only ids 32/33/34 carry the explicit 'icy beach when bordering water' annotation, and the other thirteen snow/ice terrains are matched on the table's own Descriptive Name and Comments text against that ICYSHORE row's phrase 'snowy terrains'. Absent means unknown and the generator falls back to BEACH for anything that is not open water, which is what 88 of the 131 rows say anyway."
         },
         "previewColor": {
@@ -217,13 +189,7 @@
         },
         "habitat": {
           "type": "string",
-          "enum": [
-            "land",
-            "water",
-            "amphibious",
-            "shore",
-            "any"
-          ],
+          "enum": ["land", "water", "amphibious", "shore", "any"],
           "description": "Object entries only. Where this object may be placed, the preview's coarse stand-in for the engine's terrain table (a per-object terrain-restriction id indexing a per-restriction row of allowed terrains). 'water' means OPEN WATER ONLY and 'amphibious' adds the shallows and the beaches — the dat's own split, where restriction 19 (every ordinary fish) permits 15 terrains with no shallow and no beach while restrictions 13/3/15 (great fish, OYSTERS, TRANSPORT_SHIP) permit 38 including both. A fish cannot stand on a shallow; maps that appear to place one there use guide:2211's placeholder bypass, where an unrestricted main object carries terrain_to_place_on and the fish rides in as second_object. 'shore' means OPEN WATER TOUCHING A BEACH — a water tile, not a beach tile and not a shallow, orthogonally adjacent to one of the nine isBeach terrains. Both of the objects that use it stand there: SHORE_FISH and DLC_BOXTURTLE are one family, which guide:4991 states outright by glossing MELKARYBA as \"small fish, ie. shore fish or box turtles\". It was previously read as the waterline within one tile on either side, which put both of them on the sand as often as in the water. 'amphibious' is guide:4717's own word for the OYSTERS class. Absent means unknown, and the generator falls back to 'land': the reference data knows a couple of dozen objects of several hundred, so an 'unrestricted' fallback put trees in open water on real maps — and note the 'land' fallback has its own cost, which is why the ocean-fish rows below exist at all. Note a script can rewrite the real table at runtime with effect_amount SET_ATTRIBUTE <object> ATTR_TERRAIN_ID <n>, which this field cannot express and the preview does not model."
         },
         "isCorpse": {

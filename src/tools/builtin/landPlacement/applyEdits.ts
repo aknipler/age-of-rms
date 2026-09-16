@@ -17,7 +17,10 @@ import type { LanguageData } from "../../../parser/language";
 import type { CommandNode, ParseResult } from "../../../parser/types";
 import type { TextEdit } from "../../../../tools-api/index";
 import { buildFenceEdits, locateFence, type AlpModel } from "./fence";
-import { buildLandAttachmentExpectations, checkLandAttachment } from "./landCommand";
+import {
+  buildLandAttachmentExpectations,
+  checkLandAttachment,
+} from "./landCommand";
 import { emitAlpModel } from "./emitModel";
 import { NameAllocator } from "./compiler/naming";
 import { reservedNames } from "./preconditions";
@@ -36,7 +39,10 @@ import { resolveLandGenerationCutOffset } from "./cutOffset";
  * regardless (`buildFenceEdits`), so a symbol defined INSIDE it is not a real
  * collision. It is the thing being replaced.
  */
-export function reservedNamesForApply(parse: ParseResult, lang: LanguageData): Set<string> {
+export function reservedNamesForApply(
+  parse: ParseResult,
+  lang: LanguageData,
+): Set<string> {
   const loc = locateFence(parse);
   if (!loc) return reservedNames(parse, lang);
   const outsideFence: ParseResult = {
@@ -75,7 +81,11 @@ function computeFenceInsertionOffset(parse: ParseResult): number | undefined {
 function findCreateLandCommands(parse: ParseResult): CommandNode[] {
   const out: CommandNode[] = [];
   walkItems(parse, (item) => {
-    if (item.kind === "command" && parse.tokens[item.name]?.text === "create_land") out.push(item);
+    if (
+      item.kind === "command" &&
+      parse.tokens[item.name]?.text === "create_land"
+    )
+      out.push(item);
   });
   return out;
 }
@@ -107,7 +117,9 @@ export function computeApplyEdits(
   scriptSymbols: ReadonlyMap<string, number>,
   playerCount: number,
 ): ApplyEditsResult {
-  const namer = new NameAllocator({ reserved: reservedNamesForApply(parse, lang) });
+  const namer = new NameAllocator({
+    reserved: reservedNamesForApply(parse, lang),
+  });
   const emission = emitAlpModel(model, namer, scriptSymbols, playerCount);
   if (!emission.ok) {
     // Sec.5.5: "the tool emits nothing and reports the offending node."
@@ -123,9 +135,13 @@ export function computeApplyEdits(
   // fresh EMPTY_MODEL still has no existing fence to compare against.
   // Skipped only when there is also no EXISTING fence to reconcile: a model
   // emptied out from real content must still be free to clear that fence.
-  const modelIsEmpty = model.roles.length === 0 && model.placements.length === 0;
+  const modelIsEmpty =
+    model.roles.length === 0 && model.placements.length === 0;
   const fenceInsertionOffset = computeFenceInsertionOffset(parse);
-  const fenceEdits = modelIsEmpty && locateFence(parse) === null ? [] : buildFenceEdits(parse, model, emission.body, fenceInsertionOffset);
+  const fenceEdits =
+    modelIsEmpty && locateFence(parse) === null
+      ? []
+      : buildFenceEdits(parse, model, emission.body, fenceInsertionOffset);
 
   const existingLands = findCreateLandCommands(parse);
   const skeletonInsertAt = resolveLandGenerationCutOffset(parse);
@@ -160,7 +176,9 @@ export function computeApplyEdits(
     }).filter((e) => e.attribute === "land_position");
 
     const alreadyExists = existingLands.some(
-      (land) => checkLandAttachment(land, parse.tokens, positionExpectation).attributes[0]?.attached === true,
+      (land) =>
+        checkLandAttachment(land, parse.tokens, positionExpectation)
+          .attributes[0]?.attached === true,
     );
     if (alreadyExists) continue;
 
@@ -173,7 +191,13 @@ export function computeApplyEdits(
   // avoids the question entirely.
   const skeletonEdits: TextEdit[] =
     newSkeletonTexts.length > 0
-      ? [{ start: skeletonInsertAt, end: skeletonInsertAt, newText: newSkeletonTexts.map((t) => `${t}\n`).join("") }]
+      ? [
+          {
+            start: skeletonInsertAt,
+            end: skeletonInsertAt,
+            newText: newSkeletonTexts.map((t) => `${t}\n`).join(""),
+          },
+        ]
       : [];
 
   return { edits: [...fenceEdits, ...skeletonEdits], emissionProblems: [] };

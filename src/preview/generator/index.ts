@@ -44,14 +44,23 @@ import type {
 } from "./types";
 import { instantiateScript } from "./instantiate";
 import { createTileGrid, resolveTerrainId } from "./grid";
-import { placeLandOrigins, growLands, paintLandTerrain, applyBaseElevation, countOwnedTiles } from "./lands";
+import {
+  placeLandOrigins,
+  growLands,
+  paintLandTerrain,
+  applyBaseElevation,
+  countOwnedTiles,
+} from "./lands";
 import { applyElevation } from "./elevation";
 import { applyCliffs } from "./cliffs";
 import { applyAutomaticBeach, applyTerrains } from "./terrains";
 import { applyConnections } from "./connections";
 import { applyObjects, type ObjectConstant } from "./objects";
 import { computeForestWood } from "./forestTrees";
-import { scanAutoTreeEffects, type TerrainRestriction } from "./forestTreeSuppression";
+import {
+  scanAutoTreeEffects,
+  type TerrainRestriction,
+} from "./forestTreeSuppression";
 import { computeResourceSummary } from "./resourceSummary";
 
 /**
@@ -152,7 +161,6 @@ function collectLandOutcomes(
   };
 }
 
-
 /**
  * Sec.6.1's "Base fill": `base_terrain` (default GRASS) fills the whole grid
  * before any land is placed; `base_layer` fills the layer array. Both are
@@ -175,13 +183,25 @@ function resolveBaseFill(
   let terrainRef: InstantiatedValue;
   let layerRef: InstantiatedValue;
   for (const cmd of commands) {
-    if (cmd.name === "base_terrain" && cmd.args[0] !== undefined) terrainRef = cmd.args[0].value;
-    else if (cmd.name === "base_layer" && cmd.args[0] !== undefined) layerRef = cmd.args[0].value;
+    if (cmd.name === "base_terrain" && cmd.args[0] !== undefined)
+      terrainRef = cmd.args[0].value;
+    else if (cmd.name === "base_layer" && cmd.args[0] !== undefined)
+      layerRef = cmd.args[0].value;
   }
 
   const grassId = resolveTerrainId(constants, "GRASS") ?? 0; // 0: never crashes (CLAUDE.md), even against a stub/empty reference DB
-  const resolvedTerrainId = resolveTerrainId(constants, terrainRef, instantiated.symbols, instantiated.aliases);
-  const layerId = resolveTerrainId(constants, layerRef, instantiated.symbols, instantiated.aliases);
+  const resolvedTerrainId = resolveTerrainId(
+    constants,
+    terrainRef,
+    instantiated.symbols,
+    instantiated.aliases,
+  );
+  const layerId = resolveTerrainId(
+    constants,
+    layerRef,
+    instantiated.symbols,
+    instantiated.aliases,
+  );
 
   const note: SimulationNote | undefined =
     terrainRef !== undefined && resolvedTerrainId === undefined
@@ -237,14 +257,25 @@ function dedupeNotes(notes: readonly SimulationNote[]): SimulationNote[] {
  * input (the corpus gate below is what actually proves that composition
  * holds, not this function's own logic).
  */
-export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData, settings: PreviewSettings, opts: PreviewOptions): PreviewResult {
+export function generatePreview(
+  parse: ParseResult,
+  refDb: PreviewReferenceData,
+  settings: PreviewSettings,
+  opts: PreviewOptions,
+): PreviewResult {
   const { language, constants } = refDb;
   const instantiated = instantiateScript(parse, language, settings, opts.seed);
 
-  const { terrainId: baseTerrainId, layerId: baseLayerId, note: baseFillNote } = resolveBaseFill(instantiated, constants);
+  const {
+    terrainId: baseTerrainId,
+    layerId: baseLayerId,
+    note: baseFillNote,
+  } = resolveBaseFill(instantiated, constants);
   const grid = createTileGrid(instantiated.dim, baseTerrainId, baseLayerId);
 
-  const snapshots: StageSnapshot[] | undefined = opts.collectSnapshots ? [] : undefined;
+  const snapshots: StageSnapshot[] | undefined = opts.collectSnapshots
+    ? []
+    : undefined;
   const snapshot = (stage: StageId): void => {
     if (snapshots) snapshots.push(captureSnapshot(stage, grid));
   };
@@ -259,7 +290,12 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
   // (Sec.6.1). Terrain first only for readability, they write different
   // arrays, so the order between them is not load-bearing.
   paintLandTerrain(landResult.origins, grid);
-  const baseElevationNotes = applyBaseElevation(instantiated, landResult.origins, grid, constants);
+  const baseElevationNotes = applyBaseElevation(
+    instantiated,
+    landResult.origins,
+    grid,
+    constants,
+  );
   // The engine beaches at the end of land generation, before any
   // <TERRAIN_GENERATION> command runs. That ordering is load-bearing rather
   // than cosmetic: `base_terrain BEACH` is an ordinary idiom (67 uses across
@@ -269,16 +305,40 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
   const beachedInLands = applyAutomaticBeach(grid, constants);
   snapshot("S1");
 
-  const elevationResult = applyElevation(instantiated, grid, constants, landResult.origins, opts.seed);
+  const elevationResult = applyElevation(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    opts.seed,
+  );
   snapshot("S2");
 
-  const cliffsResult = applyCliffs(instantiated, grid, constants, landResult.origins, opts.seed);
+  const cliffsResult = applyCliffs(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    opts.seed,
+  );
   snapshot("S3");
 
-  const terrainsResult = applyTerrains(instantiated, grid, constants, landResult.origins, opts.seed);
+  const terrainsResult = applyTerrains(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    opts.seed,
+  );
   snapshot("S4");
 
-  const connectionsResult = applyConnections(instantiated, grid, constants, landResult.origins, opts.seed);
+  const connectionsResult = applyConnections(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    opts.seed,
+  );
   // MEASURED 2026-09-02, RMSTEST_70 (Sec.15 item 31): a beach pass DOES run
   // after connection painting. Three runs, two islands joined by one
   // create_connect_all_players_land { replace_terrain WATER DIRT } carving a
@@ -299,10 +359,26 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
   // retargeted off their terrain. Both run before S6 because S6 does not
   // need either of them; resourceSummary (below) needs S6's real placements
   // AND both of these, so it runs last.
-  const suppression = scanAutoTreeEffects(instantiated, constants, refDb.terrainRestrictions ?? []);
-  const forestWood = computeForestWood(grid, constants, constants, suppression.suppressed, suppression.yieldOverrides);
+  const suppression = scanAutoTreeEffects(
+    instantiated,
+    constants,
+    refDb.terrainRestrictions ?? [],
+  );
+  const forestWood = computeForestWood(
+    grid,
+    constants,
+    constants,
+    suppression.suppressed,
+    suppression.yieldOverrides,
+  );
 
-  const objectsResult = applyObjects(instantiated, grid, constants, landResult.origins, opts.seed);
+  const objectsResult = applyObjects(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    opts.seed,
+  );
   snapshot("S6");
 
   const resourceTotals = computeResourceSummary(
@@ -327,7 +403,8 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
   // Worth saying out loud in the drawer: this sand is the only terrain on the
   // map that no line of the script asked for, so an author looking for the
   // command that put it there will not find one.
-  const beached = beachedInLands + terrainsResult.beached + beachedAfterConnections;
+  const beached =
+    beachedInLands + terrainsResult.beached + beachedAfterConnections;
   const beachNote: SimulationNote | undefined =
     beached > 0
       ? {
@@ -351,20 +428,22 @@ export function generatePreview(parse: ParseResult, refDb: PreviewReferenceData,
         }
       : undefined;
 
-  const notes = dedupeNotes([
-    ...instantiated.notes,
-    baseFillNote,
-    beachNote,
-    landOutcomes.note,
-    ...landResult.notes,
-    ...baseElevationNotes,
-    ...cliffsResult.notes,
-    ...terrainsResult.notes,
-    ...connectionsResult.notes,
-    ...objectsResult.notes,
-    suppression.note,
-    forestWoodNote,
-  ].filter((n): n is SimulationNote => n !== undefined));
+  const notes = dedupeNotes(
+    [
+      ...instantiated.notes,
+      baseFillNote,
+      beachNote,
+      landOutcomes.note,
+      ...landResult.notes,
+      ...baseElevationNotes,
+      ...cliffsResult.notes,
+      ...terrainsResult.notes,
+      ...connectionsResult.notes,
+      ...objectsResult.notes,
+      suppression.note,
+      forestWoodNote,
+    ].filter((n): n is SimulationNote => n !== undefined),
+  );
 
   return {
     dim: instantiated.dim,

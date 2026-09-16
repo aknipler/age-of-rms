@@ -7,12 +7,21 @@
 // exactly matches what a user who typed all of this by hand would produce.
 
 import type { Item, ParseResult, SectionNode } from "../parser/types";
-import { detectEol, detectIndentStep, lineIndentOf } from "../breakdown/patch/formatStyle";
+import {
+  detectEol,
+  detectIndentStep,
+  lineIndentOf,
+} from "../breakdown/patch/formatStyle";
 import type { StepTextEdit } from "./types";
 
-function lastSectionNamed(parse: ParseResult, name: string): SectionNode | undefined {
+function lastSectionNamed(
+  parse: ParseResult,
+  name: string,
+): SectionNode | undefined {
   const target = name.toLowerCase();
-  const matches = parse.script.sections.filter((s) => s.name.toLowerCase() === target);
+  const matches = parse.script.sections.filter(
+    (s) => s.name.toLowerCase() === target,
+  );
   return matches[matches.length - 1];
 }
 
@@ -41,12 +50,22 @@ export function appendObjectBlocks(
   const items: readonly Item[] = target.items;
   const last = items[items.length - 1];
 
-  const anchorEnd = last ? tokens[last.lastToken].end : tokens[target.header].end;
-  const indent = last ? lineIndentOf(src, last.span.start) : lineIndentOf(src, tokens[target.header].start);
+  const anchorEnd = last
+    ? tokens[last.lastToken].end
+    : tokens[target.header].end;
+  const indent = last
+    ? lineIndentOf(src, last.span.start)
+    : lineIndentOf(src, tokens[target.header].start);
   const inner = indent + step;
 
   const rendered = blocks
-    .map((b) => [`${indent}create_object ${b.name} {`, ...b.attributes.map((a) => `${inner}${a}`), `${indent}}`].join(eol))
+    .map((b) =>
+      [
+        `${indent}create_object ${b.name} {`,
+        ...b.attributes.map((a) => `${inner}${a}`),
+        `${indent}}`,
+      ].join(eol),
+    )
     .join(eol);
 
   return { start: anchorEnd, end: anchorEnd, newText: eol + rendered };

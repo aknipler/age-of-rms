@@ -10,7 +10,12 @@ import { lineNumberOfOffset } from "../../../parser/lineIndex";
 import type { Span } from "../../../parser/types";
 import type { InstantiatedScript } from "../../../preview/generator/types";
 import type { OutputBlock } from "../../../../tools-api/index";
-import type { AggregateCell, AggregateRow, MonteCarloAggregate, NoteGroup } from "./aggregate";
+import type {
+  AggregateCell,
+  AggregateRow,
+  MonteCarloAggregate,
+  NoteGroup,
+} from "./aggregate";
 import { cellStateOf } from "./aggregate";
 import type { StaticFinding } from "./staticChecks";
 
@@ -43,13 +48,21 @@ interface WorstCountResult {
  * for free from iterating `selectedCounts` ascending and only updating on a
  * STRICT rate improvement.
  */
-function findWorstCount(cells: ReadonlyMap<number, AggregateCell>, selectedCounts: readonly number[]): WorstCountResult | undefined {
+function findWorstCount(
+  cells: ReadonlyMap<number, AggregateCell>,
+  selectedCounts: readonly number[],
+): WorstCountResult | undefined {
   const ascending = [...selectedCounts].sort((a, b) => a - b);
-  const present = ascending.filter((pc) => cellStateOf(cells.get(pc)) !== "absent");
+  const present = ascending.filter(
+    (pc) => cellStateOf(cells.get(pc)) !== "absent",
+  );
   if (present.length === 0) return undefined;
 
-  const zeroAttempt = present.filter((pc) => cellStateOf(cells.get(pc)) === "zeroAttempt");
-  if (zeroAttempt.length > 0) return { playerCount: zeroAttempt[0], state: "zeroAttempt" };
+  const zeroAttempt = present.filter(
+    (pc) => cellStateOf(cells.get(pc)) === "zeroAttempt",
+  );
+  if (zeroAttempt.length > 0)
+    return { playerCount: zeroAttempt[0], state: "zeroAttempt" };
 
   let best: { pc: number; rate: number } | undefined;
   for (const pc of present) {
@@ -62,7 +75,9 @@ function findWorstCount(cells: ReadonlyMap<number, AggregateCell>, selectedCount
 
 function formatBuckets(cell: AggregateCell | undefined): string {
   if (!cell || cell.failures.size === 0) return "";
-  return [...cell.failures.entries()].map(([bucket, f]) => `${bucket} ×${f.occurrences ?? 1}`).join(", ");
+  return [...cell.failures.entries()]
+    .map(([bucket, f]) => `${bucket} ×${f.occurrences ?? 1}`)
+    .join(", ");
 }
 
 function playerCountList(counts: readonly number[]): string {
@@ -75,15 +90,26 @@ function playerCountList(counts: readonly number[]): string {
  * row's reason, never implied by a bare rate. The three populations are not
  * disjoint; a row in more than one says so in one sentence, per clause.
  */
-function buildAnnotation(cells: ReadonlyMap<number, AggregateCell>, selectedCounts: readonly number[]): string | undefined {
+function buildAnnotation(
+  cells: ReadonlyMap<number, AggregateCell>,
+  selectedCounts: readonly number[],
+): string | undefined {
   const ascending = [...selectedCounts].sort((a, b) => a - b);
-  const present = ascending.filter((pc) => cellStateOf(cells.get(pc)) !== "absent");
-  const absent = ascending.filter((pc) => cellStateOf(cells.get(pc)) === "absent");
-  const zeroAttempt = ascending.filter((pc) => cellStateOf(cells.get(pc)) === "zeroAttempt");
+  const present = ascending.filter(
+    (pc) => cellStateOf(cells.get(pc)) !== "absent",
+  );
+  const absent = ascending.filter(
+    (pc) => cellStateOf(cells.get(pc)) === "absent",
+  );
+  const zeroAttempt = ascending.filter(
+    (pc) => cellStateOf(cells.get(pc)) === "zeroAttempt",
+  );
 
   const clauses: string[] = [];
   if (absent.length > 0 && present.length > 0) {
-    clauses.push(`this command is only generated at ${playerCountList(present)} player${present.length === 1 ? "" : "s"}`);
+    clauses.push(
+      `this command is only generated at ${playerCountList(present)} player${present.length === 1 ? "" : "s"}`,
+    );
   }
   if (zeroAttempt.length > 0 && zeroAttempt.length < present.length) {
     clauses.push(`attempted nothing at ${playerCountList(zeroAttempt)}`);
@@ -108,7 +134,11 @@ export interface StageReasonContext {
  * neutralised) need this; every other stage's reason already lives in its
  * bucket cell.
  */
-function stageReason(row: AggregateRow, worst: WorstCountResult, ctx: StageReasonContext): string | undefined {
+function stageReason(
+  row: AggregateRow,
+  worst: WorstCountResult,
+  ctx: StageReasonContext,
+): string | undefined {
   if (row.stage === "S2" && worst.state === "zeroAttempt") {
     const inst = ctx.instByCount.get(worst.playerCount);
     const cmd = inst && findCommandBySpan(inst, row.commandSpan);
@@ -116,7 +146,11 @@ function stageReason(row: AggregateRow, worst: WorstCountResult, ctx: StageReaso
       return "this command's MaxHeight is 0, so it raises nothing";
     }
   }
-  if (row.stage === "S3" && worst.state === "zeroAttempt" && ctx.cliffsContradiction) {
+  if (
+    row.stage === "S3" &&
+    worst.state === "zeroAttempt" &&
+    ctx.cliffsContradiction
+  ) {
     return "this section asks for more cliffs at its minimum than it allows at its maximum, so no cliffs are generated";
   }
   if (row.stage === "S5" && worst.state === "zeroAttempt") {
@@ -131,7 +165,8 @@ function stageReason(row: AggregateRow, worst: WorstCountResult, ctx: StageReaso
 function findCommandBySpan(inst: InstantiatedScript, span: Span) {
   for (const [, commands] of inst.sections) {
     for (const cmd of commands) {
-      if (cmd.span.start === span.start && cmd.span.end === span.end) return cmd;
+      if (cmd.span.start === span.start && cmd.span.end === span.end)
+        return cmd;
     }
   }
   return undefined;
@@ -165,8 +200,13 @@ function rowSpanFor(row: AggregateRow): Span | null {
  * was unreachable. `scriptStats.ts` is the standing exemplar; the clickable
  * offset always rides alongside in `rowSpans`.
  */
-function lineLabel(lineOffsets: readonly number[], span: Span | undefined): string {
-  return span ? `line ${lineNumberOfOffset(lineOffsets, span.start)}` : "\u2014";
+function lineLabel(
+  lineOffsets: readonly number[],
+  span: Span | undefined,
+): string {
+  return span
+    ? `line ${lineNumberOfOffset(lineOffsets, span.start)}`
+    : "\u2014";
 }
 
 function spanKeyString(span: Span): string {
@@ -199,7 +239,14 @@ export interface FindingTableOptions {
  * not healthy**, it placed everything eventually, having missed on the way,
  * and that is exactly the intermittent case this tool exists to surface.
  */
-function isHealthyRow(row: AggregateRow, opts: { selectedCounts: readonly number[]; reasonCtx: StageReasonContext; worst: WorstCountResult }): boolean {
+function isHealthyRow(
+  row: AggregateRow,
+  opts: {
+    selectedCounts: readonly number[];
+    reasonCtx: StageReasonContext;
+    worst: WorstCountResult;
+  },
+): boolean {
   if (opts.worst.state !== "rated") return false;
   for (const pc of opts.selectedCounts) {
     const cell = row.cells.get(pc);
@@ -208,13 +255,17 @@ function isHealthyRow(row: AggregateRow, opts: { selectedCounts: readonly number
     if (cell!.placed !== cell!.attempted) return false;
     if (cell!.failures.size > 0) return false;
   }
-  if (buildAnnotation(row.cells, opts.selectedCounts) !== undefined) return false;
+  if (buildAnnotation(row.cells, opts.selectedCounts) !== undefined)
+    return false;
   if (stageReason(row, opts.worst, opts.reasonCtx) !== undefined) return false;
   return true;
 }
 
 /** One `OutputBlock` per stage that produced at least one row. */
-export function buildFindingTables(aggregate: MonteCarloAggregate, opts: FindingTableOptions): OutputBlock[] {
+export function buildFindingTables(
+  aggregate: MonteCarloAggregate,
+  opts: FindingTableOptions,
+): OutputBlock[] {
   const byStage = new Map<string, AggregateRow[]>();
   for (const row of aggregate.allRows()) {
     const list = byStage.get(row.stage);
@@ -235,7 +286,14 @@ export function buildFindingTables(aggregate: MonteCarloAggregate, opts: Finding
       const worst = findWorstCount(row.cells, opts.selectedCounts);
       if (!worst) continue; // defensive: a row with no present count cannot happen, since it was only created from a real report
 
-      if (opts.hideHealthy && isHealthyRow(row, { selectedCounts: opts.selectedCounts, reasonCtx: opts.reasonCtx, worst })) {
+      if (
+        opts.hideHealthy &&
+        isHealthyRow(row, {
+          selectedCounts: opts.selectedCounts,
+          reasonCtx: opts.reasonCtx,
+          worst,
+        })
+      ) {
         hidden++;
         continue;
       }
@@ -246,20 +304,40 @@ export function buildFindingTables(aggregate: MonteCarloAggregate, opts: Finding
       // summed over 15 of 15 by `findWorstCount` above, so the bare
       // percentage is the one number in the table a reader cannot weigh.
       const runsInBatch = aggregate.runsAt(worst.playerCount);
-      const denominator = cell !== undefined && runsInBatch > 0 && cell.runsContaining < runsInBatch ? ` (generated in ${cell.runsContaining} of ${runsInBatch} runs)` : "";
-      const spawnRate = worst.state === "rated" ? `${((cell!.placed / cell!.attempted) * 100).toFixed(1)}%${denominator}` : `${NON_NUMERIC}${denominator}`;
+      const denominator =
+        cell !== undefined &&
+        runsInBatch > 0 &&
+        cell.runsContaining < runsInBatch
+          ? ` (generated in ${cell.runsContaining} of ${runsInBatch} runs)`
+          : "";
+      const spawnRate =
+        worst.state === "rated"
+          ? `${((cell!.placed / cell!.attempted) * 100).toFixed(1)}%${denominator}`
+          : `${NON_NUMERIC}${denominator}`;
 
       let buckets = formatBuckets(cell);
-      const suppressed = row.stage === "S6" && opts.suppressedActorAreaMissing.has(spanKeyString(row.commandSpan));
-      if (suppressed) buckets = "already reported statically (undeclared actor area)";
+      const suppressed =
+        row.stage === "S6" &&
+        opts.suppressedActorAreaMissing.has(spanKeyString(row.commandSpan));
+      if (suppressed)
+        buckets = "already reported statically (undeclared actor area)";
 
       const annotation = buildAnnotation(row.cells, opts.selectedCounts);
       const reason = stageReason(row, worst, opts.reasonCtx);
-      const reasonCell = [reason, annotation].filter((c): c is string => c !== undefined).join("; ");
+      const reasonCell = [reason, annotation]
+        .filter((c): c is string => c !== undefined)
+        .join("; ");
       if (buckets === "" && reasonCell !== "") buckets = reasonCell;
-      else if (reasonCell !== "" && buckets !== reasonCell) buckets = `${buckets} (${reasonCell})`;
+      else if (reasonCell !== "" && buckets !== reasonCell)
+        buckets = `${buckets} (${reasonCell})`;
 
-      tableRows.push([commandLabel(row, opts.source), spawnRate, String(worst.playerCount), buckets, "simulated"]);
+      tableRows.push([
+        commandLabel(row, opts.source),
+        spawnRate,
+        String(worst.playerCount),
+        buckets,
+        "simulated",
+      ]);
       rowSpans.push(rowSpanFor(row));
     }
 
@@ -267,7 +345,13 @@ export function buildFindingTables(aggregate: MonteCarloAggregate, opts: Finding
     blocks.push({ kind: "heading", text: `${STAGE_LABELS[stage]} generation` });
     blocks.push({
       kind: "table",
-      columns: ["Command", "Spawn rate", "Worst player count", "Failure buckets", "Provenance"],
+      columns: [
+        "Command",
+        "Spawn rate",
+        "Worst player count",
+        "Failure buckets",
+        "Provenance",
+      ],
       rows: tableRows,
       rowSpans,
     });
@@ -310,13 +394,20 @@ export function buildFindingTables(aggregate: MonteCarloAggregate, opts: Finding
  *     which is the term Sec.4.5's cap arithmetic was missing.
  */
 const FAMILY_HEADLINE: Record<StaticFinding["kind"], (n: number) => string> = {
-  landOverAllocation: (n) => `${n} findings about lands declaring more of the map than there is.`,
-  actorAreaUndeclaredToPlaceIn: (n) => `${n} commands name an actor_area_to_place_in that nothing in the script creates, so each of them places nothing.`,
-  actorAreaUndeclaredAvoid: (n) => `${n} avoid_actor_area lines name an actor area that nothing in the script creates, so the lines have no effect.`,
-  actorAreaUndeclaredSharedBlockReference: (n) => `${n} lines inside shared blocks reference an actor area that nothing in the script creates.`,
-  terrainImpossible: (n) => `${n} objects cannot be placed on the terrain they ask for.`,
-  minExceedsMaxObjects: (n) => `${n} commands set a minimum greater than their maximum, so they place nothing.`,
-  cliffsMinExceedsMax: (n) => `${n} cliff sections ask for more cliffs at their minimum than they allow at their maximum.`,
+  landOverAllocation: (n) =>
+    `${n} findings about lands declaring more of the map than there is.`,
+  actorAreaUndeclaredToPlaceIn: (n) =>
+    `${n} commands name an actor_area_to_place_in that nothing in the script creates, so each of them places nothing.`,
+  actorAreaUndeclaredAvoid: (n) =>
+    `${n} avoid_actor_area lines name an actor area that nothing in the script creates, so the lines have no effect.`,
+  actorAreaUndeclaredSharedBlockReference: (n) =>
+    `${n} lines inside shared blocks reference an actor area that nothing in the script creates.`,
+  terrainImpossible: (n) =>
+    `${n} objects cannot be placed on the terrain they ask for.`,
+  minExceedsMaxObjects: (n) =>
+    `${n} commands set a minimum greater than their maximum, so they place nothing.`,
+  cliffsMinExceedsMax: (n) =>
+    `${n} cliff sections ask for more cliffs at their minimum than they allow at their maximum.`,
 };
 
 interface CollapsedFinding {
@@ -326,7 +417,13 @@ interface CollapsedFinding {
 }
 
 function findingIdentity(f: StaticFinding): string {
-  return [f.kind, f.severity, f.text, f.span ? spanKeyString(f.span) : "-", f.commandSpan ? spanKeyString(f.commandSpan) : "-"].join("\u0000");
+  return [
+    f.kind,
+    f.severity,
+    f.text,
+    f.span ? spanKeyString(f.span) : "-",
+    f.commandSpan ? spanKeyString(f.commandSpan) : "-",
+  ].join("\u0000");
 }
 
 /**
@@ -338,13 +435,16 @@ function findingIdentity(f: StaticFinding): string {
  * none of it today, and the clause is what makes the collapse honest rather
  * than lossy).
  */
-export function collapseStaticFindings(findings: readonly StaticFinding[]): CollapsedFinding[] {
+export function collapseStaticFindings(
+  findings: readonly StaticFinding[],
+): CollapsedFinding[] {
   const byIdentity = new Map<string, CollapsedFinding>();
   for (const f of findings) {
     const id = findingIdentity(f);
     const existing = byIdentity.get(id);
     if (existing) {
-      if (!existing.counts.includes(f.playerCount)) existing.counts.push(f.playerCount);
+      if (!existing.counts.includes(f.playerCount))
+        existing.counts.push(f.playerCount);
     } else {
       byIdentity.set(id, { finding: f, counts: [f.playerCount] });
     }
@@ -354,12 +454,19 @@ export function collapseStaticFindings(findings: readonly StaticFinding[]): Coll
 }
 
 /** The count prefix, present only when the finding did NOT hold at every selected count. */
-function countPrefix(collapsed: CollapsedFinding, selectedCounts: readonly number[]): string {
+function countPrefix(
+  collapsed: CollapsedFinding,
+  selectedCounts: readonly number[],
+): string {
   if (collapsed.counts.length >= selectedCounts.length) return "";
   return `At ${playerCountList(collapsed.counts)} player${collapsed.counts.length === 1 ? "" : "s"}: `;
 }
 
-export function buildStaticFindingBlocks(findings: readonly StaticFinding[], selectedCounts: readonly number[], lineOffsets: readonly number[]): OutputBlock[] {
+export function buildStaticFindingBlocks(
+  findings: readonly StaticFinding[],
+  selectedCounts: readonly number[],
+  lineOffsets: readonly number[],
+): OutputBlock[] {
   if (findings.length === 0) return [];
   const collapsed = collapseStaticFindings(findings);
 
@@ -367,12 +474,24 @@ export function buildStaticFindingBlocks(findings: readonly StaticFinding[], sel
   // because `actorAreaUndeclaredSharedBlockReference` files at `error` or
   // `info` depending on which attribute carried the reference, and one
   // `severity` block carries exactly one level.
-  const families = new Map<string, { kind: StaticFinding["kind"]; level: StaticFinding["severity"]; items: CollapsedFinding[] }>();
+  const families = new Map<
+    string,
+    {
+      kind: StaticFinding["kind"];
+      level: StaticFinding["severity"];
+      items: CollapsedFinding[];
+    }
+  >();
   for (const c of collapsed) {
     const key = `${c.finding.kind}|${c.finding.severity}`;
     const family = families.get(key);
     if (family) family.items.push(c);
-    else families.set(key, { kind: c.finding.kind, level: c.finding.severity, items: [c] });
+    else
+      families.set(key, {
+        kind: c.finding.kind,
+        level: c.finding.severity,
+        items: [c],
+      });
   }
 
   const blocks: OutputBlock[] = [{ kind: "heading", text: "Static checks" }];
@@ -390,11 +509,18 @@ export function buildStaticFindingBlocks(findings: readonly StaticFinding[], sel
     // Sec.5.4's own shape, for the same reason: `severity` holds one span and
     // `table.rowSpans` holds many, so a family of N findings is one headline
     // plus one clickable row each, bounded by the ROW cap, not the block cap.
-    blocks.push({ kind: "severity", level: family.level, text: FAMILY_HEADLINE[family.kind](family.items.length) });
+    blocks.push({
+      kind: "severity",
+      level: family.level,
+      text: FAMILY_HEADLINE[family.kind](family.items.length),
+    });
     blocks.push({
       kind: "table",
       columns: ["Location", "Finding"],
-      rows: family.items.map((c) => [lineLabel(lineOffsets, c.finding.span), `${countPrefix(c, selectedCounts)}${c.finding.text}`]),
+      rows: family.items.map((c) => [
+        lineLabel(lineOffsets, c.finding.span),
+        `${countPrefix(c, selectedCounts)}${c.finding.text}`,
+      ]),
       rowSpans: family.items.map((c) => c.finding.span ?? null),
     });
   }
@@ -402,10 +528,13 @@ export function buildStaticFindingBlocks(findings: readonly StaticFinding[], sel
 }
 
 /** Sec.5.1's suppression rule: an `actor_area_to_place_in` finding subsumes the Monte Carlo layer's `actorAreaMissing` bucket for the SAME commandSpan, never for a bare `avoid_actor_area` finding, and never for a script Sec.3.2 merely abstained on. */
-export function suppressedActorAreaSpans(findings: readonly StaticFinding[]): ReadonlySet<string> {
+export function suppressedActorAreaSpans(
+  findings: readonly StaticFinding[],
+): ReadonlySet<string> {
   const out = new Set<string>();
   for (const f of findings) {
-    if (f.kind === "actorAreaUndeclaredToPlaceIn" && f.commandSpan) out.add(spanKeyString(f.commandSpan));
+    if (f.kind === "actorAreaUndeclaredToPlaceIn" && f.commandSpan)
+      out.add(spanKeyString(f.commandSpan));
   }
   return out;
 }
@@ -427,7 +556,10 @@ export function buildSummaryHeader(opts: SummaryHeaderOptions): OutputBlock {
   return {
     kind: "keyValue",
     rows: [
-      ["Player counts run", playerCountList([...opts.playerCounts].sort((a, b) => a - b))],
+      [
+        "Player counts run",
+        playerCountList([...opts.playerCounts].sort((a, b) => a - b)),
+      ],
       ["Map size", opts.mapSizeName],
       ["Runs per player count", String(opts.runsPerPlayerCount)],
       ["Base seed", String(opts.baseSeed)],
@@ -445,9 +577,14 @@ export function buildSummaryHeader(opts: SummaryHeaderOptions): OutputBlock {
 // Sec.5.4: notes passthrough
 // ---------------------------------------------------------------------------
 
-export function buildNotesBlocks(groups: readonly NoteGroup[], lineOffsets: readonly number[]): OutputBlock[] {
+export function buildNotesBlocks(
+  groups: readonly NoteGroup[],
+  lineOffsets: readonly number[],
+): OutputBlock[] {
   if (groups.length === 0) return [];
-  const blocks: OutputBlock[] = [{ kind: "heading", text: "What the preview could not check" }];
+  const blocks: OutputBlock[] = [
+    { kind: "heading", text: "What the preview could not check" },
+  ];
   for (const group of groups) {
     const fractionClause =
       group.coveredFraction !== undefined && group.coveredFraction > 0.01
@@ -461,7 +598,8 @@ export function buildNotesBlocks(groups: readonly NoteGroup[], lineOffsets: read
     // Sec.5.4 measures no mixed group on this corpus, so the third branch is
     // insurance, but a mixed group counted in "places" would over-claim by
     // exactly its spanless occurrences, which is the defect one unit over.
-    const allPlaced = group.spans.length > 0 && group.spans.length === group.count;
+    const allPlaced =
+      group.spans.length > 0 && group.spans.length === group.count;
     const countClause = allPlaced
       ? ` (${group.count} place${group.count === 1 ? "" : "s"})`
       : group.count > 1
@@ -471,7 +609,8 @@ export function buildNotesBlocks(groups: readonly NoteGroup[], lineOffsets: read
     // in a full stop, so appending one unconditionally printed "…with
     // beach_terrain..", punctuation invented by the renderer, on text it is
     // supposed to be passing through verbatim.
-    const terminator = /[.!?]$/.test(group.text) && countClause === "" ? "" : ".";
+    const terminator =
+      /[.!?]$/.test(group.text) && countClause === "" ? "" : ".";
     blocks.push({
       kind: "severity",
       level: "info",

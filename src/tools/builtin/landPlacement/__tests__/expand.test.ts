@@ -36,18 +36,30 @@ function ring(pattern: PatternSlot[], repeats: number): ShapeGroup {
  * formula — the item 1 hazard warning against verifying new code by
  * agreeing with a copy of the old one pasted into the test.
  */
-function evalPosition(p: { offset: { kind: string; r?: Expr; theta?: Expr } }): { dx: number; dy: number } {
-  if (p.offset.kind !== "polar" || p.offset.r === undefined || p.offset.theta === undefined) throw new Error("expected polar");
+function evalPosition(p: {
+  offset: { kind: string; r?: Expr; theta?: Expr };
+}): { dx: number; dy: number } {
+  if (
+    p.offset.kind !== "polar" ||
+    p.offset.r === undefined ||
+    p.offset.theta === undefined
+  )
+    throw new Error("expected polar");
   const r = evalExpr(p.offset.r, closed);
   const theta = evalExpr(p.offset.theta, closed);
-  if (r === undefined || theta === undefined) throw new Error("expected a fully-closed literal");
+  if (r === undefined || theta === undefined)
+    throw new Error("expected a fully-closed literal");
   const rad = (theta * Math.PI) / 180;
   return { dx: r * Math.cos(rad), dy: r * Math.sin(rad) };
 }
 
 describe("expandShapeGroup — Sec.4.5", () => {
   it("[P, A, B] x 3 expands to exactly 9 members, repeat-major then pattern order", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }, { id: "B", role: "role-B" }];
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P" },
+      { id: "A", role: "role-A" },
+      { id: "B", role: "role-B" },
+    ];
     const { placements, members } = expandShapeGroup(ring(pattern, 3));
 
     expect(placements).toHaveLength(9);
@@ -55,7 +67,9 @@ describe("expandShapeGroup — Sec.4.5", () => {
 
     // The ordering invariant, asserted directly: members[k] is
     // (floor(k/3), pattern[k % 3].id).
-    const expectedKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => memberKeyAt(k, pattern));
+    const expectedKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) =>
+      memberKeyAt(k, pattern),
+    );
     expect(expectedKeys).toEqual([
       { repeatIndex: 0, slotId: "P" },
       { repeatIndex: 0, slotId: "A" },
@@ -71,79 +85,121 @@ describe("expandShapeGroup — Sec.4.5", () => {
 
   it("every member's angle resolves to an integer, at N=9 (a case with no fractional remainder) and N=7 (one that does)", () => {
     for (const repeats of [3, 7]) {
-      const pattern: PatternSlot[] = repeats === 3 ? [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }, { id: "B", role: "role-B" }] : [{ id: "P", role: "role-P" }];
+      const pattern: PatternSlot[] =
+        repeats === 3
+          ? [
+              { id: "P", role: "role-P" },
+              { id: "A", role: "role-A" },
+              { id: "B", role: "role-B" },
+            ]
+          : [{ id: "P", role: "role-P" }];
       const { placements } = expandShapeGroup(ring(pattern, repeats));
       for (const p of placements) {
-        if (p.offset.kind !== "polar") throw new Error("expected a polar offset");
-        const angle = evalExpr(p.offset.theta, { resolveSym: () => undefined, resolveParam: () => undefined });
+        if (p.offset.kind !== "polar")
+          throw new Error("expected a polar offset");
+        const angle = evalExpr(p.offset.theta, {
+          resolveSym: () => undefined,
+          resolveParam: () => undefined,
+        });
         expect(Number.isInteger(angle)).toBe(true);
       }
     }
   });
 
   it("a symbolic rotation keeps steering every member (Sec.4.5's 'must survive a symbolic group')", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }];
-    const group: ShapeGroup = { ...ring(pattern, 2), rotation: sym("ROTATION_PLAYER") };
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P" },
+      { id: "A", role: "role-A" },
+    ];
+    const group: ShapeGroup = {
+      ...ring(pattern, 2),
+      rotation: sym("ROTATION_PLAYER"),
+    };
     const { placements } = expandShapeGroup(group);
     for (const p of placements) {
       if (p.offset.kind !== "polar") throw new Error("expected a polar offset");
-      const angle = evalExpr(p.offset.theta, { resolveSym: (n) => (n === "ROTATION_PLAYER" ? 40 : undefined), resolveParam: () => undefined });
+      const angle = evalExpr(p.offset.theta, {
+        resolveSym: (n) => (n === "ROTATION_PLAYER" ? 40 : undefined),
+        resolveParam: () => undefined,
+      });
       expect(angle).toBeDefined();
     }
   });
 
   it("PatternSlot.theta overrides the even default for one slot", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P" }, { id: "A", role: "role-A", theta: num(999) }];
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P" },
+      { id: "A", role: "role-A", theta: num(999) },
+    ];
     const { placements } = expandShapeGroup(ring(pattern, 2));
     const a0 = placements[1]; // repeat 0, slot A
     if (a0.offset.kind !== "polar") throw new Error("expected polar");
-    const angle = evalExpr(a0.offset.theta, { resolveSym: () => undefined, resolveParam: () => undefined });
+    const angle = evalExpr(a0.offset.theta, {
+      resolveSym: () => undefined,
+      resolveParam: () => undefined,
+    });
     expect(angle).toBe(999); // rotation (0) + override (999)
   });
 
   it("PatternSlot.radius overrides the ring radius (the 'wavy ring' case)", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P" }, { id: "A", role: "role-A", radius: num(5) }];
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P" },
+      { id: "A", role: "role-A", radius: num(5) },
+    ];
     const { placements } = expandShapeGroup(ring(pattern, 1));
-    if (placements[0].offset.kind !== "polar" || placements[1].offset.kind !== "polar") throw new Error("expected polar");
+    if (
+      placements[0].offset.kind !== "polar" ||
+      placements[1].offset.kind !== "polar"
+    )
+      throw new Error("expected polar");
     expect(placements[0].offset.r).toEqual(num(26));
     expect(placements[1].offset.r).toEqual(num(5));
   });
 
   it("an empty pattern or zero/negative repeats expands to nothing", () => {
     expect(expandShapeGroup(ring([], 3)).placements).toEqual([]);
-    expect(expandShapeGroup(ring([{ id: "P", role: "role-P" }], 0)).placements).toEqual([]);
+    expect(
+      expandShapeGroup(ring([{ id: "P", role: "role-P" }], 0)).placements,
+    ).toEqual([]);
   });
 });
 
 // shape-kinds-slice-a-brief.md item 3, acceptance: line/arc geometry.
 describe("expandShapeGroup — kind: line (shape-kinds-slice-a-brief.md item 3)", () => {
   function line(count: number, radius = 26): ShapeGroup {
-    return { ...ring([{ id: "P", role: "role-P" }], count), kind: "line", radius: num(radius) };
+    return {
+      ...ring([{ id: "P", role: "role-P" }], count),
+      kind: "line",
+      radius: num(radius),
+    };
   }
 
-  it.each([1, 2, 3, 8])("N=%i is symmetric about the anchor, ends at +/- radius, member 0 at -radius", (n) => {
-    const { placements } = expandShapeGroup(line(n));
-    expect(placements).toHaveLength(n);
-    const rs = placements.map((p) => {
-      if (p.offset.kind !== "polar") throw new Error("expected polar");
-      const v = evalExpr(p.offset.r, closed);
-      if (v === undefined) throw new Error("expected a fully-closed literal");
-      return v;
-    });
-    if (n === 1) {
-      // model.ts's own doc comment: a one-member line sits at the anchor,
-      // not at either end — this is the degenerate case, not "radius".
-      expect(rs).toEqual([0]);
-      return;
-    }
-    expect(rs[0]).toBe(-26);
-    expect(rs[n - 1]).toBe(26);
-    // Symmetric: r_i === -r_(N-1-i). toBeCloseTo, not toBe: the middle
-    // member of an odd N is its own mirror, and JS's `0 * -1` is `-0`,
-    // numerically equal but not Object.is-equal to the `+0` the other side
-    // computes.
-    for (let i = 0; i < n; i++) expect(rs[i]).toBeCloseTo(-rs[n - 1 - i], 10);
-  });
+  it.each([1, 2, 3, 8])(
+    "N=%i is symmetric about the anchor, ends at +/- radius, member 0 at -radius",
+    (n) => {
+      const { placements } = expandShapeGroup(line(n));
+      expect(placements).toHaveLength(n);
+      const rs = placements.map((p) => {
+        if (p.offset.kind !== "polar") throw new Error("expected polar");
+        const v = evalExpr(p.offset.r, closed);
+        if (v === undefined) throw new Error("expected a fully-closed literal");
+        return v;
+      });
+      if (n === 1) {
+        // model.ts's own doc comment: a one-member line sits at the anchor,
+        // not at either end — this is the degenerate case, not "radius".
+        expect(rs).toEqual([0]);
+        return;
+      }
+      expect(rs[0]).toBe(-26);
+      expect(rs[n - 1]).toBe(26);
+      // Symmetric: r_i === -r_(N-1-i). toBeCloseTo, not toBe: the middle
+      // member of an odd N is its own mirror, and JS's `0 * -1` is `-0`,
+      // numerically equal but not Object.is-equal to the `+0` the other side
+      // computes.
+      for (let i = 0; i < n; i++) expect(rs[i]).toBeCloseTo(-rs[n - 1 - i], 10);
+    },
+  );
 
   it("theta stays at rotation for every member, unaffected by position along the line", () => {
     const { placements } = expandShapeGroup({ ...line(5), rotation: num(37) });
@@ -159,7 +215,10 @@ describe("expandShapeGroup — kind: line (shape-kinds-slice-a-brief.md item 3)"
     for (const p of placements) {
       if (p.offset.kind !== "polar") throw new Error("expected polar");
       expect(p.offset.r.k).not.toBe("num"); // still carries the sym leaf, unresolved
-      const resolved = evalExpr(p.offset.r, { resolveSym: (n) => (n === "LINE_LENGTH" ? 26 : undefined), resolveParam: () => undefined });
+      const resolved = evalExpr(p.offset.r, {
+        resolveSym: (n) => (n === "LINE_LENGTH" ? 26 : undefined),
+        resolveParam: () => undefined,
+      });
       expect(resolved).toBeDefined();
     }
   });
@@ -179,14 +238,20 @@ describe("expandShapeGroup — kind: line (shape-kinds-slice-a-brief.md item 3)"
   });
 
   it("an empty pattern or zero/negative repeats still expands to nothing for kind: line", () => {
-    expect(expandShapeGroup({ ...line(3), pattern: [] }).placements).toEqual([]);
+    expect(expandShapeGroup({ ...line(3), pattern: [] }).placements).toEqual(
+      [],
+    );
     expect(expandShapeGroup({ ...line(3), repeats: 0 }).placements).toEqual([]);
   });
 });
 
 describe("expandShapeGroup — kind: arc (shape-kinds-slice-a-brief.md item 4)", () => {
   function arc(count: number, sweep?: number): ShapeGroup {
-    return { ...ring([{ id: "P", role: "role-P" }], count), kind: "arc", sweep };
+    return {
+      ...ring([{ id: "P", role: "role-P" }], count),
+      kind: "arc",
+      sweep,
+    };
   }
 
   it("sweep 180 with 5 members steps 45 degrees apart", () => {
@@ -208,9 +273,13 @@ describe("expandShapeGroup — kind: arc (shape-kinds-slice-a-brief.md item 4)",
   });
 
   it("N=1 sits at rotation, span===0 guarded rather than dividing by zero", () => {
-    const { placements } = expandShapeGroup({ ...arc(1, 180), rotation: num(12) });
+    const { placements } = expandShapeGroup({
+      ...arc(1, 180),
+      rotation: num(12),
+    });
     expect(placements).toHaveLength(1);
-    if (placements[0].offset.kind !== "polar") throw new Error("expected polar");
+    if (placements[0].offset.kind !== "polar")
+      throw new Error("expected polar");
     expect(evalExpr(placements[0].offset.theta, closed)).toBe(12);
   });
 
@@ -229,8 +298,15 @@ describe("expandShapeGroup — kind: arc (shape-kinds-slice-a-brief.md item 4)",
   });
 
   it("PatternSlot.theta and PatternSlot.radius still override the arc default", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P" }, { id: "A", role: "role-A", theta: num(999), radius: num(5) }];
-    const { placements } = expandShapeGroup({ ...ring(pattern, 1), kind: "arc", sweep: 180 });
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P" },
+      { id: "A", role: "role-A", theta: num(999), radius: num(5) },
+    ];
+    const { placements } = expandShapeGroup({
+      ...ring(pattern, 1),
+      kind: "arc",
+      sweep: 180,
+    });
     const a0 = placements[1];
     if (a0.offset.kind !== "polar") throw new Error("expected polar");
     expect(evalExpr(a0.offset.theta, closed)).toBe(999);
@@ -242,8 +318,17 @@ describe("expandShapeGroup — kind: arc (shape-kinds-slice-a-brief.md item 4)",
 describe("expandShapeGroup — kind: square (shape-kinds-slice-b-brief.md item 4)", () => {
   const APOTHEM_45 = Math.SQRT1_2;
 
-  function square(count: number, radius = 26, rotation: Expr = num(0)): ShapeGroup {
-    return { ...ring([{ id: "P", role: "role-P" }], count), kind: "square", radius: num(radius), rotation };
+  function square(
+    count: number,
+    radius = 26,
+    rotation: Expr = num(0),
+  ): ShapeGroup {
+    return {
+      ...ring([{ id: "P", role: "role-P" }], count),
+      kind: "square",
+      radius: num(radius),
+      rotation,
+    };
   }
 
   it("produces a polar offset, not cartesian (perimeter-symbolic-rotation-slice-a-brief.md item 2: every kind is polar now)", () => {
@@ -272,7 +357,9 @@ describe("expandShapeGroup — kind: square (shape-kinds-slice-b-brief.md item 4
 
   it("rotation 90 is the same set of points as rotation 0, rotated", () => {
     const base = expandShapeGroup(square(8)).placements.map(evalPosition);
-    const rotated = expandShapeGroup(square(8, 26, num(90))).placements.map(evalPosition);
+    const rotated = expandShapeGroup(square(8, 26, num(90))).placements.map(
+      evalPosition,
+    );
     for (let i = 0; i < base.length; i++) {
       expect(rotated[i].dx).toBeCloseTo(-base[i].dy, 3);
       expect(rotated[i].dy).toBeCloseTo(base[i].dx, 3);
@@ -299,7 +386,10 @@ describe("expandShapeGroup — kind: square (shape-kinds-slice-b-brief.md item 4
     for (const p of placements) {
       if (p.offset.kind !== "polar") throw new Error("expected polar");
       expect(p.offset.r.k).not.toBe("num");
-      const resolved = evalExpr(p.offset.r, { resolveSym: (n) => (n === "SQUARE_RADIUS" ? 26 : undefined), resolveParam: () => undefined });
+      const resolved = evalExpr(p.offset.r, {
+        resolveSym: (n) => (n === "SQUARE_RADIUS" ? 26 : undefined),
+        resolveParam: () => undefined,
+      });
       expect(resolved).toBeDefined();
     }
   });
@@ -320,23 +410,35 @@ describe("expandShapeGroup — kind: square (shape-kinds-slice-b-brief.md item 4
       expect(p.offset.theta.op).toBe("+");
       expect(p.offset.theta.l).toEqual(sym("ROTATION_PLAYER"));
       expect(p.offset.theta.r.k).toBe("num");
-      const angle = evalExpr(p.offset.theta, { resolveSym: (n) => (n === "ROTATION_PLAYER" ? 40 : undefined), resolveParam: () => undefined });
+      const angle = evalExpr(p.offset.theta, {
+        resolveSym: (n) => (n === "ROTATION_PLAYER" ? 40 : undefined),
+        resolveParam: () => undefined,
+      });
       expect(angle).toBeDefined();
     }
   });
 
   it("PatternSlot.theta is not consulted for a perimeter kind (model.ts's own doc comment)", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P", theta: num(999) }];
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P", theta: num(999) },
+    ];
     const withTheta = expandShapeGroup({ ...square(4), pattern });
-    const withoutTheta = expandShapeGroup({ ...square(4), pattern: [{ id: "P", role: "role-P" }] });
+    const withoutTheta = expandShapeGroup({
+      ...square(4),
+      pattern: [{ id: "P", role: "role-P" }],
+    });
     // Only one member per repeat here, so both groups have 4 members total;
     // comparing member 0 across both confirms the (ignored) theta override
     // made no difference.
-    expect(withTheta.placements[0].offset).toEqual(withoutTheta.placements[0].offset);
+    expect(withTheta.placements[0].offset).toEqual(
+      withoutTheta.placements[0].offset,
+    );
   });
 
   it("PatternSlot.radius still overrides the group radius for a perimeter kind", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P", radius: num(5) }];
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P", radius: num(5) },
+    ];
     const { placements } = expandShapeGroup({ ...square(4), pattern });
     const { dx, dy } = evalPosition(placements[0]);
     expect(Math.hypot(dx, dy)).toBeCloseTo(5 * APOTHEM_45, 3);
@@ -348,8 +450,17 @@ describe("expandShapeGroup — kind: square (shape-kinds-slice-b-brief.md item 4
 describe("expandShapeGroup — kind: triangle (shape-kinds-slice-c-brief.md item 1)", () => {
   const APOTHEM_60 = Math.cos(Math.PI / 3); // 0.5, the M=3 apothem, in units of R
 
-  function triangle(count: number, radius = 26, rotation: Expr = num(0)): ShapeGroup {
-    return { ...ring([{ id: "P", role: "role-P" }], count), kind: "triangle", radius: num(radius), rotation };
+  function triangle(
+    count: number,
+    radius = 26,
+    rotation: Expr = num(0),
+  ): ShapeGroup {
+    return {
+      ...ring([{ id: "P", role: "role-P" }], count),
+      kind: "triangle",
+      radius: num(radius),
+      rotation,
+    };
   }
 
   it("produces a polar offset, not cartesian (perimeter-symbolic-rotation-slice-a-brief.md item 2)", () => {
@@ -380,7 +491,10 @@ describe("expandShapeGroup — kind: triangle (shape-kinds-slice-c-brief.md item
     const { placements } = expandShapeGroup(symbolic);
     for (const p of placements) {
       if (p.offset.kind !== "polar") throw new Error("expected polar");
-      const angle = evalExpr(p.offset.theta, { resolveSym: (n) => (n === "ROTATION_PLAYER" ? 40 : undefined), resolveParam: () => undefined });
+      const angle = evalExpr(p.offset.theta, {
+        resolveSym: (n) => (n === "ROTATION_PLAYER" ? 40 : undefined),
+        resolveParam: () => undefined,
+      });
       expect(angle).toBeDefined();
     }
   });
@@ -390,40 +504,66 @@ describe("expandShapeGroup — kind: triangle (shape-kinds-slice-c-brief.md item
 // square exactly (the escalation's own claim that the three kinds are one
 // implementation), plus the clamp on a degenerate or absent `sides`.
 describe("expandShapeGroup — kind: polygon (shape-kinds-slice-c-brief.md item 1)", () => {
-  function polygon(count: number, sides: number | undefined, radius = 26, rotation: Expr = num(0)): ShapeGroup {
-    return { ...ring([{ id: "P", role: "role-P" }], count), kind: "polygon", sides, radius: num(radius), rotation };
+  function polygon(
+    count: number,
+    sides: number | undefined,
+    radius = 26,
+    rotation: Expr = num(0),
+  ): ShapeGroup {
+    return {
+      ...ring([{ id: "P", role: "role-P" }], count),
+      kind: "polygon",
+      sides,
+      radius: num(radius),
+      rotation,
+    };
   }
 
   it("sides: 4 produces coordinates identical to a square with the same radius, rotation and member count", () => {
-    const square: ShapeGroup = { ...ring([{ id: "P", role: "role-P" }], 8), kind: "square", radius: num(10), rotation: num(0) };
+    const square: ShapeGroup = {
+      ...ring([{ id: "P", role: "role-P" }], 8),
+      kind: "square",
+      radius: num(10),
+      rotation: num(0),
+    };
     const octagonalSquare = polygon(8, 4, 10);
-    expect(expandShapeGroup(octagonalSquare).placements.map((p) => p.offset)).toEqual(expandShapeGroup(square).placements.map((p) => p.offset));
+    expect(
+      expandShapeGroup(octagonalSquare).placements.map((p) => p.offset),
+    ).toEqual(expandShapeGroup(square).placements.map((p) => p.offset));
   });
 
   it("clamps sides: 2 to a drawable polygon (the floor, 3) rather than throwing", () => {
     expect(() => expandShapeGroup(polygon(6, 2))).not.toThrow();
     const { placements } = expandShapeGroup(polygon(6, 2));
     const triangleEquivalent = expandShapeGroup(polygon(6, 3));
-    expect(placements.map((p) => p.offset)).toEqual(triangleEquivalent.placements.map((p) => p.offset));
+    expect(placements.map((p) => p.offset)).toEqual(
+      triangleEquivalent.placements.map((p) => p.offset),
+    );
   });
 
   it("clamps a negative sides the same way as sides: 2", () => {
     const { placements } = expandShapeGroup(polygon(6, -5));
     const triangleEquivalent = expandShapeGroup(polygon(6, 3));
-    expect(placements.map((p) => p.offset)).toEqual(triangleEquivalent.placements.map((p) => p.offset));
+    expect(placements.map((p) => p.offset)).toEqual(
+      triangleEquivalent.placements.map((p) => p.offset),
+    );
   });
 
   it("an absent sides clamps to a drawable polygon (a hexagon) rather than throwing", () => {
     expect(() => expandShapeGroup(polygon(6, undefined))).not.toThrow();
     const withDefault = expandShapeGroup(polygon(6, undefined));
     const explicitHexagon = expandShapeGroup(polygon(6, 6));
-    expect(withDefault.placements.map((p) => p.offset)).toEqual(explicitHexagon.placements.map((p) => p.offset));
+    expect(withDefault.placements.map((p) => p.offset)).toEqual(
+      explicitHexagon.placements.map((p) => p.offset),
+    );
   });
 
   it("truncates a fractional sides rather than rounding", () => {
     const fractional = expandShapeGroup(polygon(6, 5.9));
     const five = expandShapeGroup(polygon(6, 5));
-    expect(fractional.placements.map((p) => p.offset)).toEqual(five.placements.map((p) => p.offset));
+    expect(fractional.placements.map((p) => p.offset)).toEqual(
+      five.placements.map((p) => p.offset),
+    );
   });
 });
 
@@ -434,14 +574,27 @@ describe("expandShapeGroup — kind: polygon (shape-kinds-slice-c-brief.md item 
 // larger-radius-off-midpoint subtlety) is already pinned one layer down in
 // `perimeterOffset.test.ts`, against `perimeterPolar` directly.
 describe("expandShapeGroup — PatternSlot.perimeterShift (perimeter-symbolic-rotation-slice-b-brief.md item 4)", () => {
-  function square(pattern: PatternSlot[], radius = 26, rotation: Expr = num(0)): ShapeGroup {
-    return { ...ring(pattern, 1), kind: "square", radius: num(radius), rotation };
+  function square(
+    pattern: PatternSlot[],
+    radius = 26,
+    rotation: Expr = num(0),
+  ): ShapeGroup {
+    return {
+      ...ring(pattern, 1),
+      kind: "square",
+      radius: num(radius),
+      rotation,
+    };
   }
 
   it("an absent perimeterShift and an explicit 0 both expand identically to no shift at all — the default path is byte-identical", () => {
     const noField = expandShapeGroup(square([{ id: "P", role: "role-P" }]));
-    const explicitZero = expandShapeGroup(square([{ id: "P", role: "role-P", perimeterShift: 0 }]));
-    expect(explicitZero.placements[0].offset).toEqual(noField.placements[0].offset);
+    const explicitZero = expandShapeGroup(
+      square([{ id: "P", role: "role-P", perimeterShift: 0 }]),
+    );
+    expect(explicitZero.placements[0].offset).toEqual(
+      noField.placements[0].offset,
+    );
   });
 
   it("composes with slot.radius: the shift picks the point on the unit-circumradius polygon, the radius scales it, and the two are independent", () => {
@@ -449,8 +602,15 @@ describe("expandShapeGroup — PatternSlot.perimeterShift (perimeter-symbolic-ro
     // and without a radius override, both carrying the identical shift — if
     // the composition were anything other than a plain multiply, the two
     // would not scale by the same factor from the same bearing.
-    const base = expandShapeGroup(square([{ id: "P", role: "role-P", perimeterShift: 6.25 }], 26)).placements[0];
-    const overridden = expandShapeGroup(square([{ id: "P", role: "role-P", perimeterShift: 6.25, radius: num(13) }], 26)).placements[0];
+    const base = expandShapeGroup(
+      square([{ id: "P", role: "role-P", perimeterShift: 6.25 }], 26),
+    ).placements[0];
+    const overridden = expandShapeGroup(
+      square(
+        [{ id: "P", role: "role-P", perimeterShift: 6.25, radius: num(13) }],
+        26,
+      ),
+    ).placements[0];
     const b = evalPosition(base);
     const o = evalPosition(overridden);
     expect(Math.hypot(o.dx, o.dy)).toBeCloseTo(Math.hypot(b.dx, b.dy) / 2, 3); // 13 is half of 26
@@ -460,8 +620,12 @@ describe("expandShapeGroup — PatternSlot.perimeterShift (perimeter-symbolic-ro
   });
 
   it("composes with a symbolic group rotation: theta is still bin(+, sym, num(shiftedBearing)) — rotation spins the shape, the shift moves along it, neither reads the other", () => {
-    const pattern: PatternSlot[] = [{ id: "P", role: "role-P", perimeterShift: 6.25 }];
-    const { placements } = expandShapeGroup(square(pattern, 26, sym("ROTATION_PLAYER")));
+    const pattern: PatternSlot[] = [
+      { id: "P", role: "role-P", perimeterShift: 6.25 },
+    ];
+    const { placements } = expandShapeGroup(
+      square(pattern, 26, sym("ROTATION_PLAYER")),
+    );
     const offset = placements[0].offset;
     if (offset.kind !== "polar") throw new Error("expected polar");
     if (offset.theta.k !== "bin") throw new Error("expected a bin node");
@@ -475,12 +639,16 @@ describe("expandShapeGroup — PatternSlot.perimeterShift (perimeter-symbolic-ro
   });
 
   it("is inert for circle, line and arc, the same way sweep is inert outside arc", () => {
-    const withShift: PatternSlot[] = [{ id: "P", role: "role-P", perimeterShift: 40 }];
+    const withShift: PatternSlot[] = [
+      { id: "P", role: "role-P", perimeterShift: 40 },
+    ];
     const withoutShift: PatternSlot[] = [{ id: "P", role: "role-P" }];
     for (const kind of ["circle", "line", "arc"] as const) {
       const base = { ...ring(withoutShift, 4), kind };
       const shifted = { ...ring(withShift, 4), kind };
-      expect(expandShapeGroup(shifted).placements.map((p) => p.offset)).toEqual(expandShapeGroup(base).placements.map((p) => p.offset));
+      expect(expandShapeGroup(shifted).placements.map((p) => p.offset)).toEqual(
+        expandShapeGroup(base).placements.map((p) => p.offset),
+      );
     }
   });
 });

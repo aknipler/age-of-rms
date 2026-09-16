@@ -32,7 +32,13 @@ import type {
   SymbolInfo,
   Token,
 } from "./types";
-import type { ArgumentDef, AttributeDef, CommandDef, LanguageData, LanguageIndex } from "./language";
+import type {
+  ArgumentDef,
+  AttributeDef,
+  CommandDef,
+  LanguageData,
+  LanguageIndex,
+} from "./language";
 import { buildLanguageIndex, NUMERIC_ARGUMENT_TYPES } from "./language";
 import * as d from "./diagnostics";
 import { lineNumberOfOffset } from "./lineIndex";
@@ -133,7 +139,9 @@ class Parser {
     }
 
     this.rms0003Starts = new Set(
-      this.diagnostics.filter((diag) => diag.code === "RMS0003").map((diag) => diag.span.start),
+      this.diagnostics
+        .filter((diag) => diag.code === "RMS0003")
+        .map((diag) => diag.span.start),
     );
   }
 
@@ -156,9 +164,13 @@ class Parser {
   /** The item list new nodes are appended to, per the innermost open container. */
   currentItems(): Item[] {
     const top = this.frames[this.frames.length - 1];
-    if (!top) return this.currentSection ? this.currentSection.items : this.script.preamble;
+    if (!top)
+      return this.currentSection
+        ? this.currentSection.items
+        : this.script.preamble;
     if (top.type === "block") return top.node.items;
-    if (top.type === "if") return top.node.branches[top.node.branches.length - 1].items;
+    if (top.type === "if")
+      return top.node.branches[top.node.branches.length - 1].items;
     // random: preamble until the first percent_chance branch exists
     return top.node.branches.length > 0
       ? top.node.branches[top.node.branches.length - 1].items
@@ -175,16 +187,27 @@ class Parser {
 
   conditionalDepth(): number {
     let n = 0;
-    for (const f of this.frames) if (f.type === "if" || f.type === "random") n++;
+    for (const f of this.frames)
+      if (f.type === "if" || f.type === "random") n++;
     return n;
   }
 
   span(firstToken: number, lastToken: number): { start: number; end: number } {
-    return { start: this.tokens[firstToken].start, end: this.tokens[lastToken].end };
+    return {
+      start: this.tokens[firstToken].start,
+      end: this.tokens[lastToken].end,
+    };
   }
 
   /** Refresh a node's lastToken/span after consuming more tokens. */
-  extend(node: { firstToken: number; lastToken: number; span: { start: number; end: number } }, lastToken: number): void {
+  extend(
+    node: {
+      firstToken: number;
+      lastToken: number;
+      span: { start: number; end: number };
+    },
+    lastToken: number,
+  ): void {
     if (lastToken > node.lastToken) {
       node.lastToken = lastToken;
       node.span = this.span(node.firstToken, lastToken);
@@ -194,7 +217,8 @@ class Parser {
   // ---- unknown runs (Sec.5.1 coverage rule: no token is ever dropped) --------
 
   runPush(pos: number, alreadyDiagnosed = false): void {
-    if (this.pendingRun.length === 0) this.pendingRunDiagnosed = alreadyDiagnosed;
+    if (this.pendingRun.length === 0)
+      this.pendingRunDiagnosed = alreadyDiagnosed;
     this.pendingRun.push(pos);
   }
 
@@ -219,9 +243,17 @@ class Parser {
     if (!this.pendingRunDiagnosed) {
       if (firstTok.kind === "word") {
         const context = this.inBlockContext() ? "attribute" : "command";
-        this.diagnostics.push(d.unknownName(firstTok, context, this.didYouMean(firstTok.text, context)));
+        this.diagnostics.push(
+          d.unknownName(
+            firstTok,
+            context,
+            this.didYouMean(firstTok.text, context),
+          ),
+        );
       } else {
-        this.diagnostics.push(d.unexpectedValue(firstTok, this.tokens[lastIdx]));
+        this.diagnostics.push(
+          d.unexpectedValue(firstTok, this.tokens[lastIdx]),
+        );
       }
     }
     this.currentItems().push(raw);
@@ -248,7 +280,10 @@ class Parser {
   }
 
   /** Did-you-mean (Sec.10): edit distance ≤ 2 (case-insensitive), then prefix/suffix. */
-  didYouMean(name: string, context: "command" | "attribute"): string | undefined {
+  didYouMean(
+    name: string,
+    context: "command" | "attribute",
+  ): string | undefined {
     if (name.length < 3) return undefined;
     // Non-functional names are excluded from the pool entirely. They are known
     // to the engine, so they belong in language.json and RMS0310 reports them
@@ -299,15 +334,24 @@ class Parser {
     // attribute) and `min_distance_to_players` (23, what the author meant),
     // and shortest-wins hands over the one that cannot appear here.
     if (name.length >= 6) {
-      const allowed = context === "attribute" ? this.enclosingCommandAttributes() : undefined;
+      const allowed =
+        context === "attribute" ? this.enclosingCommandAttributes() : undefined;
       let bestAllowed: string | undefined;
       let bestAny: string | undefined;
       for (const candidate of pool) {
         const candidateLower = candidate.toLowerCase();
         if (candidateLower === lower) continue;
-        if (!candidateLower.endsWith(lower) && !candidateLower.startsWith(lower)) continue;
-        if (bestAny === undefined || candidate.length < bestAny.length) bestAny = candidate;
-        if (allowed?.has(candidate) && (bestAllowed === undefined || candidate.length < bestAllowed.length)) {
+        if (
+          !candidateLower.endsWith(lower) &&
+          !candidateLower.startsWith(lower)
+        )
+          continue;
+        if (bestAny === undefined || candidate.length < bestAny.length)
+          bestAny = candidate;
+        if (
+          allowed?.has(candidate) &&
+          (bestAllowed === undefined || candidate.length < bestAllowed.length)
+        ) {
           bestAllowed = candidate;
         }
       }
@@ -365,7 +409,9 @@ class Parser {
     const headerTok = this.tokAt(this.p);
 
     const hasBlock = this.frames.some((f) => f.type === "block");
-    const hasCond = this.frames.some((f) => f.type === "if" || f.type === "random");
+    const hasCond = this.frames.some(
+      (f) => f.type === "if" || f.type === "random",
+    );
 
     if (hasCond) {
       // Legal RMS (token-filter model): conditionals may span section
@@ -384,7 +430,12 @@ class Parser {
       while (this.frames.length > 0) {
         const top = this.frames[this.frames.length - 1];
         if (top.type !== "block") break;
-        this.diagnostics.push(d.sectionHeaderInBlock(headerTok, this.lineOf(this.tokens[top.node.open].start)));
+        this.diagnostics.push(
+          d.sectionHeaderInBlock(
+            headerTok,
+            this.lineOf(this.tokens[top.node.open].start),
+          ),
+        );
         this.closeBlockFrame(top, undefined);
         this.frames.pop();
       }
@@ -438,17 +489,32 @@ class Parser {
       return;
     }
 
-    node.args = this.consumeArgs(def.arguments ?? [], hashTok, def.verified, /*quoteAssembly*/ true);
-    if (node.args.length > 0) this.extend(node, node.args[node.args.length - 1].lastToken);
+    node.args = this.consumeArgs(
+      def.arguments ?? [],
+      hashTok,
+      def.verified,
+      /*quoteAssembly*/ true,
+    );
+    if (node.args.length > 0)
+      this.extend(node, node.args[node.args.length - 1].lastToken);
 
     // Quoted-path bookkeeping + RMS0211 (Sec.5.2).
     const firstArg = node.args[0];
-    const quoted = firstArg !== undefined && this.tokens[firstArg.firstToken].text.startsWith('"');
+    const quoted =
+      firstArg !== undefined &&
+      this.tokens[firstArg.firstToken].text.startsWith('"');
     if (quoted && hashTok.text === "#includeXS") {
       this.diagnostics.push(d.includeXsQuoted(hashTok));
     }
-    if ((hashTok.text === "#include_drs" || hashTok.text === "#includeXS") && firstArg !== undefined) {
-      this.includes.push({ directiveToken: hashIdx, path: String(firstArg.value), quoted });
+    if (
+      (hashTok.text === "#include_drs" || hashTok.text === "#includeXS") &&
+      firstArg !== undefined
+    ) {
+      this.includes.push({
+        directiveToken: hashIdx,
+        path: String(firstArg.value),
+        quoted,
+      });
     }
 
     // Symbol table (Sec.7).
@@ -510,7 +576,9 @@ class Parser {
       case "else": {
         const ifPos = this.nearestFrame("if");
         if (ifPos === -1) {
-          this.diagnostics.push(d.wrongContextKeyword(tok, "has no matching if — it's ignored."));
+          this.diagnostics.push(
+            d.wrongContextKeyword(tok, "has no matching if — it's ignored."),
+          );
           this.runPush(this.p, true);
           this.p++;
           return;
@@ -522,7 +590,8 @@ class Parser {
         this.flushRun();
         this.p++;
         const frame = this.frames[ifPos] as IfFrame;
-        const condition = text === "elseif" ? this.consumeCondition(tok) : undefined;
+        const condition =
+          text === "elseif" ? this.consumeCondition(tok) : undefined;
         frame.node.branches.push({ keyword: tokIdx, condition, items: [] });
         this.extend(frame.node, condition ?? tokIdx);
         return;
@@ -530,7 +599,9 @@ class Parser {
       case "endif": {
         const ifPos = this.nearestFrame("if");
         if (ifPos === -1) {
-          this.diagnostics.push(d.wrongContextKeyword(tok, "has no matching if — it's ignored."));
+          this.diagnostics.push(
+            d.wrongContextKeyword(tok, "has no matching if — it's ignored."),
+          );
           this.runPush(this.p, true);
           this.p++;
           return;
@@ -572,7 +643,12 @@ class Parser {
       case "percent_chance": {
         const randPos = this.nearestFrame("random");
         if (randPos === -1) {
-          this.diagnostics.push(d.wrongContextKeyword(tok, "belongs inside start_random ... end_random — it's ignored."));
+          this.diagnostics.push(
+            d.wrongContextKeyword(
+              tok,
+              "belongs inside start_random ... end_random — it's ignored.",
+            ),
+          );
           this.runPush(this.p, true);
           this.p++;
           return;
@@ -584,10 +660,18 @@ class Parser {
         this.flushRun();
         this.p++;
         const frame = this.frames[randPos] as RandomFrame;
-        if (frame.node.branches.length === 0 && frame.node.preamble.length > 0) {
+        if (
+          frame.node.branches.length === 0 &&
+          frame.node.preamble.length > 0
+        ) {
           const first = frame.node.preamble[0];
           const last = frame.node.preamble[frame.node.preamble.length - 1];
-          this.diagnostics.push(d.randomPreamble(this.tokens[first.firstToken], this.tokens[last.lastToken]));
+          this.diagnostics.push(
+            d.randomPreamble(
+              this.tokens[first.firstToken],
+              this.tokens[last.lastToken],
+            ),
+          );
         }
         // Pinned exception (Sec.5.1): percent_chance takes one numeric operand;
         // expression/rnd assembly are active in this slot. Data-driven
@@ -598,14 +682,23 @@ class Parser {
           /*verified*/ true,
           /*quoteAssembly*/ false,
         );
-        frame.node.branches.push({ chanceKeyword: tokIdx, chance: chanceArgs[0], items: [] });
+        frame.node.branches.push({
+          chanceKeyword: tokIdx,
+          chance: chanceArgs[0],
+          items: [],
+        });
         this.extend(frame.node, chanceArgs[0]?.lastToken ?? tokIdx);
         return;
       }
       case "end_random": {
         const randPos = this.nearestFrame("random");
         if (randPos === -1) {
-          this.diagnostics.push(d.wrongContextKeyword(tok, "has no matching start_random — it's ignored."));
+          this.diagnostics.push(
+            d.wrongContextKeyword(
+              tok,
+              "has no matching start_random — it's ignored.",
+            ),
+          );
           this.runPush(this.p, true);
           this.p++;
           return;
@@ -633,7 +726,12 @@ class Parser {
   /** if/elseif condition: exactly one non-structural token (Sec.5.1 pinned exception). */
   consumeCondition(keywordTok: Token): number | undefined {
     if (this.p >= this.nt.length) {
-      this.diagnostics.push(d.wrongContextKeyword(keywordTok, "has no condition — the file ends here."));
+      this.diagnostics.push(
+        d.wrongContextKeyword(
+          keywordTok,
+          "has no condition — the file ends here.",
+        ),
+      );
       return undefined;
     }
     const tok = this.tokAt(this.p);
@@ -644,7 +742,12 @@ class Parser {
       tok.kind === "directive" ||
       (tok.kind === "word" && this.lang.controlKeywords.has(tok.text));
     if (structural) {
-      this.diagnostics.push(d.wrongContextKeyword(keywordTok, "has no condition — add a label after it, e.g. `if HUGE_MAP`."));
+      this.diagnostics.push(
+        d.wrongContextKeyword(
+          keywordTok,
+          "has no condition — add a label after it, e.g. `if HUGE_MAP`.",
+        ),
+      );
       return undefined;
     }
     const idx = this.nt[this.p];
@@ -678,7 +781,9 @@ class Parser {
     // lookup so a real command name can never be shadowed by a `#const`, and
     // fed into `asCommand` rather than handled separately so an alias inherits
     // every rule that follows, wrong-context (RMS0207), block opening, arity.
-    const asCommand = this.lang.commandsByName.get(nameTok.text) ?? this.aliasedCommand(nameTok.text);
+    const asCommand =
+      this.lang.commandsByName.get(nameTok.text) ??
+      this.aliasedCommand(nameTok.text);
     const primary = inBlock ? asAttribute : asCommand;
     const crossCategory = inBlock ? asCommand : asAttribute;
 
@@ -723,12 +828,22 @@ class Parser {
     };
     // Push before consuming args (assembly-failure RawNodes must follow, not precede).
     this.currentItems().push(node);
-    node.args = this.consumeArgs(def?.arguments ?? [], nameTok, def?.verified ?? true, false);
-    if (node.args.length > 0) this.extend(node, node.args[node.args.length - 1].lastToken);
+    node.args = this.consumeArgs(
+      def?.arguments ?? [],
+      nameTok,
+      def?.verified ?? true,
+      false,
+    );
+    if (node.args.length > 0)
+      this.extend(node, node.args[node.args.length - 1].lastToken);
 
     // Attached block (Sec.5.1 item 4): next token is { and def says block (or unknown).
     const blockCapable = def === undefined || def.kind === "block";
-    if (blockCapable && this.p < this.nt.length && this.tokAt(this.p).kind === "openBrace") {
+    if (
+      blockCapable &&
+      this.p < this.nt.length &&
+      this.tokAt(this.p).kind === "openBrace"
+    ) {
       this.openBlockFrame(node);
     }
   }
@@ -747,8 +862,14 @@ class Parser {
     };
     // Push before consuming args (assembly-failure RawNodes must follow, not precede).
     this.currentItems().push(node);
-    node.args = this.consumeArgs(def?.arguments ?? [], nameTok, def?.verified ?? true, false);
-    if (node.args.length > 0) this.extend(node, node.args[node.args.length - 1].lastToken);
+    node.args = this.consumeArgs(
+      def?.arguments ?? [],
+      nameTok,
+      def?.verified ?? true,
+      false,
+    );
+    if (node.args.length > 0)
+      this.extend(node, node.args[node.args.length - 1].lastToken);
   }
 
   openBlockFrame(owner: CommandNode | OrphanBlockNode): void {
@@ -767,7 +888,13 @@ class Parser {
       span: this.span(openIdx, openIdx),
     };
     owner.block = block;
-    this.frames.push({ type: "block", node: block, owner, suspect: false, wrongContextCount: 0 });
+    this.frames.push({
+      type: "block",
+      node: block,
+      owner,
+      suspect: false,
+      wrongContextCount: 0,
+    });
   }
 
   handleOpenBrace(): void {
@@ -780,13 +907,18 @@ class Parser {
     const openTok = this.tokAt(this.p);
 
     // (a) Unknown word(s) followed by {, upgrade the run to an unknown command.
-    if (this.pendingRun.length > 0 && this.tokAt(this.pendingRun[0]).kind === "word") {
+    if (
+      this.pendingRun.length > 0 &&
+      this.tokAt(this.pendingRun[0]).kind === "word"
+    ) {
       const runPositions = this.pendingRun;
       this.pendingRun = [];
       const nameIdx = this.nt[runPositions[0]];
       const nameTok = this.tokens[nameIdx];
       const context = this.inBlockContext() ? "attribute" : "command";
-      this.diagnostics.push(d.unknownName(nameTok, context, this.didYouMean(nameTok.text, context)));
+      this.diagnostics.push(
+        d.unknownName(nameTok, context, this.didYouMean(nameTok.text, context)),
+      );
       const node: CommandNode = {
         kind: "command",
         name: nameIdx,
@@ -794,7 +926,10 @@ class Parser {
         args: runPositions.slice(1).map((pos) => this.defLessArg(this.nt[pos])),
         firstToken: nameIdx,
         lastToken: this.nt[runPositions[runPositions.length - 1]],
-        span: this.span(nameIdx, this.nt[runPositions[runPositions.length - 1]]),
+        span: this.span(
+          nameIdx,
+          this.nt[runPositions[runPositions.length - 1]],
+        ),
       };
       this.currentItems().push(node);
       this.openBlockFrame(node);
@@ -807,7 +942,11 @@ class Parser {
     // just-completed if/random whose branch tails are block-capable commands.
     const items = this.currentItems();
     const last = items[items.length - 1];
-    if (last !== undefined && (last.kind === "if" || last.kind === "random") && this.hasBlockCapableTail(last)) {
+    if (
+      last !== undefined &&
+      (last.kind === "if" || last.kind === "random") &&
+      this.hasBlockCapableTail(last)
+    ) {
       this.diagnostics.push(d.sharedBlock(openTok));
       const orphan = this.makeOrphan();
       items.push(orphan);
@@ -838,7 +977,11 @@ class Parser {
     const branches = node.kind === "if" ? node.branches : node.branches;
     for (const branch of branches) {
       const tail = branch.items[branch.items.length - 1];
-      if (tail !== undefined && tail.kind === "command" && tail.block === undefined) {
+      if (
+        tail !== undefined &&
+        tail.kind === "command" &&
+        tail.block === undefined
+      ) {
         if (tail.def === undefined || tail.def.kind === "block") return true;
       }
     }
@@ -850,7 +993,12 @@ class Parser {
     let value: ArgValue = tok.text;
     if (tok.kind === "number") value = Number(tok.text);
     else if (tok.kind === "rnd") value = parseRndValue(tok.text) ?? tok.text;
-    return { value, firstToken: tokenIdx, lastToken: tokenIdx, span: this.span(tokenIdx, tokenIdx) };
+    return {
+      value,
+      firstToken: tokenIdx,
+      lastToken: tokenIdx,
+      span: this.span(tokenIdx, tokenIdx),
+    };
   }
 
   handleCloseBrace(): void {
@@ -888,13 +1036,17 @@ class Parser {
     block.close = closeIdx;
     const lastIdx =
       closeIdx ??
-      (block.items.length > 0 ? block.items[block.items.length - 1].lastToken : block.open);
+      (block.items.length > 0
+        ? block.items[block.items.length - 1].lastToken
+        : block.open);
     this.extend(block, lastIdx);
     this.extend(frame.owner, lastIdx);
     // RMS0207 cascade summary (Sec.5.1): one glued brace ≠ fifty warnings.
     if (frame.wrongContextCount > 1) {
       const lastTok = this.tokens[lastIdx];
-      this.diagnostics.push(d.wrongContext(lastTok, "command", frame.wrongContextCount - 1));
+      this.diagnostics.push(
+        d.wrongContext(lastTok, "command", frame.wrongContextCount - 1),
+      );
     }
   }
 
@@ -926,7 +1078,12 @@ class Parser {
 
   // ---- Sec.6: argument consumption --------------------------------------------
 
-  consumeArgs(argDefs: ArgumentDef[], nameTok: Token, verified: boolean, quoteAssembly: boolean): ArgNode[] {
+  consumeArgs(
+    argDefs: ArgumentDef[],
+    nameTok: Token,
+    verified: boolean,
+    quoteAssembly: boolean,
+  ): ArgNode[] {
     const unverified = !verified;
     const args: ArgNode[] = [];
     for (let i = 0; i < argDefs.length; i++) {
@@ -934,14 +1091,18 @@ class Parser {
       const stopped = this.stopSetAt(this.p, argDef.acceptsKnownName);
       if (stopped) {
         if (!argDef.optional) {
-          this.diagnostics.push(d.tooFewArguments(nameTok, argDefs.length, args.length, unverified));
+          this.diagnostics.push(
+            d.tooFewArguments(nameTok, argDefs.length, args.length, unverified),
+          );
         }
         break;
       }
       const arg = this.consumeOneArg(argDef, unverified, quoteAssembly);
       if (arg === undefined) {
         // Assembly failure already produced RMS0208/0209 + a RawNode.
-        this.diagnostics.push(d.tooFewArguments(nameTok, argDefs.length, args.length, unverified));
+        this.diagnostics.push(
+          d.tooFewArguments(nameTok, argDefs.length, args.length, unverified),
+        );
         break;
       }
       args.push(arg);
@@ -987,7 +1148,11 @@ class Parser {
     return false;
   }
 
-  consumeOneArg(argDef: ArgumentDef, unverified: boolean, quoteAssembly: boolean): ArgNode | undefined {
+  consumeOneArg(
+    argDef: ArgumentDef,
+    unverified: boolean,
+    quoteAssembly: boolean,
+  ): ArgNode | undefined {
     const tok = this.tokAt(this.p);
     if (tok.text.startsWith("(")) {
       return this.assembleExpression(argDef);
@@ -1038,7 +1203,13 @@ class Parser {
         } else {
           // Not a number, not inf, not ours. Either genuinely undefined, or
           // defined in an include we can't read, the builder distinguishes.
-          this.diagnostics.push(d.unresolvedConstantInNumericSlot(tok, argDef, this.includes.length > 0));
+          this.diagnostics.push(
+            d.unresolvedConstantInNumericSlot(
+              tok,
+              argDef,
+              this.includes.length > 0,
+            ),
+          );
         }
       }
       // Constant/string slots accept words (and numbers) freely, Sec.2.1(1).
@@ -1046,7 +1217,13 @@ class Parser {
       this.diagnostics.push(d.argTypeMismatch(tok, argDef, unverified));
     }
 
-    return { value, def: argDef, firstToken: tokenIdx, lastToken: tokenIdx, span: this.span(tokenIdx, tokenIdx) };
+    return {
+      value,
+      def: argDef,
+      firstToken: tokenIdx,
+      lastToken: tokenIdx,
+      span: this.span(tokenIdx, tokenIdx),
+    };
   }
 
   /**
@@ -1130,7 +1307,8 @@ class Parser {
     if (this.lang.commandsByTokenId.size === 0) return undefined;
     for (const symbol of this.symbols) {
       if (symbol.name !== name) continue;
-      if (symbol.directiveKind !== "const" || symbol.valueToken === undefined) return undefined;
+      if (symbol.directiveKind !== "const" || symbol.valueToken === undefined)
+        return undefined;
       const text = this.tokens[symbol.valueToken]?.text ?? "";
       if (!/^\d+$/.test(text)) return undefined;
       return this.lang.commandsByTokenId.get(Number(text));
@@ -1182,16 +1360,23 @@ class Parser {
     // rather than a second finding. Spec Sec.5.1's one-diagnostic-per-problem
     // convention applies.
     const terminator = this.tokens[lastIdx];
-    if (opener.text === "(" || (collected.length > 1 && terminator.text === ")")) {
+    if (
+      opener.text === "(" ||
+      (collected.length > 1 && terminator.text === ")")
+    ) {
       this.diagnostics.push(d.expressionLint("ungluedOperand", exprSpan));
     }
     for (let i = 0; i < collected.length; i++) {
       const t = this.tokens[collected[i]];
       if (i > 0 && t.text.startsWith("(")) {
-        this.diagnostics.push(d.expressionLint("nestedParen", { start: t.start, end: t.end }));
+        this.diagnostics.push(
+          d.expressionLint("nestedParen", { start: t.start, end: t.end }),
+        );
       }
       if (t.kind === "rnd" || t.text.startsWith("rnd(")) {
-        this.diagnostics.push(d.expressionLint("rndInside", { start: t.start, end: t.end }));
+        this.diagnostics.push(
+          d.expressionLint("rndInside", { start: t.start, end: t.end }),
+        );
       }
       if (t.kind === "word" || t.kind === "number") {
         const core = t.text.replace(/^\(+/, "").replace(/\)+$/, "");
@@ -1203,8 +1388,14 @@ class Parser {
         // and reaches the normal type diagnostics instead, which is the safe
         // direction under goal #5. Discriminating the two needs the engine's
         // own rule (verify #15).
-        if (!/^[+\-*/%]$/.test(core) && /[+*/%]/.test(core) && !core.startsWith("rnd(")) {
-          this.diagnostics.push(d.expressionLint("gluedOperator", { start: t.start, end: t.end }));
+        if (
+          !/^[+\-*/%]$/.test(core) &&
+          /[+*/%]/.test(core) &&
+          !core.startsWith("rnd(")
+        ) {
+          this.diagnostics.push(
+            d.expressionLint("gluedOperator", { start: t.start, end: t.end }),
+          );
         }
       }
     }
@@ -1257,11 +1448,20 @@ class Parser {
     const lastIdx = collected[collected.length - 1];
     const text = collected.map((i) => this.tokens[i].text).join(" ");
     const path = text.replace(/^"/, "").replace(/"$/, "");
-    return { value: path, def: argDef, firstToken: firstIdx, lastToken: lastIdx, span: this.span(firstIdx, lastIdx) };
+    return {
+      value: path,
+      def: argDef,
+      firstToken: firstIdx,
+      lastToken: lastIdx,
+      span: this.span(firstIdx, lastIdx),
+    };
   }
 
   /** Shared failure path for expression/quote assembly: RawNode + diagnostic. */
-  failAssembly(startPos: number, reason: "unclosed-expression" | "unclosed-quote"): undefined {
+  failAssembly(
+    startPos: number,
+    reason: "unclosed-expression" | "unclosed-quote",
+  ): undefined {
     const firstIdx = this.nt[startPos];
     const lastIdx = this.nt[Math.max(startPos, this.p - 1)];
     const raw: RawNode = {
@@ -1273,9 +1473,13 @@ class Parser {
     };
     this.currentItems().push(raw);
     if (reason === "unclosed-expression") {
-      this.diagnostics.push(d.unclosedExpression(this.tokens[firstIdx], this.tokens[lastIdx]));
+      this.diagnostics.push(
+        d.unclosedExpression(this.tokens[firstIdx], this.tokens[lastIdx]),
+      );
     } else {
-      this.diagnostics.push(d.unclosedQuote(this.tokens[firstIdx], this.tokens[lastIdx]));
+      this.diagnostics.push(
+        d.unclosedQuote(this.tokens[firstIdx], this.tokens[lastIdx]),
+      );
     }
     return undefined;
   }
@@ -1312,7 +1516,8 @@ class Parser {
     const def = this.lang.directivesByName.get(hashTok.text);
     if (!def) return; // unknown `#` token, parseDirective consumes no args either
 
-    const operands: { firstToken: number; text: string; quoted: boolean }[] = [];
+    const operands: { firstToken: number; text: string; quoted: boolean }[] =
+      [];
     const argDefs = def.arguments ?? [];
     for (let i = 0; i < argDefs.length; i++) {
       // Same stop rule as parseDirective's, `acceptsKnownName` included, or a
@@ -1328,7 +1533,11 @@ class Parser {
     if (first === undefined) return;
 
     if (hashTok.text === "#include_drs" || hashTok.text === "#includeXS") {
-      this.includes.push({ directiveToken: hashIdx, path: first.text, quoted: first.quoted });
+      this.includes.push({
+        directiveToken: hashIdx,
+        path: first.text,
+        quoted: first.quoted,
+      });
     } else if (hashTok.text === "#define") {
       this.symbols.push({
         name: first.text,
@@ -1361,7 +1570,9 @@ class Parser {
    * unclosed quote ends the list, the caller stops asking for operands and the
    * scan's own brace/conditional counting picks the token up as normal.
    */
-  takeRawOperand(acceptsKnownName = false): { firstToken: number; text: string; quoted: boolean } | undefined {
+  takeRawOperand(
+    acceptsKnownName = false,
+  ): { firstToken: number; text: string; quoted: boolean } | undefined {
     if (this.stopSetAt(this.p, acceptsKnownName)) return undefined;
     const firstIdx = this.nt[this.p];
     const first = this.tokens[firstIdx];
@@ -1374,7 +1585,8 @@ class Parser {
     let terminated = first.text.length > 1 && first.text.endsWith('"');
     while (!terminated) {
       // Same breakout set and cap as assembleQuote(); only the diagnostic differs.
-      if (this.p >= this.nt.length || parts.length >= ASSEMBLY_CAP) return undefined;
+      if (this.p >= this.nt.length || parts.length >= ASSEMBLY_CAP)
+        return undefined;
       const tok = this.tokAt(this.p);
       if (
         tok.kind === "openBrace" ||
@@ -1401,7 +1613,11 @@ class Parser {
    * `outermostIdx`) through the forward-scanned closers into ONE RawNode.
    * The trigger token at this.p has NOT been consumed yet.
    */
-  degrade(outermostIdx: number, reason: string, code: "RMS0110" | "RMS0107"): void {
+  degrade(
+    outermostIdx: number,
+    reason: string,
+    code: "RMS0110" | "RMS0107",
+  ): void {
     this.flushRun();
 
     // Count what's still open among the involved frames.
@@ -1417,7 +1633,9 @@ class Parser {
     // owning an involved block (spec Sec.5.3).
     const outermost = this.frames[outermostIdx];
     const rangeStartToken =
-      outermost.type === "block" ? outermost.owner.firstToken : outermost.node.firstToken;
+      outermost.type === "block"
+        ? outermost.owner.firstToken
+        : outermost.node.firstToken;
 
     // The parent that will receive the RawNode.
     const parentItems = this.itemsBelowFrame(outermostIdx);
@@ -1436,7 +1654,10 @@ class Parser {
     this.frames.length = outermostIdx;
 
     // Remove the (partial) involved nodes from the parent list.
-    while (parentItems.length > 0 && parentItems[parentItems.length - 1].firstToken >= rangeStartToken) {
+    while (
+      parentItems.length > 0 &&
+      parentItems[parentItems.length - 1].firstToken >= rangeStartToken
+    ) {
       parentItems.pop();
     }
 
@@ -1453,7 +1674,12 @@ class Parser {
       if (tok.kind === "sectionHeader") {
         if (openBraces > 0) {
           // RMS0103 semantics: a block may not span a section header.
-          this.diagnostics.push(d.sectionHeaderInBlock(tok, this.lineOf(this.tokens[rangeStartToken].start)));
+          this.diagnostics.push(
+            d.sectionHeaderInBlock(
+              tok,
+              this.lineOf(this.tokens[rangeStartToken].start),
+            ),
+          );
           break;
         }
         // Only conditionals open → legal spanning; absorb the header.
@@ -1467,9 +1693,17 @@ class Parser {
         continue;
       }
       if (tok.kind === "openBrace") openBraces++;
-      else if (tok.kind === "closeBrace") openBraces = Math.max(0, openBraces - 1);
-      else if (tok.kind === "word" && (tok.text === "if" || tok.text === "start_random")) openConds++;
-      else if (tok.kind === "word" && (tok.text === "endif" || tok.text === "end_random")) {
+      else if (tok.kind === "closeBrace")
+        openBraces = Math.max(0, openBraces - 1);
+      else if (
+        tok.kind === "word" &&
+        (tok.text === "if" || tok.text === "start_random")
+      )
+        openConds++;
+      else if (
+        tok.kind === "word" &&
+        (tok.text === "endif" || tok.text === "end_random")
+      ) {
         openConds = Math.max(0, openConds - 1);
       }
       lastConsumedNt = this.p;
@@ -1477,11 +1711,13 @@ class Parser {
     }
     if (sawUnfinishedAtEof) {
       const startTok = this.tokens[rangeStartToken];
-      if (openConds > 0) this.diagnostics.push(d.unclosedConditionalAtEof(startTok));
+      if (openConds > 0)
+        this.diagnostics.push(d.unclosedConditionalAtEof(startTok));
       if (openBraces > 0) this.diagnostics.push(d.unclosedBraceAtEof(startTok));
     }
 
-    const rangeEndToken = lastConsumedNt >= 0 ? this.nt[lastConsumedNt] : rangeStartToken;
+    const rangeEndToken =
+      lastConsumedNt >= 0 ? this.nt[lastConsumedNt] : rangeStartToken;
     const endToken = Math.max(rangeStartToken, rangeEndToken);
     const raw: RawNode = {
       kind: "raw",
@@ -1498,19 +1734,29 @@ class Parser {
       // the separate unclosedConditionalAtEof (RMS0105) above only spans
       // the single opening keyword and is easy to miss underneath it.
       this.diagnostics.push(
-        d.degradedToRaw(this.tokens[rangeStartToken], this.tokens[endToken], sawUnfinishedAtEof && openConds > 0),
+        d.degradedToRaw(
+          this.tokens[rangeStartToken],
+          this.tokens[endToken],
+          sawUnfinishedAtEof && openConds > 0,
+        ),
       );
     } else {
-      this.diagnostics.push(d.nestingTooDeep(this.tokens[rangeStartToken], this.maxNesting));
+      this.diagnostics.push(
+        d.nestingTooDeep(this.tokens[rangeStartToken], this.maxNesting),
+      );
     }
   }
 
   /** Item list of the container just below stack index `idx`. */
   itemsBelowFrame(idx: number): Item[] {
     const below = this.frames[idx - 1];
-    if (!below) return this.currentSection ? this.currentSection.items : this.script.preamble;
+    if (!below)
+      return this.currentSection
+        ? this.currentSection.items
+        : this.script.preamble;
     if (below.type === "block") return below.node.items;
-    if (below.type === "if") return below.node.branches[below.node.branches.length - 1].items;
+    if (below.type === "if")
+      return below.node.branches[below.node.branches.length - 1].items;
     return below.node.branches.length > 0
       ? below.node.branches[below.node.branches.length - 1].items
       : below.node.preamble;
@@ -1542,9 +1788,17 @@ class Parser {
         continue;
       }
       if (tok.kind === "openBrace") openBraces++;
-      else if (tok.kind === "closeBrace") openBraces = Math.max(0, openBraces - 1);
-      else if (tok.kind === "word" && (tok.text === "if" || tok.text === "start_random")) openConds++;
-      else if (tok.kind === "word" && (tok.text === "endif" || tok.text === "end_random")) {
+      else if (tok.kind === "closeBrace")
+        openBraces = Math.max(0, openBraces - 1);
+      else if (
+        tok.kind === "word" &&
+        (tok.text === "if" || tok.text === "start_random")
+      )
+        openConds++;
+      else if (
+        tok.kind === "word" &&
+        (tok.text === "endif" || tok.text === "end_random")
+      ) {
         openConds = Math.max(0, openConds - 1);
       }
       lastConsumedNt = this.p;
@@ -1570,13 +1824,17 @@ class Parser {
     while (this.frames.length > 0) {
       const frame = this.frames.pop() as Frame;
       if (frame.type === "block") {
-        this.diagnostics.push(d.unclosedBraceAtEof(this.tokens[frame.node.open]));
+        this.diagnostics.push(
+          d.unclosedBraceAtEof(this.tokens[frame.node.open]),
+        );
         this.closeBlockFrame(frame, undefined);
         this.extend(frame.node, lastTokenIdx);
         this.extend(frame.owner, lastTokenIdx);
       } else {
         const openTok =
-          frame.type === "if" ? this.tokens[frame.node.branches[0].keyword] : this.tokens[frame.node.start];
+          frame.type === "if"
+            ? this.tokens[frame.node.branches[0].keyword]
+            : this.tokens[frame.node.start];
         this.diagnostics.push(d.unclosedConditionalAtEof(openTok));
         this.extend(frame.node, lastTokenIdx);
       }
@@ -1630,7 +1888,11 @@ export function editDistanceCapped(a: string, b: string, cap: number): number {
  * Parse an AoE2:DE random map script. Pure function, no I/O, never throws
  * (docs/parser-design.md goal #1). See ParseResult for what you get back.
  */
-export function parseRms(source: string, langData: LanguageData, opts: ParseOptions = {}): ParseResult {
+export function parseRms(
+  source: string,
+  langData: LanguageData,
+  opts: ParseOptions = {},
+): ParseResult {
   const parser = new Parser(source, langData, opts);
   parser.parse();
   return {

@@ -22,7 +22,8 @@ function toggle(source: string, start: number, end = start) {
 
 describe("toggleCommandLayoutInRange", () => {
   it("expands a one-line command at the cursor", () => {
-    const source = "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n";
     const cursor = source.indexOf("create_land") + 3;
     const result = toggle(source, cursor);
     expect(result.toggledCount).toBe(1);
@@ -34,7 +35,8 @@ describe("toggleCommandLayoutInRange", () => {
   });
 
   it("round-trips: expanding then collapsing the same command returns to one line", () => {
-    const source = "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n";
     const cursor = source.indexOf("create_land") + 3;
     const expanded = applyEdits(source, toggle(source, cursor).edits);
     const backAgain = toggle(expanded, expanded.indexOf("create_land") + 3);
@@ -44,12 +46,15 @@ describe("toggleCommandLayoutInRange", () => {
   });
 
   it("collapses a multi-line command at the cursor", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nterrain_type GRASS\nland_percent 20\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nterrain_type GRASS\nland_percent 20\n}\n";
     const cursor = source.indexOf("create_land") + 3;
     const result = toggle(source, cursor);
     expect(result.toggledCount).toBe(1);
     const text = applyEdits(source, result.edits);
-    expect(text).toContain("create_land { terrain_type GRASS land_percent 20 }");
+    expect(text).toContain(
+      "create_land { terrain_type GRASS land_percent 20 }",
+    );
   });
 
   it("a selection spanning two commands toggles each to the OPPOSITE of its own current shape", () => {
@@ -62,14 +67,19 @@ describe("toggleCommandLayoutInRange", () => {
       "create_land { terrain_type GRASS land_percent 20 }\n" +
       "create_land\n{\n\tterrain_type WATER\n\tland_percent 10\n}\n";
     const parse = parseRms(source, lang);
-    const result = toggleCommandLayoutInRange(parse, { start: 0, end: source.length });
+    const result = toggleCommandLayoutInRange(parse, {
+      start: 0,
+      end: source.length,
+    });
     expect(result.toggledCount).toBe(2);
     expect(result.skippedCount).toBe(0);
     const text = applyEdits(source, result.edits);
     // First command (was inline) is now expanded.
     expect(text).toMatch(/create_land\s*\n\s*\{\s*\n\s*terrain_type GRASS/);
     // Second command (was expanded) is now inline.
-    expect(text).toContain("create_land { terrain_type WATER land_percent 10 }");
+    expect(text).toContain(
+      "create_land { terrain_type WATER land_percent 10 }",
+    );
   });
 
   it("declines to expand a command when doing so would also re-indent an unrelated sibling", () => {
@@ -84,18 +94,26 @@ describe("toggleCommandLayoutInRange", () => {
       "create_land { terrain_type GRASS land_percent 20 }\n" +
       "create_land\n{\nterrain_type WATER\nland_percent 10\n}\n";
     const parse = parseRms(source, lang);
-    const result = toggleCommandLayoutInRange(parse, { start: 0, end: source.length });
+    const result = toggleCommandLayoutInRange(parse, {
+      start: 0,
+      end: source.length,
+    });
     expect(result.toggledCount).toBe(1);
     expect(result.skippedCount).toBe(1);
     const text = applyEdits(source, result.edits);
     // Node 1 (the one that would have collided) is untouched.
-    expect(text).toContain("create_land { terrain_type GRASS land_percent 20 }");
+    expect(text).toContain(
+      "create_land { terrain_type GRASS land_percent 20 }",
+    );
     // Node 2 still collapsed cleanly on its own.
-    expect(text).toContain("create_land { terrain_type WATER land_percent 10 }");
+    expect(text).toContain(
+      "create_land { terrain_type WATER land_percent 10 }",
+    );
   });
 
   it("skips collapsing a block that holds a nested if — expand direction has no such limit", () => {
-    const source = "<LAND_GENERATION>\ncreate_land\n{\nif TINY_MAP\nland_percent 20\nendif\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land\n{\nif TINY_MAP\nland_percent 20\nendif\n}\n";
     const cursor = source.indexOf("create_land") + 3;
     const result = toggle(source, cursor);
     expect(result.toggledCount).toBe(0);
@@ -104,7 +122,8 @@ describe("toggleCommandLayoutInRange", () => {
   });
 
   it("a cursor touching nothing toggles nothing", () => {
-    const source = "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS land_percent 20 }\n";
     const result = toggle(source, 0); // inside the section header, not a command
     expect(result.toggledCount).toBe(0);
     expect(result.edits).toEqual([]);

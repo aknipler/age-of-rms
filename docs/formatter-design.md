@@ -1,6 +1,6 @@
 # Script Formatter — design
 
-CREATION_PLAN 5.2b, first candidate: *script formatter / pretty-printer (AST → clean code)*. A built-in Advanced Tool, `id: "script-formatter"`, and the first tool in the registry to declare `edit-source`.
+CREATION_PLAN 5.2b, first candidate: _script formatter / pretty-printer (AST → clean code)_. A built-in Advanced Tool, `id: "script-formatter"`, and the first tool in the registry to declare `edit-source`.
 
 Spec status: rev 2 (2026-08-24). Section numbers here are this document's. Where it names another doc's section it says so.
 
@@ -27,9 +27,9 @@ So the formatter is **AST-guided, token-driven**. See Sec.2.
 
 ### Sec.1.1 — Why this does not contradict "never re-print code"
 
-CLAUDE.md's hard rule — *"Code is the only source of truth for Breakdown. No parallel model; every user action becomes a `TextEdit` against the source, then a re-parse re-renders. Never re-print code."* — is scoped to Breakdown, and breakdown-design.md:63 names this tool as the sanctioned exception: *"reformatting/pretty-printing existing code (that's a future Advanced Tool ... Breakdown preserves formatting, it does not normalize it)"*.
+CLAUDE.md's hard rule — _"Code is the only source of truth for Breakdown. No parallel model; every user action becomes a `TextEdit` against the source, then a re-parse re-renders. Never re-print code."_ — is scoped to Breakdown, and breakdown-design.md:63 names this tool as the sanctioned exception: _"reformatting/pretty-printing existing code (that's a future Advanced Tool ... Breakdown preserves formatting, it does not normalize it)"_.
 
-The distinction that makes it safe: Breakdown re-prints as a **side effect** of an unrelated edit, where the user never asked for their layout to change and would have no way to see that it had. The formatter re-prints because reformatting *is the request*, the output is shown before it is applied, nothing happens without pressing Apply, and one Ctrl+Z reverses all of it.
+The distinction that makes it safe: Breakdown re-prints as a **side effect** of an unrelated edit, where the user never asked for their layout to change and would have no way to see that it had. The formatter re-prints because reformatting _is the request_, the output is shown before it is applied, nothing happens without pressing Apply, and one Ctrl+Z reverses all of it.
 
 ---
 
@@ -86,10 +86,10 @@ create_land { terrain_type MOD_LAND land_position 6 93 base_size 1 number_of_til
 
 Counted over the 51 scripts in `test-maps/` (32 top level plus 19 under `local/`, which includes the DE official maps), by walking the AST, 2026-08-24:
 
-| | blocks |
-|---|---|
-| whole command on one line ("inline") | **11,162** |
-| command header and block spread over lines ("expanded") | **4,692** |
+|                                                         | blocks     |
+| ------------------------------------------------------- | ---------- |
+| whole command on one line ("inline")                    | **11,162** |
+| command header and block spread over lines ("expanded") | **4,692**  |
 
 (Rev 1 said 11,226 / 5,417 from a brace-matching text scan over a corpus it counted as 56 files. The inline figure survives almost intact; the expanded one does not, because a text scan counts every `{ … }` including those inside an unparseable region, and the AST counts blocks the formatter will actually lay out.)
 
@@ -99,7 +99,7 @@ Three things in that table decide the design.
 
 **Two. The split is per author, not per script, and it is bimodal.** Per-file inline share: `local/Arena.rms` 98%, `24hr_A Heart Map.rms` 100%, `AK_Vanguard_v1.2.rms` 94% — against `local/Acclivity.rms`, `local/Haboob.rms`, `local/Enclosed.rms`, `local/nomad.rms`, `24hr_Mont Saint Michel.rms`, `TL Team Acropolis.rms` and eighteen others at **0%**. Twelve files sit in a genuinely mixed 30–80% band. There is no majority style to normalise toward; there are two communities and a mixed middle.
 
-**Three. There is no third shape to preserve.** Of the single-line blocks, the number whose `{` sits on a line of its own while the block still closes on that same line is **0**. And of the multi-line blocks, all but 54 are canonically braced (`{` opening a line or ending the header line, `}` opening the closing line) against 54 that are not. So the brief's two philosophies are exhaustive in practice, and the fallback it asks for — *"if it is not already one of these behaviours then apply default of laying the attributes out one each line"* — is reachable but rare.
+**Three. There is no third shape to preserve.** Of the single-line blocks, the number whose `{` sits on a line of its own while the block still closes on that same line is **0**. And of the multi-line blocks, all but 54 are canonically braced (`{` opening a line or ending the header line, `}` opening the closing line) against 54 that are not. So the brief's two philosophies are exhaustive in practice, and the fallback it asks for — _"if it is not already one of these behaviours then apply default of laying the attributes out one each line"_ — is reachable but rare.
 
 **Conclusion: `blockLayout` defaults to `preserve`**, classifying each block from the source. `expanded`, `inline` and `compact` are available and are choices the user makes, not defaults they inherit.
 
@@ -123,9 +123,9 @@ Anything not inline is treated as expanded, which is the brief's stated fallback
 - the block contains a `RawNode` at any depth, which is reproduced verbatim and may be multi-line;
 - a comment inside the block's token range spans more than one source line.
 
-Note what is *not* on that list: a block containing `if` / `elseif` / `else` / `endif` or `start_random`. **1,069 of the 11,162 single-line blocks contain one** (rev 1 said 810, from the text scan), `AK_Vanguard_v1.2.rms` and `TL Cape of Storms.rms` most of all, and refusing to preserve those would silently expand a tenth of the inline corpus. Conditionals inside an inline block stay inline.
+Note what is _not_ on that list: a block containing `if` / `elseif` / `else` / `endif` or `start_random`. **1,069 of the 11,162 single-line blocks contain one** (rev 1 said 810, from the text scan), `AK_Vanguard_v1.2.rms` and `TL Cape of Storms.rms` most of all, and refusing to preserve those would silently expand a tenth of the inline corpus. Conditionals inside an inline block stay inline.
 
-The `inline` and `compact` policies do decline to *create* an inline block out of one containing a conditional, since that is a layout the user did not write and probably did not want. `preserve` keeps what is there. The asymmetry is deliberate: preserving is faithful, imposing is opinionated.
+The `inline` and `compact` policies do decline to _create_ an inline block out of one containing a conditional, since that is a layout the user did not write and probably did not want. `preserve` keeps what is there. The asymmetry is deliberate: preserving is faithful, imposing is opinionated.
 
 ---
 
@@ -137,13 +137,13 @@ Comments are the reason this tool is token-driven, and they get three separate r
 
 Take a maximal run of consecutive `isTrivia` tokens. Reproduce every gap **inside** it verbatim, adjusting only indentation (Sec.4.2). Do not re-flow, do not re-wrap, do not normalise spacing inside a comment.
 
-Treating the whole run as opaque, rather than splitting it into individual `/* … */` comments, avoids having to recompute comment nesting depth outside the lexer. That matters because depth is not recomputable from token kinds alone: `LexOptions.commentOpenAliases` means an ordinary word (a constant whose engine id is 69, measured 2026-08-11/12 — see `src/parser/types.ts`) opens a nested comment *while inside one*, and the set comes from reference data the formatter does not otherwise need. The lexer already did the work and recorded it as `isTrivia`. Trust that, and never second-guess it.
+Treating the whole run as opaque, rather than splitting it into individual `/* … */` comments, avoids having to recompute comment nesting depth outside the lexer. That matters because depth is not recomputable from token kinds alone: `LexOptions.commentOpenAliases` means an ordinary word (a constant whose engine id is 69, measured 2026-08-11/12 — see `src/parser/types.ts`) opens a nested comment _while inside one_, and the set comes from reference data the formatter does not otherwise need. The lexer already did the work and recorded it as `isTrivia`. Trust that, and never second-guess it.
 
 The cost is that a run holding two comments separated by four blank lines keeps four blank lines rather than being capped by `maxBlankLines`. Accepted.
 
 ### Sec.4.2 — Re-indenting a multi-line comment
 
-An ASCII-art box or an aligned table inside a comment must survive a change of indent level with its internal alignment intact. So indentation is *shifted*, never recomputed:
+An ASCII-art box or an aligned table inside a comment must survive a change of indent level with its internal alignment intact. So indentation is _shifted_, never recomputed:
 
 - `oldIndent` = the whitespace prefix of the source line on which the run starts.
 - `newIndent` = the indent string of the output line the run lands on.
@@ -158,11 +158,11 @@ For a trivia run sitting between a placed token `p` and the next token to place:
 - **Trailing** if the run starts on the same source line as `tokens[p]` ends on. It joins the current output line.
 - **Own line** otherwise. It starts a new line at the indent of what follows, so a comment introducing an attribute is indented with that attribute rather than left at the outer level.
 
-A run before a container's closing token (`}`, `endif`, `end_random`) is indented at the *inner* level, because a comment written last inside a block belongs to the block.
+A run before a container's closing token (`}`, `endif`, `end_random`) is indented at the _inner_ level, because a comment written last inside a block belongs to the block.
 
 ### Sec.4.4 — Comment-headed indentation groups
 
-The brief's second observation: *"some comments can signify a code block and hence the code that 'belongs' to that comment should be indented"*. This one is real, it is not structural, and the AST cannot see it:
+The brief's second observation: _"some comments can signify a code block and hence the code that 'belongs' to that comment should be indented"_. This one is real, it is not structural, and the AST cannot see it:
 
 ```
 /* corners */
@@ -181,7 +181,7 @@ The brief's second observation: *"some comments can signify a code block and hen
 
 (`24hr_Battle Lines 1.0.rms`, which uses the idiom systematically and nests it two deep.)
 
-**Detection is a sibling-list rule, not a line rule**, and that is what makes it safe. Inside one item list — a section's items, a block's items, one `if` branch's items — every sibling sits at the same structural depth, so structural indentation is constant across them and any *remaining* difference in source column is authorial. Within one list:
+**Detection is a sibling-list rule, not a line rule**, and that is what makes it safe. Inside one item list — a section's items, a block's items, one `if` branch's items — every sibling sits at the same structural depth, so structural indentation is constant across them and any _remaining_ difference in source column is authorial. Within one list:
 
 1. A comment entry that starts its source line opens a candidate group.
 2. The group is the run of following siblings whose source start column is strictly greater than the comment's.
@@ -208,32 +208,32 @@ Here `create_object` is deeper than the comment for a structural reason the form
 
 Indentation level `L` starts at 0. `indent(L)` is the indent unit repeated `L` times.
 
-| Node | Rule |
-|---|---|
-| `SectionNode` header | own line, `L = 0`, one blank line before it unless it is the first thing in the file (`blankLineBeforeSections`) |
-| section items | `L = 0` or `L = 1`, per `sectionIndent` — see Sec.5.0. |
-| `DirectiveNode` | own line at `L`, arguments on the same line |
-| `AttributeNode` | own line at `L`, arguments on the same line |
-| `CommandNode`, no block | own line at `L`, arguments on the same line |
-| `CommandNode`, inline | every token from the name through `}` on one line at `L` |
-| `CommandNode`, expanded | header at `L`; `{` per `braceStyle`; items at `L + 1`; `}` at `L` |
-| `OrphanBlockNode` | as a command's block, with no header |
-| `IfNode` | `if` / `elseif` / `else` / `endif` at `L`; branch items at `L + 1` when `indentConditionals` |
-| `RandomNode` | `start_random` and `end_random` at `L`; preamble items and `percent_chance` at `L + 1`; branch items at `L + 2`; all the `+1`s conditional on `indentConditionals` |
-| `RawNode` | first token on its own line at `L`; every gap inside reproduced verbatim with the Sec.4.2 shift |
+| Node                    | Rule                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SectionNode` header    | own line, `L = 0`, one blank line before it unless it is the first thing in the file (`blankLineBeforeSections`)                                                   |
+| section items           | `L = 0` or `L = 1`, per `sectionIndent` — see Sec.5.0.                                                                                                             |
+| `DirectiveNode`         | own line at `L`, arguments on the same line                                                                                                                        |
+| `AttributeNode`         | own line at `L`, arguments on the same line                                                                                                                        |
+| `CommandNode`, no block | own line at `L`, arguments on the same line                                                                                                                        |
+| `CommandNode`, inline   | every token from the name through `}` on one line at `L`                                                                                                           |
+| `CommandNode`, expanded | header at `L`; `{` per `braceStyle`; items at `L + 1`; `}` at `L`                                                                                                  |
+| `OrphanBlockNode`       | as a command's block, with no header                                                                                                                               |
+| `IfNode`                | `if` / `elseif` / `else` / `endif` at `L`; branch items at `L + 1` when `indentConditionals`                                                                       |
+| `RandomNode`            | `start_random` and `end_random` at `L`; preamble items and `percent_chance` at `L + 1`; branch items at `L + 2`; all the `+1`s conditional on `indentConditionals` |
+| `RawNode`               | first token on its own line at `L`; every gap inside reproduced verbatim with the Sec.4.2 shift                                                                    |
 
 Two of those rows are measured rather than chosen, and the reporter counts ITEMS where rev 1 counted lines. `indentConditionals` defaults on because **24,317 of 26,108** items inside an `if` branch are indented relative to their keyword, against 1,791 at the same column. `percent_chance` is indented relative to its `start_random` in **1,253 of 1,364** cases. `braceStyle` defaults to `preserve`, falling back to `ownLine`, because among multi-line blocks the brace opens its own line **4,011** times against **587** on the header line.
 
 ### Sec.5.0 — Section bodies, the third philosophy
 
-Rev 1's table put section items at `L = 0` and justified it in six words: *"matching the corpus"*. It does not match the corpus, and this was the most expensive sentence in the document.
+Rev 1's table put section items at `L = 0` and justified it in six words: _"matching the corpus"_. It does not match the corpus, and this was the most expensive sentence in the document.
 
 **Measured 2026-08-24, over the same 51 scripts:**
 
-| | sections |
-|---|---|
-| body flush with the header | **176** |
-| body stepped in one level under it | **87** |
+|                                    | sections |
+| ---------------------------------- | -------- |
+| body flush with the header         | **176**  |
+| body stepped in one level under it | **87**   |
 
 Per script: **32** never indent a section body, **13** indent every single one, **3** are mixed. Eleven of the thirteen are DE official maps — `Arena`, `CoastalForest`, `Arabia`, `Migration`, `nomad`, `Glade`, `Graupel`, `Acclivity`, `Enclosed`, `Haboob`, `fortified_clearing`.
 
@@ -245,7 +245,7 @@ That is the same shape as Sec.3.1's inline/expanded split, arriving one level up
 
 **The test is the minimum column over everything in the section that starts a line, and it counts tokens rather than `section.items`.** Two shapes force that, and both are live:
 
-- A leading comment group (Sec.4.4) indents its own members, so *"the first item is indented"* is true of a flat section that merely opens with one. Only a minimum separates a stepped-in body from a group inside a flat body.
+- A leading comment group (Sec.4.4) indents its own members, so _"the first item is indented"_ is true of a flat section that merely opens with one. Only a minimum separates a stepped-in body from a group inside a flat body.
 - **A comment is not an `Item`.** `24hr_Battle Lines 1.0.rms` puts every item of a section under a heading comment at column 0, so an items-only scan sees a fully indented body and steps the whole thing in a second time. This was caught by a unit test written for Sec.4.4 in rev 1, which is the argument for keeping a rule's own fixture around after the rule is implemented.
 
 The interior lines of a multi-line comment are excluded, same rule and same reason as Sec.5.3's indent detection: an ASCII-art box is prose, not indentation.
@@ -276,6 +276,7 @@ The consequence to be aware of: a gap that was vertical and becomes horizontal (
 - **`indentStyle: "preserve"` (default)** detects the script's own unit, and it does so **only from lines a token starts, excluding the interior of a multi-line comment**. That exclusion is rev 2's: measuring every raw line let a header comment's own inset decide the file's unit, and `test-maps/sample.rms` is a 4-space script that came out as three. An own-line comment still counts, because authors indent those with the code they introduce and Sec.4.4 depends on that being deliberate.
 
   If as many evidence lines start with a tab as with spaces, or more, the unit is one tab; otherwise it is the **smallest** space-indent width with real support (5% of indented lines or two lines, whichever is larger), clamped to 1..8. Smallest rather than modal, and rev 1's text said modal while the code has always said smallest: in a 4-space file indented three levels deep the most common prefix is easily 8 or 12, so taking the mode invents a unit nobody typed. Fallback when nothing is detectable is one tab. Corpus, by this detector: **29 of 51** files come out as tabs. Explicit `tab`, `2 spaces`, `4 spaces` are available, and the output header always states which unit was used, since a "preserve" that silently picks something has to be auditable.
+
 - **Line endings are always preserved, with no user-facing option.** 48 of 51 corpus files are CRLF. Emitting LF into a CRLF document would make every single line differ, turning a five-edit reformat into a whole-file rewrite. The dominant ending is detected from the source and used for every break the formatter emits.
 - **Trailing whitespace on a line is always removed.** It is invisible and 3,727 corpus lines carry it.
 - **The final newline is preserved as-is**, present or absent. 30 of 51 corpus files end without one, and adding one would be an unrequested edit at the bottom of every such file.
@@ -284,27 +285,27 @@ The consequence to be aware of: a gap that was vertical and becomes horizontal (
 
 ## Sec.6 — The user preference surface
 
-The brief's requirement (b): *"allow for users to alter the pretty printer to match their own preferences."* Three layers, in increasing order of effort.
+The brief's requirement (b): _"allow for users to alter the pretty printer to match their own preferences."_ Three layers, in increasing order of effort.
 
 ### Sec.6.1 — Manifest params, rendered by the host
 
 The primary answer. Every knob is a `ToolParamDef`, so the host renders the form, validates the values, clamps the integers and rejects an out-of-range default at registration (`src/tools/protocol.ts`).
 
-| key | type | default | what it does |
-|---|---|---|---|
-| `blockLayout` | select | `preserve` | `preserve` / `expanded` / `inline` / `compact` (Sec.3) |
-| `inlineMaxWidth` | integer 40..400 | 100 | the width `compact` fits against |
-| `alwaysExpand` | multiSelect | `[]` | block commands always laid out expanded |
-| `alwaysInline` | multiSelect | `[]` | block commands always laid out inline |
-| `indentStyle` | select | `preserve` | `preserve` / `tab` / `2 spaces` / `4 spaces` |
-| `sectionIndent` | select | `preserve` | `preserve` / `flat` / `indented`, per section (Sec.5.0) |
-| `braceStyle` | select | `preserve` | `preserve` / `ownLine` / `sameLine`, expanded blocks only |
-| `indentConditionals` | boolean | `true` | indent `if` and `start_random` bodies (Sec.5) |
-| `commentGroups` | boolean | `true` | keep comment-headed indent groups (Sec.4.4) |
-| `intraLineSpacing` | select | `preserve` | `preserve` / `collapse` (Sec.5.2) |
-| `maxBlankLines` | integer 0..5 | 1 | consecutive blank lines kept |
+| key                  | type            | default    | what it does                                              |
+| -------------------- | --------------- | ---------- | --------------------------------------------------------- |
+| `blockLayout`        | select          | `preserve` | `preserve` / `expanded` / `inline` / `compact` (Sec.3)    |
+| `inlineMaxWidth`     | integer 40..400 | 100        | the width `compact` fits against                          |
+| `alwaysExpand`       | multiSelect     | `[]`       | block commands always laid out expanded                   |
+| `alwaysInline`       | multiSelect     | `[]`       | block commands always laid out inline                     |
+| `indentStyle`        | select          | `preserve` | `preserve` / `tab` / `2 spaces` / `4 spaces`              |
+| `sectionIndent`      | select          | `preserve` | `preserve` / `flat` / `indented`, per section (Sec.5.0)   |
+| `braceStyle`         | select          | `preserve` | `preserve` / `ownLine` / `sameLine`, expanded blocks only |
+| `indentConditionals` | boolean         | `true`     | indent `if` and `start_random` bodies (Sec.5)             |
+| `commentGroups`      | boolean         | `true`     | keep comment-headed indent groups (Sec.4.4)               |
+| `intraLineSpacing`   | select          | `preserve` | `preserve` / `collapse` (Sec.5.2)                         |
+| `maxBlankLines`      | integer 0..5    | 1          | consecutive blank lines kept                              |
 
-`alwaysExpand` and `alwaysInline` are **built from `reference/data/language.json`**, filtered to `kind === "block"` — 12 commands today — rather than hardcoded, per CLAUDE.md's "vocabulary is data-driven, hardcode no RMS vocabulary". They match on the *resolved* command name (`CommandNode.def.name`), so `#const L 32` followed by `L { … }` is recognised as `create_land`. That idiom is live in `24hr_Holler.rms`.
+`alwaysExpand` and `alwaysInline` are **built from `reference/data/language.json`**, filtered to `kind === "block"` — 12 commands today — rather than hardcoded, per CLAUDE.md's "vocabulary is data-driven, hardcode no RMS vocabulary". They match on the _resolved_ command name (`CommandNode.def.name`), so `#const L 32` followed by `L { … }` is recognised as `create_land`. That idiom is live in `24hr_Holler.rms`.
 
 A command named in both lists is expanded. Cross-param constraints are not expressible in a manifest, so the rule is documented rather than validated.
 
@@ -340,19 +341,19 @@ The host already refuses edits from a tool that did not declare `edit-source` (`
 
 Before returning, the formatter re-tokenizes its own output and compares `tokens.map(t => t.text)` against the input's.
 
-This is sound without knowing anything about comments or reference data, because the lexer's *splitting* is purely whitespace-based (`lexer.ts`: split on the C `isspace` set, then classify). `commentOpenAliases` and `nestedComments` change only which tokens are marked trivia, never where the boundaries fall. So an identical token-text array proves that no character of content was added, dropped, merged or split.
+This is sound without knowing anything about comments or reference data, because the lexer's _splitting_ is purely whitespace-based (`lexer.ts`: split on the C `isspace` set, then classify). `commentOpenAliases` and `nestedComments` change only which tokens are marked trivia, never where the boundaries fall. So an identical token-text array proves that no character of content was added, dropped, merged or split.
 
 **On mismatch the tool emits no edits at all** and reports an `error`-severity block naming the first differing index with both texts. A formatter that cannot prove it preserved the script does not get to modify it. This is the operational form of the "never silently drop content" hard rule, and it is checkable rather than aspirational.
 
 Adjacent failure modes and their handling:
 
-| situation | behaviour |
-|---|---|
-| parse has `error` diagnostics | format anyway, and add a warning block saying how many, and that regions the parser could not read are reproduced exactly. `RawNode`s make this safe. |
-| unclosed comment at EOF | everything from the opener is one trivia run, reproduced verbatim. The file is effectively unchanged from there down. |
-| unclosed block or `if` | the container has no closing token; items are still emitted at their indent and nothing is invented. |
+| situation                                 | behaviour                                                                                                                                                                                                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| parse has `error` diagnostics             | format anyway, and add a warning block saying how many, and that regions the parser could not read are reproduced exactly. `RawNode`s make this safe.                                                                                           |
+| unclosed comment at EOF                   | everything from the opener is one trivia run, reproduced verbatim. The file is effectively unchanged from there down.                                                                                                                           |
+| unclosed block or `if`                    | the container has no closing token; items are still emitted at their indent and nothing is invented.                                                                                                                                            |
 | a non-trivia token belongs to no AST node | emitted verbatim in index order where it falls, and counted in the output as an unplaced token. This should be impossible (parser-design Sec.12's coverage property) and is handled rather than asserted, because the alternative is losing it. |
-| empty file | zero tokens, zero edits. |
+| empty file                                | zero tokens, zero edits.                                                                                                                                                                                                                        |
 
 ---
 
@@ -410,7 +411,7 @@ Corpus gate, over every `.rms` in `test-maps/` including `local/` and `broken/`,
 
 - **token preservation** — Sec.8's check, on every file. Non-negotiable.
 - **idempotence** — `format(format(x)) === format(x)`. This is what catches a classification rule that is not stable under its own output, which is the failure mode a `preserve`-heavy design is most exposed to.
-- **no parse regression** — the formatted text parses with no *new* `error`-severity diagnostic. The formatter cannot fix errors and must not create them.
+- **no parse regression** — the formatted text parses with no _new_ `error`-severity diagnostic. The formatter cannot fix errors and must not create them.
 
 Both gates degrade to the tracked file set on a clone, the same way `src/parser/__tests__/corpus.test.ts` does.
 

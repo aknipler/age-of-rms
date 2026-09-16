@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { HelpTip } from "../HelpTip";
-import { DEFAULT_SETTINGS_TAB, SETTINGS_TABS, type SettingsTabId } from "./settingsTabs";
+import {
+  DEFAULT_SETTINGS_TAB,
+  SETTINGS_TABS,
+  type SettingsTabId,
+} from "./settingsTabs";
 import dialogStyles from "../dialog.module.css";
 import styles from "./SettingsDialog.module.css";
 
@@ -16,7 +20,8 @@ interface SettingsDialogProps {
 // six labels don't fit comfortably across a dialog, and a sidebar is what
 // makes the list cheap to extend as tabs get real content.
 export function SettingsDialog({ onClose }: SettingsDialogProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>(DEFAULT_SETTINGS_TAB);
+  const [activeTab, setActiveTab] =
+    useState<SettingsTabId>(DEFAULT_SETTINGS_TAB);
   // Roving tabindex needs to move focus, not just selection, so the
   // buttons are kept by id. A Map in a ref (rather than state) because
   // writing it must not re-render, refs are the escape hatch for values
@@ -37,8 +42,10 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
   function handleTabKeyDown(event: React.KeyboardEvent, index: number) {
     const lastIndex = SETTINGS_TABS.length - 1;
     let nextIndex: number | null = null;
-    if (event.key === "ArrowDown") nextIndex = index === lastIndex ? 0 : index + 1;
-    else if (event.key === "ArrowUp") nextIndex = index === 0 ? lastIndex : index - 1;
+    if (event.key === "ArrowDown")
+      nextIndex = index === lastIndex ? 0 : index + 1;
+    else if (event.key === "ArrowUp")
+      nextIndex = index === 0 ? lastIndex : index - 1;
     else if (event.key === "Home") nextIndex = 0;
     else if (event.key === "End") nextIndex = lastIndex;
     if (nextIndex === null) return;
@@ -48,7 +55,8 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
     tabRefs.current.get(next.id)?.focus();
   }
 
-  const active = SETTINGS_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_TABS[0];
+  const active =
+    SETTINGS_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_TABS[0];
   const ActivePanel = active.Panel;
 
   return (
@@ -63,12 +71,21 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
         <h2 className={dialogStyles.title} id="settings-dialog-title">
           Settings
         </h2>
-        <button type="button" className={styles.closeX} onClick={onClose} aria-label="Close settings">
+        <button
+          type="button"
+          className={styles.closeX}
+          onClick={onClose}
+          aria-label="Close settings"
+        >
           ✕
         </button>
 
         <div className={styles.body}>
-          <div className={styles.tabList} role="tablist" aria-orientation="vertical">
+          <div
+            className={styles.tabList}
+            role="tablist"
+            aria-orientation="vertical"
+          >
             {SETTINGS_TABS.map((tab, index) => (
               <HelpTip key={tab.id} id={tab.helpId}>
                 <button

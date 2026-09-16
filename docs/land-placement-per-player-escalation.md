@@ -22,7 +22,7 @@ reasoned about which lands exist and never about where the remaining ones sit.
 **Revision 2 said: emit one complete arrangement per player count, and Q3's `ALP_STEP` ladder is
 superseded.** Also wrong, for a more interesting reason. It correctly established that the count
 labels are exact rather than thresholds, correctly concluded that "emit this land when the count
-is at least *k*" cannot be written **directly**, and then treated that as a fact about the engine
+is at least _k_" cannot be written **directly**, and then treated that as a fact about the engine
 when it is only a fact about the labels. **A threshold you cannot write can still be
 manufactured.** The cost of not asking was a design emitting 140 lands where 32 do.
 
@@ -89,7 +89,7 @@ endif
 ```
 
 **Emit an angle per land per branch rather than one shared `ALP_STEP` per branch.** The
-alternative, `theta = ROTATION + k * ALP_STEP`, needs one constant instead of *k* but accumulates
+alternative, `theta = ROTATION + k * ALP_STEP`, needs one constant instead of _k_ but accumulates
 rounding error: at 7 players the step rounds 51.43 to 51, and by the seventh land nearly 3
 degrees have collected in the final gap. Rounding each angle independently caps the error at 0.5
 degrees with no accumulation, the same reasoning `expand.ts` records for preferring rounding to
@@ -112,7 +112,7 @@ create_land { ... player 3 ... }
 endif
 ```
 
-A land belonging to player *k*, or chained to one, is guarded by `ALP_AT_LEAST_k`. A land
+A land belonging to player _k_, or chained to one, is guarded by `ALP_AT_LEAST_k`. A land
 belonging to no player is not guarded.
 
 ## 5. Angles are authored, not fixed
@@ -135,12 +135,12 @@ and they are exactly the shape `paramEmit.ts` emits for a `RandomParam` today.
 
 ### 5.1 The four rules, and what each costs
 
-| Rule | Emits | Status |
-|---|---|---|
-| **Even** (default) | integer literal per branch | The 4.1 default |
-| **Fixed offset from another land**, "P2 is 30 from P1" | `ALP_DEG_P1 + 30` | Works today |
-| **Offset with variance**, "30 from P1, plus or minus 1" | `#const V rnd(-1,1)` then `ALP_DEG_P1 + 30 + V` | Works today (Bulls_Eyes' `VAR_A1`) |
-| **Free bearing within bounds**, "at least 30 from P1" | `#const S rnd(30,330)` then `ALP_DEG_P1 + S` | Works today (Bulls_Eyes' `DIST_BW_PLAYERS`) |
+| Rule                                                    | Emits                                           | Status                                      |
+| ------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| **Even** (default)                                      | integer literal per branch                      | The 4.1 default                             |
+| **Fixed offset from another land**, "P2 is 30 from P1"  | `ALP_DEG_P1 + 30`                               | Works today                                 |
+| **Offset with variance**, "30 from P1, plus or minus 1" | `#const V rnd(-1,1)` then `ALP_DEG_P1 + 30 + V` | Works today (Bulls_Eyes' `VAR_A1`)          |
+| **Free bearing within bounds**, "at least 30 from P1"   | `#const S rnd(30,330)` then `ALP_DEG_P1 + S`    | Works today (Bulls_Eyes' `DIST_BW_PLAYERS`) |
 
 Three of the four need no new model. `Placement.offset.theta` and `PatternSlot.theta` are already
 `Expr`, the formula field built in slice 5 is already the authoring surface, and `RandomParam`
@@ -167,9 +167,9 @@ map from player count to an overriding rule. Absent an override, every branch ge
 runtime.** What it can do is draw within bounds that make the constraint true by construction,
 which is what Bulls_Eyes' `rnd(80,280)` does for two players.
 
-For *n* players the expressible form is even spacing plus bounded jitter: player *k* at
-`even_k + rnd(-j, +j)` keeps every gap at or above `360/n - 2j`. **The tool knows *n* inside each
-branch**, so it can compute the largest safe *j* for that count and warn or clamp when the author
+For _n_ players the expressible form is even spacing plus bounded jitter: player _k_ at
+`even_k + rnd(-j, +j)` keeps every gap at or above `360/n - 2j`. **The tool knows _n_ inside each
+branch**, so it can compute the largest safe _j_ for that count and warn or clamp when the author
 asks for more. That is a real thing the tool can do that a hand-writer cannot, and it is the
 shape the "minimum separation" affordance should take. A solver is not on the table.
 
@@ -190,10 +190,10 @@ not at all". This lifts both, so the rule is satisfied rather than sidestepped.
 
 ## 6. What this costs
 
-| | Revision 2 (arrangement per count) | This design |
-|---|---|---|
-| One player slot, counts 1-8 | 35 lands, ~455 consts | **8 lands**, ~104 consts + 36 prologue |
-| One player slot plus 3 aux each | 140 lands, ~1,800 consts | **32 lands**, ~416 consts + 36 prologue |
+|                                 | Revision 2 (arrangement per count) | This design                             |
+| ------------------------------- | ---------------------------------- | --------------------------------------- |
+| One player slot, counts 1-8     | 35 lands, ~455 consts              | **8 lands**, ~104 consts + 36 prologue  |
+| One player slot plus 3 aux each | 140 lands, ~1,800 consts           | **32 lands**, ~416 consts + 36 prologue |
 
 The body is the size it is today. The additions are one prologue and a two line guard per
 player-owned land. An authored angle rule adds at most one hoisted `rnd` constant per rule, not

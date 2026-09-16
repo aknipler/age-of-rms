@@ -23,12 +23,12 @@ which is worth one glance before believing any "not yet run" anywhere in the rep
 
 **Measured, four runs, and the scope is exactly two engine constants.**
 
-| leading comment contains | map |
-|---|---|
-| nothing (`56b`, control) | **snow** — the script ran |
-| `SHORE_FISH`, object 69 (`56a`) | **blank grass** |
-| the bare literal `69` (`57`) | **snow** — literals do not participate |
-| `ATTR_PROJECTILE_ARC`, attribute 69 (`60`) | **blank grass** |
+| leading comment contains                   | map                                    |
+| ------------------------------------------ | -------------------------------------- |
+| nothing (`56b`, control)                   | **snow** — the script ran              |
+| `SHORE_FISH`, object 69 (`56a`)            | **blank grass**                        |
+| the bare literal `69` (`57`)               | **snow** — literals do not participate |
+| `ATTR_PROJECTILE_ARC`, attribute 69 (`60`) | **blank grass**                        |
 
 `/*` is token 69. A **word** resolving to 69 opens a nested comment; comments
 nest, so the author's closing `*/` shuts only the inner one and everything after
@@ -43,12 +43,12 @@ contains exactly two constants valued 69: `SHORE_FISH` (line 263) and
 `ATTR_PROJECTILE_ARC` (line 1117). Plus any script-level `#const NAME 69`.
 
 This is what blanked `RMSTEST_42` and cost a run. Filed as BUG-012, with an
-escalation inside it: whether the parser should *model* the truncation or only
+escalation inside it: whether the parser should _model_ the truncation or only
 diagnose it pits two CLAUDE.md hard rules against each other.
 
 **Still open: the closing marker.** Nothing defines `/*` or `*/` in
 `random_map.def`, so the marker IDs live in the engine's internal token table.
-The `*/` ID is unknown, so the words that would *close* a comment early are
+The `*/` ID is unknown, so the words that would _close_ a comment early are
 unenumerated — less destructive, since the file still runs, but noisier. That is
 the only part of this that still wants the Equivalencies sheet.
 
@@ -100,16 +100,16 @@ bad export, so list that directory by modified time before debugging anything.
 
 ## Batch 1 (RUN, 2026-08-01) — items 1, 2, 3
 
-| Script | Sec.15 | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_20_terrainclump` | item 3 | Normal, any players | 2 | `--patches <each terrain>` |
-| `RMSTEST_21_landclump` | item 3 | Normal, any players | 2 | `--patches <each terrain>` |
-| `RMSTEST_22a_southbias` | item 1 | Tiny, any players | 3 | `--rows ELEVATION` |
-| `RMSTEST_22b_balancedelev` | item 1 | Tiny, any players | 3 | `--rows ELEVATION` |
-| `RMSTEST_23_borderfuzz` | item 1 | Normal, any players | 5 | `--bbox <each>`, `--rows <each> --bands 20` |
-| `RMSTEST_24_defaultcircle` | item 1 | **Tiny, 8 players** | 5 | `--patches GRASS` |
-| `RMSTEST_25_crossarea` | item 2 | Tiny, any players | 5 | `--patches SNOW` |
-| `RMSTEST_26_object_connectivity` | tool check | Normal, any players | 1 | `--clusters GOLD` |
+| Script                           | Sec.15     | Generate at         | Runs | Reads with                                  |
+| -------------------------------- | ---------- | ------------------- | ---- | ------------------------------------------- |
+| `RMSTEST_20_terrainclump`        | item 3     | Normal, any players | 2    | `--patches <each terrain>`                  |
+| `RMSTEST_21_landclump`           | item 3     | Normal, any players | 2    | `--patches <each terrain>`                  |
+| `RMSTEST_22a_southbias`          | item 1     | Tiny, any players   | 3    | `--rows ELEVATION`                          |
+| `RMSTEST_22b_balancedelev`       | item 1     | Tiny, any players   | 3    | `--rows ELEVATION`                          |
+| `RMSTEST_23_borderfuzz`          | item 1     | Normal, any players | 5    | `--bbox <each>`, `--rows <each> --bands 20` |
+| `RMSTEST_24_defaultcircle`       | item 1     | **Tiny, 8 players** | 5    | `--patches GRASS`                           |
+| `RMSTEST_25_crossarea`           | item 2     | Tiny, any players   | 5    | `--patches SNOW`                            |
+| `RMSTEST_26_object_connectivity` | tool check | Normal, any players | 1    | `--clusters GOLD`                           |
 
 Twenty five generations. 22a and 22b are a matched pair and belong in the same
 sitting, because the whole comparison rests on nothing differing between them
@@ -120,17 +120,17 @@ except the one attribute. Results are folded into the spec; see the build log.
 Written 2026-08-02. This is every remaining open question in Sec.15 that an
 export can answer, plus the RMS0304 blocker.
 
-| Script | Settles | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_27_negcircle` | negative `circle_radius` | **Tiny, 8 players** | 5 | `--patches GRASS` |
-| `RMSTEST_28a_cfneg` | item 13 | Normal, any players | 3 | `--patches SNOW` |
-| `RMSTEST_28b_cfzero` | item 13 (control) | Normal, any players | 3 | `--patches SNOW` |
-| `RMSTEST_29_zonebyteam` | item 14 | **Normal, 8 players, teams set** | 3 each config | `--patches GRASS` |
-| `RMSTEST_30_groupedbyteam` | item 15 | **Normal, 8 players, teams set** | 1 each config | `--patches GRASS` |
-| `RMSTEST_31_cliffspacing` | item 12 | Normal, any players | 3 | `--patches SNOW`, `--clusters <cliff>` |
-| `RMSTEST_32_elevsize` | item 11 | **Normal, 8 players** | 3 | `--rows ELEVATION --bands 20` |
-| `RMSTEST_33a_sectionlock_terrain` | RMS0304 debt | Normal, any players | 1 | default histogram |
-| `RMSTEST_33b_sectionlock_object` | RMS0304 debt | Normal, any players | 1 | default, `--clusters GOLD` |
+| Script                            | Settles                  | Generate at                      | Runs          | Reads with                             |
+| --------------------------------- | ------------------------ | -------------------------------- | ------------- | -------------------------------------- |
+| `RMSTEST_27_negcircle`            | negative `circle_radius` | **Tiny, 8 players**              | 5             | `--patches GRASS`                      |
+| `RMSTEST_28a_cfneg`               | item 13                  | Normal, any players              | 3             | `--patches SNOW`                       |
+| `RMSTEST_28b_cfzero`              | item 13 (control)        | Normal, any players              | 3             | `--patches SNOW`                       |
+| `RMSTEST_29_zonebyteam`           | item 14                  | **Normal, 8 players, teams set** | 3 each config | `--patches GRASS`                      |
+| `RMSTEST_30_groupedbyteam`        | item 15                  | **Normal, 8 players, teams set** | 1 each config | `--patches GRASS`                      |
+| `RMSTEST_31_cliffspacing`         | item 12                  | Normal, any players              | 3             | `--patches SNOW`, `--clusters <cliff>` |
+| `RMSTEST_32_elevsize`             | item 11                  | **Normal, 8 players**            | 3             | `--rows ELEVATION --bands 20`          |
+| `RMSTEST_33a_sectionlock_terrain` | RMS0304 debt             | Normal, any players              | 1             | default histogram                      |
+| `RMSTEST_33b_sectionlock_object`  | RMS0304 debt             | Normal, any players              | 1             | default, `--clusters GOLD`             |
 
 Thirty two generations, counting 29 as two configurations and 30 as three.
 
@@ -185,11 +185,11 @@ for instrument reasons rather than for want of data** — the scripts measured
 something other than what they were written to measure. Each of these changes
 exactly one thing against its predecessor.
 
-| Script | Settles | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_34_zonerange` | item 14, replaces 29 | **Normal, 8 players, NO teams (plain FFA)** | 3 | `--patches GRASS` + min-distance per probe terrain |
-| `RMSTEST_35_elevnolands` | item 11, replaces 32 | Normal, any players | 3 | `--rows ELEVATION --bands 20` + diagonal split |
-| `RMSTEST_36_groupedclean` | item 15, replaces 30 | **Normal, 8 players, teams set** | 2 at 4v4 + **3 at 5v1v1v1** | `--patches GRASS` |
+| Script                    | Settles              | Generate at                                 | Runs                        | Reads with                                         |
+| ------------------------- | -------------------- | ------------------------------------------- | --------------------------- | -------------------------------------------------- |
+| `RMSTEST_34_zonerange`    | item 14, replaces 29 | **Normal, 8 players, NO teams (plain FFA)** | 3                           | `--patches GRASS` + min-distance per probe terrain |
+| `RMSTEST_35_elevnolands`  | item 11, replaces 32 | Normal, any players                         | 3                           | `--rows ELEVATION --bands 20` + diagonal split     |
+| `RMSTEST_36_groupedclean` | item 15, replaces 30 | **Normal, 8 players, teams set**            | 2 at 4v4 + **3 at 5v1v1v1** | `--patches GRASS`                                  |
 
 Eight generations. `34` and `35` need no team setup at all; only `36` does, and
 the `RMSTEST_30` re-run already proved the editor can set teams (it produced a
@@ -229,12 +229,12 @@ before trusting a triplicate.
 Batch 3 ran the same day. **Items 11 and 15 closed**; item 14 failed a second
 time and is the only thing left that an export can answer.
 
-| Script | Settles | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_37_zoneforced` | item 14, replaces 34 | **Normal, 8 players, plain FFA — no teams** | 3 | `--patches GRASS` + min distance per probe terrain |
+| Script                  | Settles              | Generate at                                 | Runs | Reads with                                         |
+| ----------------------- | -------------------- | ------------------------------------------- | ---- | -------------------------------------------------- |
+| `RMSTEST_37_zoneforced` | item 14, replaces 34 | **Normal, 8 players, plain FFA — no teams** | 3    | `--patches GRASS` + min distance per probe terrain |
 
 **Why 34 failed, and it is a different failure from the batch-2 ones.** 34's
-design was sound and its *reasoning* was already correct in its own header —
+design was sound and its _reasoning_ was already correct in its own header —
 prediction 4 said outright that sharing a zone only PERMITS contact and does not
 compel it, and that a null result would therefore be inconclusive. The script
 was built anyway on the half of the instrument that depends on luck, and the
@@ -268,9 +268,9 @@ could never have been read. Both of 37's probes target player 1.
 Batch 4 closed item 14. **Item 16 is now the largest open question in Phase 4**
 — Sec.6.1's land-growth model is refuted and nothing replaces it yet.
 
-| Script | Settles | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_38_clumpsweep` | item 16 | **Giant (252), any player count** — but the exports on disk are all dim 480, see the map's own header | 3 | `--patches` once per terrain (six of them) |
+| Script                  | Settles | Generate at                                                                                           | Runs | Reads with                                 |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------ |
+| `RMSTEST_38_clumpsweep` | item 16 | **Giant (252), any player count** — but the exports on disk are all dim 480, see the map's own header | 3    | `--patches` once per terrain (six of them) |
 
 Three generations, not eighteen. The script puts **six lands on one map**, one per
 `clumping_factor` value, each with its own terrain, spaced 76–101 tiles apart on
@@ -279,14 +279,14 @@ a 63504-tile map so they never interact. Every other attribute matches
 `border_fuzziness 0`), so the results are directly comparable to the runs that
 opened the item rather than being a fresh baseline.
 
-| terrain | `clumping_factor` | why this value |
-|---|---|---|
-| SNOW | −20 | beyond anything measured |
-| DESERT | 0 | reproduces the RMSTEST_28b control |
-| DIRT | 8 | the documented default |
-| DIRT2 | 20 | the corpus mode |
-| DIRT3 | 40 | high |
-| GRASS3 | 100 | corpus uses it 18×, above the community's stated max of 99 |
+| terrain | `clumping_factor` | why this value                                             |
+| ------- | ----------------- | ---------------------------------------------------------- |
+| SNOW    | −20               | beyond anything measured                                   |
+| DESERT  | 0                 | reproduces the RMSTEST_28b control                         |
+| DIRT    | 8                 | the documented default                                     |
+| DIRT2   | 20                | the corpus mode                                            |
+| DIRT3   | 40                | high                                                       |
+| GRASS3  | 100               | corpus uses it 18×, above the community's stated max of 99 |
 
 **Read-off:** piece count per terrain, size distribution, circularity, and the
 per-terrain total (should sit near 400 plus the ~3% growth overshoot — a total
@@ -314,7 +314,7 @@ planning discussion. The algorithm itself is compiled code in `AoE2DE_s.exe`;
 `random_map.def` is 1251 lines of `#const`, and the `.dat` files are unit,
 terrain and rendering data.
 
-What the search *did* give: the community's `clumping_factor` range of about
+What the search _did_ give: the community's `clumping_factor` range of about
 −100 to 99 against the conventional 1–15, "super spindly" at negatives and "very
 clumped and roundish" near +100. Both our existing runs sat at the spindly end,
 which is why fragmentation looked absolute rather than graded — **this script
@@ -330,15 +330,15 @@ mechanisms are refuted — seed exclusion (centroids appear at edge distance 0)
 and spillover across the diagonal (0.7–3.0% straddling components). Two runs
 here, one for the mechanism and one to guard the constant.
 
-| Script | Settles | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_39_cleanseeds` | 11(a) mechanism | **Normal (200)**, any player count | 5 | components → centroids → favoured/disfavoured split **profiled by edge distance** |
-| `RMSTEST_35_elevnolands` | fixed-width guard | **Ludicrous (480)**, any player count | 6 | as the Normal runs; compare *where* the ratio recovers |
+| Script                   | Settles           | Generate at                           | Runs | Reads with                                                                        |
+| ------------------------ | ----------------- | ------------------------------------- | ---- | --------------------------------------------------------------------------------- |
+| `RMSTEST_39_cleanseeds`  | 11(a) mechanism   | **Normal (200)**, any player count    | 5    | components → centroids → favoured/disfavoured split **profiled by edge distance** |
+| `RMSTEST_35_elevnolands` | fixed-width guard | **Ludicrous (480)**, any player count | 6    | as the Normal runs; compare _where_ the ratio recovers                            |
 
 Eleven generations, neither needing team setup.
 
 **`RMSTEST_39` exists because every elevation number this project holds — 18:1,
-7.16:1, 29:1 interior, 3.7:1 border — was measured from *grown tiles*, i.e. a
+7.16:1, 29:1 interior, 3.7:1 border — was measured from _grown tiles_, i.e. a
 seed distribution seen through growth blur and heavy merging (RMSTEST_35
 declared 500 clumps and returned ~283 components). Setting the per-clump share
 to the measured 6-tile floor with only 100 clumps makes each component one seed,
@@ -362,15 +362,15 @@ absolute tile budget makes coverage ~0.9% at that size.
 Batch 6 overturned Sec.6.2's model rather than refining it, and this trio
 measures the replacement.
 
-| Script | per-clump budget | coverage | Generate at | Runs |
-|---|---|---|---|---|
-| `RMSTEST_40a_growth6` | 6 tiles (the floor) | 0.75% | Normal (200) | 3 |
-| `RMSTEST_40b_growth25` | 25 tiles | 3.1% | Normal (200) | 3 |
-| `RMSTEST_40c_growth100` | 100 tiles | 12.5% | Normal (200) | 3 |
+| Script                  | per-clump budget    | coverage | Generate at  | Runs |
+| ----------------------- | ------------------- | -------- | ------------ | ---- |
+| `RMSTEST_40a_growth6`   | 6 tiles (the floor) | 0.75%    | Normal (200) | 3    |
+| `RMSTEST_40b_growth25`  | 25 tiles            | 3.1%     | Normal (200) | 3    |
+| `RMSTEST_40c_growth100` | 100 tiles           | 12.5%    | Normal (200) | 3    |
 
 Nine generations, no team setup, one map size throughout.
 
-**What batch 6 established.** `RMSTEST_39` read the elevation *seed* distribution
+**What batch 6 established.** `RMSTEST_39` read the elevation _seed_ distribution
 cleanly for the first time (100 clumps at the 6-tile floor, ~94 components from a
 declared 100). The seed bias is **1.31:1**, not the 18:1/29:1 taken from grown
 tiles, and it is **flat against distance from the map edge** — so the "border
@@ -402,7 +402,7 @@ does not, components are merging and only `40a`/`40b` can be read.
 absolute or proportional. **It resolved nothing.** The tile budget is absolute,
 so coverage fell to 0.90%, leaving ~11 disfavoured tiles per edge bin and ratios
 scattering 1.4–17.0 with no trend. The run sheet had predicted the 0.9% coverage
-and then compensated with *more runs* — but runs fix variance, not a signal
+and then compensated with _more runs_ — but runs fix variance, not a signal
 that thin. **The fix was to scale the tile budget with the map so coverage stays
 constant**, isolating the size variable. Any future cross-size comparison must
 hold coverage fixed, not the declared budget.
@@ -412,23 +412,23 @@ hold coverage fixed, not the declared budget.
 Third hypothesis for item 11. Two have already died, so the design is built
 around matched pairs rather than a bare sweep.
 
-| Script | clumps | budget | coverage | Generate at | Runs |
-|---|---|---|---|---|---|
-| `RMSTEST_41a_density250` | 250 | 6/clump | 3.75% | Normal (200) | 4 |
-| `RMSTEST_41b_density500` | 500 | 6/clump | 7.5% | Normal (200) | 4 |
-| `RMSTEST_41c_density1000` | 1000 | 6/clump | 15% | Normal (200) | 4 |
+| Script                    | clumps | budget  | coverage | Generate at  | Runs |
+| ------------------------- | ------ | ------- | -------- | ------------ | ---- |
+| `RMSTEST_41a_density250`  | 250    | 6/clump | 3.75%    | Normal (200) | 4    |
+| `RMSTEST_41b_density500`  | 500    | 6/clump | 7.5%     | Normal (200) | 4    |
+| `RMSTEST_41c_density1000` | 1000   | 6/clump | 15%      | Normal (200) | 4    |
 
 Twelve generations, one map size, no team setup.
 
-**What died in batch 7.** *Growth is biased* — refuted: `40a`/`40b` hold the
+**What died in batch 7.** _Growth is biased_ — refuted: `40a`/`40b` hold the
 clump-size ratio flat at 1.16 and 1.13 across a 4× change in per-clump budget.
-*The ratio tracks coverage* — refuted: `40b` at 3.29% gives 1.41 while
+_The ratio tracks coverage_ — refuted: `40b` at 3.29% gives 1.41 while
 `RMSTEST_39` at 1.55% gives 1.88 and `RMSTEST_35` at 6.21% gives 7.16. Not
 monotone.
 
 **What survives is clump density** — the only single variable ordering all six
 runs held so far (0.00125 → ~1.4–2.1, 0.0025 → 1.88, 0.0125 → 7.16, 0.0347 →
-12.86). The last two are the *same script* at two map sizes, so the "map size"
+12.86). The last two are the _same script_ at two map sizes, so the "map size"
 effect chased in items 11(b) and 32 was clump density all along. There is no
 mechanism for it; this trio is the test.
 
@@ -460,11 +460,11 @@ behaviour only — the preview needs layout plausibility, not engine parity.
 Both came out of the same session and neither needs a sitting of its own. Nine
 generations total.
 
-| Script | Question | Generate at | Runs |
-|---|---|---|---|
-| `RMSTEST_42_ignoreterrain_frameless` | Does `ignore_terrain_restrictions` with no frame attribute VOID the command, or just do nothing? | Normal (200) | 1 |
-| `RMSTEST_43a_accumulate_within_command` | Does `accumulate_connections` accumulate between PAIRS of one command, or only between commands? | Normal (200) | 3 |
-| `RMSTEST_43b_accumulate_control` | The control for 43a. Identical map, no flag | Normal (200) | 3 |
+| Script                                  | Question                                                                                         | Generate at  | Runs |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------ | ---- |
+| `RMSTEST_42_ignoreterrain_frameless`    | Does `ignore_terrain_restrictions` with no frame attribute VOID the command, or just do nothing? | Normal (200) | 1    |
+| `RMSTEST_43a_accumulate_within_command` | Does `accumulate_connections` accumulate between PAIRS of one command, or only between commands? | Normal (200) | 3    |
+| `RMSTEST_43b_accumulate_control`        | The control for 43a. Identical map, no flag                                                      | Normal (200) | 3    |
 
 **42 is the one that can invalidate shipped code**, and it is a single run
 because every outcome is a presence/absence at a factor of two. `objects.ts` and
@@ -493,28 +493,28 @@ the same size as the spread is the null result, not a weak positive.
 
 **Results, in one place. Seven answers, three of which overturn shipped code.**
 
-| Script | Result | Effect |
-|---|---|---|
-| `42` | flag is INERT frameless; command untouched | **BUG-007** — revert `objects.ts` gate, re-scope RMS0315 |
-| `45a/b/c` | 0 / 66 / 36 cliff units — a per-draw yield | **BUG-008** — `cliffs.ts` gates the section, should roll |
-| `51` | 16 of 19 origins in the "forbidden" region | **BUG-009** — the cross is border-relative, `lands.ts` |
-| `46` | unstated spills 24%, loose spills 0% | default is not loose; spec stands |
-| `48` | 200 road tiles, one path | zone-grouping confirmed |
-| `49` | snow 8,113 of 40,000 ≈ the layer | conjunction confirmed |
-| `50` | both halves peak at 7 | no stacking; coverage idiom confirmed |
-| `47` | 90 / 110 / 90 | modulo truncates toward zero |
-| `44` | 3 discriminating lobbies, all snow | **ascending-selected REFUTED**; `teamModel.ts` stands |
-| `59` | snow on a player-3 branch | lowest-player-number **CONFIRMED**, not just unrefuted |
-| `57` / `60` | literal `69` snow, `ATTR_PROJECTILE_ARC` blank | the collision is **any WORD valued 69**; set is exactly 2 (BUG-012) |
-| `58` | beach 146/138/127 on untouched grass | per-command beach step is **grid-wide**; item 28 closes, no change |
-| `43a/43b` | 456 road tiles in all 8, zero spread | **no within-command accumulation** — unblocks the S5 batching fix |
-| `52` | beach at shallow/water: 3 tiles of hundreds | **BUG-010** — seaward half of the depth rule is wrong |
-| `53` | buried land yields zero tiles, 4 runs | model (a); Sec.6.1 stands, item 27's open half settled |
-| `54a/b` | both fully snow | arity is THREE; `showType` omissible, closes BUG-003 row 10 |
-| `55` | trees + stone | `percent_chance rnd(a,b)` evaluates normally |
-| `56a/b` | blank vs snow | a constant in a comment **OPENS** a nested comment |
-| `46a/b/c` | unstated spills 0%, tight 22–35%, loose 0% | **BUG-011** — the default is **loose**; `objects.ts` has tight |
-| `44` re-runs | team numbers unrecorded; 5p gave the third outcome | **still open**, see its header |
+| Script       | Result                                             | Effect                                                              |
+| ------------ | -------------------------------------------------- | ------------------------------------------------------------------- |
+| `42`         | flag is INERT frameless; command untouched         | **BUG-007** — revert `objects.ts` gate, re-scope RMS0315            |
+| `45a/b/c`    | 0 / 66 / 36 cliff units — a per-draw yield         | **BUG-008** — `cliffs.ts` gates the section, should roll            |
+| `51`         | 16 of 19 origins in the "forbidden" region         | **BUG-009** — the cross is border-relative, `lands.ts`              |
+| `46`         | unstated spills 24%, loose spills 0%               | default is not loose; spec stands                                   |
+| `48`         | 200 road tiles, one path                           | zone-grouping confirmed                                             |
+| `49`         | snow 8,113 of 40,000 ≈ the layer                   | conjunction confirmed                                               |
+| `50`         | both halves peak at 7                              | no stacking; coverage idiom confirmed                               |
+| `47`         | 90 / 110 / 90                                      | modulo truncates toward zero                                        |
+| `44`         | 3 discriminating lobbies, all snow                 | **ascending-selected REFUTED**; `teamModel.ts` stands               |
+| `59`         | snow on a player-3 branch                          | lowest-player-number **CONFIRMED**, not just unrefuted              |
+| `57` / `60`  | literal `69` snow, `ATTR_PROJECTILE_ARC` blank     | the collision is **any WORD valued 69**; set is exactly 2 (BUG-012) |
+| `58`         | beach 146/138/127 on untouched grass               | per-command beach step is **grid-wide**; item 28 closes, no change  |
+| `43a/43b`    | 456 road tiles in all 8, zero spread               | **no within-command accumulation** — unblocks the S5 batching fix   |
+| `52`         | beach at shallow/water: 3 tiles of hundreds        | **BUG-010** — seaward half of the depth rule is wrong               |
+| `53`         | buried land yields zero tiles, 4 runs              | model (a); Sec.6.1 stands, item 27's open half settled              |
+| `54a/b`      | both fully snow                                    | arity is THREE; `showType` omissible, closes BUG-003 row 10         |
+| `55`         | trees + stone                                      | `percent_chance rnd(a,b)` evaluates normally                        |
+| `56a/b`      | blank vs snow                                      | a constant in a comment **OPENS** a nested comment                  |
+| `46a/b/c`    | unstated spills 0%, tight 22–35%, loose 0%         | **BUG-011** — the default is **loose**; `objects.ts` has tight      |
+| `44` re-runs | team numbers unrecorded; 5p gave the third outcome | **still open**, see its header                                      |
 
 **One null was void and one was real, and they looked the same.** `44` was run
 with the habitual odd-versus-even lobby, which both candidate models predict
@@ -541,37 +541,37 @@ name a run and had no script, plus three questions that live in other documents
 and were never tracked on this sheet at all. **Forty-nine generations**, of
 which twenty are one trivial map.
 
-| Script | Settles | Generate at | Runs | Reads with |
-|---|---|---|---|---|
-| `RMSTEST_44_teamnumbering` | item 17(a) | **Tiny, 4 players, teams set**, then **5 players, teams set** | 1 each config | default histogram |
-| `RMSTEST_45a_cliffminlen2` | item 17(b) | Normal, any players | 2 | `--clusters` |
-| `RMSTEST_45b_cliffminlen3` | item 17(b) control | Normal, any players | 2 | `--clusters` |
-| `RMSTEST_45c_cliffminlen24` | item 17(b) | Normal, any players | 2 | `--clusters` |
-| `RMSTEST_46_groupdefault` | item 17(c) | Normal, any players | 3 | `--patches SNOW`, `--clusters` |
-| `RMSTEST_47_negmodulo` | item 19 | Normal, any players | 1 | default histogram |
-| `RMSTEST_48_samelandzones` | item 21 | **Normal, 1 player** | 3 | `--patches ROAD` |
-| `RMSTEST_49_baselayer` | item 24 | Normal, any players | 2 | `--patches SNOW`, `--patches DESERT` |
-| `RMSTEST_50_elevstack` | item 25 | Normal, any players | 2 | `--rows ELEVATION --bands 20`, `--patches` per half |
-| `RMSTEST_51_crossborders` | item 26 | Normal, any players | **20** | `--patches SNOW` centroid, plotted |
-| `RMSTEST_52_shallowsbeach` | item 29 | Normal, any players | 2 | `--patches BEACH`/`SHALLOW`/`GRASS` |
-| `RMSTEST_53_overwrittenorigin` | item 30, bears on 27 | Normal, any players | 3 | `--patches SNOW`, `--patches DIRT` |
-| `RMSTEST_54a_showtype` | known-issues BUG-003's last row | Normal, any players | 1 | look at the map |
-| `RMSTEST_54b_showtype_control` | 54a's control | Normal, any players | 1 | look at the map |
-| `RMSTEST_55_percentrnd` | parser-design Sec.13 item 4 | Normal, any players | 3 | default histogram |
-| `RMSTEST_56a_commentbomb` | parser-design Sec.13 item 7 | Normal, any players | 1 | look at the map |
-| `RMSTEST_56b_commentbomb_control` | 56a's control | Normal, any players | 1 | look at the map |
+| Script                            | Settles                         | Generate at                                                   | Runs          | Reads with                                          |
+| --------------------------------- | ------------------------------- | ------------------------------------------------------------- | ------------- | --------------------------------------------------- |
+| `RMSTEST_44_teamnumbering`        | item 17(a)                      | **Tiny, 4 players, teams set**, then **5 players, teams set** | 1 each config | default histogram                                   |
+| `RMSTEST_45a_cliffminlen2`        | item 17(b)                      | Normal, any players                                           | 2             | `--clusters`                                        |
+| `RMSTEST_45b_cliffminlen3`        | item 17(b) control              | Normal, any players                                           | 2             | `--clusters`                                        |
+| `RMSTEST_45c_cliffminlen24`       | item 17(b)                      | Normal, any players                                           | 2             | `--clusters`                                        |
+| `RMSTEST_46_groupdefault`         | item 17(c)                      | Normal, any players                                           | 3             | `--patches SNOW`, `--clusters`                      |
+| `RMSTEST_47_negmodulo`            | item 19                         | Normal, any players                                           | 1             | default histogram                                   |
+| `RMSTEST_48_samelandzones`        | item 21                         | **Normal, 1 player**                                          | 3             | `--patches ROAD`                                    |
+| `RMSTEST_49_baselayer`            | item 24                         | Normal, any players                                           | 2             | `--patches SNOW`, `--patches DESERT`                |
+| `RMSTEST_50_elevstack`            | item 25                         | Normal, any players                                           | 2             | `--rows ELEVATION --bands 20`, `--patches` per half |
+| `RMSTEST_51_crossborders`         | item 26                         | Normal, any players                                           | **20**        | `--patches SNOW` centroid, plotted                  |
+| `RMSTEST_52_shallowsbeach`        | item 29                         | Normal, any players                                           | 2             | `--patches BEACH`/`SHALLOW`/`GRASS`                 |
+| `RMSTEST_53_overwrittenorigin`    | item 30, bears on 27            | Normal, any players                                           | 3             | `--patches SNOW`, `--patches DIRT`                  |
+| `RMSTEST_54a_showtype`            | known-issues BUG-003's last row | Normal, any players                                           | 1             | look at the map                                     |
+| `RMSTEST_54b_showtype_control`    | 54a's control                   | Normal, any players                                           | 1             | look at the map                                     |
+| `RMSTEST_55_percentrnd`           | parser-design Sec.13 item 4     | Normal, any players                                           | 3             | default histogram                                   |
+| `RMSTEST_56a_commentbomb`         | parser-design Sec.13 item 7     | Normal, any players                                           | 1             | look at the map                                     |
+| `RMSTEST_56b_commentbomb_control` | 56a's control                   | Normal, any players                                           | 1             | look at the map                                     |
 
 ### Batch 11 (RUN AND READ, 2026-08-11) — what was left after batch 10
 
 All run. **Sec.15 now has no open engine question**; items 18, 20 and 22 remain
 and none of them needs the game.
 
-| Script | Result |
-|---|---|
+| Script                      | Result                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `RMSTEST_44` + `RMSTEST_59` | item 17(a) closed — canonical team numbering is by **lowest player number**, refuted and then confirmed |
-| `RMSTEST_46a/b/c` | item 17(c) closed — the default grouping mode is **loose** (BUG-011) |
-| `RMSTEST_58` | item 28 closed — the per-command beach step is **grid-wide**, no change |
-| `RMSTEST_57` | the comment collision is **words only**; a bare `69` does nothing |
+| `RMSTEST_46a/b/c`           | item 17(c) closed — the default grouping mode is **loose** (BUG-011)                                    |
+| `RMSTEST_58`                | item 28 closed — the per-command beach step is **grid-wide**, no change                                 |
+| `RMSTEST_57`                | the comment collision is **words only**; a bare `69` does nothing                                       |
 
 **One run is still worth having and it is not blocking**, if anyone touches the
 teams UI: does `PLAYERn` follow the lobby SLOT or the player COLOUR? Set the
@@ -605,11 +605,11 @@ to recur.
 
 ### Batch 12 (2026-08-12) — one id, and it did not come back as expected
 
-| Script | Feeds | Size | Runs | Read with |
-|---|---|---|---|---|
-| `RMSTEST_61_commandalias` | `docs/known-issues.md` BUG-005 piece 2, CREATION_PLAN A.2 | Normal, any players | 1 | default histogram | **RUN 2026-08-12** |
-| `RMSTEST_62_commandalias_swap` | 61's confound | Normal, any players | 1 | default histogram | **RUN 2026-08-12** |
-| `RMSTEST_63_unknownblockmerge` | whether an unknown command's block merges into the previous one | Normal, any players | 1 | default histogram + land POSITION | **RUN AND READ 2026-08-30** |
+| Script                         | Feeds                                                           | Size                | Runs | Read with                         |
+| ------------------------------ | --------------------------------------------------------------- | ------------------- | ---- | --------------------------------- |
+| `RMSTEST_61_commandalias`      | `docs/known-issues.md` BUG-005 piece 2, CREATION_PLAN A.2       | Normal, any players | 1    | default histogram                 | **RUN 2026-08-12**          |
+| `RMSTEST_62_commandalias_swap` | 61's confound                                                   | Normal, any players | 1    | default histogram                 | **RUN 2026-08-12**          |
+| `RMSTEST_63_unknownblockmerge` | whether an unknown command's block merges into the previous one | Normal, any players | 1    | default histogram + land POSITION | **RUN AND READ 2026-08-30** |
 
 **Answer: 32 is `create_land`.** 61 came back `DIRT 6063, DESERT 6233, no SNOW`,
 which reads as "33 is create_land and 32 is inert" — and 62, the same file with
@@ -679,12 +679,12 @@ a block-opening unknown command by name.
 
 ### Batch 13 (2026-08-29) — the modulo operator, both halves of it
 
-| Script | Feeds | Size | Runs | Read with | Status |
-|---|---|---|---|---|---|
-| `RMSTEST_64_modzero_and_cast` | `docs/known-issues.md` BUG-022, parser-design Sec.2.2, `mathEval.ts` `mod()`, land-placement-design Sec.5.4 | Normal (200), any players | 1 | default histogram | **RUN AND READ 2026-08-30** |
+| Script                        | Feeds                                                                                                       | Size                      | Runs | Read with         | Status                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------- | ---- | ----------------- | --------------------------- |
+| `RMSTEST_64_modzero_and_cast` | `docs/known-issues.md` BUG-022, parser-design Sec.2.2, `mathEval.ts` `mod()`, land-placement-design Sec.5.4 | Normal (200), any players | 1    | default histogram | **RUN AND READ 2026-08-30** |
 
 **Two unmeasured claims share one operator, and on 2026-08-29 both changed at
-once.** `x % 0` has two *sourced* readings that contradict each other — the
+once.** `x % 0` has two _sourced_ readings that contradict each other — the
 guide's main math text ("Modulo 0 also gives 0") against a Summer 2025 Update
 note at guide line 4550 ("the left operand truncated toward zero") — and the
 repo has now implemented each of them in turn without ever observing either. And
@@ -745,9 +745,9 @@ either model. The first draft of that script had exactly this bug.
 
 ### Batch 14 (2026-08-30, RUN AND READ 2026-09-02) — the forest auto-spawn table
 
-| Script | Feeds | Size | Runs | Read with | Status |
-|---|---|---|---|---|---|
-| `RMSTEST_65_forestmix_and_density` | preview-design Sec.15 item (c), the status-bar forest-wood plan | Normal (200), **2 players** | 2 | default histograms (objects AND terrains) | **RUN AND READ 2026-09-02** |
+| Script                             | Feeds                                                           | Size                        | Runs | Read with                                 | Status                      |
+| ---------------------------------- | --------------------------------------------------------------- | --------------------------- | ---- | ----------------------------------------- | --------------------------- |
+| `RMSTEST_65_forestmix_and_density` | preview-design Sec.15 item (c), the status-bar forest-wood plan | Normal (200), **2 players** | 2    | default histograms (objects AND terrains) | **RUN AND READ 2026-09-02** |
 
 **Both questions answered, decisively, on two runs.** Arm 1 (SOUTH_AMERICAN_FOREST's six-slot mix): measured 35.07%/9.83%/16.10%/16.47%/16.72%/5.81% of the terrain's tile count against Model A's (sequential first-hit down the slot list) predicted 35.0/9.8/16.6/16.2/16.8/5.6 — TREE_GREEN_OAK (16.7% measured) and DLC_AFRICANBUSH (5.8%) are the discriminators the header named, and both rule out Model D (predicted 0% for each) and Model C (predicted 25.3%/33.7%) on their own; Model B (100% AFRICANBUSH, nothing else) was already dead on arrival. Reproduced on run 2 (34.35/9.87/16.73/16.02/17.27/5.76). Arm 2 (`terrain_unit_density` is per-mille): DLC_BAOBABTREE / DLC_BAOBABFOREST tiles measured 24.98% and 25.59% across the two runs against the documented 25%, confirming the schema's `density` field is correctly normalised 0-1 from a per-mille dat value. **Neither arm changed any code** — `computeForestWood`'s per-species selection assumption (Sec.15 item 23(c), already shipped) is confirmed rather than merely inferred. A separate, tangential finding surfaced while re-reading `computeForestWood` alongside this result — its wood-per-tile AGGREGATION formula sums every slot's density unconditionally rather than cascading them, which is a different question from the one this script answers and is tracked as its own follow-up rather than folded in here.
 
@@ -759,12 +759,12 @@ Four scripts, one per open `docs/known-issues.md` entry as of the write-up
 variance except RMSTEST_66's contested-boundary pairs), and readable in one
 generation apiece except where noted.
 
-| Script | Settles | Generate at | Runs | Reads with | Result |
-|---|---|---|---|---|---|
-| `RMSTEST_66_otherzoneavoidance` | BUG-016's `other_zone_avoidance_distance` half | Normal (200), any players | 3 (4 exports exist; all four agree) | `--bbox` per terrain (6 calls), `--patches` per terrain as a cross-check | ~~**The positive control OVERLAPS instead of holding a gap** — different-zone lands at matched radius 6 measured -3/-10/-5 tiles across three runs... `other_zone_avoidance_distance` does not restrict growth at all; `lands.ts`'s `violatesZoneAvoidance` check is **removed**.~~ **WRONG, corrected 2026-09-03 — see Batch 17.** The `--bbox` read (`min_x(right) − max_x(left)` over each land's FULL bounding box) cannot tell "these two patches overlap" from "these two patches each reach far in some direction, at different y-values" — growth is non-convex. Re-read with the TRUE tile-to-tile minimum distance: the control pair never touches, sitting 5-7 tiles apart across all four runs (zero 8-connected contact tiles in every one), matching the modelled ~6-tile separation. The asymmetric pair (radius 12 vs 2), same correction, sits 3-7 tiles apart across four runs — three of four exactly at the smaller radius + 1 — confirming "smaller wins", not "unreadable". `violatesZoneAvoidance` is **restored**. |
-| `RMSTEST_67_tempmindistance` | BUG-019 | Normal (200), 8 players, plain FFA, no lobby needed | 1 | default histogram | **The attribute is a no-op.** STONE (test, 30 tiles from the pinned origin, `temp_min_distance_to_players 45`) placed its full count 20/20, same as the unrestricted GOLD control; the matched `min_distance_to_players 45` control correctly placed 0 at 30 tiles and 20 at 60. `language.json` gains a `nonFunctional: true` entry, same shape as `min_distance`. |
-| `RMSTEST_68_nestedstartrandom` | BUG-020 | Normal (200), any players | 1 | default histogram | **The suspected corruption is REFUTED.** All seven markers read exactly as correct nesting predicts — outer branch 0 (STONE) and inner branch 0 (OLIVE_TREE) both absent, everything else present. Nested `start_random` resolves precisely as lexically written for this two-level case. RMS0213's message now states the measured consequence instead of only the prohibition. |
-| `RMSTEST_69_defineinnumericslot` | BUG-021 | Normal (200), any players | 1 | default histogram | **The symbol-table half was already correct** (first-definition-wins, GOLD read 7 unchanged after `#define`) — **the real defect was one layer downstream**: `numAttr` across four stage files could not tell "argument absent" from "argument present, known symbol, no value" and used the same fallback for both, predicting STONE (bare `#define`, no `#const`) would place ~1 object where it measured 0. Fixed by checking the arg node's presence rather than only its resolved value. |
+| Script                           | Settles                                        | Generate at                                         | Runs                                | Reads with                                                               | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------- | ---------------------------------------------- | --------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RMSTEST_66_otherzoneavoidance`  | BUG-016's `other_zone_avoidance_distance` half | Normal (200), any players                           | 3 (4 exports exist; all four agree) | `--bbox` per terrain (6 calls), `--patches` per terrain as a cross-check | ~~**The positive control OVERLAPS instead of holding a gap** — different-zone lands at matched radius 6 measured -3/-10/-5 tiles across three runs... `other_zone_avoidance_distance` does not restrict growth at all; `lands.ts`'s `violatesZoneAvoidance` check is **removed**.~~ **WRONG, corrected 2026-09-03 — see Batch 17.** The `--bbox` read (`min_x(right) − max_x(left)` over each land's FULL bounding box) cannot tell "these two patches overlap" from "these two patches each reach far in some direction, at different y-values" — growth is non-convex. Re-read with the TRUE tile-to-tile minimum distance: the control pair never touches, sitting 5-7 tiles apart across all four runs (zero 8-connected contact tiles in every one), matching the modelled ~6-tile separation. The asymmetric pair (radius 12 vs 2), same correction, sits 3-7 tiles apart across four runs — three of four exactly at the smaller radius + 1 — confirming "smaller wins", not "unreadable". `violatesZoneAvoidance` is **restored**. |
+| `RMSTEST_67_tempmindistance`     | BUG-019                                        | Normal (200), 8 players, plain FFA, no lobby needed | 1                                   | default histogram                                                        | **The attribute is a no-op.** STONE (test, 30 tiles from the pinned origin, `temp_min_distance_to_players 45`) placed its full count 20/20, same as the unrestricted GOLD control; the matched `min_distance_to_players 45` control correctly placed 0 at 30 tiles and 20 at 60. `language.json` gains a `nonFunctional: true` entry, same shape as `min_distance`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `RMSTEST_68_nestedstartrandom`   | BUG-020                                        | Normal (200), any players                           | 1                                   | default histogram                                                        | **The suspected corruption is REFUTED.** All seven markers read exactly as correct nesting predicts — outer branch 0 (STONE) and inner branch 0 (OLIVE_TREE) both absent, everything else present. Nested `start_random` resolves precisely as lexically written for this two-level case. RMS0213's message now states the measured consequence instead of only the prohibition.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `RMSTEST_69_defineinnumericslot` | BUG-021                                        | Normal (200), any players                           | 1                                   | default histogram                                                        | **The symbol-table half was already correct** (first-definition-wins, GOLD read 7 unchanged after `#define`) — **the real defect was one layer downstream**: `numAttr` across four stage files could not tell "argument absent" from "argument present, known symbol, no value" and used the same fallback for both, predicting STONE (bare `#define`, no `#const`) would place ~1 object where it measured 0. Fixed by checking the arg node's presence rather than only its resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 Full corpus (`npm test`, 109 files / 2609 tests) green after all four fixes — no tracked or local map currently exercises any of the four narrow shapes closely enough to move a pinned figure.
 
@@ -784,7 +784,7 @@ Venn's combined `spacing_to_other_terrain_types` +
 origins, which is the overlap/intersection BUG-016 asks for — but Venn's own
 `min_distance_to_players` uses are all frame-referenced
 (`set_place_for_every_player`), where per-frame-origin-only checking is the
-*correct* behaviour (one placement per player, each scoped to that player),
+_correct_ behaviour (one placement per player, each scoped to that player),
 not the suspected bug. So `other_zone_avoidance_distance` — genuinely
 unmeasured against the engine directly, everywhere else it appears is either
 guide-sourced or an origin-time-only reading from RMSTEST_25/51 — is the one
@@ -800,7 +800,7 @@ this file; none of them requires the others; run in any order.
 `terrain_unit_density` table (read 2026-08-29) answers item (c) outright for
 23 of the 24 wood-bearing terrains. What it does not state is how the engine
 chooses when a terrain lists several trees, and that gap can only change a
-number where a terrain mixes trees of *different* wood values. Of the seven
+number where a terrain mixes trees of _different_ wood values. Of the seven
 multi-slot terrains, six draw only 100-wood units — 20, 88, 89, 106, plus
 19 and 21 whose extra slots sit at density 0 — so every candidate model
 returns exactly 100 wood/tile for them. `SOUTH_AMERICAN_FOREST` is the sole
@@ -834,9 +834,9 @@ avoid above a script rather than as a fourth data point.
 
 ## Batch 16 (written 2026-09-02, RUN AND READ the same day) — the connection-generation beach question, settled
 
-| Script | Settles | Generate at | Runs | Reads with | Result |
-|---|---|---|---|---|---|
-| `RMSTEST_70_connectionbeach` | item 31, `index.ts`'s "DELIBERATELY no beach pass here" comment | Normal (200), 2 players | 3 | `--patches DIRT`, `--patches BEACH`, `--patches GRASS` | **YES, a pass runs after S5.** |
+| Script                       | Settles                                                         | Generate at             | Runs | Reads with                                             | Result                         |
+| ---------------------------- | --------------------------------------------------------------- | ----------------------- | ---- | ------------------------------------------------------ | ------------------------------ |
+| `RMSTEST_70_connectionbeach` | item 31, `index.ts`'s "DELIBERATELY no beach pass here" comment | Normal (200), 2 players | 3    | `--patches DIRT`, `--patches BEACH`, `--patches GRASS` | **YES, a pass runs after S5.** |
 
 Found while looking into why `AD4 - Pag - v1.2.rms` shows land bordering water with no beach between. Pag's `<CONNECTION_GENERATION>` section carves DIRT causeways through water with `replace_terrain`, and the shipped generator had never run a beach pass after S5 by design — `preview-design.md` Sec.6.4 already measured the cost (873 unbeached tiles on Pag) but the open question itself had drifted onto item 28's text, which closed on a narrower, already-answered question (the per-command step's own scope, not this one). Item 31 was the new number this batch settled; `RMSTEST_70` is its script.
 
@@ -848,13 +848,13 @@ Found while looking into why `AD4 - Pag - v1.2.rms` shows land bordering water w
 
 Batch 15's `RMSTEST_66` reading of the growth-time half of this attribute was wrong, and this batch is the correction — four scripts, one of them (`RMSTEST_66` itself) re-read rather than re-run.
 
-| Script | Settles | Generate at | Runs | Reads with | Result |
-|---|---|---|---|---|---|
-| `RMSTEST_66` (re-read) | growth-time model, corrected | (as Batch 15) | (existing 4 exports) | TRUE tile-to-tile minimum distance between the two patches, not `--bbox` extent | Control pair (DESERT/DIRT2, matched radius 6): **5-7 tiles apart, zero 8-connected contact, in all four runs.** Asymmetric pair (DIRT3 radius 12 vs GRASS3 radius 2): **3-7 tiles apart, zero contact, three of four runs at exactly 2+1=3** — confirms "smaller wins". Same-zone control (SNOW/DIRT, both zone 30): **freely interleaves, 63-87 tiles of real contact** — the exemption is real and the contrast with the different-zone pairs is exactly what the model predicts. |
-| `RMSTEST_71_zoneavoidance_origin` | origin-time spacing (superseded by `RMSTEST_74` below) | Normal (200), any players | 3 | `--bbox`/`--patches` per terrain | Read via patch-to-WALL distance, several lands landed adjacent (distance 1) to the WALL — but the WALL never declares `other_zone_avoidance_distance` itself and grew hugely with no self-restraint, swallowing space its neighbours' ORIGINS had correctly kept clear of. Re-read against each land's centroid vs. the WALL's actual origin point (50,100): **all 18 origins (6 lands × 3 runs) sit well past the declared 15-tile threshold.** Origin spacing was never refuted; the instrument (patch-to-patch distance) was measuring the wrong thing. Superseded by `RMSTEST_74`, which removes the wall entirely and gets real statistical power. |
-| `RMSTEST_72_other_zone_avoidance_distance_take_2` | growth-time, vs. a static (non-declaring) wall | Normal (200), any players | 4 | `--bbox`/`--patches` per terrain, exact tile-to-tile distance | Three of four petals (SNOW, WATER, SAVANNAH) had `land_position` placed CLOSER to the static ICE wall than their own declared avoidance value, so "zero growth-ward movement" was consistent with any threshold ≥ the origin's own starting gap and settled nothing about the specific number. Superseded by `RMSTEST_73`, which fixes this by starting every grower far enough away. |
-| `RMSTEST_73_other_zone_avoidance_distance_take_3` | growth-time, calibration | Normal (200), any players | 3 | exact tile-to-tile distance vs. two rows of static ICE blocks | **Exact and reproducible: measured gap = declared value + 1**, for DIRT (declared 6 → 7), WATER (declared 10 → 11, checked against both ICE rows independently), and SAVANNAH (declared 12 → 13) — bit-for-bit identical across all three runs. This is the calibration that closes the question `RMSTEST_66`/`72` left open. |
-| `RMSTEST_74_originspacing_powered` | origin-time spacing, properly powered | Normal (200), any players | 3 | `--patches SNOW`, then pairwise Chebyshev distance among all reported centroids | 20 same-map competing origins (no wall — the guide states origin-spacing applies "regardless of zone"), each declaring `other_zone_avoidance_distance 15`. All three runs: **20 of 20 patches, no merges.** Of 190 pairwise checks per run, only 1-2 came in under 15, and only by 1-2 tiles (consistent with the origin check's own Euclidean metric differing slightly from the Chebyshev distance used to read patches, plus each patch's own small footprint around its origin) — far fewer and smaller than the ~4.6 chance collisions per run the null hypothesis predicts at this sample size. |
+| Script                                            | Settles                                                | Generate at               | Runs                 | Reads with                                                                      | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------ | ------------------------- | -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RMSTEST_66` (re-read)                            | growth-time model, corrected                           | (as Batch 15)             | (existing 4 exports) | TRUE tile-to-tile minimum distance between the two patches, not `--bbox` extent | Control pair (DESERT/DIRT2, matched radius 6): **5-7 tiles apart, zero 8-connected contact, in all four runs.** Asymmetric pair (DIRT3 radius 12 vs GRASS3 radius 2): **3-7 tiles apart, zero contact, three of four runs at exactly 2+1=3** — confirms "smaller wins". Same-zone control (SNOW/DIRT, both zone 30): **freely interleaves, 63-87 tiles of real contact** — the exemption is real and the contrast with the different-zone pairs is exactly what the model predicts.                                                                                                                                                                     |
+| `RMSTEST_71_zoneavoidance_origin`                 | origin-time spacing (superseded by `RMSTEST_74` below) | Normal (200), any players | 3                    | `--bbox`/`--patches` per terrain                                                | Read via patch-to-WALL distance, several lands landed adjacent (distance 1) to the WALL — but the WALL never declares `other_zone_avoidance_distance` itself and grew hugely with no self-restraint, swallowing space its neighbours' ORIGINS had correctly kept clear of. Re-read against each land's centroid vs. the WALL's actual origin point (50,100): **all 18 origins (6 lands × 3 runs) sit well past the declared 15-tile threshold.** Origin spacing was never refuted; the instrument (patch-to-patch distance) was measuring the wrong thing. Superseded by `RMSTEST_74`, which removes the wall entirely and gets real statistical power. |
+| `RMSTEST_72_other_zone_avoidance_distance_take_2` | growth-time, vs. a static (non-declaring) wall         | Normal (200), any players | 4                    | `--bbox`/`--patches` per terrain, exact tile-to-tile distance                   | Three of four petals (SNOW, WATER, SAVANNAH) had `land_position` placed CLOSER to the static ICE wall than their own declared avoidance value, so "zero growth-ward movement" was consistent with any threshold ≥ the origin's own starting gap and settled nothing about the specific number. Superseded by `RMSTEST_73`, which fixes this by starting every grower far enough away.                                                                                                                                                                                                                                                                   |
+| `RMSTEST_73_other_zone_avoidance_distance_take_3` | growth-time, calibration                               | Normal (200), any players | 3                    | exact tile-to-tile distance vs. two rows of static ICE blocks                   | **Exact and reproducible: measured gap = declared value + 1**, for DIRT (declared 6 → 7), WATER (declared 10 → 11, checked against both ICE rows independently), and SAVANNAH (declared 12 → 13) — bit-for-bit identical across all three runs. This is the calibration that closes the question `RMSTEST_66`/`72` left open.                                                                                                                                                                                                                                                                                                                           |
+| `RMSTEST_74_originspacing_powered`                | origin-time spacing, properly powered                  | Normal (200), any players | 3                    | `--patches SNOW`, then pairwise Chebyshev distance among all reported centroids | 20 same-map competing origins (no wall — the guide states origin-spacing applies "regardless of zone"), each declaring `other_zone_avoidance_distance 15`. All three runs: **20 of 20 patches, no merges.** Of 190 pairwise checks per run, only 1-2 came in under 15, and only by 1-2 tiles (consistent with the origin check's own Euclidean metric differing slightly from the Chebyshev distance used to read patches, plus each patch's own small footprint around its origin) — far fewer and smaller than the ~4.6 chance collisions per run the null hypothesis predicts at this sample size.                                                   |
 
 **The root cause, in one sentence: a bounding-box extent cannot tell "two patches overlap" from "two patches each reach far in some direction, at different places".** `RMSTEST_66`'s original read used `gap = min_x(right land) − max_x(left land)` across each land's WHOLE bounding box. Growth is a randomised frontier process, so DESERT can bulge rightward at one y-value while DIRT2 bulges leftward at a completely different y-value — the two rectangles cross on paper with the actual shapes never coming near each other. The fix, used throughout this batch, is the true minimum tile-to-tile distance between the two patches (or an explicit 4-/8-connected contact count), computed directly from the scenario's terrain grid rather than from any bbox summary. This is now a CLAUDE.md Hard Rule.
 
@@ -869,5 +869,5 @@ in this directory and tracked.
 
 **Keep the rule that failed here: a script is tracked here, not only where it is
 run.** The headers are most of what a run leaves behind, since they record what
-was predicted *before* the generation and what would have refuted it. An export
+was predicted _before_ the generation and what would have refuted it. An export
 without its script is a number without a question.

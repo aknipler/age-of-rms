@@ -85,7 +85,14 @@ export function hashString(value: string): number {
     hash ^= value.charCodeAt(i);
     // The FNV prime, 16777619, via shifts because a plain `*` overflows the
     // 53-bit float mantissa and stops being exact.
-    hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0;
+    hash =
+      (hash +
+        (hash << 1) +
+        (hash << 4) +
+        (hash << 7) +
+        (hash << 8) +
+        (hash << 24)) >>>
+      0;
   }
   return hash >>> 0;
 }
@@ -103,9 +110,13 @@ export function hashColor(name: string): Rgb {
   return hslToRgb(hue, saturation, lightness);
 }
 
-export function hslToRgb(hue: number, saturation: number, lightness: number): Rgb {
+export function hslToRgb(
+  hue: number,
+  saturation: number,
+  lightness: number,
+): Rgb {
   const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
-  const sector = ((hue % 360) + 360) % 360 / 60;
+  const sector = (((hue % 360) + 360) % 360) / 60;
   const second = chroma * (1 - Math.abs((sector % 2) - 1));
   const match = lightness - chroma / 2;
   let r = 0;
@@ -157,8 +168,12 @@ export interface TerrainConstant {
  * they are exactly the ones a script reaches by bare id, so "terrain 57" as a
  * legend row would be unreadable precisely where it is most needed.
  */
-export function terrainDisplayName(entry: Pick<TerrainConstant, "rmsConstant" | "descriptiveName" | "constId">): string {
-  return entry.rmsConstant ?? entry.descriptiveName ?? `terrain ${entry.constId}`;
+export function terrainDisplayName(
+  entry: Pick<TerrainConstant, "rmsConstant" | "descriptiveName" | "constId">,
+): string {
+  return (
+    entry.rmsConstant ?? entry.descriptiveName ?? `terrain ${entry.constId}`
+  );
 }
 
 export interface TerrainLegendEntry {
@@ -190,7 +205,11 @@ function toRgb(channels: readonly number[] | undefined): Rgb | null {
   // this guard is for the runtime path, where the JSON is cast rather than
   // validated (the same double-cast situation as parserWorker.ts).
   if (!channels || channels.length < 3) return null;
-  return { r: clampByte(channels[0]), g: clampByte(channels[1]), b: clampByte(channels[2]) };
+  return {
+    r: clampByte(channels[0]),
+    g: clampByte(channels[1]),
+    b: clampByte(channels[2]),
+  };
 }
 
 export function createTerrainPalette(
@@ -218,13 +237,22 @@ export function createTerrainPalette(
    * find out that is what happened. Today both fields are populated for all
    * 15 known terrains, so this path only runs on future data gaps.
    */
-  function resolve(terrainId: number): { color: Rgb; source: TerrainColorSource } {
+  function resolve(terrainId: number): {
+    color: Rgb;
+    source: TerrainColorSource;
+  } {
     const entry = entryById.get(terrainId);
-    if (entry === undefined) return { color: UNKNOWN_TERRAIN_COLOR, source: "unknown" };
-    const own = toRgb(mode === "game" ? entry.previewColor : entry.minimapColor);
+    if (entry === undefined)
+      return { color: UNKNOWN_TERRAIN_COLOR, source: "unknown" };
+    const own = toRgb(
+      mode === "game" ? entry.previewColor : entry.minimapColor,
+    );
     if (own) return { color: own, source: mode };
-    const other = toRgb(mode === "game" ? entry.minimapColor : entry.previewColor);
-    if (other) return { color: other, source: mode === "game" ? "minimap" : "game" };
+    const other = toRgb(
+      mode === "game" ? entry.minimapColor : entry.previewColor,
+    );
+    if (other)
+      return { color: other, source: mode === "game" ? "minimap" : "game" };
     return { color: hashColor(terrainDisplayName(entry)), source: "hashed" };
   }
 
@@ -281,8 +309,15 @@ const SLOPE_CAP = 3;
  * (x, y-1). Choosing a diagonal light would mean sampling two neighbours for
  * no visible gain at these tile sizes.
  */
-export function shadeForElevation(color: Rgb, elevation: number, lightNeighbour: number): Rgb {
-  const slope = Math.max(-SLOPE_CAP, Math.min(SLOPE_CAP, elevation - lightNeighbour));
+export function shadeForElevation(
+  color: Rgb,
+  elevation: number,
+  lightNeighbour: number,
+): Rgb {
+  const slope = Math.max(
+    -SLOPE_CAP,
+    Math.min(SLOPE_CAP, elevation - lightNeighbour),
+  );
   const factor = 1 + elevation * HEIGHT_GAIN + slope * SLOPE_GAIN;
   return scale(color, factor);
 }
@@ -400,7 +435,9 @@ export const PLAYER_COLORS: readonly Rgb[] = [
 ];
 
 export function playerColor(player: number): Rgb {
-  return PLAYER_COLORS[(player - 1) % PLAYER_COLORS.length] ?? UNKNOWN_CATEGORY_COLOR;
+  return (
+    PLAYER_COLORS[(player - 1) % PLAYER_COLORS.length] ?? UNKNOWN_CATEGORY_COLOR
+  );
 }
 
 export function cssColor(color: Rgb): string {

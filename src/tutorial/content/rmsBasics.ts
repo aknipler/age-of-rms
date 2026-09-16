@@ -14,14 +14,14 @@ import {
 } from "../scriptChecks";
 import { appendObjectBlocks } from "../autoFill";
 
-
 export const RMS_DISCORD_URL: string = "https://discord.gg/BDvG8s5Hwt";
 
 export const rmsBasicsTutorial: TutorialDefinition = {
   id: "rms-basics",
   kind: "rms",
   title: "Your first random map",
-  blurb: "Build a small map called Golden Hill from scratch, in about ten minutes.",
+  blurb:
+    "Build a small map called Golden Hill from scratch, in about ten minutes.",
   steps: [
     {
       id: "start-new-file",
@@ -85,7 +85,8 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       ],
       completion: {
         kind: "check",
-        test: (ctx) => hasCommand(ctx.parseResult, "PLAYER_SETUP", "random_placement"),
+        test: (ctx) =>
+          hasCommand(ctx.parseResult, "PLAYER_SETUP", "random_placement"),
       },
     },
     {
@@ -220,7 +221,12 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       completion: {
         kind: "check",
         test: (ctx) =>
-          hasCommandWhere(ctx.parseResult, "ELEVATION_GENERATION", "create_elevation", (args) => args[0] === "4") &&
+          hasCommandWhere(
+            ctx.parseResult,
+            "ELEVATION_GENERATION",
+            "create_elevation",
+            (args) => args[0] === "4",
+          ) &&
           hasCommandWithAttributeWhere(
             ctx.parseResult,
             "ELEVATION_GENERATION",
@@ -261,10 +267,30 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       completion: {
         kind: "check",
         test: (ctx) =>
-          hasCommandWhere(ctx.parseResult, "CLIFF_GENERATION", "min_number_of_cliffs", (args) => args[0] === "3") &&
-          hasCommandWhere(ctx.parseResult, "CLIFF_GENERATION", "max_number_of_cliffs", (args) => args[0] === "6") &&
-          hasCommandWhere(ctx.parseResult, "CLIFF_GENERATION", "min_length_of_cliff", (args) => args[0] === "4") &&
-          hasCommandWhere(ctx.parseResult, "CLIFF_GENERATION", "max_length_of_cliff", (args) => args[0] === "8"),
+          hasCommandWhere(
+            ctx.parseResult,
+            "CLIFF_GENERATION",
+            "min_number_of_cliffs",
+            (args) => args[0] === "3",
+          ) &&
+          hasCommandWhere(
+            ctx.parseResult,
+            "CLIFF_GENERATION",
+            "max_number_of_cliffs",
+            (args) => args[0] === "6",
+          ) &&
+          hasCommandWhere(
+            ctx.parseResult,
+            "CLIFF_GENERATION",
+            "min_length_of_cliff",
+            (args) => args[0] === "4",
+          ) &&
+          hasCommandWhere(
+            ctx.parseResult,
+            "CLIFF_GENERATION",
+            "max_length_of_cliff",
+            (args) => args[0] === "8",
+          ),
       },
     },
     {
@@ -333,20 +359,28 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       completion: {
         kind: "check",
         test: (ctx) =>
-          hasCommand(ctx.parseResult, "CONNECTION_GENERATION", "create_connect_to_nonplayer_land") &&
-          hasCommandWithAttributeWhere(
+          hasCommand(
             ctx.parseResult,
             "CONNECTION_GENERATION",
             "create_connect_to_nonplayer_land",
-            "replace_terrain",
-            (args) => args[0]?.toUpperCase() === "GRASS" && args[1]?.toUpperCase() === "ROAD",
           ) &&
           hasCommandWithAttributeWhere(
             ctx.parseResult,
             "CONNECTION_GENERATION",
             "create_connect_to_nonplayer_land",
             "replace_terrain",
-            (args) => args[0]?.toUpperCase() === "DIRT" && args[1]?.toUpperCase() === "ROAD",
+            (args) =>
+              args[0]?.toUpperCase() === "GRASS" &&
+              args[1]?.toUpperCase() === "ROAD",
+          ) &&
+          hasCommandWithAttributeWhere(
+            ctx.parseResult,
+            "CONNECTION_GENERATION",
+            "create_connect_to_nonplayer_land",
+            "replace_terrain",
+            (args) =>
+              args[0]?.toUpperCase() === "DIRT" &&
+              args[1]?.toUpperCase() === "ROAD",
           ),
       },
     },
@@ -373,14 +407,22 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       completion: {
         kind: "check",
         test: (ctx) =>
-          hasObjectWith(ctx.parseResult, "TOWN_CENTER", "set_place_for_every_player") &&
+          hasObjectWith(
+            ctx.parseResult,
+            "TOWN_CENTER",
+            "set_place_for_every_player",
+          ) &&
           hasObjectWithAttributeWhere(
             ctx.parseResult,
             "TOWN_CENTER",
             "max_distance_to_players",
             (args) => args[0] === "0",
           ) &&
-          hasObjectWith(ctx.parseResult, "VILLAGER", "set_place_for_every_player") &&
+          hasObjectWith(
+            ctx.parseResult,
+            "VILLAGER",
+            "set_place_for_every_player",
+          ) &&
           hasObjectWithAttributeWhere(
             ctx.parseResult,
             "VILLAGER",
@@ -399,7 +441,11 @@ export const rmsBasicsTutorial: TutorialDefinition = {
             "max_distance_to_players",
             (args) => args[0] === "9",
           ) &&
-          hasObjectWith(ctx.parseResult, "SCOUT", "set_place_for_every_player") &&
+          hasObjectWith(
+            ctx.parseResult,
+            "SCOUT",
+            "set_place_for_every_player",
+          ) &&
           hasObjectWithAttributeWhere(
             ctx.parseResult,
             "SCOUT",
@@ -482,8 +528,11 @@ export const rmsBasicsTutorial: TutorialDefinition = {
       completion: {
         kind: "check",
         test: (ctx) =>
-          hasObjectWith(ctx.parseResult, "FORAGE_BUSH", "set_gaia_object_only") &&
-          hasObjectWith(ctx.parseResult, "STONE", "set_gaia_object_only"),
+          hasObjectWith(
+            ctx.parseResult,
+            "FORAGE_BUSH",
+            "set_gaia_object_only",
+          ) && hasObjectWith(ctx.parseResult, "STONE", "set_gaia_object_only"),
       },
       autoFill: {
         label: "Add them for me",

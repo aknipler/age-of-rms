@@ -9,7 +9,12 @@ import {
 import type { Diagnostic } from "../../parser/types";
 
 function diag(severity: Diagnostic["severity"]): Diagnostic {
-  return { severity, code: "RMS0000", message: "test", span: { start: 0, end: 1 } };
+  return {
+    severity,
+    code: "RMS0000",
+    message: "test",
+    span: { start: 0, end: 1 },
+  };
 }
 
 describe("formatCompact", () => {
@@ -99,16 +104,29 @@ describe("summariseProblems", () => {
 
   it("reports the WORST severity present, not the most common", () => {
     expect(summariseProblems([diag("info"), diag("info")]).level).toBe("info");
-    expect(summariseProblems([diag("info"), diag("warning")]).level).toBe("warning");
-    expect(summariseProblems([diag("info"), diag("warning"), diag("error")]).level).toBe("error");
+    expect(summariseProblems([diag("info"), diag("warning")]).level).toBe(
+      "warning",
+    );
+    expect(
+      summariseProblems([diag("info"), diag("warning"), diag("error")]).level,
+    ).toBe("error");
     // One error under a pile of info still colours the icon red.
     expect(
-      summariseProblems([diag("info"), diag("info"), diag("info"), diag("error")]).level,
+      summariseProblems([
+        diag("info"),
+        diag("info"),
+        diag("info"),
+        diag("error"),
+      ]).level,
     ).toBe("error");
   });
 
   it("counts every diagnostic, whatever its severity", () => {
-    const summary = summariseProblems([diag("error"), diag("warning"), diag("info")]);
+    const summary = summariseProblems([
+      diag("error"),
+      diag("warning"),
+      diag("info"),
+    ]);
     expect(summary.errors).toBe(1);
     expect(summary.warnings).toBe(1);
     expect(summary.infos).toBe(1);
@@ -116,13 +134,21 @@ describe("summariseProblems", () => {
 
   it("pluralises errors and warnings but not info", () => {
     expect(summariseProblems([diag("error")]).label).toBe("1 error");
-    expect(summariseProblems([diag("error"), diag("error")]).label).toBe("2 errors");
+    expect(summariseProblems([diag("error"), diag("error")]).label).toBe(
+      "2 errors",
+    );
     expect(summariseProblems([diag("warning")]).label).toBe("1 warning");
-    expect(summariseProblems([diag("info"), diag("info")]).label).toBe("2 info");
+    expect(summariseProblems([diag("info"), diag("info")]).label).toBe(
+      "2 info",
+    );
   });
 
   it("orders the breakdown worst-first", () => {
-    const summary = summariseProblems([diag("info"), diag("error"), diag("warning")]);
+    const summary = summariseProblems([
+      diag("info"),
+      diag("error"),
+      diag("warning"),
+    ]);
     expect(summary.label).toBe("1 error, 1 warning, 1 info");
   });
 });

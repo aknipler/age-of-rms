@@ -5,7 +5,10 @@
 // the external transport (JSON cannot carry the `component` a panel arm
 // needs, so the restriction is structural, not a validator check).
 
-import { TOOLS_API_VERSION, type ToolManifest } from "../../../../../tools-api/index";
+import {
+  TOOLS_API_VERSION,
+  type ToolManifest,
+} from "../../../../../tools-api/index";
 
 export const landPlacementManifest: ToolManifest = {
   id: "land-placement",

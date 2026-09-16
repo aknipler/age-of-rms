@@ -24,13 +24,18 @@ describe("clampPreviewFraction", () => {
     // silently dropped, a pane collapsing to its content size for no
     // apparent reason.
     expect(clampPreviewFraction(Number.NaN)).toBe(DEFAULT_PREVIEW_FRACTION);
-    expect(clampPreviewFraction(Number.POSITIVE_INFINITY)).toBe(DEFAULT_PREVIEW_FRACTION);
+    expect(clampPreviewFraction(Number.POSITIVE_INFINITY)).toBe(
+      DEFAULT_PREVIEW_FRACTION,
+    );
   });
 });
 
 describe("resolvePreviewReferenceDrag", () => {
   it("tracks the pointer between the bounds", () => {
-    expect(resolvePreviewReferenceDrag(0.5)).toEqual({ collapsedSide: null, fraction: 0.5 });
+    expect(resolvePreviewReferenceDrag(0.5)).toEqual({
+      collapsedSide: null,
+      fraction: 0.5,
+    });
   });
 
   it("sticks at the minimum inside the collapse margin, on either end", () => {
@@ -45,19 +50,35 @@ describe("resolvePreviewReferenceDrag", () => {
   });
 
   it("collapses the preview once the drag passes the margin toward the top", () => {
-    expect(resolvePreviewReferenceDrag(MIN_PANE_FRACTION - COLLAPSE_DRAG_MARGIN - 0.001)).toEqual({
+    expect(
+      resolvePreviewReferenceDrag(
+        MIN_PANE_FRACTION - COLLAPSE_DRAG_MARGIN - 0.001,
+      ),
+    ).toEqual({
       collapsedSide: "preview",
     });
-    expect(resolvePreviewReferenceDrag(0)).toEqual({ collapsedSide: "preview" });
-    expect(resolvePreviewReferenceDrag(-5)).toEqual({ collapsedSide: "preview" });
+    expect(resolvePreviewReferenceDrag(0)).toEqual({
+      collapsedSide: "preview",
+    });
+    expect(resolvePreviewReferenceDrag(-5)).toEqual({
+      collapsedSide: "preview",
+    });
   });
 
   it("collapses the reference table once the drag passes the margin toward the bottom", () => {
-    expect(resolvePreviewReferenceDrag(1 - MIN_PANE_FRACTION + COLLAPSE_DRAG_MARGIN + 0.001)).toEqual({
+    expect(
+      resolvePreviewReferenceDrag(
+        1 - MIN_PANE_FRACTION + COLLAPSE_DRAG_MARGIN + 0.001,
+      ),
+    ).toEqual({
       collapsedSide: "reference",
     });
-    expect(resolvePreviewReferenceDrag(1)).toEqual({ collapsedSide: "reference" });
-    expect(resolvePreviewReferenceDrag(5)).toEqual({ collapsedSide: "reference" });
+    expect(resolvePreviewReferenceDrag(1)).toEqual({
+      collapsedSide: "reference",
+    });
+    expect(resolvePreviewReferenceDrag(5)).toEqual({
+      collapsedSide: "reference",
+    });
   });
 
   it("falls back to the default on non-finite input rather than collapsing either side", () => {

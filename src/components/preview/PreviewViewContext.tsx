@@ -8,7 +8,10 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { DEFAULT_TERRAIN_COLOR_MODE, type TerrainColorMode } from "../../preview/render/palette";
+import {
+  DEFAULT_TERRAIN_COLOR_MODE,
+  type TerrainColorMode,
+} from "../../preview/render/palette";
 import type { TilePoint, Viewport } from "../../preview/render/projection";
 
 /**
@@ -103,16 +106,26 @@ const PreviewViewCtx = createContext<PreviewViewValue | null>(null);
 
 export function PreviewViewProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<PreviewViewMode>("final");
-  const toggleView = useCallback(() => setView((v) => (v === "current" ? "final" : "current")), []);
+  const toggleView = useCallback(
+    () => setView((v) => (v === "current" ? "final" : "current")),
+    [],
+  );
   const [seed, setSeed] = useState(1);
   // Math.random is fine HERE. Sec.8's ban on it covers
   // src/preview/generator/, where reproducibility is the whole contract.
   // Picking which seed to show a user is not part of that contract;
   // consuming it deterministically is.
-  const reseed = useCallback(() => setSeed(Math.floor(Math.random() * 1_000_000)), []);
-  const [colorMode, setColorMode] = useState<TerrainColorMode>(DEFAULT_TERRAIN_COLOR_MODE);
+  const reseed = useCallback(
+    () => setSeed(Math.floor(Math.random() * 1_000_000)),
+    [],
+  );
+  const [colorMode, setColorMode] = useState<TerrainColorMode>(
+    DEFAULT_TERRAIN_COLOR_MODE,
+  );
   const [selectedTile, setSelectedTile] = useState<TilePoint | null>(null);
-  const [hiddenObjects, setHiddenObjects] = useState<ReadonlySet<string>>(() => new Set<string>());
+  const [hiddenObjects, setHiddenObjects] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
 
   // The updater form rather than reading `selectedTile` from the closure:
   // this callback is memoised with an empty dependency list, so a captured
@@ -120,7 +133,9 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
   // stale closure, and the classic way a toggle stops toggling after one use.
   const toggleSelectedTile = useCallback((tile: TilePoint) => {
     setSelectedTile((current) =>
-      current !== null && current.x === tile.x && current.y === tile.y ? null : tile,
+      current !== null && current.x === tile.x && current.y === tile.y
+        ? null
+        : tile,
     );
   }, []);
 
@@ -139,7 +154,10 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const showAllObjects = useCallback(() => setHiddenObjects(new Set<string>()), []);
+  const showAllObjects = useCallback(
+    () => setHiddenObjects(new Set<string>()),
+    [],
+  );
 
   // Memoised so the object identity only changes when a value does. Without
   // it every App re-render (every keystroke, since the parse result lives up
@@ -177,12 +195,15 @@ export function PreviewViewProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <PreviewViewCtx.Provider value={value}>{children}</PreviewViewCtx.Provider>;
+  return (
+    <PreviewViewCtx.Provider value={value}>{children}</PreviewViewCtx.Provider>
+  );
 }
 
 export function usePreviewView(): PreviewViewValue {
   const ctx = useContext(PreviewViewCtx);
-  if (!ctx) throw new Error("usePreviewView must be used within PreviewViewProvider");
+  if (!ctx)
+    throw new Error("usePreviewView must be used within PreviewViewProvider");
   return ctx;
 }
 
@@ -229,11 +250,18 @@ export function PreviewViewportProvider({ children }: { children: ReactNode }) {
     setUserFramed,
   };
 
-  return <PreviewViewportCtx.Provider value={value}>{children}</PreviewViewportCtx.Provider>;
+  return (
+    <PreviewViewportCtx.Provider value={value}>
+      {children}
+    </PreviewViewportCtx.Provider>
+  );
 }
 
 export function usePreviewViewport(): PreviewViewportValue {
   const ctx = useContext(PreviewViewportCtx);
-  if (!ctx) throw new Error("usePreviewViewport must be used within PreviewViewportProvider");
+  if (!ctx)
+    throw new Error(
+      "usePreviewViewport must be used within PreviewViewportProvider",
+    );
   return ctx;
 }

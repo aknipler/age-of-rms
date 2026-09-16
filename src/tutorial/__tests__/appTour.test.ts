@@ -31,14 +31,17 @@ describe("app-tour — the one check step", () => {
 
   it("is false with nothing open and true once a file exists", () => {
     const step = stepById("open-a-file");
-    if (step.completion.kind !== "check") throw new Error('"open-a-file" is not a check step');
+    if (step.completion.kind !== "check")
+      throw new Error('"open-a-file" is not a check step');
     expect(step.completion.test(ctxFor(false))).toBe(false);
     expect(step.completion.test(ctxFor(true))).toBe(true);
   });
 
   it("every step after the gate is manual — a tour, not an exercise", () => {
     for (const step of appTourTutorial.steps.slice(1)) {
-      expect(step.completion.kind, `"${step.id}" should be manual`).toBe("manual");
+      expect(step.completion.kind, `"${step.id}" should be manual`).toBe(
+        "manual",
+      );
     }
   });
 });

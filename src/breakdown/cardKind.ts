@@ -3,7 +3,13 @@
 // and by a plain-Node coverage test (every Item from every corpus file
 // maps to exactly one card-kind, mirroring the parser's own coverage
 // gate spirit) without pulling in jsdom/React.
-import type { CommandNode, DirectiveNode, IfNode, Item, RandomNode } from "../parser/types";
+import type {
+  CommandNode,
+  DirectiveNode,
+  IfNode,
+  Item,
+  RandomNode,
+} from "../parser/types";
 
 export type CardKind =
   | "command" // CommandNode -> CommandCard
@@ -51,7 +57,14 @@ export function cardKindForItem(item: Item): CardKind {
  * something the UI has never offered would be a new capability in
  * disguise, not a shortcut for an existing one.
  */
-export function canDeleteItem(item: Item): item is CommandNode | DirectiveNode | IfNode | RandomNode {
+export function canDeleteItem(
+  item: Item,
+): item is CommandNode | DirectiveNode | IfNode | RandomNode {
   const kind = cardKindForItem(item);
-  return kind === "command" || kind === "directive" || kind === "conditional" || kind === "random";
+  return (
+    kind === "command" ||
+    kind === "directive" ||
+    kind === "conditional" ||
+    kind === "random"
+  );
 }

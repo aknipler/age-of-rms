@@ -6,7 +6,7 @@
 import { writeFileSync } from "node:fs";
 
 const SIZE = 3600; // 0.1 degree resolution — matches preview-design.md
-                    // Sec.8's "indexed by floor(3600*k/N)"
+// Sec.8's "indexed by floor(3600*k/N)"
 const SCALE = 10000; // fixed-point: value = round(sin(theta) * SCALE)
 
 const sin = new Array(SIZE);
@@ -55,4 +55,15 @@ ${chunk(cos, 20)}
 `;
 
 writeFileSync(process.argv[2], header);
-console.log("wrote", process.argv[2], "sin[0]=", sin[0], "cos[0]=", cos[0], "sin[900]=", sin[900], "cos[900]=", cos[900]);
+console.log(
+  "wrote",
+  process.argv[2],
+  "sin[0]=",
+  sin[0],
+  "cos[0]=",
+  cos[0],
+  "sin[900]=",
+  sin[900],
+  "cos[900]=",
+  cos[900],
+);

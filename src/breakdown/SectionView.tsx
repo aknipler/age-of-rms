@@ -35,7 +35,15 @@ interface SectionViewProps {
 // just stayed disabled and every disabled tab's tooltip claimed to be the
 // Header tab specifically, whichever tab it actually was.
 export function SectionView({ tab }: SectionViewProps) {
-  const { source, tokens, parseResult, applyEdit, requestFocus, selectedItem, clearSelection } = useBreakdownContext();
+  const {
+    source,
+    tokens,
+    parseResult,
+    applyEdit,
+    requestFocus,
+    selectedItem,
+    clearSelection,
+  } = useBreakdownContext();
   const [pickerOpen, setPickerOpen] = useState(false);
   const targetSection = tab.sections[tab.sections.length - 1];
   // Sec.3.10, the diagnostics ruler measures/queries against this exact
@@ -57,13 +65,15 @@ export function SectionView({ tab }: SectionViewProps) {
   // changed.
   const insertTarget = useMemo(() => {
     if (selectedItem) return { after: selectedItem };
-    if (targetSection) return { in: "section" as const, section: targetSection };
+    if (targetSection)
+      return { in: "section" as const, section: targetSection };
     if (tab.id === "header") return { in: "preamble" as const };
     // Canonical tab, no SectionNode in the file yet (sectionTabsModel.ts
     // always pushes all seven canonical tabs, present or not), every
     // unknown-section tab already has ≥1 SectionNode by construction, so
     // this branch is reached only by the canonical seven.
-    if (tab.isCanonicalOrHeader) return { in: "newSection" as const, name: tab.id };
+    if (tab.isCanonicalOrHeader)
+      return { in: "newSection" as const, name: tab.id };
     return null;
   }, [selectedItem, targetSection, tab.id, tab.isCanonicalOrHeader]);
 
@@ -129,7 +139,9 @@ export function SectionView({ tab }: SectionViewProps) {
               // joins) a `title` attribute, a native title tooltip and
               // this popup used to fire on the same hover and cover each
               // other.
-              text={insertTarget ? undefined : "Nothing to add a command to yet"}
+              text={
+                insertTarget ? undefined : "Nothing to add a command to yet"
+              }
               // Dismiss the instant the button is clicked, so the tip is
               // gone before CommandPicker renders below it, and stay
               // suppressed for as long as the picker is open, so hovering
@@ -150,7 +162,13 @@ export function SectionView({ tab }: SectionViewProps) {
                 + Add command
               </button>
             </HelpTip>
-            <HelpTip id="breakdown.addComment" text={insertTarget ? undefined : "Nothing to add a comment to yet"} dismissOnInteract>
+            <HelpTip
+              id="breakdown.addComment"
+              text={
+                insertTarget ? undefined : "Nothing to add a comment to yet"
+              }
+              dismissOnInteract
+            >
               <button
                 type="button"
                 className={styles.addButton}
@@ -163,7 +181,10 @@ export function SectionView({ tab }: SectionViewProps) {
                   // straight away and hands focus to it (CommentCard
                   // registers itself at the same offset addComment's
                   // caret points at, see computeEdit.ts's own comment).
-                  const result = applyEdit({ kind: "addComment", at: insertTarget });
+                  const result = applyEdit({
+                    kind: "addComment",
+                    at: insertTarget,
+                  });
                   if (result) requestFocus(result.caret);
                 }}
               >
@@ -177,10 +198,18 @@ export function SectionView({ tab }: SectionViewProps) {
               // sections[] holds only the seven canonical names), filtering by it
               // would always return zero results, so the Header tab shows every
               // command by default instead, same as an unknown-section tab.
-              defaultSection={tab.isCanonicalOrHeader && tab.id !== "header" ? tab.id : undefined}
+              defaultSection={
+                tab.isCanonicalOrHeader && tab.id !== "header"
+                  ? tab.id
+                  : undefined
+              }
               onClose={() => setPickerOpen(false)}
               onPick={(name) => {
-                const result = applyEdit({ kind: "addCommand", at: insertTarget, name });
+                const result = applyEdit({
+                  kind: "addCommand",
+                  at: insertTarget,
+                  name,
+                });
                 setPickerOpen(false);
                 if (result) requestFocus(result.caret);
               }}

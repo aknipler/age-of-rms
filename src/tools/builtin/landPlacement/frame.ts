@@ -59,7 +59,10 @@ export interface FrameResult {
  * children's, required, since a child's DEGREES/X/Y reference its parent's
  * own emitted names by `sym`).
  */
-export function buildFrame(placements: readonly Placement[], namer: NameAllocator): FrameResult {
+export function buildFrame(
+  placements: readonly Placement[],
+  namer: NameAllocator,
+): FrameResult {
   const childrenOf = new Map<string, Placement[]>();
   for (const p of placements) {
     const list = childrenOf.get(p.parent) ?? [];
@@ -71,9 +74,12 @@ export function buildFrame(placements: readonly Placement[], namer: NameAllocato
   const quantities = new Map<string, PlacementQuantity>();
 
   function visit(p: Placement): void {
-    const parentQ = p.parent === "center" ? undefined : quantities.get(p.parent);
+    const parentQ =
+      p.parent === "center" ? undefined : quantities.get(p.parent);
     if (p.parent !== "center" && parentQ === undefined) {
-      throw new Error(`buildFrame: placement ${p.id}'s parent ${p.parent} was not processed first`);
+      throw new Error(
+        `buildFrame: placement ${p.id}'s parent ${p.parent} was not processed first`,
+      );
     }
     const anchorX: Expr = parentQ === undefined ? num(50) : sym(parentQ.xName);
     const anchorY: Expr = parentQ === undefined ? num(50) : sym(parentQ.yName);
@@ -98,9 +104,14 @@ export function buildFrame(placements: readonly Placement[], namer: NameAllocato
       // `radial` child of a node with no DEGREES of its own (cartesian/
       // formula parent) falls back to the same plain-bearing rule for the
       // same reason, there is nothing to add `+ 180` to.
-      const inbound = parentQ?.degreesName === undefined ? undefined : sym(parentQ.degreesName);
+      const inbound =
+        parentQ?.degreesName === undefined
+          ? undefined
+          : sym(parentQ.degreesName);
       const degreesExpr: Expr =
-        p.frame === "absolute" || inbound === undefined ? p.offset.theta : bin("+", bin("+", inbound, num(180)), p.offset.theta);
+        p.frame === "absolute" || inbound === undefined
+          ? p.offset.theta
+          : bin("+", bin("+", inbound, num(180)), p.offset.theta);
 
       const degreesName = namer.allocate("DEGREES", p.label);
       cells.push({ name: degreesName, expr: degreesExpr });
@@ -109,10 +120,16 @@ export function buildFrame(placements: readonly Placement[], namer: NameAllocato
       cells.push(...trig.cells);
 
       const xName = namer.allocate("X", p.label);
-      cells.push({ name: xName, expr: bin("+", bin("*", p.offset.r, sym(trig.cosName)), anchorX) });
+      cells.push({
+        name: xName,
+        expr: bin("+", bin("*", p.offset.r, sym(trig.cosName)), anchorX),
+      });
 
       const yName = namer.allocate("Y", p.label);
-      cells.push({ name: yName, expr: bin("+", bin("*", p.offset.r, sym(trig.sinName)), anchorY) });
+      cells.push({
+        name: yName,
+        expr: bin("+", bin("*", p.offset.r, sym(trig.sinName)), anchorY),
+      });
 
       quantities.set(p.id, { degreesName, xName, yName });
     }

@@ -56,7 +56,12 @@ describe("RMS0201 corpus census (BUG-003)", () => {
           file: relative(REPO_ROOT, f).replace(/\\/g, "/"),
           line: line + 1,
           name,
-          text: src.slice(result.lineOffsets[line], result.lineOffsets[line + 1] ?? src.length).trim(),
+          text: src
+            .slice(
+              result.lineOffsets[line],
+              result.lineOffsets[line + 1] ?? src.length,
+            )
+            .trim(),
           severity: d.severity,
         };
         (f.endsWith(".rms2") ? rms2 : rms).push(hit);
@@ -72,7 +77,10 @@ describe("RMS0201 corpus census (BUG-003)", () => {
         lines.push(`  ${String(c).padStart(3)}  ${n}`);
       }
       lines.push("  --- sites ---");
-      for (const h of hits) lines.push(`  ${h.severity.padEnd(7)} ${h.file}:${h.line}  [${h.name}]  ${h.text.slice(0, 110)}`);
+      for (const h of hits)
+        lines.push(
+          `  ${h.severity.padEnd(7)} ${h.file}:${h.line}  [${h.name}]  ${h.text.slice(0, 110)}`,
+        );
     };
 
     report(".rms (the corpus BUG-003 quotes)", rms);

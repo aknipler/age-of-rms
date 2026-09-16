@@ -11,7 +11,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../parser/__tests__/testUtils";
 
-const uiHelp = JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "ui-help.json"), "utf8")) as {
+const uiHelp = JSON.parse(
+  readFileSync(join(REPO_ROOT, "reference", "data", "ui-help.json"), "utf8"),
+) as {
   entries: { id: string; text: string }[];
 };
 const ids = new Set(uiHelp.entries.map((e) => e.id));
@@ -29,14 +31,18 @@ describe("Advanced Tools help coverage", () => {
   });
 
   it("every HelpTip in the settings tab has one too", () => {
-    const used = helpTipIdsIn("src/components/settings/AdvancedToolsSettings.tsx");
+    const used = helpTipIdsIn(
+      "src/components/settings/AdvancedToolsSettings.tsx",
+    );
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
 
   // Slice-4b item 5: the Land Placement panel, new files, so the gate needs
   // their paths added or it silently covers nothing built this slice.
   it("every HelpTip in the Land Placement panel has a ui-help.json entry", () => {
-    const used = helpTipIdsIn("src/tools/builtin/landPlacement/panel/LandPlacementPanel.tsx");
+    const used = helpTipIdsIn(
+      "src/tools/builtin/landPlacement/panel/LandPlacementPanel.tsx",
+    );
     expect(used.length).toBeGreaterThan(0);
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
@@ -46,7 +52,9 @@ describe("Advanced Tools help coverage", () => {
   // exactly the gap this suite exists to close, so the new file is named
   // here rather than left to the next reader to notice.
   it("every HelpTip in the Land Placement explanation dialog has one too", () => {
-    const used = helpTipIdsIn("src/tools/builtin/landPlacement/panel/LandPlacementHelpDialog.tsx");
+    const used = helpTipIdsIn(
+      "src/tools/builtin/landPlacement/panel/LandPlacementHelpDialog.tsx",
+    );
     expect(used.length).toBeGreaterThan(0);
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
@@ -57,7 +65,10 @@ describe("Advanced Tools help coverage", () => {
   // it is named explicitly here, the same way the eight `tools.*` ids are
   // pinned below.
   it("carries the landPlacement.* ids threaded through OverlayCanvas as a prop rather than a literal HelpTip", () => {
-    expect(ids.has("landPlacement.canvas"), "missing ui-help entry landPlacement.canvas").toBe(true);
+    expect(
+      ids.has("landPlacement.canvas"),
+      "missing ui-help entry landPlacement.canvas",
+    ).toBe(true);
   });
 
   // The spec names these eight so the 5.1 session cannot skip them. Naming them
@@ -79,7 +90,9 @@ describe("Advanced Tools help coverage", () => {
   });
 
   it("has no empty help text", () => {
-    const empty = uiHelp.entries.filter((e) => e.text.trim().length === 0).map((e) => e.id);
+    const empty = uiHelp.entries
+      .filter((e) => e.text.trim().length === 0)
+      .map((e) => e.id);
     expect(empty).toEqual([]);
   });
 
@@ -87,7 +100,10 @@ describe("Advanced Tools help coverage", () => {
   // stale placeholder is the kind of thing that survives for months because
   // nothing reads it.
   it("the settings tab no longer claims the pane is unbuilt", () => {
-    const source = readFileSync(join(REPO_ROOT, "src/components/settings/AdvancedToolsSettings.tsx"), "utf8");
+    const source = readFileSync(
+      join(REPO_ROOT, "src/components/settings/AdvancedToolsSettings.tsx"),
+      "utf8",
+    );
     expect(source).not.toContain("hasn't been built yet");
     expect(source).not.toContain("SettingsPlaceholder");
   });

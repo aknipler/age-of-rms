@@ -45,9 +45,23 @@ import type {
   TileGrid,
 } from "./types";
 import type { CanonicalTeams } from "../../generationSettings/teamModel";
-import { createSubstream, nextFloat01, nextInt, sinAt, cosAt, type Rng } from "./rng";
+import {
+  createSubstream,
+  nextFloat01,
+  nextInt,
+  sinAt,
+  cosAt,
+  type Rng,
+} from "./rng";
 import { SINE_SCALE } from "./sineTable";
-import { borderBounds, isWaterTerrain, resolveTerrainId, tileIndex, WATER_NAME_PATTERN, type TerrainConstantForMasks } from "./grid";
+import {
+  borderBounds,
+  isWaterTerrain,
+  resolveTerrainId,
+  tileIndex,
+  WATER_NAME_PATTERN,
+  type TerrainConstantForMasks,
+} from "./grid";
 import { ok, fail, pushFailure } from "./placement";
 
 // ---------------------------------------------------------------------------
@@ -90,7 +104,12 @@ interface CrossRegion {
 }
 
 /** Built from the INCLUSIVE sampling rectangle, `[minX, maxX]`, so an unbordered map passes `0` and `dim - 1`. */
-function crossRegion(minX: number, maxX: number, minY: number, maxY: number): CrossRegion {
+function crossRegion(
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+): CrossRegion {
   const spanX = maxX - minX + 1;
   const spanY = maxY - minY + 1;
   return {
@@ -103,7 +122,10 @@ function crossRegion(minX: number, maxX: number, minY: number, maxY: number): Cr
 
 /** A candidate is in the cross unless it is outside the band on BOTH axes, i.e. in one of the four corners. */
 function insideCross(cross: CrossRegion, x: number, y: number): boolean {
-  return Math.abs(x - cross.centerX) <= cross.halfX || Math.abs(y - cross.centerY) <= cross.halfY;
+  return (
+    Math.abs(x - cross.centerX) <= cross.halfX ||
+    Math.abs(y - cross.centerY) <= cross.halfY
+  );
 }
 
 /** Sec.6.1: "K = 100 [tune] attempts" before falling back to map center. */
@@ -142,15 +164,25 @@ const DEFAULT_OTHER_ZONE_AVOIDANCE = 0;
 // repeatable, so index [0] is always the one that survived folding.
 // ---------------------------------------------------------------------------
 
-function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): InstantiatedValue {
-  const arg: InstantiatedArg | undefined = cmd.attributes.get(name)?.[0]?.args[argIndex];
+function argValue(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex = 0,
+): InstantiatedValue {
+  const arg: InstantiatedArg | undefined =
+    cmd.attributes.get(name)?.[0]?.args[argIndex];
   return arg?.value;
 }
 
 // BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
 // a known symbol (a #define with no #const) that resolves to JS `undefined`
 // — that reads as 0, measured. See objects.ts's own copy for the full note.
-function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
+function numAttr(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex: number,
+  fallback: number,
+): number {
   const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
   if (arg === undefined) return fallback;
   if (typeof arg.value === "number") return arg.value;
@@ -181,7 +213,10 @@ function resolveRingParams(cmd: InstantiatedCommand): RingParams {
       jitterDeg: DEFAULT_RING_JITTER_DEG,
     };
   }
-  const radiusPct = typeof circleRadius.args[0]?.value === "number" ? circleRadius.args[0].value : 0;
+  const radiusPct =
+    typeof circleRadius.args[0]?.value === "number"
+      ? circleRadius.args[0].value
+      : 0;
   if (radiusPct === 0) {
     // "0 disables circular positioning entirely... behaves EXACTLY as if the
     // attribute were absent" (guide:844, confirmed RMSTEST_2/5), including
@@ -195,15 +230,34 @@ function resolveRingParams(cmd: InstantiatedCommand): RingParams {
     };
   }
   if (radiusPct < 0) {
-    return { centerMode: "mapCenter", scattered: true, radiusPct: 0, variancePct: 0, jitterDeg: 0 };
+    return {
+      centerMode: "mapCenter",
+      scattered: true,
+      radiusPct: 0,
+      variancePct: 0,
+      jitterDeg: 0,
+    };
   }
   // Explicit positive circle_radius: NO angular jitter, "three corpus maps
   // write a bare circle_radius with no variance and mean a perfect circle."
-  const variancePct = typeof circleRadius.args[1]?.value === "number" ? circleRadius.args[1].value : 0;
-  return { centerMode: "mapCenter", scattered: false, radiusPct, variancePct, jitterDeg: 0 };
+  const variancePct =
+    typeof circleRadius.args[1]?.value === "number"
+      ? circleRadius.args[1].value
+      : 0;
+  return {
+    centerMode: "mapCenter",
+    scattered: false,
+    radiusPct,
+    variancePct,
+    jitterDeg: 0,
+  };
 }
 
-function ringCenter(cmd: InstantiatedCommand, params: RingParams, dim: number): { x: number; y: number } {
+function ringCenter(
+  cmd: InstantiatedCommand,
+  params: RingParams,
+  dim: number,
+): { x: number; y: number } {
   if (params.centerMode === "mapCenter") return { x: dim / 2, y: dim / 2 };
   const bounds = borderBounds(
     {
@@ -214,7 +268,10 @@ function ringCenter(cmd: InstantiatedCommand, params: RingParams, dim: number): 
     },
     dim,
   );
-  return { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 };
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  };
 }
 
 /** Angle in whole degrees -> a fixed-point unit vector via rng.ts's precomputed sine table (Sec.8: never Math.sin/cos). */
@@ -223,9 +280,16 @@ function angleUnit(deg: number): { cos: number; sin: number } {
   return { cos: cosAt(d, 360) / SINE_SCALE, sin: sinAt(d, 360) / SINE_SCALE };
 }
 
-function pointOnRing(center: { x: number; y: number }, radiusTiles: number, deg: number): { x: number; y: number } {
+function pointOnRing(
+  center: { x: number; y: number },
+  radiusTiles: number,
+  deg: number,
+): { x: number; y: number } {
   const { cos, sin } = angleUnit(deg);
-  return { x: Math.round(center.x + radiusTiles * cos), y: Math.round(center.y + radiusTiles * sin) };
+  return {
+    x: Math.round(center.x + radiusTiles * cos),
+    y: Math.round(center.y + radiusTiles * sin),
+  };
 }
 
 /**
@@ -235,17 +299,23 @@ function pointOnRing(center: { x: number; y: number }, radiusTiles: number, deg:
  * uniformly random angle. See the `SCATTERED_*` constants' comment for the
  * derivation.
  */
-function scatteredPoint(rng: Rng, center: { x: number; y: number }, dim: number): { x: number; y: number } {
+function scatteredPoint(
+  rng: Rng,
+  center: { x: number; y: number },
+  dim: number,
+): { x: number; y: number } {
   if (nextFloat01(rng) < SCATTERED_DISC_WEIGHT) {
     const r = (SCATTERED_DISC_RADIUS_PCT / 100) * dim;
     for (let attempt = 0; attempt < 20; attempt++) {
       const dx = (nextFloat01(rng) * 2 - 1) * r;
       const dy = (nextFloat01(rng) * 2 - 1) * r;
-      if (dx * dx + dy * dy <= r * r) return { x: Math.round(center.x + dx), y: Math.round(center.y + dy) };
+      if (dx * dx + dy * dy <= r * r)
+        return { x: Math.round(center.x + dx), y: Math.round(center.y + dy) };
     }
     return { x: Math.round(center.x), y: Math.round(center.y) }; // 20 rejections in a row: near enough to the center anyway
   }
-  const radiusTiles = nextFloat01(rng) * (SCATTERED_UNIFORM_MAX_RADIUS_PCT / 100) * dim;
+  const radiusTiles =
+    nextFloat01(rng) * (SCATTERED_UNIFORM_MAX_RADIUS_PCT / 100) * dim;
   const deg = nextInt(rng, 0, 359);
   return pointOnRing(center, radiusTiles, deg);
 }
@@ -283,7 +353,8 @@ function ringSlots(
 ): RingSlot[] {
   if (!groupedByTeam) {
     const slots: RingSlot[] = [];
-    for (let p = 1; p <= playerCount; p++) slots.push({ player: p, angleDeg: (360 * (p - 1)) / playerCount });
+    for (let p = 1; p <= playerCount; p++)
+      slots.push({ player: p, angleDeg: (360 * (p - 1)) / playerCount });
     return slots;
   }
 
@@ -306,7 +377,10 @@ function ringSlots(
   groups.sort((a, b) => a[0] - b[0]);
 
   const memberSpacingTiles = GROUP_MEMBER_SPACING_FACTOR * baseSize;
-  const spacingDeg = referenceRadiusTiles > 0 ? (memberSpacingTiles / referenceRadiusTiles) * (180 / Math.PI) : 0;
+  const spacingDeg =
+    referenceRadiusTiles > 0
+      ? (memberSpacingTiles / referenceRadiusTiles) * (180 / Math.PI)
+      : 0;
 
   const slots: RingSlot[] = [];
   const groupSlotDeg = 360 / groups.length;
@@ -351,7 +425,11 @@ function computeZone(
 // placed last will be the one visible" (guide).
 // ---------------------------------------------------------------------------
 
-function stampOrigin(grid: TileGrid, originIndex: number, origin: LandOrigin): void {
+function stampOrigin(
+  grid: TileGrid,
+  originIndex: number,
+  origin: LandOrigin,
+): void {
   const { dim } = grid;
   const r = origin.baseSize;
   const minX = Math.max(0, Math.floor(origin.x - r));
@@ -385,8 +463,14 @@ function neutralOrigin(
   const { dim } = grid;
   const landPositionAttr = cmd.attributes.get("land_position")?.[0];
   if (landPositionAttr) {
-    const px = typeof landPositionAttr.args[0]?.value === "number" ? landPositionAttr.args[0].value : 50;
-    const py = typeof landPositionAttr.args[1]?.value === "number" ? landPositionAttr.args[1].value : 50;
+    const px =
+      typeof landPositionAttr.args[0]?.value === "number"
+        ? landPositionAttr.args[0].value
+        : 50;
+    const py =
+      typeof landPositionAttr.args[1]?.value === "number"
+        ? landPositionAttr.args[1].value
+        : 50;
     // Sec.4: round, THEN clamp to [0, dim-1], the Michi.rms land_position 100 100 fix.
     const x = Math.max(0, Math.min(dim - 1, Math.round((px / 100) * dim)));
     const y = Math.max(0, Math.min(dim - 1, Math.round((py / 100) * dim)));
@@ -412,7 +496,8 @@ function neutralOrigin(
       commandSpan: cmd.span,
       stage: "S1",
       entity: "land",
-      detail: "The border settings leave no valid area to place this land's origin, so it was placed at the map center instead.",
+      detail:
+        "The border settings leave no valid area to place this land's origin, so it was placed at the map center instead.",
     });
   }
 
@@ -423,14 +508,25 @@ function neutralOrigin(
     cmd,
     "min_placement_distance",
     0,
-    numAttr(cmd, "other_zone_avoidance_distance", 0, DEFAULT_OTHER_ZONE_AVOIDANCE),
+    numAttr(
+      cmd,
+      "other_zone_avoidance_distance",
+      0,
+      DEFAULT_OTHER_ZONE_AVOIDANCE,
+    ),
   );
 
   for (let attempt = 0; attempt < ORIGIN_ATTEMPTS; attempt++) {
     const x = nextInt(rng, minX, maxX);
     const y = nextInt(rng, minY, maxY);
     if (generateMode !== 1 && !insideCross(cross, x, y)) continue; // corner of the border box, rejected
-    if (x < baseSize || x > dim - 1 - baseSize || y < baseSize || y > dim - 1 - baseSize) continue; // too close to the true map edge
+    if (
+      x < baseSize ||
+      x > dim - 1 - baseSize ||
+      y < baseSize ||
+      y > dim - 1 - baseSize
+    )
+      continue; // too close to the true map edge
     let tooClose = false;
     for (const prior of priorOrigins) {
       const dx = x - prior.x;
@@ -486,18 +582,39 @@ function commonFields(
   const terrainTypeValue = argValue(cmd, "terrain_type", 0);
   const baseElevationValue = argValue(cmd, "base_elevation", 0);
   const declaredLandIdValue = argValue(cmd, "land_id", 0);
-  const otherZoneAvoidance = numAttr(cmd, "other_zone_avoidance_distance", 0, DEFAULT_OTHER_ZONE_AVOIDANCE);
+  const otherZoneAvoidance = numAttr(
+    cmd,
+    "other_zone_avoidance_distance",
+    0,
+    DEFAULT_OTHER_ZONE_AVOIDANCE,
+  );
   return {
     baseSize: numAttr(cmd, "base_size", 0, DEFAULT_BASE_SIZE),
     circularBase: cmd.attributes.has("set_circular_base"),
-    terrainType: typeof terrainTypeValue === "string" || typeof terrainTypeValue === "number" ? terrainTypeValue : undefined,
+    terrainType:
+      typeof terrainTypeValue === "string" ||
+      typeof terrainTypeValue === "number"
+        ? terrainTypeValue
+        : undefined,
     terrainId: resolveTerrainId(constants, terrainTypeValue, symbols, aliases),
-    baseElevation: typeof baseElevationValue === "number" ? baseElevationValue : undefined,
+    baseElevation:
+      typeof baseElevationValue === "number" ? baseElevationValue : undefined,
     clumpingFactor: numAttr(cmd, "clumping_factor", 0, DEFAULT_CLUMPING_FACTOR),
-    borderFuzziness: numAttr(cmd, "border_fuzziness", 0, DEFAULT_BORDER_FUZZINESS),
+    borderFuzziness: numAttr(
+      cmd,
+      "border_fuzziness",
+      0,
+      DEFAULT_BORDER_FUZZINESS,
+    ),
     otherZoneAvoidanceDistance: otherZoneAvoidance,
-    minPlacementDistance: numAttr(cmd, "min_placement_distance", 0, otherZoneAvoidance),
-    declaredLandId: typeof declaredLandIdValue === "number" ? declaredLandIdValue : undefined,
+    minPlacementDistance: numAttr(
+      cmd,
+      "min_placement_distance",
+      0,
+      otherZoneAvoidance,
+    ),
+    declaredLandId:
+      typeof declaredLandIdValue === "number" ? declaredLandIdValue : undefined,
     borderBounds: borderBounds(
       {
         left: numAttr(cmd, "left_border", 0, 0),
@@ -517,9 +634,14 @@ function commonFields(
  * Sec.7.0 item 2, Sec.3.1 sums it and it is pure, `(cmd, dim,
  * perPlayerDivisor)`, so exporting costs nothing.
  */
-export function declaredTargetTiles(cmd: InstantiatedCommand, dim: number, perPlayerDivisor: number): number {
+export function declaredTargetTiles(
+  cmd: InstantiatedCommand,
+  dim: number,
+  perPlayerDivisor: number,
+): number {
   const explicitTiles = argValue(cmd, "number_of_tiles", 0);
-  if (typeof explicitTiles === "number") return explicitTiles / perPlayerDivisor;
+  if (typeof explicitTiles === "number")
+    return explicitTiles / perPlayerDivisor;
   const percent = numAttr(cmd, "land_percent", 0, 100); // default 100 (Sec.6.1)
   return ((percent / 100) * dim * dim) / perPlayerDivisor;
 }
@@ -568,25 +690,38 @@ function resolveAssignment(
 
     if (target === "AT_PLAYER" || target === "AT_COLOR") {
       const n = typeof number === "number" ? number : undefined;
-      const player = n !== undefined && n >= 1 && n <= playerCount ? n : undefined;
+      const player =
+        n !== undefined && n >= 1 && n <= playerCount ? n : undefined;
       return { player, colorNoted: target === "AT_COLOR", flagsNoted };
     }
     if (target === "AT_TEAM") {
       const n = typeof number === "number" ? number : undefined;
-      if (n === undefined) return { player: undefined, colorNoted: false, flagsNoted };
+      if (n === undefined)
+        return { player: undefined, colorNoted: false, flagsNoted };
       const candidates: number[] = [];
       for (let p = 1; p <= playerCount; p++) {
         if (assignedPlayers.has(p)) continue;
         const team = teams.canonical[p - 1] ?? 0;
         // guide:1002-1003: n>0 -> that team; 0 -> un-teamed; negative
         // (except -10) -> NOT team |n|; -10 -> any player.
-        const matches = n === -10 ? true : n === 0 ? team === 0 : n > 0 ? team === n : team !== -n;
+        const matches =
+          n === -10
+            ? true
+            : n === 0
+              ? team === 0
+              : n > 0
+                ? team === n
+                : team !== -n;
         if (matches) candidates.push(p);
       }
-      if (candidates.length === 0) return { player: undefined, colorNoted: false, flagsNoted };
+      if (candidates.length === 0)
+        return { player: undefined, colorNoted: false, flagsNoted };
       const modeNum = typeof mode === "number" ? mode : -1;
       // candidates is already built in ascending player order, so [0] IS lobby order.
-      const player = modeNum === 0 ? candidates[nextInt(rng, 0, candidates.length - 1)] : candidates[0];
+      const player =
+        modeNum === 0
+          ? candidates[nextInt(rng, 0, candidates.length - 1)]
+          : candidates[0];
       return { player, colorNoted: false, flagsNoted };
     }
     return { player: undefined, colorNoted: false, flagsNoted }; // unrecognized AssignTarget word
@@ -595,7 +730,8 @@ function resolveAssignment(
   const assignToPlayer = cmd.attributes.get("assign_to_player")?.[0];
   if (assignToPlayer) {
     const n = assignToPlayer.args[0]?.value;
-    const player = typeof n === "number" && n >= 1 && n <= playerCount ? n : undefined;
+    const player =
+      typeof n === "number" && n >= 1 && n <= playerCount ? n : undefined;
     return { player, colorNoted: false, flagsNoted: false };
   }
 
@@ -629,14 +765,34 @@ function combinedRingSlots(
   referenceRadiusTiles: number,
   baseSize: number,
 ): CombinedRingSlot[] {
-  const base = playerCount > 0 ? ringSlots(playerCount, groupedByTeam, teams, referenceRadiusTiles, baseSize) : [];
+  const base =
+    playerCount > 0
+      ? ringSlots(
+          playerCount,
+          groupedByTeam,
+          teams,
+          referenceRadiusTiles,
+          baseSize,
+        )
+      : [];
 
   if (groupedByTeam) {
     const implicit: CombinedRingSlot[] = [];
     for (const cmd of playerLandsCommands) {
-      for (const slot of base) implicit.push({ cmd, player: slot.player, angleDeg: slot.angleDeg, buggy: false });
+      for (const slot of base)
+        implicit.push({
+          cmd,
+          player: slot.player,
+          angleDeg: slot.angleDeg,
+          buggy: false,
+        });
     }
-    const buggyExtras: CombinedRingSlot[] = extras.map((m) => ({ cmd: m.cmd, player: m.player, angleDeg: 0, buggy: true }));
+    const buggyExtras: CombinedRingSlot[] = extras.map((m) => ({
+      cmd: m.cmd,
+      player: m.player,
+      angleDeg: 0,
+      buggy: true,
+    }));
     return [...implicit, ...buggyExtras];
   }
 
@@ -647,12 +803,22 @@ function combinedRingSlots(
   let i = 0;
   for (const cmd of playerLandsCommands) {
     for (const slot of base) {
-      slots.push({ cmd, player: slot.player, angleDeg: (360 * i) / total, buggy: false });
+      slots.push({
+        cmd,
+        player: slot.player,
+        angleDeg: (360 * i) / total,
+        buggy: false,
+      });
       i++;
     }
   }
   for (const extra of extras) {
-    slots.push({ cmd: extra.cmd, player: extra.player, angleDeg: (360 * i) / total, buggy: false });
+    slots.push({
+      cmd: extra.cmd,
+      player: extra.player,
+      angleDeg: (360 * i) / total,
+      buggy: false,
+    });
     i++;
   }
   return slots;
@@ -691,7 +857,13 @@ export function placeLandOrigins(
     perPlayerDivisor: number,
     fromFallback: boolean,
   ): number {
-    const fields = commonFields(cmd, grid.dim, constants, instantiated.symbols, instantiated.aliases);
+    const fields = commonFields(
+      cmd,
+      grid.dim,
+      constants,
+      instantiated.symbols,
+      instantiated.aliases,
+    );
     const origin: LandOrigin = {
       commandSpan: cmd.span,
       x,
@@ -728,9 +900,16 @@ export function placeLandOrigins(
   const playerLandsCommands: InstantiatedCommand[] = [];
   const ringExtras: RingExtra[] = [];
   const assignedPlayers = new Set<number>();
-  const reportByCmd = new Map<InstantiatedCommand, { attempted: number; placed: number; failures: PlacementFailure[] }>();
+  const reportByCmd = new Map<
+    InstantiatedCommand,
+    { attempted: number; placed: number; failures: PlacementFailure[] }
+  >();
 
-  function reportFor(cmd: InstantiatedCommand): { attempted: number; placed: number; failures: PlacementFailure[] } {
+  function reportFor(cmd: InstantiatedCommand): {
+    attempted: number;
+    placed: number;
+    failures: PlacementFailure[];
+  } {
     let entry = reportByCmd.get(cmd);
     if (!entry) {
       entry = { attempted: 0, placed: 0, failures: [] };
@@ -748,10 +927,17 @@ export function placeLandOrigins(
 
     if (cmd.name !== "create_land") continue;
 
-    const isAssigned = cmd.attributes.has("assign_to") || cmd.attributes.has("assign_to_player");
+    const isAssigned =
+      cmd.attributes.has("assign_to") || cmd.attributes.has("assign_to_player");
     if (isAssigned) {
       const rng = nextSubstream();
-      const resolution = resolveAssignment(cmd, playerCount, teams, assignedPlayers, rng);
+      const resolution = resolveAssignment(
+        cmd,
+        playerCount,
+        teams,
+        assignedPlayers,
+        rng,
+      );
       if (resolution.colorNoted) {
         notes.push({
           key: `atColor:${cmd.span.start}`,
@@ -813,7 +999,8 @@ export function placeLandOrigins(
     // slot on it. With no create_player_lands at all (only standalone
     // assign_to'd lands), fall back to the same defaults the no-attribute
     // ring branch uses.
-    const ringGoverningCmd = playerLandsCommands[playerLandsCommands.length - 1];
+    const ringGoverningCmd =
+      playerLandsCommands[playerLandsCommands.length - 1];
     const ringParams: RingParams = ringGoverningCmd
       ? resolveRingParams(ringGoverningCmd)
       : {
@@ -828,7 +1015,9 @@ export function placeLandOrigins(
       : { x: grid.dim / 2, y: grid.dim / 2 };
     const rotationOffset = nextInt(nextSubstream(), 0, 359);
     const nominalRadiusTiles = (ringParams.radiusPct / 100) * grid.dim;
-    const baseSizeForSpacing = ringGoverningCmd ? numAttr(ringGoverningCmd, "base_size", 0, DEFAULT_BASE_SIZE) : DEFAULT_BASE_SIZE;
+    const baseSizeForSpacing = ringGoverningCmd
+      ? numAttr(ringGoverningCmd, "base_size", 0, DEFAULT_BASE_SIZE)
+      : DEFAULT_BASE_SIZE;
     const slots = combinedRingSlots(
       playerCount,
       playerLandsCommands,
@@ -842,27 +1031,60 @@ export function placeLandOrigins(
     for (const slot of slots) {
       const rng = nextSubstream();
       let point: { x: number; y: number };
-      if (playerSetup.directPlacement && slot.cmd.attributes.has("land_position")) {
+      if (
+        playerSetup.directPlacement &&
+        slot.cmd.attributes.has("land_position")
+      ) {
         // guide:367: direct_placement disables the ring (and, with it,
         // guide:857's grouped_by_team bug) entirely, checked first.
         const px = numAttr(slot.cmd, "land_position", 0, 50);
         const py = numAttr(slot.cmd, "land_position", 1, 50);
-        point = { x: Math.round((px / 100) * grid.dim), y: Math.round((py / 100) * grid.dim) };
+        point = {
+          x: Math.round((px / 100) * grid.dim),
+          y: Math.round((py / 100) * grid.dim),
+        };
       } else if (slot.buggy) {
         point = { x: Math.round(grid.dim / 2), y: Math.round(grid.dim / 2) };
       } else if (ringParams.scattered) {
         point = scatteredPoint(rng, center, grid.dim);
       } else {
-        const radiusPct = ringParams.radiusPct + (ringParams.variancePct === 0 ? 0 : nextInt(rng, -ringParams.variancePct, ringParams.variancePct));
+        const radiusPct =
+          ringParams.radiusPct +
+          (ringParams.variancePct === 0
+            ? 0
+            : nextInt(rng, -ringParams.variancePct, ringParams.variancePct));
         const radiusTiles = (radiusPct / 100) * grid.dim;
-        const jitter = ringParams.jitterDeg === 0 ? 0 : nextInt(rng, -ringParams.jitterDeg, ringParams.jitterDeg);
-        point = pointOnRing(center, radiusTiles, slot.angleDeg + rotationOffset + jitter);
+        const jitter =
+          ringParams.jitterDeg === 0
+            ? 0
+            : nextInt(rng, -ringParams.jitterDeg, ringParams.jitterDeg);
+        point = pointOnRing(
+          center,
+          radiusTiles,
+          slot.angleDeg + rotationOffset + jitter,
+        );
       }
       const x = Math.max(0, Math.min(grid.dim - 1, point.x));
       const y = Math.max(0, Math.min(grid.dim - 1, point.y));
-      const zone = computeZone(slot.cmd, slot.player - 10, teams, playerCount, rng);
-      const perPlayerDivisor = playerLandsCommands.includes(slot.cmd) ? playerCount : 1;
-      pushOrigin(slot.cmd, x, y, zone, slot.player, perPlayerDivisor, slot.buggy);
+      const zone = computeZone(
+        slot.cmd,
+        slot.player - 10,
+        teams,
+        playerCount,
+        rng,
+      );
+      const perPlayerDivisor = playerLandsCommands.includes(slot.cmd)
+        ? playerCount
+        : 1;
+      pushOrigin(
+        slot.cmd,
+        x,
+        y,
+        zone,
+        slot.player,
+        perPlayerDivisor,
+        slot.buggy,
+      );
       const report = reportFor(slot.cmd);
       report.placed += 1;
       if (slot.buggy) {
@@ -871,14 +1093,21 @@ export function placeLandOrigins(
           commandSpan: slot.cmd.span,
           stage: "S1",
           entity: `player ${slot.player}'s land`,
-          detail: "grouped_by_team doesn't correctly place a player's additional land (guide:857's documented engine bug) — this preview places it at the map center rather than inventing a working position the real engine doesn't produce.",
+          detail:
+            "grouped_by_team doesn't correctly place a player's additional land (guide:857's documented engine bug) — this preview places it at the map center rather than inventing a working position the real engine doesn't produce.",
         });
       }
     }
   }
 
   for (const [cmd, entry] of reportByCmd) {
-    reports.push({ commandSpan: cmd.span, stage: "S1", attempted: entry.attempted, placed: entry.placed, failures: entry.failures });
+    reports.push({
+      commandSpan: cmd.span,
+      stage: "S1",
+      attempted: entry.attempted,
+      placed: entry.placed,
+      failures: entry.failures,
+    });
   }
 
   return { origins, reports, notes };
@@ -925,7 +1154,9 @@ const STEP_CAP_FACTOR = 4;
 const MAX_STEEPNESS = 3;
 
 /** cf < 0: "strongly favour neighborsOwned == 1" (snakey growth). Not literally 0 so a land isn't stuck if bucket 1 empties first. */
-const NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [1, 0.05, 0.05, 0.05];
+const NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [
+  1, 0.05, 0.05, 0.05,
+];
 
 /**
  * Detached-seed reservoir size, MEASURED RMSTEST_38's piece-count column:
@@ -962,7 +1193,9 @@ function clampNum(value: number, min: number, max: number): number {
 }
 
 /** Exported for direct unit testing. See reservoirSize's comment just above. */
-export function bucketWeights(clumpingFactor: number): readonly [number, number, number, number] {
+export function bucketWeights(
+  clumpingFactor: number,
+): readonly [number, number, number, number] {
   if (clumpingFactor < 0) return NEGATIVE_REGIME_WEIGHTS;
   const steepness = (Math.min(clumpingFactor, 15) / 15) * MAX_STEEPNESS;
   return [1, 1 + steepness, 1 + 2 * steepness, 1 + 3 * steepness];
@@ -1002,13 +1235,19 @@ function addToFrontier(state: GrowthLand, grid: TileGrid, tile: number): void {
   state.inFrontier.add(tile);
   const neighbors = fourNeighbors(grid, tile);
   let neighborsOwned = 0;
-  for (const n of neighbors) if (grid.landId[n] === state.index) neighborsOwned++;
+  for (const n of neighbors)
+    if (grid.landId[n] === state.index) neighborsOwned++;
   const bucketIndex = clampNum(neighborsOwned, 1, 4) - 1;
   state.buckets[bucketIndex].push(tile);
 }
 
 /** Sec.6.1: reservoir seeds use "the same origin rules the land's own origin used (inside borders, inside the cross unless generate_mode 1, not owned)", deliberately NOT the origin's min_placement_distance check, which the spec's list omits here. */
-function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: Rng): void {
+function sampleReservoir(
+  state: GrowthLand,
+  grid: TileGrid,
+  count: number,
+  rng: Rng,
+): void {
   if (count <= 0) return;
   const { dim } = grid;
   const bounds = state.origin.borderBounds;
@@ -1042,7 +1281,10 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   // on a Normal map is further than that origin sits from its own wall, so
   // seeds still crossed it. `reachableWithinWindow` below is the other half,
   // and it is the half that closed the item.
-  const radius = Math.max(RESERVOIR_MIN_RADIUS, Math.round(dim * RESERVOIR_RADIUS_OF_DIM));
+  const radius = Math.max(
+    RESERVOIR_MIN_RADIUS,
+    Math.round(dim * RESERVOIR_RADIUS_OF_DIM),
+  );
   const minX = Math.max(0, bounds.minX, state.origin.x - radius);
   const maxX = Math.min(dim - 1, bounds.maxX - 1, state.origin.x + radius);
   const minY = Math.max(0, bounds.minY, state.origin.y - radius);
@@ -1066,7 +1308,11 @@ function sampleReservoir(state: GrowthLand, grid: TileGrid, count: number, rng: 
   if (reachable === undefined) return;
   const seen = new Set<number>();
   const maxAttempts = count * 20;
-  for (let attempt = 0; attempt < maxAttempts && state.reservoir.length < count; attempt++) {
+  for (
+    let attempt = 0;
+    attempt < maxAttempts && state.reservoir.length < count;
+    attempt++
+  ) {
     const x = nextInt(rng, minX, maxX);
     const y = nextInt(rng, minY, maxY);
     if (state.origin.generateMode !== 1 && !insideCross(cross, x, y)) continue;
@@ -1147,7 +1393,8 @@ function reachableWithinWindow(
   const queue: number[] = [];
   for (let y = minY; y <= maxY; y++) {
     for (let x = minX; x <= maxX; x++) {
-      if (grid.landId[tileIndex(grid, x, y)] === state.index) queue.push(tileIndex(grid, x, y));
+      if (grid.landId[tileIndex(grid, x, y)] === state.index)
+        queue.push(tileIndex(grid, x, y));
     }
   }
   let found = 0;
@@ -1174,7 +1421,10 @@ function reachableWithinWindow(
 
 function drawFromFrontier(state: GrowthLand, rng: Rng): number | undefined {
   const sizes = state.buckets.map((b) => b.length);
-  const totalWeight = sizes.reduce((sum, size, i) => sum + size * state.weights[i], 0);
+  const totalWeight = sizes.reduce(
+    (sum, size, i) => sum + size * state.weights[i],
+    0,
+  );
   if (totalWeight <= 0) return undefined;
   let roll = nextFloat01(rng) * totalWeight;
   let bucketIndex = 0;
@@ -1218,8 +1468,18 @@ function borderAccepted(depth: number, f: number, rng: Rng): boolean {
 }
 
 function borderDepth(x: number, y: number, bounds: BorderBounds): number {
-  const dx = x < bounds.minX ? bounds.minX - x : x > bounds.maxX - 1 ? x - (bounds.maxX - 1) : 0;
-  const dy = y < bounds.minY ? bounds.minY - y : y > bounds.maxY - 1 ? y - (bounds.maxY - 1) : 0;
+  const dx =
+    x < bounds.minX
+      ? bounds.minX - x
+      : x > bounds.maxX - 1
+        ? x - (bounds.maxX - 1)
+        : 0;
+  const dy =
+    y < bounds.minY
+      ? bounds.minY - y
+      : y > bounds.maxY - 1
+        ? y - (bounds.maxY - 1)
+        : 0;
   return Math.max(dx, dy);
 }
 
@@ -1255,7 +1515,13 @@ function borderDepth(x: number, y: number, bounds: BorderBounds): number {
  * sample size). Full write-up in `docs/known-issues.md` BUG-016 and
  * `docs/build-log.md`'s 2026-09-03 correction entry.
  */
-function violatesZoneAvoidance(state: GrowthLand, grid: TileGrid, origins: readonly LandOrigin[], x: number, y: number): boolean {
+function violatesZoneAvoidance(
+  state: GrowthLand,
+  grid: TileGrid,
+  origins: readonly LandOrigin[],
+  x: number,
+  y: number,
+): boolean {
   const ownZone = state.origin.zone;
   const ownDistance = state.origin.otherZoneAvoidanceDistance;
   if (ownZone === -12 || ownDistance <= 0) return false; // exempt zone, or nothing declared - nothing to check
@@ -1271,18 +1537,35 @@ function violatesZoneAvoidance(state: GrowthLand, grid: TileGrid, origins: reado
       if (otherLandId === -1 || otherLandId === state.index) continue;
       const otherZone = grid.zone[ni];
       if (otherZone === ownZone || otherZone === -12) continue;
-      const effective = Math.min(ownDistance, origins[otherLandId].otherZoneAvoidanceDistance);
+      const effective = Math.min(
+        ownDistance,
+        origins[otherLandId].otherZoneAvoidanceDistance,
+      );
       if (effective <= 0) continue;
-      if (Math.max(Math.abs(nx - x), Math.abs(ny - y)) <= effective) return true;
+      if (Math.max(Math.abs(nx - x), Math.abs(ny - y)) <= effective)
+        return true;
     }
   }
   return false;
 }
 
-function acceptCandidate(state: GrowthLand, grid: TileGrid, origins: readonly LandOrigin[], tile: number, rng: Rng): boolean {
+function acceptCandidate(
+  state: GrowthLand,
+  grid: TileGrid,
+  origins: readonly LandOrigin[],
+  tile: number,
+  rng: Rng,
+): boolean {
   if (grid.landId[tile] !== -1) return false; // "already owned", includes staleness from a rival land claiming it since it entered the frontier/reservoir
   const { x, y } = xyOf(grid, tile);
-  if (!borderAccepted(borderDepth(x, y, state.origin.borderBounds), state.origin.borderFuzziness, rng)) return false;
+  if (
+    !borderAccepted(
+      borderDepth(x, y, state.origin.borderBounds),
+      state.origin.borderFuzziness,
+      rng,
+    )
+  )
+    return false;
   if (violatesZoneAvoidance(state, grid, origins, x, y)) return false;
   return true;
 }
@@ -1322,16 +1605,30 @@ export function growLands(
 ): void {
   const { dim } = grid;
   const reportBySpan = new Map<string, CommandReport>();
-  for (const report of reports) reportBySpan.set(`${report.commandSpan.start}-${report.commandSpan.end}`, report);
+  for (const report of reports)
+    reportBySpan.set(
+      `${report.commandSpan.start}-${report.commandSpan.end}`,
+      report,
+    );
 
-  function recordFailure(state: GrowthLand, bucket: FailureBucket, detail: string, data?: Record<string, number>): void {
-    const report = reportBySpan.get(`${state.origin.commandSpan.start}-${state.origin.commandSpan.end}`);
+  function recordFailure(
+    state: GrowthLand,
+    bucket: FailureBucket,
+    detail: string,
+    data?: Record<string, number>,
+  ): void {
+    const report = reportBySpan.get(
+      `${state.origin.commandSpan.start}-${state.origin.commandSpan.end}`,
+    );
     if (report === undefined) return;
     pushFailure(report.failures, {
       bucket,
       commandSpan: state.origin.commandSpan,
       stage: "S1",
-      entity: state.origin.player !== undefined ? `player ${state.origin.player}'s land` : "land",
+      entity:
+        state.origin.player !== undefined
+          ? `player ${state.origin.player}'s land`
+          : "land",
       detail,
       data,
     });
@@ -1365,7 +1662,8 @@ export function growLands(
   }
 
   let ordinal = 0;
-  const nextSubstream = (): Rng => createSubstream(masterSeed, "S1", GROWTH_ORDINAL_OFFSET + ordinal++);
+  const nextSubstream = (): Rng =>
+    createSubstream(masterSeed, "S1", GROWTH_ORDINAL_OFFSET + ordinal++);
   // One substream per land, reused across every round it grows, Sec.8's
   // "best-effort stability": editing one land's target doesn't reshuffle
   // another's draws.
@@ -1377,7 +1675,12 @@ export function growLands(
         ? state.origin.declaredTargetTiles + state.owned
         : state.origin.declaredTargetTiles;
     state.target = Math.max(state.owned, Math.round(totalTarget));
-    sampleReservoir(state, grid, reservoirSize(state.origin.clumpingFactor), landRngs[state.index]);
+    sampleReservoir(
+      state,
+      grid,
+      reservoirSize(state.origin.clumpingFactor),
+      landRngs[state.index],
+    );
   }
 
   let active: GrowthLand[] = [];
@@ -1414,9 +1717,16 @@ export function growLands(
         continue;
       }
 
-      const useReservoir = state.reservoir.length > 0 && nextFloat01(rng) < RESERVOIR_DRAW_PROBABILITY;
-      const drawn = useReservoir ? popReservoir(state, rng) : drawFromFrontier(state, rng);
-      if (drawn !== undefined && acceptCandidate(state, grid, origins, drawn, rng)) {
+      const useReservoir =
+        state.reservoir.length > 0 &&
+        nextFloat01(rng) < RESERVOIR_DRAW_PROBABILITY;
+      const drawn = useReservoir
+        ? popReservoir(state, rng)
+        : drawFromFrontier(state, rng);
+      if (
+        drawn !== undefined &&
+        acceptCandidate(state, grid, origins, drawn, rng)
+      ) {
         claimTile(state, grid, drawn);
         state.owned++;
       }
@@ -1482,7 +1792,10 @@ export function growLands(
  * (land-placement-design.md Sec.3.4 layer 1). One O(dim²) definition rather
  * than two that could drift.
  */
-export function countOwnedTiles(origins: readonly LandOrigin[], grid: TileGrid): Int32Array {
+export function countOwnedTiles(
+  origins: readonly LandOrigin[],
+  grid: TileGrid,
+): Int32Array {
   const owned = new Int32Array(origins.length);
   for (let index = 0; index < grid.landId.length; index++) {
     const landId = grid.landId[index];
@@ -1493,7 +1806,10 @@ export function countOwnedTiles(origins: readonly LandOrigin[], grid: TileGrid):
   return owned;
 }
 
-export function paintLandTerrain(origins: readonly LandOrigin[], grid: TileGrid): void {
+export function paintLandTerrain(
+  origins: readonly LandOrigin[],
+  grid: TileGrid,
+): void {
   // Indexed by the same land index `grid.landId` stores, so the grid scan
   // below is one array read per tile rather than a lookup per tile.
   // -1 = this land paints nothing.
@@ -1563,7 +1879,8 @@ export function applyBaseElevation(
   const targetByLand = new Int16Array(origins.length).fill(-1); // -1 = no elevation change for this land
 
   origins.forEach((origin, index) => {
-    if (origin.baseElevation === undefined || origin.baseElevation === 0) return;
+    if (origin.baseElevation === undefined || origin.baseElevation === 0)
+      return;
     // Prefer the reference data's own water flag over the name heuristic:
     // the heuristic never saw DEEP_WATER or MED_WATER (absent from the data
     // until 2026-08-07), and it still cannot see a land written as a bare id.
@@ -1572,7 +1889,8 @@ export function applyBaseElevation(
     const isWater =
       origin.terrainId !== undefined
         ? isWaterTerrain(constants, origin.terrainId)
-        : typeof origin.terrainType === "string" && WATER_NAME_PATTERN.test(origin.terrainType);
+        : typeof origin.terrainType === "string" &&
+          WATER_NAME_PATTERN.test(origin.terrainType);
     if (isWater) return;
     if (!hasElevationSection) {
       notes.push({

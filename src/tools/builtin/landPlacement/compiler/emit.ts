@@ -62,12 +62,17 @@ export function normalizeExpr(e: Expr): Expr {
       return normalizeExpr(bin("*", e.e, num(-1)));
     case "sin":
     case "cos":
-      throw new Error(`normalizeExpr: ${e.k} must be expanded (compiler/trig.ts) before normalisation`);
+      throw new Error(
+        `normalizeExpr: ${e.k} must be expanded (compiler/trig.ts) before normalisation`,
+      );
     case "bin": {
       const l = normalizeExpr(e.l);
       const r = normalizeExpr(e.r);
       if (e.op !== "+" && e.op !== "*") return bin(e.op, l, r);
-      const terms = foldAdjacentIntegers([...flattenChain(l, e.op), ...flattenChain(r, e.op)], e.op);
+      const terms = foldAdjacentIntegers(
+        [...flattenChain(l, e.op), ...flattenChain(r, e.op)],
+        e.op,
+      );
       return chain(e.op, terms);
     }
   }
@@ -124,7 +129,10 @@ export interface EmittedConst {
  * cannot recover cross-cell dependency order once names have been
  * substituted in.
  */
-export function emitCells(targets: readonly NamedCell[], namer: NameAllocator): EmittedConst[] {
+export function emitCells(
+  targets: readonly NamedCell[],
+  namer: NameAllocator,
+): EmittedConst[] {
   const out: EmittedConst[] = [];
   let tempCounter = 0;
 
@@ -143,13 +151,21 @@ export function emitCells(targets: readonly NamedCell[], namer: NameAllocator): 
     tempCounter += 1;
     const name = namer.allocate("TMP", String(tempCounter));
     const tokens = lower(e);
-    out.push({ name, text: tokens.length === 1 ? tokens[0] : `(${tokens.join(" ")})`, tokens });
+    out.push({
+      name,
+      text: tokens.length === 1 ? tokens[0] : `(${tokens.join(" ")})`,
+      tokens,
+    });
     return [name];
   }
 
   for (const t of targets) {
     const tokens = lower(t.expr);
-    out.push({ name: t.name, text: tokens.length === 1 ? tokens[0] : `(${tokens.join(" ")})`, tokens });
+    out.push({
+      name: t.name,
+      text: tokens.length === 1 ? tokens[0] : `(${tokens.join(" ")})`,
+      tokens,
+    });
   }
 
   return out;

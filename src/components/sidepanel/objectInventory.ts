@@ -39,7 +39,8 @@ function collectScriptObjectNames(parse: ParseResult): Set<string> {
   const named = new Set<string>();
   const groupNames = new Set<string>();
 
-  const nameOf = (tokenIndex: number): string | undefined => parse.tokens[tokenIndex]?.text;
+  const nameOf = (tokenIndex: number): string | undefined =>
+    parse.tokens[tokenIndex]?.text;
   const firstArg = (args: { value: unknown }[]): string | undefined =>
     typeof args[0]?.value === "string" ? args[0].value : undefined;
 
@@ -59,7 +60,11 @@ function collectScriptObjectNames(parse: ParseResult): Set<string> {
         case "attribute": {
           const name = nameOf(item.name);
           const arg = firstArg(item.args);
-          if (arg !== undefined && (name === "add_object" || name === "second_object")) named.add(arg);
+          if (
+            arg !== undefined &&
+            (name === "add_object" || name === "second_object")
+          )
+            named.add(arg);
           break;
         }
         // Branch CONTENTS, not branch selection: this table is about what the
@@ -91,9 +96,12 @@ function collectScriptObjectNames(parse: ParseResult): Set<string> {
 }
 
 /** How many of each object the generation placed, keyed by the name as written. */
-export function tallySpawned(objects: readonly PlacedObject[]): Map<string, number> {
+export function tallySpawned(
+  objects: readonly PlacedObject[],
+): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const object of objects) counts.set(object.objectRef, (counts.get(object.objectRef) ?? 0) + 1);
+  for (const object of objects)
+    counts.set(object.objectRef, (counts.get(object.objectRef) ?? 0) + 1);
   return counts;
 }
 
@@ -117,7 +125,8 @@ export function buildObjectInventory(
   placed: readonly PlacedObject[],
 ): ObjectInventoryRow[] {
   const counts = tallySpawned(placed);
-  const names = parse === null ? new Set<string>() : collectScriptObjectNames(parse);
+  const names =
+    parse === null ? new Set<string>() : collectScriptObjectNames(parse);
   for (const name of counts.keys()) names.add(name);
   return [...names]
     .sort((a, b) => a.localeCompare(b))

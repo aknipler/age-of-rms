@@ -21,7 +21,10 @@
  * even for empty input), so the answer is the last index whose value is
  * `<= offset` and there is always at least one.
  */
-export function lineOfOffset(lineOffsets: readonly number[], offset: number): number {
+export function lineOfOffset(
+  lineOffsets: readonly number[],
+  offset: number,
+): number {
   let low = 0;
   let high = lineOffsets.length - 1;
   while (low < high) {
@@ -43,6 +46,9 @@ export function lineOfOffset(lineOffsets: readonly number[], offset: number): nu
  * flag on it: the two callers want different bases and each is right, so the
  * `+ 1` happens once, here, instead of at every message site.
  */
-export function lineNumberOfOffset(lineOffsets: readonly number[], offset: number): number {
+export function lineNumberOfOffset(
+  lineOffsets: readonly number[],
+  offset: number,
+): number {
   return lineOfOffset(lineOffsets, offset) + 1;
 }

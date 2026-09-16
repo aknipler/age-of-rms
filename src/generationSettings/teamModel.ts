@@ -6,7 +6,11 @@
 // only the settings dialog's readout consumes it; that is deliberate
 // plumbing-before-consumer, exactly how mapSize landed.
 
-import { MAX_TEAM, NO_TEAM, type TeamNumber } from "./generationSettingsConstants";
+import {
+  MAX_TEAM,
+  NO_TEAM,
+  type TeamNumber,
+} from "./generationSettingsConstants";
 
 export interface CanonicalTeams {
   /**

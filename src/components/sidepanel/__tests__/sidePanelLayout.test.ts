@@ -31,7 +31,9 @@ describe("clampSidePanelWidth", () => {
     // no width attribute at all, a panel that silently shrinks to its
     // content, which reads as a layout bug with no obvious cause.
     expect(clampSidePanelWidth(Number.NaN)).toBe(DEFAULT_SIDE_PANEL_WIDTH);
-    expect(clampSidePanelWidth(Number.POSITIVE_INFINITY)).toBe(DEFAULT_SIDE_PANEL_WIDTH);
+    expect(clampSidePanelWidth(Number.POSITIVE_INFINITY)).toBe(
+      DEFAULT_SIDE_PANEL_WIDTH,
+    );
   });
 });
 
@@ -47,14 +49,18 @@ describe("resolveSidePanelDrag", () => {
       collapsed: false,
       width: MIN_SIDE_PANEL_WIDTH,
     });
-    expect(resolveSidePanelDrag(MIN_SIDE_PANEL_WIDTH - COLLAPSE_DRAG_MARGIN)).toEqual({
+    expect(
+      resolveSidePanelDrag(MIN_SIDE_PANEL_WIDTH - COLLAPSE_DRAG_MARGIN),
+    ).toEqual({
       collapsed: false,
       width: MIN_SIDE_PANEL_WIDTH,
     });
   });
 
   it("collapses once the drag passes the margin", () => {
-    expect(resolveSidePanelDrag(MIN_SIDE_PANEL_WIDTH - COLLAPSE_DRAG_MARGIN - 1)).toEqual({
+    expect(
+      resolveSidePanelDrag(MIN_SIDE_PANEL_WIDTH - COLLAPSE_DRAG_MARGIN - 1),
+    ).toEqual({
       collapsed: true,
     });
   });

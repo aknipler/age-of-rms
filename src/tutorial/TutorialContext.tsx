@@ -30,7 +30,10 @@ interface TutorialValue {
   welcomeOpen: boolean;
   dismissWelcome: () => void; // marks welcomeSeen, closes
   completed: ReadonlySet<string>;
-  registerNavigator: (key: NavigatorKey, fn: (target: string) => void) => () => void;
+  registerNavigator: (
+    key: NavigatorKey,
+    fn: (target: string) => void,
+  ) => () => void;
   /**
    * Sec.11, a feature tour whose FIRST step is being shown as a standalone
    * announcement (centred, no spotlight), or null. Distinct from `active`:
@@ -64,11 +67,20 @@ interface TutorialProviderProps {
   tutorials?: readonly TutorialDefinition[];
 }
 
-export function TutorialProvider({ children, appVersion = __APP_VERSION__, tutorials = TUTORIALS }: TutorialProviderProps) {
-  const [active, setActive] = useState<{ definition: TutorialDefinition; stepIndex: number } | null>(null);
+export function TutorialProvider({
+  children,
+  appVersion = __APP_VERSION__,
+  tutorials = TUTORIALS,
+}: TutorialProviderProps) {
+  const [active, setActive] = useState<{
+    definition: TutorialDefinition;
+    stepIndex: number;
+  } | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [completed, setCompleted] = useState<ReadonlySet<string>>(new Set());
-  const [announcement, setAnnouncement] = useState<TutorialDefinition | null>(null);
+  const [announcement, setAnnouncement] = useState<TutorialDefinition | null>(
+    null,
+  );
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [store, setStore] = useState<Store | null>(null);
 
@@ -76,14 +88,20 @@ export function TutorialProvider({ children, appVersion = __APP_VERSION__, tutor
   // provider rather than a module-level map, so it can't survive React
   // StrictMode's double-mount in a way that's subtly wrong, and so it has
   // exactly the lifetime a run of the app has (Sec.5.3).
-  const navigatorsRef = useRef(new Map<NavigatorKey, (target: string) => void>());
+  const navigatorsRef = useRef(
+    new Map<NavigatorKey, (target: string) => void>(),
+  );
 
-  const registerNavigator = useCallback((key: NavigatorKey, fn: (target: string) => void) => {
-    navigatorsRef.current.set(key, fn);
-    return () => {
-      if (navigatorsRef.current.get(key) === fn) navigatorsRef.current.delete(key);
-    };
-  }, []);
+  const registerNavigator = useCallback(
+    (key: NavigatorKey, fn: (target: string) => void) => {
+      navigatorsRef.current.set(key, fn);
+      return () => {
+        if (navigatorsRef.current.get(key) === fn)
+          navigatorsRef.current.delete(key);
+      };
+    },
+    [],
+  );
 
   // Sec.7.1 (welcome pane) + Sec.11 (feature tour) triggers, both evaluated
   // once on mount from the same store load. The welcome pane wins if both
@@ -101,11 +119,15 @@ export function TutorialProvider({ children, appVersion = __APP_VERSION__, tutor
         const completedRaw = await loadedStore.get<unknown>(COMPLETED_KEY);
         if (cancelled) return;
         setWelcomeOpen(seenWelcome !== true);
-        setCompleted(new Set(isCompletedList(completedRaw) ? completedRaw : []));
+        setCompleted(
+          new Set(isCompletedList(completedRaw) ? completedRaw : []),
+        );
 
         if (seenWelcome !== true) return;
 
-        const lastSeenVersion = await loadedStore.get<string>(LAST_SEEN_VERSION_KEY);
+        const lastSeenVersion = await loadedStore.get<string>(
+          LAST_SEEN_VERSION_KEY,
+        );
         if (cancelled) return;
         if (lastSeenVersion === undefined) {
           // A fresh install gets the welcome pane, not a changelog for a
@@ -171,14 +193,22 @@ export function TutorialProvider({ children, appVersion = __APP_VERSION__, tutor
   }, [completeTutorial]);
 
   const back = useCallback(() => {
-    setActive((current) => (current && current.stepIndex > 0 ? { ...current, stepIndex: current.stepIndex - 1 } : current));
+    setActive((current) =>
+      current && current.stepIndex > 0
+        ? { ...current, stepIndex: current.stepIndex - 1 }
+        : current,
+    );
   }, []);
 
   const exit = useCallback(() => setActive(null), []);
 
   const showAnnouncementTour = useCallback(() => {
     setAnnouncement((tour) => {
-      if (tour) setActive({ definition: tour, stepIndex: Math.min(1, tour.steps.length - 1) });
+      if (tour)
+        setActive({
+          definition: tour,
+          stepIndex: Math.min(1, tour.steps.length - 1),
+        });
       return null;
     });
   }, []);
@@ -246,7 +276,11 @@ export function TutorialProvider({ children, appVersion = __APP_VERSION__, tutor
     ],
   );
 
-  return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
+  return (
+    <TutorialContext.Provider value={value}>
+      {children}
+    </TutorialContext.Provider>
+  );
 }
 
 export function useTutorial(): TutorialValue {
@@ -265,9 +299,15 @@ export function useTutorial(): TutorialValue {
  * differently-identitied callback on every render (e.g. a useCallback whose
  * deps changed) doesn't churn the registration.
  */
-export function useRegisterNavigator(key: NavigatorKey, fn: (target: string) => void): void {
+export function useRegisterNavigator(
+  key: NavigatorKey,
+  fn: (target: string) => void,
+): void {
   const { registerNavigator } = useTutorial();
   const fnRef = useRef(fn);
   fnRef.current = fn;
-  useEffect(() => registerNavigator(key, (target) => fnRef.current(target)), [key, registerNavigator]);
+  useEffect(
+    () => registerNavigator(key, (target) => fnRef.current(target)),
+    [key, registerNavigator],
+  );
 }

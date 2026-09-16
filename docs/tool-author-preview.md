@@ -6,8 +6,8 @@ tool into the app yet.** Today's five tools are all built-in — bundled into
 the app itself, running in-process. Phase 6 (v1.1, not yet scheduled) adds
 external tools: a separate executable plus a manifest, spawned as a child
 process and speaking the identical protocol over stdin/stdout. That's the
-point of this document — the contract a v1.1 tool will speak is *already
-finalized and running in production* today, just with the transport nailed
+point of this document — the contract a v1.1 tool will speak is _already
+finalized and running in production_ today, just with the transport nailed
 down to "in-process" for now. Nothing below should change shape by the time
 external tools land; only the transport is missing.
 
@@ -19,7 +19,7 @@ a replacement for it. The full design rationale is
 
 ## The core idea: one contract, two transports
 
-A tool is a pure function of *context in, messages out*. It never touches
+A tool is a pure function of _context in, messages out_. It never touches
 the filesystem, never renders its own UI, and never mutates anything it's
 handed. It receives a `ToolContext` describing the open script and whatever
 else it declared permission to see, and it streams `ToolMessage`s back
@@ -58,14 +58,14 @@ before it ever reaches a user, rather than shipping a form nobody can submit.
 
 Everything a tool can see is opt-in and named:
 
-| Capability | Grants |
-|---|---|
-| `read-source` | The raw script text. |
-| `read-ast` | The parsed AST (implies `read-source`). |
-| `read-generation-settings` | Player count, map size, and team layout — nothing else from the settings store. |
-| `read-reference` | The full language and game-constants reference data (~1.37 MB) — needed to resolve what a command or constant *is*, since the wire form of the AST strips definitions. |
-| `read-selection` | Where the user's cursor/selection anchor currently is. |
-| `edit-source` | Permission to propose text edits back into the script. |
+| Capability                 | Grants                                                                                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read-source`              | The raw script text.                                                                                                                                                   |
+| `read-ast`                 | The parsed AST (implies `read-source`).                                                                                                                                |
+| `read-generation-settings` | Player count, map size, and team layout — nothing else from the settings store.                                                                                        |
+| `read-reference`           | The full language and game-constants reference data (~1.37 MB) — needed to resolve what a command or constant _is_, since the wire form of the AST strips definitions. |
+| `read-selection`           | Where the user's cursor/selection anchor currently is.                                                                                                                 |
+| `edit-source`              | Permission to propose text edits back into the script.                                                                                                                 |
 
 Declare only what you use. This isn't just politeness — in v1.1 it's the text
 of the consent dialog a user sees before running an unfamiliar external tool.
@@ -109,17 +109,27 @@ type OutputBlock =
   | { kind: "heading"; text: string }
   | { kind: "text"; text: string }
   | { kind: "keyValue"; rows: [string, string][] }
-  | { kind: "table"; columns: string[]; rows: string[][]; rowSpans?: (Span | null)[] }
-  | { kind: "severity"; level: "info" | "warning" | "error"; text: string; span?: Span }
-  | { kind: "codeRef"; text: string; span: Span }
+  | {
+      kind: "table";
+      columns: string[];
+      rows: string[][];
+      rowSpans?: (Span | null)[];
+    }
+  | {
+      kind: "severity";
+      level: "info" | "warning" | "error";
+      text: string;
+      span?: Span;
+    }
+  | { kind: "codeRef"; text: string; span: Span };
 ```
 
 Tools render nothing themselves — output is entirely declarative, and the
 pane draws it. `Span`s (on `table` rows, `severity`, and `codeRef`) make a
 row or a message clickable, jumping the Code tab straight to that offset.
 Two things worth internalizing before your first tool: a `Span` is a raw
-character *offset*, but any location you name in prose text should be a
-1-based *line number* — converting the wrong way is a real defect this app
+character _offset_, but any location you name in prose text should be a
+1-based _line number_ — converting the wrong way is a real defect this app
 shipped once and had to fix. And there's no markdown or HTML in `text`
 blocks in v1 — plain text with `\n` only.
 
@@ -132,9 +142,9 @@ when the user clicks Apply, never automatically.
 ```ts
 type ToolMessage =
   | { type: "progress"; fraction?: number; note?: string }
-  | { type: "partial"; output: ToolOutput }   // replaces the pane's output — never a delta
+  | { type: "partial"; output: ToolOutput } // replaces the pane's output — never a delta
   | { type: "result"; output: ToolOutput; edits?: TextEdit[] }
-  | { type: "error"; message: string; reason: ErrorReason }
+  | { type: "error"; message: string; reason: ErrorReason };
 ```
 
 Emit `progress` for anything that takes real time — a `fraction` renders a
@@ -179,21 +189,22 @@ transport, `read-reference`, a `multiSelect` param, `ownsSettingsHeader` to
 suppress the pane's own settings echo in favor of its own multi-count
 report header).
 
-| Tool | Capabilities | Notable for |
-|---|---|---|
-| Script Statistics | `read-ast` | The minimal template. |
-| Generation Consistency Checker | `read-source`, `read-ast`, `read-generation-settings`, `read-reference` | Monte Carlo runs, a player-count `multiSelect`, `ownsSettingsHeader`. |
-| Constants Usage | `read-ast` | Read-only, no generation, no worker needed. |
-| Balance Summary | `read-ast`, `read-generation-settings`, `read-reference` | A second Monte Carlo consumer, same worker transport as the checker. |
-| Script Formatter | `read-ast`, `read-source`, `edit-source` | The only tool with `edit-source` today — the reference for how to propose `TextEdit`s safely. |
+| Tool                           | Capabilities                                                            | Notable for                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Script Statistics              | `read-ast`                                                              | The minimal template.                                                                         |
+| Generation Consistency Checker | `read-source`, `read-ast`, `read-generation-settings`, `read-reference` | Monte Carlo runs, a player-count `multiSelect`, `ownsSettingsHeader`.                         |
+| Constants Usage                | `read-ast`                                                              | Read-only, no generation, no worker needed.                                                   |
+| Balance Summary                | `read-ast`, `read-generation-settings`, `read-reference`                | A second Monte Carlo consumer, same worker transport as the checker.                          |
+| Script Formatter               | `read-ast`, `read-source`, `edit-source`                                | The only tool with `edit-source` today — the reference for how to propose `TextEdit`s safely. |
 
 ## Where this is headed
 
 Phase 6 (v1.1) adds the second transport: a manifest with `entry` (executable
-+ args), `language`, `author`, and `homepage`, spawned through Tauri's shell
-plugin, with an unvetted-tool warning dialog naming exactly the capabilities
-above before a user runs anything they didn't write themselves. A curated
-registry (a JSON file in a separate repo, PR-able by the community) is the
-plan for discovery. None of that is built yet, and the details are
-deliberately deferred until v1 has shipped and real tool authors — maybe you
-— have had a chance to react to this document.
+
+- args), `language`, `author`, and `homepage`, spawned through Tauri's shell
+  plugin, with an unvetted-tool warning dialog naming exactly the capabilities
+  above before a user runs anything they didn't write themselves. A curated
+  registry (a JSON file in a separate repo, PR-able by the community) is the
+  plan for discovery. None of that is built yet, and the details are
+  deliberately deferred until v1 has shipped and real tool authors — maybe you
+  — have had a chance to react to this document.

@@ -168,7 +168,11 @@ import {
   waterMask,
   type DepthMaskResult,
 } from "./grid";
-import { intersectCandidates, pushFailure, type AttributedPredicate } from "./placement";
+import {
+  intersectCandidates,
+  pushFailure,
+  type AttributedPredicate,
+} from "./placement";
 import { createSpacingIndex, type SpacingIndex } from "./spacingIndex";
 
 // ---------------------------------------------------------------------------
@@ -190,7 +194,11 @@ const MAX_OBJECT_PLACEMENTS_PER_COMMAND = 20000;
 // to avoid a fifth hand-rolled copy under time pressure.
 // ---------------------------------------------------------------------------
 
-export function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): InstantiatedValue {
+export function argValue(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex = 0,
+): InstantiatedValue {
   return cmd.attributes.get(name)?.[0]?.args[argIndex]?.value;
 }
 
@@ -205,7 +213,12 @@ export function argValue(cmd: InstantiatedCommand, name: string, argIndex = 0): 
  * through to `fallback` below, unchanged — this only narrows the "known
  * symbol, no value" case.
  */
-export function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number, fallback: number): number {
+export function numAttr(
+  cmd: InstantiatedCommand,
+  name: string,
+  argIndex: number,
+  fallback: number,
+): number {
   const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
   if (arg === undefined) return fallback;
   if (typeof arg.value === "number") return arg.value;
@@ -213,17 +226,26 @@ export function numAttr(cmd: InstantiatedCommand, name: string, argIndex: number
 }
 
 /** undefined when the attribute is absent; `fallback` when present but bare. */
-function optionalNumAttr(cmd: InstantiatedCommand, name: string, fallback: number): number | undefined {
+function optionalNumAttr(
+  cmd: InstantiatedCommand,
+  name: string,
+  fallback: number,
+): number | undefined {
   if (!cmd.attributes.has(name)) return undefined;
   const v = argValue(cmd, name, 0);
   return typeof v === "number" ? v : fallback;
 }
 
 /** guide:167/1257/1274: mutually exclusive scale attributes, last (by source position) wins. Object-specific names, NOT terrains.ts's set_scale_by_size/groups. */
-function lastObjectScaleAttribute(cmd: InstantiatedCommand): "mapSize" | "playerNumber" | undefined {
+function lastObjectScaleAttribute(
+  cmd: InstantiatedCommand,
+): "mapSize" | "playerNumber" | undefined {
   const sizeAttr = cmd.attributes.get("set_scaling_to_map_size")?.[0];
   const playerAttr = cmd.attributes.get("set_scaling_to_player_number")?.[0];
-  if (sizeAttr && playerAttr) return sizeAttr.span.start > playerAttr.span.start ? "mapSize" : "playerNumber";
+  if (sizeAttr && playerAttr)
+    return sizeAttr.span.start > playerAttr.span.start
+      ? "mapSize"
+      : "playerNumber";
   if (sizeAttr) return "mapSize";
   if (playerAttr) return "playerNumber";
   return undefined;
@@ -250,7 +272,11 @@ export interface ObjectConstant {
   /** Terrain entries only: the units this terrain auto-spawns (forestTrees.ts). Absent means unknown, not "no trees" — see the schema field's own doc comment. */
   autoTreeUnits?: readonly { objectId: number; density: number }[];
   /** Object rows: the unit's raw resource-storage slots. `effect_amount ... ATTR_STORAGE_VALUE` (or any attribute carrying `writesStorageSlot`) rewrites one of these (forestTreeSuppression.ts). */
-  resourceStorages?: readonly { type: number; amount: number; resource?: ResourceKey }[];
+  resourceStorages?: readonly {
+    type: number;
+    amount: number;
+    resource?: ResourceKey;
+  }[];
   /** Attribute rows only: this effect_amount attribute writes that index of the target's resourceStorages. Only ATTR_STORAGE_VALUE (slot 0) carries it today. */
   writesStorageSlot?: number;
   /** objectClass rows only: every unit id in the class, over the whole roster. */
@@ -323,10 +349,14 @@ interface ObjectRow {
   category: string;
 }
 
-const OBJECT_INDEX = new WeakMap<object, { byName: Map<string, unknown>; byId: Map<number, unknown> }>();
+const OBJECT_INDEX = new WeakMap<
+  object,
+  { byName: Map<string, unknown>; byId: Map<number, unknown> }
+>();
 
 function objectIndex<T extends ObjectRow>(constants: readonly T[]) {
-  let index = OBJECT_INDEX.get(constants) as { byName: Map<string, T>; byId: Map<number, T> } | undefined;
+  let index = OBJECT_INDEX.get(constants) as
+    { byName: Map<string, T>; byId: Map<number, T> } | undefined;
   if (index === undefined) {
     index = { byName: new Map(), byId: new Map() };
     for (const c of constants) {
@@ -334,10 +364,23 @@ function objectIndex<T extends ObjectRow>(constants: readonly T[]) {
       // FIRST wins, matching what `.find()` did: seven ids carry two rows each
       // (FISH and FISH_PERCH are both unit 53), and the id index has to answer
       // with the same one the scan used to return.
-      if (c.rmsConstant !== null && c.rmsConstant !== undefined && !index.byName.has(c.rmsConstant)) index.byName.set(c.rmsConstant, c);
-      if (c.constId !== null && c.constId !== undefined && !index.byId.has(c.constId)) index.byId.set(c.constId, c);
+      if (
+        c.rmsConstant !== null &&
+        c.rmsConstant !== undefined &&
+        !index.byName.has(c.rmsConstant)
+      )
+        index.byName.set(c.rmsConstant, c);
+      if (
+        c.constId !== null &&
+        c.constId !== undefined &&
+        !index.byId.has(c.constId)
+      )
+        index.byId.set(c.constId, c);
     }
-    OBJECT_INDEX.set(constants, index as { byName: Map<string, unknown>; byId: Map<number, unknown> });
+    OBJECT_INDEX.set(
+      constants,
+      index as { byName: Map<string, unknown>; byId: Map<number, unknown> },
+    );
   }
   return index;
 }
@@ -365,13 +408,26 @@ export function objectEntry<T extends ObjectRow>(
 }
 
 /** Same cached index as `objectEntry`, keyed by `constId` instead of a written name. For a spawn table row (forestTrees.ts's `autoTreeUnits`) that already carries the id, not a name — two of the wood-bearing spawn units carry `rmsConstant: null`, so a name lookup could never reach them. */
-export function objectById<T extends ObjectRow>(id: number, constants: readonly T[]): T | undefined {
+export function objectById<T extends ObjectRow>(
+  id: number,
+  constants: readonly T[],
+): T | undefined {
   return objectIndex(constants).byId.get(id);
 }
 
 /** Sec.12 item 3's fallback: an object carrying any resourceAmounts is treated as a must-be-gaia resource. Mis-handles SHEEP by design. See file header note 2. */
-export function requiresGaiaOnly(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): boolean {
-  const amounts = objectEntry(objectRef, constants, symbols, aliases)?.resourceAmounts;
+export function requiresGaiaOnly(
+  objectRef: string,
+  constants: readonly ObjectConstant[],
+  symbols?: ReadonlyMap<string, number>,
+  aliases?: ReadonlyMap<string, string>,
+): boolean {
+  const amounts = objectEntry(
+    objectRef,
+    constants,
+    symbols,
+    aliases,
+  )?.resourceAmounts;
   return amounts !== undefined && Object.keys(amounts).length > 0;
 }
 
@@ -443,9 +499,21 @@ export type Habitat = "land" | "water" | "amphibious" | "shore" | "any";
  * can read the terrain table out of the dat (see its README), and every entry
  * that gains a real `habitat` stops depending on this fallback.
  */
-export function objectHabitat(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): Habitat {
+export function objectHabitat(
+  objectRef: string,
+  constants: readonly ObjectConstant[],
+  symbols?: ReadonlyMap<string, number>,
+  aliases?: ReadonlyMap<string, string>,
+): Habitat {
   const declared = objectEntry(objectRef, constants, symbols, aliases)?.habitat;
-  if (declared === "land" || declared === "water" || declared === "amphibious" || declared === "shore" || declared === "any") return declared;
+  if (
+    declared === "land" ||
+    declared === "water" ||
+    declared === "amphibious" ||
+    declared === "shore" ||
+    declared === "any"
+  )
+    return declared;
   return "land";
 }
 
@@ -455,13 +523,30 @@ export function objectHabitat(objectRef: string, constants: readonly ObjectConst
  * function: whether an author's `terrain_to_place_on` can switch the habitat
  * check off (see `buildCandidates` step 3).
  */
-export function objectHabitatIsDeclared(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): boolean {
-  return objectEntry(objectRef, constants, symbols, aliases)?.habitat !== undefined;
+export function objectHabitatIsDeclared(
+  objectRef: string,
+  constants: readonly ObjectConstant[],
+  symbols?: ReadonlyMap<string, number>,
+  aliases?: ReadonlyMap<string, string>,
+): boolean {
+  return (
+    objectEntry(objectRef, constants, symbols, aliases)?.habitat !== undefined
+  );
 }
 
 /** Sec.12 item 8's fallback (no real category data exists yet): resource sub-class from resourceAmounts, else a generic bucket. */
-export function objectCategory(objectRef: string, constants: readonly ObjectConstant[], symbols?: ReadonlyMap<string, number>, aliases?: ReadonlyMap<string, string>): string {
-  const amounts = objectEntry(objectRef, constants, symbols, aliases)?.resourceAmounts;
+export function objectCategory(
+  objectRef: string,
+  constants: readonly ObjectConstant[],
+  symbols?: ReadonlyMap<string, number>,
+  aliases?: ReadonlyMap<string, string>,
+): string {
+  const amounts = objectEntry(
+    objectRef,
+    constants,
+    symbols,
+    aliases,
+  )?.resourceAmounts;
   if (amounts?.gold) return "resource-gold";
   if (amounts?.stone) return "resource-stone";
   if (amounts?.food) return "resource-food";
@@ -536,7 +621,10 @@ export function isGrouped(cmd: InstantiatedCommand): boolean {
  * nothing has measured.
  */
 export function isTightGrouping(cmd: InstantiatedCommand): boolean {
-  return cmd.attributes.has("set_tight_grouping") && !cmd.attributes.has("set_loose_grouping");
+  return (
+    cmd.attributes.has("set_tight_grouping") &&
+    !cmd.attributes.has("set_loose_grouping")
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -571,20 +659,31 @@ export interface ObjectCounts {
   variance: number;
 }
 
-export function resolveObjectCounts(cmd: InstantiatedCommand, dim: number, playerCount: number, grouped: boolean): ObjectCounts {
+export function resolveObjectCounts(
+  cmd: InstantiatedCommand,
+  dim: number,
+  playerCount: number,
+  grouped: boolean,
+): ObjectCounts {
   const declaredObjects = numAttr(cmd, "number_of_objects", 0, 1);
   const declaredGroups = numAttr(cmd, "number_of_groups", 0, 1);
   const variance = numAttr(cmd, "group_variance", 0, 0);
   const scaleAttr = lastObjectScaleAttribute(cmd);
 
   function scale(value: number): number {
-    if (scaleAttr === "mapSize") return Math.max(1, Math.floor((value * (dim * dim)) / 10000));
-    if (scaleAttr === "playerNumber") return Math.max(1, Math.floor(value * playerCount));
+    if (scaleAttr === "mapSize")
+      return Math.max(1, Math.floor((value * (dim * dim)) / 10000));
+    if (scaleAttr === "playerNumber")
+      return Math.max(1, Math.floor(value * playerCount));
     return Math.max(1, value);
   }
 
   if (grouped) {
-    return { groupCount: scale(declaredGroups), perGroupBase: Math.max(1, declaredObjects), variance };
+    return {
+      groupCount: scale(declaredGroups),
+      perGroupBase: Math.max(1, declaredObjects),
+      variance,
+    };
   }
   return { groupCount: 1, perGroupBase: scale(declaredObjects), variance: 0 };
 }
@@ -618,15 +717,29 @@ export interface ObjectFrameResolution {
   missingLandId?: number;
 }
 
-export function resolveObjectFrames(cmd: InstantiatedCommand, origins: readonly LandOrigin[]): ObjectFrameResolution {
+export function resolveObjectFrames(
+  cmd: InstantiatedCommand,
+  origins: readonly LandOrigin[],
+): ObjectFrameResolution {
   if (cmd.attributes.has("set_place_for_every_player")) {
     // guide:2263: "Only works for player lands or lands assigned to
     // players. Disabled by land_id" -- the fake-player-land idiom.
-    let eligible = origins.map((o, i) => ({ o, i })).filter(({ o }) => o.player !== undefined && o.declaredLandId === undefined);
-    if (cmd.attributes.has("generate_for_first_land_only")) eligible = eligible.slice(0, 1);
+    let eligible = origins
+      .map((o, i) => ({ o, i }))
+      .filter(
+        ({ o }) => o.player !== undefined && o.declaredLandId === undefined,
+      );
+    if (cmd.attributes.has("generate_for_first_land_only"))
+      eligible = eligible.slice(0, 1);
     return {
       kind: "everyPlayer",
-      frames: eligible.map(({ o, i }) => ({ originIndex: i, x: o.x, y: o.y, reference: `player ${o.player}`, player: o.player })),
+      frames: eligible.map(({ o, i }) => ({
+        originIndex: i,
+        x: o.x,
+        y: o.y,
+        reference: `player ${o.player}`,
+        player: o.player,
+      })),
     };
   }
 
@@ -638,11 +751,20 @@ export function resolveObjectFrames(cmd: InstantiatedCommand, origins: readonly 
       // as the frameless case rather than a specific land.
       return { kind: "none", frames: [{}] };
     }
-    const matches = origins.map((o, i) => ({ o, i })).filter(({ o }) => o.declaredLandId === id);
-    if (matches.length === 0) return { kind: "specificLand", frames: [], missingLandId: id };
+    const matches = origins
+      .map((o, i) => ({ o, i }))
+      .filter(({ o }) => o.declaredLandId === id);
+    if (matches.length === 0)
+      return { kind: "specificLand", frames: [], missingLandId: id };
     return {
       kind: "specificLand",
-      frames: matches.map(({ o, i }) => ({ originIndex: i, x: o.x, y: o.y, reference: `land #${id}`, player: o.player })),
+      frames: matches.map(({ o, i }) => ({
+        originIndex: i,
+        x: o.x,
+        y: o.y,
+        reference: `land #${id}`,
+        player: o.player,
+      })),
     };
   }
 
@@ -653,13 +775,25 @@ export function resolveObjectFrames(cmd: InstantiatedCommand, origins: readonly 
 // Candidate filter (Sec.6.6's pinned order -> Sec.7 successive intersection)
 // ---------------------------------------------------------------------------
 
-function withinSquareRadius(dim: number, tile: number, area: { x: number; y: number; radius: number }): boolean {
+function withinSquareRadius(
+  dim: number,
+  tile: number,
+  area: { x: number; y: number; radius: number },
+): boolean {
   const x = tile % dim;
   const y = (tile - x) / dim;
-  return Math.abs(x - area.x) <= area.radius && Math.abs(y - area.y) <= area.radius;
+  return (
+    Math.abs(x - area.x) <= area.radius && Math.abs(y - area.y) <= area.radius
+  );
 }
 
-function distanceBandOk(dx: number, dy: number, circular: boolean, min: number | undefined, max: number | undefined): boolean {
+function distanceBandOk(
+  dx: number,
+  dy: number,
+  circular: boolean,
+  min: number | undefined,
+  max: number | undefined,
+): boolean {
   if (circular) {
     const d2 = dx * dx + dy * dy;
     if (min !== undefined && d2 < min * min) return false;
@@ -681,7 +815,12 @@ function distanceBandOk(dx: number, dy: number, circular: boolean, min: number |
  * below rather than duplicated, since they differ only in which mask they
  * pass in.
  */
-function reachabilityFromPoint(dim: number, startX: number, startY: number, passable: Uint8Array): Uint16Array {
+function reachabilityFromPoint(
+  dim: number,
+  startX: number,
+  startY: number,
+  passable: Uint8Array,
+): Uint16Array {
   const n = dim * dim;
   const dist = new Uint16Array(n).fill(UNREACHABLE);
   const start = startY * dim + startX;
@@ -702,7 +841,12 @@ function reachabilityFromPoint(dim: number, startX: number, startY: number, pass
     relax(y < dim - 1 ? i + dim : -1, d);
   }
   function relax(neighbor: number, fromDist: number): void {
-    if (neighbor < 0 || passable[neighbor] === 0 || dist[neighbor] !== UNREACHABLE) return;
+    if (
+      neighbor < 0 ||
+      passable[neighbor] === 0 ||
+      dist[neighbor] !== UNREACHABLE
+    )
+      return;
     dist[neighbor] = fromDist + 1;
     queue[tail++] = neighbor;
   }
@@ -725,16 +869,29 @@ function reachabilityFromPoint(dim: number, startX: number, startY: number, pass
  */
 interface ObjectStageCaches {
   water: Uint8Array;
-  habitatMask(habitat: Habitat, invert: boolean, ignoreRestrictions?: boolean): Uint8Array | undefined;
+  habitatMask(
+    habitat: Habitat,
+    invert: boolean,
+    ignoreRestrictions?: boolean,
+  ): Uint8Array | undefined;
   forestMask(): Uint8Array;
   forestDistance(): Uint16Array;
   cliffDistance(): Uint16Array;
   restrictedDistance(habitat: Habitat): Uint16Array | undefined;
   landEdgeDistance(originIndex: number): Uint16Array;
-  reachability(originIndex: number, x: number, y: number, habitat: Habitat, excludeCliffs: boolean): Uint16Array | undefined;
+  reachability(
+    originIndex: number,
+    x: number,
+    y: number,
+    habitat: Habitat,
+    excludeCliffs: boolean,
+  ): Uint16Array | undefined;
 }
 
-function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConstant[]): ObjectStageCaches {
+function createObjectStageCaches(
+  grid: TileGrid,
+  constants: readonly ObjectConstant[],
+): ObjectStageCaches {
   const { dim } = grid;
   const n = dim * dim;
   const water = waterMask(grid, constants).mask;
@@ -746,7 +903,11 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
   let forestDist: Uint16Array | undefined;
   let cliffDist: Uint16Array | undefined;
 
-  function habitatMask(habitat: Habitat, invert: boolean, ignoreRestrictions = false): Uint8Array | undefined {
+  function habitatMask(
+    habitat: Habitat,
+    invert: boolean,
+    ignoreRestrictions = false,
+  ): Uint8Array | undefined {
     if (habitat === "any") return undefined; // nothing to restrict
     // `ignore_terrain_restrictions` lifts the terrain table outright for every
     // habitat EXCEPT `shore`, which keeps its beach anchor and only gains the
@@ -758,7 +919,8 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
     if (cached) return cached;
     const out = new Uint8Array(n);
     // "shore" is OPEN WATER TOUCHING A BEACH. See shoreMask.
-    const shoreBand = habitat === "shore" ? shoreMask(ignoreRestrictions) : undefined;
+    const shoreBand =
+      habitat === "shore" ? shoreMask(ignoreRestrictions) : undefined;
     // The other three all read the depth scale, so take it once.
     const { depth } = shoreBand ? { depth: undefined } : depthMask();
     for (let i = 0; i < n; i++) {
@@ -841,7 +1003,8 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
     for (let i = 0; i < n; i++) {
       // Strict: open water only. Relaxed: open water OR a shallow, never dry
       // land (and a beach is dry land, so it is excluded by this test too).
-      if (relaxed ? depth[i] === DEPTH_LAND : depth[i] !== DEPTH_WATER) continue;
+      if (relaxed ? depth[i] === DEPTH_LAND : depth[i] !== DEPTH_WATER)
+        continue;
       const x = i % dim;
       const y = (i - x) / dim;
       if (
@@ -891,7 +1054,9 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
   function restrictedDistance(habitat: Habitat): Uint16Array | undefined {
     if (restrictedCache.has(habitat)) return restrictedCache.get(habitat);
     const restricted = habitatMask(habitat, true);
-    const result = restricted ? distanceTransformFromMask(dim, restricted) : undefined;
+    const result = restricted
+      ? distanceTransformFromMask(dim, restricted)
+      : undefined;
     restrictedCache.set(habitat, result);
     return result;
   }
@@ -899,12 +1064,19 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
     const cached = landEdgeCache.get(originIndex);
     if (cached) return cached;
     const notThisLand = new Uint8Array(n);
-    for (let i = 0; i < n; i++) notThisLand[i] = grid.landId[i] === originIndex ? 0 : 1;
+    for (let i = 0; i < n; i++)
+      notThisLand[i] = grid.landId[i] === originIndex ? 0 : 1;
     const result = distanceTransformFromMask(dim, notThisLand);
     landEdgeCache.set(originIndex, result);
     return result;
   }
-  function reachability(originIndex: number, x: number, y: number, habitat: Habitat, excludeCliffs: boolean): Uint16Array | undefined {
+  function reachability(
+    originIndex: number,
+    x: number,
+    y: number,
+    habitat: Habitat,
+    excludeCliffs: boolean,
+  ): Uint16Array | undefined {
     const passable = habitatMask(habitat, false);
     if (!passable) return undefined;
     const key = `${originIndex}|${habitat}|${excludeCliffs}`;
@@ -913,14 +1085,24 @@ function createObjectStageCaches(grid: TileGrid, constants: readonly ObjectConst
     let mask = passable;
     if (excludeCliffs) {
       mask = new Uint8Array(passable.length);
-      for (let i = 0; i < passable.length; i++) mask[i] = passable[i] !== 0 && grid.cliff[i] === 0 ? 1 : 0;
+      for (let i = 0; i < passable.length; i++)
+        mask[i] = passable[i] !== 0 && grid.cliff[i] === 0 ? 1 : 0;
     }
     const result = reachabilityFromPoint(dim, x, y, mask);
     reachabilityCache.set(key, result);
     return result;
   }
 
-  return { water, habitatMask, forestMask, forestDistance, cliffDistance, restrictedDistance, landEdgeDistance, reachability };
+  return {
+    water,
+    habitatMask,
+    forestMask,
+    forestDistance,
+    cliffDistance,
+    restrictedDistance,
+    landEdgeDistance,
+    reachability,
+  };
 }
 
 interface CandidateContext {
@@ -934,7 +1116,10 @@ interface CandidateContext {
   playerOrigins: readonly LandOrigin[];
   forcePlacement: boolean;
   ignoreTerrain: boolean;
-  liveActorAreas: ReadonlyMap<number, Array<{ x: number; y: number; radius: number }>>;
+  liveActorAreas: ReadonlyMap<
+    number,
+    Array<{ x: number; y: number; radius: number }>
+  >;
   caches: ObjectStageCaches;
   /** The script's own `#const` table, so `terrain_to_place_on WOODIES` resolves like every other terrain slot. */
   symbols: ReadonlyMap<string, number>;
@@ -943,14 +1128,33 @@ interface CandidateContext {
 }
 
 /** Returns undefined when `actor_area_to_place_in` names an id with no areas yet (Sec.6.6: "referencing a never-created id -> actorAreaMissing", a command-level miss handled by the caller before this returns predicates). */
-function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] | undefined {
-  const { grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols, aliases } = ctx;
+function buildCandidatePredicates(
+  ctx: CandidateContext,
+): AttributedPredicate[] | undefined {
+  const {
+    grid,
+    constants,
+    cmd,
+    habitat,
+    habitatIsData,
+    frame,
+    playerOrigins,
+    forcePlacement,
+    ignoreTerrain,
+    liveActorAreas,
+    caches,
+    symbols,
+    aliases,
+  } = ctx;
   const { dim } = grid;
   const predicates: AttributedPredicate[] = [];
 
   // 1. occupied (free unless force_placement)
   if (!forcePlacement) {
-    predicates.push({ bucket: "occupancyFull", test: (i) => grid.occupied[i] === 0 });
+    predicates.push({
+      bucket: "occupancyFull",
+      test: (i) => grid.occupied[i] === 0,
+    });
   }
   // 2. can-overlap -- deliberately not modelled, see file header note 1.
 
@@ -968,16 +1172,28 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
   {
     const terrainRef = argValue(cmd, "terrain_to_place_on", 0);
     const layerRef = argValue(cmd, "layer_to_place_on", 0);
-    const terrainId = terrainRef !== undefined ? resolveTerrainId(constants, terrainRef, symbols, aliases) : undefined;
-    const layerId = layerRef !== undefined ? resolveTerrainId(constants, layerRef, symbols, aliases) : undefined;
+    const terrainId =
+      terrainRef !== undefined
+        ? resolveTerrainId(constants, terrainRef, symbols, aliases)
+        : undefined;
+    const layerId =
+      layerRef !== undefined
+        ? resolveTerrainId(constants, layerRef, symbols, aliases)
+        : undefined;
     if (terrainId !== undefined) {
-      predicates.push({ bucket: "terrainAbsent", test: (i) => grid.terrain[i] === terrainId });
+      predicates.push({
+        bucket: "terrainAbsent",
+        test: (i) => grid.terrain[i] === terrainId,
+      });
     }
     // guide:2483: "If used together with terrain_to_place_on, the object(s)
     // will be placed only where BOTH the base terrain and the layer apply" --
     // so these two narrow each other rather than one replacing the other.
     if (layerId !== undefined) {
-      predicates.push({ bucket: "terrainAbsent", test: (i) => grid.layer[i] === layerId });
+      predicates.push({
+        bucket: "terrainAbsent",
+        test: (i) => grid.layer[i] === layerId,
+      });
     }
     // The habitat restriction is ADDITIONAL to both, not an alternative to
     // them: in game the terrain table still forbids a tile that
@@ -1023,15 +1239,33 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     // of the decision stays in the mask rather than being duplicated here.
     if (terrainId === undefined || habitatIsData) {
       const permitted = caches.habitatMask(habitat, false, ignoreTerrain);
-      if (permitted !== undefined) predicates.push({ bucket: "terrainAbsent", test: (i) => permitted[i] !== 0 });
+      if (permitted !== undefined)
+        predicates.push({
+          bucket: "terrainAbsent",
+          test: (i) => permitted[i] !== 0,
+        });
     }
   }
 
   // 4. implicit terrain-separation (frame-referenced only, default-ON)
-  if (!ignoreTerrain && frame.originIndex !== undefined && frame.x !== undefined && frame.y !== undefined) {
-    const reach = caches.reachability(frame.originIndex, frame.x, frame.y, habitat, false);
+  if (
+    !ignoreTerrain &&
+    frame.originIndex !== undefined &&
+    frame.x !== undefined &&
+    frame.y !== undefined
+  ) {
+    const reach = caches.reachability(
+      frame.originIndex,
+      frame.x,
+      frame.y,
+      habitat,
+      false,
+    );
     if (reach) {
-      predicates.push({ bucket: "spacingConflict", test: (i) => reach[i] !== UNREACHABLE });
+      predicates.push({
+        bucket: "spacingConflict",
+        test: (i) => reach[i] !== UNREACHABLE,
+      });
     }
   }
 
@@ -1059,39 +1293,65 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
       test: (i) => {
         const x = i % dim;
         const y = (i - x) / dim;
-        return playerOrigins.every((o) => distanceBandOk(x - o.x, y - o.y, circular, minDist, undefined));
+        return playerOrigins.every((o) =>
+          distanceBandOk(x - o.x, y - o.y, circular, minDist, undefined),
+        );
       },
     });
   }
 
   // 6. avoid_other_land_zones (frame-referenced only; inert frameless per guide's own "Requires:" list)
-  if (frame.originIndex !== undefined && cmd.attributes.has("avoid_other_land_zones")) {
+  if (
+    frame.originIndex !== undefined &&
+    cmd.attributes.has("avoid_other_land_zones")
+  ) {
     const d = optionalNumAttr(cmd, "avoid_other_land_zones", 0) ?? 0;
     const landIndex = frame.originIndex;
     const edgeDist = caches.landEdgeDistance(landIndex);
     predicates.push({
       bucket: "zoneAvoidanceBlocked",
-      test: (i) => grid.landId[i] === landIndex && (edgeDist[i] === UNREACHABLE || edgeDist[i] >= d),
+      test: (i) =>
+        grid.landId[i] === landIndex &&
+        (edgeDist[i] === UNREACHABLE || edgeDist[i] >= d),
     });
   }
 
   // 7. forest zone
-  if (cmd.attributes.has("place_on_forest_zone") || cmd.attributes.has("avoid_forest_zone")) {
+  if (
+    cmd.attributes.has("place_on_forest_zone") ||
+    cmd.attributes.has("avoid_forest_zone")
+  ) {
     if (cmd.attributes.has("place_on_forest_zone")) {
       const forest = caches.forestMask();
-      predicates.push({ bucket: "spacingConflict", test: (i) => forest[i] !== 0 });
+      predicates.push({
+        bucket: "spacingConflict",
+        test: (i) => forest[i] !== 0,
+      });
     } else {
-      const d = optionalNumAttr(cmd, "avoid_forest_zone", DEFAULT_ZONE_AVOID_DISTANCE) ?? DEFAULT_ZONE_AVOID_DISTANCE;
+      const d =
+        optionalNumAttr(
+          cmd,
+          "avoid_forest_zone",
+          DEFAULT_ZONE_AVOID_DISTANCE,
+        ) ?? DEFAULT_ZONE_AVOID_DISTANCE;
       const dist = caches.forestDistance();
-      predicates.push({ bucket: "spacingConflict", test: (i) => dist[i] === UNREACHABLE || dist[i] >= d });
+      predicates.push({
+        bucket: "spacingConflict",
+        test: (i) => dist[i] === UNREACHABLE || dist[i] >= d,
+      });
     }
   }
 
   // 8. avoid_cliff_zone / min_distance_to_map_edge / max_distance_to_other_zones
   if (cmd.attributes.has("avoid_cliff_zone")) {
-    const d = optionalNumAttr(cmd, "avoid_cliff_zone", DEFAULT_ZONE_AVOID_DISTANCE) ?? DEFAULT_ZONE_AVOID_DISTANCE;
+    const d =
+      optionalNumAttr(cmd, "avoid_cliff_zone", DEFAULT_ZONE_AVOID_DISTANCE) ??
+      DEFAULT_ZONE_AVOID_DISTANCE;
     const dist = caches.cliffDistance();
-    predicates.push({ bucket: "spacingConflict", test: (i) => dist[i] === UNREACHABLE || dist[i] >= d });
+    predicates.push({
+      bucket: "spacingConflict",
+      test: (i) => dist[i] === UNREACHABLE || dist[i] >= d,
+    });
   }
   if (cmd.attributes.has("min_distance_to_map_edge")) {
     const d = numAttr(cmd, "min_distance_to_map_edge", 0, 0);
@@ -1104,7 +1364,10 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
       },
     });
   }
-  if (cmd.attributes.has("max_distance_to_other_zones") && (habitat === "land" || habitat === "water" || habitat === "amphibious")) {
+  if (
+    cmd.attributes.has("max_distance_to_other_zones") &&
+    (habitat === "land" || habitat === "water" || habitat === "amphibious")
+  ) {
     // **MINIMUM distance, despite the name, guide:2527 says so in its own
     // capitals: "Minimum (NOT maximum) distance, in tiles, that objects will
     // stay away from terrains that they are restricted from being placed on",
@@ -1135,7 +1398,10 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     const d = numAttr(cmd, "max_distance_to_other_zones", 0, 0);
     const dist = caches.restrictedDistance(habitat);
     if (dist) {
-      predicates.push({ bucket: "spacingConflict", test: (i) => dist[i] === UNREACHABLE || dist[i] >= d });
+      predicates.push({
+        bucket: "spacingConflict",
+        test: (i) => dist[i] === UNREACHABLE || dist[i] >= d,
+      });
     }
   }
 
@@ -1145,7 +1411,10 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
     const id = placeInAttr.args[0]?.value;
     const areas = typeof id === "number" ? (liveActorAreas.get(id) ?? []) : [];
     if (areas.length === 0) return undefined; // actorAreaMissing -- command-level, caller handles it
-    predicates.push({ bucket: "spacingConflict", test: (i) => areas.some((a) => withinSquareRadius(dim, i, a)) });
+    predicates.push({
+      bucket: "spacingConflict",
+      test: (i) => areas.some((a) => withinSquareRadius(dim, i, a)),
+    });
   }
   const avoidAttrs = cmd.attributes.get("avoid_actor_area") ?? [];
   if (avoidAttrs.length > 0) {
@@ -1154,15 +1423,32 @@ function buildCandidatePredicates(ctx: CandidateContext): AttributedPredicate[] 
       .filter((id): id is number => typeof id === "number")
       .flatMap((id) => liveActorAreas.get(id) ?? []);
     if (avoidAreas.length > 0) {
-      predicates.push({ bucket: "spacingConflict", test: (i) => !avoidAreas.some((a) => withinSquareRadius(dim, i, a)) });
+      predicates.push({
+        bucket: "spacingConflict",
+        test: (i) => !avoidAreas.some((a) => withinSquareRadius(dim, i, a)),
+      });
     }
   }
 
   // 10. require_path (dev always treated as 0 / "any path" -- see file header)
-  if (cmd.attributes.has("require_path") && frame.originIndex !== undefined && frame.x !== undefined && frame.y !== undefined) {
-    const reach = caches.reachability(frame.originIndex, frame.x, frame.y, habitat, true);
+  if (
+    cmd.attributes.has("require_path") &&
+    frame.originIndex !== undefined &&
+    frame.x !== undefined &&
+    frame.y !== undefined
+  ) {
+    const reach = caches.reachability(
+      frame.originIndex,
+      frame.x,
+      frame.y,
+      habitat,
+      true,
+    );
     if (reach) {
-      predicates.push({ bucket: "pathBlocked", test: (i) => reach[i] !== UNREACHABLE });
+      predicates.push({
+        bucket: "pathBlocked",
+        test: (i) => reach[i] !== UNREACHABLE,
+      });
     }
   }
 
@@ -1195,12 +1481,19 @@ function resolveSelectionMode(cmd: InstantiatedCommand): SelectionMode {
   return "uniform";
 }
 
-function selectionKey(tile: number, mode: SelectionMode, dim: number, frame: ObjectFrame): number {
+function selectionKey(
+  tile: number,
+  mode: SelectionMode,
+  dim: number,
+  frame: ObjectFrame,
+): number {
   const x = tile % dim;
   const y = (tile - x) / dim;
   if (mode === "edge") return Math.min(x, dim - 1 - x, y, dim - 1 - y);
-  const targetX = mode === "closest" && frame.x !== undefined ? frame.x : Math.floor(dim / 2);
-  const targetY = mode === "closest" && frame.y !== undefined ? frame.y : Math.floor(dim / 2);
+  const targetX =
+    mode === "closest" && frame.x !== undefined ? frame.x : Math.floor(dim / 2);
+  const targetY =
+    mode === "closest" && frame.y !== undefined ? frame.y : Math.floor(dim / 2);
   const dx = x - targetX;
   const dy = y - targetY;
   return dx * dx + dy * dy; // Euclidean, per Sec.6.6's own "unlike every other distance constraint here"
@@ -1249,9 +1542,15 @@ interface CandidatePool {
   cursor: number;
 }
 
-function buildCandidatePool(survivors: Int32Array, mode: SelectionMode, dim: number, frame: ObjectFrame): CandidatePool {
+function buildCandidatePool(
+  survivors: Int32Array,
+  mode: SelectionMode,
+  dim: number,
+  frame: ObjectFrame,
+): CandidatePool {
   const items = survivors.slice();
-  if (mode === "uniform") return { mode, items, count: items.length, cursor: 0 };
+  if (mode === "uniform")
+    return { mode, items, count: items.length, cursor: 0 };
 
   // Pack (key, tile) into one number and sort WITHOUT a comparator: a plain
   // numeric sort on a Float64Array is the engine's fast path, where a
@@ -1287,7 +1586,9 @@ function takeFromPool(
   function isValid(tile: number): boolean {
     const x = tile % dim;
     const y = (tile - x) / dim;
-    return (forcePlacement || grid.occupied[tile] === 0) && !spacing.tooClose(x, y);
+    return (
+      (forcePlacement || grid.occupied[tile] === 0) && !spacing.tooClose(x, y)
+    );
   }
 
   if (pool.mode === "uniform") {
@@ -1387,15 +1688,33 @@ export function applyObjects(
   const aliases = instantiated.aliases;
   const { dim } = grid;
   const playerOrigins = origins.filter((o) => o.player !== undefined);
-  const players: PlayerMarker[] = playerOrigins.map((o) => ({ player: o.player!, x: o.x, y: o.y }));
+  const players: PlayerMarker[] = playerOrigins.map((o) => ({
+    player: o.player!,
+    x: o.x,
+    y: o.y,
+  }));
   const caches = createObjectStageCaches(grid, constants);
 
-  const liveActorAreas = new Map<number, Array<{ x: number; y: number; radius: number }>>();
+  const liveActorAreas = new Map<
+    number,
+    Array<{ x: number; y: number; radius: number }>
+  >();
   for (const [id, cmds] of instantiated.actorAreas) {
     const areas = cmds
-      .map((c) => ({ x: c.args[0]?.value, y: c.args[1]?.value, radius: c.args[3]?.value }))
-      .filter((a): a is { x: number; y: number; radius: number } => typeof a.x === "number" && typeof a.y === "number")
-      .map((a) => ({ x: a.x, y: a.y, radius: typeof a.radius === "number" ? a.radius : 1 }));
+      .map((c) => ({
+        x: c.args[0]?.value,
+        y: c.args[1]?.value,
+        radius: c.args[3]?.value,
+      }))
+      .filter(
+        (a): a is { x: number; y: number; radius: number } =>
+          typeof a.x === "number" && typeof a.y === "number",
+      )
+      .map((a) => ({
+        x: a.x,
+        y: a.y,
+        radius: typeof a.radius === "number" ? a.radius : 1,
+      }));
     if (areas.length > 0) liveActorAreas.set(id, areas);
   }
 
@@ -1408,11 +1727,24 @@ export function applyObjects(
   for (const cmd of commands) {
     if (cmd.name !== "create_object") continue;
 
-    const typeName = typeof cmd.args[0]?.value === "string" ? cmd.args[0].value : undefined;
+    const typeName =
+      typeof cmd.args[0]?.value === "string" ? cmd.args[0].value : undefined;
     const failures: PlacementFailure[] = [];
     if (typeName === undefined) {
-      pushFailure(failures, { bucket: "noValidTiles", commandSpan: cmd.span, stage: "S6", entity: "object", detail: "This create_object command's type could not be resolved." });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      pushFailure(failures, {
+        bucket: "noValidTiles",
+        commandSpan: cmd.span,
+        stage: "S6",
+        entity: "object",
+        detail: "This create_object command's type could not be resolved.",
+      });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S6",
+        attempted: 0,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
@@ -1420,12 +1752,28 @@ export function applyObjects(
     const isObjectGroup = groupCmd !== undefined;
     const members = groupCmd ? objectGroupMembers(groupCmd) : [typeName];
     if (members.length === 0) {
-      pushFailure(failures, { bucket: "noValidTiles", commandSpan: cmd.span, stage: "S6", entity: typeName, detail: `Object group "${typeName}" has no valid add_object members.` });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      pushFailure(failures, {
+        bucket: "noValidTiles",
+        commandSpan: cmd.span,
+        stage: "S6",
+        entity: typeName,
+        detail: `Object group "${typeName}" has no valid add_object members.`,
+      });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S6",
+        attempted: 0,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
-    const { frames, kind: frameKind, missingLandId } = resolveObjectFrames(cmd, origins);
+    const {
+      frames,
+      kind: frameKind,
+      missingLandId,
+    } = resolveObjectFrames(cmd, origins);
     if (missingLandId !== undefined) {
       pushFailure(failures, {
         bucket: "landMissing",
@@ -1434,17 +1782,40 @@ export function applyObjects(
         entity: typeName,
         detail: `No land declares land_id ${missingLandId}, so this placement has nowhere to go.`,
       });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S6",
+        attempted: 0,
+        placed: 0,
+        failures,
+      });
       continue;
     }
     if (frames.length === 0) {
-      pushFailure(failures, { bucket: "landMissing", commandSpan: cmd.span, stage: "S6", entity: typeName, detail: "This command's reference frame matches no land." });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      pushFailure(failures, {
+        bucket: "landMissing",
+        commandSpan: cmd.span,
+        stage: "S6",
+        entity: typeName,
+        detail: "This command's reference frame matches no land.",
+      });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S6",
+        attempted: 0,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
     const gaiaOnly = cmd.attributes.has("set_gaia_object_only");
-    if (frameKind !== "none" && !isObjectGroup && !gaiaOnly && requiresGaiaOnly(typeName, constants, symbols, aliases)) {
+    if (
+      frameKind !== "none" &&
+      !isObjectGroup &&
+      !gaiaOnly &&
+      requiresGaiaOnly(typeName, constants, symbols, aliases)
+    ) {
       pushFailure(failures, {
         bucket: "gaiaOnlyRequired",
         commandSpan: cmd.span,
@@ -1452,7 +1823,13 @@ export function applyObjects(
         entity: typeName,
         detail: `${typeName} must be marked set_gaia_object_only to be placed for every player/on a specific land — without it the engine places nothing.`,
       });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S6",
+        attempted: 0,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
@@ -1483,8 +1860,20 @@ export function applyObjects(
     const minDist = optionalNumAttr(cmd, "min_distance_to_players", 0);
     const maxDist = optionalNumAttr(cmd, "max_distance_to_players", 0);
     if (minDist !== undefined && maxDist !== undefined && minDist > maxDist) {
-      pushFailure(failures, { bucket: "minExceedsMax", commandSpan: cmd.span, stage: "S6", entity: typeName, detail: `min_distance_to_players (${minDist}) exceeds max_distance_to_players (${maxDist}), so no tile can ever satisfy both.` });
-      reports.push({ commandSpan: cmd.span, stage: "S6", attempted: 0, placed: 0, failures });
+      pushFailure(failures, {
+        bucket: "minExceedsMax",
+        commandSpan: cmd.span,
+        stage: "S6",
+        entity: typeName,
+        detail: `min_distance_to_players (${minDist}) exceeds max_distance_to_players (${maxDist}), so no tile can ever satisfy both.`,
+      });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S6",
+        attempted: 0,
+        placed: 0,
+        failures,
+      });
       continue;
     }
 
@@ -1510,7 +1899,10 @@ export function applyObjects(
     // `AD4 - Pag - v1.2.rms` came out with no fish at all, and
     // `Menindee_AUS_v2.3.rms` lost every pond fish, both of which read as the
     // fish failing to place rather than as a rendering omission.
-    const secondObjectRef = typeof argValue(cmd, "second_object", 0) === "string" ? (argValue(cmd, "second_object", 0) as string) : undefined;
+    const secondObjectRef =
+      typeof argValue(cmd, "second_object", 0) === "string"
+        ? (argValue(cmd, "second_object", 0) as string)
+        : undefined;
     if (secondObjectRef !== undefined) {
       notes.push({
         key: `secondObjectApproximated:${cmd.span.start}`,
@@ -1541,17 +1933,36 @@ export function applyObjects(
 
     const grouped = isGrouped(cmd);
     const tight = grouped && isTightGrouping(cmd);
-    const groupRadius = optionalNumAttr(cmd, "group_placement_radius", DEFAULT_GROUP_PLACEMENT_RADIUS) ?? DEFAULT_GROUP_PLACEMENT_RADIUS;
-    const forcePlacement = cmd.attributes.has("force_placement") && !cmd.attributes.has("set_loose_grouping"); // guide:2739
-    const ignoreTerrain = cmd.attributes.has("ignore_terrain_restrictions") && !ignoreTerrainInert;
-    const habitat = isObjectGroup ? "any" : objectHabitat(typeName, constants, symbols, aliases); // group commands: candidate filtering can't commit to one member's habitat (see file header)
+    const groupRadius =
+      optionalNumAttr(
+        cmd,
+        "group_placement_radius",
+        DEFAULT_GROUP_PLACEMENT_RADIUS,
+      ) ?? DEFAULT_GROUP_PLACEMENT_RADIUS;
+    const forcePlacement =
+      cmd.attributes.has("force_placement") &&
+      !cmd.attributes.has("set_loose_grouping"); // guide:2739
+    const ignoreTerrain =
+      cmd.attributes.has("ignore_terrain_restrictions") && !ignoreTerrainInert;
+    const habitat = isObjectGroup
+      ? "any"
+      : objectHabitat(typeName, constants, symbols, aliases); // group commands: candidate filtering can't commit to one member's habitat (see file header)
     // A group's "any" is not data either, there is no single member to have a
     // row, so it takes the same deference `land` does.
-    const habitatIsData = !isObjectGroup && objectHabitatIsDeclared(typeName, constants, symbols, aliases);
+    const habitatIsData =
+      !isObjectGroup &&
+      objectHabitatIsDeclared(typeName, constants, symbols, aliases);
     const selectionMode = resolveSelectionMode(cmd);
-    const spacingDistance = optionalNumAttr(cmd, "temp_min_distance_group_placement", 0) ?? optionalNumAttr(cmd, "min_distance_group_placement", 0);
+    const spacingDistance =
+      optionalNumAttr(cmd, "temp_min_distance_group_placement", 0) ??
+      optionalNumAttr(cmd, "min_distance_group_placement", 0);
 
-    const { groupCount, perGroupBase, variance } = resolveObjectCounts(cmd, dim, players.length, grouped);
+    const { groupCount, perGroupBase, variance } = resolveObjectCounts(
+      cmd,
+      dim,
+      players.length,
+      grouped,
+    );
     const declaredTotal = grouped ? groupCount * perGroupBase : perGroupBase;
     let iterationCapped = false;
 
@@ -1563,7 +1974,21 @@ export function applyObjects(
     const spacing = createSpacingIndex(dim, spacingDistance ?? 0, "chebyshev");
 
     frameLoop: for (const frame of frames) {
-      const predicates = buildCandidatePredicates({ grid, constants, cmd, habitat, habitatIsData, frame, playerOrigins, forcePlacement, ignoreTerrain, liveActorAreas, caches, symbols, aliases });
+      const predicates = buildCandidatePredicates({
+        grid,
+        constants,
+        cmd,
+        habitat,
+        habitatIsData,
+        frame,
+        playerOrigins,
+        forcePlacement,
+        ignoreTerrain,
+        liveActorAreas,
+        caches,
+        symbols,
+        aliases,
+      });
       if (predicates === undefined) {
         const areaAttr = cmd.attributes.get("actor_area_to_place_in")?.[0];
         const id = areaAttr?.args[0]?.value;
@@ -1594,7 +2019,12 @@ export function applyObjects(
         });
         continue;
       }
-      const pool = buildCandidatePool(baseResult.survivors, selectionMode, dim, frame);
+      const pool = buildCandidatePool(
+        baseResult.survivors,
+        selectionMode,
+        dim,
+        frame,
+      );
       // For loose grouping's "within group_placement_radius of the anchor"
       // query below, a fixed lookup built once from the full survivor set
       // (independent of `pool`, which `takeFromPool` consumes) so that query
@@ -1604,7 +2034,9 @@ export function applyObjects(
       // command was paying a `dim^2` allocation and fill per frame for an
       // array nothing touched, and most commands are not loosely grouped.
       const needsCandidateLookup = grouped && !tight;
-      const isCandidate = needsCandidateLookup ? new Uint8Array(n) : EMPTY_CANDIDATE_LOOKUP;
+      const isCandidate = needsCandidateLookup
+        ? new Uint8Array(n)
+        : EMPTY_CANDIDATE_LOOKUP;
       if (needsCandidateLookup) {
         for (const t of baseResult.survivors) isCandidate[t] = 1;
       }
@@ -1614,23 +2046,51 @@ export function applyObjects(
       }
 
       /** guide:2205: every placement of the main object gets one. Same tile, same owner. */
-      function emitSecondObject(x: number, y: number, player: number | undefined, groupId: number | undefined): void {
+      function emitSecondObject(
+        x: number,
+        y: number,
+        player: number | undefined,
+        groupId: number | undefined,
+      ): void {
         if (secondObjectRef === undefined) return;
         // NO habitat check here, and it is load-bearing rather than an
         // omission: guide:2211's placeholder idiom exists precisely to bypass
         // the second object's own terrain restriction, and since fish cannot
         // stand on a shallow this is the ONLY way they reach one. Adding a
         // check costs `Menindee_AUS_v2.3.rms` every pond fish, silently.
-        objects.push({ objectRef: secondObjectRef, x, y, player, category: objectCategory(secondObjectRef, constants, symbols, aliases), groupId });
+        objects.push({
+          objectRef: secondObjectRef,
+          x,
+          y,
+          player,
+          category: objectCategory(
+            secondObjectRef,
+            constants,
+            symbols,
+            aliases,
+          ),
+          groupId,
+        });
       }
 
-      function commitPlacement(tile: number, groupId: number | undefined): void {
+      function commitPlacement(
+        tile: number,
+        groupId: number | undefined,
+      ): void {
         const x = tile % dim;
         const y = (tile - x) / dim;
         if (!forcePlacement) grid.occupied[tile] = 1;
         spacing.add(x, y);
-        const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
-        objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols, aliases), groupId });
+        const objectRef =
+          members.length > 1 ? pickGroupMember(members, rng) : members[0];
+        objects.push({
+          objectRef,
+          x,
+          y,
+          player: frame.player,
+          category: objectCategory(objectRef, constants, symbols, aliases),
+          groupId,
+        });
         placed++;
         emitSecondObject(x, y, frame.player, groupId);
       }
@@ -1645,7 +2105,14 @@ export function applyObjects(
           attempted++;
           const tile = pickFree();
           if (tile === undefined) {
-            pushFailure(failures, { bucket: "occupancyFull", commandSpan: cmd.span, stage: "S6", entity: typeName, reference: frame.reference, detail: `Ran out of free tiles for this placement.` });
+            pushFailure(failures, {
+              bucket: "occupancyFull",
+              commandSpan: cmd.span,
+              stage: "S6",
+              entity: typeName,
+              reference: frame.reference,
+              detail: `Ran out of free tiles for this placement.`,
+            });
             continue;
           }
           commitPlacement(tile, undefined);
@@ -1661,19 +2128,45 @@ export function applyObjects(
 
         const anchor = pickFree();
         if (anchor === undefined) {
-          pushFailure(failures, { bucket: "occupancyFull", commandSpan: cmd.span, stage: "S6", entity: `${typeName} group ${g + 1}`, reference: frame.reference, detail: `No free tile remains for this group's anchor.` });
+          pushFailure(failures, {
+            bucket: "occupancyFull",
+            commandSpan: cmd.span,
+            stage: "S6",
+            entity: `${typeName} group ${g + 1}`,
+            reference: frame.reference,
+            detail: `No free tile remains for this group's anchor.`,
+          });
           continue;
         }
 
         if (tight) {
           commitPlacement(anchor, groupId);
           if (target > 1) {
-            const filled = floodFillGroup(dim, anchor, target, grid.occupied, caches.habitatMask(habitat, false, ignoreTerrain));
+            const filled = floodFillGroup(
+              dim,
+              anchor,
+              target,
+              grid.occupied,
+              caches.habitatMask(habitat, false, ignoreTerrain),
+            );
             for (const tile of filled.slice(1)) {
               const x = tile % dim;
               const y = (tile - x) / dim;
-              const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
-              objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols, aliases), groupId });
+              const objectRef =
+                members.length > 1 ? pickGroupMember(members, rng) : members[0];
+              objects.push({
+                objectRef,
+                x,
+                y,
+                player: frame.player,
+                category: objectCategory(
+                  objectRef,
+                  constants,
+                  symbols,
+                  aliases,
+                ),
+                groupId,
+              });
               placed++;
               emitSecondObject(x, y, frame.player, groupId);
             }
@@ -1721,11 +2214,23 @@ export function applyObjects(
             nearby.pop();
             const x = tile % dim;
             const y = (tile - x) / dim;
-            if ((grid.occupied[tile] !== 0 && !forcePlacement) || spacing.tooClose(x, y)) continue;
-            const objectRef = members.length > 1 ? pickGroupMember(members, rng) : members[0];
+            if (
+              (grid.occupied[tile] !== 0 && !forcePlacement) ||
+              spacing.tooClose(x, y)
+            )
+              continue;
+            const objectRef =
+              members.length > 1 ? pickGroupMember(members, rng) : members[0];
             if (!forcePlacement) grid.occupied[tile] = 1;
             spacing.add(x, y);
-            objects.push({ objectRef, x, y, player: frame.player, category: objectCategory(objectRef, constants, symbols, aliases), groupId });
+            objects.push({
+              objectRef,
+              x,
+              y,
+              player: frame.player,
+              category: objectCategory(objectRef, constants, symbols, aliases),
+              groupId,
+            });
             placed++;
             filledCount++;
             emitSecondObject(x, y, frame.player, groupId);
@@ -1750,7 +2255,10 @@ export function applyObjects(
         if (typeof idVal === "number") {
           const last = objects[objects.length - 1];
           const existing = liveActorAreas.get(idVal);
-          const radius = optionalNumAttr(cmd, "actor_area_radius", 1) ?? existing?.[0]?.radius ?? 1;
+          const radius =
+            optionalNumAttr(cmd, "actor_area_radius", 1) ??
+            existing?.[0]?.radius ??
+            1;
           const area = { x: last.x, y: last.y, radius };
           if (existing) existing.push(area);
           else liveActorAreas.set(idVal, [area]);
@@ -1767,10 +2275,22 @@ export function applyObjects(
         detail: `This command asked for an extremely large number of placements — generation stopped at ${MAX_OBJECT_PLACEMENTS_PER_COMMAND} to stay inside the per-command work budget.`,
         data: { attempted, limit: MAX_OBJECT_PLACEMENTS_PER_COMMAND },
       });
-      notes.push({ key: `objectIterationCapped:${cmd.span.start}`, prominence: "drawer", stage: "S6", span: cmd.span, text: `This create_object command asked for more placements than the preview safely generates at once — it stopped early rather than hang.` });
+      notes.push({
+        key: `objectIterationCapped:${cmd.span.start}`,
+        prominence: "drawer",
+        stage: "S6",
+        span: cmd.span,
+        text: `This create_object command asked for more placements than the preview safely generates at once — it stopped early rather than hang.`,
+      });
     }
 
-    reports.push({ commandSpan: cmd.span, stage: "S6", attempted, placed, failures });
+    reports.push({
+      commandSpan: cmd.span,
+      stage: "S6",
+      attempted,
+      placed,
+      failures,
+    });
   }
 
   return { reports, notes, objects, players };

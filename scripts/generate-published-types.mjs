@@ -60,26 +60,34 @@ const BANNER = `/**
  *    exists with no data row yet, and \`isCorpse\` is written only when true.
  */`;
 
-const schema = JSON.parse(readFileSync(path.join(repoRoot, SCHEMA_PATH), "utf-8"));
+const schema = JSON.parse(
+  readFileSync(path.join(repoRoot, SCHEMA_PATH), "utf-8"),
+);
 const rowSchema = schema.$defs?.constant;
 
 if (!rowSchema) {
-  console.error(`✗ ${SCHEMA_PATH}: no $defs.constant — the row schema this type is generated from is gone.`);
+  console.error(
+    `✗ ${SCHEMA_PATH}: no $defs.constant — the row schema this type is generated from is gone.`,
+  );
   process.exit(1);
 }
 
 // Compiled from the ROW schema, not the file schema: the wire carries the
 // array, and `{ constants: [...] }` is a file layout the contract does not
 // republish. `title` is what names the emitted interface.
-const body = await compile({ ...rowSchema, title: "PublishedGameConstant" }, "PublishedGameConstant", {
-  bannerComment: "",
-  // Do not invent an index signature where the schema is merely silent. The
-  // schema says `additionalProperties: false` everywhere it matters, and an
-  // index signature is exactly what the hand-written placeholder used to
-  // swallow the difference between a field that exists and one that does not.
-  additionalProperties: false,
-  format: false,
-});
+const body = await compile(
+  { ...rowSchema, title: "PublishedGameConstant" },
+  "PublishedGameConstant",
+  {
+    bannerComment: "",
+    // Do not invent an index signature where the schema is merely silent. The
+    // schema says `additionalProperties: false` everywhere it matters, and an
+    // index signature is exactly what the hand-written placeholder used to
+    // swallow the difference between a field that exists and one that does not.
+    additionalProperties: false,
+    format: false,
+  },
+);
 
 const source = `${BANNER}
 
@@ -94,14 +102,19 @@ export type PublishedGameConstants = readonly PublishedGameConstant[];
 
 const outputAbs = path.join(repoRoot, OUTPUT_PATH);
 const prettierOptions = await prettier.resolveConfig(outputAbs);
-const formatted = await prettier.format(source, { ...prettierOptions, filepath: outputAbs });
+const formatted = await prettier.format(source, {
+  ...prettierOptions,
+  filepath: outputAbs,
+});
 
 if (checkOnly) {
   let existing;
   try {
     existing = readFileSync(outputAbs, "utf-8");
   } catch {
-    console.error(`✗ ${OUTPUT_PATH} is missing. Run \`${REGENERATE}\` and commit it.`);
+    console.error(
+      `✗ ${OUTPUT_PATH} is missing. Run \`${REGENERATE}\` and commit it.`,
+    );
     process.exit(1);
   }
   if (existing !== formatted) {

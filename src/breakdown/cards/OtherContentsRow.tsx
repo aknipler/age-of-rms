@@ -13,7 +13,12 @@ import { ItemCard } from "./ItemCard";
  */
 export function OtherContentsRow({ item }: { item: Item }) {
   if (item.kind === "attribute" && item.def) {
-    return <AttributeInstanceRow node={item} helpId="breakdown.attributeRow.otherContents" />;
+    return (
+      <AttributeInstanceRow
+        node={item}
+        helpId="breakdown.attributeRow.otherContents"
+      />
+    );
   }
   return <ItemCard item={item} />;
 }

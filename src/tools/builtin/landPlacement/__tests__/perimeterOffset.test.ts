@@ -22,7 +22,12 @@ describe("perimeterPolar — square (M=4)", () => {
     // Member 0 on the rotation ray (convention 2): side 0 faces +x, so its
     // bearing offset is 0 and its radiusScale is the apothem (round6 leaves
     // a float a hair off the closed form, hence toBeCloseTo not toEqual).
-    for (const [m, expectedBearing] of [[0, 0], [1, 90], [2, 180], [3, 270]] as const) {
+    for (const [m, expectedBearing] of [
+      [0, 0],
+      [1, 90],
+      [2, 180],
+      [3, 270],
+    ] as const) {
       const { radiusScale, bearingDegrees } = perimeterPolar(4, 4, m);
       expect(radiusScale).toBeCloseTo(APOTHEM_45, 5);
       expect(bearingDegrees).toBe(expectedBearing);
@@ -97,15 +102,26 @@ describe("perimeterPolar — equivalence gate against real trigonometry", () => 
     for (const sides of SIDES) {
       for (const memberCount of MEMBER_COUNTS) {
         for (let m = 0; m < memberCount; m++) {
-          const { radiusScale, bearingDegrees } = perimeterPolar(sides, memberCount, m);
-          const { radiusScale: exactScale, bearing: exactBearing } = exactPerimeterPoint(sides, memberCount, m);
+          const { radiusScale, bearingDegrees } = perimeterPolar(
+            sides,
+            memberCount,
+            m,
+          );
+          const { radiusScale: exactScale, bearing: exactBearing } =
+            exactPerimeterPoint(sides, memberCount, m);
           for (const rotation of ROTATIONS) {
             for (const radius of RADII) {
               // What expand.ts actually emits: r = base * radiusScale, theta
               // = rotation + bearingDegrees, both already-rounded numbers.
-              const emitted = toPoint(radius * radiusScale, rotation + bearingDegrees);
+              const emitted = toPoint(
+                radius * radiusScale,
+                rotation + bearingDegrees,
+              );
               // The reference: real trigonometry, no rounding anywhere.
-              const real = toPoint(radius * exactScale, rotation + exactBearing);
+              const real = toPoint(
+                radius * exactScale,
+                rotation + exactBearing,
+              );
 
               const error = Math.hypot(emitted.x - real.x, emitted.y - real.y);
               worst = Math.max(worst, error);
@@ -146,7 +162,9 @@ describe("perimeterPolar — perimeterShift (shiftPercent)", () => {
     const shifted = perimeterPolar(4, 4, 0, 6.25);
     const u = (0.75 - 0.5) * 2 * Math.sin(Math.PI / 4);
     const expectedScale = Math.hypot(APOTHEM_45, u);
-    const expectedBearing = Math.round((Math.atan2(u, APOTHEM_45) * 180) / Math.PI);
+    const expectedBearing = Math.round(
+      (Math.atan2(u, APOTHEM_45) * 180) / Math.PI,
+    );
     expect(shifted.radiusScale).toBeCloseTo(expectedScale, 5);
     expect(shifted.bearingDegrees).toBe(expectedBearing);
     // The subtlety itself: strictly further from the anchor than the
@@ -187,12 +205,19 @@ function toPoint(r: number, thetaDegrees: number): { x: number; y: number } {
  * implementation. Used only as the reference this file's own gate checks
  * `perimeterPolar` against.
  */
-function exactPerimeterPoint(sides: number, memberCount: number, memberIndex: number): { radiusScale: number; bearing: number } {
+function exactPerimeterPoint(
+  sides: number,
+  memberCount: number,
+  memberIndex: number,
+): { radiusScale: number; bearing: number } {
   const delta = memberIndex / memberCount + 1 / (2 * sides);
   const scaled = delta * sides;
   const k = ((Math.floor(scaled) % sides) + sides) % sides;
   const f = scaled - Math.floor(scaled);
   const u = (f - 0.5) * 2 * Math.sin(Math.PI / sides);
   const apo = Math.cos(Math.PI / sides);
-  return { radiusScale: Math.hypot(apo, u), bearing: k * (360 / sides) + (Math.atan2(u, apo) * 180) / Math.PI };
+  return {
+    radiusScale: Math.hypot(apo, u),
+    bearing: k * (360 / sides) + (Math.atan2(u, apo) * 180) / Math.PI,
+  };
 }

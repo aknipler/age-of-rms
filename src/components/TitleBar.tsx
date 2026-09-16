@@ -134,7 +134,12 @@ export function TitleBar({
   return (
     <div className={styles.titleBar} data-tauri-drag-region>
       <div className={styles.brand} data-tauri-drag-region>
-        <img src="/app-icon.png" alt="" className={styles.brandIcon} draggable={false} />
+        <img
+          src="/app-icon.png"
+          alt=""
+          className={styles.brandIcon}
+          draggable={false}
+        />
         <span className={styles.brandName}>Age of RMS</span>
       </div>
       <div className={styles.menuWrapper}>
@@ -357,7 +362,9 @@ export function TitleBar({
                 }}
               >
                 Toggle Command Layout
-                <span className={styles.hotkeyHint}>{toggleLayoutHotkeyLabel}</span>
+                <span className={styles.hotkeyHint}>
+                  {toggleLayoutHotkeyLabel}
+                </span>
               </button>
             </HelpTip>
           </div>
@@ -445,7 +452,11 @@ export function TitleBar({
         )}
       </div>
       <HelpTip id="titleBar.settings">
-        <button type="button" className={styles.menuItem} onClick={onOpenSettings}>
+        <button
+          type="button"
+          className={styles.menuItem}
+          onClick={onOpenSettings}
+        >
           Settings
         </button>
       </HelpTip>

@@ -26,9 +26,17 @@ function parseFile(name: string) {
 
 describe("checkP1 — unit", () => {
   it("ok, zero coverage, on a script with no raw node at all", () => {
-    const parse = parseRms("<LAND_GENERATION>\ncreate_land { land_percent 20 }\n", lang);
+    const parse = parseRms(
+      "<LAND_GENERATION>\ncreate_land { land_percent 20 }\n",
+      lang,
+    );
     const result = checkP1(parse);
-    expect(result).toEqual({ ok: true, rawCoveredChars: 0, rawFraction: 0, unmanagedLandCount: 0 });
+    expect(result).toEqual({
+      ok: true,
+      rawCoveredChars: 0,
+      rawFraction: 0,
+      unmanagedLandCount: 0,
+    });
   });
 
   it("empty document: rawFraction is 0, not NaN", () => {
@@ -54,6 +62,11 @@ describe("checkP1 — corpus-shaped fixture (Sec.9)", () => {
 
   it("Bulls_Eyes.rms: no raw node at all — the tool's own reference map is fully manageable", () => {
     const parse = parseFile("Bulls_Eyes.rms");
-    expect(checkP1(parse)).toEqual({ ok: true, rawCoveredChars: 0, rawFraction: 0, unmanagedLandCount: 0 });
+    expect(checkP1(parse)).toEqual({
+      ok: true,
+      rawCoveredChars: 0,
+      rawFraction: 0,
+      unmanagedLandCount: 0,
+    });
   });
 });

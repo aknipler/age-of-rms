@@ -9,25 +9,25 @@ before acting.
 decision, the importer over the three corpus maps that carry the idiom, the generation-cost
 re-derivation, `Expr`, a test plan, and `tsc` over the document's own code. **Five of the six
 moved a conclusion**, and two of those five ran the way this repo's Hard rules predict — a
-number re-cited rather than re-measured, and a claim about a *type* that no probe was ever
+number re-cited rather than re-measured, and a claim about a _type_ that no probe was ever
 going to reach.
 
-| | Change |
-|---|---|
-| Sec.5.0 | **New. `Expr` is defined.** Rev 2 used it fourteen times and never wrote it down; `tsc` says so in three seconds (Sec.11). The type it needs has an arm rev 2's model had no room for, and deliberately has no `rnd` arm. |
-| Sec.5.3 | **Two amendments, both found by running the emit.** Re-association of a uniform `+`/`*` spine, and integer constant folding. Without them the compiler spills 14 unnecessary `#const`s on Bulls_Eyes; with them it reproduces the hand-written block **104 of 104 lines byte-identical**. Sec.2's acceptance bar is now met rather than asserted (Sec.10.1). |
-| Sec.4.2 | The `INBOUND_n` row of the table is **a derivation, not an emission**. It never needs a `#const` of its own. |
-| Sec.4.3 | **Rewritten on measurement.** Percent is right and integer-percent snapping is wrong; the reachable map sizes, the corpus's own lattice, and the angular error budget are all measured. `land_position`'s declared range is `[0, 99]`, not `[0, 100]`. |
-| Sec.6.4 | **Reversed, in both directions.** Recognition must run backwards from `land_position`, not forwards from the macro shape — and once it does, Venn's "varied idiom" adopts cleanly (8/8, compound radius included). The map the importer actually cannot read is `Rage Forest 2026.rms`, and the reason is not the trigonometry. |
-| Sec.7.2 | **Perf re-derived.** Rev 2 cited a median this repo had already superseded by 1.7×, from the file that warns against exactly that. The land-generation cut is worth **8×**, not the uniform saving the two-tier argument assumed, and the map it saves least on is the shape this tool serves. |
-| Sec.9 | New. The **preconditions** a script must meet before this tool can see it at all. |
-| Sec.10 | **New. The test plan** — three gates and two permanent reporters, replacing rev 3's throwaway probes. |
-| Sec.11 | **New. The `tsc` pass**, and what it found. |
-| Sec.3.6 | **New. The panel lifecycle**, written from `host.ts` and `ToolsPane.tsx`. A panel takes no snapshot and cannot go stale; its model has to be lifted above `activeTab` or a tab switch destroys it. |
-| Sec.3.8 | **New. The handle lifecycle.** One live result per tool, so a leak is unrepresentable; 682 KB worst case. Found two things Sec.11's own sketch assumed and `generatePreview` does not have. |
-| Sec.3.7 | **New. The overlay budget.** `mapOverlay` is one block holding N shapes, the way `table` is one block holding N rows — the alternative is the 1026-blocks-against-1000 failure the checker already shipped. |
-| Sec.3.4 | One measured correction: the Ludicrous figure describes a size this app cannot select. |
-| Sec.4.4, 6.4 | **Swept the DE install** (211 official scripts + 81 `.inc`). **Zero** of 10,226 official `land_position` uses computes anything — the idiom is community-only, which reprioritises the importer below the authoring path. And rev 2 overstated the `rnd` hoisting rule: `rnd` as a whole *argument* is legal and official maps use it 5,222 times, so hoisting is a choice the panel makes, not a constraint the language imposes. |
+|              | Change                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sec.5.0      | **New. `Expr` is defined.** Rev 2 used it fourteen times and never wrote it down; `tsc` says so in three seconds (Sec.11). The type it needs has an arm rev 2's model had no room for, and deliberately has no `rnd` arm.                                                                                                                                                                                                          |
+| Sec.5.3      | **Two amendments, both found by running the emit.** Re-association of a uniform `+`/`*` spine, and integer constant folding. Without them the compiler spills 14 unnecessary `#const`s on Bulls_Eyes; with them it reproduces the hand-written block **104 of 104 lines byte-identical**. Sec.2's acceptance bar is now met rather than asserted (Sec.10.1).                                                                       |
+| Sec.4.2      | The `INBOUND_n` row of the table is **a derivation, not an emission**. It never needs a `#const` of its own.                                                                                                                                                                                                                                                                                                                       |
+| Sec.4.3      | **Rewritten on measurement.** Percent is right and integer-percent snapping is wrong; the reachable map sizes, the corpus's own lattice, and the angular error budget are all measured. `land_position`'s declared range is `[0, 99]`, not `[0, 100]`.                                                                                                                                                                             |
+| Sec.6.4      | **Reversed, in both directions.** Recognition must run backwards from `land_position`, not forwards from the macro shape — and once it does, Venn's "varied idiom" adopts cleanly (8/8, compound radius included). The map the importer actually cannot read is `Rage Forest 2026.rms`, and the reason is not the trigonometry.                                                                                                    |
+| Sec.7.2      | **Perf re-derived.** Rev 2 cited a median this repo had already superseded by 1.7×, from the file that warns against exactly that. The land-generation cut is worth **8×**, not the uniform saving the two-tier argument assumed, and the map it saves least on is the shape this tool serves.                                                                                                                                     |
+| Sec.9        | New. The **preconditions** a script must meet before this tool can see it at all.                                                                                                                                                                                                                                                                                                                                                  |
+| Sec.10       | **New. The test plan** — three gates and two permanent reporters, replacing rev 3's throwaway probes.                                                                                                                                                                                                                                                                                                                              |
+| Sec.11       | **New. The `tsc` pass**, and what it found.                                                                                                                                                                                                                                                                                                                                                                                        |
+| Sec.3.6      | **New. The panel lifecycle**, written from `host.ts` and `ToolsPane.tsx`. A panel takes no snapshot and cannot go stale; its model has to be lifted above `activeTab` or a tab switch destroys it.                                                                                                                                                                                                                                 |
+| Sec.3.8      | **New. The handle lifecycle.** One live result per tool, so a leak is unrepresentable; 682 KB worst case. Found two things Sec.11's own sketch assumed and `generatePreview` does not have.                                                                                                                                                                                                                                        |
+| Sec.3.7      | **New. The overlay budget.** `mapOverlay` is one block holding N shapes, the way `table` is one block holding N rows — the alternative is the 1026-blocks-against-1000 failure the checker already shipped.                                                                                                                                                                                                                        |
+| Sec.3.4      | One measured correction: the Ludicrous figure describes a size this app cannot select.                                                                                                                                                                                                                                                                                                                                             |
+| Sec.4.4, 6.4 | **Swept the DE install** (211 official scripts + 81 `.inc`). **Zero** of 10,226 official `land_position` uses computes anything — the idiom is community-only, which reprioritises the importer below the authoring path. And rev 2 overstated the `rnd` hoisting rule: `rnd` as a whole _argument_ is legal and official maps use it 5,222 times, so hoisting is a choice the panel makes, not a constraint the language imposes. |
 
 Worked examples come from `test-maps/Bulls_Eyes.rms`, `test-maps/Venn.rms` and
 `test-maps/Rage Forest 2026.rms` — **the complete set of corpus maps that use the
@@ -44,8 +44,8 @@ both halves of it by regenerating the block (Sec.10.1).
 
 Four asks:
 
-1. Chain a land to another land (or to map centre) so it keeps its position *relative to the
-   parent*, and moves when the parent moves.
+1. Chain a land to another land (or to map centre) so it keeps its position _relative to the
+   parent_, and moves when the parent moves.
 2. Drop lands in standard shapes — circle, square, triangle, …
 3. Write a custom formula in `x`, `y`, arithmetic and `SIN`/`COS`, and have the app turn it
    into RMS-legal left-associative maths.
@@ -129,18 +129,18 @@ the corpus rather than from reading the maps:
 ### 3.1 The contract genuinely cannot express this
 
 `ToolOutput.blocks` is `heading | text | keyValue | table | severity | codeRef`, and the
-comment on it reads *"Declarative display — the pane renders these; tools render nothing."*
+comment on it reads _"Declarative display — the pane renders these; tools render nothing."_
 There is no canvas, no pointer event, no persistent state between messages. `tools-api-design.md`
 line 31 lists interactive UI as a v1 non-goal pointing at "the future webview tier".
 
 So there are three honest options and one dishonest one:
 
-| Option | Verdict |
-|---|---|
-| Add a `canvas` / `html` block kind | **No.** That *is* the webview tier, with its whole trust and sandboxing story, arrived at sideways to get one first-party feature shipped. |
-| A fourth top-level tab | **No.** It reads source, reads the AST, reads generation settings and writes edits — it is a tool by every property except how it draws. A tab would fork the capability model and the Apply path. |
-| A **panel tool**: a built-in that owns the pane's body | **Yes.** Sec.3.2. |
-| Call it a report tool and smuggle state through params | Dishonest, and it does not work — params are a submit-once form, not live state. |
+| Option                                                 | Verdict                                                                                                                                                                                            |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Add a `canvas` / `html` block kind                     | **No.** That _is_ the webview tier, with its whole trust and sandboxing story, arrived at sideways to get one first-party feature shipped.                                                         |
+| A fourth top-level tab                                 | **No.** It reads source, reads the AST, reads generation settings and writes edits — it is a tool by every property except how it draws. A tab would fork the capability model and the Apply path. |
+| A **panel tool**: a built-in that owns the pane's body | **Yes.** Sec.3.2.                                                                                                                                                                                  |
+| Call it a report tool and smuggle state through params | Dishonest, and it does not work — params are a submit-once form, not live state.                                                                                                                   |
 
 ### 3.2 What a panel tool is
 
@@ -176,14 +176,14 @@ Three things a panel tool keeps, and one it must not:
   `edit-source` enforcement in `host.ts` still gates it.
 - **Does not go through `ToolHost.start()`.** This needs saying loudly because it is the
   obvious wrong move. `ToolHost` models a one-shot compute: one run app-wide, a progress
-  stream, a 60 s silence watchdog, a cancel grace, a terminal message. A panel is *live* —
+  stream, a 60 s silence watchdog, a cancel grace, a terminal message. A panel is _live_ —
   it recomputes on every pointer move and never terminates until the user leaves the tab.
   Forcing it through the host means either a watchdog that fires on an idle panel or a
   watchdog disabled for one tool, and the second is the first with extra steps. Panel tools
   get a mount/unmount lifecycle instead, and `isBusy()` treats a mounted panel as holding
   the run slot so a report tool cannot start underneath it. **Sec.3.6 is that lifecycle,
   written out** — rev 2 stopped at this sentence, and the reframe that makes it small is
-  that a panel is long-lived while its *work* is not: every `generate` it asks for is one
+  that a panel is long-lived while its _work_ is not: every `generate` it asks for is one
   bounded computation, which is exactly what `DEADLINES` already bounds.
 
 ### 3.3 `read-preview-view`, and why it has to be real
@@ -210,34 +210,48 @@ needs, and only the first belongs in a capability (Sec.7.1).
 
 Rev 1 recommended keeping the panel tier narrow until a second tenant appeared. **Overruled:
 build it for the community.** That changes the design, and the useful move is to notice that
-"let community tools do what Land Placement does" is *not one capability*. It is four, they
+"let community tools do what Land Placement does" is _not one capability_. It is four, they
 have wildly different costs, and three of them are cheap enough to ship now and benefit
 every existing tool.
 
-| Layer | What a tool can do | Transport | Cost |
-|---|---|---|---|
-| **1. `run-preview`** | Ask the host to generate and read the result | **Any**, external included | Small |
-| **2. `mapOverlay` block** | Draw on the preview canvas declaratively | **Any**, external included | Small |
-| **3. `overlayEvent`** | Receive clicks and drags back from the canvas | **Any**, external included | Medium |
-| **4. Declarative forms** | A full editing panel (trees, formula fields) | Any | **Large — deferred** |
+| Layer                     | What a tool can do                            | Transport                  | Cost                 |
+| ------------------------- | --------------------------------------------- | -------------------------- | -------------------- |
+| **1. `run-preview`**      | Ask the host to generate and read the result  | **Any**, external included | Small                |
+| **2. `mapOverlay` block** | Draw on the preview canvas declaratively      | **Any**, external included | Small                |
+| **3. `overlayEvent`**     | Receive clicks and drags back from the canvas | **Any**, external included | Medium               |
+| **4. Declarative forms**  | A full editing panel (trees, formula fields)  | Any                        | **Large — deferred** |
 
 #### Layer 1 — the preview becomes a service, not an import
 
 Today `consistencyChecker` imports `generatePreview` directly, and `registry.ts` says in
 as many words that this "is what makes it inexpressible as an external tool until that
 generator is a standalone library." **Layer 1 removes that sentence** without making the
-generator standalone: the tool *asks*, the host *runs*.
+generator standalone: the tool _asks_, the host _runs_.
 
 ```ts
 type ToolToHost =
-  | { type: "generate"; settings?: { playerCount?: number }; seed?: number; cutOffset?: number }
-  | { type: "sliceRequest"; handle: string; rect: { x: number; y: number; w: number; h: number } }
+  | {
+      type: "generate";
+      settings?: { playerCount?: number };
+      seed?: number;
+      cutOffset?: number;
+    }
+  | {
+      type: "sliceRequest";
+      handle: string;
+      rect: { x: number; y: number; w: number; h: number };
+    }
   | { type: "release"; handle: string };
 
 type HostToTool =
-  | { type: "generated"; handle: string; summary: PreviewSummary }   // Sec.11
-  | { type: "previewSlice"; handle: string; rect: { x: number; y: number; w: number; h: number };
-      terrain: number[]; elevation: number[] }
+  | { type: "generated"; handle: string; summary: PreviewSummary } // Sec.11
+  | {
+      type: "previewSlice";
+      handle: string;
+      rect: { x: number; y: number; w: number; h: number };
+      terrain: number[];
+      elevation: number[];
+    }
   | { type: "generateFailed"; reason: string };
 ```
 
@@ -254,7 +268,7 @@ Monte Carlo loop that does this sixty times, so the conclusion stands on the sma
 an unreachable case is the same mistake as a budget quoted at one map size. So the host retains the
 `PreviewResult` and the tool queries it — land origins, per-land placement outcomes and
 failure buckets, notes, and explicit slice requests for tile rects or a land's tiles. That
-is a deeper interface than shipping the grid *and* it is the cheaper one, which is the
+is a deeper interface than shipping the grid _and_ it is the cheaper one, which is the
 usual sign it is the right one.
 
 In-process built-ins get the same API backed by the live object with zero copy. One
@@ -270,7 +284,9 @@ A new `OutputBlock`:
 
 ```ts
 // OutputBlock gains one arm; OverlayShape is Sec.11.
-type OutputBlockV2 = OutputBlock | { kind: "mapOverlay"; shapes: OverlayShape[]; interactive?: boolean };
+type OutputBlockV2 =
+  | OutputBlock
+  | { kind: "mapOverlay"; shapes: OverlayShape[]; interactive?: boolean };
 ```
 
 where `OverlayShape` is points, circles, lines, polylines, labels and handles in **tile
@@ -320,7 +336,7 @@ webview tier is designed on top of the wrong lifecycle.
 #### Layer 4 — deferred, deliberately
 
 Land Placement's right-hand panel is a tree with per-node formula fields, live validation
-and a diff preview (Sec.8). A declarative vocabulary for *that* is a large design and there
+and a diff preview (Sec.8). A declarative vocabulary for _that_ is a large design and there
 is currently **nothing to derive it from**. Designing it now means designing it from
 imagination, one week before having a real example in hand.
 
@@ -341,13 +357,13 @@ everything except the right-hand panel is already open to them.
 
 ### 3.6 The panel lifecycle (**new in rev 3**)
 
-Rev 2 gave this one sentence — *"panel tools get a mount/unmount lifecycle instead, and
-`isBusy()` treats a mounted panel as holding the run slot"* — and it is the largest unwritten
+Rev 2 gave this one sentence — _"panel tools get a mount/unmount lifecycle instead, and
+`isBusy()` treats a mounted panel as holding the run slot"_ — and it is the largest unwritten
 piece in the document. This section is written **from `src/tools/host.ts` and
 `src/tools/ToolsPane.tsx`** rather than from rev 2's prose, per the rule that a section
 describing a function must be derived from that function.
 
-#### The reframe that makes this small: a panel is long-lived, its *work* is not
+#### The reframe that makes this small: a panel is long-lived, its _work_ is not
 
 Rev 2's argument against `ToolHost.start()` is that a panel "recomputes on every pointer move
 and never terminates", so a silence watchdog either fires on an idle panel or gets disabled.
@@ -383,16 +399,16 @@ edit.
 
 #### The transitions, and the two that are not obvious
 
-| event | today (run) | panel |
-|---|---|---|
-| select this tool | `cancel()` → `reset()` → `start()` | reject if `isBusy()`; else mount |
-| select another tool | confirm → `cancel()` → `reset()` | confirm **if `dirty`** → unmount |
-| `generate` in flight, another requested | n/a | cancel the first, keep the panel |
-| tool goes silent mid-`generate` | watchdog → `terminate()` | identical, scoped to the request |
-| document edited (Code tab) | run keeps its snapshot; Apply goes stale | **re-derive the fence; model survives** |
-| document replaced (File > Open) | `documentReplaced()` → terminate + reset | **unmount, unconditionally** |
-| Advanced Tools tab left | — | **suspend** |
-| Apply | `applyTextEdits` → `reparseNow` → `reset()` | `applyTextEdits` → `reparseNow`; panel **stays mounted** |
+| event                                   | today (run)                                 | panel                                                    |
+| --------------------------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| select this tool                        | `cancel()` → `reset()` → `start()`          | reject if `isBusy()`; else mount                         |
+| select another tool                     | confirm → `cancel()` → `reset()`            | confirm **if `dirty`** → unmount                         |
+| `generate` in flight, another requested | n/a                                         | cancel the first, keep the panel                         |
+| tool goes silent mid-`generate`         | watchdog → `terminate()`                    | identical, scoped to the request                         |
+| document edited (Code tab)              | run keeps its snapshot; Apply goes stale    | **re-derive the fence; model survives**                  |
+| document replaced (File > Open)         | `documentReplaced()` → terminate + reset    | **unmount, unconditionally**                             |
+| Advanced Tools tab left                 | —                                           | **suspend**                                              |
+| Apply                                   | `applyTextEdits` → `reparseNow` → `reset()` | `applyTextEdits` → `reparseNow`; panel **stays mounted** |
 
 **(a) A document edit does not invalidate a panel, and this is where the run model does not
 transfer.** `canApply(currentText)` is `currentText === state.snapshot`, where the snapshot
@@ -402,11 +418,11 @@ opposite** — its edits are a pure function of the model and the current parse,
 recomputing them costs the 0.173 ms of Sec.7.2. So:
 
 > A panel takes **no snapshot at mount**. It computes its `TextEdit[]` synchronously against
-> the current parse at the moment Apply is pressed, and `canApply` compares against *that*
+> the current parse at the moment Apply is pressed, and `canApply` compares against _that_
 > string. "Stale" is not reachable for a panel, because there is no window between computing
 > the edits and applying them.
 
-What a document edit *can* do is move or damage the fence, and that is a separate, real
+What a document edit _can_ do is move or damage the fence, and that is a separate, real
 concern: the fence's span is re-derived on every reparse, and if the text **inside** the
 fence changed by hand, the panel says so and offers to re-adopt or overwrite rather than
 silently regenerating over the edit. That is the `@alp` analogue of the staleness guard and
@@ -414,13 +430,13 @@ it is a content check, not a version check.
 
 **(b) The panel's model must survive a tab switch, and today's pane cannot do it.**
 `App.tsx` renders `{activeTab === "advanced-tools" && <ToolsPane … />}`, so the pane
-**unmounts on every tab switch**, and `host` is a `useMemo` *inside* `ToolsPane` with no
+**unmounts on every tab switch**, and `host` is a `useMemo` _inside_ `ToolsPane` with no
 unmount cleanup. For a report tool that is merely wasteful. For a panel it is data loss: the
 model is unsaved user work, and switching to Code to look at something would destroy it.
 
 So the panel's model is lifted above `activeTab`, which is a move `App.tsx` has already made
 twice for exactly this reason — its own comment says the preview cut lives there
-*"specifically so it survives Breakdown ↔ Code"*. **Suspended** is the state a lifted model
+_"specifically so it survives Breakdown ↔ Code"_. **Suspended** is the state a lifted model
 is in while the pane is not rendered: the model is retained, no `generate` is requested, and
 **the run slot is released**, because holding it while the user is in another tab would block
 every other tool for no benefit. Re-entering the tab resumes and re-requests one generation.
@@ -457,7 +473,7 @@ offer to write one script's layout into another. Unmount, discard, and if the mo
 `dirty` say so in the pane rather than in a modal — the file is already gone by then and a
 prompt that cannot undo anything is noise.
 
-#### What this does *not* need
+#### What this does _not_ need
 
 No new watchdog, no new terminal states, no change to `cancel()`, `terminate()`, `finish()`
 or `canApply()`'s existing behaviour for runs, and no per-tool host (which would break "one
@@ -473,28 +489,28 @@ consistency checker has already shipped the failure: **1026 blocks against
 run, and the user got nothing at all** — not a truncated report — on a map the design cited
 by name 27 times.
 
-**The contract already contains the answer, and it is `table`.** A table is *one* block
+**The contract already contains the answer, and it is `table`.** A table is _one_ block
 holding N rows, with `LIMITS.maxTableRowsRendered` at 10,000 and a pane that renders the
 first N and prints "showing first N of M". So:
 
 > **`mapOverlay` is one block holding N shapes**, never one block per shape. The block cap is
 > not the governing limit; a new per-block `maxOverlayShapesPerBlock` is.
 
-That is the difference between a tool drawing one mark per land being *unrepresentable* and
-being *ordinary*.
+That is the difference between a tool drawing one mark per land being _unrepresentable_ and
+being _ordinary_.
 
 **The cap is derived from the worst real script, not chosen round.** Largest `create_land`
 counts measured 2026-08-29:
 
-| | lands |
-|---|---|
-| `Arena.rms` (DE official) | **3,774** |
-| `Stranded.rms` (DE official) | 1,889 |
+|                                 | lands     |
+| ------------------------------- | --------- |
+| `Arena.rms` (DE official)       | **3,774** |
+| `Stranded.rms` (DE official)    | 1,889     |
 | `24hr_A Heart Map.rms` (corpus) | **2,275** |
-| `Venn.rms` (corpus) | 471 |
+| `Venn.rms` (corpus)             | 471       |
 
 A per-land overlay therefore needs to serve ~3,800 shapes on a real shipped map, and a tool
-drawing a mark *plus* an edge per land doubles it. **`maxOverlayShapesPerBlock: 10_000`,
+drawing a mark _plus_ an edge per land doubles it. **`maxOverlayShapesPerBlock: 10_000`,
 equal to `maxTableRowsRendered`** — the same order, for the same reason (it is a render
 budget, not a memory budget), and consistency with a constant the contract already carries
 beats a fresh number derived from the same argument.
@@ -502,7 +518,7 @@ beats a fresh number derived from the same argument.
 Three rules ride with it, each one a lesson this repo has already paid for:
 
 - **Over-budget truncates and says so; it never rejects.** The checker's failure was that an
-  over-cap output produced *nothing*. An overlay that draws 10,000 of 12,000 shapes and
+  over-cap output produced _nothing_. An overlay that draws 10,000 of 12,000 shapes and
   prints the count is strictly better than a blank canvas, and the count is printed
   **unconditionally, including at zero**, because a filtered overlay and an empty one are
   different claims.
@@ -526,7 +542,7 @@ in the host, and this session has just paid for one of those — the orphaned wo
 was the same shape, an object with no owner and no deadline.
 
 **Writing it found two things the sketch had assumed and the tree does not have.** Both are
-the *resolve the symbol against the tree* rule landing on rev 3's own work, one section after
+the _resolve the symbol against the tree_ rule landing on rev 3's own work, one section after
 Sec.11 was written about exactly that.
 
 > **`generatePreview` does not return land origins.** Its result is
@@ -549,15 +565,15 @@ Both are small against `index.ts` (the origins array and the grid both already e
 Measured 2026-08-29, from the real struct widths — `StageSnapshot` is 6 bytes/tile
 (terrain + layer `Uint16`, elevation + cliff `Uint8`), a full `TileGrid` is 11:
 
-| size | dim | one snapshot | all six snapshots | full `TileGrid` |
-|---|---|---|---|---|
-| Tiny | 120 | 84 KB | 0.49 MB | 155 KB |
-| Normal | 200 | 234 KB | 1.37 MB | 430 KB |
-| Giant | 252 | 372 KB | **2.18 MB** | **682 KB** |
+| size   | dim | one snapshot | all six snapshots | full `TileGrid` |
+| ------ | --- | ------------ | ----------------- | --------------- |
+| Tiny   | 120 | 84 KB        | 0.49 MB           | 155 KB          |
+| Normal | 200 | 234 KB       | 1.37 MB           | 430 KB          |
+| Giant  | 252 | 372 KB       | **2.18 MB**       | **682 KB**      |
 
 **So a handle retains the final grid, never the snapshot sequence.** 682 KB against 2.18 MB
 at the largest reachable size, and the panel draws the finished map — the S1-S6 sequence is
-the preview pane's Current/Final feature, not this one's. Snapshot *capture* turned out not to
+the preview pane's Current/Final feature, not this one's. Snapshot _capture_ turned out not to
 be the question: `collectSnapshots` true against false measured between −22% and +47% across
 six runs, both signs, which on a machine with a documented 3.7× load spread means the time
 cost is inside the noise. **The whole question is retention, not capture.**
@@ -595,11 +611,11 @@ carries the source string it was generated from, and:
 
 Measured JSON size of a summary carrying everything except the grid:
 
-| map | full | without `objects` | objects |
-|---|---|---|---|
-| `Bulls_Eyes.rms` | 71 KB | 60 KB | 144 |
-| `Venn.rms` | **1,171 KB** | 175 KB | 12,367 |
-| `24hr_A Heart Map.rms` @Giant | **1,876 KB** | 242 KB | 20,374 |
+| map                           | full         | without `objects` | objects |
+| ----------------------------- | ------------ | ----------------- | ------- |
+| `Bulls_Eyes.rms`              | 71 KB        | 60 KB             | 144     |
+| `Venn.rms`                    | **1,171 KB** | 175 KB            | 12,367  |
+| `24hr_A Heart Map.rms` @Giant | **1,876 KB** | 242 KB            | 20,374  |
 
 **So "never the whole grid" was the wrong half of the economy to worry about.** On a real map
 the object list is 85–87% of the payload and it dwarfs a Giant grid's 682 KB once serialised.
@@ -609,7 +625,7 @@ Placement needs none of them — it draws lands — so the common case ships nei
 
 #### One cap the supersession rule does not close
 
-A tool can ask for the whole grid one slice at a time. Supersession bounds what the *host*
+A tool can ask for the whole grid one slice at a time. Supersession bounds what the _host_
 retains; it does nothing about what a tool pulls across the wire. So `sliceRequest` needs a
 per-rect area cap and the host counts bytes served per run against
 `LIMITS.maxInboundLineBytes`' outbound sibling — the same asymmetry `tools-api/index.ts`
@@ -633,17 +649,17 @@ type FrameKind = "radial" | "absolute";
 type Anchor = "center" | string;
 
 interface Placement {
-  id: string;                       // stable; survives reorder
-  parent: Anchor;                   // parent placement id — this is the chain
-  frame: FrameKind;                 // Sec.4.2
+  id: string; // stable; survives reorder
+  parent: Anchor; // parent placement id — this is the chain
+  frame: FrameKind; // Sec.4.2
   offset:
     // `theta` in a radial frame IS the angle ABC of Sec.4.2 — signed, degrees,
     // measured at the parent from the ray pointing back at the parent's own
     // anchor. In an absolute frame it is a plain world bearing.
     | { kind: "polar"; r: Expr; theta: Expr }
     | { kind: "cartesian"; dx: Expr; dy: Expr }
-    | { kind: "formula"; x: Expr; y: Expr };   // the custom-formula escape hatch
-  label: string;                    // user-facing, and the seed of the emitted const names
+    | { kind: "formula"; x: Expr; y: Expr }; // the custom-formula escape hatch
+  label: string; // user-facing, and the seed of the emitted const names
   /**
    * Set when the user has edited this member away from its group's expansion.
    * Load-bearing, not decorative: Sec.4.5's merge rule branches on it — unset
@@ -654,7 +670,7 @@ interface Placement {
 
 interface RandomParam {
   id: string;
-  label: string;                    // becomes the emitted const name (Sec.5.6)
+  label: string; // becomes the emitted const name (Sec.5.6)
   min: number;
   max: number;
   /** Sec.4.4. false (default) = one draw shared everywhere; true = one draw per player. */
@@ -665,7 +681,7 @@ interface RandomParam {
 
 interface LandRole {
   id: string;
-  label: string;                    // "Player", "Neutral A", … — the const-name stem
+  label: string; // "Player", "Neutral A", … — the const-name stem
   // Every attribute below emits as a `#const` the create_land references, so
   // editing the role edits one line and every land wearing it follows (Sec.6.2).
   // `Ref`, not `Expr`: a terrain is a NAME, not a number, and this repo already
@@ -675,33 +691,33 @@ interface LandRole {
   baseElevation: Expr;
   landPercent: Expr;
   zone: ZonePolicy;
-  assignToPlayer: boolean;          // true → assign_to AT_PLAYER <repeat index>
+  assignToPlayer: boolean; // true → assign_to AT_PLAYER <repeat index>
 }
 
 type ZonePolicy =
   | { kind: "none" }
   | { kind: "fixed"; zone: number }
-  | { kind: "perRepeat"; base: number; step: number };  // zone = base + step * repeatIndex
+  | { kind: "perRepeat"; base: number; step: number }; // zone = base + step * repeatIndex
 
 interface PatternSlot {
-  id: string;                       // stable; with repeatIndex this is Sec.4.5's merge key
-  role: string;                     // LandRole id
-  theta?: Expr;                     // angular position within the ring; default even
-  radius?: Expr;                    // overrides the group radius — the "wavy ring" case
+  id: string; // stable; with repeatIndex this is Sec.4.5's merge key
+  role: string; // LandRole id
+  theta?: Expr; // angular position within the ring; default even
+  radius?: Expr; // overrides the group radius — the "wavy ring" case
 }
 
 interface ShapeGroup {
   id: string;
   parent: Anchor;
   kind: "circle" | "square" | "triangle" | "polygon" | "line" | "arc";
-  pattern: PatternSlot[];           // ONE repeat of the cycle: [P, A, B, A, C]
-  repeats: number;                  // how many times it goes round
-  radius: Expr;                     // default circumradius, PERCENT (Sec.4.3)
-  rotation: Expr;                   // phase, degrees
+  pattern: PatternSlot[]; // ONE repeat of the cycle: [P, A, B, A, C]
+  repeats: number; // how many times it goes round
+  radius: Expr; // default circumradius, PERCENT (Sec.4.3)
+  rotation: Expr; // phase, degrees
   frame: FrameKind;
-  members: string[];                // pattern.length × repeats Placements, ordered
-                                    // repeat-major then pattern order — Sec.4.5 derives
-                                    // each member's merge key from that position
+  members: string[]; // pattern.length × repeats Placements, ordered
+  // repeat-major then pattern order — Sec.4.5 derives
+  // each member's merge key from that position
 }
 ```
 
@@ -747,12 +763,12 @@ sits on, and dropping it would mirror half the map.
 Depth 2 forces a choice the brief does not cover: for a grandchild D hung off C, is the
 reference ray C→A (back to the map centre) or C→B (back up the chain)?
 
-**It must be C→B, and this is forced rather than chosen.** The tool emits C's *position*
+**It must be C→B, and this is forced rather than chosen.** The tool emits C's _position_
 (`X_C`, `Y_C`), not its bearing from centre — a child position is a vector sum, not a
 rotation — so recovering bearing(A→C) would need `ATAN2`, which RMS does not have and which
 Sec.2 lists as a non-goal. The ray back up the chain, by contrast, is pure addition.
 
-Both readings agree at depth 1, because at depth 1 the parent's anchor *is* the map centre.
+Both readings agree at depth 1, because at depth 1 the parent's anchor _is_ the map centre.
 So one uniform rule covers every depth:
 
 > The local zero axis is the ray from the parent back to **the parent's own anchor** — the
@@ -761,11 +777,11 @@ So one uniform rule covers every depth:
 Carrying one extra quantity per node makes the whole thing three additions. For node `n`
 let `INBOUND_n` be the world angle of the ray from `n` back to its anchor:
 
-| | top-level land `t` (anchor = centre) | child `c` of parent `p` |
-|---|---|---|
-| ray angle | `θ_t` (world bearing) | `INBOUND_p + θ_c` |
-| position | `r * COS(θ_t) + 50` | `r * COS(INBOUND_p + θ_c) + X_p` |
-| `INBOUND` | `θ_t + 180` | `INBOUND_p + θ_c + 180` |
+|           | top-level land `t` (anchor = centre) | child `c` of parent `p`          |
+| --------- | ------------------------------------ | -------------------------------- |
+| ray angle | `θ_t` (world bearing)                | `INBOUND_p + θ_c`                |
+| position  | `r * COS(θ_t) + 50`                  | `r * COS(INBOUND_p + θ_c) + X_p` |
+| `INBOUND` | `θ_t + 180`                          | `INBOUND_p + θ_c + 180`          |
 
 Substituting for P1_A1: `INBOUND_P1 + θ` = `DEGREES_P1 + 180 + (ROTATION_AUX + VAR_A1)` —
 character-for-character the hand-written line.
@@ -789,7 +805,7 @@ the emitted block is byte-identical to the hand-written one on all 104 lines. Se
 - **Parent at the map centre.** bearing(A→B) is undefined when A and B coincide. The tool
   falls back to a world axis of 0° and flags the node, rather than emitting arithmetic whose
   meaning depends on floating-point noise in a subtraction of equal numbers.
-- **Top-level land.** No ABC angle exists — its parent *is* A — so its offset is a plain
+- **Top-level land.** No ABC angle exists — its parent _is_ A — so its offset is a plain
   world polar `(r, θ)` from centre, exactly `DEGREES_P1 (ROTATION_PLAYER)`.
 
 #### `absolute`
@@ -802,7 +818,7 @@ second mechanism, and this is the same mechanism with a zero substituted.
 
 **Connecting never moves anything.** Drag a link from C to B and the tool computes the
 `theta` that leaves C exactly where it already sits; the connection only changes what will
-move it *later*. That is the whole promise of the feature and it goes in the HelpTip
+move it _later_. That is the whole promise of the feature and it goes in the HelpTip
 verbatim.
 
 #### Two combinations this section never named (**added slice 3, 2026-08-30**)
@@ -832,18 +848,18 @@ Rev 2 stopped there, and the three things it left implicit are the ones that dec
 #### The model stores percent as a float, and that is forced
 
 `percent` is what the attribute takes and the only unit that survives a map-size change, so
-it is what the fence writes. But the *quantum* varies with map size, and the reachable range
+it is what the fence writes. But the _quantum_ varies with map size, and the reachable range
 is narrower than rev 2 assumed:
 
-| lobby size | dim | tiles | 1 tile = | 1% = |
-|---|---|---|---|---|
-| Tiny | 120 | 14,400 | 0.833% | 1.2 tiles |
-| Small | 144 | 20,736 | 0.694% | 1.44 tiles |
-| Medium | 168 | 28,224 | 0.595% | 1.68 tiles |
-| Normal | 200 | 40,000 | 0.500% | 2.0 tiles |
-| Large | 220 | 48,400 | 0.455% | 2.2 tiles |
-| Huge | 240 | 57,600 | 0.417% | 2.4 tiles |
-| Giant | 252 | 63,504 | 0.397% | **2.52 tiles** |
+| lobby size | dim | tiles  | 1 tile = | 1% =           |
+| ---------- | --- | ------ | -------- | -------------- |
+| Tiny       | 120 | 14,400 | 0.833%   | 1.2 tiles      |
+| Small      | 144 | 20,736 | 0.694%   | 1.44 tiles     |
+| Medium     | 168 | 28,224 | 0.595%   | 1.68 tiles     |
+| Normal     | 200 | 40,000 | 0.500%   | 2.0 tiles      |
+| Large      | 220 | 48,400 | 0.455%   | 2.2 tiles      |
+| Huge       | 240 | 57,600 | 0.417%   | 2.4 tiles      |
+| Giant      | 252 | 63,504 | 0.397%   | **2.52 tiles** |
 
 **So Sec.7.3's "snapping to integer percent, on by default" is wrong, and rev 3 withdraws
 it.** At Giant it quantises every land to a 2.52-tile lattice — a land can be placed 2 tiles
@@ -860,12 +876,12 @@ map size**, which is a real thing the user can see on the canvas.
 Census over all 34 corpus maps, every `land_position` argument (**13,322** arguments,
 6,661 sites):
 
-| | count |
-|---|---|
-| numeric literal | 12,912 |
+|                            | count          |
+| -------------------------- | -------------- |
+| numeric literal            | 12,912         |
 | symbolic (a `#const` name) | **410** (3.1%) |
-| integral | 12,178 |
-| **fractional** | **734** |
+| integral                   | 12,178         |
+| **fractional**             | **734**        |
 
 Every one of the 734 fractional values is in **one map, `Venn.rms`**, and they are on a
 regular lattice: the smallest gap between distinct values is **0.833**, which is `100/120`
@@ -888,12 +904,12 @@ degree from −359 to 359, **Bhaskara's own approximation error is at most 0.001
 well under one tile everywhere. So the approximation is not the limiting term; the **angular
 quantisation** is:
 
-| radius | worst error, engine cast (1.0°) | worst error, compiler rounds (0.5°) | in tiles @Normal | @Giant |
-|---|---|---|---|---|
-| 14% (Bulls_Eyes aux) | 0.244% | 0.122% | 0.49 / 0.24 | 0.62 |
-| 26% (Bulls_Eyes player) | 0.454% | 0.227% | 0.91 / 0.45 | 1.14 |
-| 33% (Venn aux) | 0.576% | 0.288% | 1.15 / 0.58 | 1.45 |
-| 49% (Venn dense forest) | 0.855% | 0.428% | 1.71 / 0.86 | 2.16 |
+| radius                  | worst error, engine cast (1.0°) | worst error, compiler rounds (0.5°) | in tiles @Normal | @Giant |
+| ----------------------- | ------------------------------- | ----------------------------------- | ---------------- | ------ |
+| 14% (Bulls_Eyes aux)    | 0.244%                          | 0.122%                              | 0.49 / 0.24      | 0.62   |
+| 26% (Bulls_Eyes player) | 0.454%                          | 0.227%                              | 0.91 / 0.45      | 1.14   |
+| 33% (Venn aux)          | 0.576%                          | 0.288%                              | 1.15 / 0.58      | 1.45   |
+| 49% (Venn dense forest) | 0.855%                          | 0.428%                              | 1.71 / 0.86      | 2.16   |
 
 Two things fall out. Sec.5.4's "emit integer literals, rounded to nearest" is worth **half a
 tile to a full tile** at real radii rather than being a nicety. And **the total positional
@@ -932,7 +948,7 @@ create_actor_area X_P1 Y_P1 2 0                                  /* percent, int
 create_actor_area (X_P2_A1 / 100 * MAPSIZE) (Y_P2_A1 / 100 * MAPSIZE) 4 0   /* scaled */
 ```
 
-Three of the four scale and one does not. So the panel does not merely *display* tiles beside
+Three of the four scale and one does not. So the panel does not merely _display_ tiles beside
 percent — when the user asks for a land's position somewhere that takes tiles, it offers the
 `(NAME / 100 * MAPSIZE)` form, because the map that motivates this whole tool got that
 conversion wrong once already and nothing told its author.
@@ -942,7 +958,7 @@ conversion wrong once already and nothing told its author.
 `rnd(a,b)` may never be a term inside an expression, so every random quantity that takes part
 in arithmetic is **hoisted to a named parameter** and referenced (Sec.5.3). That much is
 forced by the language — and it forces a semantic choice with it, because a hoisted draw is
-evaluated *once* and every reference reads the same number.
+evaluated _once_ and every reference reads the same number.
 
 ⚠ **Rev 2 overstated the rule, and the DE install settles it (measured 2026-08-29).**
 `rnd(a,b)` is legal as a **whole argument value**, not only as a whole `#const` value: the
@@ -953,7 +969,7 @@ population, `rnd` appears as a term inside an expression **zero** times, so the 
 the rule are cleanly separated by shipped evidence rather than by reading.
 
 **So hoisting a purely-random position is a choice, and the tool still makes it.** A
-`Placement` whose offset is nothing but a draw *could* emit `land_position rnd(15,85) rnd(15,85)`
+`Placement` whose offset is nothing but a draw _could_ emit `land_position rnd(15,85) rnd(15,85)`
 with no `#const` at all, which is shorter and is the official idiom. The tool hoists anyway,
 for three reasons that are about the panel rather than the language: a named parameter is
 re-rollable from the UI, it is shareable between placements (which is the whole of Sec.4.4's
@@ -975,10 +991,10 @@ draw per player. Both are legitimate and neither is inferable from the model.
 **So every `RandomParam` carries a `perPlayer` checkbox**, and it is the whole of the
 feature:
 
-| `perPlayer` | Emits | Reads as |
-|---|---|---|
-| `false` (default) | `#const ALP_VAR_A1 rnd(-2,2)` | One draw, shared by every reference — symmetric, mirrored variance. Bulls_Eyes' own behaviour, so it is the default. |
-| `true` | `#const ALP_VAR_A1_P1 rnd(-2,2)`, `…_P2`, … one per player | Independent draw per player; a reference from a node owned by player *n* resolves to that player's copy. |
+| `perPlayer`       | Emits                                                      | Reads as                                                                                                             |
+| ----------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `false` (default) | `#const ALP_VAR_A1 rnd(-2,2)`                              | One draw, shared by every reference — symmetric, mirrored variance. Bulls_Eyes' own behaviour, so it is the default. |
+| `true`            | `#const ALP_VAR_A1_P1 rnd(-2,2)`, `…_P2`, … one per player | Independent draw per player; a reference from a node owned by player _n_ resolves to that player's copy.             |
 
 Two consequences worth stating rather than discovering:
 
@@ -1002,7 +1018,7 @@ Two consequences worth stating rather than discovering:
 ### 4.5 Roles and repeating patterns (**resolved 2026-08-29**)
 
 The count is **chosen by the user**, not derived from the player count (Sec.12 Q3). But a
-ring is rarely one kind of land — the requirement is a cycle of *roles* going round:
+ring is rarely one kind of land — the requirement is a cycle of _roles_ going round:
 
 ```
 P A B A C   P A B A C
@@ -1040,16 +1056,16 @@ free:
 
 #### What varies per instance: the repeat index
 
-This is what makes the pattern *modular* rather than a naming convention. A role's
+This is what makes the pattern _modular_ rather than a naming convention. A role's
 attributes are constant across its instances **except** where they are parameterised by
 which repeat they are in, and Bulls_Eyes shows both of the cases that matter:
 
-| | P1 cluster | P2 cluster | Rule |
-|---|---|---|---|
-| `assign_to AT_PLAYER` | `1` | `2` | repeat index |
-| player-land `zone` | `1` | `2` | `perRepeat`, base 1 step 1 |
-| aux-land `zone` | `11` | `22` | `perRepeat`, base 11 step 11 |
-| `base_size`, `terrain`, elevation | identical | identical | role constant |
+|                                   | P1 cluster | P2 cluster | Rule                         |
+| --------------------------------- | ---------- | ---------- | ---------------------------- |
+| `assign_to AT_PLAYER`             | `1`        | `2`        | repeat index                 |
+| player-land `zone`                | `1`        | `2`        | `perRepeat`, base 1 step 1   |
+| aux-land `zone`                   | `11`       | `22`       | `perRepeat`, base 11 step 11 |
+| `base_size`, `terrain`, elevation | identical  | identical  | role constant                |
 
 Hence `ZonePolicy` and `assignToPlayer` on the role: a role either pins a zone, derives one
 from the repeat index, or has none. Everything else is flat.
@@ -1110,13 +1126,13 @@ always the same shape"):
    regardless of how many roles exist. Separately, there is no "add a slot to an existing
    group's pattern" control anywhere in the panel today — `ShapeGroup.pattern` (`model.ts`) is
    typed as a heterogeneous cycle (`pattern: PatternSlot[]; // ONE repeat of the cycle: [P, A, B,
-   A, C]`, each slot carrying its own `role`), and the compiler/expansion side already supports
+A, C]`, each slot carrying its own `role`), and the compiler/expansion side already supports
    it, but nothing in `LandPlacementPanel.tsx` ever pushes a second `PatternSlot` onto an
    existing group. Both are straightforward panel work, not a model change.
 
 2. **A real geometric mismatch, the harder half**: even with an "add slot" control built, a
    `ShapeGroup`'s `pattern` repeats its slots AT POSITIONS AROUND ONE SHARED SHAPE — `[P, A, B, A,
-   C]` on a ring divides the ring into five slot positions per repeat, each getting its own
+C]` on a ring divides the ring into five slot positions per repeat, each getting its own
    angular share of the SAME circle. `Bulls_Eyes`' actual pattern is different in kind: the three
    aux lands sit chained off the ONE land they belong to (parent = that specific placement, a
    `radial` frame relative to it), not spread around the shared ring alongside every player's
@@ -1238,7 +1254,7 @@ At `N = 4` this puts one member on the middle of each side; at `N = 8` it altern
 
 **`perPlayer` outside `circle` was already refused before this slice, and the refusal quietly became the ONLY guard for a perimeter kind.** `prologue.ts`'s own `offset.kind !== "polar"` skip used to catch every perimeter member as a second line of defence (they were all `cartesian`); since every kind is `polar` now, it catches none of them, so `emitAlpModel`'s `perPlayer` refusal is what stands between a `perPlayer` square and a set of silently-stamped ring angles. Read the other way, this is also the news that a per-player ARC — one of the two wants parked by the shape-kinds escalation — is closer than it was: the prologue's own rule-detection machinery works on any `polar` member.
 
-**What is left of slice 5's own item 6, closed the same session.** A perimeter kind (`square`/`triangle`/`polygon`) needs no per-vertex handles — its vertices are fully determined by radius and rotation, which the existing gizmo already edits, so a vertex handle would be a second control for two numbers that already have one (`docs/land-placement-shape-kinds-escalation.md` §7 has the full reasoning). What remained was two handles, one per *polar* kind slice A introduced:
+**What is left of slice 5's own item 6, closed the same session.** A perimeter kind (`square`/`triangle`/`polygon`) needs no per-vertex handles — its vertices are fully determined by radius and rotation, which the existing gizmo already edits, so a vertex handle would be a second control for two numbers that already have one (`docs/land-placement-shape-kinds-escalation.md` §7 has the full reasoning). What remained was two handles, one per _polar_ kind slice A introduced:
 
 - **A line's near end** (`gizmoGeometry.ts`'s `lineEndHandlePosition`), the anchor's own mirror of the far end the existing radius handle already sits on — `(radius, rotation + 180)`. Dragging it (`canvasInteraction.ts`'s `computeLineEndDrag`) sets `radius` to the drop distance and `rotation` to the drop bearing plus 180 (folded, `dragMath.ts`'s own `foldBearing`, now exported for this), both in ONE `applyGroupEdit` call — two edits would measure the second delta against a group only half updated. It sits exactly on the line's own member 0 by construction, so the canvas's existing handle-before-circle hit-test precedence (already load-bearing for the radius handle over a circle's own member 0) picks it up for free. Declines exactly like the radius/rotation handles, with both labels together, when either `radius` or `rotation` is symbolic.
 - **An arc's sweep** (`arcSweepHandlePosition`), at its own last member, `(radius, rotation + sweep)`. Dragging it (`computeArcSweepDrag`) sets `sweep` only, to the drop bearing minus the group's own resolved rotation, WRAPPED into `(0, 360]` rather than folded into `dragPolar`'s signed bearing range — a sweep is a span, never negative, which a fold would get wrong at the exact drop that would land past 180. `sweep` is a plain `number`, never an `Expr`, so this handle can never hit the symbolic decline the line's does.
@@ -1268,7 +1284,7 @@ delta = m / N + 1 / (2M) + shiftPercent / 100    (was m / N + 1 / (2M))
 #### Patterns and chains compose, and Bulls_Eyes needs both
 
 Worth being explicit, because they look like alternatives and are not. Bulls_Eyes is **not**
-a patterned ring — it is 2 player lands on a ring, each the *parent* of 3 chained aux lands.
+a patterned ring — it is 2 player lands on a ring, each the _parent_ of 3 chained aux lands.
 A patterned ring would put all 8 lands on one circle, which is a different map.
 
 Both exist, and any member of a patterned ring can still be a parent for chained children
@@ -1317,16 +1333,16 @@ offers:
   (repeat 1, slot P) at `members[3]`. Re-expand to `[P, A] × 3` and `members[3]` is now
   (repeat 1, slot A) — a flat match hands the P land's nudge to an A land, a different role
   with a different terrain and a different `base_size`.
-- **Slot *position* breaks on reorder**, and reorder is a supported edit: Sec.8's pattern editor
+- **Slot _position_ breaks on reorder**, and reorder is a supported edit: Sec.8's pattern editor
   is "a reorderable strip of role chips". `[P, A, B] → [P, B, A]` leaves every land where it is
   and every slot index pointing at a new role.
 
-With ids, `(repeatIndex, slotId)` is stable across reorder, insertion, deletion of *other*
+With ids, `(repeatIndex, slotId)` is stable across reorder, insertion, deletion of _other_
 slots, and any `repeats` change — which is the entire set of edits that trigger re-expansion.
 
 **`members` stays `string[]`**, ordered repeat-major then pattern order, length exactly
 `pattern.length × repeats`, so `members[k]` carries the key
-`(⌊k / pattern.length⌋, pattern[k mod pattern.length].id)`. The key is *derived* rather than
+`(⌊k / pattern.length⌋, pattern[k mod pattern.length].id)`. The key is _derived_ rather than
 stored, and the old key is derivable at transition time because the transition holds `G_old`.
 Storing it would be a second copy of a fact the array already carries — the same trade Sec.6.2
 makes when it refuses an id comment and lets the constant name be the link. The ordering
@@ -1337,7 +1353,7 @@ terms of it.
 `nudged?: boolean` is a flag nothing reads. It becomes the discriminator:
 
 - **`nudged` unset — the offset is base-derived.** Recompute it wholesale from `G_new`; there
-  is no merge and nothing to lose. This is the branch that has to survive a *symbolic* group:
+  is no merge and nothing to lose. This is the branch that has to survive a _symbolic_ group:
   a ring whose `rotation` is a `RandomParam` — Bulls_Eyes' `ROTATION_PLAYER`, exactly — expands
   to symbolic member offsets, and they must keep following the ring.
 - **`nudged` set — the offset carries user intent.** Re-apply it as a **delta**:
@@ -1354,10 +1370,10 @@ terms of it.
 **One exclusion, and it is Sec.7.3's rule arriving somewhere else.** A nudged member whose
 offset is not numeric-literal in every `Expr` — a typed formula, a `formula`-kind position, a
 `RandomParam` reference the user wrote themselves — is **never rewritten**. It keeps what the
-user wrote, and the panel lists it as *position-detached*, beside the role-detachment Sec.6.2
+user wrote, and the panel lists it as _position-detached_, beside the role-detachment Sec.6.2
 already reports. Sec.7.3 refuses to discard a formula because the user brushed the canvas;
 re-expansion is a bigger brush and the reason does not weaken. The delta arithmetic is
-therefore always numeric — which is sound rather than lucky, because a nudge is *made*
+therefore always numeric — which is sound rather than lucky, because a nudge is _made_
 numerically (Sec.7.3's drag "edits `(r, θ)`"), so the case where symbolic arithmetic would be
 collapsed to a literal is unreachable through the drag path and excluded by name on the one
 path that could reach it.
@@ -1367,7 +1383,7 @@ path that could reach it.
 **deleted only if nothing references it**, on three mechanical conditions:
 
 1. no `Placement.parent` in the model points at it — deleting a parent orphans a chain, and
-   Sec.4.5's closing argument is precisely that ring members *are* chain parents;
+   Sec.4.5's closing argument is precisely that ring members _are_ chain parents;
 2. `nudged` is unset;
 3. no `create_land` in the document references its emitted constants.
    `auditConstants(parse)` already computes the raw material
@@ -1375,8 +1391,8 @@ path that could reach it.
    condition is **uses outside the tool's own fence**, and the filter is not
    optional. `useSpans` is every appearance of the name in the file, and the fence
    contains its own: a chained child's position const references its parent's
-   (Sec.4.2), so a parent would look referenced by arithmetic that is *about to be
-   regenerated*. Counting those asks the tool whether its own output needs its own
+   (Sec.4.2), so a parent would look referenced by arithmetic that is _about to be
+   regenerated_. Counting those asks the tool whether its own output needs its own
    output, which is circular and answers yes forever. The fence's span is known —
    Sec.6.1 delimits it — so the filter is a span comparison, and condition 1 already
    covers the case that motivates most intra-fence references anyway.
@@ -1386,7 +1402,7 @@ parent, label, children and its last per-repeat literals, which simply stops fol
 
 **Condition 3 is the one worth having written down, because the document had only half-stated
 the hazard.** Sec.6.2 says deleting a `create_land` by hand leaves its constants unreferenced,
-"which is harmless". The reverse is not harmless: the `create_land` lives *outside* the fence
+"which is harmless". The reverse is not harmless: the `create_land` lives _outside_ the fence
 and the tool does not own it, so deleting a member deletes `ALP_X_…`/`ALP_Y_…` out from under a
 command that still names them, and the script is left resolving a constant nobody defined. A
 shrink is the one ordinary edit that reaches that state, and nothing before this paragraph
@@ -1405,8 +1421,8 @@ unreferenced. Nothing is left to warn about, and a confirm dialog on a harmless 
 than no dialog — it teaches the user to dismiss the dialog, and the next one that matters is
 dismissed the same way.
 
-It is replaced by a **report after the fact** in the panel's own strip — *"Ring 1: 15 → 10
-lands. 2 released and still on the map, 3 deleted."* — with a one-click delete for the released
+It is replaced by a **report after the fact** in the panel's own strip — _"Ring 1: 15 → 10
+lands. 2 released and still on the map, 3 deleted."_ — with a one-click delete for the released
 pair. `Apply` is a single document edit and therefore a single `Ctrl+Z` (`useDocument.ts`
 batches for exactly this reason: "a user who applied 40 changes should press Ctrl+Z once"), and
 since the model rides in the fence header (Sec.6.1) undoing the text undoes the model with it —
@@ -1416,7 +1432,7 @@ dirty-tracking obligation and is named here rather than assumed.
 **Four consequences, stated rather than left to be found.**
 
 1. **Shrink→grow is not a round trip.** `5 → 3 → 5` leaves the two released members on the map
-   *plus* two fresh ones at the same keys. Re-adoption is rejected: a released placement is
+   _plus_ two fresh ones at the same keys. Re-adoption is rejected: a released placement is
    ordinary, and remembering ghost membership so it can be reclaimed is exactly the hidden
    mechanism Sec.6.2's "the escape hatch is the absence of a mechanism" refuses. The report's
    one-click delete is the cleanup, offered while the user still knows why those lands appeared.
@@ -1437,7 +1453,7 @@ dirty-tracking obligation and is named here rather than assumed.
 
 The centrepiece. The brief asks for "a clever way to turn the user input into
 left-associative RMS compatible maths"; the honest answer is that the cleverness is in
-*refusing* to be clever, and in verifying afterwards.
+_refusing_ to be clever, and in verifying afterwards.
 
 ### 5.0 `Expr` (**new in rev 3**)
 
@@ -1523,7 +1539,7 @@ have: a Discord report of undocumented patch behaviour, and
 - `if` **cannot test a constant** — only an RMS label. (This is what keeps Sec.12 Q3's
   `2_PLAYER_GAME` ladder legal, and it is why Bulls_Eyes' own `MAPSIZE` ladder is legal.)
 - An unresolvable operand after the first is dropped and evaluation continues; an
-  unresolvable *first* operand makes the whole expression unresolvable.
+  unresolvable _first_ operand makes the whole expression unresolvable.
 
 #### `%` is a cast, and this is the amendment
 
@@ -1541,7 +1557,7 @@ Two consequences, and the second is load-bearing for this whole document:
 `mathEval.ts`'s `mod()` used to special-case a zero or non-finite divisor (`Math.trunc(left)`,
 correct) and otherwise return JS's `left % right`, which does **not** cast: `5.7 % 3` gave
 `2.7` where the engine gives `2`, and `51.43 % 360` gave `51.43` where the engine gives `51`.
-The sign rule *was* measured and *was* right — ⚠ verify #18 was answered 2026-08-11 by
+The sign rule _was_ measured and _was_ right — ⚠ verify #18 was answered 2026-08-11 by
 `RMSTEST_47` against `-7 % 2`, `7 % -2`, `-7 % -2` — but every arm of that test used integer
 operands, so it pinned the sign and never exercised the cast. The two facts are orthogonal
 and the second was never in evidence.
@@ -1553,7 +1569,7 @@ guess on 2026-08-29 and was **measured on 2026-08-30** by `RMSTEST_64`, which re
 building on it** rather than citing the fix: `Math.trunc` on both sides, read out of the live
 function, and 4,000 fractional angles pushed through the real macro (Sec.5.4). Sec.5.5's
 oracle is sound, and as of 2026-08-30 every branch of it is measured rather than argued. This
-paragraph is kept rather than deleted because the *lesson* is what decays slowest —
+paragraph is kept rather than deleted because the _lesson_ is what decays slowest —
 **a measurement pins the property its arms varied**, which is the Hard rule this bug
 produced, and Sec.5.4 closes on the same point.
 
@@ -1578,7 +1594,7 @@ importantly `SIN(θ)` and `COS(θ)` sharing a θ — are one node.
 > emitted first, as its own `#const`, and referenced by name.
 
 **That is sound, decidable in one pass, and incomplete — rev 3 ran it and it spills.** Two
-normalisations have to happen *before* the rule is applied, and neither is optional:
+normalisations have to happen _before_ the rule is applied, and neither is optional:
 
 > **(a) Re-associate a uniform `+` or `*` chain onto the left spine.** `a + (b + c)` is a
 > legal RMS left spine written `a + b + c`. Rev 2's rule sees a non-leaf right operand and
@@ -1597,7 +1613,7 @@ after normalising parentheses and whitespace. On a tool whose stated purpose is 
 `#const` lines, shipping 14 spurious ones would have been the wrong first impression, and
 nothing but running it was going to say so.
 
-Note that (a) and (b) are *not* the "clever inlining" this section refuses. They are
+Note that (a) and (b) are _not_ the "clever inlining" this section refuses. They are
 canonicalisations of the input tree, they are decidable, and their output still goes through
 Sec.5.5's round-trip like everything else — which is what covers the one case where `+`
 re-association is not exact, two float literals whose IEEE sum depends on grouping. The
@@ -1605,7 +1621,7 @@ compiler proposes; the evaluator disposes.
 
 Two further consequences worth stating because they surprise people:
 
-- **Input already in RMS form emits as one line.** `180 * S - R * R` *entered as*
+- **Input already in RMS form emits as one line.** `180 * S - R * R` _entered as_
   `((180 * S) - R) * R` is a pure left spine with leaf right-operands, so it emits verbatim.
   Generated output looks like the hand-written map, not like machine vomit.
 - **Input in conventional form costs temps, correctly.** `180 * S - R * R` meaning
@@ -1706,7 +1722,7 @@ So after emitting, and **before offering a single edit**:
 4. Assert **exact equality**, not a tolerance. Both sides use identical operator rules, so
    any difference is a compiler bug, and a tolerance would hide precisely the class of bug
    worth catching. The one sanctioned inexactness is Sec.5.4's angle rounding, which happens
-   *before* step 3 and so is common to both sides.
+   _before_ step 3 and so is common to both sides.
 
 On disagreement the tool emits nothing and reports the offending node. A compiler that can
 only ever be wrong loudly is worth more here than one that is usually right.
@@ -1763,7 +1779,7 @@ established that RMS comments are not inert text. `src/hooks/scriptHeader.ts` ca
 in its own header comment, from the banner feature that paid for them:
 
 1. **Comment markers are whole tokens.** `src/parser/lexer.ts` splits on whitespace and only
-   *then* asks whether a token IS `/*` or `*/`. A closing `====*/` does not close the comment —
+   _then_ asks whether a token IS `/*` or `*/`. A closing `====*/` does not close the comment —
    it lexes as one `word`, and every line below it stays commented out, silently, with the map
    still generating. Each marker has to stand alone, whitespace-separated.
 2. **A word inside a comment that resolves to 69 opens a second comment.**
@@ -1780,7 +1796,7 @@ of the script.
 
 **The obvious fix is unsound, and it is unsound by this repo's own hard rule.** Serialise, walk
 the tokens, ask whether any of them resolves to 69, escape the ones that do — that is reference
-data used as a *negative* authority. `game-constants.json` holds a few dozen of several hundred
+data used as a _negative_ authority. `game-constants.json` holds a few dozen of several hundred
 constants, so a name found proves danger and a name **not** found proves nothing whatever. A
 validator built that way is green on exactly the scripts whose constants this repo does not know,
 which is the failure the positive-resolver rule exists to forbid.
@@ -1818,7 +1834,7 @@ formatter or a hand-edit to disturb. Consequences, all of them good:
   which the constants auditor already reports.
 - Hand-edit `terrain_type` to a literal → that land detaches from its role, keeps the value
   you gave it, and the panel reports it as detached instead of silently reasserting itself.
-  The escape hatch is the *absence* of a mechanism.
+  The escape hatch is the _absence_ of a mechanism.
 - Breakdown keeps full ownership of the block. It can edit any attribute of any land at any
   time; the tool's fence is upstream of all of it and never argues.
 
@@ -1838,8 +1854,8 @@ raises it as a warning with a one-click fix.
 
 ### 6.4 Import: run over the three maps that have the idiom (**rev 3**)
 
-Opening Bulls_Eyes with no `@alp` fence, the tool offers: *"This script looks like it has 8
-hand-written angle placements. Adopt them?"* The import is a **preview-and-confirm diff**,
+Opening Bulls_Eyes with no `@alp` fence, the tool offers: _"This script looks like it has 8
+hand-written angle placements. Adopt them?"_ The import is a **preview-and-confirm diff**,
 never automatic, and anything it cannot read confidently is left alone and reported rather
 than approximated. That part of rev 2 stands. Everything else in this section moved, in both
 directions, because rev 3 built the recogniser and ran it.
@@ -1852,13 +1868,13 @@ directions, because rev 3 built the recogniser and ran it.
 
 Swept over the DE install (211 official `.rms` plus 81 `.inc`, 2026-08-29):
 
-| | official DE scripts |
-|---|---|
-| `land_position` uses | **10,226** |
-| …whose operand is a `#const` name | **0** |
-| files containing `40500` | **0** |
-| files containing `SIN_` / `COS_` / a trigonometry macro | **0** |
-| `rnd` as a term inside an expression | **0** |
+|                                                         | official DE scripts |
+| ------------------------------------------------------- | ------------------- |
+| `land_position` uses                                    | **10,226**          |
+| …whose operand is a `#const` name                       | **0**               |
+| files containing `40500`                                | **0**               |
+| files containing `SIN_` / `COS_` / a trigonometry macro | **0**               |
+| `rnd` as a term inside an expression                    | **0**               |
 
 **Not one official map computes a land position.** Every one of the 10,226 is a literal or a
 whole-argument `rnd()`. The technique this whole document is about is an expert-community
@@ -1881,10 +1897,10 @@ Rev 2 specified "pattern-matching the Sec.5.4 macro shape plus the `X_* / Y_*` p
 halves fail on the third map, and they fail in the direction that produces confident
 nonsense.**
 
-| | Bulls_Eyes | Venn | Rage Forest |
-|---|---|---|---|
-| polar position consts, found structurally | 16 | 16 | **18** |
-| …of which named `X_*` / `Y_*` | 16 | 16 | **2** |
+|                                           | Bulls_Eyes | Venn | Rage Forest |
+| ----------------------------------------- | ---------- | ---- | ----------- |
+| polar position consts, found structurally | 16         | 16   | **18**      |
+| …of which named `X_*` / `Y_*`             | 16         | 16   | **2**       |
 
 Rage Forest names its position pairs `X1/Y1`, `A1/B1`, `POND_X1/POND_Y1` and
 `X_PERP_0/Y_PERP_0` — **four naming schemes in one file**, of which the rev-2 rule matches
@@ -1907,11 +1923,11 @@ an `Expr` (Sec.5.0), not necessarily a leaf.
 
 Run over the three maps, per distinct position pair:
 
-| map | pairs | ADOPT | reason for the rest |
-|---|---|---|---|
-| `Bulls_Eyes.rms` | 8 | **8** | — |
-| `Venn.rms` | 8 | **8** | — |
-| `Rage Forest 2026.rms` | **0** | 0 | nothing to read (below) |
+| map                    | pairs | ADOPT | reason for the rest     |
+| ---------------------- | ----- | ----- | ----------------------- |
+| `Bulls_Eyes.rms`       | 8     | **8** | —                       |
+| `Venn.rms`             | 8     | **8** | —                       |
+| `Rage Forest 2026.rms` | **0** | 0     | nothing to read (below) |
 
 **Rev 2's stated reason for calling the importer best-effort was wrong.** It named Venn's
 `X_P1_TC (RADIUS_PLAYER_LANDS + DIST_TC_FROM_CENTRE * COS_P1 + 50)` as a varied idiom that a
@@ -1933,16 +1949,16 @@ file. Literal positions are reported and left alone; only symbolic pairs are can
 
 The tool sees **nothing** in that map. Not "cannot adopt" — cannot see:
 
-| | in the file | reaching the AST |
-|---|---|---|
-| `create_land` | 30 | **0** |
-| `land_position` | 10 | **0** |
-| `<LAND_GENERATION>` sections | 3 | **0** |
-| parser **errors** | | **0** |
+|                              | in the file | reaching the AST |
+| ---------------------------- | ----------- | ---------------- |
+| `create_land`                | 30          | **0**            |
+| `land_position`              | 10          | **0**            |
+| `<LAND_GENERATION>` sections | 3           | **0**            |
+| parser **errors**            |             | **0**            |
 
 Lines 1131 to 5345 — **90,719 characters, 70.9% of the file** — are one `RawNode` inside
-`<PLAYER_SETUP>`, emitted by the parser's own `RMS0110`: *"This code mixes if/random with
-command structure in a way that must be shown as raw code — it is valid RMS."* That is the
+`<PLAYER_SETUP>`, emitted by the parser's own `RMS0110`: _"This code mixes if/random with
+command structure in a way that must be shown as raw code — it is valid RMS."_ That is the
 project's never-silently-drop rule working correctly. The consequence for this tool is
 absolute and it is not about trigonometry: **the 18 macro blocks in the preamble are visible
 and every land that uses them is not.** The importer finds no candidates, offers nothing, and
@@ -1968,7 +1984,7 @@ on unmount. Sec.3.4 deletes that**, and the deletion is the clearest single bene
 answering Q7 the way it was answered. `cutOffset` is a **parameter of the layer-1 `generate`
 request**, so the panel asks for a generation cut at the end of `<LAND_GENERATION>` and gets
 exactly that, without touching view state it does not own and without a second pipeline —
-layer 1 *is* the pipeline, and every other tool shares it.
+layer 1 _is_ the pipeline, and every other tool shares it.
 
 The user's own Current/Final pin stays theirs, and it keeps working while the panel is open.
 A tool that wants to reproduce the pane exactly still reads the pane's cut through
@@ -1976,7 +1992,7 @@ A tool that wants to reproduce the pane exactly still reads the pane's cut throu
 two different needs, and rev 1 had conflated them into one capability with a write half.
 
 **Amended 2026-08-31 (slice 4b).** "`cutOffset` is a parameter of the layer-1 `generate`
-request... layer 1 *is* the pipeline" describes the wire contract every OTHER tool (built-in
+request... layer 1 _is_ the pipeline" describes the wire contract every OTHER tool (built-in
 or external) uses; the Land Placement panel itself does not go through it. Sec.3.4's own
 "in-process built-ins get the same API backed by the live object with zero copy" turned out to
 mean, in practice, that the panel's Full tier calls `usePanelPreviewResultContext()` — a
@@ -2000,7 +2016,7 @@ one per game mode, selected by `if` branches — and a script may put it last, a
 > `<LAND_GENERATION>` in source order**, or the end of the document if there is none.
 
 That is the offset that keeps every land in the script, which is the property the panel
-needs; cutting at the *first* `<LAND_GENERATION>` would silently drop the layouts a
+needs; cutting at the _first_ `<LAND_GENERATION>` would silently drop the layouts a
 multi-mode map defines later, and those are exactly the ones a placement tool exists to edit.
 The corpus as the AST sees it has zero maps with more than one such section and one map where
 the rule degenerates to no cut at all (Petra, Sec.7.2 finding 2) — but the rule is stated
@@ -2012,9 +2028,9 @@ construct is legal RMS.
 ⚠ **Rev 2 cited `tools-api/index.ts`'s "median ~460 ms and up to 3.8 s" — a figure this repo
 superseded on 2026-08-15 and left in place.** `consistency-checker-design.md` Sec.4.4 measured
 775–794 ms median over the same corpus and named the cause (BUG-013 gave `24hr_Petra.rms` 384
-land origins and nobody re-timed), in a section whose own opening sentence is *"on numbers
+land origins and nobody re-timed), in a section whose own opening sentence is _"on numbers
 measured for this revision, because the older figure had drifted 1.7× while sitting in a
-document"*. Rev 2 re-cited the drifted number **out of the file that carries the warning
+document"_. Rev 2 re-cited the drifted number **out of the file that carries the warning
 against re-citing it**. This is the repo's own decay rule landing on a design doc one
 revision old, and it is the cheapest of the six passes to have run.
 
@@ -2025,12 +2041,12 @@ measured that, in this document or any other.
 **Measured this revision, all 34 corpus maps, `collectSnapshots: false`, 5 reps after a warm
 run, this machine:**
 
-| | Normal, full | Normal, land-cut | Giant, full | Giant, land-cut |
-|---|---|---|---|---|
-| median | 577 ms | **49 ms** | 920 ms | **78 ms** |
-| mean | 658 ms | 175 ms | 1050 ms | 279 ms |
-| worst | 3137 ms (`24hr_Petra`) | 3454 ms (`24hr_Petra`) | 5045 ms (`24hr_Petra`) | 5094 ms (`24hr_Petra`) |
-| median ratio | | **0.129** | | **0.131** |
+|              | Normal, full           | Normal, land-cut       | Giant, full            | Giant, land-cut        |
+| ------------ | ---------------------- | ---------------------- | ---------------------- | ---------------------- |
+| median       | 577 ms                 | **49 ms**              | 920 ms                 | **78 ms**              |
+| mean         | 658 ms                 | 175 ms                 | 1050 ms                | 279 ms                 |
+| worst        | 3137 ms (`24hr_Petra`) | 3454 ms (`24hr_Petra`) | 5045 ms (`24hr_Petra`) | 5094 ms (`24hr_Petra`) |
+| median ratio |                        | **0.129**              |                        | **0.131**              |
 
 Read the same ±50% caution `consistency-checker-design.md` Sec.4.4 attaches to its own table:
 this machine spans a 3.7× load factor and these are one reading. **The level to trust is the
@@ -2057,12 +2073,12 @@ load, so the load factor divides out of the ratio and does not divide out of eit
 
 So the two tiers stand, with their justification replaced:
 
-| Tier | When | What |
-|---|---|---|
-| **Vector** | every pointer move, 60 fps | Model only: land seed positions as circles at `base_size`, chain edges, shape gizmos. No terrain, no generation. Pure function of the graph. |
-| **Full** | drag end, debounced ~250 ms | One layer-1 `generate` request at the pinned seed and the panel's own `cutOffset`, drawn underneath the vector layer. |
+| Tier       | When                        | What                                                                                                                                         |
+| ---------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vector** | every pointer move, 60 fps  | Model only: land seed positions as circles at `base_size`, chain edges, shape gizmos. No terrain, no generation. Pure function of the graph. |
+| **Full**   | drag end, debounced ~250 ms | One layer-1 `generate` request at the pinned seed and the panel's own `cutOffset`, drawn underneath the vector layer.                        |
 
-The vector tier is drawable *straight from the model* — the compiler's own float evaluation
+The vector tier is drawable _straight from the model_ — the compiler's own float evaluation
 of each node (Sec.5.5 step 3) is already the position, so there is nothing extra to compute
 and no risk of the overlay disagreeing with what will be emitted. **Measured, that is cheap
 by two orders of magnitude**: re-evaluating Bulls_Eyes' entire 143-const table through
@@ -2073,7 +2089,7 @@ cost; it is free, and it would be the right architecture even if generation were
 **The debounce is the number that should be revisited first.** 250 ms was chosen against a
 460 ms generation; against a 49 ms median it is conservative and against Venn's 1279 ms it is
 optimistic. The honest rule is **adaptive**: debounce to the last measured land-cut duration
-for *this* script, floored at 100 ms, since the panel gets that measurement free on every
+for _this_ script, floored at 100 ms, since the panel gets that measurement free on every
 generation it already runs. A fixed constant is wrong at both ends of a 26× spread.
 
 ### 7.3 Interaction
@@ -2097,7 +2113,7 @@ generation it already runs. A fixed constant is wrong at both ends of a 26× spr
 
 ~~Snapping to integer percent is on by default~~ — **withdrawn in rev 3, on measurement.**
 Integer percent is a **2.52-tile lattice at Giant** (Sec.4.3), and the rationale was wrong
-twice over: Sec.5.4's integrality requirement is about *angles*, which the compiler already
+twice over: Sec.5.4's integrality requirement is about _angles_, which the compiler already
 resolves to integer literals at emit time (Sec.4.5), and a position const is `r * COS + 50`
 where `COS` is a float, so an integer `r` buys the emitted arithmetic nothing. The defaults
 that survive are **snap to the tile lattice for the current map size** (a real position the
@@ -2130,8 +2146,8 @@ A **Generated code** section previews the whole fence as a diff before Apply.
 **A preconditions strip at the top of the panel, above the tree** (Sec.9). It is empty on a
 healthy script and it is the first thing on screen when it is not, because the failure this
 tool can produce is an empty panel that looks identical to a map with nothing to manage. On
-`Rage Forest 2026.rms` it reads: *"70.9% of this script is code the app can only show as raw
-text, including 30 `create_land` commands. Land Placement cannot manage those."* — with a
+`Rage Forest 2026.rms` it reads: _"70.9% of this script is code the app can only show as raw
+text, including 30 `create_land` commands. Land Placement cannot manage those."_ — with a
 codeRef to the raw node's first line. Rev 3 added this section because that is the map's
 actual behaviour, measured, and rev 2 would have shipped a blank tree.
 
@@ -2206,13 +2222,13 @@ Sec.2 goal 1 stated the bar and rev 2 never ran it. **Rev 3 did, and it passes.*
 Bulls_Eyes' eight lands in the Sec.4.1 model, emit through Sec.4.2's table and Sec.5.3's
 amended rule, and check two things against the map itself:
 
-| check | result |
-|---|---|
-| emitted `#const` count | **104**, against the hand-written 104 |
-| emitted names with no hand-written counterpart | **0** |
-| lines byte-identical after normalising parens and whitespace | **104 of 104** |
-| lands landing on the same tile at Normal | **8 of 8** |
-| percent agreement | exact to the last printed digit on all 16 coordinates |
+| check                                                        | result                                                |
+| ------------------------------------------------------------ | ----------------------------------------------------- |
+| emitted `#const` count                                       | **104**, against the hand-written 104                 |
+| emitted names with no hand-written counterpart               | **0**                                                 |
+| lines byte-identical after normalising parens and whitespace | **104 of 104**                                        |
+| lands landing on the same tile at Normal                     | **8 of 8**                                            |
+| percent agreement                                            | exact to the last printed digit on all 16 coordinates |
 
 This is a **gate**, not a reporter: it compares against a checked-in corpus map and it can
 only go red for a real reason. It is also the strongest test in the plan, because it pins the
@@ -2248,15 +2264,15 @@ Generated `Expr` trees over the Sec.5.0 grammar, checked against Sec.5.5's own o
 
 A **reporter**, printing per map and diffing against pinned figures:
 
-| pinned | value |
-|---|---|
-| maps carrying the macro (grep `40500`) | 3 |
-| `Bulls_Eyes.rms` distinct position pairs / ADOPT | 8 / 8 |
-| `Venn.rms` distinct position pairs / ADOPT | 8 / 8 |
-| `Venn.rms` literal-position lands (not candidates) | 463 |
-| `Rage Forest 2026.rms` pairs visible to the AST | 0 |
-| corpus `land_position` arguments: numeric / symbolic | 12,912 / 410 |
-| corpus fractional position arguments | 734, all in `Venn.rms` |
+| pinned                                               | value                  |
+| ---------------------------------------------------- | ---------------------- |
+| maps carrying the macro (grep `40500`)               | 3                      |
+| `Bulls_Eyes.rms` distinct position pairs / ADOPT     | 8 / 8                  |
+| `Venn.rms` distinct position pairs / ADOPT           | 8 / 8                  |
+| `Venn.rms` literal-position lands (not candidates)   | 463                    |
+| `Rage Forest 2026.rms` pairs visible to the AST      | 0                      |
+| corpus `land_position` arguments: numeric / symbolic | 12,912 / 410           |
+| corpus fractional position arguments                 | 734, all in `Venn.rms` |
 
 Two of those rows are **controls that must not come back zero**, in this repo's own sense:
 the Venn literal count and the corpus symbolic count. A recogniser that silently matches
@@ -2310,19 +2326,19 @@ compiled under this repo's own `tsconfig.json` (`strict`, `noUnusedLocals`,
 `noUnusedParameters`), they produce **17 errors, every one `TS2304: Cannot find name`, across
 three identifiers**:
 
-| identifier | sites | where |
-|---|---|---|
-| `Expr` | 14 | Sec.4.1's model, in six interfaces |
-| `OverlayShape` | 1 | Sec.3.4 layer 2's `mapOverlay` block |
-| `PreviewSummary` | 1 | Sec.3.4 layer 1's `generated` message |
+| identifier       | sites | where                                 |
+| ---------------- | ----- | ------------------------------------- |
+| `Expr`           | 14    | Sec.4.1's model, in six interfaces    |
+| `OverlayShape`   | 1     | Sec.3.4 layer 2's `mapOverlay` block  |
+| `PreviewSummary` | 1     | Sec.3.4 layer 1's `generated` message |
 
 **None of the three is defined anywhere in rev 2**, and the two one-site names are the
 payload types of the two capabilities Sec.3.4 calls "small" and ships to the community. A
 layer whose message type does not exist is not a small layer; it is an unpriced one.
 
-This is the repo's own rule arriving on schedule: *a claim about DATA gets checked by a probe;
+This is the repo's own rule arriving on schedule: _a claim about DATA gets checked by a probe;
 a claim about a NAME, a TYPE or an EXPORT gets checked by the toolchain — and the second half
-is the one that keeps getting skipped.* Rev 2 cited its sources by symbol throughout, which is
+is the one that keeps getting skipped._ Rev 2 cited its sources by symbol throughout, which is
 what makes the check mechanical, and then nobody ran it. `npm run typecheck` answers in
 seconds and CI already runs it ahead of the tests.
 
@@ -2366,7 +2382,10 @@ interface PreviewSummary {
     declaredTargetTiles: number;
   }[];
   reports: readonly {
-    commandSpan: Span; stage: string; attempted: number; placed: number;
+    commandSpan: Span;
+    stage: string;
+    attempted: number;
+    placed: number;
     failureBuckets: Record<string, number>;
   }[];
   notes: readonly { key: string; text: string }[];
@@ -2379,17 +2398,59 @@ type OverlayRole = "primary" | "secondary" | "warning" | "error" | "muted";
 
 /** TILE coordinates throughout — projection.ts owns the screen transform. */
 type OverlayShape =
-  | { id?: string; kind: "point"; x: number; y: number; role: OverlayRole; radiusPx?: number }
-  | { id?: string; kind: "circle"; x: number; y: number; rTiles: number; role: OverlayRole; fill?: boolean }
-  | { id?: string; kind: "line"; from: { x: number; y: number }; to: { x: number; y: number }; role: OverlayRole; dashed?: boolean }
-  | { id?: string; kind: "polyline"; points: { x: number; y: number }[]; role: OverlayRole; closed?: boolean }
-  | { id?: string; kind: "label"; x: number; y: number; text: string; role: OverlayRole }
-  | { id: string; kind: "handle"; x: number; y: number; role: OverlayRole; cursor?: "move" | "ew-resize" | "grab" };
+  | {
+      id?: string;
+      kind: "point";
+      x: number;
+      y: number;
+      role: OverlayRole;
+      radiusPx?: number;
+    }
+  | {
+      id?: string;
+      kind: "circle";
+      x: number;
+      y: number;
+      rTiles: number;
+      role: OverlayRole;
+      fill?: boolean;
+    }
+  | {
+      id?: string;
+      kind: "line";
+      from: { x: number; y: number };
+      to: { x: number; y: number };
+      role: OverlayRole;
+      dashed?: boolean;
+    }
+  | {
+      id?: string;
+      kind: "polyline";
+      points: { x: number; y: number }[];
+      role: OverlayRole;
+      closed?: boolean;
+    }
+  | {
+      id?: string;
+      kind: "label";
+      x: number;
+      y: number;
+      text: string;
+      role: OverlayRole;
+    }
+  | {
+      id: string;
+      kind: "handle";
+      x: number;
+      y: number;
+      role: OverlayRole;
+      cursor?: "move" | "ew-resize" | "grab";
+    };
 ```
 
 `PreviewSummary` is the deeper half of Sec.3.4 layer 1's argument made concrete: it is what a
 tool needs about a generation, it is bounded by land count rather than by tile count, and
-writing it down is what shows the handle-plus-summary design is cheaper *and* more useful
+writing it down is what shows the handle-plus-summary design is cheaper _and_ more useful
 than shipping the grid. `landOrigins[].x/y` are **tiles**, deliberately — the grid's own
 units, converted once at the boundary rather than at every reader.
 
@@ -2441,7 +2502,7 @@ endif
 ```
 
 Every branch integral, macro safe at every count. Worth revisiting once patterns are built,
-because a pattern with one `P` slot and *n* repeats is already most of the way there.
+because a pattern with one `P` slot and _n_ repeats is already most of the way there.
 
 **Q4 — `rnd` sharing. RESOLVED 2026-08-29: a per-parameter checkbox.** `perPlayer` on each
 `RandomParam` — unchecked draws once and shares (Bulls_Eyes' `VAR_A1` mirroring, the
@@ -2510,7 +2571,7 @@ once patterns were built, and they are), so it is this document's next step rath
 deviation from it.
 
 **The count labels are exact and `if` has no boolean operator** (confirmed 2026-09-02), so "emit
-this land when the count is at least *k*" cannot be written directly. It can be **manufactured**,
+this land when the count is at least _k_" cannot be written directly. It can be **manufactured**,
 which is the whole design. A prologue converts the exact count into cumulative labels once:
 
 ```
@@ -2551,14 +2612,14 @@ one prerequisite rev 2 named is discharged.
 Six passes were run. **Five moved a conclusion**, which is a high enough rate to be worth
 recording as a fact about the document rather than as a list of fixes.
 
-| pass | verdict | cost of not running it |
-|---|---|---|
-| `tsc` on the sketches | **3 undefined type names, 17 errors** | Two "small" community-facing layers had no payload type at all |
-| Emit the acceptance bar | **Rule sound but incomplete** | 14 spurious `#const`s, on the tool whose purpose is deleting them |
-| Perf re-derivation | **Re-cited a figure superseded 1.7×, and priced the wrong quantity** | A 250 ms debounce chosen against a number 8× too large |
-| Importer over three maps | **Recognition ran the wrong direction; the "hard" map is hard for an unrelated reason** | Confident nonsense on one map, a silent empty panel on another |
-| Scale decision | **A default snap that quantises to 2.52 tiles** | Lands 2 tiles from where the user put them, at the largest size |
-| `Expr` | Defined; needed an arm rev 2's model lacked | Rage Forest's bisector inexpressible |
+| pass                     | verdict                                                                                 | cost of not running it                                            |
+| ------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `tsc` on the sketches    | **3 undefined type names, 17 errors**                                                   | Two "small" community-facing layers had no payload type at all    |
+| Emit the acceptance bar  | **Rule sound but incomplete**                                                           | 14 spurious `#const`s, on the tool whose purpose is deleting them |
+| Perf re-derivation       | **Re-cited a figure superseded 1.7×, and priced the wrong quantity**                    | A 250 ms debounce chosen against a number 8× too large            |
+| Importer over three maps | **Recognition ran the wrong direction; the "hard" map is hard for an unrelated reason** | Confident nonsense on one map, a silent empty panel on another    |
+| Scale decision           | **A default snap that quantises to 2.52 tiles**                                         | Lands 2 tiles from where the user put them, at the largest size   |
+| `Expr`                   | Defined; needed an arm rev 2's model lacked                                             | Rage Forest's bisector inexpressible                              |
 
 Three patterns, all of which this repo's Hard rules already name, arriving one revision after
 the rules were written:
@@ -2566,7 +2627,7 @@ the rules were written:
 1. **A re-cite is not a citation.** The 460 ms figure was taken out of the one file in the
    tree that carries a warning against re-citing it, one revision after
    `consistency-checker-design.md` paid for the same mistake. The fix is not "check the
-   number" — it is to notice that the panel needed a *different* number, which no amount of
+   number" — it is to notice that the panel needed a _different_ number, which no amount of
    checking the cited one would have produced.
 2. **A claim about a type gets checked by the toolchain, and it did not get checked.** Rev 2
    is unusually well sourced by symbol, which is exactly what makes `npm run typecheck`

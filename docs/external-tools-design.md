@@ -1,6 +1,6 @@
 # External Tools — Design (Phase 6 / M6, rev 1, draft for review)
 
-**Status: proposal, nothing implemented.** This is CREATION_PLAN.md's Phase 6 brief — *"manifest schema + process spawning implementing the 5.1 contract; unvetted-tool warning dialog; curated registry"* — worked out against the contract that has been running five built-in tools since 2026-08-15. It is written after `docs/tools-api-design.md` (rev 10) and `docs/source-languages-design.md` (rev 1) and reuses both wherever the shape is the same. Where it contradicts either, Sec.17 says so explicitly rather than leaving the reader to notice.
+**Status: proposal, nothing implemented.** This is CREATION_PLAN.md's Phase 6 brief — _"manifest schema + process spawning implementing the 5.1 contract; unvetted-tool warning dialog; curated registry"_ — worked out against the contract that has been running five built-in tools since 2026-08-15. It is written after `docs/tools-api-design.md` (rev 10) and `docs/source-languages-design.md` (rev 1) and reuses both wherever the shape is the same. Where it contradicts either, Sec.17 says so explicitly rather than leaving the reader to notice.
 
 **Every repo claim here is dated 2026-08-30 — re-derive before acting on it.** `docs/tools-api-design.md` Sec.10.2's standing instruction applies to this document, for the same measured reason: the half-life of an undated claim in this repo is about a week.
 
@@ -8,7 +8,7 @@
 
 The rest of the document is the consequences of these.
 
-1. **An extension is a folder plus a record, and the record is the authority.** One generic install layer serves both external tools and (later) language packs. What makes consent non-bypassable is that "installed" means *there is a record saying a human consented*, never *there is a folder on disk*. Sec.4.
+1. **An extension is a folder plus a record, and the record is the authority.** One generic install layer serves both external tools and (later) language packs. What makes consent non-bypassable is that "installed" means _there is a record saying a human consented_, never _there is a folder on disk_. Sec.4.
 2. **A tool's `entry` may be an executable or a script plus a declared runtime.** The runtime is a key resolved through a shared Settings > Runtimes panel, never a path in a manifest — the rule `docs/source-languages-design.md` Sec.5.3 already argued for packs, built once here. Sec.5.
 3. **Install is local; the registry is deferred but its shape is reserved.** The install record carries `source: { kind, url?, sha256? }` from day one, so a later registry fills fields instead of migrating what is already on users' disks. Sec.12.
 
@@ -26,7 +26,7 @@ And one finding that reorders the work: **the wire serializer specified in rev 1
 
 **Non-goals**
 
-- **A sandbox.** A spawned child runs with the user's privileges and this document does not pretend otherwise (Sec.9.1). The contract's "no ambient authority beyond its stdin" is a statement about the *protocol*, not about the OS.
+- **A sandbox.** A spawned child runs with the user's privileges and this document does not pretend otherwise (Sec.9.1). The contract's "no ambient authority beyond its stdin" is a statement about the _protocol_, not about the OS.
 - **The registry.** Sec.12.
 - **Making the flagship tool portable.** The consistency checker imports the preview generator and is inexpressible externally until that generator is a standalone library. Sec.13.
 - **Hot reload, background tools, tools that add UI.** A tool is still a document the app displays (`docs/tools-api-design.md` Sec.1 goal 2), and that is what keeps the trust model tractable.
@@ -38,21 +38,21 @@ And one finding that reorders the work: **the wire serializer specified in rev 1
 
 Verified 2026-08-30.
 
-| Piece | State |
-|---|---|
-| The contract (`tools-api/index.ts`) | **Exists, complete, running.** `TOOLS_API_VERSION`, capabilities, manifest, `ToolContext`, `OutputBlock`, `ToolMessage`, `ErrorReason`, `LIMITS`, `DEADLINES`, `PROHIBITED_VALUE_KINDS` |
-| Wire *types* (`SerializedParseResult`, `WireNumber`, `InfSentinel`) | **Exist**, and are pinned by `src/parser/__tests__/wireTypes.test-d.ts` |
-| `numeric()` decode helper | Exists, **zero consumers** outside its own declaration |
-| The **encoder** | **Does not exist.** No file anywhere converts a `ParseResult` to the wire form |
-| `parseInboundLine` | Exists in `src/tools/protocol.ts`, **called only from `protocol.test.ts`** |
-| `validateToolMessage`, `validateEdits`, `validateManifest`, `effectiveCapabilities` | Exist and run against built-ins today |
-| Run lifecycle (`ToolHost`) | Exists: one run app-wide, both watchdogs, cancel grace, staleness guard, edit-capability enforcement, handle-identity stale-message rejection |
-| Injected-runner seam (`ToolRunner`) | Exists, with two implementations (`inProcessRunner`, `workerRunner`) |
-| Process spawning | **Does not exist anywhere.** `src-tauri/Cargo.toml` carries `opener`, `dialog`, `fs`, `store`, `process` and `updater`; no shell plugin, and `src/` contains no spawn of any kind |
-| App data dir layout for extensions | **Does not exist.** The only app data today is one `settings.json` via `tauri-plugin-store`, shared by every settings family |
-| `tools-api/PROTOCOL.md` | **Does not exist**, not even as the stub Sec.8 of rev 10 prescribes |
-| Published bundled `.d.ts` | **Does not exist** |
-| Sec.9 round-trip and def-reconstruction tests | **Do not exist** — this is `docs/known-issues.md` BUG-017 |
+| Piece                                                                               | State                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The contract (`tools-api/index.ts`)                                                 | **Exists, complete, running.** `TOOLS_API_VERSION`, capabilities, manifest, `ToolContext`, `OutputBlock`, `ToolMessage`, `ErrorReason`, `LIMITS`, `DEADLINES`, `PROHIBITED_VALUE_KINDS` |
+| Wire _types_ (`SerializedParseResult`, `WireNumber`, `InfSentinel`)                 | **Exist**, and are pinned by `src/parser/__tests__/wireTypes.test-d.ts`                                                                                                                 |
+| `numeric()` decode helper                                                           | Exists, **zero consumers** outside its own declaration                                                                                                                                  |
+| The **encoder**                                                                     | **Does not exist.** No file anywhere converts a `ParseResult` to the wire form                                                                                                          |
+| `parseInboundLine`                                                                  | Exists in `src/tools/protocol.ts`, **called only from `protocol.test.ts`**                                                                                                              |
+| `validateToolMessage`, `validateEdits`, `validateManifest`, `effectiveCapabilities` | Exist and run against built-ins today                                                                                                                                                   |
+| Run lifecycle (`ToolHost`)                                                          | Exists: one run app-wide, both watchdogs, cancel grace, staleness guard, edit-capability enforcement, handle-identity stale-message rejection                                           |
+| Injected-runner seam (`ToolRunner`)                                                 | Exists, with two implementations (`inProcessRunner`, `workerRunner`)                                                                                                                    |
+| Process spawning                                                                    | **Does not exist anywhere.** `src-tauri/Cargo.toml` carries `opener`, `dialog`, `fs`, `store`, `process` and `updater`; no shell plugin, and `src/` contains no spawn of any kind       |
+| App data dir layout for extensions                                                  | **Does not exist.** The only app data today is one `settings.json` via `tauri-plugin-store`, shared by every settings family                                                            |
+| `tools-api/PROTOCOL.md`                                                             | **Does not exist**, not even as the stub Sec.8 of rev 10 prescribes                                                                                                                     |
+| Published bundled `.d.ts`                                                           | **Does not exist**                                                                                                                                                                      |
+| Sec.9 round-trip and def-reconstruction tests                                       | **Do not exist** — this is `docs/known-issues.md` BUG-017                                                                                                                               |
 
 ### 3.2 BUG-017 is not tracked debt, it is step one
 
@@ -66,7 +66,7 @@ BUG-017 records that the contract's own Sec.9 items 1 and 11 — a serialization
 
 Two things are wrong with it, and neither is currently a live bug.
 
-- **It stringifies the def-*included* tree.** `maxOutboundRunBytes` was derived from a worst measured case of roughly 9.5 MB, which rev 10 states is a **def-stripped** parse plus reference data; the def-included figure the same section gives is about 14 MB, because JSON has no back-references and every shared `CommandDef` pointer re-expands inline. So the check compares the wrong quantity against a cap derived from the right one. It errs large, so it cannot under-reject, and 15-odd MB is comfortably inside a 32 MB cap — **latent, not live.**
+- **It stringifies the def-_included_ tree.** `maxOutboundRunBytes` was derived from a worst measured case of roughly 9.5 MB, which rev 10 states is a **def-stripped** parse plus reference data; the def-included figure the same section gives is about 14 MB, because JSON has no back-references and every shared `CommandDef` pointer re-expands inline. So the check compares the wrong quantity against a cap derived from the right one. It errs large, so it cannot under-reject, and 15-odd MB is comfortably inside a 32 MB cap — **latent, not live.**
 - **It costs a full stringify of the largest object in the app on every built-in run**, to guard a transport that does not exist. The checker declares `read-ast` and `read-reference`, so pressing Run on a heavy map serializes the whole parse plus 1.37 MB of reference data purely to measure it, and then throws the string away.
 
 **The fix falls out of building the encoder and should land with it.** The external runner produces the wire string anyway, so the cap check becomes `wire.length` on the string it is about to write — no separate pass, and it measures the bytes that actually cross. For in-process and worker transports the check should not run at all: `postMessage` uses structured clone, which preserves sharing and never builds a JSON string, so there is no outbound byte count to cap. Keep the host-side `host-error` reason and the script-naming message, both of which rev 10 argues for correctly; move where the number comes from.
@@ -93,7 +93,7 @@ One install path serves both kinds. This was a decision taken against the altern
 Three properties this layout is chosen for.
 
 - **`installed.json` sits above the kind folders**, so "what is installed" is one read, one schema, one place to audit, and it does not depend on walking a tree whose contents a user can change.
-- **Build history is not inside `packs/`.** `docs/source-languages-design.md` Sec.13 q3 asks Phase 6 to settle this, and the answer is that history is per *project* and holds two full copies of a script per entry, so it has a different lifetime, a different pruning owner and a different growth curve from an installed extension. Putting it under the pack that produced it would make uninstalling a pack delete a user's build history, which is not what uninstall means.
+- **Build history is not inside `packs/`.** `docs/source-languages-design.md` Sec.13 q3 asks Phase 6 to settle this, and the answer is that history is per _project_ and holds two full copies of a script per entry, so it has a different lifetime, a different pruning owner and a different growth curve from an installed extension. Putting it under the pack that produced it would make uninstalling a pack delete a user's build history, which is not what uninstall means.
 - **Nothing goes next to the executable.** The Microsoft Store build installs read-only into `C:\Program Files\WindowsApps` (`src/settings/scriptFolder.ts` records why probing it is pointless), so an install location that assumes a writable install directory is broken on one of the two shipping channels.
 
 ### 4.2 The install record is the authority, not the directory
@@ -105,7 +105,7 @@ Three properties this layout is chosen for.
   "schemaVersion": 1,
   "extensions": [
     {
-      "kind": "tool",                       // discriminant; "pack" later
+      "kind": "tool", // discriminant; "pack" later
       "id": "my-checker",
       "version": "1.2.0",
       "apiVersion": 1,
@@ -113,11 +113,11 @@ Three properties this layout is chosen for.
       "source": { "kind": "local", "path": "D:\\downloads\\my-checker" },
       "consent": {
         "capabilities": ["read-ast", "read-reference", "edit-source"],
-        "grantedAt": "2026-09-01T10:14:03Z"
+        "grantedAt": "2026-09-01T10:14:03Z",
       },
-      "enabled": true
-    }
-  ]
+      "enabled": true,
+    },
+  ],
 }
 ```
 
@@ -127,11 +127,11 @@ The inverse also holds: a record whose folder is gone is reported and offered fo
 
 **`source` is the registry hedge.** `kind: "local"` carries the path it came from, purely so the Settings tab can say where a thing came from. `kind: "registry"` will carry `url` and `sha256`. Reserving the shape now means a registry adds fields rather than rewriting a file that is already on users' disks.
 
-**`consent.capabilities` is recorded, not derived.** It is the set that was *shown to the user*, snapshotted at the moment they agreed. Sec.9.3 is what it is for.
+**`consent.capabilities` is recorded, not derived.** It is the set that was _shown to the user_, snapshotted at the moment they agreed. Sec.9.3 is what it is for.
 
 ### 4.3 The mechanism that stops consent wording collapsing
 
-The known failure of a generic extension layer is that the consent dialog becomes one component parameterised by a string, and then somebody supplies the wrong string. `docs/source-languages-design.md` Sec.11 names exactly this: the one thing packs must not inherit silently is the wording, because *"this tool can read your script"* and *"building with this pack runs `python` on your map file"* are different claims.
+The known failure of a generic extension layer is that the consent dialog becomes one component parameterised by a string, and then somebody supplies the wrong string. `docs/source-languages-design.md` Sec.11 names exactly this: the one thing packs must not inherit silently is the wording, because _"this tool can read your script"_ and _"building with this pack runs `python` on your map file"_ are different claims.
 
 So the generic layer is generic in its **plumbing** and closed in its **copy**:
 
@@ -164,7 +164,7 @@ export const CONSENT_COPY: Record<ExtensionKind, ConsentCopy> = {
 Two rules make it enforceable rather than merely intended.
 
 1. **`Record<ExtensionKind, ConsentCopy>` with no `Partial` and no fallback.** A third kind cannot be added without someone writing its copy. This is the same discipline `validateManifest` applies at registration and for the same reason: fail where it is visible, not at the moment a user is being asked to trust something.
-2. **A test asserts the copy says the right thing per kind, in both directions.** The pack copy must contain its full-privilege claim. The tool copy must *also* contain one (Sec.9.1 explains why), and must not contain a claim about interpreting the user's own source file, which is not what a tool does. **Over-claiming is a defect too** — a dialog that says the same alarming thing about everything trains a user to click through it, and the next dialog they click through is the one that mattered.
+2. **A test asserts the copy says the right thing per kind, in both directions.** The pack copy must contain its full-privilege claim. The tool copy must _also_ contain one (Sec.9.1 explains why), and must not contain a claim about interpreting the user's own source file, which is not what a tool does. **Over-claiming is a defect too** — a dialog that says the same alarming thing about everything trains a user to click through it, and the next dialog they click through is the one that mattered.
 
 The plumbing that genuinely is shared: unzip or copy into place, validate the manifest at registration, write the record, list, enable/disable, uninstall, and report the "found but not installed" case. None of that differs by kind, and none of it contains a sentence a user reads.
 
@@ -180,7 +180,7 @@ The plumbing that genuinely is shared: unzip or copy into place, validate the ma
 
 ### 5.1 The added fields
 
-`ToolManifest` today carries `id`, `name`, `version`, `apiVersion`, `description`, `capabilities`, optional `params`, optional `ownsSettingsHeader`, and a comment reading *"v1.1 external tools add: entry (executable + args), language, author, homepage."* That comment is the specification being filled in here.
+`ToolManifest` today carries `id`, `name`, `version`, `apiVersion`, `description`, `capabilities`, optional `params`, optional `ownsSettingsHeader`, and a comment reading _"v1.1 external tools add: entry (executable + args), language, author, homepage."_ That comment is the specification being filled in here.
 
 ```ts
 /** Present iff the tool is external. A built-in manifest must not carry it. */
@@ -204,9 +204,9 @@ export interface ExternalEntry {
      * runtime the app has never heard of still ships on day one. RE2 syntax:
      * no backreferences, no lookaround, validated at registration.
      */
-    versionArgs?: string[];     // default ["--version"]
+    versionArgs?: string[]; // default ["--version"]
     versionPattern?: string;
-    versionStream?: "stdout" | "stderr" | "both";   // default "both"
+    versionStream?: "stdout" | "stderr" | "both"; // default "both"
   };
   /** Literal, except for the closed substitution set in Sec.5.3. */
   args?: string[];
@@ -226,7 +226,7 @@ Two holes this closes, both borrowed from `docs/source-languages-design.md` Sec.
 1. **A manifest from a stranger can never name an executable.** It names `"python"`; what that means is a local decision the user made in a settings panel.
 2. **The webview never hands an executable path across the process boundary.** Sec.6.2 is why that matters.
 
-The version gate is not decoration. Failing before spawn with *"this tool needs Python 3.11 or newer; you have 3.10.4"* is the difference between a two-minute fix and a bug report about a syntax error inside somebody else's library.
+The version gate is not decoration. Failing before spawn with _"this tool needs Python 3.11 or newer; you have 3.10.4"_ is the difference between a two-minute fix and a bug report about a syntax error inside somebody else's library.
 
 **Runtimes are shared state across extension kinds, and that is the one place the generic layer genuinely earns its keep.** A user who has told the app where Python is for a language pack has told it for tools too.
 
@@ -258,7 +258,7 @@ A hand-written probe also fails better. It can say Python was not found, name wh
 
 `${entry}` and `${extensionDir}`, both resolved host-side to absolute paths inside the extension's own directory. Everything else in `args` is a literal. No shell, no environment expansion, no user-supplied interpolation.
 
-Note what is deliberately absent relative to the pack contract: **there is no `${outPath}`.** A tool never writes a file. It receives its context on stdin and answers on stdout, which is the entire reason its trust story is simpler to *specify* than a pack's, even though Sec.9.1 shows it is no simpler to *contain*.
+Note what is deliberately absent relative to the pack contract: **there is no `${outPath}`.** A tool never writes a file. It receives its context on stdin and answers on stdout, which is the entire reason its trust story is simpler to _specify_ than a pack's, even though Sec.9.1 shows it is no simpler to _contain_.
 
 ## 6. Spawning
 
@@ -303,10 +303,10 @@ Build it as a `JSON.stringify` **replacer**, not a hand-written tree walk. The r
 
 ```ts
 function wireReplacer(key: string, value: unknown): unknown {
-  if (key === "def") return undefined;              // Sec.4.2: defs are stripped
+  if (key === "def") return undefined; // Sec.4.2: defs are stripped
   if (typeof value === "number" && !Number.isFinite(value)) {
     if (Number.isNaN(value)) throw new WireError("NaN");
-    return { inf: value > 0 ? 1 : -1 };             // the sentinel
+    return { inf: value > 0 ? 1 : -1 }; // the sentinel
   }
   // prohibited kinds throw rather than pass
   return value;
@@ -324,7 +324,7 @@ The decode side is `numeric()`, which already exists and has no consumers. It ge
 
 ### 7.2 Framing, and where the inbound cap is enforced
 
-`parseInboundLine` checks the cap on a line it has *already been handed*. That is one guard short: a child that emits 500 MB with no newline never produces a line, so nothing calls the function, and the buffer grows until the host dies. Rev 10's own sentence — "a single 500 MB NDJSON line OOMs the host before any render-side cap can help" — describes a hazard the current guard sits on the wrong side of.
+`parseInboundLine` checks the cap on a line it has _already been handed_. That is one guard short: a child that emits 500 MB with no newline never produces a line, so nothing calls the function, and the buffer grows until the host dies. Rev 10's own sentence — "a single 500 MB NDJSON line OOMs the host before any render-side cap can help" — describes a hazard the current guard sits on the wrong side of.
 
 **Enforce the cap while accumulating, in Rust, on bytes.** Two reasons it belongs there rather than in TypeScript:
 
@@ -351,10 +351,10 @@ The host lifecycle is already built and **does not change**. `ToolHost` owns one
 
 What the external runner supplies:
 
-| `RunnerHandle` | External implementation |
-|---|---|
-| `cancel()` | Write `{"type":"cancel"}\n` to the child's stdin |
-| `kill()` | Close the job handle, taking the process tree (Sec.6.3). Must not throw if already dead |
+| `RunnerHandle` | External implementation                                                                 |
+| -------------- | --------------------------------------------------------------------------------------- |
+| `cancel()`     | Write `{"type":"cancel"}\n` to the child's stdin                                        |
+| `kill()`       | Close the job handle, taking the process tree (Sec.6.3). Must not throw if already dead |
 
 Three consequences worth stating rather than discovering.
 
@@ -366,9 +366,9 @@ Three consequences worth stating rather than discovering.
 
 ### 9.1 The asymmetry argument in `source-languages-design.md` Sec.9 is inverted
 
-That section reads: *"A language pack is strictly more dangerous than an Advanced Tool: a tool speaks JSON over a pipe with no ambient authority beyond its stdin, while a pack runs an interpreter over the user's file with the user's full OS privileges, outside every sandbox in the app."*
+That section reads: _"A language pack is strictly more dangerous than an Advanced Tool: a tool speaks JSON over a pipe with no ambient authority beyond its stdin, while a pack runs an interpreter over the user's file with the user's full OS privileges, outside every sandbox in the app."_
 
-**That is true of a built-in tool and false of an external one.** A built-in runs in the webview or a web worker, with no filesystem, no spawn, no network beyond what the app itself grants. An external tool is a child process launched with the user's token. It can read the user's documents, write files, and open sockets. The contract's "no ambient authority beyond its stdin" describes what the *protocol* hands it, not what the *operating system* does.
+**That is true of a built-in tool and false of an external one.** A built-in runs in the webview or a web worker, with no filesystem, no spawn, no network beyond what the app itself grants. An external tool is a child process launched with the user's token. It can read the user's documents, write files, and open sockets. The contract's "no ambient authority beyond its stdin" describes what the _protocol_ hands it, not what the _operating system_ does.
 
 If anything the comparison runs the other way. When a pack builds, the code being executed is overwhelmingly the user's own map script, run through an interpreter the user installed and a library they chose. When an external tool runs, **every instruction executed is the stranger's.**
 
@@ -444,7 +444,7 @@ It is simultaneously the **test fixture** for Sec.15, the **conformance target**
 
 ### 11.4 Conformance
 
-Rev 10 Sec.9 item 11 states its own honest limit: it verifies the recipe *this repo publishes* against the parser's behaviour, and "cannot tell you that an external author in another language implemented the recipe correctly. That remains PROTOCOL.md's job and a conformance fixture's, neither of which exists in v1."
+Rev 10 Sec.9 item 11 states its own honest limit: it verifies the recipe _this repo publishes_ against the parser's behaviour, and "cannot tell you that an external author in another language implemented the recipe correctly. That remains PROTOCOL.md's job and a conformance fixture's, neither of which exists in v1."
 
 Build the fixture. A driver script feeds a candidate tool a fixed sequence of host messages over the real transport and checks its answers: a context containing `inf` and `-inf`, an aliased-command fixture whose def is recoverable only through the `#const` path, a fixture whose `def` slots must not be read, and a cancel mid-run. An author in any language runs it and gets a pass or a specific failure. This is the only mechanism in the whole design that can tell a Python author their alias handling is wrong before their users find out.
 
@@ -471,7 +471,7 @@ Rev 10 Sec.3 states the boundary honestly — "the contract is portable, a given
 Two ways out, both explicitly deferred and recorded so a later reader knows they were considered:
 
 - **Extract the generator into a standalone library** that an external tool can depend on directly, in its own language or via a compiled artifact. Large, and it makes the generator a published surface with compatibility obligations.
-- **A `run-generation` capability**, where the *host* runs generations on the tool's behalf and streams results back. This inverts the dependency and keeps the generator private. It is a real answer, it costs a new message pair in the protocol, and it must not be invented while the transport it would ride on has never run. **Revisit once external tools exist and someone asks.**
+- **A `run-generation` capability**, where the _host_ runs generations on the tool's behalf and streams results back. This inverts the dependency and keeps the generator private. It is a real answer, it costs a new message pair in the protocol, and it must not be invented while the transport it would ride on has never run. **Revisit once external tools exist and someone asks.**
 
 ## 14. Phasing
 
@@ -505,7 +505,7 @@ Ordered so that each step is testable before the next exists.
 12. **Consent copy per kind**, both directions: the tool copy makes a full-privilege claim and does not claim to interpret the user's source file; adding a kind without copy fails to compile (assert via a type test, as `wireTypes.test-d.ts` already does for the wire types).
 13. **Widened capabilities re-ask.** Update a manifest from `read-ast` to `read-ast, edit-source` and assert the dialog is shown again; narrowing does not.
 14. **`apiVersion` mismatch rejects**, and the tool is listed as rejected with both versions rather than vanishing.
-14b. **Runtime probes** (Sec.5.2), against fake runtime binaries the test controls, since CI has no Python and no Racket: a known `id` uses the app's probe **and ignores a manifest pattern that would have produced a different answer** — assert the app's answer wins, which is the only test that distinguishes "ignored" from "never consulted"; an unknown `id` uses the manifest fallback; a version below `minVersion` fails before spawn, naming both versions; a runtime that is absent and a runtime whose version cannot be parsed produce **different** messages; a fallback pattern using lookahead or a backreference is rejected at **registration**, not at run time; and a runtime writing its version to stderr is read correctly under the default `versionStream: "both"`.
+    14b. **Runtime probes** (Sec.5.2), against fake runtime binaries the test controls, since CI has no Python and no Racket: a known `id` uses the app's probe **and ignores a manifest pattern that would have produced a different answer** — assert the app's answer wins, which is the only test that distinguishes "ignored" from "never consulted"; an unknown `id` uses the manifest fallback; a version below `minVersion` fails before spawn, naming both versions; a runtime that is absent and a runtime whose version cannot be parsed produce **different** messages; a fallback pattern using lookahead or a backreference is rejected at **registration**, not at run time; and a runtime writing its version to stderr is read correctly under the default `versionStream: "both"`.
 15. **Edits from an external tool go through the existing gates** — `validateEdits` whole-set rejection, the snapshot equality check at Apply, and the drop-with-warning for a tool that never declared `edit-source`. These already pass for built-ins; assert they hold over the wire.
 16. **Built-in behaviour is unchanged.** The existing suite, green, with the `RegisteredTool` widening in place. This is the regression bar for 6.2.
 17. **Conformance harness against the stub**, in both its conforming and each of its non-conforming modes, so the harness is known to fail before anyone trusts it to pass.
@@ -523,7 +523,7 @@ Ordered so that each step is testable before the next exists.
 Do not fold these in from here; each belongs to its own document's next revision, and this list is what that revision should carry.
 
 - **`CREATION_PLAN.md` Phase 6:** "Tauri shell plugin" is superseded by a bespoke Rust command (Sec.6.1). The brief's registry sentence is narrowed to Sec.12's deferral.
-- **`docs/source-languages-design.md` Sec.9 and Sec.11:** the tool-versus-pack danger asymmetry is inverted for *external* tools (Sec.9.1). The M6-first ordering stands on its other stated reason; the safety justification does not. Sec.13 q3's build-history location is answered by Sec.4.1.
+- **`docs/source-languages-design.md` Sec.9 and Sec.11:** the tool-versus-pack danger asymmetry is inverted for _external_ tools (Sec.9.1). The M6-first ordering stands on its other stated reason; the safety justification does not. Sec.13 q3's build-history location is answered by Sec.4.1.
 - **`docs/source-languages-design.md` Sec.5.1, Sec.5.3, Sec.13 q4 and goal 4:** q4 is answered by Sec.5.2 and packs inherit the answer, since Runtimes is one shared panel and one shared resolution path — a pack manifest naming `python` gets the app's probe, and `versionArgs`/`versionPattern` leave its Sec.5.1 example. Goal 4 ("no app release, no app code, no PR to this repo") is **narrowed and should say so**: a language whose runtime is unknown to the app still ships day one through the escape hatch, but only by declaring an RE2 pattern, and a pack author who wants first-class discovery needs a probe merged here. That is a smaller promise than the one currently written.
 - **`docs/tools-api-design.md` Sec.8:** the `PROTOCOL.md` contents list gains the three items in Sec.11.1. Sec.10's Windows bullet gains the job-object and console-window specifics from Sec.6.3.
 - **`docs/known-issues.md` BUG-017:** re-file as a Phase 6 prerequisite rather than tracked debt, per Sec.3.2.

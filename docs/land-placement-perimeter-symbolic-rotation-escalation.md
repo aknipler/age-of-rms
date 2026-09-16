@@ -45,7 +45,7 @@ exactly ask (1) and explicitly deferred it:
 > which only works for a literal `rotation` value. A square that needs to spin under a live
 > parameter (the `ROTATION_PLAYER` shape Sec.4.5 already supports for circle) would have to go
 > through the `formula` offset kind instead, writing the rotation explicitly with SIN/COS (`x =
-> anchorX + dx_i*cos(rotation) - dy_i*sin(rotation)`, and the `y` equivalent), fully expressible
+anchorX + dx_i*cos(rotation) - dy_i*sin(rotation)`, and the `y` equivalent), fully expressible
 > with the compiler's existing primitives but with `expand.ts` composing the Exprs itself rather
 > than leaning on `frame.ts`'s automatic composition. Not a blocker, a literal rotation is the
 > overwhelmingly common case, matching every ring built in the corpus today, but the fork should
@@ -56,30 +56,29 @@ That "someone tries to spin a square" moment is this file. The sketch it already
 primitives) is the right shape and is expanded on in Sec.3 below.
 
 Ask (2) — per-member perimeter variance — is genuinely new; nothing in the prior escalation
-raises it. `model.ts`'s own doc comment on `PatternSlot.theta` currently states it is *"meaningless
+raises it. `model.ts`'s own doc comment on `PatternSlot.theta` currently states it is _"meaningless
 for a perimeter kind (`square`, `triangle`, `polygon`) ... `expandShapeGroup` does not consult
-this field for those kinds"* — Sec.4 below is where that gets a real design.
+this field for those kinds"_ — Sec.4 below is where that gets a real design.
 
 ## 2. Ground truth to read before deciding anything (saves re-deriving it)
 
 - **`src/tools/builtin/landPlacement/perimeterOffset.ts`** — the shared geometry every perimeter
   kind walks. `perimeterOffset(sides, memberCount, memberIndex, rotationDegrees)` returns `{cx,
-  cy}`, a coefficient pair the caller multiplies by the (possibly symbolic) radius.
+cy}`, a coefficient pair the caller multiplies by the (possibly symbolic) radius.
 - **`src/tools/builtin/landPlacement/expand.ts`**, `perimeterKindOffset` (~line 102) — calls
   `evalClosed(group.rotation) ?? 0` to get a plain number before calling `perimeterOffset`, which
   is the actual reason rotation must be closed-form today: `perimeterOffset` internally calls
   `Math.cos`/`Math.sin` on it directly.
 - **`src/tools/builtin/landPlacement/frame.ts`** header comment, point 1: a `cartesian` offset's
   `dx`/`dy` are added straight to the anchor and never composed with `Placement.frame` or any
-  angle. This is *why* today's cartesian representation for perimeter kinds cannot carry a
+  angle. This is _why_ today's cartesian representation for perimeter kinds cannot carry a
   symbolic rotation — not a property of RMS math, a property of this specific representation.
 - **`src/tools/builtin/landPlacement/compiler/trig.ts`**, `expandTrig` — the existing Bhaskara
   sine/cosine macro (10 `#const` cells: `DEGREES`/`R`/`S`/`P`/`D`/`SIN`/`CR`/`CS`/`CP`/`CD`/`COS`).
   This is the ONLY place in the compiler that turns a symbolic angle `Expr` into engine-evaluated
   `SIN`/`COS` names, and it is already fully general — it takes any leaf `Expr`, not just a
   circle's `theta`.
-- **`src/tools/builtin/landPlacement/reExpand.ts`**, the `cartesian`-vs-`cartesian` branch (~line
-  233) — the merge rule built specifically so a user's manual nudge on a perimeter-kind member
+- **`src/tools/builtin/landPlacement/reExpand.ts`**, the `cartesian`-vs-`cartesian` branch (~line 233) — the merge rule built specifically so a user's manual nudge on a perimeter-kind member
   survives a repeat-count/radius edit. Standalone `cartesian`-offset placements (a user's own
   choice in the panel, not group-generated) still need this branch regardless of what happens to
   perimeter kinds below.
@@ -100,9 +99,9 @@ this field for those kinds"* — Sec.4 below is where that gets a real design.
   precedent for "per-member randomized variance with a safety guarantee," worth reading before
   inventing a second, incompatible mechanism for ask (2).
 - **`land-placement-shape-kinds-escalation.md`** §7 — the standing argument for why perimeter
-  kinds were built with **no per-vertex handles**: *"a perimeter kind needs no vertex handles. Its
+  kinds were built with **no per-vertex handles**: _"a perimeter kind needs no vertex handles. Its
   vertices are fully determined by the circumradius and the rotation, both of which the existing
-  radius/rotation gizmo already edits."* That argument's premise is "one shared rotation, no
+  radius/rotation gizmo already edits."_ That argument's premise is "one shared rotation, no
   per-member deviation." Ask (2) removes that premise — see Sec.5.
 
 ## 3. A candidate approach to ask (1), reasoned through this session, NOT verified
@@ -125,7 +124,7 @@ cy  = apo*sin(phi) + u*cos(phi)
 
 `k`, `f`, `u`, `apo` never depend on rotation — they're plain numbers the tool can always compute,
 symbolic rotation or not. `phi` is `rotation + (a plain constant per member)`, the identical
-*additive* shape circle's own `theta = rotation + offsetTerm` already has. And `cx`/`cy` are just
+_additive_ shape circle's own `theta = rotation + offsetTerm` already has. And `cx`/`cy` are just
 the fixed local point `(apo, u)` rotated by `phi` — which has the standard closed form `R_loc *
 cos(phi + psi)`, `R_loc * sin(phi + psi)`, where `R_loc = hypot(apo, u)` and `psi = atan2(u, apo)`
 are **both plain JS numbers, computed once** (they only depend on `sides`/`memberIndex`/
@@ -163,11 +162,11 @@ just an update-in-passing:
   to a `sym(...) ± num(k)` shape.
 - **Existing tests asserting `offset.kind === "cartesian"` for triangle/square/polygon** —
   `expand.test.ts` has at least three such assertions (e.g. `"produces a cartesian offset, not
-  polar"` in the triangle describe block). These would need deliberate, conscious rewriting to
+polar"` in the triangle describe block). These would need deliberate, conscious rewriting to
   assert `"polar"` instead, with the underlying numeric assertions (member magnitude, position)
   re-verified against the new formula — not just relaxed to make the type-check pass.
 - **`emitModel.ts`'s rotation refusal** (~line 152-162) would need narrowing or removal, and its
-  own comment (*"a cartesian offset is added to the anchor and never rotated"*) updated to state
+  own comment (_"a cartesian offset is added to the anchor and never rotated"_) updated to state
   the new mechanism, per this project's rule that a doc comment restating a rule the code no
   longer implements is worse than no comment.
 - **`land-placement-shape-kinds-escalation.md` §7's "no vertex handles" argument** should be
@@ -192,7 +191,7 @@ way it is for `circle` — moving a member along its side changes both its beari
 from the anchor simultaneously. Any design for ask (2) has to either embrace that (the member
 genuinely leaves the circumradius locus, which is arguably the more honest "walks the perimeter"
 reading) or define what it means to keep a member pinned to the circumradius while still varying
-its *position* along the shape (which would mean varying which vertex/side it's near, a
+its _position_ along the shape (which would mean varying which vertex/side it's near, a
 fundamentally different kind of variance, closer to reassigning `k` than perturbing `f`).
 
 **At least three shapes this could take, none decided:**
@@ -250,7 +249,6 @@ sanely under the new representation; the existing corpus/acceptance suite is eit
 deliberately and consciously changed with a recorded reason (never silently relaxed to pass); and
 `docs/land-placement-design.md` Sec.4.5 gets the write-up every prior slice has given it.
 
-
 ---
 
 ## 8. Design session outcome (2026-09-03) — the decisions
@@ -296,10 +294,10 @@ so the rounding is real rather than theoretical. Measured worst-case emitted-pos
 real trigonometry, over sides {3,4,5,6,7,12} x counts {3,5,7,8,12} x rotations {0,17,45,137,300} x
 radii {10,25,45} percent:
 
-| representation | worst position error | at map dim 480 |
-|---|---|---|
-| cartesian (today) | 0.00003 percent-units | 0.0001 tiles |
-| polar (proposed) | 0.440 percent-units | 2.1 tiles |
+| representation    | worst position error  | at map dim 480 |
+| ----------------- | --------------------- | -------------- |
+| cartesian (today) | 0.00003 percent-units | 0.0001 tiles   |
+| polar (proposed)  | 0.440 percent-units   | 2.1 tiles      |
 
 Decomposed at radius 45 percent (the worst radius tested): the Bhaskara macro itself contributes
 0.078 and the whole-degree bearing quantization 0.393. **The dominant term is the quantization every
@@ -326,7 +324,11 @@ export interface PerimeterPolar {
   /** Add to the group's rotation Expr: k*(360/M) + psi, rounded to whole degrees. */
   bearingDegrees: number;
 }
-export function perimeterPolar(sides: number, memberCount: number, memberIndex: number): PerimeterPolar;
+export function perimeterPolar(
+  sides: number,
+  memberCount: number,
+  memberIndex: number,
+): PerimeterPolar;
 ```
 
 and `expand.ts` emits `{ kind: "polar", r: mul(base, num(radiusScale)), theta: add(group.rotation,
@@ -407,8 +409,8 @@ is not on the shape.
 - **`dragMath.ts` needs no code change**, established by reading it rather than assuming. A perimeter
   member with a literal radius resolves closed in both representations, so the ordinary
   overwrite-with-literals path applies before and after. With a SYMBOLIC radius, `r = base *
-  num(scale)` is a product, which `tryInvertFormulaCoordinate` declines — exactly as `dx = base *
-  num(cx)` declines today. What changes is a gain: a member of a group whose ROTATION is `sym(name)`
+num(scale)` is a product, which `tryInvertFormulaCoordinate` declines — exactly as `dx = base *
+num(cx)` declines today. What changes is a gain: a member of a group whose ROTATION is `sym(name)`
   now has `theta = sym ± num`, which the absorb path DOES invert, so dragging a member of a
   symbolically-rotated square keeps the rotation reference and adjusts the constant. The decline
   wording also changes from "Across/Down" to "Radius/Angle", a user-visible string change slice A
@@ -457,7 +459,7 @@ is not on the shape.
   `RandomParam`, for the reason `land-placement-per-player-slice-c` already records, so it would be a
   second advisory calculator. Neither ask in Sec.0 asks for one.
 - **A `formula`-kind escape for a symbolic perimeter position.** Expressible — `x = anchorX +
-  R*apo*COS(phi) - R*u*SIN(phi)`, with `u` symbolic and the anchor reached by `nodeRef` — but it
+R*apo*COS(phi) - R*u*SIN(phi)`, with `u` symbolic and the anchor reached by `nodeRef` — but it
   abandons the polar representation for that member, and Sec.8.7's finding 1 makes it the only route,
   so it is a real fork if anyone ever needs a random walk along a polygon's edge. Not needed for
   either ask.

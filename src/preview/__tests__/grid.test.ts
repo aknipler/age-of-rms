@@ -29,7 +29,15 @@ describe("createTileGrid", () => {
   it("allocates dim*dim typed arrays, filled with the base terrain/layer", () => {
     const grid = createTileGrid(4, 7, 2);
     expect(grid.dim).toBe(4);
-    for (const arr of [grid.terrain, grid.layer, grid.elevation, grid.cliff, grid.landId, grid.zone, grid.occupied]) {
+    for (const arr of [
+      grid.terrain,
+      grid.layer,
+      grid.elevation,
+      grid.cliff,
+      grid.landId,
+      grid.zone,
+      grid.occupied,
+    ]) {
       expect(arr.length).toBe(16);
     }
     expect([...grid.terrain]).toEqual(new Array(16).fill(7));
@@ -137,9 +145,21 @@ describe("distanceTransform (Sec.4's derived mask, 4-connected)", () => {
   });
 });
 
-const WATER: TerrainConstantForMasks = { constId: 1, rmsConstant: "WATER", category: "terrain" };
-const GRASS: TerrainConstantForMasks = { constId: 0, rmsConstant: "GRASS", category: "terrain" };
-const FOREST: TerrainConstantForMasks = { constId: 10, rmsConstant: "FOREST", category: "terrain" };
+const WATER: TerrainConstantForMasks = {
+  constId: 1,
+  rmsConstant: "WATER",
+  category: "terrain",
+};
+const GRASS: TerrainConstantForMasks = {
+  constId: 0,
+  rmsConstant: "GRASS",
+  category: "terrain",
+};
+const FOREST: TerrainConstantForMasks = {
+  constId: 10,
+  rmsConstant: "FOREST",
+  category: "terrain",
+};
 const constants = [WATER, GRASS, FOREST];
 
 describe("waterMask (Sec.4, Sec.12 item 6 name-heuristic fallback)", () => {
@@ -207,16 +227,22 @@ describe("resolveTerrainId (the one resolver every stage shares)", () => {
   it("does not let a #const shadow a built-in name", () => {
     // The engine loads random_map.def before the script and #const is
     // first-definition-wins, so a redefinition never takes effect in game.
-    expect(resolveTerrainId(constants, "WATER", new Map([["WATER", 48]]))).toBe(1);
+    expect(resolveTerrainId(constants, "WATER", new Map([["WATER", 48]]))).toBe(
+      1,
+    );
   });
 
   it("returns undefined for a name nothing defines", () => {
-    expect(resolveTerrainId(constants, "NOT_A_TERRAIN", symbols)).toBeUndefined();
+    expect(
+      resolveTerrainId(constants, "NOT_A_TERRAIN", symbols),
+    ).toBeUndefined();
     expect(resolveTerrainId(constants, undefined)).toBeUndefined();
   });
 
   it("never matches an entry whose rmsConstant is null", () => {
-    const unnamed: TerrainConstantForMasks[] = [{ constId: 26, rmsConstant: null, category: "terrain" }];
+    const unnamed: TerrainConstantForMasks[] = [
+      { constId: 26, rmsConstant: null, category: "terrain" },
+    ];
     expect(resolveTerrainId(unnamed, "26")).toBeUndefined();
     expect(resolveTerrainId(unnamed, 26)).toBe(26);
   });
@@ -235,7 +261,14 @@ describe("resolveTerrainId (the one resolver every stage shares)", () => {
     ];
 
     it("resolves through the alias to the built-in it names", () => {
-      expect(resolveTerrainId(constants, "MY_WATER", symbols, new Map([["MY_WATER", "WATER"]]))).toBe(1);
+      expect(
+        resolveTerrainId(
+          constants,
+          "MY_WATER",
+          symbols,
+          new Map([["MY_WATER", "WATER"]]),
+        ),
+      ).toBe(1);
     });
 
     it("leaves an alias to something that is not a terrain unresolved", () => {
@@ -243,19 +276,51 @@ describe("resolveTerrainId (the one resolver every stage shares)", () => {
       // objects, flags and attribute ids, so an alias is only ever chased
       // against the asking domain's own table. Turning an attribute id into a
       // terrain id would be a worse failure than the one this fixes.
-      expect(resolveTerrainId(mixed, "G", symbols, new Map([["G", "GOLD"]]))).toBeUndefined();
-      expect(resolveTerrainId(mixed, "A", symbols, new Map([["A", "ATTR_HITPOINTS"]]))).toBeUndefined();
-      expect(resolveTerrainId(mixed, "F", symbols, new Map([["F", "NAME_NOTHING_DEFINES"]]))).toBeUndefined();
+      expect(
+        resolveTerrainId(mixed, "G", symbols, new Map([["G", "GOLD"]])),
+      ).toBeUndefined();
+      expect(
+        resolveTerrainId(
+          mixed,
+          "A",
+          symbols,
+          new Map([["A", "ATTR_HITPOINTS"]]),
+        ),
+      ).toBeUndefined();
+      expect(
+        resolveTerrainId(
+          mixed,
+          "F",
+          symbols,
+          new Map([["F", "NAME_NOTHING_DEFINES"]]),
+        ),
+      ).toBeUndefined();
       // ...while a terrain in the same array still resolves, so the test is
       // about the CATEGORY and not about the array being empty.
-      expect(resolveTerrainId(mixed, "W", symbols, new Map([["W", "WATER"]]))).toBe(1);
+      expect(
+        resolveTerrainId(mixed, "W", symbols, new Map([["W", "WATER"]])),
+      ).toBe(1);
     });
 
     it("prefers a real name and a real #const over the alias table", () => {
       // Same precedence as everything above it: built-in first, script id
       // second, alias last. An alias must not shadow either.
-      expect(resolveTerrainId(constants, "WATER", symbols, new Map([["WATER", "GRASS"]]))).toBe(1);
-      expect(resolveTerrainId(constants, "WOODIES", symbols, new Map([["WOODIES", "WATER"]]))).toBe(48);
+      expect(
+        resolveTerrainId(
+          constants,
+          "WATER",
+          symbols,
+          new Map([["WATER", "GRASS"]]),
+        ),
+      ).toBe(1);
+      expect(
+        resolveTerrainId(
+          constants,
+          "WOODIES",
+          symbols,
+          new Map([["WOODIES", "WATER"]]),
+        ),
+      ).toBe(48);
     });
 
     it("chases exactly one hop, never a chain", () => {
@@ -279,7 +344,12 @@ describe("resolveTerrainId (the one resolver every stage shares)", () => {
 describe("isWaterTerrain (the single-terrain form of waterMask)", () => {
   it("prefers the data flag over the name", () => {
     const flagged: TerrainConstantForMasks[] = [
-      { constId: 54, rmsConstant: "DLC_MANGROVESHALLOW", category: "terrain", isWater: false },
+      {
+        constId: 54,
+        rmsConstant: "DLC_MANGROVESHALLOW",
+        category: "terrain",
+        isWater: false,
+      },
       { constId: 15, rmsConstant: null, category: "terrain", isWater: true },
     ];
     expect(isWaterTerrain(flagged, 54)).toBe(false);
@@ -304,9 +374,26 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
   // shallow that IS water, a shallow that is NOT, and open water.
   const depthConstants: TerrainConstantForMasks[] = [
     { constId: 0, rmsConstant: "GRASS", category: "terrain", isWater: false },
-    { constId: 4, rmsConstant: "SHALLOW", category: "terrain", isWater: true, isHybrid: true },
-    { constId: 54, rmsConstant: "DLC_MANGROVESHALLOW", category: "terrain", isWater: false, isHybrid: true },
-    { constId: 22, rmsConstant: "DEEP_WATER", category: "terrain", isWater: true },
+    {
+      constId: 4,
+      rmsConstant: "SHALLOW",
+      category: "terrain",
+      isWater: true,
+      isHybrid: true,
+    },
+    {
+      constId: 54,
+      rmsConstant: "DLC_MANGROVESHALLOW",
+      category: "terrain",
+      isWater: false,
+      isHybrid: true,
+    },
+    {
+      constId: 22,
+      rmsConstant: "DEEP_WATER",
+      category: "terrain",
+      isWater: true,
+    },
   ];
 
   it("puts hybrid between land and water whichever way its isWater flag reads", () => {
@@ -331,7 +418,12 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
     grid.terrain[tileIndex(grid, 1, 0)] = 4;
     grid.terrain[tileIndex(grid, 0, 1)] = 22;
     const { depth, usedHeuristic } = waterDepthMask(grid, depthConstants);
-    expect([...depth]).toEqual([DEPTH_LAND, DEPTH_HYBRID, DEPTH_WATER, DEPTH_LAND]);
+    expect([...depth]).toEqual([
+      DEPTH_LAND,
+      DEPTH_HYBRID,
+      DEPTH_WATER,
+      DEPTH_LAND,
+    ]);
     expect(usedHeuristic).toBe(false); // every terrain here carries a flag
   });
 
@@ -349,8 +441,22 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
     // beach either and is emphatically not sand. The `shore` habitat depends
     // on the difference.
     const sand: TerrainConstantForMasks[] = [
-      { constId: 2, rmsConstant: "BEACH", category: "terrain", isWater: false, isBeach: true, beachTerrain: null },
-      { constId: 22, rmsConstant: "DEEP_WATER", category: "terrain", isWater: true, isBeach: false, beachTerrain: null },
+      {
+        constId: 2,
+        rmsConstant: "BEACH",
+        category: "terrain",
+        isWater: false,
+        isBeach: true,
+        beachTerrain: null,
+      },
+      {
+        constId: 22,
+        rmsConstant: "DEEP_WATER",
+        category: "terrain",
+        isWater: true,
+        isBeach: false,
+        beachTerrain: null,
+      },
     ];
     expect(isBeachTerrain(sand, 2)).toBe(true);
     expect(isBeachTerrain(sand, 22)).toBe(false); // grows no beach, still not sand
@@ -362,8 +468,21 @@ describe("terrainDepth / waterDepthMask (the automatic beach rule's own three-le
 
   it("honours an explicit beachTerrain over the fallback, including a null one", () => {
     const explicit: TerrainConstantForMasks[] = [
-      { constId: 2, rmsConstant: "BEACH", category: "terrain", isWater: false, beachTerrain: null },
-      { constId: 26, rmsConstant: null, category: "terrain", isWater: false, isHybrid: true, beachTerrain: 37 },
+      {
+        constId: 2,
+        rmsConstant: "BEACH",
+        category: "terrain",
+        isWater: false,
+        beachTerrain: null,
+      },
+      {
+        constId: 26,
+        rmsConstant: null,
+        category: "terrain",
+        isWater: false,
+        isHybrid: true,
+        beachTerrain: 37,
+      },
     ];
     expect(beachTerrainFor(explicit, 2)).toBeUndefined(); // a beach does not grow a beach
     expect(beachTerrainFor(explicit, 26)).toBe(37); // navigable ice grows ICYSHORE

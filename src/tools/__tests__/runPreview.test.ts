@@ -19,7 +19,12 @@ import { PreviewHandleStore } from "../runPreview";
 const lang = loadLanguage();
 const language = buildLanguageIndex(lang);
 const constants = (
-  JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8")) as {
+  JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as {
     constants: ObjectConstant[];
   }
 ).constants;
@@ -45,7 +50,11 @@ function context(source = SCRIPT): ToolContext<ParseResult> {
     apiVersion: TOOLS_API_VERSION,
     parseResult: parseRms(source, lang),
     source,
-    settings: { playerCount: 4, mapSize: { name, tiles }, teams: [...DEFAULT_TEAMS] },
+    settings: {
+      playerCount: 4,
+      mapSize: { name, tiles },
+      teams: [...DEFAULT_TEAMS],
+    },
     params: {},
   };
 }
@@ -53,7 +62,10 @@ function context(source = SCRIPT): ToolContext<ParseResult> {
 describe("PreviewHandleStore.generate", () => {
   it("returns a summary bounded by land count — no grid, no object list", () => {
     const store = new PreviewHandleStore();
-    const msg = store.generate("land-placement", context(), refDb, { type: "generate", seed: 7 });
+    const msg = store.generate("land-placement", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     expect(msg.type).toBe("generated");
     if (msg.type !== "generated") return;
     // 4 player lands + 1 explicit create_land.
@@ -65,7 +77,10 @@ describe("PreviewHandleStore.generate", () => {
 
   it("landOrigins[].tiles reflects growth, not just the declared target", () => {
     const store = new PreviewHandleStore();
-    const msg = store.generate("land-placement", context(), refDb, { type: "generate", seed: 7 });
+    const msg = store.generate("land-placement", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (msg.type !== "generated") throw new Error("expected generated");
     for (const origin of msg.summary.landOrigins) {
       expect(origin.tiles).toBeGreaterThan(0);
@@ -74,19 +89,34 @@ describe("PreviewHandleStore.generate", () => {
 
   it("is deterministic for one seed", () => {
     const store = new PreviewHandleStore();
-    const a = store.generate("t", context(), refDb, { type: "generate", seed: 3 });
-    const b = store.generate("t", context(), refDb, { type: "generate", seed: 3 });
-    if (a.type !== "generated" || b.type !== "generated") throw new Error("expected generated");
+    const a = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 3,
+    });
+    const b = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 3,
+    });
+    if (a.type !== "generated" || b.type !== "generated")
+      throw new Error("expected generated");
     expect(a.summary.landOrigins).toEqual(b.summary.landOrigins);
   });
 
   it("cutOffset truncates the script before generating (Sec.7.1)", () => {
     const store = new PreviewHandleStore();
-    const full = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const full = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     const source = context().source!;
     const cutBeforeSecondLand = source.indexOf("create_land {");
-    const cut = store.generate("t", context(), refDb, { type: "generate", seed: 7, cutOffset: cutBeforeSecondLand });
-    if (full.type !== "generated" || cut.type !== "generated") throw new Error("expected generated");
+    const cut = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+      cutOffset: cutBeforeSecondLand,
+    });
+    if (full.type !== "generated" || cut.type !== "generated")
+      throw new Error("expected generated");
     // The explicit create_land after the cut point never ran.
     expect(full.summary.landOrigins.length).toBe(5);
     expect(cut.summary.landOrigins.length).toBe(4);
@@ -94,9 +124,16 @@ describe("PreviewHandleStore.generate", () => {
 
   it("a later generate for the SAME tool supersedes the earlier handle", () => {
     const store = new PreviewHandleStore();
-    const first = store.generate("t", context(), refDb, { type: "generate", seed: 1 });
-    const second = store.generate("t", context(), refDb, { type: "generate", seed: 2 });
-    if (first.type !== "generated" || second.type !== "generated") throw new Error("expected generated");
+    const first = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 1,
+    });
+    const second = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 2,
+    });
+    if (first.type !== "generated" || second.type !== "generated")
+      throw new Error("expected generated");
     expect(first.handle).not.toBe(second.handle);
     expect(store.size()).toBe(1); // one entry per tool, not one per generate
   });
@@ -112,9 +149,16 @@ describe("PreviewHandleStore.generate", () => {
 describe("PreviewHandleStore.sliceRequest", () => {
   it("returns terrain/elevation for the requested rect", () => {
     const store = new PreviewHandleStore();
-    const generated = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const generated = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (generated.type !== "generated") throw new Error("expected generated");
-    const slice = store.sliceRequest("t", { type: "sliceRequest", handle: generated.handle, rect: { x: 0, y: 0, w: 4, h: 4 } });
+    const slice = store.sliceRequest("t", {
+      type: "sliceRequest",
+      handle: generated.handle,
+      rect: { x: 0, y: 0, w: 4, h: 4 },
+    });
     expect(slice.type).toBe("previewSlice");
     if (slice.type !== "previewSlice") return;
     expect(slice.terrain).toHaveLength(16);
@@ -123,42 +167,72 @@ describe("PreviewHandleStore.sliceRequest", () => {
 
   it("fails, naming the reason, against a stale handle", () => {
     const store = new PreviewHandleStore();
-    const first = store.generate("t", context(), refDb, { type: "generate", seed: 1 });
+    const first = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 1,
+    });
     store.generate("t", context(), refDb, { type: "generate", seed: 2 }); // supersedes
     if (first.type !== "generated") throw new Error("expected generated");
-    const slice = store.sliceRequest("t", { type: "sliceRequest", handle: first.handle, rect: { x: 0, y: 0, w: 2, h: 2 } });
-    expect(slice).toEqual({ type: "generateFailed", reason: expect.stringContaining("stale") });
+    const slice = store.sliceRequest("t", {
+      type: "sliceRequest",
+      handle: first.handle,
+      rect: { x: 0, y: 0, w: 2, h: 2 },
+    });
+    expect(slice).toEqual({
+      type: "generateFailed",
+      reason: expect.stringContaining("stale"),
+    });
   });
 
   it("fails against a handle for a tool that never generated", () => {
     const store = new PreviewHandleStore();
-    const slice = store.sliceRequest("nobody", { type: "sliceRequest", handle: "h1", rect: { x: 0, y: 0, w: 1, h: 1 } });
+    const slice = store.sliceRequest("nobody", {
+      type: "sliceRequest",
+      handle: "h1",
+      rect: { x: 0, y: 0, w: 1, h: 1 },
+    });
     expect(slice.type).toBe("generateFailed");
   });
 
   it("rejects a rect over the per-request area cap", () => {
     const store = new PreviewHandleStore();
-    const generated = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const generated = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (generated.type !== "generated") throw new Error("expected generated");
     const slice = store.sliceRequest("t", {
       type: "sliceRequest",
       handle: generated.handle,
       rect: { x: 0, y: 0, w: 300, h: 300 },
     });
-    expect(slice).toEqual({ type: "generateFailed", reason: expect.stringContaining("cap") });
+    expect(slice).toEqual({
+      type: "generateFailed",
+      reason: expect.stringContaining("cap"),
+    });
   });
 
   it("rejects a non-positive rect rather than returning an empty slice silently", () => {
     const store = new PreviewHandleStore();
-    const generated = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const generated = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (generated.type !== "generated") throw new Error("expected generated");
-    const slice = store.sliceRequest("t", { type: "sliceRequest", handle: generated.handle, rect: { x: 0, y: 0, w: 0, h: 5 } });
+    const slice = store.sliceRequest("t", {
+      type: "sliceRequest",
+      handle: generated.handle,
+      rect: { x: 0, y: 0, w: 0, h: 5 },
+    });
     expect(slice.type).toBe("generateFailed");
   });
 
   it("clamps a rect that runs off the grid edge rather than reading out of bounds", () => {
     const store = new PreviewHandleStore();
-    const generated = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const generated = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (generated.type !== "generated") throw new Error("expected generated");
     const dim = generated.summary.dim;
     const slice = store.sliceRequest("t", {
@@ -173,7 +247,10 @@ describe("PreviewHandleStore.sliceRequest", () => {
 
   it("exhausts the per-generation byte budget across repeated slices", () => {
     const store = new PreviewHandleStore();
-    const generated = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const generated = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (generated.type !== "generated") throw new Error("expected generated");
     const dim = generated.summary.dim;
     let lastFailed = false;
@@ -196,7 +273,10 @@ describe("PreviewHandleStore.sliceRequest", () => {
 describe("PreviewHandleStore.release", () => {
   it("frees a matching handle early, before the next generate", () => {
     const store = new PreviewHandleStore();
-    const generated = store.generate("t", context(), refDb, { type: "generate", seed: 7 });
+    const generated = store.generate("t", context(), refDb, {
+      type: "generate",
+      seed: 7,
+    });
     if (generated.type !== "generated") throw new Error("expected generated");
     store.release("t", { type: "release", handle: generated.handle });
     expect(store.size()).toBe(0);

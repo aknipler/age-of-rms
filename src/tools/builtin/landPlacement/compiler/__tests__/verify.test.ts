@@ -18,7 +18,11 @@ describe("verifyEmission — paramCellValues", () => {
       { name: "PARAM_X", text: "rnd(-2,2)", tokens: ["rnd(-2,2)"] },
       { name: "Y", text: "PARAM_X", tokens: ["PARAM_X"] },
     ];
-    const result = verifyEmission(emitted, [{ name: "Y", source: sym("PARAM_X") }], new Map());
+    const result = verifyEmission(
+      emitted,
+      [{ name: "Y", source: sym("PARAM_X") }],
+      new Map(),
+    );
     expect(result.ok).toBe(true); // undefined === undefined, the false-positive this file's header describes
     expect(result.resolved.has("PARAM_X")).toBe(false);
     expect(result.resolved.has("Y")).toBe(false);
@@ -60,7 +64,9 @@ describe("verifyEmission — paramCellValues", () => {
       new Map([["PARAM_X", 1]]),
     );
     expect(result.ok).toBe(false);
-    expect(result.problems).toEqual([{ name: "Y", emittedValue: 2, directValue: 3 }]);
+    expect(result.problems).toEqual([
+      { name: "Y", emittedValue: 2, directValue: 3 },
+    ]);
   });
 
   it("only the named cells are seeded — an ordinary cell still goes through evaluateExpressionTokens", () => {
@@ -68,7 +74,14 @@ describe("verifyEmission — paramCellValues", () => {
       { name: "PARAM_X", text: "rnd(-2,2)", tokens: ["rnd(-2,2)"] },
       { name: "PLAIN", text: "5", tokens: ["5"] },
     ];
-    const result = verifyEmission(emitted, [], new Map(), undefined, undefined, new Map([["PARAM_X", -1]]));
+    const result = verifyEmission(
+      emitted,
+      [],
+      new Map(),
+      undefined,
+      undefined,
+      new Map([["PARAM_X", -1]]),
+    );
     expect(result.resolved.get("PARAM_X")).toBe(-1);
     expect(result.resolved.get("PLAIN")).toBe(5); // not seeded, resolved normally
   });

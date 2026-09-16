@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useHelpSettings } from "../help/HelpSettingsContext";
 import { helpTextFor } from "../help/uiHelpText";
 import styles from "./HelpTip.module.css";
 
 const HOVER_DELAY_MS = 600;
-const FALLBACK_TEXT = "No help written yet. Contribute an entry to reference/data/ui-help.json!";
+const FALLBACK_TEXT =
+  "No help written yet. Contribute an entry to reference/data/ui-help.json!";
 
 /** Gap between the anchor and the popup, and the popup's minimum clearance from the viewport edge. */
 const POPUP_GAP_PX = 4;
@@ -88,7 +96,13 @@ interface HelpTipProps {
 // feel naggy, "alt-hover" only shows while ALT is held, "off" disables
 // popups entirely. Every new interactive UI element should be wrapped in
 // this as it's built (see CLAUDE.md conventions).
-export function HelpTip({ id, children, text, dismissOnInteract = false, suppressed = false }: HelpTipProps) {
+export function HelpTip({
+  id,
+  children,
+  text,
+  dismissOnInteract = false,
+  suppressed = false,
+}: HelpTipProps) {
   const { mode, altHeld } = useHelpSettings();
   const [hovering, setHovering] = useState(false);
   const [delayElapsed, setDelayElapsed] = useState(false);
@@ -105,7 +119,10 @@ export function HelpTip({ id, children, text, dismissOnInteract = false, suppres
       setDelayElapsed(false);
       return;
     }
-    timeoutRef.current = window.setTimeout(() => setDelayElapsed(true), HOVER_DELAY_MS);
+    timeoutRef.current = window.setTimeout(
+      () => setDelayElapsed(true),
+      HOVER_DELAY_MS,
+    );
     return () => window.clearTimeout(timeoutRef.current);
   }, [hovering, mode]);
 
@@ -160,7 +177,8 @@ export function HelpTip({ id, children, text, dismissOnInteract = false, suppres
       moveOriginRef.current = { x: event.clientX, y: event.clientY };
       return;
     }
-    const travel = Math.abs(event.clientX - origin.x) + Math.abs(event.clientY - origin.y);
+    const travel =
+      Math.abs(event.clientX - origin.x) + Math.abs(event.clientY - origin.y);
     if (travel > DISMISS_MOVE_SLOP_PX) setDismissed(true);
   };
 
@@ -241,7 +259,10 @@ export function HelpTip({ id, children, text, dismissOnInteract = false, suppres
       top =
         above >= VIEWPORT_MARGIN_PX
           ? above
-          : Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - popupBox.height - VIEWPORT_MARGIN_PX);
+          : Math.max(
+              VIEWPORT_MARGIN_PX,
+              window.innerHeight - popupBox.height - VIEWPORT_MARGIN_PX,
+            );
     }
 
     let left = anchorBox.left;

@@ -5,24 +5,58 @@ import { parseRms } from "../../parser/parser";
 import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
-import { createTileGrid, computeSlopeMask, tileIndex, UNREACHABLE, type TerrainConstantForMasks } from "../generator/grid";
-import { placeLandOrigins, growLands, paintLandTerrain, applyBaseElevation } from "../generator/lands";
+import {
+  createTileGrid,
+  computeSlopeMask,
+  tileIndex,
+  UNREACHABLE,
+  type TerrainConstantForMasks,
+} from "../generator/grid";
+import {
+  placeLandOrigins,
+  growLands,
+  paintLandTerrain,
+  applyBaseElevation,
+} from "../generator/lands";
 import { applyElevation } from "../generator/elevation";
-import { applyCliffs, eligibleCliffStartTiles, resolveCliffSettings, walkCliff, type CliffSettings } from "../generator/cliffs";
+import {
+  applyCliffs,
+  eligibleCliffStartTiles,
+  resolveCliffSettings,
+  walkCliff,
+  type CliffSettings,
+} from "../generator/cliffs";
 import { mulberry32 } from "../generator/rng";
-import type { InstantiatedScript, LandOrigin, TileGrid } from "../generator/types";
-import { DEFAULT_TEAMS, type MapSize, type TeamNumber } from "../../generationSettings/generationSettingsConstants";
+import type {
+  InstantiatedScript,
+  LandOrigin,
+  TileGrid,
+} from "../generator/types";
+import {
+  DEFAULT_TEAMS,
+  type MapSize,
+  type TeamNumber,
+} from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
 const refDb: LanguageIndex = buildLanguageIndex(lang);
 const rawConstants = JSON.parse(
-  readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+  readFileSync(
+    join(REPO_ROOT, "reference", "data", "game-constants.json"),
+    "utf8",
+  ),
 ) as { constants: TerrainConstantForMasks[] };
 const constants: TerrainConstantForMasks[] = rawConstants.constants;
 const GRASS = constants.find((c) => c.rmsConstant === "GRASS")!.constId!;
 const WATER = constants.find((c) => c.rmsConstant === "WATER")!.constId!;
 
-function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: readonly TeamNumber[] } = {}) {
+function settings(
+  overrides: {
+    playerCount?: number;
+    mapSize?: MapSize;
+    teams?: readonly TeamNumber[];
+  } = {},
+) {
   return {
     playerCount: overrides.playerCount ?? 8,
     mapSize: overrides.mapSize ?? "Normal",
@@ -31,21 +65,50 @@ function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: 
 }
 
 /** Full pipeline through S3, mirroring elevation.test.ts's own `place()`. */
-function place(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
-  const instantiated: InstantiatedScript = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+function place(
+  source: string,
+  seed = 1,
+  overrides?: Parameters<typeof settings>[0],
+) {
+  const instantiated: InstantiatedScript = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const grid: TileGrid = createTileGrid(instantiated.dim, GRASS);
   const landResult = placeLandOrigins(instantiated, grid, constants, seed);
   growLands(landResult.origins, grid, landResult.reports, seed);
   paintLandTerrain(landResult.origins, grid);
   applyBaseElevation(instantiated, landResult.origins, grid, constants);
   applyElevation(instantiated, grid, constants, landResult.origins, seed);
-  const cliffsResult = applyCliffs(instantiated, grid, constants, landResult.origins, seed);
-  return { grid, dim: instantiated.dim, origins: landResult.origins, ...cliffsResult };
+  const cliffsResult = applyCliffs(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    seed,
+  );
+  return {
+    grid,
+    dim: instantiated.dim,
+    origins: landResult.origins,
+    ...cliffsResult,
+  };
 }
 
 /** Instantiate a bare script and hand back a fresh flat grid, without running S1/S2, for tests that call applyCliffs directly. */
-function bareGrid(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
-  const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+function bareGrid(
+  source: string,
+  seed = 1,
+  overrides?: Parameters<typeof settings>[0],
+) {
+  const instantiated = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const grid = createTileGrid(instantiated.dim, GRASS);
   return { instantiated, grid };
 }
@@ -58,7 +121,8 @@ function cliffTileCount(grid: TileGrid): number {
 
 function cliffTileIndices(grid: TileGrid): number[] {
   const out: number[] = [];
-  for (let i = 0; i < grid.cliff.length; i++) if (grid.cliff[i] !== 0) out.push(i);
+  for (let i = 0; i < grid.cliff.length; i++)
+    if (grid.cliff[i] !== 0) out.push(i);
   return out;
 }
 
@@ -84,14 +148,24 @@ function fabricateOrigin(x: number, y: number): LandOrigin {
   };
 }
 
-function cliffCommands(source: string, overrides?: Parameters<typeof settings>[0]) {
-  const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), 1);
+function cliffCommands(
+  source: string,
+  overrides?: Parameters<typeof settings>[0],
+) {
+  const instantiated = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    1,
+  );
   return instantiated.sections.get("CLIFF_GENERATION") ?? [];
 }
 
 describe("resolveCliffSettings (Sec.6.3's standalone-attribute folding)", () => {
   it("uses guide defaults when the section is empty", () => {
-    const s: CliffSettings = resolveCliffSettings(cliffCommands("<CLIFF_GENERATION>\n"));
+    const s: CliffSettings = resolveCliffSettings(
+      cliffCommands("<CLIFF_GENERATION>\n"),
+    );
     expect(s.minCliffs).toBe(3);
     expect(s.maxCliffs).toBe(8);
     expect(s.minLength).toBe(5);
@@ -125,7 +199,8 @@ describe("resolveCliffSettings (Sec.6.3's standalone-attribute folding)", () => 
   });
 
   it("last-one-wins when an attribute is declared twice (Sec.3 rule 10's policy, applied to a standalone command)", () => {
-    const source = "<CLIFF_GENERATION>\nmin_number_of_cliffs 2\nmin_number_of_cliffs 6\n";
+    const source =
+      "<CLIFF_GENERATION>\nmin_number_of_cliffs 2\nmin_number_of_cliffs 6\n";
     const s = resolveCliffSettings(cliffCommands(source));
     expect(s.minCliffs).toBe(6);
   });
@@ -152,7 +227,15 @@ describe("computeSlopeMask", () => {
 describe("eligibleCliffStartTiles (Sec.7 attribution, predicate order matching Sec.6.3's own list)", () => {
   const dim = 40;
 
-  function noneEligible(overrides: Partial<{ water: Uint8Array; slope: Uint8Array; cliffDistance: Uint16Array; waterDistance: Uint16Array; origins: LandOrigin[] }> = {}) {
+  function noneEligible(
+    overrides: Partial<{
+      water: Uint8Array;
+      slope: Uint8Array;
+      cliffDistance: Uint16Array;
+      waterDistance: Uint16Array;
+      origins: LandOrigin[];
+    }> = {},
+  ) {
     const grid = createTileGrid(dim, GRASS);
     const flatMask = () => new Uint8Array(dim * dim);
     const farDistance = () => new Uint16Array(dim * dim).fill(UNREACHABLE);
@@ -183,7 +266,16 @@ describe("eligibleCliffStartTiles (Sec.7 attribution, predicate order matching S
     const grid = createTileGrid(smallDim, GRASS);
     const flatMask = new Uint8Array(smallDim * smallDim);
     const farDistance = new Uint16Array(smallDim * smallDim).fill(UNREACHABLE);
-    const result = eligibleCliffStartTiles(grid, [fabricateOrigin(0, 0)], flatMask, flatMask, farDistance, farDistance, 6, 6);
+    const result = eligibleCliffStartTiles(
+      grid,
+      [fabricateOrigin(0, 0)],
+      flatMask,
+      flatMask,
+      farDistance,
+      farDistance,
+      6,
+      6,
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.failure.bucket).toBe("spacingConflict");
   });
@@ -201,13 +293,17 @@ describe("eligibleCliffStartTiles (Sec.7 attribution, predicate order matching S
   });
 
   it("reports spacingConflict when every tile is too close to an existing cliff", () => {
-    const result = noneEligible({ cliffDistance: new Uint16Array(dim * dim).fill(0) });
+    const result = noneEligible({
+      cliffDistance: new Uint16Array(dim * dim).fill(0),
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.failure.bucket).toBe("spacingConflict");
   });
 
   it("reports spacingConflict when every tile is too close to water", () => {
-    const result = noneEligible({ waterDistance: new Uint16Array(dim * dim).fill(0) });
+    const result = noneEligible({
+      waterDistance: new Uint16Array(dim * dim).fill(0),
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.failure.bucket).toBe("spacingConflict");
   });
@@ -260,7 +356,9 @@ describe("walkCliff (Sec.6.3's random walk)", () => {
   it("truncates at the grid edge rather than throwing", () => {
     const grid = createTileGrid(1, GRASS); // every direction from (0,0) is immediately off-grid
     const rng = mulberry32(7);
-    expect(() => walkCliff(grid, new Uint8Array(1), 0, 5, 36, rng)).not.toThrow();
+    expect(() =>
+      walkCliff(grid, new Uint8Array(1), 0, 5, 36, rng),
+    ).not.toThrow();
     expect(cliffTileCount(grid)).toBe(1); // only the start tile
   });
 
@@ -290,7 +388,14 @@ describe("walkCliff (Sec.6.3's random walk)", () => {
       g2.cliff[tileIndex(g2, 1, 2)] = 1;
       g2.cliff[tileIndex(g2, 2, 3)] = 1;
       g2.cliff[tileIndex(g2, 2, 1)] = 1;
-      walkCliff(g2, new Uint8Array(dim * dim), start, 5, 36, mulberry32(seedValue));
+      walkCliff(
+        g2,
+        new Uint8Array(dim * dim),
+        start,
+        5,
+        36,
+        mulberry32(seedValue),
+      );
       expect(cliffTileCount(g2)).toBe(5); // the 4 pre-blocked tiles plus the start tile
     }
   });
@@ -298,7 +403,9 @@ describe("walkCliff (Sec.6.3's random walk)", () => {
 
 describe("applyCliffs (Sec.6.3 end to end)", () => {
   it("no CLIFF_GENERATION section -> no reports, no notes", () => {
-    const { instantiated, grid } = bareGrid("<LAND_GENERATION>\n", 1, { mapSize: "Tiny" });
+    const { instantiated, grid } = bareGrid("<LAND_GENERATION>\n", 1, {
+      mapSize: "Tiny",
+    });
     const result = applyCliffs(instantiated, grid, constants, [], 1);
     expect(result.reports).toEqual([]);
     expect(result.notes).toEqual([]);
@@ -306,7 +413,9 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
   });
 
   it("an empty section still generates cliffs with defaults (guide: 'simply typing the section header')", () => {
-    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 1, { mapSize: "Normal" });
+    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 1, {
+      mapSize: "Normal",
+    });
     const result = applyCliffs(instantiated, grid, constants, [], 1);
     expect(result.reports.length).toBe(1);
     expect(result.reports[0].attempted).toBeGreaterThanOrEqual(3);
@@ -315,13 +424,26 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
   });
 
   it("min_number_of_cliffs > max_number_of_cliffs: zero cliffs plus a note, never throws (guide: this crashes the real engine)", () => {
-    const source = "<CLIFF_GENERATION>\nmin_number_of_cliffs 8\nmax_number_of_cliffs 3\n";
+    const source =
+      "<CLIFF_GENERATION>\nmin_number_of_cliffs 8\nmax_number_of_cliffs 3\n";
     const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
-    expect(() => applyCliffs(instantiated, grid, constants, [], 1)).not.toThrow();
+    expect(() =>
+      applyCliffs(instantiated, grid, constants, [], 1),
+    ).not.toThrow();
     const result = applyCliffs(instantiated, grid, constants, [], 1);
-    expect(result.reports).toEqual([{ commandSpan: expect.anything(), stage: "S3", attempted: 0, placed: 0, failures: [] }]);
+    expect(result.reports).toEqual([
+      {
+        commandSpan: expect.anything(),
+        stage: "S3",
+        attempted: 0,
+        placed: 0,
+        failures: [],
+      },
+    ]);
     expect(cliffTileCount(grid)).toBe(0);
-    expect(result.notes.some((n) => n.key === "cliffsMinExceedsMax")).toBe(true);
+    expect(result.notes.some((n) => n.key === "cliffsMinExceedsMax")).toBe(
+      true,
+    );
   });
 
   // A sub-3 `min_length_of_cliff` drops the individual DRAWS that roll below
@@ -339,7 +461,9 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
     expect(cliffTileCount(grid)).toBe(0);
     // The section still tried: `attempted` is the cliff count it rolled.
     expect(result.reports[0].attempted).toBe(20);
-    expect(result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed"))).toBe(true);
+    expect(
+      result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed")),
+    ).toBe(true);
   });
 
   it("min 3 / max 3: the control arm, cliffs appear normally and no note fires", () => {
@@ -348,7 +472,9 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
     const result = applyCliffs(instantiated, grid, constants, [], 1);
     expect(result.reports[0].placed).toBe(20);
     expect(cliffTileCount(grid)).toBeGreaterThan(0);
-    expect(result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed"))).toBe(false);
+    expect(
+      result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed")),
+    ).toBe(false);
   });
 
   it("min 2 / max 4: SOME cliffs appear — the arm a section gate cannot produce", () => {
@@ -358,18 +484,23 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
     expect(result.reports[0].placed).toBeGreaterThan(0);
     expect(result.reports[0].placed).toBeLessThan(result.reports[0].attempted);
     expect(cliffTileCount(grid)).toBeGreaterThan(0);
-    expect(result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed"))).toBe(true);
+    expect(
+      result.notes.some((n) => n.key.startsWith("cliffsLengthSuppressed")),
+    ).toBe(true);
   });
 
   it("min_number_of_cliffs == max_number_of_cliffs draws exactly that many, despite the max-exclusive rule", () => {
-    const source = "<CLIFF_GENERATION>\nmin_number_of_cliffs 4\nmax_number_of_cliffs 4\n";
+    const source =
+      "<CLIFF_GENERATION>\nmin_number_of_cliffs 4\nmax_number_of_cliffs 4\n";
     const { instantiated, grid } = bareGrid(source, 1, { mapSize: "Normal" });
     const result = applyCliffs(instantiated, grid, constants, [], 1);
     expect(result.reports[0].attempted).toBe(4);
   });
 
   it("cliffs avoid water tiles", () => {
-    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 3, { mapSize: "Normal" });
+    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 3, {
+      mapSize: "Normal",
+    });
     for (let y = 0; y < grid.dim; y++) {
       for (let x = 0; x < grid.dim; x++) {
         if (x < grid.dim / 2) grid.terrain[tileIndex(grid, x, y)] = WATER;
@@ -377,11 +508,14 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
     }
     const result = applyCliffs(instantiated, grid, constants, [], 3);
     expect(result.reports[0].placed).toBeGreaterThan(0);
-    for (const i of cliffTileIndices(grid)) expect(grid.terrain[i]).not.toBe(WATER);
+    for (const i of cliffTileIndices(grid))
+      expect(grid.terrain[i]).not.toBe(WATER);
   });
 
   it("cliffs avoid sloped tiles (elevation already resolved by S3, per Sec.6.3)", () => {
-    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 4, { mapSize: "Normal" });
+    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 4, {
+      mapSize: "Normal",
+    });
     // Slope the entire west half of the map (checkerboard elevation), leaving the east half flat.
     for (let y = 0; y < grid.dim; y++) {
       for (let x = 0; x < grid.dim / 2; x++) {
@@ -403,8 +537,13 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
   });
 
   it("cliffs keep at least 22 tiles from every land origin", () => {
-    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 2, { mapSize: "Giant" });
-    const origin = fabricateOrigin(Math.floor(grid.dim / 2), Math.floor(grid.dim / 2));
+    const { instantiated, grid } = bareGrid("<CLIFF_GENERATION>\n", 2, {
+      mapSize: "Giant",
+    });
+    const origin = fabricateOrigin(
+      Math.floor(grid.dim / 2),
+      Math.floor(grid.dim / 2),
+    );
     const result = applyCliffs(instantiated, grid, constants, [origin], 2);
     expect(result.reports[0].placed).toBeGreaterThan(0);
     for (const i of cliffTileIndices(grid)) {
@@ -415,7 +554,8 @@ describe("applyCliffs (Sec.6.3 end to end)", () => {
   });
 
   it("mutates grid.cliff and reuses it as the 'existing cliff' spacing constraint for later cliffs in the same section", () => {
-    const source = "<CLIFF_GENERATION>\nmin_number_of_cliffs 6\nmax_number_of_cliffs 7\nmin_distance_cliffs 4\n";
+    const source =
+      "<CLIFF_GENERATION>\nmin_number_of_cliffs 6\nmax_number_of_cliffs 7\nmin_distance_cliffs 4\n";
     const { instantiated, grid } = bareGrid(source, 9, { mapSize: "Giant" });
     const result = applyCliffs(instantiated, grid, constants, [], 9);
     expect(cliffTileCount(grid)).toBeGreaterThan(0);

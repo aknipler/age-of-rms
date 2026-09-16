@@ -53,7 +53,8 @@ declare const block: BlockNode;
 export const blockFlowsToWire: BlockNode<number | InfSentinel, NoDefs> = block;
 
 declare const script: ScriptNode;
-export const scriptFlowsToWire: ScriptNode<number | InfSentinel, NoDefs> = script;
+export const scriptFlowsToWire: ScriptNode<number | InfSentinel, NoDefs> =
+  script;
 
 // ---------------------------------------------------------------------------
 // 2. It does NOT flow back. The wire form is a strict supertype; a tool that
@@ -71,7 +72,9 @@ export const wireDoesNotFlowBack: ParseResult = fromWire;
 // map is fine".
 // ---------------------------------------------------------------------------
 
-export function defIsUnreadableOnWire(node: CommandNode<number | InfSentinel, NoDefs>) {
+export function defIsUnreadableOnWire(
+  node: CommandNode<number | InfSentinel, NoDefs>,
+) {
   // @ts-expect-error - def is `unknown` on the wire; resolve it through your own LanguageIndex
   return node.def?.name;
 }
@@ -86,13 +89,17 @@ export function defIsReadableInProcess(node: CommandNode) {
 // so a bound reaches Infinity by the same route a bare number token does.
 // ---------------------------------------------------------------------------
 
-export function bareNumericForcesADecode(arg: ArgNode<number | InfSentinel, NoDefs>) {
+export function bareNumericForcesADecode(
+  arg: ArgNode<number | InfSentinel, NoDefs>,
+) {
   // @ts-expect-error - the value union carries the sentinel; reading it as a number is a compile error
   const n: number = arg.value;
   return n;
 }
 
-export function rndBoundsForceADecode(arg: ArgNode<number | InfSentinel, NoDefs>) {
+export function rndBoundsForceADecode(
+  arg: ArgNode<number | InfSentinel, NoDefs>,
+) {
   const v = arg.value;
   if (typeof v !== "object" || !("rnd" in v)) return 0;
   // @ts-expect-error - rnd bounds take the parameter too, so they need decoding as well
@@ -104,7 +111,9 @@ export function rndBoundsForceADecode(arg: ArgNode<number | InfSentinel, NoDefs>
 // left off the parameter: a token INDEX still reads as a plain number on the
 // wire. A blanket deep mapped type would have made this line an error and
 // published a type claiming a token index might be infinite.
-export function tokenIndicesStayPlainNumbers(arg: ArgNode<number | InfSentinel, NoDefs>) {
+export function tokenIndicesStayPlainNumbers(
+  arg: ArgNode<number | InfSentinel, NoDefs>,
+) {
   const v = arg.value;
   if (typeof v !== "object" || !("expr" in v)) return 0;
   const first: number = v.expr.tokens[0];
@@ -138,7 +147,8 @@ interface ConditionalDefNode<M extends "real" | "wire"> {
 }
 declare const conditionalReal: ConditionalDefNode<"real">;
 // @ts-expect-error - fails on the type ARGUMENT ("real" vs "wire"), with nothing about `def` in the message
-export const conditionalBreaksVariance: ConditionalDefNode<"wire"> = conditionalReal;
+export const conditionalBreaksVariance: ConditionalDefNode<"wire"> =
+  conditionalReal;
 
 // (c) The chosen mechanism, stated positively: indexed access keeps variance
 // measurable, so DefSlots-instantiated nodes stay assignable to NoDefs ones.

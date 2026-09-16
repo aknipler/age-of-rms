@@ -33,14 +33,22 @@
       "kind": "attribute",
       "summary": "Assigns this land to a numbered zone, used later to scope terrain/object placement.",
       "details": "Zones are how you keep, say, an island's terrain generation from bleeding onto the mainland. Later create_terrain/create_object blocks can target or avoid specific zone numbers.",
-      "seeAlso": ["set_zone_by_team", "set_zone_randomly", "other_zone_avoidance_distance"]
+      "seeAlso": [
+        "set_zone_by_team",
+        "set_zone_randomly",
+        "other_zone_avoidance_distance"
+      ]
     },
     {
       "key": "create_object",
       "kind": "command",
       "summary": "Places objects, such as resources, units, or buildings, on the map.",
       "details": "Works bare (create_object GOLD places gold with default rules) or with a block of attributes constraining count, placement terrain, distance from players, grouping, and more.",
-      "seeAlso": ["number_of_objects", "terrain_to_place_on", "place_on_specific_land_id"]
+      "seeAlso": [
+        "number_of_objects",
+        "terrain_to_place_on",
+        "place_on_specific_land_id"
+      ]
     },
     {
       "key": "place_on_specific_land_id",

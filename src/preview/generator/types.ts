@@ -15,7 +15,10 @@
 
 import type { ArgNode, ParseResult, Span } from "../../parser/types";
 import type { CommandDef } from "../../parser/language";
-import type { MapSize, TeamNumber } from "../../generationSettings/generationSettingsConstants";
+import type {
+  MapSize,
+  TeamNumber,
+} from "../../generationSettings/generationSettingsConstants";
 import type { CanonicalTeams } from "../../generationSettings/teamModel";
 import type { ResourceTotals } from "./resourceSummary";
 
@@ -357,7 +360,8 @@ export interface SimulationNote {
  * it gives you `value` in one branch and `failure` in the other, with no cast
  * and no possibility of reading the wrong field.
  */
-export type PlacementOutcome<T> = { ok: true; value: T } | { ok: false; failure: PlacementFailure };
+export type PlacementOutcome<T> =
+  { ok: true; value: T } | { ok: false; failure: PlacementFailure };
 
 /**
  * Deliberately coarse. 5.2's report UI aggregates by bucket, so a stable

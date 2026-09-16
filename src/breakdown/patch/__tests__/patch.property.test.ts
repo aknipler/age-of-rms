@@ -46,7 +46,8 @@ function mulberry32(seed: number): () => number {
 
 function fileSeed(name: string): number {
   let h = 0xa0e2_2026;
-  for (let i = 0; i < name.length; i++) h = (Math.imul(h, 33) ^ name.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < name.length; i++)
+    h = (Math.imul(h, 33) ^ name.charCodeAt(i)) >>> 0;
   return h;
 }
 
@@ -82,10 +83,20 @@ function harvest(r: ParseResult): Pools {
   const comments = extractComments(r.tokens).filter(
     (c) => c.end - c.start > 4 && r.source.slice(c.end - 2, c.end) === "*/",
   );
-  const pools: Pools = { numericArgs: [], removables: [], closedBlocks: [], sections: [], comments };
+  const pools: Pools = {
+    numericArgs: [],
+    removables: [],
+    closedBlocks: [],
+    sections: [],
+    comments,
+  };
   const visitItems = (items: Item[]) => {
     for (const item of items) {
-      if (item.kind === "command" || item.kind === "attribute" || item.kind === "directive") {
+      if (
+        item.kind === "command" ||
+        item.kind === "attribute" ||
+        item.kind === "directive"
+      ) {
         // Directives ARE removable: `removeNode` accepts DirectiveNode (intents.ts)
         // and computeEdit handles it generically via removeSpan. Excluding them was a
         // harness omission that left every directive edit, i.e. the whole Header tab
@@ -104,18 +115,25 @@ function harvest(r: ParseResult): Pools {
           }
         }
       }
-      if (item.kind === "command" && item.block && item.block.close !== undefined && item.def?.attributes?.length) {
+      if (
+        item.kind === "command" &&
+        item.block &&
+        item.block.close !== undefined &&
+        item.def?.attributes?.length
+      ) {
         pools.closedBlocks.push({ block: item.block, owner: item });
         visitItems(item.block.items);
       } else if (item.kind === "command" && item.block) {
         visitItems(item.block.items);
       }
-      if (item.kind === "if") for (const b of item.branches) visitItems(b.items);
+      if (item.kind === "if")
+        for (const b of item.branches) visitItems(b.items);
       if (item.kind === "random") {
         visitItems(item.preamble);
         for (const b of item.branches) visitItems(b.items);
       }
-      if (item.kind === "orphanBlock" && item.block) visitItems(item.block.items);
+      if (item.kind === "orphanBlock" && item.block)
+        visitItems(item.block.items);
     }
   };
   visitItems(r.script.preamble);
@@ -157,14 +175,20 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
       return { kind: "removeNode", node: pick(pools.removables) };
     case "addAttr": {
       const { block, owner } = pick(pools.closedBlocks);
-      const candidates = (owner.def?.attributes ?? []).filter((n) => lang.attributesByName.has(n));
+      const candidates = (owner.def?.attributes ?? []).filter((n) =>
+        lang.attributesByName.has(n),
+      );
       if (candidates.length === 0) return undefined;
       return { kind: "addAttribute", target: block, name: pick(candidates) };
     }
     case "addCmdAfter": {
       const anchor = pick(pools.removables);
       if (langData.commands.length === 0) return undefined;
-      return { kind: "addCommand", at: { after: anchor }, name: pick(langData.commands).name };
+      return {
+        kind: "addCommand",
+        at: { after: anchor },
+        name: pick(langData.commands).name,
+      };
     }
     case "addComment": {
       const anchor = pick(pools.removables);
@@ -179,14 +203,24 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
       // unpadded single/multi-word, already-padded, and one carrying an
       // internal newline, so a multi-line comment's own edit path gets
       // fuzzed too.
-      const samples = ["", "note", "a longer replacement note", " already padded ", "line one\nline two"];
+      const samples = [
+        "",
+        "note",
+        "a longer replacement note",
+        " already padded ",
+        "line one\nline two",
+      ];
       return { kind: "editComment", innerSpan, text: pick(samples) };
     }
     default: {
       const section = pick(pools.sections);
       const cmds = langData.commands.filter((c) => c.section === section.name);
       if (cmds.length === 0) return undefined;
-      return { kind: "addCommand", at: { in: "section", section }, name: pick(cmds).name };
+      return {
+        kind: "addCommand",
+        at: { in: "section", section },
+        name: pick(cmds).name,
+      };
     }
   }
 }
@@ -198,9 +232,10 @@ function mapsUnder(dir: string): { name: string; path: string }[] {
     .map((e) => ({ name: e.name, path: join(dir, e.name) }));
 }
 
-const files = [...mapsUnder(join(REPO_ROOT, "test-maps")), ...mapsUnder(join(REPO_ROOT, "test-maps", "local"))].sort(
-  (a, b) => a.name.localeCompare(b.name),
-);
+const files = [
+  ...mapsUnder(join(REPO_ROOT, "test-maps")),
+  ...mapsUnder(join(REPO_ROOT, "test-maps", "local")),
+].sort((a, b) => a.name.localeCompare(b.name));
 
 describe("Sec.4.8 property gate: patch → reparse → only the intended diff", () => {
   it("found corpus files", () => {
@@ -210,51 +245,57 @@ describe("Sec.4.8 property gate: patch → reparse → only the intended diff", 
   for (const file of files) {
     // Generous timeout: AK_Vanguard (~50k tokens) needs ~15s for 25 patched
     // re-parses + node-key diffs; the default 5s is for unit-scale tests.
-    it(`${file.name} (seed ${fileSeed(file.name)})`, { timeout: 60_000 }, () => {
-      const original = readFileSync(file.path, "utf8");
-      const rand = mulberry32(fileSeed(file.name));
-      let skipped = 0;
-      // Every iteration edits the ORIGINAL source, so parse/harvest once.
-      const a = parseRms(original, langData);
-      const pools = harvest(a);
-      for (let iter = 0; iter < N_INTENTS; iter++) {
-        const intent = makeIntent(pools, rand);
-        if (!intent) {
-          skipped++;
-          continue;
-        }
-        let editResult;
-        try {
-          editResult = computeEdit(a, intent, lang);
-        } catch (e) {
-          if (e instanceof PatchError) {
+    it(
+      `${file.name} (seed ${fileSeed(file.name)})`,
+      { timeout: 60_000 },
+      () => {
+        const original = readFileSync(file.path, "utf8");
+        const rand = mulberry32(fileSeed(file.name));
+        let skipped = 0;
+        // Every iteration edits the ORIGINAL source, so parse/harvest once.
+        const a = parseRms(original, langData);
+        const pools = harvest(a);
+        for (let iter = 0; iter < N_INTENTS; iter++) {
+          const intent = makeIntent(pools, rand);
+          if (!intent) {
             skipped++;
-            continue; // suppressed edit (unclosed container etc.), spec Sec.4.5
+            continue;
           }
-          throw new Error(`(${file.name}, iter ${iter}, ${intent.kind}) computeEdit threw: ${String(e)}`);
+          let editResult;
+          try {
+            editResult = computeEdit(a, intent, lang);
+          } catch (e) {
+            if (e instanceof PatchError) {
+              skipped++;
+              continue; // suppressed edit (unclosed container etc.), spec Sec.4.5
+            }
+            throw new Error(
+              `(${file.name}, iter ${iter}, ${intent.kind}) computeEdit threw: ${String(e)}`,
+            );
+          }
+          const { edit } = editResult;
+          const patched = applyEdit(original, edit);
+          const b = parseRms(patched, langData);
+          const problems = astDiff(a, b, edit, diffOptionsFor(intent, edit));
+          if (problems.length > 0) {
+            throw new Error(
+              `(${file.name}, iter ${iter}) intent ${intent.kind} → edit [${edit.start},${edit.end})="${edit.newText.slice(0, 40)}"\n${problems.slice(0, 6).join("\n")}`,
+            );
+          }
         }
-        const { edit } = editResult;
-        const patched = applyEdit(original, edit);
-        const b = parseRms(patched, langData);
-        const problems = astDiff(a, b, edit, diffOptionsFor(intent, edit));
-        if (problems.length > 0) {
-          throw new Error(
-            `(${file.name}, iter ${iter}) intent ${intent.kind} → edit [${edit.start},${edit.end})="${edit.newText.slice(0, 40)}"\n${problems.slice(0, 6).join("\n")}`,
-          );
+        // The generator must be productive on any file that actually offers it a target.
+        // This is the guard against a silently broken makeIntent/harvest. But "at least one
+        // real edit per file" is false as an absolute: a file can legitimately have nothing
+        // to edit (e.g. the EM_* stubs are two directives and no sections/commands/blocks,
+        // 48 bytes total). Asserting unconditionally made those files fail on a correct
+        // engine. Assert productivity where there are targets, and inertness where there
+        // aren't, so both a broken generator and a mis-harvested file still fail loudly.
+        if (isInert(pools)) {
+          expect(skipped).toBe(N_INTENTS);
+        } else {
+          expect(skipped).toBeLessThan(N_INTENTS);
         }
-      }
-      // The generator must be productive on any file that actually offers it a target.
-      // This is the guard against a silently broken makeIntent/harvest. But "at least one
-      // real edit per file" is false as an absolute: a file can legitimately have nothing
-      // to edit (e.g. the EM_* stubs are two directives and no sections/commands/blocks,
-      // 48 bytes total). Asserting unconditionally made those files fail on a correct
-      // engine. Assert productivity where there are targets, and inertness where there
-      // aren't, so both a broken generator and a mis-harvested file still fail loudly.
-      if (isInert(pools)) {
-        expect(skipped).toBe(N_INTENTS);
-      } else {
-        expect(skipped).toBeLessThan(N_INTENTS);
-      }
-    });
+      },
+    );
   }
 });

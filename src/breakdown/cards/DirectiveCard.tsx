@@ -43,10 +43,14 @@ export function DirectiveCard({ directive }: DirectiveCardProps) {
         ))}
         {directive.def?.nonFunctional && (
           <HelpTip id="breakdown.directiveCard.nonFunctional">
-            <span className={styles.nonFunctionalBadge}>has no effect in DE</span>
+            <span className={styles.nonFunctionalBadge}>
+              has no effect in DE
+            </span>
           </HelpTip>
         )}
-        {!known && <span className={cardStyles.unknownBadge}>unknown directive</span>}
+        {!known && (
+          <span className={cardStyles.unknownBadge}>unknown directive</span>
+        )}
         {severity && <ProblemBadge severity={severity} />}
         <HelpTip id="breakdown.directiveCard.delete">
           <button

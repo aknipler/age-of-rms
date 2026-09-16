@@ -54,93 +54,137 @@ export function LandPlacementHelpDialog({ onClose }: { onClose: () => void }) {
         <div className={styles.body}>
           <h3 className={styles.heading}>What the tool does</h3>
           <p>
-            Build a layout of lands here, and the tool writes it into the script as its own fenced block. That block holds a table
-            of <code>#const</code> lines carrying the position algebra, plus a <code>create_land</code> command for every land
-            that does not have one yet. Nothing reaches the document until you press Apply, and an Apply lands as a single undo
-            step.
+            Build a layout of lands here, and the tool writes it into the script
+            as its own fenced block. That block holds a table of{" "}
+            <code>#const</code> lines carrying the position algebra, plus a{" "}
+            <code>create_land</code> command for every land that does not have
+            one yet. Nothing reaches the document until you press Apply, and an
+            Apply lands as a single undo step.
           </p>
 
           <h3 className={styles.heading}>It only manages the block it wrote</h3>
           <p>
-            The tool reads a layout back out of a fence comment that it wrote itself. A script with no such fence starts empty,
-            even when that script already places lands by hand. Those lands are left exactly as they are, and the tree reads "No
-            lands yet" until you add something. That is deliberate. There is no partial adopt, so the tool can never half-own
-            algebra it did not write. To manage an existing layout, rebuild it here and Apply. To keep the hand-written one, leave
-            the tool alone.
+            The tool reads a layout back out of a fence comment that it wrote
+            itself. A script with no such fence starts empty, even when that
+            script already places lands by hand. Those lands are left exactly as
+            they are, and the tree reads "No lands yet" until you add something.
+            That is deliberate. There is no partial adopt, so the tool can never
+            half-own algebra it did not write. To manage an existing layout,
+            rebuild it here and Apply. To keep the hand-written one, leave the
+            tool alone.
           </p>
 
           <h3 className={styles.heading}>Work in this order, role first</h3>
           <ul>
             <li>
-              A <strong>role</strong> is a shared set of terrain, base size, elevation, land percent, zone policy and player
-              assignment. Any number of lands wear one role, and editing the role edits every land wearing it.{" "}
-              <code>+ Shape</code> and <code>+ Land</code> stay disabled until a role exists.
+              A <strong>role</strong> is a shared set of terrain, base size,
+              elevation, land percent, zone policy and player assignment. Any
+              number of lands wear one role, and editing the role edits every
+              land wearing it. <code>+ Shape</code> and <code>+ Land</code> stay
+              disabled until a role exists.
             </li>
             <li>
-              <strong>+ Shape</strong> adds a circle of eight lands around the map centre at radius 30%, all wearing the first
-              role. Radius, rotation and repeat count are edited on the shape itself rather than on its members, and the shape
-              can be changed afterward (circle, line, arc, square, triangle, polygon) from its own editor.
+              <strong>+ Shape</strong> adds a circle of eight lands around the
+              map centre at radius 30%, all wearing the first role. Radius,
+              rotation and repeat count are edited on the shape itself rather
+              than on its members, and the shape can be changed afterward
+              (circle, line, arc, square, triangle, polygon) from its own
+              editor.
             </li>
             <li>
-              <strong>+ Land</strong> adds one standalone land, for a home base or a lone feature that belongs to no shape.
+              <strong>+ Land</strong> adds one standalone land, for a home base
+              or a lone feature that belongs to no shape.
             </li>
           </ul>
 
           <h3 className={styles.heading}>Parents and frames</h3>
           <p>
-            Every placement is measured from a parent, either the map centre or another placement. That chain is what the tree's
-            indentation shows. In a <strong>radial</strong> frame the angle is measured at the parent, from the ray pointing back
-            at the parent's own anchor, so turning a root turns the whole chain with it. An <strong>absolute</strong> frame uses a
-            plain world bearing instead. An offset is polar (radius and angle), cartesian (dx and dy), or a custom formula.
+            Every placement is measured from a parent, either the map centre or
+            another placement. That chain is what the tree's indentation shows.
+            In a <strong>radial</strong> frame the angle is measured at the
+            parent, from the ray pointing back at the parent's own anchor, so
+            turning a root turns the whole chain with it. An{" "}
+            <strong>absolute</strong> frame uses a plain world bearing instead.
+            An offset is polar (radius and angle), cartesian (dx and dy), or a
+            custom formula.
           </p>
           <p>
-            Radial only means something for a polar offset: it works by measuring FROM the parent's own angle, so it needs the
-            parent to have one. Every ring shape, circle, line, arc, square, triangle and polygon alike, is a polar offset with a
-            real angle to measure from, so a land chained to any of them keeps working as expected. Only a placement set to a
-            cartesian or formula offset has no angle of its own, so a land parented to one of those falls back to a plain world
-            bearing even with Frame set to radial, indistinguishable from absolute.
+            Radial only means something for a polar offset: it works by
+            measuring FROM the parent's own angle, so it needs the parent to
+            have one. Every ring shape, circle, line, arc, square, triangle and
+            polygon alike, is a polar offset with a real angle to measure from,
+            so a land chained to any of them keeps working as expected. Only a
+            placement set to a cartesian or formula offset has no angle of its
+            own, so a land parented to one of those falls back to a plain world
+            bearing even with Frame set to radial, indistinguishable from
+            absolute.
           </p>
-          <p>Distances are percentages of the map dimension rather than tiles. Each field shows its tile equivalent beside it.</p>
+          <p>
+            Distances are percentages of the map dimension rather than tiles.
+            Each field shows its tile equivalent beside it.
+          </p>
 
           <h3 className={styles.heading}>The canvas</h3>
           <p>
-            Two layers. Underneath sits a real generation of the current document, cut at the end of land placement, which is what
-            the script does now. On top are the tool's own circles, drawn live from the model, which is what Apply would write.
+            Two layers. Underneath sits a real generation of the current
+            document, cut at the end of land placement, which is what the script
+            does now. On top are the tool's own circles, drawn live from the
+            model, which is what Apply would write.
           </p>
           <ul>
-            <li>Click a circle to select it, or click a row in the tree. Clicking bare map clears the selection.</li>
-            <li>Drag a land's middle to move it. A selected ring also grows a radius handle and a rotation handle.</li>
-            <li>Drag the selected land's rim onto another land, or onto the map centre, to re-parent it.</li>
             <li>
-              Drops snap to the tile lattice, and magnetically to the centre and the parent's axis. Hold <kbd>Ctrl</kbd> to snap
-              to whole percentages instead.
+              Click a circle to select it, or click a row in the tree. Clicking
+              bare map clears the selection.
             </li>
             <li>
-              A drag that would overwrite a formula or a random parameter is refused rather than flattened to a number. The panel
-              says which value stopped it.
+              Drag a land's middle to move it. A selected ring also grows a
+              radius handle and a rotation handle.
+            </li>
+            <li>
+              Drag the selected land's rim onto another land, or onto the map
+              centre, to re-parent it.
+            </li>
+            <li>
+              Drops snap to the tile lattice, and magnetically to the centre and
+              the parent's axis. Hold <kbd>Ctrl</kbd> to snap to whole
+              percentages instead.
+            </li>
+            <li>
+              A drag that would overwrite a formula or a random parameter is
+              refused rather than flattened to a number. The panel says which
+              value stopped it.
             </li>
             <li>Drag bare map to pan, and use the wheel to zoom.</li>
           </ul>
 
           <h3 className={styles.heading}>The seed belongs to this panel</h3>
           <p>
-            The number beside Re-roll is pinned when the tool opens and is separate from Breakdown and Code's seed, so switching
-            tabs never resets the arrangement you are working against. It also means this canvas and the Breakdown preview will
-            not agree unless their seeds happen to match.
+            The number beside Re-roll is pinned when the tool opens and is
+            separate from Breakdown and Code's seed, so switching tabs never
+            resets the arrangement you are working against. It also means this
+            canvas and the Breakdown preview will not agree unless their seeds
+            happen to match.
           </p>
 
           <h3 className={styles.heading}>The warning strip</h3>
           <p>
-            Anything about this script that limits what the tool can manage. Code the app can only show as raw text, along with
-            the <code>create_land</code> commands hidden inside it; a random parameter emitted for a different player count; a
-            player-assigned land with no <code>direct_placement</code> declared; a name that would collide with one already in
-            the script; or a fence that could not be read. It is empty on a healthy script.
+            Anything about this script that limits what the tool can manage.
+            Code the app can only show as raw text, along with the{" "}
+            <code>create_land</code> commands hidden inside it; a random
+            parameter emitted for a different player count; a player-assigned
+            land with no <code>direct_placement</code> declared; a name that
+            would collide with one already in the script; or a fence that could
+            not be read. It is empty on a healthy script.
           </p>
         </div>
 
         <div className={dialogStyles.actions}>
           <HelpTip id="landPlacement.explainClose">
-            <button type="button" className={dialogStyles.closeButton} onClick={onClose}>
+            <button
+              type="button"
+              className={dialogStyles.closeButton}
+              onClick={onClose}
+            >
               Close
             </button>
           </HelpTip>

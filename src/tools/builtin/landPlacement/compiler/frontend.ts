@@ -18,7 +18,8 @@ export interface ParseError {
   position: number;
 }
 
-export type ParseFormulaResult = { ok: true; expr: Expr } | { ok: false; error: ParseError };
+export type ParseFormulaResult =
+  { ok: true; expr: Expr } | { ok: false; error: ParseError };
 
 type TokKind = "num" | "ident" | "op" | "lparen" | "rparen" | "comma" | "eof";
 interface Tok {
@@ -29,7 +30,8 @@ interface Tok {
 
 function lex(source: string): Tok[] {
   const toks: Tok[] = [];
-  const re = /\s*(?:([0-9]+(?:\.[0-9]+)?)|([A-Za-z_][A-Za-z0-9_]*)|([+\-*/%])|(\()|(\))|(,))\s*/y;
+  const re =
+    /\s*(?:([0-9]+(?:\.[0-9]+)?)|([A-Za-z_][A-Za-z0-9_]*)|([+\-*/%])|(\()|(\))|(,))\s*/y;
   let i = 0;
   while (i < source.length) {
     re.lastIndex = i;
@@ -59,7 +61,13 @@ class ParseFail extends Error {
   }
 }
 
-const PRECEDENCE: Record<string, number> = { "+": 1, "-": 1, "*": 2, "/": 2, "%": 2 };
+const PRECEDENCE: Record<string, number> = {
+  "+": 1,
+  "-": 1,
+  "*": 2,
+  "/": 2,
+  "%": 2,
+};
 
 class Parser {
   private i = 0;
@@ -74,7 +82,10 @@ class Parser {
   private expect(kind: TokKind, text?: string): Tok {
     const t = this.peek();
     if (t.kind !== kind || (text !== undefined && t.text !== text)) {
-      throw new ParseFail(`expected '${text ?? kind}', got '${t.text || "end of input"}'`, t.pos);
+      throw new ParseFail(
+        `expected '${text ?? kind}', got '${t.text || "end of input"}'`,
+        t.pos,
+      );
     }
     return this.next();
   }
@@ -176,7 +187,10 @@ class Parser {
       this.expect("rparen");
       return param(`rnd(${a},${b})@${pos}`);
     }
-    throw new ParseFail(`unknown function '${name}' — only SIN, COS, rnd are supported`, pos);
+    throw new ParseFail(
+      `unknown function '${name}' — only SIN, COS, rnd are supported`,
+      pos,
+    );
   }
 }
 
@@ -187,7 +201,8 @@ export function parseFormula(source: string): ParseFormulaResult {
     const expr = new Parser(toks).parseExpr();
     return { ok: true, expr };
   } catch (e) {
-    if (e instanceof ParseFail) return { ok: false, error: { message: e.message, position: e.position } };
+    if (e instanceof ParseFail)
+      return { ok: false, error: { message: e.message, position: e.position } };
     throw e;
   }
 }

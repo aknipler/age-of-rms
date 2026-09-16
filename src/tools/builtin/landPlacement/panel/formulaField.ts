@@ -71,7 +71,11 @@ interface ExpandResult {
  * minimal; sharing across an ad hoc single-field preview isn't worth the
  * extra bookkeeping this function would need to detect it.
  */
-function expandTrigDeep(e: Expr, suffix: string, namer: NameAllocator): ExpandResult {
+function expandTrigDeep(
+  e: Expr,
+  suffix: string,
+  namer: NameAllocator,
+): ExpandResult {
   switch (e.k) {
     case "num":
     case "inf":
@@ -86,7 +90,10 @@ function expandTrigDeep(e: Expr, suffix: string, namer: NameAllocator): ExpandRe
     case "bin": {
       const l = expandTrigDeep(e.l, suffix, namer);
       const r = expandTrigDeep(e.r, suffix, namer);
-      return { expr: { k: "bin", op: e.op, l: l.expr, r: r.expr }, cells: [...l.cells, ...r.cells] };
+      return {
+        expr: { k: "bin", op: e.op, l: l.expr, r: r.expr },
+        cells: [...l.cells, ...r.cells],
+      };
     }
     case "sin":
     case "cos": {
@@ -113,7 +120,13 @@ function expandTrigDeep(e: Expr, suffix: string, namer: NameAllocator): ExpandRe
  * resolved `#const`s, the model's own dry-run `resolved` map, or both
  * layered. This module has no opinion on which; it only evaluates.
  */
-const PRINT_PRECEDENCE: Record<string, number> = { "+": 1, "-": 1, "*": 2, "/": 2, "%": 2 };
+const PRINT_PRECEDENCE: Record<string, number> = {
+  "+": 1,
+  "-": 1,
+  "*": 2,
+  "/": 2,
+  "%": 2,
+};
 
 function formatNumber(v: number): string {
   return Object.is(v, -0) ? "0" : String(v);
@@ -171,14 +184,20 @@ export function computeFormulaFeedback(
 ): FormulaFeedback {
   const parsed = parseFormula(source);
   if (!parsed.ok) {
-    return { parse: { ok: false, error: parsed.error }, value: undefined, unsupportedReason: null, emittedLines: [] };
+    return {
+      parse: { ok: false, error: parsed.error },
+      value: undefined,
+      unsupportedReason: null,
+      emittedLines: [],
+    };
   }
 
   if (containsParam(parsed.expr)) {
     return {
       parse: { ok: true },
       value: undefined,
-      unsupportedReason: "rnd(...) in a formula isn't supported yet — create a Random Parameter and reference it by name instead.",
+      unsupportedReason:
+        "rnd(...) in a formula isn't supported yet — create a Random Parameter and reference it by name instead.",
       emittedLines: [],
     };
   }
@@ -187,12 +206,23 @@ export function computeFormulaFeedback(
   // already use the same Bhaskara macro directly, so there is nothing to
   // gain (and dependency-order bookkeeping to lose) by evaluating the
   // expanded cell form instead.
-  const value = evalExpr(parsed.expr, { resolveSym, resolveParam: () => undefined });
+  const value = evalExpr(parsed.expr, {
+    resolveSym,
+    resolveParam: () => undefined,
+  });
 
   const namer = new NameAllocator({ prefix: "" });
   const expanded = expandTrigDeep(parsed.expr, fieldSuffix, namer);
   const previewName = namer.allocate("PREVIEW", fieldSuffix);
-  const emitted = emitCells([...expanded.cells, { name: previewName, expr: expanded.expr }], namer);
+  const emitted = emitCells(
+    [...expanded.cells, { name: previewName, expr: expanded.expr }],
+    namer,
+  );
 
-  return { parse: { ok: true }, value, unsupportedReason: null, emittedLines: emitted.map(formatConstLine) };
+  return {
+    parse: { ok: true },
+    value,
+    unsupportedReason: null,
+    emittedLines: emitted.map(formatConstLine),
+  };
 }

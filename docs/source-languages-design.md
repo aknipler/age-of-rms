@@ -1,6 +1,6 @@
 # Source Languages in the Code Tab — Design (rev 1, draft for discussion)
 
-**Status: proposal, nothing implemented, and scheduled AFTER M6.** External tools ship first and this feature inherits their pack machinery — see Sec.11, where that ordering is a decision with consequences rather than a sequencing accident. This covers PLAN.md's "Later" line item — *"multi-language dropdown in Code tab"* — and the Code-tab bullet it comes from: *"language dropdown (AoE2 RMS default; other languages later for tool authors)."* It is written after the Advanced Tools API (`docs/tools-api-design.md`), reuses that document's trust and transport reasoning wherever the shape is the same, and departs from it where a compiler is not a tool.
+**Status: proposal, nothing implemented, and scheduled AFTER M6.** External tools ship first and this feature inherits their pack machinery — see Sec.11, where that ordering is a decision with consequences rather than a sequencing accident. This covers PLAN.md's "Later" line item — _"multi-language dropdown in Code tab"_ — and the Code-tab bullet it comes from: _"language dropdown (AoE2 RMS default; other languages later for tool authors)."_ It is written after the Advanced Tools API (`docs/tools-api-design.md`), reuses that document's trust and transport reasoning wherever the shape is the same, and departs from it where a compiler is not a tool.
 
 **Every repo claim here is dated 2026-08-29 — re-derive before acting on it.** `docs/tools-api-design.md` Sec.10.2's standing instruction applies to this document too, and for the same measured reason.
 
@@ -12,7 +12,7 @@ Three answers up front, because the rest of the document is the consequences of 
 
 1. **Two files, and neither of them is a `.aorms`.** The source keeps its language's own extension (`.py`, `.rkt`); the build description lives in the **header comment of the generated `.rms`**, which the app already stamps. No sidecar, no third file, and the artifact is self-describing. Sec.4 has the format, the open-a-file decision table, and the two alternatives this replaced (a JSON sidecar, and `.aorms` as the source text itself).
 2. **Yes to the generated-code button**, and the honest version of it costs more than a button: a generated document is one the app must stop writing to. Sec.3.2 is that inventory.
-3. **The app never learns Python or Racket.** It learns to run *a language pack* — a manifest describing an already-installed community toolchain. The pack contract (Sec.5) is the deliverable; the two reference packs are contributions, not app code, exactly as tools v1.1 intends for tools.
+3. **The app never learns Python or Racket.** It learns to run _a language pack_ — a manifest describing an already-installed community toolchain. The pack contract (Sec.5) is the deliverable; the two reference packs are contributions, not app code, exactly as tools v1.1 intends for tools.
 
 ## 2. Goals and non-goals
 
@@ -38,7 +38,7 @@ Three answers up front, because the rest of the document is the consequences of 
 
 `src/hooks/useDocument.ts` creates one Monaco `ITextModel` at module scope, `inmemory://model/document.rms`, language `aoe2-rms`, and every consumer in the app hangs off it: `App.tsx` calls `useParsedDocument(doc.content, playerCount)`, Breakdown patches it through `applyTextEdits`, the preview and status-bar totals derive from that parse, Advanced Tools reads the same `source`/`parseResult` and applies edits back through the same call.
 
-**So the compiled RMS goes into that model, and nothing downstream changes.** The source gets a *second* model, `inmemory://model/source.<ext>`, in whatever Monaco language the pack declares. This is the whole architectural trick and it is worth stating as a rule:
+**So the compiled RMS goes into that model, and nothing downstream changes.** The source gets a _second_ model, `inmemory://model/source.<ext>`, in whatever Monaco language the pack declares. This is the whole architectural trick and it is worth stating as a rule:
 
 > The RMS document model is the app's map. In RMS mode the user types into it. In generated mode a build fills it. Nothing else about the app knows the difference.
 
@@ -62,19 +62,19 @@ The alternative — teach Breakdown, preview, totals, tools and diagnostics to a
 
 ### 3.2 A generated document is read-only, and here is every write path
 
-The locked decision in PLAN.md is *"Source of truth: Code."* It still holds; "Code" now means *the source you wrote*. The artifact is not a place to type. Every path that writes into the document model has to be found and gated, and there are more than one expects:
+The locked decision in PLAN.md is _"Source of truth: Code."_ It still holds; "Code" now means _the source you wrote_. The artifact is not a place to type. Every path that writes into the document model has to be found and gated, and there are more than one expects:
 
-| Write path | Where | Generated mode |
-|---|---|---|
-| Typing in the Code editor | `CodePane.tsx` `<Editor>` | Generated pane is `readOnly`; typing happens in the source editor |
-| Breakdown value editors / add / delete | `src/breakdown/applyEdit.ts` -> `applyTextEdit` | Cards render, editors disabled, HelpTip says why |
-| Advanced Tools Apply (`edit-source`) | `tools/host.ts` -> `applyTextEdits` | Apply disabled; the run still produces its report |
-| Toggle command layout (Ctrl+Alt+F) | `CodePane.tsx` -> `toggleCommandLayoutInRange` | No-op in the generated pane |
-| Script Formatter built-in | `tools/builtin/scriptFormatter.ts` | Same as any `edit-source` tool |
-| **The script header stamp** | `useDocument.ts` `stampHeader` | Retargeted — see below; not a simple disable |
-| Undo/redo (window-level listener) | `useDocument.ts` | Routes to the focused model; the generated model has no user edits to undo |
+| Write path                             | Where                                           | Generated mode                                                             |
+| -------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| Typing in the Code editor              | `CodePane.tsx` `<Editor>`                       | Generated pane is `readOnly`; typing happens in the source editor          |
+| Breakdown value editors / add / delete | `src/breakdown/applyEdit.ts` -> `applyTextEdit` | Cards render, editors disabled, HelpTip says why                           |
+| Advanced Tools Apply (`edit-source`)   | `tools/host.ts` -> `applyTextEdits`             | Apply disabled; the run still produces its report                          |
+| Toggle command layout (Ctrl+Alt+F)     | `CodePane.tsx` -> `toggleCommandLayoutInRange`  | No-op in the generated pane                                                |
+| Script Formatter built-in              | `tools/builtin/scriptFormatter.ts`              | Same as any `edit-source` tool                                             |
+| **The script header stamp**            | `useDocument.ts` `stampHeader`                  | Retargeted — see below; not a simple disable                               |
+| Undo/redo (window-level listener)      | `useDocument.ts`                                | Routes to the focused model; the generated model has no user edits to undo |
 
-**The header stamp is the interesting one.** Today it deliberately edits the *model* rather than the bytes on the way to disk, so the comment is real, visible and undoable. In generated mode that is exactly wrong: an edit to the artifact is erased by the next build, and stamping the *source* would inject an RMS comment into a Python file. So in generated mode the stamp becomes a **write-time prepend on the output only**, with different content — the app's own banner:
+**The header stamp is the interesting one.** Today it deliberately edits the _model_ rather than the bytes on the way to disk, so the comment is real, visible and undoable. In generated mode that is exactly wrong: an edit to the artifact is erased by the next build, and stamping the _source_ would inject an RMS comment into a Python file. So in generated mode the stamp becomes a **write-time prepend on the output only**, with different content — the app's own banner:
 
 ```
 /* Generated by Age of RMS 0.x from mapname.py (python-aoe2rms 0.1.0)
@@ -83,19 +83,19 @@ The locked decision in PLAN.md is *"Source of truth: Code."* It still holds; "Co
 
 Author, created date and the rest belong in the source file, where the pack's own conventions put them, and the app does not touch them. This banner is also where the build record lives — Sec.4.1.
 
-`stampHeader`'s two pieces of state go unused in generated mode, and that is deliberate rather than an oversight. `hasHeaderRef` answers "should one be added?" and `stampedHeaderRef` answers "may this row be rewritten?", and both exist because a *user* may edit a header the app wrote. Nobody edits a generated banner: it is rewritten wholesale on every build, and a user who wants it gone uses Detach (Sec.4.2), which removes the association rather than the comment. Wiring the ownership machinery to it would be answering a question that cannot be asked.
+`stampHeader`'s two pieces of state go unused in generated mode, and that is deliberate rather than an oversight. `hasHeaderRef` answers "should one be added?" and `stampedHeaderRef` answers "may this row be rewritten?", and both exist because a _user_ may edit a header the app wrote. Nobody edits a generated banner: it is rewritten wholesale on every build, and a user who wants it gone uses Detach (Sec.4.2), which removes the association rather than the comment. Wiring the ownership machinery to it would be answering a question that cannot be asked.
 
 **Read paths are untouched and that is the point.** Running the Generation Consistency Checker over the RMS your Python produced is one of the better arguments for this whole feature: same flagship tool, same generated text, no tool-side change.
 
 ### 3.3 Saving, and what "dirty" means with two models
 
-Sec.3.2 is the inventory of what may *write* to the models. This is the inventory of what happens around **saving** them, and it is the other half of the same job — `useDocument` currently owns one model, one path, one dirty flag and one unsaved-work guard, and every one of those is singular in a way generated mode breaks.
+Sec.3.2 is the inventory of what may _write_ to the models. This is the inventory of what happens around **saving** them, and it is the other half of the same job — `useDocument` currently owns one model, one path, one dirty flag and one unsaved-work guard, and every one of those is singular in a way generated mode breaks.
 
 **Dirty is the source's dirty, and only the source's.** Today it is `documentModel.getAlternativeVersionId() !== savedVersionIdRef.current`, which is the right mechanism and the wrong model: the generated document has no user edits, so its version id moves only when a build fills it, and treating that as unsaved work would prompt to save an artifact the app wrote itself. In generated mode `savedVersionIdRef` tracks the **source** model, and the generated model contributes nothing to dirty at all. Its own "is the file on disk current?" question is a different one with a different answer, and Sec.6.5 already answers it: staleness, not dirtiness.
 
 Consequences for the three callers, none of which is a judgment call once the rule above is fixed:
 
-- **`ensureSavedBefore`** — the shared guard behind Open and window-close — saves the *source*. Its Save As fallback picks a source path, with the pack's own extension in the filter rather than `.rms`.
+- **`ensureSavedBefore`** — the shared guard behind Open and window-close — saves the _source_. Its Save As fallback picks a source path, with the pack's own extension in the filter rather than `.rms`.
 - **`writeToPath`** writes the source, then builds if build-on-save is on. A build that fails must not fail the save: the file is on disk, and the Build Output panel is where the failure is reported. Saving and building are two outcomes and the status bar shows both.
 - **`openFile` / `newFile`** reset the source model with `setValue` for the existing reason (a new document starts a new undo history) and must reset the generated model too, or the previous map's preview, totals and diagnostics survive into a document that has not been built yet.
 
@@ -105,10 +105,10 @@ Consequences for the three callers, none of which is a judgment call once the ru
 
 ### 4.1 Two files, and the build description rides in the `.rms` header
 
-| File | Role | Written by |
-|---|---|---|
-| `Sacred Springs.py` | The source. **Native extension of the pack's language.** | The user (in the Code tab or any editor) |
-| `Sacred Springs.rms` | Build artifact **and** the record of how it was built. | Build |
+| File                 | Role                                                     | Written by                               |
+| -------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| `Sacred Springs.py`  | The source. **Native extension of the pack's language.** | The user (in the Code tab or any editor) |
+| `Sacred Springs.rms` | Build artifact **and** the record of how it was built.   | Build                                    |
 
 The app already stamps a comment at the top of every script it writes (`src/hooks/scriptHeader.ts`), so the generated file's banner carries a few machine-readable rows and there is no third file:
 
@@ -125,7 +125,7 @@ The app already stamps a comment at the top of every script it writes (`src/hook
 
 Rules that keep this from becoming a guessing game:
 
-- **Only the first comment block is scanned**, only `aorms-*` keys are read, and every path is relative to the `.rms`. A missing or malformed `aorms-pack` or `aorms-entry` means *no association* — the file is a plain RMS script. The parser never repairs, never guesses.
+- **Only the first comment block is scanned**, only `aorms-*` keys are read, and every path is relative to the `.rms`. A missing or malformed `aorms-pack` or `aorms-entry` means _no association_ — the file is a plain RMS script. The parser never repairs, never guesses.
 - **The banner is prepended once, to one string**, which then fills both the model and the file. The generated pane shows exactly the bytes on disk, so generated diagnostics' offsets are true in both.
 - **Nothing in the banner can name an executable.** It names a pack id and a version, same as the sidecar it replaces; Sec.5.3 is why that is the security property and not tidiness.
 
@@ -133,13 +133,13 @@ Rules that keep this from becoming a guessing game:
 
 ### 4.2 What the app does when you open a file
 
-| Opened file | Source beside it | Pack installed | Mode |
-|---|---|---|---|
-| `.rms`, no banner | — | — | **RMS mode.** Today's behaviour, unchanged |
-| `.rms` with banner | yes | yes | **Generated mode.** Loads the source, offers Build |
-| `.rms` with banner | yes | **no** | **Generated mode, read-only.** Preview, Breakdown, read-only tools all work; Build is disabled and points at the pack's homepage |
-| `.rms` with banner | **no** | — | **RMS mode**, with a notice naming the source file it expects |
-| `.py` / `.rkt` | (is the source) | yes | **Generated mode**, unbuilt |
+| Opened file        | Source beside it | Pack installed | Mode                                                                                                                             |
+| ------------------ | ---------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `.rms`, no banner  | —                | —              | **RMS mode.** Today's behaviour, unchanged                                                                                       |
+| `.rms` with banner | yes              | yes            | **Generated mode.** Loads the source, offers Build                                                                               |
+| `.rms` with banner | yes              | **no**         | **Generated mode, read-only.** Preview, Breakdown, read-only tools all work; Build is disabled and points at the pack's homepage |
+| `.rms` with banner | **no**           | —              | **RMS mode**, with a notice naming the source file it expects                                                                    |
+| `.py` / `.rkt`     | (is the source)  | yes            | **Generated mode**, unbuilt                                                                                                      |
 
 The third row is the good outcome of putting the record in the artifact: someone who downloads a map built from Python, without Python, still gets a playable, previewable, checkable map and an explanation of where it came from.
 
@@ -159,7 +159,7 @@ The other shape considered — one `.aorms` file holding the source, compiled to
 - `aoe2-rms` is a `#lang`. `raco`, the package system and DrRacket all expect `.rkt`.
 - The deeper objection: **`.aorms` as a source extension is a claim that AoRMS has a source language.** It does not, and the entire premise of this feature is that the language is pluggable. An extension whose contents are Python in one project and Racket in the next tells a reader nothing.
 
-The "front-matter" variant (`#!aorms python-aoe2rms` on line 1 of a `.aorms` file, app extracts the body to a temp `.py` to build) was considered and rejected: it breaks relative imports and `__file__`, shifts every traceback line number, and means the user cannot run their own map outside the app — which is the one thing an existing community toolchain is *for*.
+The "front-matter" variant (`#!aorms python-aoe2rms` on line 1 of a `.aorms` file, app extracts the body to a temp `.py` to build) was considered and rejected: it breaks relative imports and `__file__`, shifts every traceback line number, and means the user cannot run their own map outside the app — which is the one thing an existing community toolchain is _for_.
 
 ### 4.5 Sharing
 
@@ -173,28 +173,28 @@ New folder `languages-api/`, mirroring `tools-api/`: shared types, no React/Mona
 
 ```jsonc
 {
-  "id": "python-aoe2rms",              // stable, kebab-case
+  "id": "python-aoe2rms", // stable, kebab-case
   "name": "Python (python-aoe2rms)",
   "version": "0.1.0",
-  "apiVersion": 1,                     // must equal LANGUAGES_API_VERSION
+  "apiVersion": 1, // must equal LANGUAGES_API_VERSION
   "homepage": "https://github.com/AntoineRoll/python-aoe2rms",
   "source": {
     "extension": "py",
-    "editorLanguage": "python"         // a Monaco built-in id, or see Sec.5.4
+    "editorLanguage": "python", // a Monaco built-in id, or see Sec.5.4
   },
   "runtime": {
-    "id": "python",                    // a key in the app's Runtimes settings — NOT a path
+    "id": "python", // a key in the app's Runtimes settings — NOT a path
     "minVersion": "3.11",
     "versionArgs": ["--version"],
-    "versionPattern": "Python (\\d+\\.\\d+\\.\\d+)"
+    "versionPattern": "Python (\\d+\\.\\d+\\.\\d+)",
   },
   "build": {
     "args": ["-m", "aoe2rms", "build", "${entry}", "-o", "${outPath}"],
     "cwd": "sourceDir",
     "output": { "strategy": "file" },
-    "timeoutMs": 30000
+    "timeoutMs": 30000,
   },
-  "diagnostics": { "parser": "pythonTraceback" }
+  "diagnostics": { "parser": "pythonTraceback" },
 }
 ```
 
@@ -204,15 +204,15 @@ Substitution is a **closed set of three tokens** (`${entry}`, `${outPath}`, `${s
 
 This is where the two reference projects genuinely disagree, and the contract has to be wide enough for both without becoming "run any shell command".
 
-| Strategy | Host behaviour | Fits |
-|---|---|---|
-| `stdout` | Capture stdout, treat it as the RMS text | `racket map.rkt` |
-| `file` | Pass `${outPath}` into `args`/`env`, read that file after a zero exit | `racket map.rkt -d out.rms`; `python -m aoe2rms build map.py -o out.rms` once Appendix B lands |
-| `newestRmsIn` | Snapshot `*.rms` mtimes in `dir` before the run; after a zero exit take the one file that is new or newer | python-aoe2rms **before** Appendix B; any library-only pack |
+| Strategy      | Host behaviour                                                                                            | Fits                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `stdout`      | Capture stdout, treat it as the RMS text                                                                  | `racket map.rkt`                                                                               |
+| `file`        | Pass `${outPath}` into `args`/`env`, read that file after a zero exit                                     | `racket map.rkt -d out.rms`; `python -m aoe2rms build map.py -o out.rms` once Appendix B lands |
+| `newestRmsIn` | Snapshot `*.rms` mtimes in `dir` before the run; after a zero exit take the one file that is new or newer | python-aoe2rms **before** Appendix B; any library-only pack                                    |
 
 `file` is the strategy every pack should reach for, and the reason the third one exists is that `python-aoe2rms` has no CLI today: its API is `my_map.save_to_file("my_map.rms")`, so **the script chooses its own output path and nothing on the command line can override it** (verified 2026-08-29). Appendix B is the upstream fix — a ~60-line CLI over the `Map.compile()` method the library already has — after which the Python pack uses `file` like everything else.
 
-`newestRmsIn` stays in the contract regardless, because it is what any *other* library-shaped project will need on day one, and it is what lets the Python pack work against released versions. Its failure mode is named rather than guessed at: if zero files changed, or more than one did, the build **fails with "could not tell which file your script wrote"** and the Build Output panel lists the candidates. It does not pick one. A silent wrong pick would put a stale map into the preview and the consistency checker, which is the precise class of quiet failure `docs/tools-api-design.md` keeps flagging.
+`newestRmsIn` stays in the contract regardless, because it is what any _other_ library-shaped project will need on day one, and it is what lets the Python pack work against released versions. Its failure mode is named rather than guessed at: if zero files changed, or more than one did, the build **fails with "could not tell which file your script wrote"** and the Build Output panel lists the candidates. It does not pick one. A silent wrong pick would put a stale map into the preview and the consistency checker, which is the precise class of quiet failure `docs/tools-api-design.md` keeps flagging.
 
 `env` is available alongside `args` for the middle case: a pack can document `map.save_to_file(os.environ["AORMS_OUT"])` and get the `file` strategy's precision out of a library with no CLI, at the cost of a convention the user must follow.
 
@@ -229,7 +229,7 @@ The version check is not decoration: python-aoe2rms requires **Python 3.11+**, a
 
 ### 5.4 Highlighting
 
-`monaco-editor`'s `editor.main.js` imports `../basic-languages/monaco.contribution` (verified 2026-08-29), and `python/` and `scheme/` are both in `node_modules/monaco-editor/esm/vs/basic-languages/`. **Both reference languages already highlight, with no new dependency and no change to `src/editor/monacoSetup.ts`.** A pack that wants something Monaco does not ship declares `editorLanguage: { monarch: { ... } }` — a Monarch tokenizer is plain JSON, so this stays inside the tools-API principle that extensions are *data the app renders*, not code the app executes. No pack ever supplies JavaScript.
+`monaco-editor`'s `editor.main.js` imports `../basic-languages/monaco.contribution` (verified 2026-08-29), and `python/` and `scheme/` are both in `node_modules/monaco-editor/esm/vs/basic-languages/`. **Both reference languages already highlight, with no new dependency and no change to `src/editor/monacoSetup.ts`.** A pack that wants something Monaco does not ship declares `editorLanguage: { monarch: { ... } }` — a Monarch tokenizer is plain JSON, so this stays inside the tools-API principle that extensions are _data the app renders_, not code the app executes. No pack ever supplies JavaScript.
 
 ## 6. Building
 
@@ -261,15 +261,15 @@ Straight adoption of the Advanced Tools pins, which were argued once already:
 - Output is capped (1 MB of RMS text, 256 KB of stderr) with the overflow reported rather than truncated silently.
 - **Line endings are normalised to `\n` on the way into the model**, whatever the compiler emitted. A Python script on Windows writing `\r\n` is the ordinary case, and this app's parser, diagnostics, Breakdown spans and tool edits are all character-offset based, so a stray `\r` per line shifts every offset in the file against a source the pack thinks it produced. Normalise once, at the boundary, rather than in each consumer.
 
-**A build and a tool run are two locks, and the relationship between them has to be stated.** Advanced Tools already enforces one run at a time app-wide (`ToolHost.start()` throws on `isBusy()`), and Sec.6.3 adds one build at a time. They are separate locks over one shared resource — the document model — and the interesting case is a build finishing *during* a checker run that may last half an hour. The tools contract has already decided this in general terms: Sec.4.3's staleness guard says a run whose document has changed underneath it is producing a report about text that no longer exists. **A build is a document change, so it invalidates a running tool the same way an edit does**, and the app should refuse to start a build while a tool is running rather than cancel the run out from under the user. Refusing is the cheaper direction: a build takes seconds and can wait, a Monte Carlo run cannot be resumed.
+**A build and a tool run are two locks, and the relationship between them has to be stated.** Advanced Tools already enforces one run at a time app-wide (`ToolHost.start()` throws on `isBusy()`), and Sec.6.3 adds one build at a time. They are separate locks over one shared resource — the document model — and the interesting case is a build finishing _during_ a checker run that may last half an hour. The tools contract has already decided this in general terms: Sec.4.3's staleness guard says a run whose document has changed underneath it is producing a report about text that no longer exists. **A build is a document change, so it invalidates a running tool the same way an edit does**, and the app should refuse to start a build while a tool is running rather than cancel the run out from under the user. Refusing is the cheaper direction: a build takes seconds and can wait, a Monte Carlo run cannot be resumed.
 
 ### 6.4 Build Output
 
-A collapsible panel at the bottom of the Code tab: exit code, wall time, resolved command (so "why did it use *that* Python?" is answerable), then **stderr verbatim**. The rule is `docs/tools-api-design.md`'s in spirit — **the panel is ground truth and is never filtered**; parsed diagnostics (Sec.7) are a convenience layered on top, never a replacement.
+A collapsible panel at the bottom of the Code tab: exit code, wall time, resolved command (so "why did it use _that_ Python?" is answerable), then **stderr verbatim**. The rule is `docs/tools-api-design.md`'s in spirit — **the panel is ground truth and is never filtered**; parsed diagnostics (Sec.7) are a convenience layered on top, never a replacement.
 
 ### 6.5 Staleness must be visible everywhere, not just in the Code tab
 
-`aorms-source-sha256` (Sec.4.1) hashes the source text together with the pack id and version. When the live source hashes differently, the generated document is **stale**, and stale is dangerous in a way an out-of-date editor tab is not: the preview, the resource totals and the consistency checker all keep happily reporting on the *old* map. A user tuning `land_percent` in Python and watching the preview not move would be watching a lie.
+`aorms-source-sha256` (Sec.4.1) hashes the source text together with the pack id and version. When the live source hashes differently, the generated document is **stale**, and stale is dangerous in a way an out-of-date editor tab is not: the preview, the resource totals and the consistency checker all keep happily reporting on the _old_ map. A user tuning `land_percent` in Python and watching the preview not move would be watching a lie.
 
 So the build state is a **status-bar chip** — the status bar is the one surface visible from all three tabs — reading `Built` / `Stale` / `Building...` / `Failed`, clickable to build, with the generated pane carrying its own banner. Preview and Breakdown do not each grow their own indicator; one chip, always on screen.
 
@@ -279,7 +279,7 @@ The pack runs in the project directory, so `import helpers` and `(require "helpe
 
 ### 6.7 Build history and rollback
 
-A build that succeeds and produces a *worse map* is the normal case in map scripting, and "put it back the way it was five minutes ago" is a real need. It does not need a version control system, and building on git would be wrong here: git may not be installed, the map may not be in a repo, and a large share of RMS authors are not developers. What it needs is a snapshot on every build.
+A build that succeeds and produces a _worse map_ is the normal case in map scripting, and "put it back the way it was five minutes ago" is a real need. It does not need a version control system, and building on git would be wrong here: git may not be installed, the map may not be in a repo, and a large share of RMS authors are not developers. What it needs is a snapshot on every build.
 
 **On every build, successful or not, the app writes a history entry** to its own app data dir — never beside the source, so it can never pollute somebody's repo or their `Random Map Scripts` folder:
 
@@ -295,9 +295,9 @@ The **History** control sits beside Build, and each entry offers exactly two act
 - **Compare** loads that entry's generated RMS into the Generated pane, read-only, marked as historical, so the preview and the consistency checker can be pointed at the old map without touching the working document. Nothing is written.
 - **Restore source** replaces the source model's contents with that entry's source, **as one edit on Monaco's own undo stack** — not a file overwrite. Ctrl+Z takes it back, and the file on disk only changes when the user saves, exactly like every other edit in the app. This follows the same rule Breakdown and the tools Apply path already follow, and for the same reason.
 
-Restoring generated output *without* its source is deliberately not offered: it would produce a `.rms` that no longer corresponds to the source beside it, with a banner hash that says so, and the next build would silently wipe it. The two things move together or not at all.
+Restoring generated output _without_ its source is deliberately not offered: it would produce a `.rms` that no longer corresponds to the source beside it, with a banner hash that says so, and the next build would silently wipe it. The two things move together or not at all.
 
-**A failed build never overwrites the last good `.rms`.** That is what makes the everyday case need no history at all — the playable map is still sitting there, and the app says the build failed rather than pretending. History covers the harder case, which is a build that *worked* and was worse. (This resolves what was open question 1.)
+**A failed build never overwrites the last good `.rms`.** That is what makes the everyday case need no history at all — the playable map is still sitting there, and the app says the build failed rather than pretending. History covers the harder case, which is a build that _worked_ and was worse. (This resolves what was open question 1.)
 
 Failures are recorded with their stderr because the useful question after a broken build is "what did I change since the last one that worked", and the answer is a diff between two history entries the app is already holding.
 
@@ -307,7 +307,7 @@ Failures are recorded with their stderr because the useful question after a brok
 
 Beyond that, two unrelated kinds of error, and conflating them is the trap.
 
-**Kind 1 — the build failed.** Python traceback, Racket error, nonzero exit. These are *about the source*, and the pack's `diagnostics.parser` (a host-implemented, named parser — `pythonTraceback`, `racket`, or `none`) turns them into markers in the **source** editor. Unrecognised output still lands in the panel in full. Shipping a fixed set of named parsers rather than pack-supplied regexes keeps a manifest from being able to run a catastrophically backtracking pattern over 256 KB of stderr.
+**Kind 1 — the build failed.** Python traceback, Racket error, nonzero exit. These are _about the source_, and the pack's `diagnostics.parser` (a host-implemented, named parser — `pythonTraceback`, `racket`, or `none`) turns them into markers in the **source** editor. Unrecognised output still lands in the panel in full. Shipping a fixed set of named parsers rather than pack-supplied regexes keeps a manifest from being able to run a catastrophically backtracking pattern over 256 KB of stderr.
 
 **Kind 2 — the build succeeded and the RMS it produced is wrong.** Our own parser's diagnostics, computed on the generated text. **Their offsets are true in the generated document and meaningless in the source**, and there is no general way to map back: neither reference project emits a source map, and a Python loop that writes forty `create_object` blocks has no single source line to blame anyway.
 
@@ -333,12 +333,12 @@ The view choice is view state and belongs beside the preview's own in a context 
 
 **The empty states, which are now four where the pane has one.** `CodePane` today renders `PlaceholderPane` when `!hasFile` and nothing else, because "no file" was the only way to have nothing to show. Generated mode adds three more, and they are different messages with different actions rather than shades of the same one:
 
-| State | Generated pane shows | Action offered |
-|---|---|---|
-| No file open | Today's placeholder, unchanged | Open |
-| Source open, never built | "Not built yet" | Build |
+| State                           | Generated pane shows                   | Action offered      |
+| ------------------------------- | -------------------------------------- | ------------------- |
+| No file open                    | Today's placeholder, unchanged         | Open                |
+| Source open, never built        | "Not built yet"                        | Build               |
 | Source open, pack not installed | The pack's name and that it is missing | The pack's homepage |
-| Last build failed | The failure's first line | Open Build Output |
+| Last build failed               | The failure's first line               | Open Build Output   |
 
 Two rules across all four. **The last good generated document stays on screen where one exists** — a failed build does not blank the pane, because the previous map is still what is on disk and still what the preview is showing, and clearing it would tell the user they have lost something they have not. And **an empty state never renders as an empty pane**: the difference between "nothing to build" and "the build produced nothing" is the whole content of the message, and a blank pane says neither.
 
@@ -348,31 +348,31 @@ Two rules across all four. **The last good generated document stays on screen wh
 
 A language pack is strictly more dangerous than an Advanced Tool: a tool speaks JSON over a pipe with no ambient authority beyond its stdin, while a pack runs an interpreter over the user's file with the user's full OS privileges, outside every sandbox in the app. The consent flow has to say so in those words.
 
-- **Installing a pack** is the one consent gate. Unzip a folder into the app data dir; a dialog states plainly: *"Building with this pack runs `python` on your map file. It can do anything you can do."* Registration validation (Sec.5.1) runs before the dialog, so a broken pack never gets asked about.
+- **Installing a pack** is the one consent gate. Unzip a folder into the app data dir; a dialog states plainly: _"Building with this pack runs `python` on your map file. It can do anything you can do."_ Registration validation (Sec.5.1) runs before the dialog, so a broken pack never gets asked about.
 - **Opening a project never runs anything** (Sec.5.3). This is the property that makes maps safe to share and it must be tested, not asserted.
 - **A curated registry** follows the tools registry when there is one; unvetted-pack warnings are the interim, per PLAN.md's M6 trust flow.
 - The GCUR condition in PLAN.md binds here too: **no paid pack marketplace, ever.**
 
 ## 10. What each subsystem does in generated mode
 
-| Subsystem | Reads | Writes | Change needed |
-|---|---|---|---|
-| Parser / diagnostics | generated | — | none (parses whatever is in the model) |
-| Preview + side panel | generated | — | none; stale-gated by the status chip |
-| Resource totals | generated | — | none |
-| Breakdown | generated | **disabled** | editors + add/delete gated on mode, with help text |
-| Advanced Tools (read) | generated | — | none |
-| Advanced Tools (`edit-source`) | generated | **disabled** | Apply gated in `host.ts` beside the existing capability check |
-| Header stamp | — | **retargeted** | banner prepended at write time, not into the model (Sec.3.2) |
-| Undo/redo | both models | source only | window listener routes to the focused model |
+| Subsystem                      | Reads       | Writes         | Change needed                                                 |
+| ------------------------------ | ----------- | -------------- | ------------------------------------------------------------- |
+| Parser / diagnostics           | generated   | —              | none (parses whatever is in the model)                        |
+| Preview + side panel           | generated   | —              | none; stale-gated by the status chip                          |
+| Resource totals                | generated   | —              | none                                                          |
+| Breakdown                      | generated   | **disabled**   | editors + add/delete gated on mode, with help text            |
+| Advanced Tools (read)          | generated   | —              | none                                                          |
+| Advanced Tools (`edit-source`) | generated   | **disabled**   | Apply gated in `host.ts` beside the existing capability check |
+| Header stamp                   | —           | **retargeted** | banner prepended at write time, not into the model (Sec.3.2)  |
+| Undo/redo                      | both models | source only    | window listener routes to the focused model                   |
 
 Five of eight rows are "none". That is the argument for Sec.3.1's model-slot decision, stated as a count.
 
 ## 11. Phasing
 
-**This lands after M6, and that ordering is a decision with a consequence.** External tools (PLAN.md M6) and language packs need the same machinery — an app data dir layout, an install flow, a consent dialog, manifest validation at registration, and eventually a curated registry — and whichever ships first builds it for both. **M6 builds it.** Two reasons beyond the roadmap's own order. The tools contract is written and running five built-ins today, so its install story is the smaller step from where the code actually is; and a *tool* is the safer thing to get wrong first, because it speaks JSON over a pipe with no ambient authority, where a pack runs an interpreter with the user's full privileges (Sec.9). Building the riskier consent surface second, on machinery that has already carried something, is the right way round.
+**This lands after M6, and that ordering is a decision with a consequence.** External tools (PLAN.md M6) and language packs need the same machinery — an app data dir layout, an install flow, a consent dialog, manifest validation at registration, and eventually a curated registry — and whichever ships first builds it for both. **M6 builds it.** Two reasons beyond the roadmap's own order. The tools contract is written and running five built-ins today, so its install story is the smaller step from where the code actually is; and a _tool_ is the safer thing to get wrong first, because it speaks JSON over a pipe with no ambient authority, where a pack runs an interpreter with the user's full privileges (Sec.9). Building the riskier consent surface second, on machinery that has already carried something, is the right way round.
 
-What that means for this document: **Sec.9's trust flow and Phase C's discovery/install are descriptions of M6's machinery with a pack-shaped payload, not a second implementation of it.** If M6 ships an install flow that differs from what Sec.9 describes, M6 is right and this document is the bug — the same rule `docs/tools-api-design.md` states about itself and its source. The one thing this feature must not inherit silently is the consent *wording*: "this tool can read your script" and "building with this pack runs `python` on your map file" are different claims, and the second is the one Sec.9 exists to make.
+What that means for this document: **Sec.9's trust flow and Phase C's discovery/install are descriptions of M6's machinery with a pack-shaped payload, not a second implementation of it.** If M6 ships an install flow that differs from what Sec.9 describes, M6 is right and this document is the bug — the same rule `docs/tools-api-design.md` states about itself and its source. The one thing this feature must not inherit silently is the consent _wording_: "this tool can read your script" and "building with this pack runs `python` on your map file" are different claims, and the second is the one Sec.9 exists to make.
 
 **A — Modes and the second model.** `DocumentMode`, the source model, the Source/Split/Generated control, the read-only enforcement inventory in Sec.3.2, the save-guard rework in Sec.3.3, the banner-at-write-time header change, banner parsing and the Sec.4.2 open-a-file table, Detach, the four empty states. **No compiler.** Exercised end to end by a built-in pass-through pack whose "build" copies the source to the output — which sounds like a toy and is in fact the only way to test that RMS mode is unchanged and generated mode is unwritable without a Python install in CI.
 
@@ -387,27 +387,27 @@ A and B are independently reviewable and neither ships user-visible language sup
 ## 12. Test plan
 
 1. **RMS mode is unchanged** — the whole existing suite passes with mode plumbing in place; a document opened from `.rms` has no build controls, no second model, and identical Breakdown/tool behaviour. This is the regression bar for Phase A.
-2. **Every write path in Sec.3.2's table is blocked in generated mode**, one test per row, asserting *the model text is unchanged* rather than that a button was disabled. Buttons get re-added; the table is the contract.
+2. **Every write path in Sec.3.2's table is blocked in generated mode**, one test per row, asserting _the model text is unchanged_ rather than that a button was disabled. Buttons get re-added; the table is the contract.
 3. **Opening a file executes nothing** — a banner-carrying `.rms` naming an installed pack, opened, spawns no process. Assert at the spawn boundary, not on observable effects.
-3b. **Banner parsing**, one case per row of Sec.4.2's table, plus a hand-mangled banner (truncated key, reordered rows, a second comment block that also contains `aorms-` keys) resolving to *no association* rather than a partial one. Detach removes the banner in one undo step and leaves the rest of the script byte-identical.
+   3b. **Banner parsing**, one case per row of Sec.4.2's table, plus a hand-mangled banner (truncated key, reordered rows, a second comment block that also contains `aorms-` keys) resolving to _no association_ rather than a partial one. Detach removes the banner in one undo step and leaves the rest of the script byte-identical.
 4. **Substitution cannot escape** — `${entry}` values containing `..`, absolute paths, and `;`/`&`/quote characters are rejected Rust-side; argument-array spawning is asserted by construction.
-5. **Output strategies**, one fixture each, including `newestRmsIn`'s two failure cases (nothing written, two files written) asserting a *failed build*, not a chosen file.
+5. **Output strategies**, one fixture each, including `newestRmsIn`'s two failure cases (nothing written, two files written) asserting a _failed build_, not a chosen file.
 6. **Watchdog** — a pack that sleeps past `timeoutMs` is killed and reported; Cancel leaves no orphan.
 7. **Staleness** — edit source, assert the chip goes Stale, assert preview and totals still show the last build (they should — the point is that the chip is the only thing that changed).
 8. **Version gate** — a runtime below `minVersion` fails before spawning the build, with the pack's requirement in the message.
 9. **Manifest validation** at registration: unknown `apiVersion`, unknown output strategy, unknown substitution token, absolute path in `args`, missing `runtime.id`.
-10. **The save guards** (Sec.3.3) — editing the source marks the document dirty and a build does not; close-with-unsaved-source prompts and saves the *source*; Save As writes the source under the new name and leaves the old `.rms` in place; Open and New clear the generated model, so the previous map's totals and preview cannot survive into an unbuilt document.
+10. **The save guards** (Sec.3.3) — editing the source marks the document dirty and a build does not; close-with-unsaved-source prompts and saves the _source_; Save As writes the source under the new name and leaves the old `.rms` in place; Open and New clear the generated model, so the previous map's totals and preview cannot survive into an unbuilt document.
 11. **A build is refused while a tool run is active**, and a tool run started after a build sees the new document. Assert at the lock, not through a real Monte Carlo run.
 12. **Line endings** — a pack whose output is CRLF produces a model whose offsets match a parse of the same text, and the file written to disk round-trips through open-and-reparse unchanged.
 13. **Build history** — a failed build leaves the previous `.rms` on disk untouched; Restore source lands as exactly one undo entry and does not write a file; Compare mutates nothing; the cap prunes oldest-first and never prunes the entry currently being compared.
-14. **The spawn boundary, with no interpreter installed.** CI has no Python and no Racket, so the Rust `build_script` command is tested against a **fake runtime** registered only in tests — a manifest whose `runtime.id` resolves to a stub the test controls, which can be told to succeed, exit non-zero, write nothing, write two files, hang past the timeout, or emit CRLF. Every row of items 4 through 6 and 12 runs through it. What this deliberately does *not* prove is that a real interpreter behaves the same, which is what item 15 is for.
+14. **The spawn boundary, with no interpreter installed.** CI has no Python and no Racket, so the Rust `build_script` command is tested against a **fake runtime** registered only in tests — a manifest whose `runtime.id` resolves to a stub the test controls, which can be told to succeed, exit non-zero, write nothing, write two files, hang past the timeout, or emit CRLF. Every row of items 4 through 6 and 12 runs through it. What this deliberately does _not_ prove is that a real interpreter behaves the same, which is what item 15 is for.
 15. **Round-trip on the reference packs**, as manual acceptance rather than CI (neither runtime is installed on a build agent): a real python-aoe2rms map and a real `#lang aoe2-rms` map, built, previewed, and run through the consistency checker.
 
 ## 13. Open questions
 
 1. **Should Build exist in RMS mode as a no-op, or be absent?** Absent here. Reconsider if a pack ever wants to post-process plain RMS (a minifier, an includer) — that is the same machinery with `source.extension: "rms"`, and it would make the mode distinction blurrier than this document assumes.
-2. **Pack-declared Breakdown mapping.** A pack that emitted a source map could in principle let Breakdown edit *source* — change a value in a card, patch the Python literal it came from. Enormous, probably unwise, and named here only so a later reader knows it was considered and deferred rather than missed.
-3. **Where does the app data dir for packs live?** Not open any more in principle — M6 decides it (Sec.11) and this feature follows, with build history (Sec.6.7) in the same dir. What stays open is one detail M6 has no reason to consider: history entries are per *project* and hold two full copies of a script each, so they need a pruning owner and a place that is not the pack folder. Raise it while M6's layout is being written, not after.
+2. **Pack-declared Breakdown mapping.** A pack that emitted a source map could in principle let Breakdown edit _source_ — change a value in a card, patch the Python literal it came from. Enormous, probably unwise, and named here only so a later reader knows it was considered and deferred rather than missed.
+3. **Where does the app data dir for packs live?** Not open any more in principle — M6 decides it (Sec.11) and this feature follows, with build history (Sec.6.7) in the same dir. What stays open is one detail M6 has no reason to consider: history entries are per _project_ and hold two full copies of a script each, so they need a pruning owner and a place that is not the pack folder. Raise it while M6's layout is being written, not after.
 4. **`versionPattern` is a regex from a manifest**, which Sec.7 argues against for stderr parsing. It is bounded input (one line of `--version` output) so the risk differs in degree — but if the answer is "no regexes in manifests, full stop", `versionArgs`/`versionPattern` become named runtime probes like the diagnostics parsers.
 
 ## Appendix A: the two reference projects, as measured

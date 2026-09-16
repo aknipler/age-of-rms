@@ -7,7 +7,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../../../../components/HelpTip";
-import { MAX_PLAYER_COUNT, type MapSize } from "../../../../generationSettings/generationSettingsConstants";
+import {
+  MAX_PLAYER_COUNT,
+  type MapSize,
+} from "../../../../generationSettings/generationSettingsConstants";
 import type { LanguageData } from "../../../../parser/language";
 import type { ParseResult } from "../../../../parser/types";
 import { resolveMapDim } from "../../../../preview/generator/mapDimensions";
@@ -19,7 +22,13 @@ import { computeFormulaFeedback, exprToFormulaText } from "./formulaField";
 import { locateFence, readFenceModel } from "../fence";
 import type { AlpModel } from "../fence";
 import { computeSafeJitterDegrees } from "./jitter";
-import type { Anchor, FrameKind, LandRole, Placement, ShapeGroup } from "../model";
+import type {
+  Anchor,
+  FrameKind,
+  LandRole,
+  Placement,
+  ShapeGroup,
+} from "../model";
 import {
   addRing,
   addRole,
@@ -54,7 +63,14 @@ import { LandPlacementHelpDialog } from "./LandPlacementHelpDialog";
 import styles from "./LandPlacementPanel.module.css";
 
 /** shape-kinds-slice-a/b-brief.md item 6. "Ring" as a section title predates kinds, and the group editor's title now names the shape rather than a word that only ever meant circle. */
-const KIND_LABELS: Record<ShapeGroup["kind"], string> = { circle: "Circle", line: "Line", arc: "Arc", square: "Square", triangle: "Triangle", polygon: "Polygon" };
+const KIND_LABELS: Record<ShapeGroup["kind"], string> = {
+  circle: "Circle",
+  line: "Line",
+  arc: "Arc",
+  square: "Square",
+  triangle: "Triangle",
+  polygon: "Polygon",
+};
 
 export interface LandPlacementPanelProps {
   parseResult: ParseResult;
@@ -77,7 +93,14 @@ export function LandPlacementPanel({
   mapSize,
   lang,
 }: LandPlacementPanelProps) {
-  const { model: storeModel, setModel, load, markSaved, selectedId, setSelectedId } = useLandPlacementModel();
+  const {
+    model: storeModel,
+    setModel,
+    load,
+    markSaved,
+    selectedId,
+    setSelectedId,
+  } = useLandPlacementModel();
   const { seed, reseed } = usePanelPreviewSeed();
   // Local, not in `landPlacementModel.tsx`'s store: an open explanation
   // dialog is not part of the model, and it should not survive a tab switch
@@ -117,7 +140,9 @@ export function LandPlacementPanel({
   // OWN text hasn't changed doesn't recompute its feedback on every
   // unrelated keystroke elsewhere in the panel.
   const resolveSym = useCallback(
-    (name: string): number | undefined => (emission?.ok ? emission.resolved.get(name) : undefined) ?? dry?.scriptSymbols.get(name),
+    (name: string): number | undefined =>
+      (emission?.ok ? emission.resolved.get(name) : undefined) ??
+      dry?.scriptSymbols.get(name),
     [emission, dry],
   );
 
@@ -135,14 +160,22 @@ export function LandPlacementPanel({
 
   // --- Tree + attachment -----------------------------------------------------
 
-  const tree = useMemo(() => flattenPlacementTree(buildPlacementTree(model)), [model]);
+  const tree = useMemo(
+    () => flattenPlacementTree(buildPlacementTree(model)),
+    [model],
+  );
   const attachment = useMemo(
-    () => (emission?.ok ? computePlacementAttachment(parseResult, model, emission) : new Map<string, boolean | null>()),
+    () =>
+      emission?.ok
+        ? computePlacementAttachment(parseResult, model, emission)
+        : new Map<string, boolean | null>(),
     [parseResult, model, emission],
   );
 
   const selected = model.placements.find((p) => p.id === selectedId) ?? null;
-  const selectedGroup = selectedId ? groupForMember(model, selectedId) : undefined;
+  const selectedGroup = selectedId
+    ? groupForMember(model, selectedId)
+    : undefined;
 
   // --- Apply -----------------------------------------------------------------
 
@@ -151,7 +184,13 @@ export function LandPlacementPanel({
   // doc comment for why those answer different questions.
   const applyPreview = useMemo(() => {
     if (storeModel === null || dry === null) return null;
-    return computeApplyEdits(parseResult, model, lang, dry.scriptSymbols, playerCount);
+    return computeApplyEdits(
+      parseResult,
+      model,
+      lang,
+      dry.scriptSymbols,
+      playerCount,
+    );
   }, [storeModel, dry, parseResult, model, lang, playerCount]);
 
   const apply = () => {
@@ -198,25 +237,47 @@ export function LandPlacementPanel({
             + Role
           </button>
         </HelpTip>
-        <HelpTip id="landPlacement.newRing" text={model.roles.length === 0 ? "Add a role first. A shape needs a role to assign its lands to." : undefined}>
+        <HelpTip
+          id="landPlacement.newRing"
+          text={
+            model.roles.length === 0
+              ? "Add a role first. A shape needs a role to assign its lands to."
+              : undefined
+          }
+        >
           <button
             type="button"
             disabled={model.roles.length === 0}
             onClick={() => {
-              const { model: next, groupId } = addRing(model, model.roles[0].id);
+              const { model: next, groupId } = addRing(
+                model,
+                model.roles[0].id,
+              );
               setModel(next);
-              setSelectedId(next.groups.find((g) => g.id === groupId)?.members[0] ?? null);
+              setSelectedId(
+                next.groups.find((g) => g.id === groupId)?.members[0] ?? null,
+              );
             }}
           >
             + Shape
           </button>
         </HelpTip>
-        <HelpTip id="landPlacement.newLand" text={model.roles.length === 0 ? "Add a role first. A land needs a role to assign it to." : undefined}>
+        <HelpTip
+          id="landPlacement.newLand"
+          text={
+            model.roles.length === 0
+              ? "Add a role first. A land needs a role to assign it to."
+              : undefined
+          }
+        >
           <button
             type="button"
             disabled={model.roles.length === 0}
             onClick={() => {
-              const { model: next, id } = addStandalonePlacement(model, model.roles[0].id);
+              const { model: next, id } = addStandalonePlacement(
+                model,
+                model.roles[0].id,
+              );
               setModel(next);
               setSelectedId(id);
             }}
@@ -244,7 +305,9 @@ export function LandPlacementPanel({
         </span>
       </div>
 
-      {helpOpen && <LandPlacementHelpDialog onClose={() => setHelpOpen(false)} />}
+      {helpOpen && (
+        <LandPlacementHelpDialog onClose={() => setHelpOpen(false)} />
+      )}
 
       <div className={styles.body}>
         <div className={styles.canvasColumn}>
@@ -263,7 +326,11 @@ export function LandPlacementPanel({
         <div className={styles.rightColumn}>
           <HelpTip id="landPlacement.tree">
             <div className={styles.tree}>
-              {tree.length === 0 && <p className={styles.fieldRow}>No lands yet. Add a ring or a land above.</p>}
+              {tree.length === 0 && (
+                <p className={styles.fieldRow}>
+                  No lands yet. Add a ring or a land above.
+                </p>
+              )}
               {tree.map(({ placement, depth }) => (
                 <TreeRow
                   key={placement.id}
@@ -302,13 +369,26 @@ export function LandPlacementPanel({
             />
           )}
 
-          <RolesSection model={model} resolveSym={resolveSym} onChangeModel={setModel} />
+          <RolesSection
+            model={model}
+            resolveSym={resolveSym}
+            onChangeModel={setModel}
+          />
 
-          <GeneratedCodeSection body={emission?.ok ? emission.body : null} problems={emission?.ok === false ? emission.problems : []} editCount={applyPreview?.edits.length ?? 0} />
+          <GeneratedCodeSection
+            body={emission?.ok ? emission.body : null}
+            problems={emission?.ok === false ? emission.problems : []}
+            editCount={applyPreview?.edits.length ?? 0}
+          />
 
           <HelpTip id="landPlacement.apply">
-            <button type="button" disabled={!applyPreview || applyPreview.edits.length === 0} onClick={apply}>
-              Apply {applyPreview?.edits.length ?? 0} change{applyPreview?.edits.length === 1 ? "" : "s"}
+            <button
+              type="button"
+              disabled={!applyPreview || applyPreview.edits.length === 0}
+              onClick={apply}
+            >
+              Apply {applyPreview?.edits.length ?? 0} change
+              {applyPreview?.edits.length === 1 ? "" : "s"}
             </button>
           </HelpTip>
         </div>
@@ -344,16 +424,24 @@ function PreconditionsStrip({
     });
   }
   for (const m of p2Mismatches) {
-    messages.push({ text: `Random parameter "${m.label}" was emitted for ${m.emittedFor} players; the script is now set to ${m.livePlayerCount}.` });
+    messages.push({
+      text: `Random parameter "${m.label}" was emitted for ${m.emittedFor} players; the script is now set to ${m.livePlayerCount}.`,
+    });
   }
   if (!p3.ok) {
-    messages.push({ text: 'A land is assigned to a player, but direct_placement is not declared. The engine may ignore the assignment.' });
+    messages.push({
+      text: "A land is assigned to a player, but direct_placement is not declared. The engine may ignore the assignment.",
+    });
   }
   if (p4Collisions.length > 0) {
-    messages.push({ text: `These names would collide with existing script symbols: ${p4Collisions.join(", ")}.` });
+    messages.push({
+      text: `These names would collide with existing script symbols: ${p4Collisions.join(", ")}.`,
+    });
   }
   if (p5Malformed) {
-    messages.push({ text: "This script has an Advanced Land Placement fence, but it could not be read. Starting from an empty model rather than guessing." });
+    messages.push({
+      text: "This script has an Advanced Land Placement fence, but it could not be read. Starting from an empty model rather than guessing.",
+    });
   }
 
   if (messages.length === 0) return null;
@@ -435,7 +523,10 @@ function PlacementEditor({
   onDeleteGroup: () => void;
 }) {
   const inGroup = isGroupMember(model, placement.id);
-  const parentOptions: Anchor[] = ["center", ...model.placements.filter((p) => p.id !== placement.id).map((p) => p.id)];
+  const parentOptions: Anchor[] = [
+    "center",
+    ...model.placements.filter((p) => p.id !== placement.id).map((p) => p.id),
+  ];
 
   return (
     <HelpTip id="landPlacement.nodeEditor">
@@ -447,7 +538,11 @@ function PlacementEditor({
           <input
             type="text"
             value={placement.label}
-            onChange={(e) => onChangeModel((m) => updatePlacement(m, placement.id, { label: e.target.value }))}
+            onChange={(e) =>
+              onChangeModel((m) =>
+                updatePlacement(m, placement.id, { label: e.target.value }),
+              )
+            }
           />
         </div>
 
@@ -455,7 +550,13 @@ function PlacementEditor({
           <label>Role</label>
           <select
             value={placement.role ?? ""}
-            onChange={(e) => onChangeModel((m) => updatePlacement(m, placement.id, { role: e.target.value || undefined }))}
+            onChange={(e) =>
+              onChangeModel((m) =>
+                updatePlacement(m, placement.id, {
+                  role: e.target.value || undefined,
+                }),
+              )
+            }
           >
             <option value="">(none, chain anchor)</option>
             {model.roles.map((r) => (
@@ -474,15 +575,21 @@ function PlacementEditor({
               onChange={(e) => {
                 const next = e.target.value;
                 if (wouldCreateCycle(model, placement.id, next)) {
-                  void message("That would make this placement its own ancestor.");
+                  void message(
+                    "That would make this placement its own ancestor.",
+                  );
                   return;
                 }
-                onChangeModel((m) => updatePlacement(m, placement.id, { parent: next }));
+                onChangeModel((m) =>
+                  updatePlacement(m, placement.id, { parent: next }),
+                );
               }}
             >
               {parentOptions.map((id) => (
                 <option key={id} value={id}>
-                  {id === "center" ? "Map centre" : (model.placements.find((p) => p.id === id)?.label ?? id)}
+                  {id === "center"
+                    ? "Map centre"
+                    : (model.placements.find((p) => p.id === id)?.label ?? id)}
                 </option>
               ))}
             </select>
@@ -497,7 +604,12 @@ function PlacementEditor({
                 type="button"
                 onClick={() =>
                   onChangeModel((m) =>
-                    updatePlacement(m, placement.id, { frame: placement.frame === "radial" ? ("absolute" as FrameKind) : ("radial" as FrameKind) }),
+                    updatePlacement(m, placement.id, {
+                      frame:
+                        placement.frame === "radial"
+                          ? ("absolute" as FrameKind)
+                          : ("radial" as FrameKind),
+                    }),
                   )
                 }
               >
@@ -517,7 +629,15 @@ function PlacementEditor({
                 mapDim={mapDim}
                 resolveSym={resolveSym}
                 onCommit={(r) =>
-                  onChangeModel((m) => updatePlacement(m, placement.id, { offset: { kind: "polar", r, theta: (placement.offset as { theta: Expr }).theta } }))
+                  onChangeModel((m) =>
+                    updatePlacement(m, placement.id, {
+                      offset: {
+                        kind: "polar",
+                        r,
+                        theta: (placement.offset as { theta: Expr }).theta,
+                      },
+                    }),
+                  )
                 }
               />
             )}
@@ -535,11 +655,21 @@ function PlacementEditor({
               fieldSuffix={`${placement.label}_THETA`}
               resolveSym={resolveSym}
               onCommit={(theta) =>
-                onChangeModel((m) => applyDragToPlacement(m, placement.id, { kind: "polar", r: (placement.offset as { r: Expr }).r, theta }))
+                onChangeModel((m) =>
+                  applyDragToPlacement(m, placement.id, {
+                    kind: "polar",
+                    r: (placement.offset as { r: Expr }).r,
+                    theta,
+                  }),
+                )
               }
             />
             {group?.perPlayer && (
-              <ThetaPerCountEditor placement={placement} resolveSym={resolveSym} onChangeModel={onChangeModel} />
+              <ThetaPerCountEditor
+                placement={placement}
+                resolveSym={resolveSym}
+                onChangeModel={onChangeModel}
+              />
             )}
           </>
         )}
@@ -553,7 +683,15 @@ function PlacementEditor({
               mapDim={mapDim}
               resolveSym={resolveSym}
               onCommit={(dx) =>
-                onChangeModel((m) => updatePlacement(m, placement.id, { offset: { kind: "cartesian", dx, dy: (placement.offset as { dy: Expr }).dy } }))
+                onChangeModel((m) =>
+                  updatePlacement(m, placement.id, {
+                    offset: {
+                      kind: "cartesian",
+                      dx,
+                      dy: (placement.offset as { dy: Expr }).dy,
+                    },
+                  }),
+                )
               }
             />
             <FormulaField
@@ -563,7 +701,15 @@ function PlacementEditor({
               mapDim={mapDim}
               resolveSym={resolveSym}
               onCommit={(dy) =>
-                onChangeModel((m) => updatePlacement(m, placement.id, { offset: { kind: "cartesian", dx: (placement.offset as { dx: Expr }).dx, dy } }))
+                onChangeModel((m) =>
+                  updatePlacement(m, placement.id, {
+                    offset: {
+                      kind: "cartesian",
+                      dx: (placement.offset as { dx: Expr }).dx,
+                      dy,
+                    },
+                  }),
+                )
               }
             />
           </>
@@ -578,7 +724,15 @@ function PlacementEditor({
               mapDim={mapDim}
               resolveSym={resolveSym}
               onCommit={(x) =>
-                onChangeModel((m) => updatePlacement(m, placement.id, { offset: { kind: "formula", x, y: (placement.offset as { y: Expr }).y } }))
+                onChangeModel((m) =>
+                  updatePlacement(m, placement.id, {
+                    offset: {
+                      kind: "formula",
+                      x,
+                      y: (placement.offset as { y: Expr }).y,
+                    },
+                  }),
+                )
               }
             />
             <FormulaField
@@ -588,7 +742,15 @@ function PlacementEditor({
               mapDim={mapDim}
               resolveSym={resolveSym}
               onCommit={(y) =>
-                onChangeModel((m) => updatePlacement(m, placement.id, { offset: { kind: "formula", x: (placement.offset as { x: Expr }).x, y } }))
+                onChangeModel((m) =>
+                  updatePlacement(m, placement.id, {
+                    offset: {
+                      kind: "formula",
+                      x: (placement.offset as { x: Expr }).x,
+                      y,
+                    },
+                  }),
+                )
               }
             />
           </>
@@ -659,7 +821,11 @@ function ThetaPerCountEditor({
     <HelpTip id="landPlacement.thetaPerCount">
       <div className={styles.section}>
         <p className={styles.sectionTitle}>Angle overrides by player count</p>
-        {overrides.length === 0 && <p className={styles.fieldRow}>No per-count overrides. Every count uses the rule above.</p>}
+        {overrides.length === 0 && (
+          <p className={styles.fieldRow}>
+            No per-count overrides. Every count uses the rule above.
+          </p>
+        )}
         {overrides.map(({ count, expr }) => (
           <div key={count} className={styles.fieldRow}>
             <FormulaField
@@ -667,9 +833,20 @@ function ThetaPerCountEditor({
               value={expr}
               fieldSuffix={`${placement.label}_THETA_AT_${count}`}
               resolveSym={resolveSym}
-              onCommit={(next) => onChangeModel((m) => setThetaPerCountOverride(m, placement.id, count, next))}
+              onCommit={(next) =>
+                onChangeModel((m) =>
+                  setThetaPerCountOverride(m, placement.id, count, next),
+                )
+              }
             />
-            <button type="button" onClick={() => onChangeModel((m) => setThetaPerCountOverride(m, placement.id, count, undefined))}>
+            <button
+              type="button"
+              onClick={() =>
+                onChangeModel((m) =>
+                  setThetaPerCountOverride(m, placement.id, count, undefined),
+                )
+              }
+            >
               Remove
             </button>
           </div>
@@ -684,7 +861,16 @@ function ThetaPerCountEditor({
                 // Seeded with the member's own current default rule, so the
                 // author starts from a sane value rather than a blank field
                 // that would otherwise read as "angle 0" until edited.
-                onChangeModel((m) => setThetaPerCountOverride(m, placement.id, count, placement.offset.kind === "polar" ? placement.offset.theta : { k: "num", v: 0 }));
+                onChangeModel((m) =>
+                  setThetaPerCountOverride(
+                    m,
+                    placement.id,
+                    count,
+                    placement.offset.kind === "polar"
+                      ? placement.offset.theta
+                      : { k: "num", v: 0 },
+                  ),
+                );
               }}
             >
               <option value="" disabled>
@@ -699,8 +885,9 @@ function ThetaPerCountEditor({
           </div>
         )}
         <p className={styles.formulaError}>
-          A free bearing (a random angle not defined relative to another player) can still land on top of another
-          player&apos;s land. Nothing in the emission guarantees separation unless one angle is defined relative to
+          A free bearing (a random angle not defined relative to another player)
+          can still land on top of another player&apos;s land. Nothing in the
+          emission guarantees separation unless one angle is defined relative to
           another.
         </p>
       </div>
@@ -752,7 +939,10 @@ function FormulaField({
     if (!dirty) setText(initialText);
   }, [initialText, dirty]);
 
-  const feedback = useMemo(() => computeFormulaFeedback(text, fieldSuffix, resolveSym), [text, fieldSuffix, resolveSym]);
+  const feedback = useMemo(
+    () => computeFormulaFeedback(text, fieldSuffix, resolveSym),
+    [text, fieldSuffix, resolveSym],
+  );
   const canCommit = feedback.parse.ok && feedback.unsupportedReason === null;
 
   const commit = () => {
@@ -781,19 +971,34 @@ function FormulaField({
           }}
         />
         {mapDim !== undefined && mapDim > 0 && feedback.value !== undefined && (
-          <span className={styles.tileHint}>{formatPercentWithTiles(feedback.value, mapDim)}</span>
+          <span className={styles.tileHint}>
+            {formatPercentWithTiles(feedback.value, mapDim)}
+          </span>
         )}
       </div>
-      {!feedback.parse.ok && <span className={styles.formulaError}>{feedback.parse.error.message}</span>}
-      {feedback.unsupportedReason !== null && <span className={styles.formulaError}>{feedback.unsupportedReason}</span>}
-      {feedback.parse.ok && feedback.unsupportedReason === null && feedback.emittedLines.length > 0 && (
-        <details className={styles.formulaPreview}>
-          <summary>
-            {feedback.emittedLines.length} emitted line{feedback.emittedLines.length === 1 ? "" : "s"}
-          </summary>
-          <pre className={styles.code}>{feedback.emittedLines.join("\n")}</pre>
-        </details>
+      {!feedback.parse.ok && (
+        <span className={styles.formulaError}>
+          {feedback.parse.error.message}
+        </span>
       )}
+      {feedback.unsupportedReason !== null && (
+        <span className={styles.formulaError}>
+          {feedback.unsupportedReason}
+        </span>
+      )}
+      {feedback.parse.ok &&
+        feedback.unsupportedReason === null &&
+        feedback.emittedLines.length > 0 && (
+          <details className={styles.formulaPreview}>
+            <summary>
+              {feedback.emittedLines.length} emitted line
+              {feedback.emittedLines.length === 1 ? "" : "s"}
+            </summary>
+            <pre className={styles.code}>
+              {feedback.emittedLines.join("\n")}
+            </pre>
+          </details>
+        )}
     </div>
   );
 }
@@ -813,9 +1018,19 @@ function FormulaField({
  * this control does not attempt to solve for since the author only ever
  * asked about the count in front of them.
  */
-function MinSeparationHelper({ patternLength, playerCount }: { patternLength: number; playerCount: number }) {
+function MinSeparationHelper({
+  patternLength,
+  playerCount,
+}: {
+  patternLength: number;
+  playerCount: number;
+}) {
   const [minSeparation, setMinSeparation] = useState(0);
-  const result = computeSafeJitterDegrees(playerCount, patternLength, minSeparation);
+  const result = computeSafeJitterDegrees(
+    playerCount,
+    patternLength,
+    minSeparation,
+  );
   return (
     <HelpTip id="landPlacement.minSeparation">
       <div className={styles.section}>
@@ -825,14 +1040,18 @@ function MinSeparationHelper({ patternLength, playerCount }: { patternLength: nu
             type="number"
             min={0}
             value={minSeparation}
-            onChange={(e) => setMinSeparation(Math.max(0, Number(e.target.value)))}
+            onChange={(e) =>
+              setMinSeparation(Math.max(0, Number(e.target.value)))
+            }
           />
         </div>
         {result.ok ? (
           <p className={styles.fieldRow}>
-            Safe jitter at {playerCount} players: ±{result.jitterDegrees.toFixed(1)}°. Add{" "}
-            <code>{`rnd(-${result.jitterDegrees.toFixed(1)},${result.jitterDegrees.toFixed(1)})`}</code> to a member&apos;s
-            angle to use it. Recompute before relying on this at a different player count.
+            Safe jitter at {playerCount} players: ±
+            {result.jitterDegrees.toFixed(1)}°. Add{" "}
+            <code>{`rnd(-${result.jitterDegrees.toFixed(1)},${result.jitterDegrees.toFixed(1)})`}</code>{" "}
+            to a member&apos;s angle to use it. Recompute before relying on this
+            at a different player count.
           </p>
         ) : (
           <p className={styles.formulaError}>{result.reason}</p>
@@ -875,11 +1094,18 @@ function GroupEditor({
 
   return (
     <div className={styles.section}>
-      <p className={styles.sectionTitle}>{kindLabel}, {total.exact ? total.count : `up to ${total.count}`} lands</p>
+      <p className={styles.sectionTitle}>
+        {kindLabel}, {total.exact ? total.count : `up to ${total.count}`} lands
+      </p>
       <HelpTip id="landPlacement.shapeKind">
         <div className={styles.fieldRow}>
           <label>Shape</label>
-          <select value={group.kind} onChange={(e) => edit({ kind: e.target.value as ShapeGroup["kind"] })}>
+          <select
+            value={group.kind}
+            onChange={(e) =>
+              edit({ kind: e.target.value as ShapeGroup["kind"] })
+            }
+          >
             <option value="circle">Circle</option>
             <option value="line">Line</option>
             <option value="arc">Arc</option>
@@ -897,7 +1123,13 @@ function GroupEditor({
         resolveSym={resolveSym}
         onCommit={(radius) => edit({ radius })}
       />
-      <FormulaField label="Rotation (deg)" value={group.rotation} fieldSuffix={`${group.id}_ROTATION`} resolveSym={resolveSym} onCommit={(rotation) => edit({ rotation })} />
+      <FormulaField
+        label="Rotation (deg)"
+        value={group.rotation}
+        fieldSuffix={`${group.id}_ROTATION`}
+        resolveSym={resolveSym}
+        onCommit={(rotation) => edit({ rotation })}
+      />
       {group.kind === "arc" && (
         <div className={styles.fieldRow}>
           <label>Sweep (deg)</label>
@@ -906,7 +1138,14 @@ function GroupEditor({
             min={1}
             max={360}
             value={group.sweep ?? 180}
-            onChange={(e) => edit({ sweep: Math.max(1, Math.min(360, Math.trunc(Number(e.target.value)))) })}
+            onChange={(e) =>
+              edit({
+                sweep: Math.max(
+                  1,
+                  Math.min(360, Math.trunc(Number(e.target.value))),
+                ),
+              })
+            }
           />
         </div>
       )}
@@ -919,7 +1158,14 @@ function GroupEditor({
               min={3}
               max={12}
               value={group.sides ?? 6}
-              onChange={(e) => edit({ sides: Math.max(3, Math.min(12, Math.trunc(Number(e.target.value)))) })}
+              onChange={(e) =>
+                edit({
+                  sides: Math.max(
+                    3,
+                    Math.min(12, Math.trunc(Number(e.target.value))),
+                  ),
+                })
+              }
             />
           </div>
         </HelpTip>
@@ -931,17 +1177,30 @@ function GroupEditor({
               type="checkbox"
               checked={group.perPlayer}
               disabled={group.kind !== "circle"}
-              title={group.kind !== "circle" ? "Per player angles are computed for a ring, so this needs the Circle shape." : undefined}
+              title={
+                group.kind !== "circle"
+                  ? "Per player angles are computed for a ring, so this needs the Circle shape."
+                  : undefined
+              }
               onChange={(e) => {
                 const perPlayer = e.target.checked;
-                edit(perPlayer ? { perPlayer, repeats: MAX_PLAYER_COUNT } : { perPlayer });
+                edit(
+                  perPlayer
+                    ? { perPlayer, repeats: MAX_PLAYER_COUNT }
+                    : { perPlayer },
+                );
               }}
             />
             One land per player
           </label>
         </div>
       </HelpTip>
-      {group.perPlayer && <MinSeparationHelper patternLength={group.pattern.length} playerCount={playerCount} />}
+      {group.perPlayer && (
+        <MinSeparationHelper
+          patternLength={group.pattern.length}
+          playerCount={playerCount}
+        />
+      )}
       <div className={styles.fieldRow}>
         <label>Repeats</label>
         <input
@@ -949,14 +1208,23 @@ function GroupEditor({
           min={1}
           value={group.repeats}
           disabled={group.perPlayer}
-          title={group.perPlayer ? "One land per player. The repeat count follows the game's own player count instead." : undefined}
-          onChange={(e) => edit({ repeats: Math.max(1, Math.trunc(Number(e.target.value))) })}
+          title={
+            group.perPlayer
+              ? "One land per player. The repeat count follows the game's own player count instead."
+              : undefined
+          }
+          onChange={(e) =>
+            edit({ repeats: Math.max(1, Math.trunc(Number(e.target.value))) })
+          }
         />
       </div>
       <div className={styles.chips}>
         {group.pattern.map((slot) => {
           const role = model.roles.find((r) => r.id === slot.role);
-          const isPerimeterKind = group.kind === "square" || group.kind === "triangle" || group.kind === "polygon";
+          const isPerimeterKind =
+            group.kind === "square" ||
+            group.kind === "triangle" ||
+            group.kind === "polygon";
           return (
             <span key={slot.id} className={styles.chip}>
               {role?.label ?? slot.role}
@@ -968,13 +1236,24 @@ function GroupEditor({
                     value={slot.perimeterShift ?? 0}
                     onChange={(e) => {
                       const perimeterShift = Number(e.target.value);
-                      edit({ pattern: group.pattern.map((s) => (s.id === slot.id ? { ...s, perimeterShift } : s)) });
+                      edit({
+                        pattern: group.pattern.map((s) =>
+                          s.id === slot.id ? { ...s, perimeterShift } : s,
+                        ),
+                      });
                     }}
                   />
                 </HelpTip>
               )}
               {group.pattern.length > 1 && (
-                <button type="button" onClick={() => edit({ pattern: group.pattern.filter((s) => s.id !== slot.id) })}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    edit({
+                      pattern: group.pattern.filter((s) => s.id !== slot.id),
+                    })
+                  }
+                >
                   ✕
                 </button>
               )}
@@ -984,7 +1263,17 @@ function GroupEditor({
         {model.roles.length > 0 && (
           <button
             type="button"
-            onClick={() => edit({ pattern: [...group.pattern, { id: `${group.id}_slot_${group.pattern.length}`, role: model.roles[0].id }] })}
+            onClick={() =>
+              edit({
+                pattern: [
+                  ...group.pattern,
+                  {
+                    id: `${group.id}_slot_${group.pattern.length}`,
+                    role: model.roles[0].id,
+                  },
+                ],
+              })
+            }
           >
             + slot
           </button>
@@ -1013,7 +1302,12 @@ function RolesSection({
         <div className={styles.rolesList}>
           {model.roles.length === 0 && <p>No roles yet.</p>}
           {model.roles.map((role) => (
-            <RoleRow key={role.id} role={role} resolveSym={resolveSym} onChangeModel={onChangeModel} />
+            <RoleRow
+              key={role.id}
+              role={role}
+              resolveSym={resolveSym}
+              onChangeModel={onChangeModel}
+            />
           ))}
         </div>
       </div>
@@ -1033,22 +1327,47 @@ function RoleRow({
   return (
     <div className={styles.section}>
       <div className={styles.fieldRow}>
-        <input type="text" value={role.label} onChange={(e) => onChangeModel((m) => updateRole(m, role.id, { label: e.target.value }))} />
+        <input
+          type="text"
+          value={role.label}
+          onChange={(e) =>
+            onChangeModel((m) =>
+              updateRole(m, role.id, { label: e.target.value }),
+            )
+          }
+        />
         <label>Terrain</label>
         <input
           type="text"
-          value={role.terrain.k === "name" ? role.terrain.name : String(role.terrain.id)}
-          onChange={(e) => onChangeModel((m) => updateRole(m, role.id, { terrain: { k: "name", name: e.target.value.toUpperCase() } }))}
+          value={
+            role.terrain.k === "name"
+              ? role.terrain.name
+              : String(role.terrain.id)
+          }
+          onChange={(e) =>
+            onChangeModel((m) =>
+              updateRole(m, role.id, {
+                terrain: { k: "name", name: e.target.value.toUpperCase() },
+              }),
+            )
+          }
         />
         <label>
           <input
             type="checkbox"
             checked={role.assignToPlayer}
-            onChange={(e) => onChangeModel((m) => updateRole(m, role.id, { assignToPlayer: e.target.checked }))}
+            onChange={(e) =>
+              onChangeModel((m) =>
+                updateRole(m, role.id, { assignToPlayer: e.target.checked }),
+              )
+            }
           />
           Assign to player
         </label>
-        <button type="button" onClick={() => onChangeModel((m) => deleteRole(m, role.id))}>
+        <button
+          type="button"
+          onClick={() => onChangeModel((m) => deleteRole(m, role.id))}
+        >
           Delete
         </button>
       </div>
@@ -1060,20 +1379,32 @@ function RoleRow({
           this pass: the formula grammar has no syntax yet for "reference an
           existing named parameter" as opposed to typing a fresh rnd() (which
           formulaField.ts explicitly declines, Sec.4.4's own scope cut). */}
-      <FormulaField label="Size" value={role.baseSize} fieldSuffix={`ROLE_${role.label}_SIZE`} resolveSym={resolveSym} onCommit={(baseSize) => onChangeModel((m) => updateRole(m, role.id, { baseSize }))} />
+      <FormulaField
+        label="Size"
+        value={role.baseSize}
+        fieldSuffix={`ROLE_${role.label}_SIZE`}
+        resolveSym={resolveSym}
+        onCommit={(baseSize) =>
+          onChangeModel((m) => updateRole(m, role.id, { baseSize }))
+        }
+      />
       <FormulaField
         label="Elevation"
         value={role.baseElevation}
         fieldSuffix={`ROLE_${role.label}_ELEVATION`}
         resolveSym={resolveSym}
-        onCommit={(baseElevation) => onChangeModel((m) => updateRole(m, role.id, { baseElevation }))}
+        onCommit={(baseElevation) =>
+          onChangeModel((m) => updateRole(m, role.id, { baseElevation }))
+        }
       />
       <FormulaField
         label="Land %"
         value={role.landPercent}
         fieldSuffix={`ROLE_${role.label}_PERCENT`}
         resolveSym={resolveSym}
-        onCommit={(landPercent) => onChangeModel((m) => updateRole(m, role.id, { landPercent }))}
+        onCommit={(landPercent) =>
+          onChangeModel((m) => updateRole(m, role.id, { landPercent }))
+        }
       />
     </div>
   );
@@ -1093,14 +1424,16 @@ function GeneratedCodeSection({
     <HelpTip id="landPlacement.generatedCode">
       <div className={styles.section}>
         <button type="button" onClick={() => setOpen((v) => !v)}>
-          {open ? "Hide" : "Show"} generated code ({editCount} change{editCount === 1 ? "" : "s"})
+          {open ? "Hide" : "Show"} generated code ({editCount} change
+          {editCount === 1 ? "" : "s"})
         </button>
         {open && problems.length > 0 && (
           <div className={styles.code}>
             {problems.map((p, i) => (
               // Sec.5.5: "the tool emits nothing and reports the offending node", emittedValue/directValue disagreeing IS the report.
               <p key={i}>
-                {p.name}: emitted {p.emittedValue ?? "?"}, independently evaluated {p.directValue ?? "?"}
+                {p.name}: emitted {p.emittedValue ?? "?"}, independently
+                evaluated {p.directValue ?? "?"}
               </p>
             ))}
           </div>

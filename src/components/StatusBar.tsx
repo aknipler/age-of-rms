@@ -1,6 +1,9 @@
 import { HelpTip } from "./HelpTip";
 import type { Diagnostic } from "../parser/types";
-import type { ResourceAmounts, ResourceRange } from "../preview/generator/resourceSummary";
+import type {
+  ResourceAmounts,
+  ResourceRange,
+} from "../preview/generator/resourceSummary";
 import {
   formatCompactRange,
   formatExactRange,
@@ -65,29 +68,82 @@ const ZERO_RANGE: ResourceRange = {
 // drawn height from 72% of the box to 81%.
 function WoodIcon() {
   return (
-    <svg className={styles.resourceIcon} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <svg
+      className={styles.resourceIcon}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
       {/* The bark. A vertical rounded rectangle is the whole shape read at
           icon size; everything below is detail for when it renders larger. */}
       <rect x="2.9" y="5" width="10.2" height="10" rx="1.3" fill="#8b5a2b" />
       {/* The cut top face and its growth rings, the other half of the
           silhouette: a flat brown rectangle alone reads as a plank, not a log. */}
       <ellipse cx="8" cy="5" rx="5.1" ry="2" fill="#e8b975" />
-      <ellipse cx="8" cy="5" rx="3.2" ry="1.25" fill="none" stroke="#a9702f" strokeWidth="0.6" />
+      <ellipse
+        cx="8"
+        cy="5"
+        rx="3.2"
+        ry="1.25"
+        fill="none"
+        stroke="#a9702f"
+        strokeWidth="0.6"
+      />
       <ellipse cx="8" cy="5" rx="1.2" ry="0.45" fill="#a9702f" />
       {/* Bark texture and the rounded base, both subtle: real detail once
           the icon is large enough to show it, invisible noise otherwise. */}
-      <path d="M2.9 15 Q8 16 13.1 15" fill="none" stroke="#6b431f" strokeWidth="0.7" />
-      <line x1="5.3" y1="6.1" x2="4.9" y2="14.6" stroke="#6b431f" strokeWidth="0.5" opacity="0.8" />
-      <line x1="10.7" y1="6.1" x2="11.2" y2="14.6" stroke="#6b431f" strokeWidth="0.5" opacity="0.8" />
+      <path
+        d="M2.9 15 Q8 16 13.1 15"
+        fill="none"
+        stroke="#6b431f"
+        strokeWidth="0.7"
+      />
+      <line
+        x1="5.3"
+        y1="6.1"
+        x2="4.9"
+        y2="14.6"
+        stroke="#6b431f"
+        strokeWidth="0.5"
+        opacity="0.8"
+      />
+      <line
+        x1="10.7"
+        y1="6.1"
+        x2="11.2"
+        y2="14.6"
+        stroke="#6b431f"
+        strokeWidth="0.5"
+        opacity="0.8"
+      />
     </svg>
   );
 }
 
 function GoldIcon() {
   return (
-    <svg className={styles.resourceIcon} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <circle cx="8" cy="8" r="6.4" fill="#f4c430" stroke="#b8860b" strokeWidth="1" />
-      <circle cx="8" cy="8" r="4" fill="none" stroke="#b8860b" strokeWidth="0.8" />
+    <svg
+      className={styles.resourceIcon}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6.4"
+        fill="#f4c430"
+        stroke="#b8860b"
+        strokeWidth="1"
+      />
+      <circle
+        cx="8"
+        cy="8"
+        r="4"
+        fill="none"
+        stroke="#b8860b"
+        strokeWidth="0.8"
+      />
     </svg>
   );
 }
@@ -99,7 +155,12 @@ function GoldIcon() {
 // widening the log: more of the icon's own drawn area, not a bigger box.
 function StoneIcon() {
   return (
-    <svg className={styles.resourceIcon} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <svg
+      className={styles.resourceIcon}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path
         d="M2.25 11.45 1.1 6.85 4.55 2.25 11.45 1.675 14.9 5.7 14.325 11.45 9.15 14.325Z"
         fill="#9a9ca1"
@@ -118,7 +179,11 @@ function StoneIcon() {
 // a screen reader still hears "Food". Deliberately the everyday pictogram
 // rather than the game's own resource art, since these have to read at
 // 0.85rem.
-const RESOURCES: readonly { key: keyof ResourceAmounts; name: string; icon: React.ReactNode }[] = [
+const RESOURCES: readonly {
+  key: keyof ResourceAmounts;
+  name: string;
+  icon: React.ReactNode;
+}[] = [
   { key: "food", name: "Food", icon: "🍖" },
   { key: "wood", name: "Wood", icon: <WoodIcon /> },
   { key: "gold", name: "Gold", icon: <GoldIcon /> },
@@ -132,7 +197,12 @@ const RESOURCES: readonly { key: keyof ResourceAmounts; name: string; icon: Reac
 // element has to communicate untellable.
 function ProblemIcon() {
   return (
-    <svg className={styles.problemIcon} viewBox="0 0 16 14" aria-hidden="true" focusable="false">
+    <svg
+      className={styles.problemIcon}
+      viewBox="0 0 16 14"
+      aria-hidden="true"
+      focusable="false"
+    >
       <path
         d="M8 0.8 15.4 13.2 0.6 13.2 Z"
         fill="currentColor"
@@ -226,8 +296,16 @@ export function StatusBar({
           </HelpTip>
         )}
         <ResourceBucket helpId="statusBar.total" label="Total" range={total} />
-        <ResourceBucket helpId="statusBar.player" label="Player" range={player} />
-        <ResourceBucket helpId="statusBar.neutral" label="Neutral" range={neutral} />
+        <ResourceBucket
+          helpId="statusBar.player"
+          label="Player"
+          range={player}
+        />
+        <ResourceBucket
+          helpId="statusBar.neutral"
+          label="Neutral"
+          range={neutral}
+        />
       </div>
       <div className={styles.pinned}>
         {/* The breakdown stays written out ("4 warnings, 2 info") rather than
@@ -236,7 +314,9 @@ export function StatusBar({
             didn't, and its colour repeats the worst severity, so the text is
             the detail and the colour is the glance. */}
         <HelpTip id="statusBar.problems">
-          <span className={`${styles.problems} ${PROBLEM_LEVEL_CLASS[problems.level]}`}>
+          <span
+            className={`${styles.problems} ${PROBLEM_LEVEL_CLASS[problems.level]}`}
+          >
             <ProblemIcon />
             {problems.label}
           </span>

@@ -26,7 +26,11 @@ function TokenRow({ id, label }: { id: ThemeTokenId; label: string }) {
           type="color"
           id={`theme-token-${id}`}
           className={styles.swatch}
-          value={/^#[0-9a-fA-F]{6}$/.test(draftTokens[id]) ? draftTokens[id] : "#000000"}
+          value={
+            /^#[0-9a-fA-F]{6}$/.test(draftTokens[id])
+              ? draftTokens[id]
+              : "#000000"
+          }
           onChange={(event) => setDraftToken(id, event.target.value)}
         />
         <input
@@ -96,7 +100,11 @@ export function ThemeSettings() {
   useEffect(() => setScaleDraft(uiFontScale), [uiFontScale]);
 
   function openSaveAs() {
-    setSaveAsName(isActiveThemeCustom ? `${resolveThemeName(activeThemeId, customThemes)} copy` : "My theme");
+    setSaveAsName(
+      isActiveThemeCustom
+        ? `${resolveThemeName(activeThemeId, customThemes)} copy`
+        : "My theme",
+    );
     setSaveAsOpen(true);
   }
 
@@ -142,22 +150,38 @@ export function ThemeSettings() {
                 </optgroup>
               )}
             </select>
-            {isDirty && <span className={styles.dirtyNote}>Unsaved changes, previewed live, not yet saved</span>}
+            {isDirty && (
+              <span className={styles.dirtyNote}>
+                Unsaved changes, previewed live, not yet saved
+              </span>
+            )}
           </div>
 
           <div className={styles.actionRow}>
             {isDirty && (
-              <button type="button" className={hotkeyStyles.button} onClick={resetDraft}>
+              <button
+                type="button"
+                className={hotkeyStyles.button}
+                onClick={resetDraft}
+              >
                 Discard changes
               </button>
             )}
             {isActiveThemeCustom && isDirty && (
-              <button type="button" className={hotkeyStyles.button} onClick={updateActiveTheme}>
+              <button
+                type="button"
+                className={hotkeyStyles.button}
+                onClick={updateActiveTheme}
+              >
                 Update "{resolveThemeName(activeThemeId, customThemes)}"
               </button>
             )}
             {!saveAsOpen && (
-              <button type="button" className={hotkeyStyles.button} onClick={openSaveAs}>
+              <button
+                type="button"
+                className={hotkeyStyles.button}
+                onClick={openSaveAs}
+              >
                 Save as new theme…
               </button>
             )}
@@ -174,16 +198,28 @@ export function ThemeSettings() {
                     if (event.key === "Escape") setSaveAsOpen(false);
                   }}
                 />
-                <button type="button" className={hotkeyStyles.button} onClick={confirmSaveAs}>
+                <button
+                  type="button"
+                  className={hotkeyStyles.button}
+                  onClick={confirmSaveAs}
+                >
                   Save
                 </button>
-                <button type="button" className={hotkeyStyles.button} onClick={() => setSaveAsOpen(false)}>
+                <button
+                  type="button"
+                  className={hotkeyStyles.button}
+                  onClick={() => setSaveAsOpen(false)}
+                >
                   Cancel
                 </button>
               </>
             )}
             {isActiveThemeCustom && !renameOpen && (
-              <button type="button" className={hotkeyStyles.button} onClick={openRename}>
+              <button
+                type="button"
+                className={hotkeyStyles.button}
+                onClick={openRename}
+              >
                 Rename…
               </button>
             )}
@@ -200,16 +236,28 @@ export function ThemeSettings() {
                     if (event.key === "Escape") setRenameOpen(false);
                   }}
                 />
-                <button type="button" className={hotkeyStyles.button} onClick={confirmRename}>
+                <button
+                  type="button"
+                  className={hotkeyStyles.button}
+                  onClick={confirmRename}
+                >
                   Save name
                 </button>
-                <button type="button" className={hotkeyStyles.button} onClick={() => setRenameOpen(false)}>
+                <button
+                  type="button"
+                  className={hotkeyStyles.button}
+                  onClick={() => setRenameOpen(false)}
+                >
                   Cancel
                 </button>
               </>
             )}
             {isActiveThemeCustom && (
-              <button type="button" className={hotkeyStyles.button} onClick={() => deleteCustomTheme(activeThemeId)}>
+              <button
+                type="button"
+                className={hotkeyStyles.button}
+                onClick={() => deleteCustomTheme(activeThemeId)}
+              >
                 Delete
               </button>
             )}
@@ -228,8 +276,12 @@ export function ThemeSettings() {
               step={0.01}
               value={scaleDraft}
               onChange={(event) => setScaleDraft(Number(event.target.value))}
-              onPointerUp={(event) => setUiFontScale(Number(event.currentTarget.value))}
-              onKeyUp={(event) => setUiFontScale(Number(event.currentTarget.value))}
+              onPointerUp={(event) =>
+                setUiFontScale(Number(event.currentTarget.value))
+              }
+              onKeyUp={(event) =>
+                setUiFontScale(Number(event.currentTarget.value))
+              }
             />
             <span>{Math.round(scaleDraft * 100)}%</span>
           </div>
@@ -245,7 +297,11 @@ export function ThemeSettings() {
               <div className={styles.tokenGrid}>
                 {group.tokens.map((token) =>
                   token.kind === "color" ? (
-                    <TokenRow key={token.id} id={token.id} label={token.label} />
+                    <TokenRow
+                      key={token.id}
+                      id={token.id}
+                      label={token.label}
+                    />
                   ) : (
                     <FontRow key={token.id} id={token.id} label={token.label} />
                   ),

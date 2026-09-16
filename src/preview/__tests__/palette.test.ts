@@ -18,7 +18,9 @@ import {
   type TerrainConstant,
 } from "../render/palette";
 
-const constants = (gameConstantsRaw as unknown as { constants: TerrainConstant[] }).constants;
+const constants = (
+  gameConstantsRaw as unknown as { constants: TerrainConstant[] }
+).constants;
 
 describe("hashString", () => {
   // Pinned against the published FNV-1a 32-bit test vectors rather than
@@ -54,7 +56,9 @@ describe("hashColor", () => {
     // terrains have no constant, and hashing `null` for all of them would
     // collapse a third of the table onto one colour.
     const terrains = constants.filter((entry) => entry.category === "terrain");
-    const colors = new Set(terrains.map((entry) => cssColor(hashColor(terrainDisplayName(entry)))));
+    const colors = new Set(
+      terrains.map((entry) => cssColor(hashColor(terrainDisplayName(entry)))),
+    );
     expect(terrains.length).toBeGreaterThan(10);
     expect(colors.size).toBe(terrains.length);
   });
@@ -87,7 +91,9 @@ describe("createTerrainPalette", () => {
     for (const entry of terrains.filter((c) => c.previewColor !== undefined)) {
       expect(palette.sourceFor(entry.constId as number)).toBe("game");
     }
-    const uncoloured = terrains.filter((c) => c.previewColor === undefined && c.minimapColor === undefined);
+    const uncoloured = terrains.filter(
+      (c) => c.previewColor === undefined && c.minimapColor === undefined,
+    );
     expect(uncoloured.length).toBeLessThanOrEqual(96);
   });
 
@@ -123,7 +129,9 @@ describe("createTerrainPalette", () => {
     // farm, so this is no longer a null check but a collision check, which
     // is the stronger version of the same claim. A palette that indexed the
     // whole file by constId would colour that terrain gold.
-    const gold = constants.find((c) => c.category === "object" && c.rmsConstant === "GOLD");
+    const gold = constants.find(
+      (c) => c.category === "object" && c.rmsConstant === "GOLD",
+    );
     expect(gold?.constId).toBe(66);
     expect(palette.nameFor(66)).not.toBe("GOLD");
     // And an id no terrain claims still resolves to nothing at all.
@@ -134,9 +142,13 @@ describe("createTerrainPalette", () => {
     // 53 of DE's 131 terrains have no RMS constant. They are reachable only
     // by bare id, which is exactly when a legend row saying "terrain 26" is
     // least useful.
-    const unnamed = constants.find((c) => c.category === "terrain" && c.rmsConstant === null);
+    const unnamed = constants.find(
+      (c) => c.category === "terrain" && c.rmsConstant === null,
+    );
     expect(unnamed).toBeDefined();
-    expect(palette.nameFor(unnamed!.constId as number)).toBe(unnamed!.descriptiveName);
+    expect(palette.nameFor(unnamed!.constId as number)).toBe(
+      unnamed!.descriptiveName,
+    );
   });
 
   it("memoises, so the per-tile lookup is one map read", () => {
@@ -172,7 +184,12 @@ describe("terrain colour modes", () => {
 
   it("falls back to the other source and says so, rather than silently hashing", () => {
     const noGameColor: TerrainConstant[] = [
-      { constId: 0, rmsConstant: "GRASS", category: "terrain", minimapColor: [1, 2, 3] },
+      {
+        constId: 0,
+        rmsConstant: "GRASS",
+        category: "terrain",
+        minimapColor: [1, 2, 3],
+      },
     ];
     const palette = createTerrainPalette(noGameColor, "game");
     expect(palette.colorFor(0)).toEqual({ r: 1, g: 2, b: 3 });
@@ -180,7 +197,9 @@ describe("terrain colour modes", () => {
   });
 
   it("hashes only when the data has no colour at all", () => {
-    const bare: TerrainConstant[] = [{ constId: 0, rmsConstant: "GRASS", category: "terrain" }];
+    const bare: TerrainConstant[] = [
+      { constId: 0, rmsConstant: "GRASS", category: "terrain" },
+    ];
     const palette = createTerrainPalette(bare, "game");
     expect(palette.colorFor(0)).toEqual(hashColor("GRASS"));
     expect(palette.sourceFor(0)).toBe("hashed");
@@ -205,7 +224,9 @@ describe("shadeForElevation", () => {
   });
 
   it("brightens with absolute height even on flat ground", () => {
-    expect(shadeForElevation(base, 6, 6).r).toBeGreaterThan(shadeForElevation(base, 0, 0).r);
+    expect(shadeForElevation(base, 6, 6).r).toBeGreaterThan(
+      shadeForElevation(base, 0, 0).r,
+    );
   });
 
   it("caps the slope term so a sheer drop does not go pure black", () => {
@@ -220,7 +241,11 @@ describe("colour arithmetic", () => {
   it("clamps rather than wrapping", () => {
     expect(clampByte(-40)).toBe(0);
     expect(clampByte(900)).toBe(255);
-    expect(scale({ r: 250, g: 10, b: 10 }, 4)).toEqual({ r: 255, g: 40, b: 40 });
+    expect(scale({ r: 250, g: 10, b: 10 }, 4)).toEqual({
+      r: 255,
+      g: 40,
+      b: 40,
+    });
   });
 
   it("mixes toward the second colour", () => {
@@ -238,13 +263,21 @@ describe("object and player colours", () => {
     // An unseen sub-category walks up to the nearest family it does know,
     // rather than dropping straight to the unknown colour, since the spec's
     // category list ends with "...", so new values are expected.
-    expect(categoryColor("resource-food-berry")).toEqual(categoryColor("resource-food"));
-    expect(categoryColor("resource-obsidian")).toEqual(categoryColor("resource"));
-    expect(categoryColor("siege-weapon-trebuchet")).toEqual(UNKNOWN_CATEGORY_COLOR);
+    expect(categoryColor("resource-food-berry")).toEqual(
+      categoryColor("resource-food"),
+    );
+    expect(categoryColor("resource-obsidian")).toEqual(
+      categoryColor("resource"),
+    );
+    expect(categoryColor("siege-weapon-trebuchet")).toEqual(
+      UNKNOWN_CATEGORY_COLOR,
+    );
   });
 
   it("gives every player a distinct colour", () => {
-    const colors = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((p) => cssColor(playerColor(p))));
+    const colors = new Set(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((p) => cssColor(playerColor(p))),
+    );
     expect(colors.size).toBe(8);
   });
 });

@@ -33,7 +33,9 @@ export function createWorkerRunner(makeWorker: () => WorkerLike): ToolRunner {
       // inProcessRunner's: a panel never reaches a runner at all (Sec.3.2),
       // so a caller handing one here is a bug and must be told loudly.
       if (tool.kind !== "builtin") {
-        throw new Error(`workerRunner: cannot run a "${tool.kind}" tool ("${tool.manifest.id}") — only "builtin" has a run()`);
+        throw new Error(
+          `workerRunner: cannot run a "${tool.kind}" tool ("${tool.manifest.id}") — only "builtin" has a run()`,
+        );
       }
       const worker = makeWorker();
       worker.onmessage = (event: MessageEvent) => onMessage(event.data);
@@ -46,7 +48,11 @@ export function createWorkerRunner(makeWorker: () => WorkerLike): ToolRunner {
       // is silent forever, since neither the run watchdog message-shape nor
       // any `onmessage` ever fires.
       worker.onerror = (event: ErrorEvent) => {
-        onMessage({ type: "error", message: `Tool worker crashed: ${event.message}`, reason: "tool-error" });
+        onMessage({
+          type: "error",
+          message: `Tool worker crashed: ${event.message}`,
+          reason: "tool-error",
+        });
       };
 
       // `contextJson` is `unknown` at this boundary (host.ts's existing
@@ -55,7 +61,11 @@ export function createWorkerRunner(makeWorker: () => WorkerLike): ToolRunner {
       // identical seam. This is `postMessage`, not `JSON.stringify`: structured
       // clone preserves `Infinity` and `def` (Sec.4.3), so nothing here
       // serializes the context through JSON.
-      const run: CheckerWorkerRequest = { type: "run", toolId: tool.manifest.id, context: contextJson as ToolContext<ParseResult> };
+      const run: CheckerWorkerRequest = {
+        type: "run",
+        toolId: tool.manifest.id,
+        context: contextJson as ToolContext<ParseResult>,
+      };
       worker.postMessage(run);
 
       return {
@@ -71,4 +81,6 @@ export function createWorkerRunner(makeWorker: () => WorkerLike): ToolRunner {
   };
 }
 
-export const workerRunner: ToolRunner = createWorkerRunner(() => new CheckerWorker());
+export const workerRunner: ToolRunner = createWorkerRunner(
+  () => new CheckerWorker(),
+);

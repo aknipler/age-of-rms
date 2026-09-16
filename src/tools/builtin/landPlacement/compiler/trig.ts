@@ -29,9 +29,15 @@ export interface TrigMacroResult {
  * formula tolerates any first operand per the left-spine rule) but nothing
  * in this tool's own pipeline should ever construct one, so it's asserted.
  */
-export function expandTrig(theta: Expr, suffix: string, namer: NameAllocator): TrigMacroResult {
+export function expandTrig(
+  theta: Expr,
+  suffix: string,
+  namer: NameAllocator,
+): TrigMacroResult {
   if (!isLeaf(theta)) {
-    throw new Error("expandTrig: theta must be a leaf — hoist the angle to its own #const first");
+    throw new Error(
+      "expandTrig: theta must be a leaf — hoist the angle to its own #const first",
+    );
   }
 
   const cells: NamedCell[] = [];
@@ -57,7 +63,13 @@ export function expandTrig(theta: Expr, suffix: string, namer: NameAllocator): T
     ]),
   );
 
-  const trigFrom = (xName: string, sBase: string, pBase: string, dBase: string, outBase: string): string => {
+  const trigFrom = (
+    xName: string,
+    sBase: string,
+    pBase: string,
+    dBase: string,
+    outBase: string,
+  ): string => {
     // S = (X * 2 + 1) % 2, sign(X), as ±1
     const sName = define(
       sBase,

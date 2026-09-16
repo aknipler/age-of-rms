@@ -31,7 +31,10 @@ export function docSummary(name: string): string | undefined {
  * first, then the reference-data `description` field, then a generic
  * fallback that still says something useful rather than nothing.
  */
-export function namedEntryHelpText(name: string, description: string | undefined): string {
+export function namedEntryHelpText(
+  name: string,
+  description: string | undefined,
+): string {
   return (
     docSummary(name) ??
     description ??
@@ -55,7 +58,10 @@ interface ArgumentLike {
  * bare "a positional argument" placeholder, so at minimum the type and
  * legal range are visible on hover even with no prose written yet.
  */
-export function argumentHelpText(arg: ArgumentLike | undefined, contextName: string): string {
+export function argumentHelpText(
+  arg: ArgumentLike | undefined,
+  contextName: string,
+): string {
   if (!arg) return `A positional argument for "${contextName}".`;
   const fromDocs = docSummary(arg.name) ?? arg.description;
   if (fromDocs) return fromDocs;

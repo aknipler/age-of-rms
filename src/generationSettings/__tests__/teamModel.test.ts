@@ -4,10 +4,15 @@
 import { describe, expect, it } from "vitest";
 import languageData from "../../../reference/data/language.json";
 import { canonicaliseTeams, teamLabels } from "../teamModel";
-import { MAX_PLAYER_COUNT, type TeamNumber } from "../generationSettingsConstants";
+import {
+  MAX_PLAYER_COUNT,
+  type TeamNumber,
+} from "../generationSettingsConstants";
 
 const PREDEFINED_LABELS = new Set(
-  (languageData as { predefinedLabels?: { name: string }[] }).predefinedLabels?.map((l) => l.name) ?? [],
+  (
+    languageData as { predefinedLabels?: { name: string }[] }
+  ).predefinedLabels?.map((l) => l.name) ?? [],
 );
 
 function pad(picks: number[]): TeamNumber[] {
@@ -20,7 +25,10 @@ describe("canonicaliseTeams", () => {
   // (1) Renumbering. Invisible in a plain 2v2 where picked and canonical
   // numbers coincide, wrong the moment a lobby picks a high number first.
   it("renumbers surviving teams by lowest player number", () => {
-    const { canonical, teamCount } = canonicaliseTeams(pad([0, 3, 3, 0, 1, 1, 2, 0]), 8);
+    const { canonical, teamCount } = canonicaliseTeams(
+      pad([0, 3, 3, 0, 1, 1, 2, 0]),
+      8,
+    );
     expect(canonical).toEqual([0, 1, 1, 0, 2, 2, 0, 0]);
     expect(teamCount).toBe(2);
   });
@@ -64,7 +72,9 @@ describe("canonicaliseTeams", () => {
   });
 
   it("derives the expected labels for a 4v4", () => {
-    const labels = teamLabels(canonicaliseTeams(pad([1, 1, 1, 1, 2, 2, 2, 2]), 8));
+    const labels = teamLabels(
+      canonicaliseTeams(pad([1, 1, 1, 1, 2, 2, 2, 2]), 8),
+    );
     expect(labels).toContain("2_TEAM_GAME");
     expect(labels).toContain("TEAM1_SIZE4");
     expect(labels).toContain("TEAM2_SIZE4");
@@ -89,17 +99,21 @@ describe("teamLabels", () => {
     const missing = new Set<string>();
     const walk = (picks: TeamNumber[], playerCount: number) => {
       if (picks.length === playerCount) {
-        for (const label of teamLabels(canonicaliseTeams(pad(picks), playerCount))) {
+        for (const label of teamLabels(
+          canonicaliseTeams(pad(picks), playerCount),
+        )) {
           seen.add(label);
           if (!PREDEFINED_LABELS.has(label)) missing.add(label);
         }
         return;
       }
-      for (const pick of [0, 1, 2, 3, 4] as TeamNumber[]) walk([...picks, pick], playerCount);
+      for (const pick of [0, 1, 2, 3, 4] as TeamNumber[])
+        walk([...picks, pick], playerCount);
     };
     // Exhaustive to 6 players (5^6 = 15625 lobbies); 8 would be 390k and
     // adds no distinct team shape the smaller counts don't already reach.
-    for (let playerCount = 2; playerCount <= 6; playerCount += 1) walk([], playerCount);
+    for (let playerCount = 2; playerCount <= 6; playerCount += 1)
+      walk([], playerCount);
 
     expect([...missing].sort()).toEqual([]);
 

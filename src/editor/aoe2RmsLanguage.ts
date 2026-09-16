@@ -17,7 +17,9 @@ import languageData from "../../reference/data/language.json";
 // in language.json is included here regardless of verification status.
 const COMMANDS = languageData.commands.map((command) => command.name);
 const ATTRIBUTES = languageData.attributes.map((attribute) => attribute.name);
-const CONTROL_KEYWORDS = languageData.controlKeywords.map((keyword) => keyword.name);
+const CONTROL_KEYWORDS = languageData.controlKeywords.map(
+  (keyword) => keyword.name,
+);
 
 const monarchLanguage: monaco.languages.IMonarchLanguage = {
   defaultToken: "",

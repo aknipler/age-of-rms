@@ -46,7 +46,10 @@ function byId(a: GameConstantEntry, b: GameConstantEntry): number {
  * its 131 rows have no constant at all, so ties on the first two tiers are
  * routine there.
  */
-export function compareConstantRows(a: GameConstantEntry, b: GameConstantEntry): number {
+export function compareConstantRows(
+  a: GameConstantEntry,
+  b: GameConstantEntry,
+): number {
   return byName(a, b) || byConstant(a, b) || byId(a, b);
 }
 
@@ -67,7 +70,11 @@ export const CONSTANT_SORT_LABELS: Record<ConstantSortKey, string> = {
  * only decides ties (53 of 131 terrain rows have none) by id then name
  * rather than leaving them in whatever order `.sort()` happened to produce.
  */
-export function compareConstantRowsBy(sortKey: ConstantSortKey, a: GameConstantEntry, b: GameConstantEntry): number {
+export function compareConstantRowsBy(
+  sortKey: ConstantSortKey,
+  a: GameConstantEntry,
+  b: GameConstantEntry,
+): number {
   switch (sortKey) {
     case "constant":
       return byConstant(a, b) || byId(a, b) || byName(a, b);
@@ -86,10 +93,16 @@ export function compareConstantRowsBy(sortKey: ConstantSortKey, a: GameConstantE
  * middle of a name ("snow", "fish", "connect"). An empty query matches
  * everything, so the caller needs no special case for the unfiltered table.
  */
-export function matchesQuery(query: string, fields: (string | number | null | undefined)[]): boolean {
+export function matchesQuery(
+  query: string,
+  fields: (string | number | null | undefined)[],
+): boolean {
   if (query === "") return true;
   const needle = query.toLowerCase();
-  return fields.some((f) => f !== null && f !== undefined && String(f).toLowerCase().includes(needle));
+  return fields.some(
+    (f) =>
+      f !== null && f !== undefined && String(f).toLowerCase().includes(needle),
+  );
 }
 
 /** A command row plus the attributes it should show nested underneath it. */
@@ -136,11 +149,18 @@ export function matchingCommandRows(
     const allAttributes = (command.attributes ?? [])
       .map((name) => attributesByName.get(name))
       .filter((a): a is AttributeDef => a !== undefined && !a.nonFunctional);
-    const commandMatches = matchesQuery(query, [command.name, command.section, command.description]);
+    const commandMatches = matchesQuery(query, [
+      command.name,
+      command.section,
+      command.description,
+    ]);
     const attributes = commandMatches
       ? allAttributes
-      : allAttributes.filter((a) => matchesQuery(query, [a.name, a.description]));
-    if (commandMatches || attributes.length > 0) rows.push({ command, attributes });
+      : allAttributes.filter((a) =>
+          matchesQuery(query, [a.name, a.description]),
+        );
+    if (commandMatches || attributes.length > 0)
+      rows.push({ command, attributes });
   }
   return rows;
 }
@@ -162,6 +182,9 @@ export function orphanAttributeRows(
 ): AttributeDef[] {
   const referenced = new Set(commands.flatMap((c) => c.attributes ?? []));
   return attributes.filter(
-    (a) => !referenced.has(a.name) && !a.nonFunctional && matchesQuery(query, [a.name, a.description]),
+    (a) =>
+      !referenced.has(a.name) &&
+      !a.nonFunctional &&
+      matchesQuery(query, [a.name, a.description]),
   );
 }

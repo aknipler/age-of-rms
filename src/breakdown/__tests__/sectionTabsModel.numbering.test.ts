@@ -15,7 +15,10 @@ function section(name: string, known = true): SectionNode {
 
 function script(preambleLen: number, sections: SectionNode[]): ScriptNode {
   return {
-    preamble: Array.from({ length: preambleLen }, () => ({ span: { start: 0, end: 1 } }) as Item),
+    preamble: Array.from(
+      { length: preambleLen },
+      () => ({ span: { start: 0, end: 1 } }) as Item,
+    ),
     sections,
   } as unknown as ScriptNode;
 }
@@ -28,7 +31,9 @@ describe("buildSectionTabs — absolute numbering", () => {
   it("numbers Header=0 and the canonical seven 1-7 regardless of which sections are present", () => {
     // Only PLAYER_SETUP and OBJECTS_GENERATION actually present in source,
     // ELEVATION_GENERATION and everything between is "missing" (empty tab).
-    const tabs = buildSectionTabs(script(1, [section("PLAYER_SETUP"), section("OBJECTS_GENERATION")]));
+    const tabs = buildSectionTabs(
+      script(1, [section("PLAYER_SETUP"), section("OBJECTS_GENERATION")]),
+    );
     const byId = new Map(tabs.map((t) => [t.id, t.number]));
     expect(byId.get("header")).toBe(0);
     expect(byId.get("PLAYER_SETUP")).toBe(1);
@@ -41,11 +46,18 @@ describe("buildSectionTabs — absolute numbering", () => {
   });
 
   it("numbers stay identical whether or not a middle section is actually missing", () => {
-    const withGap = buildSectionTabs(script(1, [section("PLAYER_SETUP"), section("OBJECTS_GENERATION")]));
-    const withoutGap = buildSectionTabs(
-      script(1, [section("PLAYER_SETUP"), section("ELEVATION_GENERATION"), section("OBJECTS_GENERATION")]),
+    const withGap = buildSectionTabs(
+      script(1, [section("PLAYER_SETUP"), section("OBJECTS_GENERATION")]),
     );
-    const numbersOf = (tabs: typeof withGap) => tabs.map((t) => `${t.id}:${t.number}`);
+    const withoutGap = buildSectionTabs(
+      script(1, [
+        section("PLAYER_SETUP"),
+        section("ELEVATION_GENERATION"),
+        section("OBJECTS_GENERATION"),
+      ]),
+    );
+    const numbersOf = (tabs: typeof withGap) =>
+      tabs.map((t) => `${t.id}:${t.number}`);
     expect(numbersOf(withGap)).toEqual(numbersOf(withoutGap));
   });
 
@@ -56,7 +68,9 @@ describe("buildSectionTabs — absolute numbering", () => {
   });
 
   it("unknown sections continue the count after the canonical seven", () => {
-    const tabs = buildSectionTabs(script(0, [section("PLAYER_SETUP"), section("TYPO_SECTION", false)]));
+    const tabs = buildSectionTabs(
+      script(0, [section("PLAYER_SETUP"), section("TYPO_SECTION", false)]),
+    );
     expect(tabs.find((t) => t.id === "unknown:TYPO_SECTION")?.number).toBe(8);
   });
 });

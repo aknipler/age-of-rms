@@ -2,7 +2,7 @@
 
 Phase-by-phase record of what was built, why, and what broke along the way. Moved out of `CLAUDE.md` (which had grown to ~95KB and was loaded into every session) so the context file could stay short.
 
-**This is history, not instructions.** Design decisions live in the `docs/*-design.md` specs; hard rules live in `CLAUDE.md`. Read this when you need the *reasoning* behind a past decision, a bug post-mortem, or a verification record.
+**This is history, not instructions.** Design decisions live in the `docs/*-design.md` specs; hard rules live in `CLAUDE.md`. Read this when you need the _reasoning_ behind a past decision, a bug post-mortem, or a verification record.
 
 **Append new session entries at the bottom of the relevant phase.** Keep entries factual; if an entry establishes a durable rule, also add that rule to `CLAUDE.md` or the relevant design spec, because nobody reads this file top-to-bottom.
 
@@ -22,15 +22,15 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
 
 - 1.1 App shell UI — done and verified. `src/App.tsx` composes `TitleBar`, `MapHeader`, `TabBar` (Breakdown/Code/Advanced Tools — `activeTab` state lifted in `App`, controlled component pattern), a `PlaceholderPane` per tab, and `StatusBar` (static placeholder resource totals). Plain CSS Modules per component, no UI library. Styled to match the mockups' flat bordered look (`aoermsplanning_*.png`, one level up in the parent `AOE2_projects/RMS` folder alongside `PLAN.md`/`CREATION_PLAN.md` — not duplicated into this repo).
 - 1.2 File open/save — done and verified. Added `@tauri-apps/plugin-dialog` + `@tauri-apps/plugin-fs` (JS) and `tauri-plugin-dialog` + `tauri-plugin-fs` (Rust, registered in `src-tauri/src/lib.rs`); removed the scaffold's unused `greet` command. `src-tauri/capabilities/default.json` grants `dialog:default`, `fs:allow-read-text-file`, `fs:allow-write-text-file`, `fs:allow-exists`, `fs:scope` allow `**` (unrestricted — .rms files can live anywhere: game install dir, Documents, custom folders; there's no dialog-picked-path auto-scope in Tauri v2), plus `core:window:allow-destroy` and `core:window:allow-close` (NOT included in `core:default`, which only covers read-only window queries — this cost a debugging round, see below). `src/hooks/useDocument.ts` owns filePath/content/isDirty/lastSavedAt and open/save/saveAs, plus a window-close guard (`onCloseRequested`) that offers Save/Discard when closing with unsaved changes. `TitleBar`'s File menu is a working dropdown (Open/Save/Save As); Edit/Preferences/Help remain stubs. The Code tab temporarily renders a plain `<textarea>` bound to the same content/onChange contract Monaco will use in 1.3.
-  - Two bugs hit and fixed during verification, both worth remembering: (1) React 18 StrictMode double-invokes effects in dev; `onCloseRequested` registers asynchronously, so the original cleanup could run before registration resolved, leaking a listener that StrictMode's second mount then duplicated — fixed with a `cancelled` flag pattern in the effect. (2) `core:default` does not grant window `destroy`/`close` — a missing-capability call fails as a *silent* unhandled promise rejection with no visible error unless the webview devtools console is open (right-click > Inspect). **General lesson**: a Tauri JS API call that does nothing with no thrown error → suspect a missing capability first, check devtools console.
+  - Two bugs hit and fixed during verification, both worth remembering: (1) React 18 StrictMode double-invokes effects in dev; `onCloseRequested` registers asynchronously, so the original cleanup could run before registration resolved, leaking a listener that StrictMode's second mount then duplicated — fixed with a `cancelled` flag pattern in the effect. (2) `core:default` does not grant window `destroy`/`close` — a missing-capability call fails as a _silent_ unhandled promise rejection with no visible error unless the webview devtools console is open (right-click > Inspect). **General lesson**: a Tauri JS API call that does nothing with no thrown error → suspect a missing capability first, check devtools console.
 - 1.3 Monaco integration — done and verified. Added `@monaco-editor/react` + `monaco-editor` deps. `CodePane` renders a real Monaco `<Editor>`, wired to the same `content`/`onChange` from `useDocument`, so Open/edit/dirty/Save all carry over unchanged. Minimap and find widget (Ctrl+F) are both on by default, no extra config needed. **Self-hosted, not CDN-loaded**: `src/editor/monacoSetup.ts` (imported once as a side effect at the top of `main.tsx`) configures `@monaco-editor/react`'s loader to use the local `monaco-editor` package and sets up `self.MonacoEnvironment` to load the editor's web worker via Vite's `?worker` import — deliberate, since this is a desktop app that needs to work fully offline, and the library's default behavior is to fetch Monaco from a CDN at runtime. `vite.config.ts` got `worker: { format: "es" }` so that worker bundles correctly.
   - Hit a `tsc` error needing a `declare global { interface Window { MonacoEnvironment?: monaco.Environment } }` block in `monacoSetup.ts` — Monaco ships the `Environment` type but nothing declares it onto `Window`/`self` by default. Also took an `npm audit fix --force` here (0.55.0 → 0.53.0, a downgrade — the vulnerable dependency, likely `dompurify`, was pulled in by a newer monaco-editor; 0.53 avoids it).
-  - Bug found and fixed in the close-guard: the original `ask()`-based flow only branched on *whether to save*, not *whether to close at all* — clicking "No" and dismissing the dialog (Esc/X) both fell through to the same unconditional `destroy()`, so cancelling the close dialog closed the app anyway. Rewrote as a 2-way `confirm()`: "Save and close?" — Ok saves then closes, anything else (Cancel or dismiss) leaves the window open. Deliberately dropped the "discard changes" option rather than risk it again: Tauri's dialog plugin doesn't cleanly expose a 3-button (Save/Discard/Cancel) dialog from JS, and there's no reliable way to distinguish an explicit "Discard" click from a dismissed dialog via the boolean `ask()`/`confirm()` return — that ambiguity was the root cause. If a real Discard option is wanted later, build a custom in-app modal (full control over button semantics and Esc handling) rather than relying on native dialog booleans again.
+  - Bug found and fixed in the close-guard: the original `ask()`-based flow only branched on _whether to save_, not _whether to close at all_ — clicking "No" and dismissing the dialog (Esc/X) both fell through to the same unconditional `destroy()`, so cancelling the close dialog closed the app anyway. Rewrote as a 2-way `confirm()`: "Save and close?" — Ok saves then closes, anything else (Cancel or dismiss) leaves the window open. Deliberately dropped the "discard changes" option rather than risk it again: Tauri's dialog plugin doesn't cleanly expose a 3-button (Save/Discard/Cancel) dialog from JS, and there's no reliable way to distinguish an explicit "Discard" click from a dismissed dialog via the boolean `ask()`/`confirm()` return — that ambiguity was the root cause. If a real Discard option is wanted later, build a custom in-app modal (full control over button semantics and Esc handling) rather than relying on native dialog booleans again.
 - 1.4 RMS syntax highlighting — done and verified. `src/editor/aoe2RmsLanguage.ts` registers a custom `"aoe2-rms"` Monaco language (Monarch tokenizer) covering comments, section headers, directives, control keywords, commands, attributes, ALL_CAPS constants, and numbers. Custom `AOE2_RMS_THEME` gives each category its own color after the default theme made several categories look identical. Added `test-maps/sample.rms` for visual verification. (COMMANDS/ATTRIBUTES were hand-written and unverified at first — see 1.5 below, which replaced them with real sourced data.)
 - 1.5 Reference DB schema + language definition — done and verified (`npm run validate:reference`, `npm run typecheck` both green). Three JSON Schemas in `reference/schemas/` (`game-constants.schema.json`, `language.schema.json`, `doc-strings.schema.json`, all draft 2020-12) plus populated `reference/data/*.json`, plus `scripts/validate-reference-data.mjs` (ajv-based, checks schema conformance AND that every command's `attributes[]` references actually exist in the top-level `attributes[]` array) wired into `npm run validate:reference` and CI.
-  - **Sourcing, important**: the official-looking `support.ageofempires.com` "Random Map Scripting Commands" article is for **AoE3:DE, not AoE2** (XS-scripting camelCase syntax like `rmCreateArea(...)` — confirmed by checking its breadcrumb category before using it, since it would have silently corrupted the whole database otherwise). The real source used was the **Definitive RMS Scripting Guide (Zetnus)**, published at the Google Docs URL linked from `forums.ageofempires.com/t/definitive-random-map-scripting-guide/104902` — same guide PLAN.md already names as the eventual doc-strings seed source. That fetch was **truncated partway through `<CLIFF_GENERATION>`** (~2,464 lines in, mid-sentence) — likely the fetch tool's size limit, not the doc's actual length. Consequence: `PLAYER_SETUP`, `LAND_GENERATION`, `ELEVATION_GENERATION`, and most of `CLIFF_GENERATION` are `"verified": true` with real argument types/ranges/defaults; `TERRAIN_GENERATION`, `CONNECTION_GENERATION`, and `OBJECTS_GENERATION` are mostly `"verified": false` — real command/attribute *names* (confirmed via the guide's syntax-skeleton listing, which was NOT truncated) but no confirmed argument shapes beyond a couple of worked examples. Every unverified entry has a `notes` field explaining exactly what's missing — grep `"verified": false` to find them all. **To finish verifying**: re-fetch the guide starting past the cliff_curliness cutoff (or fetch section-by-section) and fill in the gaps.
+  - **Sourcing, important**: the official-looking `support.ageofempires.com` "Random Map Scripting Commands" article is for **AoE3:DE, not AoE2** (XS-scripting camelCase syntax like `rmCreateArea(...)` — confirmed by checking its breadcrumb category before using it, since it would have silently corrupted the whole database otherwise). The real source used was the **Definitive RMS Scripting Guide (Zetnus)**, published at the Google Docs URL linked from `forums.ageofempires.com/t/definitive-random-map-scripting-guide/104902` — same guide PLAN.md already names as the eventual doc-strings seed source. That fetch was **truncated partway through `<CLIFF_GENERATION>`** (~2,464 lines in, mid-sentence) — likely the fetch tool's size limit, not the doc's actual length. Consequence: `PLAYER_SETUP`, `LAND_GENERATION`, `ELEVATION_GENERATION`, and most of `CLIFF_GENERATION` are `"verified": true` with real argument types/ranges/defaults; `TERRAIN_GENERATION`, `CONNECTION_GENERATION`, and `OBJECTS_GENERATION` are mostly `"verified": false` — real command/attribute _names_ (confirmed via the guide's syntax-skeleton listing, which was NOT truncated) but no confirmed argument shapes beyond a couple of worked examples. Every unverified entry has a `notes` field explaining exactly what's missing — grep `"verified": false` to find them all. **To finish verifying**: re-fetch the guide starting past the cliff_curliness cutoff (or fetch section-by-section) and fill in the gaps.
   - Caught and fixed one real bug this surfaced: the command is `create_connect_all_players_land` (singular "land"), not `create_connect_all_players_lands` — my Phase 1.4 tokenizer had guessed the plural. `aoe2RmsLanguage.ts`'s `COMMANDS`/`ATTRIBUTES`/`CONTROL_KEYWORDS` now `import languageData from "../../reference/data/language.json"` and derive from it directly (`.map(x => x.name)`) instead of hand-duplicating — the fix propagated automatically once the data file was corrected. This cross-`src/` JSON import typechecks fine.
-  - `npm run validate:reference` (ajv schema check + referential-integrity check) caught two real gaps on first run: `base_terrain`/`base_layer` are used both as standalone `LAND_GENERATION` commands *and* as attributes inside `create_elevation`/`create_terrain` blocks — only the command entries existed in `commands[]`; the corresponding `attributes[]` entries were referenced by `create_elevation`/`create_terrain` but never actually added. Added both. This is exactly the class of bug the referential-integrity check exists to catch in a large hand-written dataset — worth re-running after any future edits to `language.json`.
+  - `npm run validate:reference` (ajv schema check + referential-integrity check) caught two real gaps on first run: `base_terrain`/`base_layer` are used both as standalone `LAND_GENERATION` commands _and_ as attributes inside `create_elevation`/`create_terrain` blocks — only the command entries existed in `commands[]`; the corresponding `attributes[]` entries were referenced by `create_elevation`/`create_terrain` but never actually added. Added both. This is exactly the class of bug the referential-integrity check exists to catch in a large hand-written dataset — worth re-running after any future edits to `language.json`.
   - Also hit (unrelated to the data itself): `ajv/dist/2020.js` import failed twice — first because `ajv` was a newly-added dependency that `npm install` hadn't been run for yet (looked like an exports/extension problem, wasn't), second because of my own bad fix attempting to drop the `.js` extension (ajv has no package.json `exports` map, so Node's ESM resolver needs the literal file path, unlike CJS `require`'s extension-guessing). **Lesson**: when adding a new dependency to package.json, always say `npm install` explicitly in the same breath — don't assume it's implied.
   - `reference/data/game-constants.json` has ~30 hand-picked common terrains/objects per CREATION_PLAN's explicit allowance ("Step 4.0 can proceed with a hand-made subset"). `constId`/`deTextureFile`/`resourceAmounts` are ALL placeholders (`null` or illustrative numbers) pending the real Phase 4.0 extraction script — do not treat any number in this file as accurate.
   - Verified: `npm run validate:reference` all green after the base_terrain/base_layer fix, `npm run typecheck` clean.
@@ -46,23 +46,23 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - Retrofitted `TitleBar`, `TabBar`, `StatusBar`, `MapHeader` — every button/label wrapped in `<HelpTip id="...">` matching the ids seeded in `ui-help.json`.
   - `src/editor/aoe2RmsHover.ts`'s `provideHover` is now `async` (Monaco's hover API accepts a Promise): reads `store.get(HELP_MODE_KEY)` first and returns `null` immediately if `"off"`. Per CREATION_PLAN's exact wording, Monaco's own hover has no alt-hover equivalent, so it stays visible for both `"hover"` and `"alt-hover"` and only `"off"` suppresses it.
   - Hit a `tsc` error: the installed `@tauri-apps/plugin-store` version's `StoreOptions` type requires a `defaults` property (not optional, despite older docs/examples showing `{ autoSave: true }` alone) — fixed by passing `{ autoSave: true, defaults: {} }` to both `load()` calls (`HelpSettingsContext.tsx` and `aoe2RmsHover.ts`).
-**Phase 2 — Parser (M2): complete**, except `validate()` (parser-design Sec.8), still unbuilt.
+    **Phase 2 — Parser (M2): complete**, except `validate()` (parser-design Sec.8), still unbuilt.
 
-- 2.1 Parser design spec — done (Fable session). `docs/parser-design.md` created. Key decisions: the engine's whitespace-token model drives everything (lexer = whitespace splitter + classifier, braces/comment-markers are ordinary tokens only when whitespace-delimited); comments are a token-stream pass; if/start_random are engine-level token *filters*, so the AST treats them structurally where they align with statement boundaries and degrades the whole construct to a RawNode (RMS0110) when they split commands/blocks; argument consumption is data-driven from language.json with severity capped at info for `"verified": false` entries so bad reference data can't produce false errors; `validate()` is a separate semantic pass; two corpus-wide property tests (token coverage + span fidelity) are non-negotiable CI gates because the 3.3 patch engine depends on them. Spec Sec.11 lists 6 assumptions to verify in actual DE (comment nesting, token separation rules, etc.) before 2.3 is declared done. Action items logged in spec: add `predefinedLabels` to language.json (Sec.7); collect real-map corpus into test-maps/ (Sec.12, mind redistribution etiquette).
+- 2.1 Parser design spec — done (Fable session). `docs/parser-design.md` created. Key decisions: the engine's whitespace-token model drives everything (lexer = whitespace splitter + classifier, braces/comment-markers are ordinary tokens only when whitespace-delimited); comments are a token-stream pass; if/start_random are engine-level token _filters_, so the AST treats them structurally where they align with statement boundaries and degrades the whole construct to a RawNode (RMS0110) when they split commands/blocks; argument consumption is data-driven from language.json with severity capped at info for `"verified": false` entries so bad reference data can't produce false errors; `validate()` is a separate semantic pass; two corpus-wide property tests (token coverage + span fidelity) are non-negotiable CI gates because the 3.3 patch engine depends on them. Spec Sec.11 lists 6 assumptions to verify in actual DE (comment nesting, token separation rules, etc.) before 2.3 is declared done. Action items logged in spec: add `predefinedLabels` to language.json (Sec.7); collect real-map corpus into test-maps/ (Sec.12, mind redistribution etiquette).
 - Also fixed stale `create_connect_all_players_lands` (plural) in `test-maps/sample.rms` — the 1.5 data fix had corrected language.json but not the sample map.
 - 2.1 amendment (same Fable session, after user review): added spec Sec.2.1 — the engine resolves words/constants/numbers into one shared internal token-ID space ("RMS Equivalencies"). In scope for us: bare numeric IDs are valid in constant slots (RMS0204 info) and cross-category constant use resolves by ID (RMS0205 warning with resolved-ID explanation). Out of scope v1: structural aliasing (MILL closing a block, numbers as comment markers) — parser will misparse such obfuscated maps into diagnostics+RawNodes; `ParseOptions.aliasTable` hook designed so importing the Equivalencies sheet as `reference/data/token-aliases.json` later upgrades fidelity without parser changes. Equivalencies sheet (1gr37obgoA_oa_Yikw8rt4AmNtRk4czX9VcRPkQQZPEc) is JS-rendered — fetch failed, import manually, spot-verify against DE (verify item #7).
 - Corpus plan updated (spec Sec.12): Ash's own authored maps are the primary committable corpus, pending a one-pass verification (generates in DE + all parse diagnostics triaged).
 - New UI requirement logged in PLAN.md + CREATION_PLAN 2.5: status-bar cog → generation-settings pane (map size, players) feeding totals/preview/consistency-checker; manual v1, auto-pull from running game later.
 - 2.1 rev 2 — critique session complete, all findings resolved (full changelog in the spec's appendix). Highlights: conditional-wrapped section headers are legal RMS and now degrade to RawNode/RMS0110-info instead of erroring (was a contradiction that would fail legit game-mode-variant maps in the corpus gate); argument stop-set enumerated + includes known command/attribute names (closes the unverified-arity cascade); recursion-safety mandate (explicit stack or depth cap, fuzz has a 20k-nested-if case); RMS0204/0205 ID-wording gated on constants provenance since game-constants IDs are all placeholders; whitespace pinned to C isspace + NBSP/BOM lints; new goal #5 = no false errors on legal maps (only RMS0101/0103 remain error-severity, both with verify items). Verify-in-game list is now 12 items. New schema action items: optional/variadic arg flags, idSource provenance field, predefinedLabels.
-- 2.1 rev 3 input — critique of rev 2 against (a) the real-map corpus (11 community maps now in `test-maps/`) and (b) DE patch notes May 2023→July 2026: **`docs/REVISION_3.md`** is the full report; the spec itself is NOT yet edited. Headline: **DE added math expressions in April 2025 (Update 141935; refined in 153015)** — `(A + 1)` style, floats are now first-class everywhere, `#const` can't be redefined (answers verify #5) — and rev 2 doesn't model any of it; corpus maps (Vanguard, Pa_Site) contain live expressions/floats that rev 2 would false-warn on. Other majors: `#include_drs` symbol-table hole (Pa_Site pulls 43 includes), BCC2's glued `}8050` makes it fail the zero-error corpus gate today (needs `test-maps/broken/` escape hatch + makes verify #6 top priority), `avoidance_distance` (Pa_Site ×128) unresolved — either an undocumented attribute or an author bug for `other_zone_avoidance_distance`, per Ash likely the latter; verify before adding to language.json (otherwise zero vocab gaps corpus-wide — everything added in 2024-25 patches is already present), edit-distance did-you-mean (real `elavation` typo in OWWC), new RMS0207 for wrong-context known names. Corpus *confirms* rev-2 architecture: zero conditional/structure overlaps in ~123k tokens, all rnd() canonical, no NBSP/BOM.
+- 2.1 rev 3 input — critique of rev 2 against (a) the real-map corpus (11 community maps now in `test-maps/`) and (b) DE patch notes May 2023→July 2026: **`docs/REVISION_3.md`** is the full report; the spec itself is NOT yet edited. Headline: **DE added math expressions in April 2025 (Update 141935; refined in 153015)** — `(A + 1)` style, floats are now first-class everywhere, `#const` can't be redefined (answers verify #5) — and rev 2 doesn't model any of it; corpus maps (Vanguard, Pa_Site) contain live expressions/floats that rev 2 would false-warn on. Other majors: `#include_drs` symbol-table hole (Pa_Site pulls 43 includes), BCC2's glued `}8050` makes it fail the zero-error corpus gate today (needs `test-maps/broken/` escape hatch + makes verify #6 top priority), `avoidance_distance` (Pa_Site ×128) unresolved — either an undocumented attribute or an author bug for `other_zone_avoidance_distance`, per Ash likely the latter; verify before adding to language.json (otherwise zero vocab gaps corpus-wide — everything added in 2024-25 patches is already present), edit-distance did-you-mean (real `elavation` typo in OWWC), new RMS0207 for wrong-context known names. Corpus _confirms_ rev-2 architecture: zero conditional/structure overlaps in ~123k tokens, all rnd() canonical, no NBSP/BOM.
 - 2.1 rev 3 input, part 2 — **full guide now available locally**: Ash exported the complete Zetnus guide as HTML; cleaned text archived at `AOE2_projects/RMS/reference-docs/definitive-rms-guide-2026-07-16.txt` (workspace level, NOT committed to the repo — redistribution unclear; original zip alongside). This unblocks the `"verified": false` cleanup of language.json (full TERRAIN/CONNECTION/OBJECTS references included). Guide review findings added to REVISION_3.md Sec.7 + Sec.5: **DE comments DO nest** (rev 2's `nestedComments: false` default is wrong), quoted `#include_drs` paths span tokens (needs quote-assembly in arg consumption), `#undefine`/`#include` are non-functional exe ghosts (SymbolInfo.undefined models a fiction; `#ifdef` family should be dropped from language.json), full predefinedLabels list captured (incl. digit-leading names like `1_PLAYER_GAME` + map-size dimensions table), `start_random` can't nest, engine numeric parsing truncates at first non-numeric char, guide's own example endorses conditional-split command/block (verify #3 answered — RMS0110 info confirmed), `avoidance_distance` confirmed author bug (not in guide — don't add). Verify-in-game list: 5 of 12 original items answered from the guide; remaining priorities: #6 unclosed-brace (BCC2 specimen), #4 rnd-in-percent_chance, new #13-#16 (float forms, float rejection points, expression edges, quoted includes).
-- 2.1 rev 3 — DONE (Fable session): `docs/parser-design.md` fully rewritten incorporating REVISION_3.md Sec.6 + Sec.7.8, with a few deliberate deviations from the report: (a) expression assembly breaks on control keywords too, not just structural tokens, plus a 64-token collection cap — an unclosed `(` must not eat half the file, and conditionals-inside-expressions degrade to raw consistently with Sec.5.3; (b) expression lints grouped under one code (RMS0210) with variant messages instead of four codes; (c) goal #5 broadened to "no false errors *or false warnings*" since the corpus findings were all false-warning cases; (d) `#ifdef` family = remove from language.json entirely (not in exe dump), while `#undefine`/`#include` = keep with non-functional flag (they ARE in the dump); (e) `IncludeInfo` is structured (token/path/quoted), not `string[]`; (f) RMS0212 digit-prefix lint restricted to argument positions AND exempts if-condition positions (condition labels are arbitrary text per guide). New codes RMS0207–0213. Spec Sec.13 consolidates all data/schema action items. Both critique changelogs are appendices in the spec.
+- 2.1 rev 3 — DONE (Fable session): `docs/parser-design.md` fully rewritten incorporating REVISION_3.md Sec.6 + Sec.7.8, with a few deliberate deviations from the report: (a) expression assembly breaks on control keywords too, not just structural tokens, plus a 64-token collection cap — an unclosed `(` must not eat half the file, and conditionals-inside-expressions degrade to raw consistently with Sec.5.3; (b) expression lints grouped under one code (RMS0210) with variant messages instead of four codes; (c) goal #5 broadened to "no false errors _or false warnings_" since the corpus findings were all false-warning cases; (d) `#ifdef` family = remove from language.json entirely (not in exe dump), while `#undefine`/`#include` = keep with non-functional flag (they ARE in the dump); (e) `IncludeInfo` is structured (token/path/quoted), not `string[]`; (f) RMS0212 digit-prefix lint restricted to argument positions AND exempts if-condition positions (condition labels are arbitrary text per guide). New codes RMS0207–0213. Spec Sec.13 consolidates all data/schema action items. Both critique changelogs are appendices in the spec.
 - 2.1 rev 4 — DONE (Fable session, from a fourth critique that independently re-derived the corpus claims). All six substantive findings adopted: RMS0212 re-scoped to numeric-typed argument slots only (rev 3 would have false-warned on `#define 2V1`, live in 5 corpus maps); Sec.8 duplicate-attribute rule split by new `repeatable` schema flag (blanket last-wins would have made Breakdown corrupt connection blocks — repeatable attrs are pinned as lists in Breakdown UI); "skip" eliminated as an AST outcome (rejected tokens join the pending unknown-run — coverage gate satisfiable by construction); symbols/includes survive Sec.5.3 RawNode degradation (token-stream concern, mirrors engine); new validate() shadowing-predefined-names check (`#const GOLD` = silent no-op); errata fixed (ELEVATION header miscount — legality now cited to guide line 148; expression count is actually 45 across 3 files incl. AD4's #const-value expressions, now a required fixture; AK_Six_Points has a live stray `*/` at line 1893 — corpus is not comment-clean). Also: RMS0207 cascade suppression (one glued brace ≠ fifty warnings), RMS0214 malformed-rnd did-you-mean, verify #17 (float rnd bounds), BOM token representation pinned, RMS0004 char set enumerated, sectionHeader regex admits digits, stop set made context-symmetric. Changelog = spec Appendix B.
-- 2.1 rev 5 input — fifth critique (Fable session): **`docs/REVISION_5.md`** is the full report; the spec is NOT yet edited. Method: token-level re-derivation of every corpus claim (comment/nesting-aware walker) + verification of every guide citation against the archived guide text. Rev-4 architecture survives; no structural rework. Majors: (1) **guide Example2 (the flagship split-command idiom) never reaches Sec.5.3** — it dispatches through Sec.5.4 to OrphanBlockNode + RMS0102 *warning*, not the promised RMS0110 *info* (goal-#5 violation; fixture also missing from Sec.12); (2) **ArgNode has no token span** — quote-assembled include paths' interior tokens are unreachable from any AST field, breaking both the Sec.12 coverage gate (whose "reachable" is never defined) and the 3.3 patch engine (can't compute the span to edit); (3) **Sec.5.3's wrap is backward-only** — both trigger cases leave the construct's *trailing* closer (the `}` or `endif` ahead of the trigger) to fire a spurious RMS0104/0106 warning; needs forward extension bounded by section header/EOF; (4) **Sec.2.2 modulo-by-0 is self-contradictory**: guide main text ("Modulo 0 gives 0") is stale — the Summer 2025 patch notes changed it to "left operand truncated toward zero", and the spec pasted both; also % truncates (doesn't floor) per the guide's own `-5.9 % -inf` example; (5) guide line 3362 "**comments cannot be used in math expressions**" unmodeled — comment pass runs first, so assembly silently accepts `(A + /* x */ 1)` which the engine rejects (needs an RMS0210 variant checking for trivia inside the expression's index range); (6) **`spacing_to_specific_terrain` maxRepeats:4 is uncited** — guide says "can be used multiple times", no cap (the example just has 4 lines); would false-warn on a legal 5th; (7) corpus claim "zero if/brace imbalances" is false — **ForeDaut line 642 has a live stray extra `endif`** (new RMS0106 corpus fixture; engine provably tolerates). Plus 6 pinned-decision gaps (expression-terminator edges like interior `rnd(1,5)`/`(5)` both ending with `)`; quote-assembly cap unstated; percent_chance/if-condition consumption mechanics — controlKeywords have no `arguments[]` in language.json; unknown-run code for number-initiated runs; section attribution after a Sec.5.3 RawNode containing a header; conditionalDepth vs start_random branches — QS line 1189 specimen), 2 new validate() checks (use-before-definition per guide line 148; `mutexWith` is live data in language.json that nothing consumes), errata (RMS0005 "skipped" vs BOM-as-token; digit-defines are in 8 of 11 maps not 5; guide has 3 more not-a-comment fixture strings incl. `//` — suggested beginner lint). Everything else re-verified exact (45 expressions/3 files, BCC2 depth 1, Six_Points stray `*/` genuinely stray at token level, 123,162 corpus tokens, Vanguard 49,705 tokens/366,303 bytes, zero BOM/NBSP/nested-randoms, newest patch vocab all present in language.json).
-- 2.1 rev 5 — DONE (Fable session). All seven substantive REVISION_5 findings adopted, changelog = spec Appendix B (appendices relettered: B=rev5, C=rev4, D=rev2). Key resolutions: guide Example2 gets a dedicated **shared-block rule** in Sec.5.4 (lookbehind: `{` after a just-completed if/random whose branch tails are block-capable commands → OrphanBlockNode + RMS0110 *info*, contents parse — chose the lossless shape over wrapping to raw); ArgNode now has firstToken/lastToken + coverage "reachable" formally defined (deepest-owner + well-nested ranges); Sec.5.3 wraps forward until involved constructs close (bounded by section header/EOF); modulo pinned to truncation-toward-zero (Summer 2025 patch supersedes stale guide text; % is truncate not floor per the guide's own -5.9 % -inf example; new verify #18); comment-inside-expression RMS0210 variant; spacing maxRepeats:4 withdrawn pending re-check of Update 153015's notes (REVISION_3 sourced the cap from patch notes, REVISION_5 confirmed the guide has none — conflict unresolved, so no cap ships); ForeDaut stray-endif correction + fixture. Six ambiguities pinned (expression terminator: rnd-kind tokens never terminate collection, interior `(5)` terminates + lints; quote cap 64; control-keyword operands incl. expression/rnd active in percent_chance slot + `arguments[]`-on-controlKeywords schema action; RMS0215 for value-initiated unknown-runs; wrong-section suppression after degraded headers; conditionalDepth counts random branches). validate() gains use-before-definition (guide line 148) and mutexWith consumption. New codes RMS0215/0216 (0216 = `//`-is-not-a-comment beginner lint, adopted from the report's suggestion).
+- 2.1 rev 5 input — fifth critique (Fable session): **`docs/REVISION_5.md`** is the full report; the spec is NOT yet edited. Method: token-level re-derivation of every corpus claim (comment/nesting-aware walker) + verification of every guide citation against the archived guide text. Rev-4 architecture survives; no structural rework. Majors: (1) **guide Example2 (the flagship split-command idiom) never reaches Sec.5.3** — it dispatches through Sec.5.4 to OrphanBlockNode + RMS0102 _warning_, not the promised RMS0110 _info_ (goal-#5 violation; fixture also missing from Sec.12); (2) **ArgNode has no token span** — quote-assembled include paths' interior tokens are unreachable from any AST field, breaking both the Sec.12 coverage gate (whose "reachable" is never defined) and the 3.3 patch engine (can't compute the span to edit); (3) **Sec.5.3's wrap is backward-only** — both trigger cases leave the construct's _trailing_ closer (the `}` or `endif` ahead of the trigger) to fire a spurious RMS0104/0106 warning; needs forward extension bounded by section header/EOF; (4) **Sec.2.2 modulo-by-0 is self-contradictory**: guide main text ("Modulo 0 gives 0") is stale — the Summer 2025 patch notes changed it to "left operand truncated toward zero", and the spec pasted both; also % truncates (doesn't floor) per the guide's own `-5.9 % -inf` example; (5) guide line 3362 "**comments cannot be used in math expressions**" unmodeled — comment pass runs first, so assembly silently accepts `(A + /* x */ 1)` which the engine rejects (needs an RMS0210 variant checking for trivia inside the expression's index range); (6) **`spacing_to_specific_terrain` maxRepeats:4 is uncited** — guide says "can be used multiple times", no cap (the example just has 4 lines); would false-warn on a legal 5th; (7) corpus claim "zero if/brace imbalances" is false — **ForeDaut line 642 has a live stray extra `endif`** (new RMS0106 corpus fixture; engine provably tolerates). Plus 6 pinned-decision gaps (expression-terminator edges like interior `rnd(1,5)`/`(5)` both ending with `)`; quote-assembly cap unstated; percent_chance/if-condition consumption mechanics — controlKeywords have no `arguments[]` in language.json; unknown-run code for number-initiated runs; section attribution after a Sec.5.3 RawNode containing a header; conditionalDepth vs start_random branches — QS line 1189 specimen), 2 new validate() checks (use-before-definition per guide line 148; `mutexWith` is live data in language.json that nothing consumes), errata (RMS0005 "skipped" vs BOM-as-token; digit-defines are in 8 of 11 maps not 5; guide has 3 more not-a-comment fixture strings incl. `//` — suggested beginner lint). Everything else re-verified exact (45 expressions/3 files, BCC2 depth 1, Six_Points stray `*/` genuinely stray at token level, 123,162 corpus tokens, Vanguard 49,705 tokens/366,303 bytes, zero BOM/NBSP/nested-randoms, newest patch vocab all present in language.json).
+- 2.1 rev 5 — DONE (Fable session). All seven substantive REVISION_5 findings adopted, changelog = spec Appendix B (appendices relettered: B=rev5, C=rev4, D=rev2). Key resolutions: guide Example2 gets a dedicated **shared-block rule** in Sec.5.4 (lookbehind: `{` after a just-completed if/random whose branch tails are block-capable commands → OrphanBlockNode + RMS0110 _info_, contents parse — chose the lossless shape over wrapping to raw); ArgNode now has firstToken/lastToken + coverage "reachable" formally defined (deepest-owner + well-nested ranges); Sec.5.3 wraps forward until involved constructs close (bounded by section header/EOF); modulo pinned to truncation-toward-zero (Summer 2025 patch supersedes stale guide text; % is truncate not floor per the guide's own -5.9 % -inf example; new verify #18); comment-inside-expression RMS0210 variant; spacing maxRepeats:4 withdrawn pending re-check of Update 153015's notes (REVISION_3 sourced the cap from patch notes, REVISION_5 confirmed the guide has none — conflict unresolved, so no cap ships); ForeDaut stray-endif correction + fixture. Six ambiguities pinned (expression terminator: rnd-kind tokens never terminate collection, interior `(5)` terminates + lints; quote cap 64; control-keyword operands incl. expression/rnd active in percent_chance slot + `arguments[]`-on-controlKeywords schema action; RMS0215 for value-initiated unknown-runs; wrong-section suppression after degraded headers; conditionalDepth counts random branches). validate() gains use-before-definition (guide line 148) and mutexWith consumption. New codes RMS0215/0216 (0216 = `//`-is-not-a-comment beginner lint, adopted from the report's suggestion).
 - **Corpus grew to ~52 files** (was 12): **BCC2 was renamed** `BCC2-Rekawa.rms` (spec's old `_Capt_Knip_edit` name is stale — spec Sec.12 updated). Spec header + Sec.12 now mark all corpus statistics as the 12-file REVISION_5 snapshot; re-derive before citing for the new set. Full 52-file triage is explicitly NOT required — the zero-error gate applies to whatever is present once each file passes the per-map triage protocol; triage incrementally, starting with files already used as fixtures.
 - 2.2 Tokenizer — done, **not yet verified locally by Ash** (verified by me in an isolated sandbox copy — see below — since this session's own shell mount is unreliable, see caveat). `src/parser/types.ts` (`Token`/`TokenKind`/`Diagnostic`/`Span`/`LexOptions`/`LexResult`), `src/parser/diagnostics.ts` (full RMS00xx–RMS0216 code table from spec Sec.10, data for 2.3 to reuse, plus the lexer-level message builders actually wired up now: RMS0001/0002/0003/0004/0005/0216), `src/parser/lexer.ts` (`tokenize(source, opts)`), `src/parser/__tests__/lexer.test.ts` (31 tests). Implements spec Sec.2 exactly: whitespace-splitting on the pinned C `isspace` set, classification precedence (exact-match brace/comment markers → sectionHeader → directive → rnd → number → word fallback), a nesting-aware comment-span pass (`nestedComments` defaults true; setting it false degenerately collapses to first-closer-wins without a separate code path), and the three lexer-level lints (RMS0003 glued markers with leading/trailing/embedded message variants, RMS0004 non-standard space chars, RMS0216 `//`-is-not-a-comment). BOM and the RMS0004 character set are built from numeric code points (`String.fromCharCode`) at runtime rather than embedded as literal invisible characters or `\u` escapes in the source — both proved to get silently mangled by this session's own tooling while I was writing the file (see bug below), so runtime construction sidesteps the whole class of problem for good.
-  - **Real bug caught during self-verification**: a JSDoc comment in `types.ts` read `` Whether `/* */` comments nest `` — the literal `*/` inside that comment text closes the `/** ... */` doc comment early (JS/TS comments don't nest), corrupting everything after it into broken syntax. `tsc` caught it immediately as a syntax error. Fixed by rewording to avoid the substring entirely ("Whether RMS's block comments... nest inside each other"). Lesson for future sessions: never write a literal `/* ... */` example inside a real comment block — describe it in prose or split the slash-star apart.
+  - **Real bug caught during self-verification**: a JSDoc comment in `types.ts` read ``Whether `/* */` comments nest`` — the literal `*/` inside that comment text closes the `/** ... */` doc comment early (JS/TS comments don't nest), corrupting everything after it into broken syntax. `tsc` caught it immediately as a syntax error. Fixed by rewording to avoid the substring entirely ("Whether RMS's block comments... nest inside each other"). Lesson for future sessions: never write a literal `/* ... */` example inside a real comment block — describe it in prose or split the slash-star apart.
   - **Environment caveat, worth knowing about**: while iterating, I found this session's Linux shell mount was serving a **stale cached snapshot** of `types.ts` after an edit (missing its last 4 lines, byte-for-byte reproducible across multiple re-reads and a `cp`), even though the real file (verified via the file-editing tool directly, which is authoritative) was correct and complete the whole time. I did not chase this further — it's a sandbox quirk, not a project bug. Practical effect: I could not fully self-verify `npm test`/`npm run typecheck` against the actual project tree this session, so I mirrored `src/parser/*` into an isolated scratch project (fresh `npm install vitest typescript`) and ran the suite there instead — genuinely the same source files, just copied via heredoc to route around the stale-mount issue. All 31 tests passed and `tsc --noEmit` was clean there, using the same `strict`/`noUnusedLocals`/etc. compiler options as this repo's `tsconfig.json`. Given that history, **please still run the commands below yourself** as the real confirmation.
   - Left `src/smoke.test.ts` in place (couldn't delete it from this session's sandbox — file removal isn't permitted). It's harmless alongside the real suite; delete it locally whenever convenient, per its own "safe to delete once real tests exist" comment.
   - Interpretation note for the guide fixture strings in spec Sec.12 (lines 2936–2943 of the archived guide): under RMS's whitespace-splitting model, a prose string like `/*this is NOT a comment*/` is actually several separate tokens once real spaces are involved, not one — the tests assert the token-level behavior each fixture implies rather than reproducing the guide's markdown prose verbatim. The "triple-backtick string" item has no independent lexical meaning to RMS (backticks aren't special) and is covered generically by the one-giant-token degenerate-input test instead. Full reasoning is in a comment block directly above the `guide fixture strings` describe block in the test file.
@@ -76,7 +76,7 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - CREATION_PLAN's "2.3 extension sessions per command group" are mostly obsolete: argument consumption is fully data-driven, so there is no per-command parser code to extend — remaining per-command work is language.json cleanup (Sec.13) + fixtures, not parser changes. Parallelizable Sonnet session: language.json cleanup per spec Sec.13 (fill unverified arg shapes from archived guide; remove #ifdef family; flag #undefine/#include non-functional — parser already reads `nonFunctional`; add predefinedLabels; repeatable flags — NO maxRepeats without re-checking 153015's notes; add `arguments[]` to controlKeywords — parser has the pinned exception ready to be replaced; keep mutexWith, consumed by validate() in 2.4/2.5). In-game verify session: open items #4, #6–10, #12–18 (#6 first — BCC2 specimen; #15 now includes the engine's expression close-detection rule). Corpus triage: incremental; BCC2 → test-maps/broken/ or fix + reduced fixture (then add it to corpus.test.ts's ZERO_ERROR_ALLOWLIST if fixed); newly-triaged maps join the allowlist one by one.
 - 2.4 Live diagnostics — done, verified in an isolated sandbox mirror (129 tests passing — 128 parser/lexer + 1 smoke — plus a clean `tsc --noEmit` across the whole frontend, not just src/parser/ this time; `npm run validate:reference` also green). Files:
   - `src/editor/parserWorker.ts` — the actual worker entry (`?worker`-imported, same pattern as `monacoSetup.ts`'s Monaco editor worker). Imports `reference/data/language.json`, double-casts it to `LanguageData` (`as unknown as LanguageData` — a single-step cast isn't guaranteed to typecheck against every optional field the language.json shape has grown since 1.5), calls `parseRms(source, languageData)` on each `{requestId, source}` message, posts back `{requestId, diagnostics, tokenCount, parseTimeMs}`. This is the ONLY file that imports both `src/parser/*` and the reference JSON together — `src/parser/*` itself still has zero React/Monaco/Tauri imports, so it stays worker-safe and Node-testable.
-  - `src/editor/useRmsDiagnostics.ts` — debounces `content` changes 150ms (per CREATION_PLAN's exact number), then posts to the worker. Tracks a monotonic `requestId`; a response is only applied if its id matches the *latest sent* request, so a slow/out-of-order response for an edit the user has since typed past gets silently dropped rather than corrupting the display. Returns `{ source, diagnostics }` — deliberately includes `source` (the string the diagnostics were computed for) so callers can detect staleness themselves.
+  - `src/editor/useRmsDiagnostics.ts` — debounces `content` changes 150ms (per CREATION_PLAN's exact number), then posts to the worker. Tracks a monotonic `requestId`; a response is only applied if its id matches the _latest sent_ request, so a slow/out-of-order response for an edit the user has since typed past gets silently dropped rather than corrupting the display. Returns `{ source, diagnostics }` — deliberately includes `source` (the string the diagnostics were computed for) so callers can detect staleness themselves.
   - `src/editor/diagnosticsToMarkers.ts` — converts `Diagnostic[]` (char offsets) to Monaco `IMarkerData[]` (line/column) via `model.getPositionAt`, which is the same UTF-16-code-unit counting the parser used, so the two never disagree.
   - `src/components/CodePane.tsx` — wires it together: `onMount` captures the Monaco `editor`/`monaco` refs; a `useEffect` on `[source, diagnostics]` calls `monaco.editor.setModelMarkers(model, "aoe2-rms-parser", ...)`, but ONLY if `model.getValue() === source` — guards against applying markers computed for stale content if the user kept typing during the debounce/parse round-trip (next matching result catches up instead). Also reports the applied diagnostics up via a new `onDiagnosticsChange` prop.
   - `src/components/StatusBar.tsx` — new optional `diagnostics` prop, renders "Problems: N errors, M warnings" (or "Problems: none"); `statusBar.problems` added to `ui-help.json`.
@@ -123,19 +123,19 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - **New action items surfaced** (spec Sec.7, none blocking 3.1): a `sectionLabels` map for tab labels; broader `ArgumentDef.default` population for the absent-attribute add-rows; confirm `repeatable` flags on all cumulative attrs; `predefinedLabels` (also a parser Sec.13 item) for condition/constant comboboxes; the Phase-4.0 `game-constants.json` extraction fills the terrain/object comboboxes + reference table (names-only until then).
 - 3.1 rev 2 — DONE (same session, after a critique pass). Every empirical claim in the critique was re-verified against the data before adoption; one was wrong and is corrected in the spec (see below). Changelog = spec Appendix C. Two clusters fixed:
   - **Reference-data prerequisites rev 1 assumed existed and don't** (new spec Sec.0.1; Sec.7 split blocking/graceful). Verified **zero occurrences** of `repeatable`, `maxRepeats`, `nonFunctional`, `predefinedLabels`, `sectionLabels` in `language.json`; the **`#ifdef`/`#ifndef`/`#else`/`#endif` entries parser-design Sec.13 ordered removed are still live** in `directives[]`; argument `default` coverage is **34/132 (25.8%)**. Consequences: (a) **new Sec.3.3 ground-truth rule — duplicate present attribute instances render as a list regardless of the `repeatable` flag** (the flag now only governs whether "add another" is offered). Rev 1 keyed the list off the flag, so with zero flags the natural implementation binds one row to the first instance and **silently orphans the rest** — real corpus exposure: 35 `replace_terrain`s in `Rage Forest 2026.rms`, 3 consecutive in one block in `24hr_Bazi is God.rms`. That was invisible-content-loss in Breakdown and one edit from the collapse parser Sec.8 exists to prevent. (b) 3.2 **must hardcode-suppress the four `#ifdef`-family names** from any picker until the data is cleaned, else beginners get offered phantom directives with no warning badge (`nonFunctional`, which drives the badge, doesn't exist). (c) The all-attributes pitch restated honestly — ~74% of absent rows show no default, so the no-default path is the common case.
-  - **Patch-engine under-specification, concentrated in the hardest code.** `InsertTarget`'s branch variant was **unimplementable**: `IfBranch`/`RandomBranch` are plain interfaces with no span/parent/index, yet Sec.4.5 needed `branches[i+1].keyword` using an `i` no intent carried → replaced with `BranchRef { parent, index }`. `computeEdit` return pinned to `EditResult { edit, caret }` (rev 1 said "one TextEdit" in Sec.4.1 and "also returns a caret" in Sec.6.3). Optional `condition`/`chance` handled (both `?` in types.ts; rev 1's replace-the-span rule had no span → now insert-after-keyword). **`string` argument type de-overloaded** — `#const`/`#define` *names* are also `type: "string"`, so rev 1's quote round-trip would emit `#const "NAME"`; quoting now applies to filename args only via the `DirectiveNode.hash` → `IncludeInfo.directiveToken` hop. Sec.4.6 delete rule rewritten as two all-or-nothing modes (rev 1's was garbled and could strand a comment at column 0). New Sec.4.11 pins commit-on-blur/Enter/Escape semantics (asserted in Sec.3.4, specified nowhere).
-  - **Sec.4.8, the acceptance criterion, made implementable.** Rev 1's "differs in exactly the intended way and no other" is not a testable statement — every insert shifts spans downstream, so a literal structural diff fails on *correct* edits. Now formal: shift `Δ`, pre-/post-/straddling partition, explicit **shift-equal** node equality, five numbered clauses. **Corrected a false claim**: the harness cannot "reuse parser Sec.12's checkers" — `testUtils.ts` exports only `loadLanguage`/`collectNodes`/`checkProperties(result)`, all single-`ParseResult` validators covering the well-formedness clause alone. The **shift-aware AST comparator (`astDiff.ts`) is new work** and is now budgeted as a real 3.3 component. Added seeded `mulberry32` + fixed per-file intent budget (rev 1 said only "generate random intents" — unreproducible and slow in CI).
+  - **Patch-engine under-specification, concentrated in the hardest code.** `InsertTarget`'s branch variant was **unimplementable**: `IfBranch`/`RandomBranch` are plain interfaces with no span/parent/index, yet Sec.4.5 needed `branches[i+1].keyword` using an `i` no intent carried → replaced with `BranchRef { parent, index }`. `computeEdit` return pinned to `EditResult { edit, caret }` (rev 1 said "one TextEdit" in Sec.4.1 and "also returns a caret" in Sec.6.3). Optional `condition`/`chance` handled (both `?` in types.ts; rev 1's replace-the-span rule had no span → now insert-after-keyword). **`string` argument type de-overloaded** — `#const`/`#define` _names_ are also `type: "string"`, so rev 1's quote round-trip would emit `#const "NAME"`; quoting now applies to filename args only via the `DirectiveNode.hash` → `IncludeInfo.directiveToken` hop. Sec.4.6 delete rule rewritten as two all-or-nothing modes (rev 1's was garbled and could strand a comment at column 0). New Sec.4.11 pins commit-on-blur/Enter/Escape semantics (asserted in Sec.3.4, specified nowhere).
+  - **Sec.4.8, the acceptance criterion, made implementable.** Rev 1's "differs in exactly the intended way and no other" is not a testable statement — every insert shifts spans downstream, so a literal structural diff fails on _correct_ edits. Now formal: shift `Δ`, pre-/post-/straddling partition, explicit **shift-equal** node equality, five numbered clauses. **Corrected a false claim**: the harness cannot "reuse parser Sec.12's checkers" — `testUtils.ts` exports only `loadLanguage`/`collectNodes`/`checkProperties(result)`, all single-`ParseResult` validators covering the well-formedness clause alone. The **shift-aware AST comparator (`astDiff.ts`) is new work** and is now budgeted as a real 3.3 component. Added seeded `mulberry32` + fixed per-file intent budget (rev 1 said only "generate random intents" — unreproducible and slow in CI).
   - **Sec.6.2 one-parse contradiction resolved**: rev 1 said both "the single parse" and worker-plus-main-thread. Pinned to **one parse in the existing worker** returning the full `ParseResult`; hook returns `{ source, parseResult, diagnostics, resourceTotals }` — `source` retained because `CodePane.tsx:72` uses it as the marker-staleness guard, and `resourceTotals` stays worker-computed so `StatusBar`'s props are genuinely unchanged. AST payload cost is a measured trigger (`wantAst` flag), not an open question.
-  - **One critique claim was wrong and is corrected in the spec**: it stated `test-maps/local/` and `test-maps/broken/` both don't exist. **`local/` does exist (19 files)** — it's *gitignored* (`.gitignore:26`), so the real problem is unavailability in CI, not absence; `broken/` genuinely doesn't exist. Sec.10 now treats both as opportunistic (directory-exists check), with no test hard-depending on either.
+  - **One critique claim was wrong and is corrected in the spec**: it stated `test-maps/local/` and `test-maps/broken/` both don't exist. **`local/` does exist (19 files)** — it's _gitignored_ (`.gitignore:26`), so the real problem is unavailability in CI, not absence; `broken/` genuinely doesn't exist. Sec.10 now treats both as opportunistic (directory-exists check), with no test hard-depending on either.
   - **Still not reviewed by Ash.** No code written — spec only, both revs.
 - 3.1 addendum — **"Hide Unused" switch** (Ash's request, post-rev-2). New spec Sec.3.3.1 + mentions in Sec.3.1 (control lives in the section sub-tab row), Sec.8 (HelpTip `breakdown.hideUnused`), Appendix A, and a product-level line in `PLAN.md`'s UI section. View-level boolean toggle that hides attribute rows **corresponding to no bytes in the source** (the faint absent rows of Sec.3.3, incl. unchecked flags). **The pinned line is "no bytes", not "no value"** — a present-but-valueless attribute (e.g. `land_percent` written with no argument, `RMS0201`) stays visible, as do the "Other contents" group and positional args; hiding real content would violate total coverage (goal #3). Cards show a "N unused hidden" count so a filtered view never looks complete. Default off, persisted in `settings.json` like `helpMode`. Rationale: it's the escape valve for the busy-block cost the all-attributes decision knowingly accepted, and it directly mitigates the Sec.0.3 caveat (only 25.8% of arguments have a `default`, so most absent rows currently render empty).
 - 3.3 test fix — **3 failing property tests fixed, verified green** (`EM Arabia.rms`, `EM Arena.rms`, `EM Runestones.rms`, all `AssertionError: expected 25 to be less than 25`). **Not a patch-engine bug.** Those three files are 47–52-byte stubs (`#define ESCALATION_MODE` + `#include_drs Arabia.rms`) with no sections, commands, or blocks, so `harvest()` returned all-empty pools, `makeIntent` returned `undefined` all 25 iterations, and the `expect(skipped).toBeLessThan(N_INTENTS)` guard tripped. Two fixes in `src/breakdown/patch/__tests__/patch.property.test.ts`:
   - **Directives are now removable** (the real find). `harvest` had `if (item.kind !== "directive") pools.removables.push(item)` — but `removeNode` explicitly accepts `DirectiveNode` in `intents.ts` and `computeEdit` handles it generically via `removeSpan`. So excluding them was a harness omission, not a design constraint, and it left **every directive edit — the entire Header tab surface (Sec.3.1/Sec.3.6) — with zero property coverage corpus-wide**. Including them closes that gap and makes the EM stubs productive rather than merely exempt. Also tightened `Pools.removables` to `(CommandNode | AttributeNode | DirectiveNode)[]`, which let the `as never` cast on the `removeNode` intent be deleted.
-  - **The productivity assertion is now conditional.** "At least one real edit per file" is false as an absolute — a file can legitimately offer nothing to edit. New `isInert(pools)` helper: assert `skipped < N_INTENTS` where targets exist, `skipped === N_INTENTS` where they don't, so both a broken generator *and* a mis-harvested file still fail loudly. (Kept even though fix 1 alone makes the EM files pass — the guard was wrong in principle and would trip again on any inert file, e.g. comment-only.)
+  - **The productivity assertion is now conditional.** "At least one real edit per file" is false as an absolute — a file can legitimately offer nothing to edit. New `isInert(pools)` helper: assert `skipped < N_INTENTS` where targets exist, `skipped === N_INTENTS` where they don't, so both a broken generator _and_ a mis-harvested file still fail loudly. (Kept even though fix 1 alone makes the EM files pass — the guard was wrong in principle and would trip again on any inert file, e.g. comment-only.)
   - **Verified** in an isolated `/tmp` scratch mirror (the repo's own `node_modules` still can't run vitest in the Linux sandbox — the documented `@rollup/rollup-linux-x64-gnu` arch error from 2.5; deliberately did NOT install Linux binaries into the mounted tree). Mirror integrity was line-count-checked against source (no stale-mount corruption this session). Results: the 3 originally-failing files pass; full corpus green across four batches (24hr+AK_ incl. Vanguard = 14, Pa_Site/AD4/13_Rings/BCC2/Chaotic/Menindee/OWWC/QS_/Rage/TC2/W4/sample/TL = 19, local DE-official maps = 19); `patch.unit.test.ts` 22/22; `tsc --noEmit` clean. **Ash, please confirm locally with a full `npm test`** — expect 225/225.
 - 3.1 rev 3 — DONE (Fable session, from a second critique; changelog = spec Appendix D; all critique claims re-verified against .gitignore/AD4 Pag/parser.ts before adoption — all held). Majors: (1) **the CI corpus is 13 committed files** — `.gitignore:27` is `test-maps/*` with selective negations, and rev 2's own duplicate-attribute specimens (Rage Forest, Bazi) were both untracked; committed specimen is now **`AD4 - Pag - v1.2.rms`** (5× consecutive replace_terrain at 686–690, terrain_costs, commented-out replace_terrain inside a block at 734) everywhere a test names a file. (2) **Sec.3.3 unknown-name model corrected to match parser.ts**: def-less CommandNodes exist only via the word+`{` upgrade; bare unknowns (the `elavation` typo path) are RawNodes → raw cards, now with a specified **did-you-mean quick-fix** backed by a new structured `Diagnostic.suggestion` field (small parser change, Sec.7 item 10, before 3.4); known-but-unlisted attributes arrive fully-resolved with NO diagnostic → normal typed rows, no badge. (3) **Sec.4.8 clause 4 scoped** — delete intents legitimately remove interior trivia; absolute form failed every correct delete of a commented construct. Also: clause 3 ancestor-chain rule stated generically; `AttributeTarget = BlockNode | CommandNode` for the brace-synthesis case; validate() dependency made explicit in Sec.0.1 (two UI notes deferred until it exists); **per-file PRNG seeding** (filename-derived) so dev/CI corpus differences can't desync the property gate; minors (own-lines governance, duplicate-flag list rule, last-percent_chance-branch symmetry, blur-vs-caret focus, Header-tab badge, clause-5 example replaced, `{after: Item}` dropped).
   - **Fixed in code**: `corpus.test.ts` allowlist + benchmark still said `Vanguard_v1.2.rms` after the file's rename to `AK_Vanguard_v1.2.rms` — the benchmark map had silently dropped out of the zero-error gate. Both fixed (Ash: re-run `npm test`; if AK_Vanguard now surfaces error-severity diagnostics they're real findings, likely triage items).
-  - Next: 3.2 read-only Breakdown (Sonnet) — section tabs, command cards, all-attributes rows (incl. the Sec.3.3 duplicate-list + rev-3 unknown-name rules), RawBlock display, reference-table side panel; verify against every committed `test-maps/` file. **Do spec Sec.0.1 P1/P2 (the `#ifdef` removal + `nonFunctional`/`repeatable` flags in language.json) first or alongside** — P2 is a beginner-harm path; add `Diagnostic.suggestion` (Sec.7 item 10) in the same pass. Then 3.3 patch engine (Fable/Opus — `astDiff.ts` + the Sec.4.8 property gate green *before* any UI wiring), 3.4 editable (quick-fix ships here), 3.5 help audit. validate() remains its own parallelizable Sonnet session (unblocks two deferred UI notes).
+  - Next: 3.2 read-only Breakdown (Sonnet) — section tabs, command cards, all-attributes rows (incl. the Sec.3.3 duplicate-list + rev-3 unknown-name rules), RawBlock display, reference-table side panel; verify against every committed `test-maps/` file. **Do spec Sec.0.1 P1/P2 (the `#ifdef` removal + `nonFunctional`/`repeatable` flags in language.json) first or alongside** — P2 is a beginner-harm path; add `Diagnostic.suggestion` (Sec.7 item 10) in the same pass. Then 3.3 patch engine (Fable/Opus — `astDiff.ts` + the Sec.4.8 property gate green _before_ any UI wiring), 3.4 editable (quick-fix ships here), 3.5 help audit. validate() remains its own parallelizable Sonnet session (unblocks two deferred UI notes).
 - **3.2 read-only Breakdown — DONE (Sonnet session).** Sec.0.1 P1/P2 prerequisites verified already correct from a prior pass (`#ifdef`/`#ifndef`/`#else`/`#endif` gone from `directives[]`; `nonFunctional: true` on `#undefine`/`#include`; `repeatable: true` on `replace_terrain`/`terrain_cost`/`spacing_to_specific_terrain`/`terrain_size` — `terrain_size` is the judgment call for "connection radii", the closest def in the connection block's attribute list to a radius/band concept; `Diagnostic.suggestion` populated by `unknownName()`) — **but `reference/schemas/language.schema.json` had NOT been updated to allow `repeatable`/`maxRepeats`/`nonFunctional`/`optional`/`variadic`**, so `npm run validate:reference` was actually red going into this session (`additionalProperties: false` rejected the new fields). Fixed as part of this pass — flagging so nobody assumes "P1/P2 already done" meant fully verified end-to-end again.
   - **`sectionLabels`** — `src/breakdown/sectionLabels.ts`, the 7-entry canonical-name→label map per Sec.3.1, plus `CANONICAL_SECTION_ORDER`.
   - **Parse lifted to app level (Sec.6.2)** — `src/editor/parserWorker.ts`'s response widened with the full `parseResult` (structured-clones fine, plain data); new `src/useParsedDocument.ts` (app-level, per spec) owns the one parse and returns `{ source, parseResult, diagnostics, resourceTotals }`; `AppContent` (`src/App.tsx`) calls it once and feeds `CodePane` (now a thin `source`/`diagnostics` props consumer, no longer owns its own worker/hook) and the new `BreakdownPane` (`parseResult`) and `StatusBar` (unchanged props) from the same instance. Old `src/editor/useRmsDiagnostics.ts` is superseded (left as an empty `export {}` stub — this sandbox couldn't delete the file; nothing imports it, safe to actually delete locally).
@@ -143,24 +143,24 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - **Side panel (Sec.3.8) — most under-specified part, built pragmatically**: `PreviewPlaceholder` is the Phase-4 stub with a Current/Final radio toggle (wired to local state only, no preview logic). `ReferenceTable` is a Terrain/Objects/Commands radio + table, **not filtered to the current selection** — spec explicitly calls selection-filtering a "nice-to-have, not required for 3.2", so it wasn't built; deferred to whoever wants it later (a natural fit once cards have real focus/selection state in 3.4).
   - **Verified**: `npx tsc --noEmit` clean (whole project), `npx eslint .` clean on every touched/new file (two pre-existing-pattern warnings only — react-refresh on a context file, react-hooks/exhaustive-deps on the lifted parse hook, both inherited from the code being replaced), `node scripts/validate-reference-data.mjs` all green. Real vitest against the mounted project still hits the known rollup optional-dependency issue (unrelated, see 2.5's note) — instead built an isolated `/tmp` sandbox (parser + breakdown pure `.ts` files only, no React/jsdom) with a new coverage test asserting every `Item` (recursively through blocks/branches/conditionals) in every one of the 33 files under this environment's `test-maps/` maps to exactly one card-kind and that `buildCommandBreakdown`/`buildSectionTabs` never throw — **33/33 passing**, `tsc --noEmit` clean there too.
   - **Ash, please confirm visually**: `npm run tauri dev`, open a real `.rms` file (`AD4 - Pag - v1.2.rms` is the spec's own duplicate-attribute/comment specimen — good first check for the ground-truth list rule), switch to the Breakdown tab, click through section tabs, expand a few command cards, and open a file with a conditional/`start_random` block to see the nested read-only branch rendering. Also worth trying a file with a genuine parse error to confirm the raw-card fallback and the unclosed-container "finish in Code tab" messaging read sensibly.
-  - Next: 3.3 patch engine (Fable/Opus — `astDiff.ts` + the Sec.4.8 property gate green *before* any UI wiring), 3.4 wires the read-only stubs built here to real `EditIntent`s, 3.5 help audit.
+  - Next: 3.3 patch engine (Fable/Opus — `astDiff.ts` + the Sec.4.8 property gate green _before_ any UI wiring), 3.4 wires the read-only stubs built here to real `EditIntent`s, 3.5 help audit.
 
 **Phase 3 — post-3.4 feedback session (Opus).**
 
 - **BUG-001 logged** (`docs/known-issues.md`, new file, linked from CLAUDE.md): Breakdown card expansion jumps to the neighbouring card for ~150ms after a delete. Not a keying bug — offset anchoring (Sec.6.3) is correct and must NOT be replaced with per-card booleans (no stable node identity across reparse). Root cause is sequencing: `BreakdownPane.tsx:103` shifts anchors synchronously while `parseResult` lags behind the debounced worker reparse, so new anchors render against old spans. Prescribed fix is two-part (defer the shift until the matching parse arrives; skip the debounce for programmatic edits). Left for a Sonnet session.
-- **Unsaved-changes guard rewritten and generalised.** Was: Tauri's native `confirm()`, a 2-way save-or-stay, because a boolean can't express three outcomes *or* distinguish an explicit "No" from a dismissed dialog. Now: custom `src/components/UnsavedChangesDialog.tsx` with three real outcomes, where the X / Esc / backdrop all report `"cancel"`. Generalised over `UnsavedAction = "close" | "open"` (labels via a `Record<UnsavedAction, …>` mapped type, so adding an action is a compile error until its wording exists).
-  - **Open was silently discarding work** — `openFile` had no dirty check at all, so opening a map over unsaved changes lost them with no prompt. Both call sites now share one guard, `ensureSavedBefore(action)`, which returns false on *either* cancel path (dialog Cancel, or backing out of the native Save As picker — the latter previously would have closed the window anyway).
+- **Unsaved-changes guard rewritten and generalised.** Was: Tauri's native `confirm()`, a 2-way save-or-stay, because a boolean can't express three outcomes _or_ distinguish an explicit "No" from a dismissed dialog. Now: custom `src/components/UnsavedChangesDialog.tsx` with three real outcomes, where the X / Esc / backdrop all report `"cancel"`. Generalised over `UnsavedAction = "close" | "open"` (labels via a `Record<UnsavedAction, …>` mapped type, so adding an action is a compile error until its wording exists).
+  - **Open was silently discarding work** — `openFile` had no dirty check at all, so opening a map over unsaved changes lost them with no prompt. Both call sites now share one guard, `ensureSavedBefore(action)`, which returns false on _either_ cancel path (dialog Cancel, or backing out of the native Save As picker — the latter previously would have closed the window anyway).
   - Prompt fires **before** the file picker: no point making the user browse if they're going to cancel.
   - `ui-help.json`: close-specific ids replaced with generic `unsavedChanges.save`/`.discard`/`.cancel`/`.dismiss`.
   - Verified: `tsc --noEmit` clean, `eslint` clean on touched files, `validate:reference` green. **Not verifiable from the sandbox** — Ash must test the close/open paths in `npm run tauri dev`.
 - **CLAUDE.md gained a "Teaching mode" section**, placed second (before Commands/Hard rules) at Ash's request: he is learning TS/React through this project and it hasn't been happening enough. Rules are behavioural — name the concept, explain the decision not the syntax, show the failing alternative, separate idiom from project quirk, offer a learning check at session end.
-- **breakdown-design.md gained three post-3.4 specs** from Ash's live-testing feedback: Sec.3.9 card selection + Add-inserts-after-selection (reinstates `InsertTarget`'s `{ after: Item }`, dropped in rev 3 purely for having no consumer — selection is that consumer); Sec.3.2 sticky section header; Sec.3.10 diagnostics overview ruler (flagged hardest: must map over *rendered card positions*, not source offsets, because cards are variable-height and resize at runtime — the only DOM measurement in Breakdown; sequence last). Plus Sec.4.5 anchor rule, Sec.6.3 selection anchoring with the BUG-001 ordering requirement, Sec.8 help ids, Sec.10 fixtures, Appendix A rows.
+- **breakdown-design.md gained three post-3.4 specs** from Ash's live-testing feedback: Sec.3.9 card selection + Add-inserts-after-selection (reinstates `InsertTarget`'s `{ after: Item }`, dropped in rev 3 purely for having no consumer — selection is that consumer); Sec.3.2 sticky section header; Sec.3.10 diagnostics overview ruler (flagged hardest: must map over _rendered card positions_, not source offsets, because cards are variable-height and resize at runtime — the only DOM measurement in Breakdown; sequence last). Plus Sec.4.5 anchor rule, Sec.6.3 selection anchoring with the BUG-001 ordering requirement, Sec.8 help ids, Sec.10 fixtures, Appendix A rows.
 
 - **RMS0202 false-warning campaign (Opus, post-3.4).** Ash reported `#const` values in attribute slots warning. Two fixes, both corpus-measured.
-  - **parser-design Sec.6 amendment — user constants satisfy numeric slots.** `consumeOneArg` now consults the symbol table (`Parser.isDefinedSymbol`) before emitting RMS0202: a word naming a `#const`/`#define` **already seen in this parse** draws nothing. "Already seen" is the engine's own rule, not a single-pass limitation — guide L148 says a definition only holds if it is higher up the file, so use-before-definition genuinely fails in-engine and warning is correct; a symbol-collecting pre-pass would be *less* accurate. Unresolvable names keep RMS0202 with a message naming the real problem (undefined, suggest `#const`) and **soften to info when any `#include_drs` is present** (Sec.7 — Pa_Site's 40 all became info). Permissive about `#define`-vs-`#const` on purpose (Sec.2.1: type diagnostics are style warnings, never correctness claims).
+  - **parser-design Sec.6 amendment — user constants satisfy numeric slots.** `consumeOneArg` now consults the symbol table (`Parser.isDefinedSymbol`) before emitting RMS0202: a word naming a `#const`/`#define` **already seen in this parse** draws nothing. "Already seen" is the engine's own rule, not a single-pass limitation — guide L148 says a definition only holds if it is higher up the file, so use-before-definition genuinely fails in-engine and warning is correct; a symbol-collecting pre-pass would be _less_ accurate. Unresolvable names keep RMS0202 with a message naming the real problem (undefined, suggest `#const`) and **soften to info when any `#include_drs` is present** (Sec.7 — Pa_Site's 40 all became info). Permissive about `#define`-vs-`#const` on purpose (Sec.2.1: type diagnostics are style warnings, never correctness claims).
   - **`#const` value slot retyped `integer` -> `otherConstant`** (`language.json`). Ash asserted from memory that every constant is a number and aliasing is legal; the guide confirms outright — L3295 "everything ... is represented internally by a numeric identifier", L3353 constants read as numbers "where numeric inputs are expected", L3306 "items can have multiple constants assigned to them". The flagged risk (retyping breaking expression assembly, which would have regressed AD4's `#const MAPAREA (MAPSIZE * MAPSIZE)` Sec.12 fixture) **did not materialise**: `consumeOneArg` dispatches expressions on a leading `(` at parser.ts:906, before any type check, and the `rnd`/number branches are ungated too. All seven value forms fixtured.
   - **Corpus effect: 238 RMS0202 warnings -> 61**, across 52 files; only 3 files still warn (`Rage Forest 2026.rms` 155 -> 0). 11 new parser tests, 160 parser tests passing, patch suites unaffected (22 unit + property gate green in batches), `tsc` and `validate:reference` clean.
-  - **BUG-002 logged** for what the measurement exposed and these fixes do *not* cover: (b) undefined words used as opaque identifiers — `actor_area ACT_AREA_TEAM_RES_TERRAIN` x26 in shipped Vanguard, legal via Sec.2.1's token-ID model, evidence that `integer` conflates "magnitude" with "identifier" and probably wants a new `identifier` argument type; (c) unmodeled `$`-prefixed names (x35 across DE-official Acclivity and community TL Team Acropolis — supported syntax we don't model). Also noted: L3353's fuller rule licenses *predefined* constants in *any* numeric slot, which needs the parser to see `game-constants.json` or `predefinedLabels` — not done, no corpus case today.
+  - **BUG-002 logged** for what the measurement exposed and these fixes do _not_ cover: (b) undefined words used as opaque identifiers — `actor_area ACT_AREA_TEAM_RES_TERRAIN` x26 in shipped Vanguard, legal via Sec.2.1's token-ID model, evidence that `integer` conflates "magnitude" with "identifier" and probably wants a new `identifier` argument type; (c) unmodeled `$`-prefixed names (x35 across DE-official Acclivity and community TL Team Acropolis — supported syntax we don't model). Also noted: L3353's fuller rule licenses _predefined_ constants in _any_ numeric slot, which needs the parser to see `game-constants.json` or `predefinedLabels` — not done, no corpus case today.
 
 **Phase 5 (early start).**
 
@@ -178,37 +178,37 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
 - Next: 3.4 editable Breakdown (Sonnet — wire cards to computeEdit via Sec.6.4's shared-model migration + Sec.4.11 commit semantics + Sec.6.3 anchors; engine API: `computeEdit(parseResult, intent, langIndex) → {edit, caret}`, `applyEdit`, PatchError = disable-the-control). Then 3.5 help audit. 5.1 impl session still pending.
 
 - **3.4 editable Breakdown — DONE (Sonnet session).** Wired the 3.2 read-only tree to the 3.3 patch engine; every affordance the design doc scopes for this session is live.
-  - **Sec.6.4 shared Monaco model — went with the spec's primary recommendation, not the fallback.** `src/hooks/useDocument.ts` now creates a single module-scope `monaco.editor.ITextModel` (`documentModel`, URI `inmemory://model/document.rms`) at import time — module-scope, not inside the hook, specifically so React 18 StrictMode's double-invoked render/lazy-init can never attempt `createModel` twice at the same URI (Monaco throws on that). This was safe to do *synchronously* (no `loader.init()` async dance) because `src/editor/monacoSetup.ts` already self-hosts Monaco and calls `loader.config({ monaco })` before React ever renders (`main.tsx`) — `@monaco-editor/react`'s internal loader and this hook's `import * as monaco from "monaco-editor"` are provably the same module instance, so there is no race to spike (Sec.9 item 4's open question resolves cleanly from the existing self-hosting setup). `content` (React state) is now a pure mirror via `documentModel.onDidChangeContent`; dirty tracking switched to `model.getAlternativeVersionId() !== savedVersionIdRef` (the spec's suggested cleaner signal — also means an undo back to the last-saved state correctly clears dirty, a string-compare couldn't do that for free). `CodePane.tsx` dropped `value`/`onChange` entirely and binds via `<Editor path={DOCUMENT_MODEL_PATH} keepCurrentModel />` (confirmed from `@monaco-editor/react`'s source that `path` + `keepCurrentModel` reuse-and-never-dispose an externally-created model at that URI) — Code-tab typing writes directly into the shared model, so it and Breakdown's `pushEditOperations` land on the identical undo/redo stack by construction. `openFile()` uses `model.setValue()` (deliberately resets undo history — a different file is a new buffer); everything else (`applyTextEdit`, used by Breakdown) uses `pushEditOperations` (preserves/extends the stack). **Not spiked interactively against a live `npm run tauri dev`** (sandbox has no Tauri runtime) — flagged for Ash's manual Ctrl+Z check below.
+  - **Sec.6.4 shared Monaco model — went with the spec's primary recommendation, not the fallback.** `src/hooks/useDocument.ts` now creates a single module-scope `monaco.editor.ITextModel` (`documentModel`, URI `inmemory://model/document.rms`) at import time — module-scope, not inside the hook, specifically so React 18 StrictMode's double-invoked render/lazy-init can never attempt `createModel` twice at the same URI (Monaco throws on that). This was safe to do _synchronously_ (no `loader.init()` async dance) because `src/editor/monacoSetup.ts` already self-hosts Monaco and calls `loader.config({ monaco })` before React ever renders (`main.tsx`) — `@monaco-editor/react`'s internal loader and this hook's `import * as monaco from "monaco-editor"` are provably the same module instance, so there is no race to spike (Sec.9 item 4's open question resolves cleanly from the existing self-hosting setup). `content` (React state) is now a pure mirror via `documentModel.onDidChangeContent`; dirty tracking switched to `model.getAlternativeVersionId() !== savedVersionIdRef` (the spec's suggested cleaner signal — also means an undo back to the last-saved state correctly clears dirty, a string-compare couldn't do that for free). `CodePane.tsx` dropped `value`/`onChange` entirely and binds via `<Editor path={DOCUMENT_MODEL_PATH} keepCurrentModel />` (confirmed from `@monaco-editor/react`'s source that `path` + `keepCurrentModel` reuse-and-never-dispose an externally-created model at that URI) — Code-tab typing writes directly into the shared model, so it and Breakdown's `pushEditOperations` land on the identical undo/redo stack by construction. `openFile()` uses `model.setValue()` (deliberately resets undo history — a different file is a new buffer); everything else (`applyTextEdit`, used by Breakdown) uses `pushEditOperations` (preserves/extends the stack). **Not spiked interactively against a live `npm run tauri dev`** (sandbox has no Tauri runtime) — flagged for Ash's manual Ctrl+Z check below.
   - **`src/breakdown/applyEdit.ts`** — the only new file that touches both `patch/` types and Monaco-adjacent plumbing (deliberately outside `src/breakdown/patch/`, which stays React/Monaco-free per the standing rule): `applyEditIntent(parseResult, intent, lang, applyTextEdit)` calls `computeEdit`, catches `PatchError` and returns `null` (never throws through to a card), else pushes the `TextEdit` via the passed-in `applyTextEdit` (from `useDocument`) and returns the `EditResult`.
-  - **Sec.6.3 ephemeral anchors** — `src/breakdown/ephemeralAnchors.ts` (pure, no React): `shiftAnchors(anchors, edit)` moves/drops offsets by the edit's Δ (dropping any anchor that fell inside the edited range, per the rev-4 rule), `isAnchoredWithin(anchors, span)` is the expanded-card test. Owned by `BreakdownPane` (`expandedAnchors: Set<number>`, shifted on every successful `applyEdit`) rather than each card's local `useState` — `CommandCard`'s expand/collapse now reads `isExpanded(command.span)`/`toggleExpanded` off `BreakdownContext` instead of local state, so it survives a reparse triggered by an edit elsewhere. Focus restoration is a small registry: editors call `registerFocusable(offset, el)` with their own current anchor offset on mount; `requestFocus(offset)` (called after an Enter-commit or an explicit add/delete action, never after a blur-commit, per Sec.4.11) is resolved in an effect keyed on `parseResult` — looks up the exact offset once the next parse's re-render has run, focuses+selects if found, silently drops otherwise (documented simplification: an *exact*-offset match, not a "deepest containing node" walk — see caveats below).
+  - **Sec.6.3 ephemeral anchors** — `src/breakdown/ephemeralAnchors.ts` (pure, no React): `shiftAnchors(anchors, edit)` moves/drops offsets by the edit's Δ (dropping any anchor that fell inside the edited range, per the rev-4 rule), `isAnchoredWithin(anchors, span)` is the expanded-card test. Owned by `BreakdownPane` (`expandedAnchors: Set<number>`, shifted on every successful `applyEdit`) rather than each card's local `useState` — `CommandCard`'s expand/collapse now reads `isExpanded(command.span)`/`toggleExpanded` off `BreakdownContext` instead of local state, so it survives a reparse triggered by an edit elsewhere. Focus restoration is a small registry: editors call `registerFocusable(offset, el)` with their own current anchor offset on mount; `requestFocus(offset)` (called after an Enter-commit or an explicit add/delete action, never after a blur-commit, per Sec.4.11) is resolved in an effect keyed on `parseResult` — looks up the exact offset once the next parse's re-render has run, focuses+selects if found, silently drops otherwise (documented simplification: an _exact_-offset match, not a "deepest containing node" walk — see caveats below).
   - **`src/breakdown/cards/ValueEditor.tsx`** — the shared Sec.4.11 commit-semantics editor: uncontrolled `<input defaultValue>` keyed by the value's own anchor offset (so an unrelated reparse never clobbers in-progress typing, and remounts cleanly when the anchor genuinely moves), commits on blur (no refocus) or Enter (`preventDefault` + refocus via caret, no separate blur fires), Escape resets the DOM value without committing, identical-to-current commits are a no-op (no intent built at all), internal whitespace in a non-path slot is rejected inline with no commit. Constant types (`terrainConstant`/`objectConstant`/`otherConstant`) render as a plain `<input>` with a native `<datalist>` populated from `game-constants.json` / `parseResult.symbols` — a real, always-free-text-accepting searchable combobox, just HTML-native rather than a custom dropdown widget (time-boxed judgment call). `AttributeValueEditor` (in `AttributeRow.tsx`, reused by `CommandCard`/`DirectiveCard`/`ConditionalCard`/`RandomCard`) wraps it, renders `expr`-valued args as the spec's read-only pill instead, and detects the Sec.3.4 quoting round-trip via `tokens[arg.firstToken].text.startsWith('"')` to allow-list internal spaces only for genuinely-quoted tokens (filenames), never for `#const`/`#define` names.
-  - **Card-by-card wiring**, all going through `BreakdownContext.applyEdit` (new context members: `applyEdit`, `isExpanded`/`toggleExpanded`, `requestFocus`/`registerFocusable`, `parseResult`): `AttributeRow`/`AttributeInstanceRow` — setArgValue, addAttribute (with/without a default, brace-synthesis target when the command has no block), removeNode, toggleFlag (on for absent flags, off via direct node deletion when exactly one instance — simpler and more precise than resolving "the last match"), repeatable "add another" gated on `def.repeatable` + `maxRepeats`. `CommandCard` — delete, positional-arg edits, and (bugfix while wiring) the all-attributes breakdown is now computed whenever the command is *known*, not only when it also has a block — the old `known && command.block` gate silently hid every attribute row for a block-kind command written bare (`create_terrain FOREST` with no `{ }`), which is exactly the case the brace-synthesis path (Sec.4.6) exists to handle; `buildCommandBreakdown` already tolerated `command.block === undefined` internally, so this was a one-line fix, not a new function. `RawCard` — the did-you-mean **[Fix] button**, `applySuggestion` targeting `node.firstToken`. `SectionView` — a real command picker (`src/breakdown/CommandPicker.tsx`: search box + "show all sections" toggle + verified/unverified chip, filtered to `def.section === tab.id` by default), constructing `addCommand` targeting the **last** concrete `SectionNode` a tab aggregates (Sec.3.1's duplicate-section rule) — disabled on the Header tab, since `InsertTarget` has no variant for `ScriptNode.preamble` (a real gap the patch engine's union doesn't cover; not a 3.4 regression, just newly visible now that everything else works). `ConditionalCard`/`RandomCard` — condition/chance edits (handling the optional-condition/-chance insert-after-keyword case per Sec.4.4), add/remove branch (`removeBranch` disabled when it's the only branch, matching computeEdit's own guard), per-branch add-command via the same `CommandPicker` anchored `in: "branch"`, plus a whole-card delete (`removeNode` on the `IfNode`/`RandomNode` — a natural, low-cost addition alongside the required per-branch controls). `DirectiveCard` — arg edits + delete.
-  - **Judgment calls, flagged rather than silently made**: (1) focus restoration resolves the caret to an *exact* registered offset, not "walk to the deepest containing node" as Sec.6.3's prose describes — every editor's anchor is already its own value's `span.start`, and `computeEdit`'s `caret` is documented to point at exactly that offset for every intent that matters here, so in practice this is equivalent for everything wired this session; it would need the fuller walk if a future editor's anchor isn't its own caret target. (2) `OrphanBlockNode`'s nested `BlockList` (the shared-block idiom, Sec.3.5 — "read-only in v1") is no longer specially locked: its child items are ordinary structured nodes rendered through the same now-editable `ItemCard`/`CommandCard` chain as everything else, so they're editable in practice even though the spec calls the *card* read-only. The wrapper itself (no add/remove-branch controls, since there's no branch structure) is unchanged; only the "read-only" framing for its contents has quietly stopped being true. Not fixed this session (would need a read-only mode threaded through `BreakdownContext`) — flagged for Ash/a future session rather than silently left. (3) The RawCard "Edit in Code tab" button stays a disabled stub — wiring it needs tab-switch + Monaco cursor-placement plumbing the per-card task list didn't ask for and the session didn't have budget for; noted, not forgotten.
+  - **Card-by-card wiring**, all going through `BreakdownContext.applyEdit` (new context members: `applyEdit`, `isExpanded`/`toggleExpanded`, `requestFocus`/`registerFocusable`, `parseResult`): `AttributeRow`/`AttributeInstanceRow` — setArgValue, addAttribute (with/without a default, brace-synthesis target when the command has no block), removeNode, toggleFlag (on for absent flags, off via direct node deletion when exactly one instance — simpler and more precise than resolving "the last match"), repeatable "add another" gated on `def.repeatable` + `maxRepeats`. `CommandCard` — delete, positional-arg edits, and (bugfix while wiring) the all-attributes breakdown is now computed whenever the command is _known_, not only when it also has a block — the old `known && command.block` gate silently hid every attribute row for a block-kind command written bare (`create_terrain FOREST` with no `{ }`), which is exactly the case the brace-synthesis path (Sec.4.6) exists to handle; `buildCommandBreakdown` already tolerated `command.block === undefined` internally, so this was a one-line fix, not a new function. `RawCard` — the did-you-mean **[Fix] button**, `applySuggestion` targeting `node.firstToken`. `SectionView` — a real command picker (`src/breakdown/CommandPicker.tsx`: search box + "show all sections" toggle + verified/unverified chip, filtered to `def.section === tab.id` by default), constructing `addCommand` targeting the **last** concrete `SectionNode` a tab aggregates (Sec.3.1's duplicate-section rule) — disabled on the Header tab, since `InsertTarget` has no variant for `ScriptNode.preamble` (a real gap the patch engine's union doesn't cover; not a 3.4 regression, just newly visible now that everything else works). `ConditionalCard`/`RandomCard` — condition/chance edits (handling the optional-condition/-chance insert-after-keyword case per Sec.4.4), add/remove branch (`removeBranch` disabled when it's the only branch, matching computeEdit's own guard), per-branch add-command via the same `CommandPicker` anchored `in: "branch"`, plus a whole-card delete (`removeNode` on the `IfNode`/`RandomNode` — a natural, low-cost addition alongside the required per-branch controls). `DirectiveCard` — arg edits + delete.
+  - **Judgment calls, flagged rather than silently made**: (1) focus restoration resolves the caret to an _exact_ registered offset, not "walk to the deepest containing node" as Sec.6.3's prose describes — every editor's anchor is already its own value's `span.start`, and `computeEdit`'s `caret` is documented to point at exactly that offset for every intent that matters here, so in practice this is equivalent for everything wired this session; it would need the fuller walk if a future editor's anchor isn't its own caret target. (2) `OrphanBlockNode`'s nested `BlockList` (the shared-block idiom, Sec.3.5 — "read-only in v1") is no longer specially locked: its child items are ordinary structured nodes rendered through the same now-editable `ItemCard`/`CommandCard` chain as everything else, so they're editable in practice even though the spec calls the _card_ read-only. The wrapper itself (no add/remove-branch controls, since there's no branch structure) is unchanged; only the "read-only" framing for its contents has quietly stopped being true. Not fixed this session (would need a read-only mode threaded through `BreakdownContext`) — flagged for Ash/a future session rather than silently left. (3) The RawCard "Edit in Code tab" button stays a disabled stub — wiring it needs tab-switch + Monaco cursor-placement plumbing the per-card task list didn't ask for and the session didn't have budget for; noted, not forgotten.
   - **Verified**: `npx tsc --noEmit` clean (whole project). `npx eslint src/breakdown src/hooks/useDocument.ts src/components/CodePane.tsx src/App.tsx` — 0 errors, 2 pre-existing-pattern warnings (`react-refresh/only-export-components` on `BreakdownContext.tsx` and the new `ValueEditor.tsx`, same class of warning 3.2 already had elsewhere). `node scripts/validate-reference-data.mjs` and `node scripts/check-breakdown-prereqs.mjs` both green (ui-help.json schema-valid with ~15 new entries + ~15 stale "arrives in 3.4" texts corrected to describe what's now actually wired). **Did not run `npx vitest run`** — the documented rollup arch mismatch — and did not build a new `/tmp` isolated-Vitest suite this session: nothing added is pure-logic-only in the way `ephemeralAnchors.ts`/`ValueEditor.tsx` aren't (they're either trivial pure functions covered by inspection, `shiftAnchors`/`isAnchoredWithin`, or inherently React-rendering-dependent, which per the task brief has no test harness in this project). 3.3's own property/unit suites were not re-run (untouched files; trust-but-note per the task brief).
   - **Ash, please manually verify via `npm run tauri dev`** (none of this was exercised against a live Tauri window): (a) edit an attribute value, confirm it round-trips through Monaco/Code-tab correctly and **Ctrl+Z undoes it** — this is the one piece with no automated coverage at all in this sandbox; (b) delete a command, confirm undo restores it; (c) the RawCard quick-fix on a real typo (e.g. type `craete_land` bare in a section); (d) add-command via the picker, both same-section and "show all sections"; (e) expand a command card, edit something elsewhere that shifts offsets, confirm the card stays expanded; (f) a repeatable-attribute "add another" and a duplicate-flag list delete against `AD4 - Pag - v1.2.rms`; (g) decide whether the OrphanBlockNode read-only regression above needs a same-session-style follow-up or can ride to 3.5.
   - Next: 3.5 help-coverage audit (compare `ui-help.json` against the design doc's Sec.8 checklist — this session added/updated Breakdown entries as it built but did not do a full audit pass, per scope). The two flagged gaps (Header-tab add-command via a preamble `InsertTarget`, OrphanBlockNode read-only enforcement) are natural small follow-ups whenever someone's next in this area.
 
 - **3.4 follow-up — three bugs from Ash's manual pass, all fixed (Sonnet session).**
-  - **Duplicate/overlapping HelpTip popups on hover.** `AttributeRow.tsx`'s `AttributeInstanceRow` wrapped a whole row in `<HelpTip id={helpId}>`, but the value editor it renders (`AttributeValueEditor` → `ValueEditor`) *also* wraps its own `<input>` in `<HelpTip id={helpId}>` with the same id — hovering the value fired both wrappers' mouseenter, rendering two overlapping popups with identical text. Same bug independently in `DirectiveCard.tsx` (outer `HelpTip` wrapped the name + all arg editors). Fixed both by narrowing the outer wrap to only the parts with no independent HelpTip of their own (bare-flag checkbox in `AttributeInstanceRow`; the static name span in `DirectiveCard`), leaving each value editor's own HelpTip as the sole wrapper over itself. Checked every other card for the same pattern (`ConditionalCard`/`RandomCard`/`StrayAttributeCard`) — none nest.
+  - **Duplicate/overlapping HelpTip popups on hover.** `AttributeRow.tsx`'s `AttributeInstanceRow` wrapped a whole row in `<HelpTip id={helpId}>`, but the value editor it renders (`AttributeValueEditor` → `ValueEditor`) _also_ wraps its own `<input>` in `<HelpTip id={helpId}>` with the same id — hovering the value fired both wrappers' mouseenter, rendering two overlapping popups with identical text. Same bug independently in `DirectiveCard.tsx` (outer `HelpTip` wrapped the name + all arg editors). Fixed both by narrowing the outer wrap to only the parts with no independent HelpTip of their own (bare-flag checkbox in `AttributeInstanceRow`; the static name span in `DirectiveCard`), leaving each value editor's own HelpTip as the sole wrapper over itself. Checked every other card for the same pattern (`ConditionalCard`/`RandomCard`/`StrayAttributeCard`) — none nest.
   - **RawCard had the did-you-mean Fix button, CommandCard didn't.** Sec.3.3's unknown-name boundary has two cases that both carry a `Diagnostic.suggestion` from `unknownName()`: a bare unknown name (`RawNode`, e.g. `elavation 5`) and a block-attached one (def-less `CommandNode` via the word+`{` upgrade, e.g. `elavation { }`). Only the first got a Fix button last session. Widened `applySuggestion`'s intent type (`src/breakdown/patch/intents.ts`) from `node: RawNode` to `node: RawNode | CommandNode` — `computeEdit`'s implementation only ever reads `node.firstToken`/`lastToken` as a bounds check, so no engine change was needed. Added the same Fix-button treatment to `CommandCard.tsx` (targets `command.name`), a `.fixButton` style in `cards.module.css`, and a `breakdown.commandCard.fix` `ui-help.json` entry.
-  - **Undo unreachable from the Breakdown tab.** The Sec.6.4 shared model genuinely has one undo stack, but Ctrl+Z is normally a keybinding the Monaco *editor instance* owns, and that instance only exists while `CodePane` is mounted — switch to Breakdown and nothing listens for Ctrl+Z at all, so Breakdown's own edits (which did land on the model) had no way to be undone without switching back to the Code tab and focusing the editor first. Fixed in `useDocument.ts`: a `window`-level `keydown` listener calls `documentModel.undo()`/`redo()` directly, and steps aside (does nothing) when `document.activeElement` is inside a `.monaco-editor` container so the editor's own binding — which also handles cursor/scroll restoration — keeps handling the keystroke when it's focused. This is additive to, not a replacement for, Monaco's own binding.
+  - **Undo unreachable from the Breakdown tab.** The Sec.6.4 shared model genuinely has one undo stack, but Ctrl+Z is normally a keybinding the Monaco _editor instance_ owns, and that instance only exists while `CodePane` is mounted — switch to Breakdown and nothing listens for Ctrl+Z at all, so Breakdown's own edits (which did land on the model) had no way to be undone without switching back to the Code tab and focusing the editor first. Fixed in `useDocument.ts`: a `window`-level `keydown` listener calls `documentModel.undo()`/`redo()` directly, and steps aside (does nothing) when `document.activeElement` is inside a `.monaco-editor` container so the editor's own binding — which also handles cursor/scroll restoration — keeps handling the keystroke when it's focused. This is additive to, not a replacement for, Monaco's own binding.
   - **Verified**: `npx tsc --noEmit` clean, `npx eslint src/breakdown src/hooks/useDocument.ts` 0 errors, `node scripts/validate-reference-data.mjs` and `node scripts/check-breakdown-prereqs.mjs` both green.
   - **Ash, please re-verify**: the three original manual-check items from the 3.4 entry above still apply, plus (a) hover an attribute value and a directive value — should now show exactly one popup; (b) create `elavation { }` in a section, confirm a Fix button now appears on its (CommandCard) unknown-name badge and applying it promotes the card; (c) from the Breakdown tab (Code tab not focused/mounted), make an edit, then Ctrl+Z without switching tabs — should undo in place.
 
 - **3.4 follow-up #2 — three more from Ash's next pass (Sonnet session).** Also noted: another session has been expanding `docs/breakdown-design.md` (still headed "rev 4" but has grown to 734 lines with new Sec.3.9 card-selection/insert-after and Sec.3.10 diagnostics-ruler sections, both explicitly scoped "post-3.4") and opened `docs/known-issues.md` with **BUG-001** (card-expansion jumps to the wrong card for one frame after a delete — an anchor-sequencing race between `expandedAnchors` shifting synchronously and `parseResult` arriving ~150ms+worker-round-trip later; full diagnosis + prescribed two-part fix already written up, not yet applied). Neither is this session's scope — flagging so the next session doesn't rediscover them from scratch.
-  - **Redundant/overlapping HelpTips on hover.** Same root cause in two places: a row-level `<HelpTip id={helpId}>` wrapped a value editor that *also* wraps itself in `<HelpTip id={helpId}>` (identical id) — hovering the value fired both, rendering two overlapping popups. `AttributeRow.tsx`'s `AttributeInstanceRow` (whole row wrapped; fixed by narrowing the outer wrap to only the bare-flag checkbox case, which has no nested `ValueEditor`) and `DirectiveCard.tsx` (outer wrap covered the name + every arg editor; narrowed to just the static name span). Checked `ConditionalCard`/`RandomCard`/`StrayAttributeCard` for the same pattern — none nest.
-  - **No hover text on attribute/argument *names*, only generic boilerplate on their values.** `breakdown-design.md` Sec.8 says attribute help should be "reused from the Monaco hover DB (`doc-strings.json`/`language.json` descriptions)," but no label in `AttributeRow`/`CommandCard` had ever been wrapped in a `HelpTip` at all — only the value editors were, with generic per-control-kind text ("This attribute's current value"). Fixed properly rather than patching around it: extended `HelpTip` (`src/components/HelpTip.tsx`) with an optional `text` prop that overrides the `ui-help.json` id-based lookup — needed because one `id` is shared across every attribute/argument's label, so a static `ui-help.json` entry can't carry per-name content on its own. New `src/breakdown/helpText.ts` (pure, no React/Monaco) provides `namedEntryHelpText(name, description)` (doc-strings.json summary → `AttributeDef.description` → generic fallback) and `argumentHelpText(argDef, contextName)` (same chain, plus a composed type/range/default fallback for positional args like `maxHeight` that have no `description` field in the data at all today) — reads the *same* `doc-strings.json`/`language.json` data `src/editor/aoe2RmsHover.ts`'s Monaco hover provider reads (not the same code path — a smaller module, since `HelpTip`'s popup is plain text, not markdown — but the same source data, so the two surfaces can't disagree). Wired into `AttributeRow.tsx`'s label spans (both the filled-instance and absent-row cases) and `CommandCard.tsx`'s positional-argument label. Two new generic `ui-help.json` fallback entries (`breakdown.attributeRow.name`, `breakdown.commandCard.argumentName`) for the (normally unreached) case where the dynamic lookup itself returns nothing.
-  - **Code-tab diagnostics stayed stale after an undo/redo performed from the Breakdown tab.** Root cause: `CodePane`'s marker-application `useEffect` depends on `[source, diagnostics]`, but `editorRef`/`monacoRef` reset to `null` on every mount (`CodePane` fully unmounts when the Code tab isn't active — `App.tsx`'s `{activeTab === "code" && <CodePane />}`). If the parse already completed *while the Code tab was unmounted* (exactly what an undo/redo triggered from Breakdown does), `source`/`diagnostics` are already current at mount time and never change again afterward — so the effect's one run happens before `handleMount` has set the refs, bails out on the null-ref guard, and is never retried. `setModelMarkers` markers are keyed to the model, which persists across tab switches (`keepCurrentModel`), so the editor kept showing whichever markers were set the *previous* time it was mounted — visibly "pre-Redo" diagnostics, even though the text itself (bound directly to the shared model) was correct. Fixed by extracting the marker-application logic into `applyMarkers` and calling it from both the effect (handles updates while mounted, e.g. typing) and directly from `handleMount` (closes the race — runs the instant the refs are actually ready, using the current `source`/`diagnostics` from that render).
+  - **Redundant/overlapping HelpTips on hover.** Same root cause in two places: a row-level `<HelpTip id={helpId}>` wrapped a value editor that _also_ wraps itself in `<HelpTip id={helpId}>` (identical id) — hovering the value fired both, rendering two overlapping popups. `AttributeRow.tsx`'s `AttributeInstanceRow` (whole row wrapped; fixed by narrowing the outer wrap to only the bare-flag checkbox case, which has no nested `ValueEditor`) and `DirectiveCard.tsx` (outer wrap covered the name + every arg editor; narrowed to just the static name span). Checked `ConditionalCard`/`RandomCard`/`StrayAttributeCard` for the same pattern — none nest.
+  - **No hover text on attribute/argument _names_, only generic boilerplate on their values.** `breakdown-design.md` Sec.8 says attribute help should be "reused from the Monaco hover DB (`doc-strings.json`/`language.json` descriptions)," but no label in `AttributeRow`/`CommandCard` had ever been wrapped in a `HelpTip` at all — only the value editors were, with generic per-control-kind text ("This attribute's current value"). Fixed properly rather than patching around it: extended `HelpTip` (`src/components/HelpTip.tsx`) with an optional `text` prop that overrides the `ui-help.json` id-based lookup — needed because one `id` is shared across every attribute/argument's label, so a static `ui-help.json` entry can't carry per-name content on its own. New `src/breakdown/helpText.ts` (pure, no React/Monaco) provides `namedEntryHelpText(name, description)` (doc-strings.json summary → `AttributeDef.description` → generic fallback) and `argumentHelpText(argDef, contextName)` (same chain, plus a composed type/range/default fallback for positional args like `maxHeight` that have no `description` field in the data at all today) — reads the _same_ `doc-strings.json`/`language.json` data `src/editor/aoe2RmsHover.ts`'s Monaco hover provider reads (not the same code path — a smaller module, since `HelpTip`'s popup is plain text, not markdown — but the same source data, so the two surfaces can't disagree). Wired into `AttributeRow.tsx`'s label spans (both the filled-instance and absent-row cases) and `CommandCard.tsx`'s positional-argument label. Two new generic `ui-help.json` fallback entries (`breakdown.attributeRow.name`, `breakdown.commandCard.argumentName`) for the (normally unreached) case where the dynamic lookup itself returns nothing.
+  - **Code-tab diagnostics stayed stale after an undo/redo performed from the Breakdown tab.** Root cause: `CodePane`'s marker-application `useEffect` depends on `[source, diagnostics]`, but `editorRef`/`monacoRef` reset to `null` on every mount (`CodePane` fully unmounts when the Code tab isn't active — `App.tsx`'s `{activeTab === "code" && <CodePane />}`). If the parse already completed _while the Code tab was unmounted_ (exactly what an undo/redo triggered from Breakdown does), `source`/`diagnostics` are already current at mount time and never change again afterward — so the effect's one run happens before `handleMount` has set the refs, bails out on the null-ref guard, and is never retried. `setModelMarkers` markers are keyed to the model, which persists across tab switches (`keepCurrentModel`), so the editor kept showing whichever markers were set the _previous_ time it was mounted — visibly "pre-Redo" diagnostics, even though the text itself (bound directly to the shared model) was correct. Fixed by extracting the marker-application logic into `applyMarkers` and calling it from both the effect (handles updates while mounted, e.g. typing) and directly from `handleMount` (closes the race — runs the instant the refs are actually ready, using the current `source`/`diagnostics` from that render).
   - **Numbered section tabs** (Ash's ask, cosmetic): `SectionTabs.tsx` now prefixes each tab's label with its render-order index — `0. Header, 1. Player Setup, 2. Land, …` — degrading correctly with no Header tab (numbering just starts at 0 on whatever's first) or extra unknown-section tabs (they continue the count).
   - Also fixed `scripts/check-breakdown-prereqs.mjs`'s own false-positive: its CodePane-guard grep looked for a literal lowercase `"source"` substring, which broke once the guard's local variable was renamed `currentSource` during the marker-race fix — the guard itself was never missing. Loosened to a case-insensitive match.
   - **Verified**: `npx tsc --noEmit` clean, `npx eslint src/breakdown src/components/CodePane.tsx src/components/HelpTip.tsx` 0 errors, `node scripts/validate-reference-data.mjs` and `node scripts/check-breakdown-prereqs.mjs` both green (no drift).
-  - **Ash, please re-verify**: (a) hover several different attribute *names* (not just values) across a few commands, incl. one with no `description` in the data (should still show something useful, not the fallback "No documentation yet" — those two now only appear for names truly undocumented anywhere); (b) redo the undo/redo-then-switch-tabs sequence from your last report — Code tab's squiggles should now match instantly; (c) glance at the section tab bar for the new numbering.
+  - **Ash, please re-verify**: (a) hover several different attribute _names_ (not just values) across a few commands, incl. one with no `description` in the data (should still show something useful, not the fallback "No documentation yet" — those two now only appear for names truly undocumented anywhere); (b) redo the undo/redo-then-switch-tabs sequence from your last report — Code tab's squiggles should now match instantly; (c) glance at the section tab bar for the new numbering.
   - Next: still 3.5 help-coverage audit, plus whatever the other session's BUG-001 fix and Sec.3.9/Sec.3.10 features turn into once picked up. Worth deciding with Ash whether Sec.3.9 (card selection + insert-after) or Sec.3.10 (diagnostics ruler) get scheduled before or after 3.5.
 
 - **3.4 follow-up #3 — absolute section numbering + BUG-001 fixed (Sonnet session).**
-  - **Absolute section numbering (Ash's ask).** The numbering added last session used array index, which is *only* correct because `buildSectionTabs` already always pushes all seven canonical tabs (empty if the section is absent) — correct today, but fragile (derived from render position, not identity) and wrong the instant that invariant ever changed, plus the Header tab genuinely does shift everything by one when absent/present, which Ash flagged as wrong. Fixed properly: `sectionLabels.ts` gains `SECTION_NUMBERS` (`header: 0, PLAYER_SETUP: 1, ..., OBJECTS_GENERATION: 7` — fixed by canonical identity, not position), `SectionTab` gains a `number` field set from that map in `sectionTabsModel.ts` (unknown sections continue the count from 8 in first-appearance order — no fixed canonical slot exists for an arbitrary/typo'd section name), `SectionTabs.tsx` renders `tab.number` instead of the map index. New `src/breakdown/__tests__/sectionTabsModel.numbering.test.ts` (4 cases, incl. the load-bearing one: numbering is byte-identical whether or not a middle section like Elevation is actually present in the file).
-  - **BUG-001 fixed — both prescribed parts, per `docs/known-issues.md`'s diagnosis from the other session (not re-derived, just implemented).** Root cause recap: `BreakdownPane`'s `expandedAnchors` shifted synchronously with the edit while `parseResult` only caught up ~150ms-debounce+worker-round-trip later, so for that window the UI rendered new (already-shifted) anchors against the still-old AST — a delete's negative Δ moved every later anchor backward into the *preceding* card's span, visibly expanding the wrong card for one frame before self-correcting.
-    - **Part A (consistency).** `BreakdownPane.tsx`: replaced the eager `setExpandedAnchors(shiftAnchors(...))` call with a queue (`pendingAnchorShiftsRef: {edit, expectedSource}[]`) plus a chaining baseline (`expectedSourceRef`, so a second edit fired before the first's reparse lands computes its expected source from the *first edit's expected result*, not the still-stale `source` prop — handles rapid edit bursts correctly even when an intermediate source is coalesced away and never itself renders, since `useParsedDocument`'s requestId dedup drops superseded responses). A new effect keyed on `source` resolves the queue: finds the first pending entry whose `expectedSource` matches what actually rendered, applies every shift up to and including it in one `setState` (one commit, no visible intermediate frame), and drops anything before it. If `source` matches nothing in the queue (e.g. manual Code-tab typing raced a Breakdown edit), the queue is dropped rather than left permanently stuck waiting for a source that will never appear — the doc's own "generic, not per-feature" framing was followed but `pendingFocusRef` itself was left untouched, since the doc explicitly calls its existing `[parseResult]`-keyed deferral already correct.
+  - **Absolute section numbering (Ash's ask).** The numbering added last session used array index, which is _only_ correct because `buildSectionTabs` already always pushes all seven canonical tabs (empty if the section is absent) — correct today, but fragile (derived from render position, not identity) and wrong the instant that invariant ever changed, plus the Header tab genuinely does shift everything by one when absent/present, which Ash flagged as wrong. Fixed properly: `sectionLabels.ts` gains `SECTION_NUMBERS` (`header: 0, PLAYER_SETUP: 1, ..., OBJECTS_GENERATION: 7` — fixed by canonical identity, not position), `SectionTab` gains a `number` field set from that map in `sectionTabsModel.ts` (unknown sections continue the count from 8 in first-appearance order — no fixed canonical slot exists for an arbitrary/typo'd section name), `SectionTabs.tsx` renders `tab.number` instead of the map index. New `src/breakdown/__tests__/sectionTabsModel.numbering.test.ts` (4 cases, incl. the load-bearing one: numbering is byte-identical whether or not a middle section like Elevation is actually present in the file).
+  - **BUG-001 fixed — both prescribed parts, per `docs/known-issues.md`'s diagnosis from the other session (not re-derived, just implemented).** Root cause recap: `BreakdownPane`'s `expandedAnchors` shifted synchronously with the edit while `parseResult` only caught up ~150ms-debounce+worker-round-trip later, so for that window the UI rendered new (already-shifted) anchors against the still-old AST — a delete's negative Δ moved every later anchor backward into the _preceding_ card's span, visibly expanding the wrong card for one frame before self-correcting.
+    - **Part A (consistency).** `BreakdownPane.tsx`: replaced the eager `setExpandedAnchors(shiftAnchors(...))` call with a queue (`pendingAnchorShiftsRef: {edit, expectedSource}[]`) plus a chaining baseline (`expectedSourceRef`, so a second edit fired before the first's reparse lands computes its expected source from the _first edit's expected result_, not the still-stale `source` prop — handles rapid edit bursts correctly even when an intermediate source is coalesced away and never itself renders, since `useParsedDocument`'s requestId dedup drops superseded responses). A new effect keyed on `source` resolves the queue: finds the first pending entry whose `expectedSource` matches what actually rendered, applies every shift up to and including it in one `setState` (one commit, no visible intermediate frame), and drops anything before it. If `source` matches nothing in the queue (e.g. manual Code-tab typing raced a Breakdown edit), the queue is dropped rather than left permanently stuck waiting for a source that will never appear — the doc's own "generic, not per-feature" framing was followed but `pendingFocusRef` itself was left untouched, since the doc explicitly calls its existing `[parseResult]`-keyed deferral already correct.
     - **Part B (latency).** `useParsedDocument.ts` gains `reparseNow(source: string)`, sharing a `sendParseRequest` helper with the existing debounced-typing path (`playerCount` mirrored into a ref so the imperative call doesn't need it threaded through). `BreakdownPane.applyEdit` calls `reparseNow(expectedSource)` with the exact string it already computes for the Part A queue — no separate computation — immediately after every successful edit, so a card action's reparse only waits on the worker round-trip, not +150ms of debounce on top. Typing in the Code tab is untouched (still debounced). Threaded through `App.tsx` (`parsed.reparseNow` -> `BreakdownPane`'s new `reparseNow` prop).
     - New `src/breakdown/__tests__/ephemeralAnchors.queue.test.ts` (3 cases) — extracts the exact queue/resolve algorithm as plain functions (mirroring what's now in `BreakdownPane.tsx`) so the sequencing math is covered without rendering React or mocking a worker: anchors provably don't move until the matching source resolves; a rapid two-edit chain resolves correctly even though edit 1's intermediate source is never itself observed; a stuck/out-of-band queue drops instead of hanging.
   - Also fixed a false positive introduced in `scripts/check-breakdown-prereqs.mjs` by this session's own `SECTION_NUMBERS` addition — its `sectionLabels` key-count grep was file-wide and started double-counting once a second canonical-name-keyed object existed in the same file; scoped to the `SECTION_LABELS` object specifically.
@@ -220,7 +220,7 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - **Found and fixed 4 real gaps** — interactive elements with no `HelpTip` at all, not just missing entries: `AttributeRow.tsx`'s per-instance delete ("−") button; `CommandCard.tsx`'s expand/collapse (+/−) toggle; `CommandPicker.tsx`'s search input and its result-entry buttons (the latter also carries the verified/unverified chip Sec.8 explicitly calls out — wrapped the whole results list in one `HelpTip`, not one per row, matching `ReferenceTable.tsx`'s existing pattern rather than spamming a tooltip per visible result). Added the 4 matching `ui-help.json` entries: `breakdown.attributeRow.delete`, `breakdown.commandCard.expand`, `breakdown.addCommand.search`, `breakdown.addCommand.entry`.
   - **Everything else was already covered** — most of 3.2's build already wrapped its stubs, and 3.4 mostly just removed `disabled` rather than adding new bare elements, so the gap was smaller than expected. Final tally: 50 distinct `HelpTip` ids used in `src/breakdown/`, all 50 registered in `ui-help.json`, zero orphaned entries (registered but unused) either.
   - **Verified**: `npx tsc --noEmit` clean, `npx eslint src/breakdown` 0 errors, `node scripts/validate-reference-data.mjs` and `node scripts/check-breakdown-prereqs.mjs` both green.
-  - **Not done this session** (out of scope for a coverage *audit*, flagged for whoever picks it up): auditing help *text quality* (whether existing entries are actually good, not just present) beyond the fixes already made in the two follow-up sessions; Sec.3.9 (card selection + insert-after) and Sec.3.10 (diagnostics overview ruler) remain unscheduled.
+  - **Not done this session** (out of scope for a coverage _audit_, flagged for whoever picks it up): auditing help _text quality_ (whether existing entries are actually good, not just present) beyond the fixes already made in the two follow-up sessions; Sec.3.9 (card selection + insert-after) and Sec.3.10 (diagnostics overview ruler) remain unscheduled.
   - Phase 3 (M3) is now feature-complete per the original CREATION_PLAN 3.1-3.5 scope. Remaining Breakdown work is the two Ash-added post-3.4 features (Sec.3.9/Sec.3.10) and BUG-001-class hardening as it's found — no longer "3.x steps," just backlog.
   - Next: Ash to decide sequencing on Sec.3.9 vs Sec.3.10, or move on to Phase 4 (preview) / Phase 4.0 (constants extraction, still undecided per the earlier stalled AskUserQuestion) / Phase 5 groundwork.
 
@@ -232,26 +232,26 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - New pure-logic tests, also sandbox-verified before being committed as permanent files: `src/breakdown/__tests__/selectionResolve.test.ts` (6 cases — top-level resolution, non-descent into a command's block, if-branch/if-node-itself distinction, random preamble+branch resolution, whitespace-gap → undefined) and `src/breakdown/__tests__/ephemeralAnchors.single.test.ts` (5 cases for `shiftSingleAnchor` — null passthrough, insertion/deletion shift, before-edit no-op, inside-deleted-range drop).
   - **Verified**: `npx tsc --noEmit` clean, `npx eslint` clean on every touched file, `node scripts/validate-reference-data.mjs` and `node scripts/check-breakdown-prereqs.mjs` both green (no Sec.0.1 drift). No new `HelpTip`/`ui-help.json` entries needed — selection is a new affordance on existing cards, not a new distinct control, and the spec's Sec.8 checklist doesn't call for one.
   - **Ash, please manually verify**: (a) clicking a card (top-level and nested inside an `if`/`random` branch) shows the left-accent/background marker and only on that innermost card; (b) clicking a value editor inside a card also selects the card, not just the editor; (c) clicking empty pane background clears selection; (d) switching section tabs clears selection; (e) with a card selected, Add Command inserts immediately after it at the right nesting depth/indentation (try one at top level and one inside an `if` branch); (f) deleting the selected card clears selection cleanly (no stale marker, no crash); (g) the Add-button row now stays pinned to the top of the pane while scrolling a long section.
-  - Not done this session (unchanged from before): Sec.3.10 diagnostics overview ruler (next up, explicitly sequenced last/hardest per the spec's own cost note); the two long-standing flagged gaps (OrphanBlockNode nested-content read-only enforcement, Header-tab/preamble add-command — the latter arguably now closer given `{ after: Item }` exists, but inserting into an *empty* preamble or with nothing selected there is still unaddressed).
+  - Not done this session (unchanged from before): Sec.3.10 diagnostics overview ruler (next up, explicitly sequenced last/hardest per the spec's own cost note); the two long-standing flagged gaps (OrphanBlockNode nested-content read-only enforcement, Header-tab/preamble add-command — the latter arguably now closer given `{ after: Item }` exists, but inserting into an _empty_ preamble or with nothing selected there is still unaddressed).
   - Next: Sec.3.10, or Ash's call on reprioritizing to Phase 4/4.0/5.
 
-- **Post-3.9 follow-up: cross-tab selection sync, delete-doesn't-steal-selection, full-width Add Command — DONE (Sonnet session).** Ash's feedback after the previous session: (1) selection should survive the Breakdown <-> Code tab switch, with Code showing the selected card's text mid-screen and selected, and switching back resolving to wherever the Code cursor ended up; (2) deleting a card must never change *which* card is selected unless it's the selected one being deleted; (3) the Add Command button should span the full row.
+- **Post-3.9 follow-up: cross-tab selection sync, delete-doesn't-steal-selection, full-width Add Command — DONE (Sonnet session).** Ash's feedback after the previous session: (1) selection should survive the Breakdown <-> Code tab switch, with Code showing the selected card's text mid-screen and selected, and switching back resolving to wherever the Code cursor ended up; (2) deleting a card must never change _which_ card is selected unless it's the selected one being deleted; (3) the Add Command button should span the full row.
   - **Selection lifted to App (`src/hooks/useSharedSelection.ts`, new).** Sec.3.9's `selectedAnchor` used to live inside `BreakdownPane`, which is destroyed on every tab switch (`App.tsx` conditionally renders `BreakdownPane`/`CodePane`, not both) — so there was no way for it to survive a switch to Code at all. The new hook owns one `selectedAnchor: number | null` at `AppContent` level, passed into both panes. `BreakdownPane` no longer has its own selection state; its `isSelected`/`selectCard`/`clearSelection`/`selectedItem` in `BreakdownContext`'s value now come straight from this shared hook via a new `selection` prop.
   - **Shift/drop rule generalized to ALL edit origins, not just Breakdown's.** The old BUG-001 queue (still in place for `expandedAnchors`, unchanged) only fired for edits made through Breakdown's own `applyEdit` — fine when selection lived inside Breakdown, but now that Code-tab typing/undo/redo must also shift the anchor correctly, that queue's trigger was too narrow. `useSharedSelection` instead subscribes directly to the shared Monaco model's `onDidChangeContent` (`getDocumentModel()`, already exported from `useDocument.ts`) — this fires for every edit regardless of source, and `model.getValue()` read synchronously inside the handler gives the exact post-edit "expected source" for free (no manual string-surgery needed, unlike the original queue). Multiple simultaneous changes in one event (multi-cursor typing) are sorted highest-offset-first before sequential `shiftSingleAnchor` calls, since Monaco expresses each change relative to the pre-event text. Same resolve-only-once-`source`-matches gating as before, so Breakdown's card selection still can't flash onto the wrong card for a frame.
   - **Breakdown -> Code (the "reveal" half).** `CodePane.tsx` gained a `selectedItem?: Item` prop (App passes `selection.selectedItem`). On mount only (`handleMount`, since @monaco-editor/react only calls it once per actual mount and CodePane fully unmounts/remounts on every tab switch), if present: computes a `monaco.Range` from the item's span via `model.getPositionAt`, then `editor.setSelection(range)` + `editor.revealRangeInCenter(range)` — "that section of code in the middle of the page, text selected."
   - **Code -> Breakdown (the "track" half).** `CodePane` also gained `onCursorOffsetChange?: (offset: number) => void` (App passes `selection.setAnchor`), wired to `editor.onDidChangeCursorSelection` inside `handleMount` — fires continuously while the Code tab is open, so the shared anchor always reflects wherever the user's cursor currently is, not just wherever it was at the moment of switching. The listener reads the callback through a ref (`onCursorOffsetChangeRef`) to avoid the same stale-closure trap `useDocument.ts`'s `isDirtyRef`/`filePathRef` already solve, and is explicitly disposed both on re-registration and on unmount.
   - **Breakdown's own mount-time catch-up.** Since `BreakdownPane` now receives `selectedAnchor` as a prop that may already be non-null at mount (set from the Code tab), a new mount-only effect resolves which section tab contains that anchor's item (reusing `findItemAtOffset` over each tab's items) and switches `activeTabId` to it, then queues a scroll. `ItemCard.tsx` now carries a `data-anchor={item.span.start}` attribute specifically so a second effect (keyed on `[activeTabId, parseResult]`, resolving once the target tab has actually rendered the card) can `document.querySelector` it and call `scrollIntoView({ block: "center" })`. Deliberately mount-only (`didMountSyncRef`) — clicking a different card later in the same Breakdown session must not re-trigger a tab jump.
-  - **Delete/remove no longer steals selection.** Every delete/remove button across the card components (`CommandCard`, `AttributeRow`'s per-instance delete AND its bare-flag uncheck checkbox, `DirectiveCard`, `RandomCard`'s whole-block delete AND its per-branch remove, `ConditionalCard`'s whole-conditional delete AND its per-branch remove) now calls `e.stopPropagation()` before dispatching its `removeNode`/`removeBranch` intent. Root cause: none of these controls stopped propagation, so every delete click bubbled up into `ItemCard`'s own click handler first — which unconditionally selected THAT card (via Sec.3.9's stopPropagation-at-the-wrapper design) an instant before removing it. Deleting card B while card A was selected therefore always reselected B first, then dropped selection entirely once B's anchor fell inside the deleted range — net effect, deleting *any* card cleared whatever was actually selected. Now a delete click never reaches `ItemCard`'s selection handler at all, so only deleting the card that IS currently selected can clear it (via the existing anchor-drop rule) — deleting any other card leaves selection untouched.
+  - **Delete/remove no longer steals selection.** Every delete/remove button across the card components (`CommandCard`, `AttributeRow`'s per-instance delete AND its bare-flag uncheck checkbox, `DirectiveCard`, `RandomCard`'s whole-block delete AND its per-branch remove, `ConditionalCard`'s whole-conditional delete AND its per-branch remove) now calls `e.stopPropagation()` before dispatching its `removeNode`/`removeBranch` intent. Root cause: none of these controls stopped propagation, so every delete click bubbled up into `ItemCard`'s own click handler first — which unconditionally selected THAT card (via Sec.3.9's stopPropagation-at-the-wrapper design) an instant before removing it. Deleting card B while card A was selected therefore always reselected B first, then dropped selection entirely once B's anchor fell inside the deleted range — net effect, deleting _any_ card cleared whatever was actually selected. Now a delete click never reaches `ItemCard`'s selection handler at all, so only deleting the card that IS currently selected can clear it (via the existing anchor-drop rule) — deleting any other card leaves selection untouched.
   - **Add Command spans the full row.** `SectionView.module.css`: `.addWrapper` switched from `align-self: flex-start` to `align-self: stretch`; `.addButton` gained `display: block; width: 100%; text-align: left` (was sized to its own text). `CommandPicker`'s dropdown panel is unaffected — it's `position: absolute` off its own `.wrapper`, not sized relative to the button.
   - **Verified**: `npx tsc --noEmit` clean; `npx eslint` clean on every touched file (`App.tsx`, `useSharedSelection.ts`, `BreakdownPane.tsx`, `ItemCard.tsx`, `CodePane.tsx`, all 5 card files with delete buttons, `SectionView.tsx`); `node scripts/validate-reference-data.mjs` and `node scripts/check-breakdown-prereqs.mjs` both green.
-  - **Not sandbox-testable this session**: the cross-tab sync logic is fundamentally a Monaco + DOM integration (`editor.setSelection`, `revealRangeInCenter`, `onDidChangeCursorSelection`, `scrollIntoView`, `document.querySelector`) with no pure-logic core to extract beyond what `ephemeralAnchors.single.test.ts`/`selectionResolve.test.ts` already cover from the prior session — those still apply unchanged (the shift/drop math and offset-to-Item resolution are identical, only the *trigger* for the shift moved from `applyEdit`-queueing to the model's own change event). No new automated tests added this session; verification is manual only.
-  - **Ash, please manually verify**: (a) select a card in Breakdown, switch to Code — the corresponding text is selected and scrolled to the middle of the editor; (b) in Code, click/move the cursor somewhere else (don't touch Breakdown), switch to Breakdown — the card under wherever the cursor ended up is now selected and scrolled into view, on the correct section tab (test with a target in a *different* section than whatever was selected before, and with a target inside an `if`/`random` branch); (c) with card A selected, delete card B elsewhere in the same section (or a different section) — A is still selected afterward; (d) delete the actually-selected card — selection clears cleanly, no stale marker; (e) uncheck a bare-flag attribute checkbox and delete a repeatable attribute instance — neither steals selection from whatever card was selected; (f) the Add Command button now visually spans the full width of the pane, not just its own text width, and still opens the picker correctly positioned; (g) rapid-fire: type a few edits in Code tab, then immediately switch to Breakdown — no wrong-card flash (BUG-001-class regression check, now that the shift trigger changed).
+  - **Not sandbox-testable this session**: the cross-tab sync logic is fundamentally a Monaco + DOM integration (`editor.setSelection`, `revealRangeInCenter`, `onDidChangeCursorSelection`, `scrollIntoView`, `document.querySelector`) with no pure-logic core to extract beyond what `ephemeralAnchors.single.test.ts`/`selectionResolve.test.ts` already cover from the prior session — those still apply unchanged (the shift/drop math and offset-to-Item resolution are identical, only the _trigger_ for the shift moved from `applyEdit`-queueing to the model's own change event). No new automated tests added this session; verification is manual only.
+  - **Ash, please manually verify**: (a) select a card in Breakdown, switch to Code — the corresponding text is selected and scrolled to the middle of the editor; (b) in Code, click/move the cursor somewhere else (don't touch Breakdown), switch to Breakdown — the card under wherever the cursor ended up is now selected and scrolled into view, on the correct section tab (test with a target in a _different_ section than whatever was selected before, and with a target inside an `if`/`random` branch); (c) with card A selected, delete card B elsewhere in the same section (or a different section) — A is still selected afterward; (d) delete the actually-selected card — selection clears cleanly, no stale marker; (e) uncheck a bare-flag attribute checkbox and delete a repeatable attribute instance — neither steals selection from whatever card was selected; (f) the Add Command button now visually spans the full width of the pane, not just its own text width, and still opens the picker correctly positioned; (g) rapid-fire: type a few edits in Code tab, then immediately switch to Breakdown — no wrong-card flash (BUG-001-class regression check, now that the shift trigger changed).
   - Next: Sec.3.10 diagnostics overview ruler remains the only unscheduled post-3.4 Breakdown item.
 
 - **Post-cross-tab-sync bug reports: scroll fix, comments-in-Breakdown, rapid-delete data corruption — DONE (Sonnet session).** Ash tested the previous session's work and reported three things: selection was landing on the right card/tab when switching Code -> Breakdown but the pane wasn't scrolling to it; comments aren't shown in Breakdown at all; and rapidly deleting several cards in a row sometimes truncated an unrelated, different command elsewhere in the file.
   - **Scroll fix.** Root cause: `BreakdownPane`'s mount-sync effect queued the scroll target using the raw `selection.selectedAnchor` — wherever the Code-tab cursor happened to be, almost never a command's `span.start`. `ItemCard`'s `data-anchor` attribute (what the scroll effect queries for) is keyed on `span.start`, so the query silently matched nothing whenever the cursor wasn't exactly at a card's first character — which is why selection itself still worked (`isSelected` does a range check, not exact match) but the scroll never fired. Fixed by using `selection.selectedItem.span.start` (the already-resolved containing Item) instead of the raw anchor, in both the tab-lookup and the scroll-target assignment.
   - **Comments now shown in Breakdown.** New pure module `src/breakdown/comments.ts`: `extractComments(tokens)` re-derives each top-level `/* */` comment's span by re-pairing `commentOpen`/`commentClose` among trivia tokens with a nesting-depth counter (comments are pure trivia — parser-design Sec.2 — so the parser never puts them in the AST; this was the reason they were invisible to begin with, not a rendering oversight). `commentsBetweenItems(items, comments)` attributes each comment to whichever GAP between two consecutive items in a given list it falls into — deliberately the only placement that's unambiguous without knowing a list's own container boundaries; a comment before the first item or after the last item of any list is out of scope for v1 and doesn't render yet (documented in both the module and the build log so it isn't mistaken for a bug later). New read-only `CommentCard.tsx` (dashed border, italic muted text, its own `breakdown.commentCard` HelpTip/`ui-help.json` entry) — not editable from Breakdown, same as raw/orphan regions (Sec.3.7); Code-tab-only for now. `BreakdownContext` gained a `comments: Span[]` field (computed once per parse in `BreakdownPane` via `extractComments(parseResult.tokens)`); `BlockList.tsx` — the single recursive Item[] renderer used everywhere (section bodies, if/random branches, orphan-block contents) — now interleaves `CommentCard`s between the `ItemCard`s of whichever list it's rendering, so this covers every nesting level for free, not just top-level section comments.
-  - **Rapid-delete data corruption — the serious one.** Root cause: `computeEdit` (the pure patch engine) only knows about `parseResult`, the last CONFIRMED parse — its returned edit's byte offsets are only valid relative to THAT parse's source. `pushEditOperations` (in `applyTextEdit`) is synchronous, so a second card action fired before the first action's reparse lands lands on a model that's already been shifted by the first edit, while its own offsets were computed against the PRE-first-edit source. `BreakdownPane`'s `applyEdit` wrapper was blindly splicing those stale offsets into `expectedSource` (itself already reflecting the first edit) to compute the UI's anchor-shift queue — the exact moment two edits' coordinate spaces silently diverged, corrupting whatever text happened to occupy the stale offsets in the new coordinate space. This is a data-corruption bug, not just a UI glitch (BUG-001 was the UI-only version of a structurally similar problem; this is its text-editing analogue, and had been silently possible since 3.4 — the "sanity-check a rapid double-action" line in an earlier build-log entry flagged the *risk* without catching this specific manifestation).
+  - **Rapid-delete data corruption — the serious one.** Root cause: `computeEdit` (the pure patch engine) only knows about `parseResult`, the last CONFIRMED parse — its returned edit's byte offsets are only valid relative to THAT parse's source. `pushEditOperations` (in `applyTextEdit`) is synchronous, so a second card action fired before the first action's reparse lands lands on a model that's already been shifted by the first edit, while its own offsets were computed against the PRE-first-edit source. `BreakdownPane`'s `applyEdit` wrapper was blindly splicing those stale offsets into `expectedSource` (itself already reflecting the first edit) to compute the UI's anchor-shift queue — the exact moment two edits' coordinate spaces silently diverged, corrupting whatever text happened to occupy the stale offsets in the new coordinate space. This is a data-corruption bug, not just a UI glitch (BUG-001 was the UI-only version of a structurally similar problem; this is its text-editing analogue, and had been silently possible since 3.4 — the "sanity-check a rapid double-action" line in an earlier build-log entry flagged the _risk_ without catching this specific manifestation).
     - Fix: two new pure functions in `ephemeralAnchors.ts` — `rebaseEdit(edit, priorEdits)` walks a freshly-computed edit's `[start, end)` through a chain of not-yet-confirmed prior edits (each entirely before, entirely after — shift by that edit's delta — or overlapping, in which case return `null`, treated exactly like `PatchError`: "unavailable right now," not a crash) — and `shiftPointThroughEdits(point, priorEdits)`, the same chain applied to a single point (the post-edit caret) via repeated `shiftSingleAnchor`.
     - `applyEditIntent` (`applyEdit.ts`) gained a `priorEdits: readonly OffsetEdit[] = []` parameter: after `computeEdit` succeeds, it rebases the edit (and caret) through `priorEdits` before calling `applyTextEdit`, returning `null` if the rebase says the edit can't be safely resolved yet.
     - `BreakdownPane`'s `applyEdit` callback now passes `pendingAnchorShiftsRef.current.map(p => p.edit)` (the SAME queue that already tracks not-yet-confirmed edits for the BUG-001 anchor-shift fix) as `priorEdits` — no new state needed, just reusing what was already being tracked for a different purpose.
@@ -292,7 +292,7 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - Next: same as above — Phase 4/4.0/5, or another look at the ruler if this still isn't right.
 
 - **Ruler tick positioning — actual root cause found (Sonnet session, same day).** Ash reported the exact same symptom again after the `getBoundingClientRect()` fix ("Still the same issue," twice) — meaning the JS measurement math was never the bug at all. The measured `topFraction` values were most likely correct the whole time.
-  - **Real root cause: the positioning bug was in RENDERING, not measurement.** Each tick was `<HelpTip><button className={styles.tick} style={{top: X%}} /></HelpTip>`. `HelpTip` wraps its `children` in its own `<span className={styles.wrapper}>`, and `HelpTip.module.css`'s `.wrapper` is `position: relative` (needed so the hover popup can anchor via `position: absolute; top: 100%` inside it). A `position: absolute` element is positioned relative to its nearest positioned ANCESTOR — for the tick button, that's HelpTip's own wrapper span, NOT `.ruler`. That wrapper span auto-sizes to fit the button (a few px), and nothing positions the wrapper span itself within `.ruler`'s normal document flow — so every tick's wrapper span just stacks in plain block flow near the top of `.ruler`, and the button's `top: X%` resolves against that tiny auto-sized box (collapsing to near-zero) regardless of the JS-computed fraction. This explains every part of the original symptom precisely: "one tick... right next to the top... even when many warnings are present" (all wrapper spans stack together near the top), and why it was completely unaffected by either of the two prior fixes (`position: relative` on `.view`, then switching to `getBoundingClientRect`) — both correctly fixed the *measurement*, which was never broken. It also explains why the viewport band (not wrapped in HelpTip) was independently confirmed working while only the ticks stayed broken.
+  - **Real root cause: the positioning bug was in RENDERING, not measurement.** Each tick was `<HelpTip><button className={styles.tick} style={{top: X%}} /></HelpTip>`. `HelpTip` wraps its `children` in its own `<span className={styles.wrapper}>`, and `HelpTip.module.css`'s `.wrapper` is `position: relative` (needed so the hover popup can anchor via `position: absolute; top: 100%` inside it). A `position: absolute` element is positioned relative to its nearest positioned ANCESTOR — for the tick button, that's HelpTip's own wrapper span, NOT `.ruler`. That wrapper span auto-sizes to fit the button (a few px), and nothing positions the wrapper span itself within `.ruler`'s normal document flow — so every tick's wrapper span just stacks in plain block flow near the top of `.ruler`, and the button's `top: X%` resolves against that tiny auto-sized box (collapsing to near-zero) regardless of the JS-computed fraction. This explains every part of the original symptom precisely: "one tick... right next to the top... even when many warnings are present" (all wrapper spans stack together near the top), and why it was completely unaffected by either of the two prior fixes (`position: relative` on `.view`, then switching to `getBoundingClientRect`) — both correctly fixed the _measurement_, which was never broken. It also explains why the viewport band (not wrapped in HelpTip) was independently confirmed working while only the ticks stayed broken.
   - **Fix**: moved the position/top styling OFF the button and onto a new outer `<div className={styles.tickWrapper} style={{top: X%}}>` that is a direct child of `.ruler`'s tick list, with `<HelpTip>` now wrapping only the button INSIDE that already-correctly-positioned wrapper. `DiagnosticsRuler.module.css` gained `.tickWrapper` (`position: absolute; left: 1px; width: 8px; height: 0`, carries the `top: %`) and `.tick` lost `position`/`left`/`top` (now just sized/colored, laid out normally within its wrapper).
   - **Verified**: `npx tsc --noEmit` clean; `npx eslint` clean on the touched files. Still no live-browser access — same caveat as the prior two rounds, but this fix targets a different bug category (CSS containing-block/rendering, not JS offset math) than the two attempts Ash already ruled out, and the mechanism lines up exactly with every detail of the reported symptom (constant near-top position, unaffected by resize/scroll/expand, viewport band unaffected).
   - **Ash, please re-verify** — same check as before: scroll to a diagnostic, note its rough fraction down the section, confirm the tick lands at that same fraction down the ruler, and confirm distinct diagnostics at different depths now show as visually distinct tick positions rather than clustering near the top.
@@ -367,9 +367,9 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
 
 - **`preview-design.md` rev 4 — third critique folded in (design only, no code).** A reviewer critiqued rev 3; treated as input, not instruction, and verified every claim against source before acting. Six blockers, one substantive engine-semantics error, and a stale prerequisite that had inverted one of the doc's own headline traps.
   - **Verified first, then acted.** `repeatable` flags now exist in `language.json` (4 attributes) — rev 3's mandated hardcoded fallback list was stale AND violated CLAUDE.md's data-driven-vocabulary rule, so it's withdrawn; `avoid_actor_area` is genuinely missing the flag (repeatable per guide:2857, used in all 32 corpus maps) and became a Sec.12 data request. `predefinedLabels` still absent (`grep -c` → 0) and was missing from Sec.12 entirely — the exact trap Sec.3.10 was written to catch. `parserWorker.ts` confirmed to use `requestId` with no cancellation, so rev 3's "mirrors the parser worker" claim is withdrawn.
-  - **The substantive engine error: grouping scope.** Rev 3 pinned a blanket "tight groups → center, loose groups → member" and called the guide self-contradictory. Read the per-attribute entries: five state an unconditional rule the blanket policy overrode (`min`/`max_distance_to_players`, `max_distance_to_other_zones`, `min_distance_to_map_edge`, `min`/`temp_min_distance_group_placement` are center-always; `avoid_forest_zone`/`avoid_cliff_zone` are member-always). The real contradiction is only between those entries and the tight/loose notes' *illustrative* lists. Replaced with a per-attribute table; the heuristic now covers only the actor-area attributes, where the guide is genuinely silent. Corpus reach: 32/32, 30/33, 26/33 maps.
+  - **The substantive engine error: grouping scope.** Rev 3 pinned a blanket "tight groups → center, loose groups → member" and called the guide self-contradictory. Read the per-attribute entries: five state an unconditional rule the blanket policy overrode (`min`/`max_distance_to_players`, `max_distance_to_other_zones`, `min_distance_to_map_edge`, `min`/`temp_min_distance_group_placement` are center-always; `avoid_forest_zone`/`avoid_cliff_zone` are member-always). The real contradiction is only between those entries and the tight/loose notes' _illustrative_ lists. Replaced with a per-attribute table; the heuristic now covers only the actor-area attributes, where the guide is genuinely silent. Corpus reach: 32/32, 30/33, 26/33 maps.
   - **Blockers fixed**: API takes `PreviewSettings { playerCount, mapSize }` not `{ playerCount, dim }` (labels and dims are independent, and `dim` isn't a stable input since S0 mutates it); worker protocol rebuilt around terminate-and-respawn (a `checkCancelled` function can't cross `postMessage`, and a synchronous generator can't receive a cancel message anyway) with a discriminated-union response; `FailureBucket` union completed (two buckets were emitted by stages but absent from the union, so Sec.13's per-bucket test gate could never have covered them) and given disjoint domains; `StageSnapshot`/`SimulationNote`/`StageId`/`Span` defined, with `SimulationNote` gaining the `key`/`prominence` pair its three described behaviours needed.
-  - **Where I disagreed**: the critique called the v1 team handling "three different fallbacks with three different lies". It isn't — the three behaviours all follow from one premise (every player is a solo team), and its suggested alternative ("all players one team") would make `grouped_by_team` cluster all eight players together. What was actually missing is that the premise was never *named*, and that a Team Islands script rendered this way looks right and isn't. Fixed by naming it once in Sec.3.1, promoting the note to an on-canvas banner, and making the teams control the top Sec.15 item.
+  - **Where I disagreed**: the critique called the v1 team handling "three different fallbacks with three different lies". It isn't — the three behaviours all follow from one premise (every player is a solo team), and its suggested alternative ("all players one team") would make `grouped_by_team` cluster all eight players together. What was actually missing is that the premise was never _named_, and that a Team Islands script rendered this way looks right and isn't. Fixed by naming it once in Sec.3.1, promoting the note to an on-canvas banner, and making the teams control the top Sec.15 item.
   - **Also**: scaling formula vs its own fixture resolved (exact `dim²/10000` is authoritative per guide:3432; test asserts 829, not the guide's rounded 840); `border_fuzziness` remodelled as depth-decaying so borders fuzz instead of dissolving; `circle_radius 0` disables rather than stacking players at map center, variance defaults to 0 when the argument is omitted; `clumping_factor` given four regimes (it is not monotonic past 40); zone numbering fixed to `playerNumber − 10`, `playerNumber ∈ [1,N]`; `create_actor_area` coordinates are tiles not percent; `land_id` disables `set_place_for_every_player`; goal 5's byte-for-byte determinism made achievable by banning `Math.sin`/`cos`/`pow`/`sqrt` from the generator; Sec.11 now specifies the data structures the 40 ms depends on; `<PLAYER_SETUP>` added to the section order; `test-maps/broken/` dropped from the corpus gate (it doesn't exist); HelpTip ids enumerated, incl. the note that `breakdown.sidePanel.previewToggle`'s "arrives in Phase 4" copy is 4.2's to update.
   - Full item-by-item changelog in the doc's Appendix C.
   - **No code changed, nothing to run.** The two `language.json` items (Sec.12 items 1 and 2 — `predefinedLabels`, `repeatable` on `avoid_actor_area`) are one-file edits that unblock both the preview and `validate()`; worth landing before 4.3 starts.
@@ -402,12 +402,11 @@ Two quirks of the inherited content, worth knowing before you trust the order: e
   - **Two self-contradictions closed.** Sec.6.1 specified `border_fuzziness` as a power while Sec.8 banned `Math.pow` two sections later (restated as one Bernoulli roll per tile of depth — same distribution, and the loop is now the normative form). Sec.6.2/6.4's default budgets were back-derived from the guide's rounded area-ratio column, which Sec.4 spends a paragraph banning on determinism grounds (rebased on `dim` squared over 14400).
   - **A correction one level down from rev 4's headline fix.** Rev 4 replaced the land `clumping_factor` model with a four-regime table because the engine's behaviour is not monotonic, then left terrains pointing at that same table. Terrains have their own default (20 vs 8), their own useful range (0-25 vs 0-40) and no directional regime at all. Own table now.
   - **`Span` was documented as the wrong thing** — called a token-index span when the parser derives it as character offsets (`types.ts:78`); click-through built on that comment lands nowhere. `types.ts` now re-exports the parser's type instead of declaring a structural look-alike, since the duplicate is what let the comment drift.
-  - **Also**: `refDb` reconciled with the worker message (the worker imports the JSON, as `parserWorker.ts` does — shipping it per request would clone 111 KB per keystroke burst); `enable_tile_shuffling`'s honesty note moved to the attribute's *absence*, where the engine is deterministic and our always-shuffle scatters the herdables-under-the-town-center idiom; actor-area ids pinned as sets, not single areas; border percent-to-tile rounding pinned as asymmetric with the guide's worked example, marked verify; `game-constants.json`'s 31-entry stub confronted with a stated rule for unknown named constants and an explicitly narrowed corpus gate until Phase 4.0 runs for real; `terrain_size`'s argument names added as a data request (the data says width/spacing, the guide says Radius/Variance — also a live wrong label in Breakdown and hover today).
+  - **Also**: `refDb` reconciled with the worker message (the worker imports the JSON, as `parserWorker.ts` does — shipping it per request would clone 111 KB per keystroke burst); `enable_tile_shuffling`'s honesty note moved to the attribute's _absence_, where the engine is deterministic and our always-shuffle scatters the herdables-under-the-town-center idiom; actor-area ids pinned as sets, not single areas; border percent-to-tile rounding pinned as asymmetric with the guide's worked example, marked verify; `game-constants.json`'s 31-entry stub confronted with a stated rule for unknown named constants and an explicitly narrowed corpus gate until Phase 4.0 runs for real; `terrain_size`'s argument names added as a data request (the data says width/spacing, the guide says Radius/Variance — also a live wrong label in Breakdown and hover today).
   - **Citation pass.** Rev 4's guide line numbers were systematically 1-3 low, and `actor_area_radius` was off by 29 (it pointed at `find_closest`). Every one re-grepped against the text it quotes and corrected; a spec whose authority rests on sourcing cannot have an unverifiable citation layer. The `percent_chance` framing was softened too — the two guide statements are not actually contradictory, so rev 4's "resolves a conflict" oversold it, and the in-game verify slot it consumed was reassigned.
-  - **Two findings declined, both re-checked before declining**: frameless `min_distance_to_players` (the guide says only *maximum* is inert without a frame — the literal reading stands) and the grouping-scope table overriding the tight/loose notes (those notes say "most constraints (ex. ...)" while the per-attribute entries state their rules unconditionally). The critique had already flagged both as defensible.
+  - **Two findings declined, both re-checked before declining**: frameless `min_distance_to_players` (the guide says only _maximum_ is inert without a frame — the literal reading stands) and the grouping-scope table overriding the tight/loose notes (those notes say "most constraints (ex. ...)" while the per-attribute entries state their rules unconditionally). The critique had already flagged both as defensible.
   - **Nothing to run** — markdown only. Also corrected CLAUDE.md's repo map, which claimed the corpus was "13 tracked" (it is 32 plus `sample.rms`, with 19 more in the gitignored `local/`).
-  - Next: 4.2 or 4.3. No data prerequisite blocks either; the `game-constants.json` re-run still gates anything that asserts *what* gets placed.
-
+  - Next: 4.2 or 4.3. No data prerequisite blocks either; the `game-constants.json` re-run still gates anything that asserts _what_ gets placed.
 
 ---
 
@@ -421,7 +420,7 @@ From the first critique: **map-size label table corrected** — legacy and moder
 
 ## preview-design.md rev 3 changelog (moved from the spec, rev 5)
 
-From the second critique — three substantive fixes: **tight-group overflow corrected** (guide: "a perfect square worth of objects will be filled" — capped partial fill reporting `groupPartial`, NOT all-or-nothing; `occupancyFull` narrowed to the zero-tiles case, preserving 5.2 bucket identity); **`circle_radius` border regimes split** (default circle shifts with borders; explicit `circle_radius` ignores borders for origin placement while growth stays constrained — rev 2 merged the two and misplaced player rings on bordered maps with explicit radii); **frameless `min_distance_to_players` pinned** (guide says only *maximum* is inert without a frame — min now applies against every player-land origin, the common neutral-resource idiom rev 2 left unspecified under a do-not-deviate banner). Nits: `percent_chance` model pinned to roll 1–100 with the 100th percent never chosen (exactly-100 totals leave a 1% no-branch chance) and the first-branch-0 engine bug added to Sec.9's exclusions (item 16); `group_variance` asymmetry (`[n−v, n+v−1]`, floor 1); Sec.6.4's cliff spacing re-labeled a pinned approximation (it derives from unsimulated terrain-16, not guide text); cliff spacing defaults (2/2) stated; negative `border_fuzziness` clamps to 100; `base_elevation` skipped for water-terrain lands.
+From the second critique — three substantive fixes: **tight-group overflow corrected** (guide: "a perfect square worth of objects will be filled" — capped partial fill reporting `groupPartial`, NOT all-or-nothing; `occupancyFull` narrowed to the zero-tiles case, preserving 5.2 bucket identity); **`circle_radius` border regimes split** (default circle shifts with borders; explicit `circle_radius` ignores borders for origin placement while growth stays constrained — rev 2 merged the two and misplaced player rings on bordered maps with explicit radii); **frameless `min_distance_to_players` pinned** (guide says only _maximum_ is inert without a frame — min now applies against every player-land origin, the common neutral-resource idiom rev 2 left unspecified under a do-not-deviate banner). Nits: `percent_chance` model pinned to roll 1–100 with the 100th percent never chosen (exactly-100 totals leave a 1% no-branch chance) and the first-branch-0 engine bug added to Sec.9's exclusions (item 16); `group_variance` asymmetry (`[n−v, n+v−1]`, floor 1); Sec.6.4's cliff spacing re-labeled a pinned approximation (it derives from unsimulated terrain-16, not guide text); cliff spacing defaults (2/2) stated; negative `border_fuzziness` clamps to 100; `base_elevation` skipped for water-terrain lands.
 
 ## preview-design.md rev 4 changelog (moved from the spec, rev 5)
 
@@ -453,7 +452,7 @@ From the third critique. Verified against the sources before acting: the `repeat
 16. **One attribution algorithm** (Sec.7): successive intersection in a fixed documented order. Rev 3's normative leave-one-out and its "cheap implementation" were different algorithms that disagree on overlapping predicates.
 17. **Sec.11 now specifies the data structures the 40 ms depends on** — bucketed O(1) frontier sampling, `Int32Array` candidate lists filtered in place (which is also what the attribution rule needs, so it costs nothing extra), per-stage caches for reachability masks and distance transforms — and says plainly that the benchmark, not the target, gates merges. Sec.13's corpus matrix is costed (~384 generations, ~15 s) with a stated fallback.
 18. **Determinism made real** (goal 5, Sec.8): no `Math.sin`/`cos`/`pow`/`sqrt`/`**` in the generator — fixed-point sine table, integer weight buckets, squared-distance comparisons. Rev 3 claimed byte-for-byte cross-engine determinism while placing origins with `sin`/`cos` and weighting with a fractional exponent.
-19. **Teams: one premise, stated once, banner-noted** (Sec.3.1). Here we disagreed with the critique's framing — rev 3's three fallbacks *are* one coherent policy (every player a solo team), not three different lies, and swapping to "all players one team" would make `grouped_by_team` cluster all eight players together, which is worse. What was actually missing is that the premise was never named, and that on a Team Islands script the honest-looking output is badly wrong. Fixed by naming the premise, making the note a banner, and promoting the teams control to the top Sec.15 item.
+19. **Teams: one premise, stated once, banner-noted** (Sec.3.1). Here we disagreed with the critique's framing — rev 3's three fallbacks _are_ one coherent policy (every player a solo team), not three different lies, and swapping to "all players one team" would make `grouped_by_team` cluster all eight players together, which is worse. What was actually missing is that the premise was never named, and that on a Team Islands script the honest-looking output is badly wrong. Fixed by naming the premise, making the note a banner, and promoting the teams control to the top Sec.15 item.
 20. **`<PLAYER_SETUP>` added** to the canonical section order (Sec.3.11, guide:135) with an explicit statement that S0 folds it into stream state rather than running it as a stage — Sec.6.1 was reading `direct_placement`/`behavior_version`/`override_map_size` from a section the pipeline never mentioned. Sec.3.12 also pins S0 collection of `create_object_group` names and `create_actor_area` records.
 21. **`test-maps/broken/` dropped from the corpus gate** (Sec.13) — it doesn't exist (CLAUDE.md tracked debt, BCC2 triage open).
 22. **HelpTip ids enumerated** (Sec.5), plus the note that `breakdown.sidePanel.previewToggle` already exists and its "Preview logic arrives in Phase 4" copy is 4.2's to update.
@@ -474,18 +473,18 @@ From the fourth critique. Verified before acting: `set_gaia_object_only`'s guide
 
 **Should-fix:**
 
-6. **Cancellation reversed to discard-by-id** (Sec.10). Rev 4's terminate-and-respawn argued the cost was "paid rarely at a ~300 ms debounce", but cancellation fires *only* mid-flight, i.e. during continuous typing — the cost landed exactly where it was claimed rare, and was unquantified. v1 now keeps one long-lived worker and discards superseded responses by id, exactly as the parser does; a superseded run wastes ≤40 ms of worker time and nothing else. A 1000 ms watchdog covers the pathological tail. The "mirrors the parser worker" claim, withdrawn in rev 4, is restored — and this time it is accurate.
+6. **Cancellation reversed to discard-by-id** (Sec.10). Rev 4's terminate-and-respawn argued the cost was "paid rarely at a ~300 ms debounce", but cancellation fires _only_ mid-flight, i.e. during continuous typing — the cost landed exactly where it was claimed rare, and was unquantified. v1 now keeps one long-lived worker and discards superseded responses by id, exactly as the parser does; a superseded run wastes ≤40 ms of worker time and nothing else. A 1000 ms watchdog covers the pathological tail. The "mirrors the parser worker" claim, withdrawn in rev 4, is restored — and this time it is accurate.
 7. **`border_fuzziness` restated without `Math.pow`** (Sec.6.1): `d` independent Bernoulli rolls, one per tile of depth. Same distribution; rev 4 wrote the closed-form exponent as normative while Sec.8 bans the operator. Sec.6.2's south-bias weights likewise restated as integers.
 8. **Default tile budgets rebased on `dim²/14400`** (Sec.6.2/6.4) — `120 × dim²/14400` and `122 × dim²/14400`, from guide:1228/1616. Rev 4's `86 × area-ratio` / `87 × area-ratio` were back-derived by dividing by the guide's rounded 1.4, i.e. the exact display column Sec.4 bans for scaling. Internal contradiction in the doc's most-argued section.
-9. **`enable_tile_shuffling` note moved to the attribute's *absence*** (Sec.6.6, Sec.9 item 15). Without it the engine uses the first candidate deterministically (guide:2694) — the documented way to put herdables and villagers under the town center (guide:2697), which always-shuffle scatters. Rev 4 called it a silent no-op and put nothing on the omission.
+9. **`enable_tile_shuffling` note moved to the attribute's _absence_** (Sec.6.6, Sec.9 item 15). Without it the engine uses the first candidate deterministically (guide:2694) — the documented way to put herdables and villagers under the town center (guide:2697), which always-shuffle scatters. Rev 4 called it a silent no-op and put nothing on the omission.
 10. **`terrain_size` argument names** added as a data request (Sec.12 item 4): the data says `terrain`/`width`/`spacing`, the guide says `TerrainType`/`Radius`/`Variance`, and Sec.6.5 is written against the guide. Also mislabels the fields in Breakdown and hover today.
-11. **`game-constants.json`'s 31-entry stub confronted** (Sec.12): unknown *named* constants now have a stated rule (place at declared count, placeholder glyph, `notSimulated` note — never a placement failure, which would poison 5.2's buckets with data-gap noise), and Sec.13's corpus gate is explicitly scoped down to structural assertions until Phase 4.0 runs against a real DE install.
+11. **`game-constants.json`'s 31-entry stub confronted** (Sec.12): unknown _named_ constants now have a stated rule (place at declared count, placeholder glyph, `notSimulated` note — never a placement failure, which would poison 5.2's buckets with data-gap noise), and Sec.13's corpus gate is explicitly scoped down to structural assertions until Phase 4.0 runs against a real DE install.
 12. **Actor-area ids are sets, not areas** (Sec.6.6, guide:1995): `avoid_actor_area 1234` must clear every area carrying that id. Store a multimap.
 13. **Border percent→tile rounding is asymmetric** (Sec.4, guide:885–886): floor on left/top, ceil on right/bottom, reproducing the guide's 120×120 worked example, marked `[verify]`. Plus: negative borders are legal (don't clamp), and borders and `circle_radius` accept floats.
 
 **Precision:** a mechanical citation pass — rev 4's line numbers were systematically 1–3 low and `actor_area_radius` was off by 29 (2809 pointed at `find_closest`). Every citation now re-grepped against the text it quotes. The `percent_chance` framing is softened: the two guide statements sit at 3006 and 3010, and they are not contradictory — the first is a sufficient condition, not an iff — so rev 4's "resolves a conflict" oversold it; Sec.15's verify slot was reassigned to the `set_gaia_object_only` question. `parserWorker.ts:28` corrected to `useParsedDocument.ts:95` (the worker echoes the id; the host does the discarding). Appendices A/B/C (the rev-2, rev-3 and rev-4 changelogs) moved to the build log, leaving the spec 20% shorter and free of superseded self-litigation.
 
-**Left alone deliberately**, both flagged by the critique as defensible and both re-checked: frameless `min_distance_to_players` (guide:2433 says only *maximum* is inert — the literal reading stands) and the grouping-scope table overriding guide:2122/2143 (those two lines say "most constraints (ex. …)" while the per-attribute entries state their rules unconditionally; per-attribute wins).
+**Left alone deliberately**, both flagged by the critique as defensible and both re-checked: frameless `min_distance_to_players` (guide:2433 says only _maximum_ is inert — the literal reading stands) and the grouping-scope table overriding guide:2122/2143 (those two lines say "most constraints (ex. …)" while the per-attribute entries state their rules unconditionally; per-attribute wins).
 
 ## preview-design.md rev 6 changelog (moved from the spec, rev 7)
 
@@ -493,13 +492,13 @@ The first round tested against the game rather than against the guide. Nine `RMS
 
 **Overturned:**
 
-1. **Sec.6.6's grouping-scope table is gone**, replaced by a measured two-rule model: tight grouping checks the **anchor** only and the fill is checked against nothing; loose grouping checks **every member**. Rev 4 introduced the eight-row per-attribute table as its headline "substantive correction", rev 5 kept it and defended it as re-checked. Both were wrong, and re-reading could never have shown it — the guide's per-attribute entries describe loose behaviour, so a table built from them inverts the answer for tight groups. Evidenced across three *kinds* of constraint: `avoid_forest_zone` (distance), `terrain_to_place_on` (tile validity — 25 of 25 placed on a 9-tile patch, spilling onto illegal terrain), `avoid_actor_area` (area exclusion, against a terrain-marked area). Loose confirmed by 12 requested → exactly 9 placed, 9 being the exact count of valid tiles. This also makes rev 3's original blanket policy closer to right than either revision that "corrected" it.
+1. **Sec.6.6's grouping-scope table is gone**, replaced by a measured two-rule model: tight grouping checks the **anchor** only and the fill is checked against nothing; loose grouping checks **every member**. Rev 4 introduced the eight-row per-attribute table as its headline "substantive correction", rev 5 kept it and defended it as re-checked. Both were wrong, and re-reading could never have shown it — the guide's per-attribute entries describe loose behaviour, so a table built from them inverts the answer for tight groups. Evidenced across three _kinds_ of constraint: `avoid_forest_zone` (distance), `terrain_to_place_on` (tile validity — 25 of 25 placed on a 9-tile patch, spilling onto illegal terrain), `avoid_actor_area` (area exclusion, against a terrain-marked area). Loose confirmed by 12 requested → exactly 9 placed, 9 being the exact count of valid tiles. This also makes rev 3's original blanket policy closer to right than either revision that "corrected" it.
 2. **A reference frame does not confine the candidate set.** It anchors the distances that `min`/`max_distance_to_players` and `find_closest` measure from, and nothing more. A frame with no distance band confines nothing. Observed in three separate tests; the spec previously implied per-land placement.
 3. **Terrain separation is decided by terrain restriction, never by occupancy.** Same script, one word changed: with WATER between clearings resources stayed on their own land; with FOREST they scattered freely, because forest is legal terrain for them and trees block only by occupancy. The rule itself was right; what was missing is that a visually impassable barrier is not a barrier.
 
 **Confirmed (previously inference, now measured):** `set_gaia_object_only` omitted under a frame places **nothing** (Sec.15 item 9, closed); negative `base_elevation` = **16**; `circle_radius 0` behaves exactly as if the attribute were absent, inheriting the no-attribute variance; `land_position 50 50` → tile (60,60) on a 120 map, pinning Sec.4's percent→tile rule; an empty `<ELEVATION_GENERATION>` section is sufficient.
 
-**Data (Sec.12):** the 31-entry stub is discharged — 31/31 real `constId`s, 15/15 terrain textures, 6 resource yields, `idSource: "extracted"`, 29/31 verified. Items 5 and 6 are now *sourced but not decodable*: `Terrain.colors` is palette indices, not RGB (SNOW reads identical to GRASS), and `Terrain.is_water` is a bitfield, not a boolean. Both need a decoding pass before use; the fallbacks stand until then. FISH/SHORE_FISH left unverified on an honest contradiction.
+**Data (Sec.12):** the 31-entry stub is discharged — 31/31 real `constId`s, 15/15 terrain textures, 6 resource yields, `idSource: "extracted"`, 29/31 verified. Items 5 and 6 are now _sourced but not decodable_: `Terrain.colors` is palette indices, not RGB (SNOW reads identical to GRASS), and `Terrain.is_water` is a bitfield, not a boolean. Both need a decoding pass before use; the fallbacks stand until then. FISH/SHORE_FISH left unverified on an honest contradiction.
 
 **Also:** `<ELEVATION_GENERATION>`'s absence promoted to an error-severity `validate()` check, because the map generates fine and then crashes in play; `RMS0201` false-positives on optional trailing arguments filed as `docs/known-issues.md` BUG-003; `PredefinedLabel` typed in `src/parser/language.ts`, which had lagged the data since rev 5 marked it LANDED.
 
@@ -512,6 +511,7 @@ Reported by a user, not found by review: "Add command" was disabled in every sec
 **This is the exact shape of `content/rmsBasics.ts`'s Tutorial A**: step 1 requires a truly empty file (`isEmptyScript` — `sections.length === 0 && preamble.length === 0`), step 3 navigates straight to `PLAYER_SETUP` and says "Press + Add command" with no step in between that types a section tag anywhere. As shipped, the tutorial hits this exact wall at its third step. Tutorial A's own status line already flagged "never visually verified outside the Tauri host" — this is almost certainly why.
 
 **Fix, three parts, all in `src/breakdown/patch/`:**
+
 1. `InsertTarget` gained `{ in: "preamble" }` (Header tab, nothing selected — `computeEdit.ts`'s `insertIntoPreamble`, mirrors `insertIntoSection` minus the empty-container case, since the Header tab only renders when `preamble.length > 0`). One real bug caught by its own unit test before it shipped: with exactly one existing preamble item, `inferStyle`'s opener-vs-first-item comparison degenerates (there's no opener token for a preamble — offset 0 coincides with the item's own start), always reading as inline. Special-cased to the same own-lines default `inferStyle` itself uses for an empty container.
 2. `InsertTarget` gained `{ in: "newSection"; name }` (a canonical tab with no `SectionNode` in the file yet — `insertIntoNewSection`, synthesizes `<NAME>\n<command>\n` as one insert, appended after whatever's already in the file). Deliberately does **not** hunt for a canonically-ordered slot among existing sections: `docs/build-log.md`'s own prior entries (Phase 4.2/4.3, "sections run in canonical order regardless of file order," measured, not assumed) mean there's no correctness reason to, and appending lands in canonical order anyway for the ordinary case of building a script front-to-back.
 3. `CommandPicker`'s `defaultSection` was being passed `"header"` for the Header tab — never a real `CommandDef.section` value (`language.json`'s `sections[]` holds only the seven canonical names), so the picker silently showed "No matching commands" until a user found the "show all sections" checkbox. Now `undefined` for the Header tab specifically (same as an unknown-section tab), `tab.id` for every other canonical tab including a freshly-created one.
@@ -530,7 +530,7 @@ The first session to test spec claims against the game instead of against the gu
 
 **`predefinedLabels` was landed as data but not as a type.** `src/parser/language.ts:82` still read `predefinedLabels?: string[] // absent today` while the data held 138 objects, so `entry.category` — the switch the whole item exists to enable — did not compile. Nothing caught it because `parserWorker.ts` reaches `LanguageData` through a double cast, which asserts a shape rather than verifying one. Added `PredefinedLabel` / `PredefinedLabelCategory` from the schema's `$defs`, category as a ten-member union so the generator's switch is exhaustiveness-checked. Field kept optional despite the schema marking it required, so preview-design Sec.3.1's mandated `?? []` guard is not dead code. **Lesson recorded: a prerequisite marked done in one representation is not done in the others.**
 
-**Phase 4.0 extraction completed — first successful `.dat` run.** `game-constants.json` went from 31 entries with zero `constId`s and zero `verified` to 31/31 real ids, 15/15 terrain textures, 6 resource yields, `idSource: "extracted"`, 29/31 verified. Three tool bugs surfaced on that first real run: the terrain→texture lookup joined `Graphic.slp` against `Terrain.slp` (unrelated id spaces — resolved for no terrain, and produced `s_town_center_extra_x1` for the two whose slp is -1); `verified = True` was set unconditionally, so GRASS shipped `verified: true` beside its own note reading "texture NOT resolved"; and DE's literal `"None"` placeholder filename reached the JSON, which `validate:reference` structurally cannot catch since the schema types the field `["string","null"]`. **A unit test was pinning the second bug in place** — `test_full_run_sets_verified_true` handed `merge_entry` a fake dat reporting *unit not found* and asserted `verified: True`. Replaced with six per-branch tests. The `build_slp_lookup` tests all passed too; they verified the function did what it claimed, never that the claim was the right question.
+**Phase 4.0 extraction completed — first successful `.dat` run.** `game-constants.json` went from 31 entries with zero `constId`s and zero `verified` to 31/31 real ids, 15/15 terrain textures, 6 resource yields, `idSource: "extracted"`, 29/31 verified. Three tool bugs surfaced on that first real run: the terrain→texture lookup joined `Graphic.slp` against `Terrain.slp` (unrelated id spaces — resolved for no terrain, and produced `s_town_center_extra_x1` for the two whose slp is -1); `verified = True` was set unconditionally, so GRASS shipped `verified: true` beside its own note reading "texture NOT resolved"; and DE's literal `"None"` placeholder filename reached the JSON, which `validate:reference` structurally cannot catch since the schema types the field `["string","null"]`. **A unit test was pinning the second bug in place** — `test_full_run_sets_verified_true` handed `merge_entry` a fake dat reporting _unit not found_ and asserted `verified: True`. Replaced with six per-branch tests. The `build_slp_lookup` tests all passed too; they verified the function did what it claimed, never that the claim was the right question.
 
 **Nine in-game verification maps.** Kept in the install's `random-map-scripts/`, each minimal, deterministic where possible, with a binary observable and its full reasoning in its header. Results are in preview-design Appendix A; the headline is that Sec.6.6's grouping-scope table — rev 4's flagship correction, re-checked and defended by rev 5 — was wrong, and no further re-reading could have shown it, because both readings were consistent with the guide.
 
@@ -550,15 +550,15 @@ The tracked-debt item from Phase 2 shipped: `src/parser/validate.ts`, a pure sec
 
 **Measurement drove every scoping decision.** Implemented straight from Sec.8, the pass emitted **11,623 diagnostics across the 57-map corpus**. Tuning brought it to **277** (~4.9 per map), and each cut was made against evidence rather than taste:
 
-| Check | First run | Shipped | What the corpus showed |
-|---|---:|---:|---|
-| RMS0300 conditionally-defined note | 6,404 | 0 | Dropped. "Set a flag in a random branch, read it later" is the core RMS control-flow technique, not an edge case (2,349 in AK_Vanguard alone), and the note cannot tell a typo from a branch that correctly didn't run. |
-| RMS0301 duplicate definition | 4,856 | 3 | Restricted to both-definitions-unconditional. Sec.8 already says why conditional redefinition is legitimate; reporting it anyway produced 491 notes in one DE-official map. |
-| RMS0304 wrong section | 53 | 0 | Not built. `CommandDef.section` records where the guide *documents* a command, not where the engine accepts it — 52 of the 53 were `effect_amount` used in `<OBJECTS_GENERATION>`/`<LAND_GENERATION>` by shipped, working maps. |
-| RMS0306 duplicate attribute | 60 | 17 | Kept; 43 of the 60 were `add_object`, which is cumulative by design. Fixed as data (`repeatable: true`), not as a special case in code. |
-| RMS0300 undefined label | 299 | 7 | Inverted from a negative claim to a positive one — see below. |
+| Check                              | First run | Shipped | What the corpus showed                                                                                                                                                                                                          |
+| ---------------------------------- | --------: | ------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RMS0300 conditionally-defined note |     6,404 |       0 | Dropped. "Set a flag in a random branch, read it later" is the core RMS control-flow technique, not an edge case (2,349 in AK_Vanguard alone), and the note cannot tell a typo from a branch that correctly didn't run.         |
+| RMS0301 duplicate definition       |     4,856 |       3 | Restricted to both-definitions-unconditional. Sec.8 already says why conditional redefinition is legitimate; reporting it anyway produced 491 notes in one DE-official map.                                                     |
+| RMS0304 wrong section              |        53 |       0 | Not built. `CommandDef.section` records where the guide _documents_ a command, not where the engine accepts it — 52 of the 53 were `effect_amount` used in `<OBJECTS_GENERATION>`/`<LAND_GENERATION>` by shipped, working maps. |
+| RMS0306 duplicate attribute        |        60 |      17 | Kept; 43 of the 60 were `add_object`, which is cumulative by design. Fixed as data (`repeatable: true`), not as a special case in code.                                                                                         |
+| RMS0300 undefined label            |       299 |       7 | Inverted from a negative claim to a positive one — see below.                                                                                                                                                                   |
 
-**The rule that came out of it: reference data is a positive resolver, never a negative authority.** `game-constants.json` holds 31 of the game's several hundred constants, so finding a name in it proves something and *not* finding one proves nothing. The same asymmetry then turned up where it wasn't expected — in condition labels, the one vocabulary that was supposed to be closed. DE-official maps branch on `MAPSIZE_ABOVE_GIANT`, `THEME_AFRICAN`, `NOMAD_START`, `ESCALATION_MODE` and a dozen more labels that appear **nowhere** in the archived guide our 138 `predefinedLabels` were transcribed from. They are engine labels newer than our data, and "never defined" would have been a false warning 299 times.
+**The rule that came out of it: reference data is a positive resolver, never a negative authority.** `game-constants.json` holds 31 of the game's several hundred constants, so finding a name in it proves something and _not_ finding one proves nothing. The same asymmetry then turned up where it wasn't expected — in condition labels, the one vocabulary that was supposed to be closed. DE-official maps branch on `MAPSIZE_ABOVE_GIANT`, `THEME_AFRICAN`, `NOMAD_START`, `ESCALATION_MODE` and a dozen more labels that appear **nowhere** in the archived guide our 138 `predefinedLabels` were transcribed from. They are engine labels newer than our data, and "never defined" would have been a false warning 299 times.
 
 So RMS0300 now reports only on positive evidence of a typo: a label within edit distance **1** of something the file or the engine actually defines. Distance 2 (what the parser's RMS0200 uses for command names) is wrong here — command names are a fixed, well-spaced vocabulary, while condition labels are invented per file and arrive in dense families, so at distance 2 a neighbour is always findable and means nothing. The corpus produced `CONFIG_RIVER_D1 — did you mean CONFIG_RIVER_A4?`, which is a different river. Two further suppressions fell out of the same principle: a name whose `#define` exists but is **commented out** is switched off deliberately (168 `if DEBUG_MODE` uses in one map), and an unrecognised name with no near neighbour is presumed to be a label we don't know yet.
 
@@ -574,16 +574,16 @@ So RMS0300 now reports only on positive evidence of a typo: a label within edit 
 
 ## Phase 2.4/2.5 — `validate()` corpus review (2026-07-31, same day)
 
-A review pass over the just-shipped semantic pass, run by re-taking the 57-map measurement against the committed code rather than reading it. The total reproduced exactly (277), which is what made the *composition* worth looking at: one check nobody had put in the tuning table was supplying 79 of the 277, and classifying its hits found the pass's one outright false claim.
+A review pass over the just-shipped semantic pass, run by re-taking the 57-map measurement against the committed code rather than reading it. The total reproduced exactly (277), which is what made the _composition_ worth looking at: one check nobody had put in the tuning table was supplying 79 of the 277, and classifying its hits found the pass's one outright false claim.
 
 **RMS0302 was two checks wearing one code.** Sec.8 asks for a single "shadowing a predefined name" warning over `predefinedLabels` + the constants DB. Classified against the corpus, its 79 hits split cleanly:
 
-| Kind | Hits | Verdict |
-|---|---:|---|
-| `#const <game constant>` written to the engine's own value | 73 | True, worthless. All in copied `if TERRAIN_CONSTANTS` headers pinning IDs. **Zero value mismatches corpus-wide.** |
-| `#define <predefined label>` | 6 | **False.** Not shadowed at all. |
+| Kind                                                       | Hits | Verdict                                                                                                           |
+| ---------------------------------------------------------- | ---: | ----------------------------------------------------------------------------------------------------------------- |
+| `#const <game constant>` written to the engine's own value |   73 | True, worthless. All in copied `if TERRAIN_CONSTANTS` headers pinning IDs. **Zero value mismatches corpus-wide.** |
+| `#define <predefined label>`                               |    6 | **False.** Not shadowed at all.                                                                                   |
 
-The second row is the finding. Every one of the 138 `predefinedLabels` is a *runtime condition* — the ten categories are game mode, map size, starting resources, starting age, lobby setting, player count, team count, team size, player-in-team, game version — so the engine defines each only when it holds. `MAPSIZE_TINY` exists on a tiny map and nowhere else, or `if MAPSIZE_TINY` could not work. A user `#define EMPIRE_WARS` is therefore overridden by nothing; it switches the condition on, which is precisely the point of the block `Acclivity`, `Enclosed` and `Haboob` all ship:
+The second row is the finding. Every one of the 138 `predefinedLabels` is a _runtime condition_ — the ten categories are game mode, map size, starting resources, starting age, lobby setting, player count, team count, team size, player-in-team, game version — so the engine defines each only when it holds. `MAPSIZE_TINY` exists on a tiny map and nowhere else, or `if MAPSIZE_TINY` could not work. A user `#define EMPIRE_WARS` is therefore overridden by nothing; it switches the condition on, which is precisely the point of the block `Acclivity`, `Enclosed` and `Haboob` all ship:
 
 ```
 if EW_TESTING
@@ -596,13 +596,13 @@ The old message told the author that line "does nothing at all — pick a differ
 
 **The split.** RMS0302 keeps the game-constant half, and gets a severity that tracks the evidence: warning only when a verified `constId` and an integer literal disagree (the silent value bug — `#const SNOW 11` where every `SNOW` below still means 32), info when they agree or can't be compared. RMS0312 is new and carries the label half, phrased as what it is rather than as a mistake, with the one real hazard named (an unguarded `#define` ships the mode enabled). Corpus total is unchanged at 277 — the deliberate choice was info over silence, since "this line does nothing" is true and worth saying once to a beginner — but the mix moved from **149 warning / 128 info to 70 / 207**. Zero RMS0302 warnings survive on the corpus, which is the correct answer for a corpus that contains no value mismatches.
 
-**The rule this adds to the positive-resolver one:** a reference-data hit says what a name *is*, never what the engine has already done with it. Rule 1 governs whether a lookup may be trusted; this governs what may be concluded once it is. `predefinedLabels` records names the engine *may* define. Written into parser-design Sec.10 as scoping rule 3 and into the Sec.8 bullet it amends.
+**The rule this adds to the positive-resolver one:** a reference-data hit says what a name _is_, never what the engine has already done with it. Rule 1 governs whether a lookup may be trusted; this governs what may be concluded once it is. `predefinedLabels` records names the engine _may_ define. Written into parser-design Sec.10 as scoping rule 3 and into the Sec.8 bullet it amends.
 
 **Corpus gates were running on 33 of the 57 files.** `listRms` never recursed into `test-maps/local/`, so the half of the corpus every scoping decision was measured against — including `hamburger.rms2`, the pass's one real find, and the three DE-official maps supplying 59 of the 79 RMS0302 hits — sat outside every gate. Now walked (`.rms` only; `.rms2` stays out as a separate triage question, so the headline find is still ungated). All 19 newly-gated files pass the coverage and span-fidelity properties unchanged, which is the first evidence those properties hold on DE's own scripts and not just on community ones. This is the build log's own "verify the instrument" lesson landing one session later: a loader that silently skips input will let a measurement rot without anyone noticing.
 
 **Also corrected:** parser-design Sec.8 said five attributes carry `repeatable`; the data has had six since `add_object` was flagged during the build (rationale was recorded on the entry's `notes` and in the tuning table, never in the spec sentence).
 
-**Left open, recorded in Sec.10 rule 2:** distance 1 narrowed RMS0300's dense-family problem without closing it. `AK_Namatjira` defines `CONFIG_RIVER_{A4,A6,A9,M4,M6,M9}` and branches on twelve members; `A8` and `M8` are reported, the four undefined siblings at distance 2 are not. Suggested discriminator, unmeasured: a chain whose conditions are *all* undefined is a typo family (`hamburger`), a chain mixing defined and undefined members is a config switch (`AK_Namatjira`, `Rage Forest 2026`).
+**Left open, recorded in Sec.10 rule 2:** distance 1 narrowed RMS0300's dense-family problem without closing it. `AK_Namatjira` defines `CONFIG_RIVER_{A4,A6,A9,M4,M6,M9}` and branches on twelve members; `A8` and `M8` are reported, the four undefined siblings at distance 2 are not. Suggested discriminator, unmeasured: a chain whose conditions are _all_ undefined is a typo family (`hamburger`), a chain mixing defined and undefined members is a config switch (`AK_Namatjira`, `Rage Forest 2026`).
 
 **One unrelated gate repaired.** `lexer.test.ts`'s offset property check (spec Sec.12, non-negotiable) started timing out mid-session on unchanged code. Measured rather than guessed: the five fixture files hold 76,534 tokens, tokenizing them costs 403 ms and comparing every offset costs 68 ms, while the `expect()` per token the test used cost 7.6 s of assertion-object construction — so a gate over a 0.4 s workload was failing a 5 s timeout on nothing but machine speed. Rewritten to collect mismatches and assert once, the same shape `testUtils.checkProperties` already uses. Identical comparison, same failure detail, 0 mismatches. **Rule of thumb: an assertion inside a five-figure loop is a harness cost, not a check** — collect and assert once.
 
@@ -610,7 +610,7 @@ The old message told the author that line "does nothing at all — pick a differ
 
 ## Phase 4.1 — exact measurement via scenario export (2026-07-31)
 
-Follow-on to the rev 6 verification pass. The in-game maps answered every *binary* question and could answer no *numeric* one, because nobody can count 829 versus 840 tiles from a screenshot. This session closed that gap.
+Follow-on to the rev 6 verification pass. The in-game maps answered every _binary_ question and could answer no _numeric_ one, because nobody can count 829 versus 840 tiles from a screenshot. This session closed that gap.
 
 **`tools/scenario-probe/` — the instrument.** DE's editor can save an RMS-generated map as a `.aoe2scenario`, and `AoE2ScenarioParser` (added dependency, `pip install -r requirements.txt`) reads it. The probe prints exact terrain, elevation and object histograms with names resolved through our own `game-constants.json`. Workflow: pick the script in the editor, Generate Map, Save As, run the probe.
 
@@ -620,9 +620,9 @@ Two things worth knowing before using it. The library prints emoji progress mark
 
 **Sec.15 item 7b is NOT settled, and both candidate models are refuted.** `RMSTEST_10` ran `create_elevation 1 { number_of_tiles 400 set_scale_by_size }` on Small (144×144). Exact area predicts 400 × 2.0736 = **829.44**; the guide's rounded ratio column predicts 400 × 2.1 = **840**. Measured: **853 tiles at elevation 1**. Neither. This is the single most valuable outcome of building the probe: three revisions of the spec argued 829 versus 840 and the answer was neither.
 
-Two follow-up exports pinned the shape of it. Declared 400 twice → **853, 851**; declared 200 → **428**. So run-to-run variance is ±2 tiles (measurement is stable), the relationship is **linear with no constant overhead** (halving the declared value halves the result, ruling out a fixed slope skirt or perimeter cost), and the effective multiplier is **~2.13** — *above* both candidates, exact 2.0736 and rounded 2.1. The achieved count therefore exceeds the budget by ~2.8% (exact model) or ~1.4% (ratio model), consistently.
+Two follow-up exports pinned the shape of it. Declared 400 twice → **853, 851**; declared 200 → **428**. So run-to-run variance is ±2 tiles (measurement is stable), the relationship is **linear with no constant overhead** (halving the declared value halves the result, ruling out a fixed slope skirt or perimeter cost), and the effective multiplier is **~2.13** — _above_ both candidates, exact 2.0736 and rounded 2.1. The achieved count therefore exceeds the budget by ~2.8% (exact model) or ~1.4% (ratio model), consistently.
 
-**A tile count could not settle it.** It measures what the elevation clump *grew to*, not what it was *told to grow to*, and region growing overshoots. `RMSTEST_11_scaling_objects.rms` re-ran the same arithmetic against `number_of_objects 400 set_scaling_to_map_size` — frameless and unconstrained, so nothing could starve the count — because an object count is counted rather than grown.
+**A tile count could not settle it.** It measures what the elevation clump _grew to_, not what it was _told to grow to_, and region growing overshoots. `RMSTEST_11_scaling_objects.rms` re-ran the same arithmetic against `number_of_objects 400 set_scaling_to_map_size` — frameless and unconstrained, so nothing could starve the count — because an object count is counted rather than grown.
 
 **SETTLED: 829 GOLD, exactly the exact-area prediction** (`400 × 20736/10000 = 829.44`). The rounded-ratio model predicted 840. **preview-design Sec.4 was right**, guide:3429's "multiply by the area ratio listed" is an author-facing simplification, and Sec.13's fixture asserting 829 stands. Recorded in Sec.4 as CONFIRMED.
 
@@ -632,11 +632,11 @@ This also explains the elevation numbers retroactively: against a budget of 829,
 
 **A caution the object runs surfaced.** Object counts were perfectly reproducible (1036 ×3) while elevation tile counts varied (853, 851 at the same declared value). Same scaling path, different variance, which localises elevation's variance to growth rather than arithmetic — but does **not** establish that the ~3% mean offset is growth. At least three explanations survive two data points: batch overshoot; `set_scale_by_size` not following the same rule as `set_scaling_to_map_size` (only the object path was ever measured, and Sec.4 asserting they share a rule is spec, not evidence); or a perimeter-scaled skirt of tiles raised to render the hill edge. Filed as **Sec.15 item 7d** with a one-map discriminator — `RMSTEST_13_overshoot.rms` runs `number_of_tiles 829` with no `set_scale_by_size`, deleting the scaling path, so ~853 means growth overshoots and exactly 829 means the offset lives in elevation's scaling. Re-running it at 25 separates the skirt hypothesis, since a perimeter effect is an enormous fraction of a small clump and a rounding error on a large one. **RESOLVED same day (RMSTEST_13, 4 runs per budget).** Budget 829 with scaling deleted still gave **863, 855, 851, 848** (mean 854.25, +3.05%) — the overshoot survives removal of the scaling path, so it is growth. Budget 25 gave **26, 26, 27, 26**, killing the perimeter-skirt explanation: a 25-tile blob's perimeter is ~18 against ~102 for an 829-tile one, so a skirt would have added ~18 tiles and it added one; the overshoot ratio (20x) tracks the area ratio (33x), not the perimeter ratio (5.8x).
 
-**A second result fell out of the same runs.** The unscaled 829 mean (854) is indistinguishable from the *scaled* declared-400 runs (853, 851), which means `set_scale_by_size` targets the same budget the object path does. Had elevation scaled differently it would have aimed at a different number and landed elsewhere. Sec.4 previously asserted that the two scale attributes share a rule; that is now measured.
+**A second result fell out of the same runs.** The unscaled 829 mean (854) is indistinguishable from the _scaled_ declared-400 runs (853, 851), which means `set_scale_by_size` targets the same budget the object path does. Had elevation scaled differently it would have aimed at a different number and landed elsewhere. Sec.4 previously asserted that the two scale attributes share a rule; that is now measured.
 
 Recorded in Sec.6.2 with the spread, not just the bias: 848-863 is a 1.8% range on identical input, so 5.2's Monte Carlo must not expect elevation coverage repeatable to the tile. Implementing the 3% is marked optional and low priority — it is invisible at preview scale and inside Sec.13's tolerances. Sec.15 item 7d closed.
 
-**Method lesson, now written into Sec.15 item 7:** measure a *counted* quantity, never a *grown* one. The first instrument was not wrong about arithmetic, it was measuring the wrong thing, and it produced a number (~2.13×) that matched no model and would have looked like evidence against both.
+**Method lesson, now written into Sec.15 item 7:** measure a _counted_ quantity, never a _grown_ one. The first instrument was not wrong about arithmetic, it was measuring the wrong thing, and it produced a number (~2.13×) that matched no model and would have looked like evidence against both.
 
 **New mechanism found: terrains auto-place objects, at a density the dat records.** `Terrain.terrain_unit_id` / `terrain_unit_density`, and the unit is **objects per 1000 tiles** — confirmed at scale on RMSTEST_10, where 20736 GRASS tiles at density 60 produced 1245 objects against a predicted 1244.2, and on RMSTEST_8 where FOREST at density 1000 produced 14080 trees on 14077 tiles. This matters beyond decoration: Test 8 established that **occupancy is the only constraint on a tight group's fill**, and these auto-placed units are occupancy. preview-design models forest trees for the forest-zone mask but not the general mechanism.
 
@@ -655,14 +655,14 @@ A read-only audit of everything Phase 4.0, 4.1 and the `validate()` sessions lef
 
 **The merge itself is clean.** `parseRms` and `validate()` were checked for double-reporting by comparing exact spans across all 52 files: **zero overlaps**. The single merge point in `parserWorker.ts` is correct, the pure modules stay split, and `docs/parser-design.md` Sec.10's code table matches the 45 codes the implementation actually emits, RMS0312 included. `parser.ts` itself changed almost not at all — an exported `editDistanceCapped` (shared with `validate()` so the two passes agree on what counts as a typo) and a TODO. The rest of its diff is a repo-wide `§` → `Sec.` sweep, complete, zero occurrences left.
 
-**What the measurement found is that the noise moved.** `validate()` was tuned 11,623 → 277 and is well behaved. Nobody re-measured the *parser*, which emits **1,800** diagnostics over the same corpus — 6.5× the semantic pass it was so carefully scoped against.
+**What the measurement found is that the noise moved.** `validate()` was tuned 11,623 → 277 and is well behaved. Nobody re-measured the _parser_, which emits **1,800** diagnostics over the same corpus — 6.5× the semantic pass it was so carefully scoped against.
 
-| Code | Hits | Verdict |
-|---|---:|---|
-| RMS0200 unknown name | 858 | ~2.5% signal. Filed BUG-005/BUG-004 |
-| RMS0203 out of range | 514 | 463 false, **fixed this session** |
-| RMS0217 negative border | 169 | Genuine caution, left alone |
-| RMS0202 type mismatch | 106 | Already tracked as BUG-002 |
+| Code                    | Hits | Verdict                             |
+| ----------------------- | ---: | ----------------------------------- |
+| RMS0200 unknown name    |  858 | ~2.5% signal. Filed BUG-005/BUG-004 |
+| RMS0203 out of range    |  514 | 463 false, **fixed this session**   |
+| RMS0217 negative border |  169 | Genuine caution, left alone         |
+| RMS0202 type mismatch   |  106 | Already tracked as BUG-002          |
 
 **The fix: two `min` values that contradicted their own `default`.** `base_elevation.level` and `create_elevation.maxHeight` both declared `min 1 / max 16 / default 0`. Both were transcribed from a guide line reading `number (1-16) (default: 0 - not elevated)` — the parenthesised range was copied and the clause beside it, which documents 0 as the legal value meaning flat, was not. Every one of the corpus's **461** `base_elevation 0` uses drew RMS0203. Corrected to `min 0`; RMS0203 fell **514 → 51**, and the survivors are true positives (`land_position` past 99, which guide:818 says can crash the game outright).
 
@@ -682,21 +682,21 @@ A follow-on from the corpus review, driven by two worked examples rather than a 
 
 **The examples.** First: `if A1 #const T 2 endif / if A2 #const T 3 endif / ... / #const T 1` with A1 and A2 picked by a `start_random`. Correctly silent, and worth recording why — because first-definition-wins, the fallback **must** come last, which inverts the habit that transfers from C and Python. Writing the default first is the bug, and nothing reports it today (CREATION_PLAN 2.6). Second: `if A1 #const T 2 endif` near the top, then a `B1`/`B2` chain each of whose branches contains `if A1 #const T ...`. Both inner assignments are dead whenever A1 holds, and nothing reported them. That is 2.6's shape too.
 
-**What did get built, both from the same insight: `conditionalDepth` is a count, not a path.** Depth 1 describes `if A / else` (two paths, legitimate, the 4,856-diagnostic cut) *and* two definitions inside one `if A` (one path, the second provably dead). The old RMS0301 discarded both. Replaced with a guard stack maintained during the walk — a condition contributes a positive literal to its own branch and a negation to every later branch of its chain, each `start_random` branch contributes an opaque literal — and two definitions share a path when their stacks are equal.
+**What did get built, both from the same insight: `conditionalDepth` is a count, not a path.** Depth 1 describes `if A / else` (two paths, legitimate, the 4,856-diagnostic cut) _and_ two definitions inside one `if A` (one path, the second provably dead). The old RMS0301 discarded both. Replaced with a guard stack maintained during the walk — a condition contributes a positive literal to its own branch and a negation to every later branch of its chain, each `start_random` branch contributes an opaque literal — and two definitions share a path when their stacks are equal.
 
-| Check | Before | After |
-|---|---:|---:|
-| RMS0301 redefinition | 3 | **38** |
-| RMS0313 unreachable branch | — | **1** |
-| Corpus total | 277 | 313 (106 warning / 207 info) |
+| Check                      | Before |                        After |
+| -------------------------- | -----: | ---------------------------: |
+| RMS0301 redefinition       |      3 |                       **38** |
+| RMS0313 unreachable branch |      — |                        **1** |
+| Corpus total               |    277 | 313 (106 warning / 207 info) |
 
 Verified as a strict superset: every hit the old `conditionalDepth` rule produced is still produced. The 35 new ones triaged as real, the largest cluster being a shared template that writes `#const PREDATOR_A` twice in each branch of a six-way switch while the block immediately above it correctly writes `LUREABLE_A` and `LUREABLE_B` — every branch reads as picking two predator species and delivers one.
 
-**RMS0313 found a defect in DE's own `nomad.rms`.** One `if`/`elseif` ladder tests `INDOMALAYAN_TROPICAL` at branch 6 and again at branch 11, 130 lines apart. The second can never be reached, so 23 lines and 15 constants of biome configuration are dead in a shipping official map. It surfaced first as 15 redefinition hits whose guard sets contained both `X` and `!X`, which is what prompted separating reachability from redefinition — a contradictory guard means the *branch* is dead, not the assignment, and it deserves one report rather than one per statement inside it. **The general lesson: when a check's hits cluster, ask whether the cluster is one fact being counted many times.** RMS0313 reports the same defect once, needs no reference data, and has no soundness precondition, because every branch of one chain is tested against the same defines at the same point in the token stream.
+**RMS0313 found a defect in DE's own `nomad.rms`.** One `if`/`elseif` ladder tests `INDOMALAYAN_TROPICAL` at branch 6 and again at branch 11, 130 lines apart. The second can never be reached, so 23 lines and 15 constants of biome configuration are dead in a shipping official map. It surfaced first as 15 redefinition hits whose guard sets contained both `X` and `!X`, which is what prompted separating reachability from redefinition — a contradictory guard means the _branch_ is dead, not the assignment, and it deserves one report rather than one per statement inside it. **The general lesson: when a check's hits cluster, ask whether the cluster is one fact being counted many times.** RMS0313 reports the same defect once, needs no reference data, and has no soundness precondition, because every branch of one chain is tested against the same defines at the same point in the token stream.
 
-**Deferred with its measurement attached (CREATION_PLAN 2.6, spec Sec.8):** guard *subsumption*, where an earlier definition on a *containing* path kills a later one. It catches both worked examples above and found exactly **one** genuine corpus hit beyond same-path, at the cost of guard algebra plus a monotonicity precondition — unsound if a guard name is `#define`d between the two sites, since the earlier guard could have been false there and true later. Recorded rather than built.
+**Deferred with its measurement attached (CREATION_PLAN 2.6, spec Sec.8):** guard _subsumption_, where an earlier definition on a _containing_ path kills a later one. It catches both worked examples above and found exactly **one** genuine corpus hit beyond same-path, at the cost of guard algebra plus a monotonicity precondition — unsound if a guard name is `#define`d between the two sites, since the earlier guard could have been false there and true later. Recorded rather than built.
 
-**Correction to the review entry above.** Its "37 hits, zero overlap with RMS0301" understated the overlap: the triage compared the prototype's offsets (the `#const` token) against RMS0301's spans (the *name* token), so the comparison could never match. Two of the 37 were already reported. The 37 stands, the net-new figure is 35. **Anchor comparisons on the same token before concluding two checks are disjoint.**
+**Correction to the review entry above.** Its "37 hits, zero overlap with RMS0301" understated the overlap: the triage compared the prototype's offsets (the `#const` token) against RMS0301's spans (the _name_ token), so the comparison could never match. Two of the 37 were already reported. The 37 stands, the net-new figure is 35. **Anchor comparisons on the same token before concluding two checks are disjoint.**
 
 **Verification.** `npm test` 413 passing (up from 405: 8 new unit tests across the two checks and the reworked RMS0301). `npm run typecheck` clean, `npm run lint` 0 errors.
 
@@ -706,7 +706,7 @@ Built the same day it was deferred, on request. The brief and the deferral reaso
 
 **The check.** An earlier `#const` whose guard set is a **subset** of a later one's has already run whenever the later one can, so the later value never applies. The empty set is a subset of everything, so the beginner case falls out for free — a default written above the conditional versions instead of below them.
 
-**The soundness precondition is the whole difficulty.** Guards are evaluated where they are *written*, so a positive literal true at the later site need not have been true at the earlier one:
+**The soundness precondition is the whole difficulty.** Guards are evaluated where they are _written_, so a positive literal true at the later site need not have been true at the earlier one:
 
 ```
 if A            <- false here, so nothing is defined
@@ -720,9 +720,9 @@ endif
 
 Any `#define` of a guard name landing between the two sites silences the claim. Negated literals need no check, because definitions only accumulate (`#undefine` is non-functional, spec Sec.7) — a name undefined at the later site was undefined at the earlier one too. The opaque `start_random` literals need none either, having no name to redefine. **Only positive literals can flip, so only positive literals are checked.**
 
-**The real find was in RMS0301, not in the new code.** The same-path check that shipped hours earlier needs the identical precondition and did not have it: two *separate* `if A` blocks produce identical guard stacks, so a `#define A` between them makes the first block's definition never happen and the second one live. `subsumes()` now gates both codes. Same-branch definitions are unaffected, their guard having been evaluated once before both.
+**The real find was in RMS0301, not in the new code.** The same-path check that shipped hours earlier needs the identical precondition and did not have it: two _separate_ `if A` blocks produce identical guard stacks, so a `#define A` between them makes the first block's definition never happen and the second one live. `subsumes()` now gates both codes. Same-branch definitions are unaffected, their guard having been evaluated once before both.
 
-**Corpus result: zero RMS0314 hits, and the predicted one was an artifact.** All 15 proper-subset candidates over the 57 maps sit inside `nomad.rms`'s unreachable branch and belong to RMS0313, which reports them once rather than fifteen times. None were removed by the monotonicity precondition. The "one genuine hit beyond same-path" from the morning's partition came from the prototype grouping by AST *scope* while the shipped check groups by guard *set* — two separate `if A` blocks share a set but not a scope, so that pair is RMS0301's and always was. **Two prototypes in one day have now disagreed with the implementation because of how they bucketed, not because of what they computed; a prototype's grouping key is part of its result and has to match the real one before the numbers can be compared.**
+**Corpus result: zero RMS0314 hits, and the predicted one was an artifact.** All 15 proper-subset candidates over the 57 maps sit inside `nomad.rms`'s unreachable branch and belong to RMS0313, which reports them once rather than fifteen times. None were removed by the monotonicity precondition. The "one genuine hit beyond same-path" from the morning's partition came from the prototype grouping by AST _scope_ while the shipped check groups by guard _set_ — two separate `if A` blocks share a set but not a scope, so that pair is RMS0301's and always was. **Two prototypes in one day have now disagreed with the implementation because of how they bucketed, not because of what they computed; a prototype's grouping key is part of its result and has to match the real one before the numbers can be compared.**
 
 **Why it ships at zero.** The corpus is expert-written community maps and DE-official ones, where nobody declares a default first. The app is for people learning RMS, and default-first is the single most predictable transfer error from C, Python and every brace language — silent in-engine, invisible on inspection. A corpus count of zero is not a check that cannot fire; both worked examples that motivated it are unit tests, in both directions of the precondition.
 
@@ -732,7 +732,7 @@ Any `#define` of a guard name landing between the two sites silences the claim. 
 
 Two small changes that came out of reading the guide's Non-Functional Syntax appendix properly rather than trusting the summary of it in the reference data.
 
-**What the appendix actually says.** `#undefine`, `#include`, `min_distance`, `max_distance`, `set_position` and `percent_of_land` were found by searching the game's own non-localized-key-value-strings file in HD/DE, and none of them appear to do anything. That is a list of strings the *engine binary ships*, not a list of mistakes anyone made — an important distinction, because it means they are vestigial vocabulary (renamed or planned-and-never-wired) rather than typos. Three of the four attribute-shaped ones are truncations of names that work: `min_distance_to_players`, `max_distance_to_players`, `land_position`, with `percent_of_land` corresponding to `land_percent`.
+**What the appendix actually says.** `#undefine`, `#include`, `min_distance`, `max_distance`, `set_position` and `percent_of_land` were found by searching the game's own non-localized-key-value-strings file in HD/DE, and none of them appear to do anything. That is a list of strings the _engine binary ships_, not a list of mistakes anyone made — an important distinction, because it means they are vestigial vocabulary (renamed or planned-and-never-wired) rather than typos. Three of the four attribute-shaped ones are truncations of names that work: `min_distance_to_players`, `max_distance_to_players`, `land_position`, with `percent_of_land` corresponding to `land_percent`.
 
 **RMS0200's containment heuristic was suffix-only,** so every one of those four drew a bare "unknown attribute" with no suggestion — edit distance cannot reach them either, the missing tails run to eleven characters. Now matches prefixes too. `set_position` still gets no suggestion and should not: it is not a prefix of any working name, and an invented neighbour is worse than silence.
 
@@ -750,20 +750,20 @@ Also fixed while in there: the containment test compared an original-case candid
 
 **7a ANSWERED, and it is the largest numeric correction the spec has taken: default tile budgets scale with SIDE LENGTH, not area.** `RMSTEST_14` runs `create_elevation` and `create_terrain` with no `number_of_tiles`, so both fall back to their defaults, and reads them from different histograms in one export. Two runs each on Tiny and Small:
 
-| | Tiny (120) | Small (144) | ratio |
-|---|---|---|---|
-| elevation (level 1) | 126, 128 | 147, 158 | **1.20** |
-| terrain (DIRT) | 120, 121 | 148, 146 | **1.22** |
+|                     | Tiny (120) | Small (144) | ratio    |
+| ------------------- | ---------- | ----------- | -------- |
+| elevation (level 1) | 126, 128   | 147, 158    | **1.20** |
+| terrain (DIRT)      | 120, 121   | 148, 146    | **1.22** |
 
-Side length gives 144/120 = 1.20; area gives 1.44. The terrain fit is near exact — `122 × dim/120` predicts 122 and 146.4 against 120.5 and 147 measured. Sec.6.2/6.4 corrected from `× dim²/14400` to `× dim/120`. **The old model over-predicted by 4x at Ludicrous** (1920 tiles against 480), and every revision since rev 2 carried it. Comparing *ratios* rather than absolute counts is what made this readable, since both quantities are grown and carry overshoot that cancels in a ratio.
+Side length gives 144/120 = 1.20; area gives 1.44. The terrain fit is near exact — `122 × dim/120` predicts 122 and 146.4 against 120.5 and 147 measured. Sec.6.2/6.4 corrected from `× dim²/14400` to `× dim/120`. **The old model over-predicted by 4x at Ludicrous** (1920 tiles against 480), and every revision since rev 2 carried it. Comparing _ratios_ rather than absolute counts is what made this readable, since both quantities are grown and carry overshoot that cancels in a ratio.
 
 Second finding from the same runs: **terrain growth does not overshoot, elevation does.** Terrain lands on its budget; elevation sits ~6% above at these sizes against ~3% at a budget of 829, so the overshoot fraction is larger for smaller budgets. Sec.6.4 now warns against carrying Sec.6.2's overshoot allowance across.
 
 **7c NOT answered — the test was confounded, by something built into the map.** `RMSTEST_15` used a WATER base so the grass rectangle would be unambiguous. DE auto-generates a **BEACH ring** where land meets water: 432 beach tiles, a one-tile band around the entire land. So the land's true edge sits one tile outside the grass, and "is the boundary the grass or the beach" shifts every inset by one — which is exactly the precision the question needs, since the four candidate models differ by a single tile. Measured insets were grass 5/2/8/11 and land-including-beach 4/1/7/10; neither matches any candidate, and one edge is anomalous under both readings. `RMSTEST_16_borders_nowater.rms` re-runs it on a DESERT base with DESERT player lands, so nothing can trigger beach and no terrain but GRASS can move the bbox. Its header asks for the terrain total as a check that the confound is actually gone.
 
-**Shape note, worth keeping.** Bordered lands come out chamfered — the "borders make a hexagon" behaviour. Row-by-row measurement showed corners cut at 45 degrees over about four tiles. A bounding box is still the correct instrument, because the chamfer only cuts inward from the corners and the flat-edge extent is preserved; verified by the middle row spanning exactly the bbox range. The `--bbox` option added to `probe_scenario.py` for this reports per-edge *insets* rather than raw coordinates, since border attributes are specified as insets and comparing like with like is what avoids off-by-one errors.
+**Shape note, worth keeping.** Bordered lands come out chamfered — the "borders make a hexagon" behaviour. Row-by-row measurement showed corners cut at 45 degrees over about four tiles. A bounding box is still the correct instrument, because the chamfer only cuts inward from the corners and the flat-edge extent is preserved; verified by the middle row spanning exactly the bbox range. The `--bbox` option added to `probe_scenario.py` for this reports per-edge _insets_ rather than raw coordinates, since border attributes are specified as insets and comparing like with like is what avoids off-by-one errors.
 
-**7c ANSWERED on the re-run (RMSTEST_16, DESERT base so nothing triggers beach; GRASS + DESERT = 14400 exactly, confound gone).** Measured x 4..118, y 7..109, identical on two runs. It matched none of the four candidate signatures, which turned out to be a framing error on my part rather than a strange engine: I was comparing per-edge *insets*, and the inset folds an off-by-one into the number being compared. Against raw coordinates the rule falls out exactly:
+**7c ANSWERED on the re-run (RMSTEST_16, DESERT base so nothing triggers beach; GRASS + DESERT = 14400 exactly, confound gone).** Measured x 4..118, y 7..109, identical on two runs. It matched none of the four candidate signatures, which turned out to be a framing error on my part rather than a strange engine: I was comparing per-edge _insets_, and the inset folds an off-by-one into the number being compared. Against raw coordinates the rule falls out exactly:
 
 ```
 min_x = round(left_pct/100 · dim)      max_x = dim − round(right_pct/100 · dim)
@@ -774,13 +774,13 @@ Declared 3/2/6/9 on dim 120 → 3.6/2.4/7.2/10.8 → predicted 4/118/7/109, meas
 
 **Two rounding behaviours now measured in the same engine, and they differ:** scaling truncates (1036.8 → 1036), borders round half up (3.6 → 4, 10.8 → 11). Sec.4 carries an explicit warning against unifying them behind one helper.
 
-**Residual closed the same day (RMSTEST_17).** All four borders set to 2 on Tiny — guide:885's exact case — gave `x 2..118, y 2..118` on both runs, precisely what the formula predicts. It also explains the guide's wording instead of merely coexisting with it: a declared 2 leaves a 2-tile gap on the low edges but only a 1-tile gap on the high ones, which is why a larger value is "needed" on bottom and right. That phrasing means the smallest integer achieving *at least* the stated gap; a declared 3 actually buys 3. **Sec.15's entire verify list — 7a, 7b, 7c, 7d — is now closed.**
+**Residual closed the same day (RMSTEST_17).** All four borders set to 2 on Tiny — guide:885's exact case — gave `x 2..118, y 2..118` on both runs, precisely what the formula predicts. It also explains the guide's wording instead of merely coexisting with it: a declared 2 leaves a 2-tile gap on the low edges but only a 1-tile gap on the high ones, which is why a larger value is "needed" on bottom and right. That phrasing means the smallest integer achieving _at least_ the stated gap; a declared 3 actually buys 3. **Sec.15's entire verify list — 7a, 7b, 7c, 7d — is now closed.**
 
 **Process note: two of the four verification maps this session were confounded by something I built in.** RMSTEST_7's actor area was invisible, so the result was unreadable; RMSTEST_15's WATER base triggered an automatic BEACH ring that shifted every border by a tile. Both were caught by a sanity check rather than by inspection — the terrain totals not summing to the map area is what exposed the beach. **Add a "what must this map NOT contain" line to any future verification map, and check the totals before reading the result.**
 
 ### Item 10 — the last open engine question (2026-07-31)
 
-**ANSWERED: no attribute is enforced during a tight group's fill.** `min_distance_group_placement` was the last plausible exception to Sec.6.6's uniform rule, because it is a different *shape* of constraint — the three already tested ask "is this tile acceptable", this one asks "is this tile far enough from other placements".
+**ANSWERED: no attribute is enforced during a tight group's fill.** `min_distance_group_placement` was the last plausible exception to Sec.6.6's uniform rule, because it is a different _shape_ of constraint — the three already tested ask "is this tile acceptable", this one asks "is this tile far enough from other placements".
 
 `RMSTEST_18` placed six tight groups of 49 with a declared spacing of 12, three runs. Minimum edge-to-edge gaps: **8**, 16, 34. A single sub-12 gap refutes per-member enforcement (runs 2 and 3 being far apart is just random placement), so the constraint is applied once per group. That agrees with guide:2614, "distance refers to the center of the group, not the individual members".
 
@@ -800,15 +800,15 @@ Worth keeping, because the same failure recurred three times and was never in th
 
 1. A diagnostic filter of `RMSTEST_[0-9]_[a-z]+\.rms` silently dropped `RMSTEST_2_circle0.rms` — `circle0` contains a digit — and the missing output was read as the parser being silent on `circle_radius 0`. Manufactured a phantom bug that did not exist.
 2. A candidate scan for BUG-003 required `len(arguments) >= 2`, on the theory that only a trailing argument can be omitted. That excluded every single-argument attribute, which is where all five real cases lived. It returned three candidates and looked authoritative.
-3. RMSTEST_16 reported per-edge *insets* rather than raw coordinates. The inset conversion `(dim-1) - max` silently committed to one of the very things under test, so the true rule arrived at the comparison disguised as something no candidate model predicted.
+3. RMSTEST_16 reported per-edge _insets_ rather than raw coordinates. The inset conversion `(dim-1) - max` silently committed to one of the very things under test, so the true rule arrived at the comparison disguised as something no candidate model predicted.
 
-The third is the instructive one. Insets were chosen *because* they are in the same units as the border attribute, on the reasoning that comparing like with like avoids off-by-one errors. It did the opposite. All four candidate models shared that conversion, so no possible observation could have distinguished "my rounding model is wrong" from "my conversion is wrong" — four rows sharing an assumption test one thing, not four.
+The third is the instructive one. Insets were chosen _because_ they are in the same units as the border attribute, on the reasoning that comparing like with like avoids off-by-one errors. It did the opposite. All four candidate models shared that conversion, so no possible observation could have distinguished "my rounding model is wrong" from "my conversion is wrong" — four rows sharing an assumption test one thing, not four.
 
 **Standing rules that came out of it.**
 
 - Record the rawest available observation and derive comparisons downstream. The probe prints both coordinates and insets for this reason.
 - "Matches none of the candidates" is diagnostic information. When a well-designed discriminator matches nothing, something upstream of the comparison is far more likely to be wrong than the engine doing something exotic.
-- Measure a *counted* quantity, never a *grown* one, when the question is arithmetic. Elevation overshoots ~3%; that made the first scaling test unreadable.
+- Measure a _counted_ quantity, never a _grown_ one, when the question is arithmetic. Elevation overshoots ~3%; that made the first scaling test unreadable.
 - State what a verification map must NOT contain, and check totals before reading a result. RMSTEST_15's WATER base triggered an automatic 432-tile BEACH ring that shifted every border by a tile; it surfaced only because the terrain counts did not sum to the map area.
 - Two of nine verification maps were confounded by something built into them by their author. Neither was caught by re-reading the script.
 
@@ -816,7 +816,7 @@ The third is the instructive one. Insets were chosen *because* they are in the s
 
 **Item 6 DONE.** `MAP_SIZES` reordered so Huge (240) precedes Giant (252) — the names mislead, the dimensions do not. Display order only: nothing indexes the array, and the strings are the persisted values under `MAP_SIZE_KEY`, so existing settings still load. Added a comment recording that dimensions deliberately are **not** duplicated there; they live in `predefinedLabels` and the preview resolves size to dim through that array. A second hand-typed copy is precisely how the legacy/modern label offset gets mis-transcribed, which is the trap Sec.4 spends a paragraph on.
 
-**Items 1, 2 and 3 rewritten around the probe.** All three said "calibrate against screenshots", which was correct advice before an exact instrument existed and is now actively misleading. Item 1 now describes the measure-one-constant-per-map loop and notes that five constants have already been *measured* rather than tuned. Item 2 gains a concrete design — scatter many single-tile `create_land`s with no `land_position` and read the origin coordinates, which pins the cross-shaped exclusion boundary directly instead of inferring it from how a map looks. Item 3 notes that perimeter-to-area ratio is a workable numeric proxy for "snakey versus round", so the clumping tables are partly measurable even though the final call stays visual.
+**Items 1, 2 and 3 rewritten around the probe.** All three said "calibrate against screenshots", which was correct advice before an exact instrument existed and is now actively misleading. Item 1 now describes the measure-one-constant-per-map loop and notes that five constants have already been _measured_ rather than tuned. Item 2 gains a concrete design — scatter many single-tile `create_land`s with no `land_position` and read the origin coordinates, which pins the cross-shaped exclusion boundary directly instead of inferring it from how a map looks. Item 3 notes that perimeter-to-area ratio is a workable numeric proxy for "snakey versus round", so the clumping tables are partly measurable even though the final call stays visual.
 
 **Items 4, 5 and 8 remain open, and none of them need the game.** Item 4 (teams setting) is still the highest-priority item in the section and the weakest point in the design against goal 1. Item 5 is a 4.3 UI decision wanting real examples on screen. **Item 8 needs a decision, not a test**: PLAN.md:54's "with/without post-elevation & object passes" reads equally as S1 or S2, the spec pinned S2 on a coin-flip, and the context-sensitive "Current = stage being edited" behaviour is an extension of PLAN.md rather than a reading of it. Both want an explicit call before 4.2 wires the toggle.
 
@@ -849,7 +849,7 @@ The third is the instructive one. Insets were chosen *because* they are in the s
 
 Three consequences that had to be handled together, and would each have been a regression alone:
 
-1. **A known name stops drawing RMS0200.** Adding the entries without extending RMS0310 to attributes would have made the tool go *silent* on all four — strictly worse than the warning it replaced.
+1. **A known name stops drawing RMS0200.** Adding the entries without extending RMS0310 to attributes would have made the tool go _silent_ on all four — strictly worse than the warning it replaced.
 2. **They must never be offered as a did-you-mean.** They are now in `attributesByName`, so without filtering, a typo of one would be "fixed" to a second dead end. `didYouMean` excludes `nonFunctional` entries from its pool outright.
 3. **The prefix heuristic's exemplars moved.** The four dead strings were the motivating cases for adding prefix matching yesterday; they now resolve and never reach the heuristic. Its tests were rewritten against names the data does not carry (`max_distance_to`, `min_distance_`), which also gave the command-scoped ranking a cleaner test than it had — `min_distance_` prefers `min_distance_to_players` over the shorter `min_distance_cliffs` that `create_object` cannot take.
 
@@ -876,7 +876,7 @@ not a preference,** and it is now written into `connected_components`'s
 docstring. Objects use 8 because a tight group's fill is checked against nothing
 (item 10), so it is contiguous with no holes and a diagonal touch is still one
 group. Terrain uses 4 because Sec.6.1/6.4 grow a clump from candidates
-*4-adjacent* to owned tiles, so an engine-grown clump is 4-connected by
+_4-adjacent_ to owned tiles, so an engine-grown clump is 4-connected by
 construction and 8-connectivity would silently merge two clumps touching at a
 corner.
 
@@ -900,7 +900,7 @@ Each states its predictions in its own header before the run and names the
 reading that would refute it. Twenty five generations in total; see
 `tools/scenario-probe/rmstest/README.md` for the run sheet.
 
-- **20 / 21, clumping regimes**, terrains and lands as *separate* maps. Rev 4
+- **20 / 21, clumping regimes**, terrains and lands as _separate_ maps. Rev 4
   corrected the land table and left its terrain twin pointing at it, which was
   the same error one level down, so testing them together would repeat it. The
   land map's real target is the 40+ directional regime, which is an invention
@@ -933,7 +933,7 @@ first (4620 instances) rather than assumed.
 
 **Numbering note:** the batch was drafted starting at 19, which is already the
 `#undefine` test. The `rmstest/` folder was tracked with all nineteen prior
-scripts; CLAUDE.md's Phase 4 row describes them only by where they are *run*
+scripts; CLAUDE.md's Phase 4 row describes them only by where they are _run_
 from, which is what caused the mistake. Renumbered to 20 to 25.
 
 ### `MAP_SIZES` <-> `predefinedLabels`, the join nothing was checking
@@ -998,14 +998,14 @@ first**, because both were review catches rather than things the runs surfaced.
 `--clusters` used 8-connectivity, with a docstring asserting that an unchecked
 fill (item 10) meant a diagonal touch was still one group. **The premise is
 right and the conclusion does not follow.** A fill being unconstrained by
-*attributes* says nothing about its *adjacency* rule, and the two were conflated.
+_attributes_ says nothing about its _adjacency_ rule, and the two were conflated.
 
 RMSTEST_26 settles it. 300 declared groups of 5 gold:
 
-| connectivity | components | sizes |
-|---|---|---|
-| 4 | **300** | all exactly 5 |
-| 8 | 299 | one blob of **10**, rest 5 |
+| connectivity | components | sizes                      |
+| ------------ | ---------- | -------------------------- |
+| 4            | **300**    | all exactly 5              |
+| 8            | 299        | one blob of **10**, rest 5 |
 
 Exactly 300 components of exactly 5 under 4-connectivity is the declared answer.
 Under 8, two distinct groups touching at a corner merged. That is the precise
@@ -1013,7 +1013,7 @@ failure mode the old docstring claimed was impossible. Switched to 4, with the
 evidence written into `connected_components`.
 
 **Effect on item 10, which depended on this:** RMSTEST_18 reported a minimum
-inter-group gap of 8 against a declared 12. A merge can only *drop* a pair from
+inter-group gap of 8 against a declared 12. A merge can only _drop_ a pair from
 the gap matrix, never invent a smaller gap, so the true minimum is at most the
 reported 8 and the refutation of per-member enforcement holds a fortiori. No
 re-run needed.
@@ -1044,7 +1044,7 @@ being exactly 9 (the `base_size 1` stamp), giving 258 clean origins.
 - **Zero** origins in the modelled 0.35 x dim corner region, against ~23 for a
   uniform draw. The cross is real.
 - Observed max of min(|dx|,|dy|) = **20.5 tiles = 0.171 x dim**, and eleven of
-  the twelve corner-most samples sit at *exactly* 0.171. A hard wall, not a tail.
+  the twelve corner-most samples sit at _exactly_ 0.171. A hard wall, not a tail.
 - **20.5 is 0.342 x (dim/2).** The constant 0.35 is right; the reference length
   is wrong. Sec.6.1 applies it to dim, the engine applies it to dim/2, so our
   modelled cross is twice the engine's width.
@@ -1056,10 +1056,10 @@ being exactly 9 (the `base_size 1` stamp), giving 258 clean origins.
 Predicted mean x 0.500; measured **0.336**. Both axes displaced together, toward
 low x and high y, which is a diagonal. The follow-up decomposition settles it:
 
-| | mean x | mean y | mean (y-x) | mean (x+y) |
-|---|---|---|---|---|
-| 22a | 0.3359 | 0.6336 | **0.6488** | 0.4848 |
-| 22b | 0.3499 | 0.6325 | **0.6413** | 0.4912 |
+|     | mean x | mean y | mean (y-x) | mean (x+y) |
+| --- | ------ | ------ | ---------- | ---------- |
+| 22a | 0.3359 | 0.6336 | **0.6488** | 0.4848     |
+| 22b | 0.3499 | 0.6325 | **0.6413** | 0.4912     |
 
 (x+y) is unbiased and (y-x) carries the whole displacement. DE renders the map
 rotated 45 degrees, so the guide's "south" is a **screen** direction landing on a
@@ -1068,7 +1068,7 @@ direction, not merely in magnitude.**
 
 And no linear weight can fit it. The diagonal's marginal is triangular rather
 than uniform, which caps a linear weight at a mean of **0.583**; measured 0.649.
-At 21 percent coverage saturation pulls the mean *toward* 0.5, so the true bias
+At 21 percent coverage saturation pulls the mean _toward_ 0.5, so the true bias
 is stronger still. This is a redesign, not a retune.
 
 **`enable_balanced_elevation` does approximately nothing.** 0.6488 to 0.6413, a
@@ -1081,12 +1081,12 @@ floor.
 
 ### RMSTEST_23 — ordering confirmed, magnitude refuted
 
-| f | min x per run | depth |
-|---|---|---|
-| 0 | 63, 57, 66, 66, 81, 60 | 14.5 |
-| 20 | 78, 78, 78, 78, 81, 81 | 1.0 |
-| 50 | 79, 79, 80, 79, 79, 79 | 0.8 |
-| 100 | 80, 80, 80, 80, 80, 81 | -0.2 |
+| f   | min x per run          | depth |
+| --- | ---------------------- | ----- |
+| 0   | 63, 57, 66, 66, 81, 60 | 14.5  |
+| 20  | 78, 78, 78, 78, 81, 81 | 1.0   |
+| 50  | 79, 79, 80, 79, 79, 79 | 0.8   |
+| 100 | 80, 80, 80, 80, 80, 81 | -0.2  |
 
 Predictions 1, 2 and 3 hold, including f=100 stopping on **exactly tile 80**, so
 Sec.4's border arithmetic is right to the tile. Prediction 4 fails: predicted
@@ -1111,8 +1111,8 @@ and rev 4's per-tile rewrite still is.
 
 ### RMSTEST_20 — the bucket model is the wrong shape
 
-| cf | -5 | 0 | 3 | 5 | 8 | 15 | 20 | 25 | 40 |
-|---|---|---|---|---|---|---|---|---|---|
+| cf          | -5    | 0     | 3     | 5     | 8     | 15    | 20    | 25    | 40    |
+| ----------- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | circularity | 0.035 | 0.068 | 0.128 | 0.172 | 0.217 | 0.272 | 0.222 | 0.217 | 0.268 |
 
 Negative is dramatically snakey and clearly separated. But cf 0 to 15 is a
@@ -1123,14 +1123,14 @@ Above 15 it plateaus around 0.22–0.27, so the clamp claim roughly survives.
 
 ### RMSTEST_21 — the 40+ directional regime does not exist
 
-| cf | patches | area | circ | aspect |
-|---|---|---|---|---|
-| -5 | 6.0 | 366 | 0.074 | 1.60 |
-| 0 | 3.0 | 475 | 0.099 | 1.25 |
-| 8 | 1.0 | 633 | 0.265 | 1.50 |
-| 25 | 1.0 | 631 | 0.391 | 1.38 |
-| 40 | 1.0 | 637 | 0.384 | 1.24 |
-| 60 | 1.0 | 639 | **0.394** | **1.05** |
+| cf  | patches | area | circ      | aspect   |
+| --- | ------- | ---- | --------- | -------- |
+| -5  | 6.0     | 366  | 0.074     | 1.60     |
+| 0   | 3.0     | 475  | 0.099     | 1.25     |
+| 8   | 1.0     | 633  | 0.265     | 1.50     |
+| 25  | 1.0     | 631  | 0.391     | 1.38     |
+| 40  | 1.0     | 637  | 0.384     | 1.24     |
+| 60  | 1.0     | 639  | **0.394** | **1.05** |
 
 cf 60 is the **roundest** land of the six, not an elongated one, and cf 40 and 60
 are indistinguishable from cf 25. Sec.6.1's "extends in one direction away from
@@ -1181,7 +1181,7 @@ Battle Royale maps, a duplicated `elseif INDOMALAYAN_TROPICAL` in
 
 **Two instrument lessons, both worth more than the findings.**
 
-1. **A parser diagnostic about *structure* needs an independent check before it
+1. **A parser diagnostic about _structure_ needs an independent check before it
    is reported.** `RMS0101`/`RMS0105` flagged unclosed `{` in
    `GeneratingObjects.inc` and `Megarandom.rms2`. A separate brace counter (strip
    nested comments by whitespace-delimited token, then count) agreed on the
@@ -1205,7 +1205,7 @@ Battle Royale maps, a duplicated `elseif INDOMALAYAN_TROPICAL` in
 
 - **`parser-design.md` Sec.11 items 19–24**, six new verify-in-game questions, each with a live official specimen rather than a constructed one: `#define`/`#const` symbol-table sharing, nested `start_random` semantics, the `set_scale_by_size`/`set_scale_by_groups` mutex against 194 official co-uses, three documented ranges that shipped scripts exceed, the completeness of the predefined condition-label table, and what the engine does with a bare value inside a block.
 - **Sec.11 item 8 promoted.** "Conditionals spanning section headers" had "zero corpus occurrences" against it. `Continental.rms` is now a live specimen with a binary observable needing no instrument: play it with Infinite Resources and look for cliffs.
-- **Sec.13 item 5 retracted.** It said do *not* add `avoidance_distance`, resolved as a Pa_Site author bug. 320 uses in three official maps says otherwise, and `known-issues.md` BUG-004 had already said otherwise months of sessions ago. Two docs in this repo held opposite conclusions and neither was reconciled — the same failure BUG-005 is about, one level up. `building_architecture` (72 uses) and `temp_min_distance_to_players` (1) recorded alongside it.
+- **Sec.13 item 5 retracted.** It said do _not_ add `avoidance_distance`, resolved as a Pa_Site author bug. 320 uses in three official maps says otherwise, and `known-issues.md` BUG-004 had already said otherwise months of sessions ago. Two docs in this repo held opposite conclusions and neither was reconciled — the same failure BUG-005 is about, one level up. `building_architecture` (72 uses) and `temp_min_distance_to_players` (1) recorded alongside it.
 - **BUG-005's 2.5%-signal measurement qualified.** Over the DE install RMS0200 is **~59% true positives**, because shared-template typos live in include-heavy official scripts. Piece 3 of its prescribed fix — soften to info when a file has any `#include_drs` — would have buried the `capture_relic.inc` and `water_blending.inc` findings. Flagged for reconsideration; piece 1 is unaffected and is what surfaced all 563.
 
 ### Also noted
@@ -1243,7 +1243,7 @@ rather than loose ends.
 Caveat added: the under-cliff terrain-16 mechanic **was not observed**. Three
 exports carrying 33–56 cliff units each had terrain histograms summing to exactly
 dim squared with no terrain 16. Not simulating it costs nothing, but Sec.6.4's
-cliff-spacing approximation was justified *by* that mechanic, so it now needs its
+cliff-spacing approximation was justified _by_ that mechanic, so it now needs its
 own test (item 12).
 
 ### Sec.6.2 — the redesign, item 5
@@ -1259,13 +1259,13 @@ displacement.
 **Wrong shape.** Dividing band size out to get the per-tile selection rate gives
 a **step**, not a ramp:
 
-| `y − x` | −15..−1 | 0..14 | 15..29 | 30..44 | 45..59 | 60..74 |
-|---|---|---|---|---|---|---|
-| rate vs map average | 0.09 | 1.36 | 1.96 | 2.05 | 2.10 | 2.14 |
+| `y − x`             | −15..−1 | 0..14 | 15..29 | 30..44 | 45..59 | 60..74 |
+| ------------------- | ------- | ----- | ------ | ------ | ------ | ------ |
+| rate vs map average | 0.09    | 1.36  | 1.96   | 2.05   | 2.10   | 2.14   |
 
 Normative form is now two integer weights: **18 where `y ≥ x`, 1 where `y < x`**;
 **12 and 1** with `enable_balanced_elevation`. Fitted two independent ways that
-agree — band rates give ~20:1 and ~15:1, and fitting a step to the *mean* of
+agree — band rates give ~20:1 and ~15:1, and fitting a step to the _mean_ of
 `y − x` alone gives 17.7:1 and 12.1:1.
 
 **Why tuning could never have rescued the old model.** A linear weight on `y − x`
@@ -1319,11 +1319,11 @@ this session; the only source edit is a comment plus the `MAP_SIZES` guard in
 the flaky benchmark already tracked.** Three runs of the unchanged suite gave
 three answers:
 
-| run | files | tests | errors | exit |
-|---|---|---|---|---|
-| 1 | 17 | 429 | — | 0 |
-| 2 | **9** | **61** | **7** | **0** |
-| 3 | 16 | 428 | — | 0 |
+| run | files | tests  | errors | exit  |
+| --- | ----- | ------ | ------ | ----- |
+| 1   | 17    | 429    | —      | 0     |
+| 2   | **9** | **61** | **7**  | **0** |
+| 3   | 16    | 428    | —      | 0     |
 
 Run 2 loaded seven fewer test files, never executed 367 of 428 tests, printed
 `Errors 7 errors`, and **still exited 0**. It happened while background scenario
@@ -1344,7 +1344,7 @@ wall-clock benchmark item directly below it in tracked debt.
 
 Closes the highest-priority open item in `preview-design.md` Sec.15. The spec was
 rewritten first and reviewed before any code was written, because Sec.3.1's teams
-paragraph was a *pinned* premise that this work retires, and CLAUDE.md's "design
+paragraph was a _pinned_ premise that this work retires, and CLAUDE.md's "design
 specs are authoritative" rule makes silently contradicting it the wrong order.
 
 ### The model
@@ -1381,7 +1381,7 @@ nothing reachable-but-absent. `TEAM2_SIZE7` is missing because team 1 would then
 need 2 more for 9 players; `TEAM4_SIZE3` because 2+2+2+3 is 9.
 
 **Note the shape of the argument**, because CLAUDE.md forbids the lazy version:
-this rests on a *predicted set matching an observed set*, not on any single
+this rests on a _predicted set matching an observed set_, not on any single
 name's absence. One name missing proves nothing. Exactly the sixteen a rule
 predicts, and no others, is a measurement. Notes rewritten to derived-and-checked.
 
@@ -1411,8 +1411,8 @@ control. `npm run tauri dev` on Ash's machine is the real confirmation.
 ### New Sec.15 items opened by this work
 
 14. **What zone does `set_zone_by_team` give an un-teamed player?** The formula
-    (`TeamNumber − 9`) would put team 0 in zone −9, which is *player 1's own
-    default zone* — merging every un-teamed player's land with player 1's and
+    (`TeamNumber − 9`) would put team 0 in zone −9, which is _player 1's own
+    default zone_ — merging every un-teamed player's land with player 1's and
     with each other's, so an FFA map writing `set_zone_by_team` becomes one
     landmass. Sec.6.1 pins the graceful alternative (keep `playerNumber − 10`)
     explicitly as a **choice, not a measurement**. Needs one map.
@@ -1424,7 +1424,7 @@ control. `npm run tauri dev` on Ash's machine is the real confirmation.
 
 Queued `avoidance_distance` as the next item on the strength of `known-issues.md`
 BUG-004 and `parser-design.md` Sec.13 item 5, both of which had it as real RMS on
-a 320-use install count. Ash challenged it from memory of the *original*
+a 320-use install count. Ash challenged it from memory of the _original_
 conclusion ("we ascertained it was not real RMS"), which turned out to be
 correct and traceable: Sec.13 item 5 had said "do NOT add — resolved as a
 Pa_Site author bug", and the 2026-08-01 overturn struck it through.
@@ -1452,7 +1452,7 @@ with the reasoning rather than just the verdict, since the bullet has now been
 written three times and the middle one was wrong.
 
 **Knock-on correction.** BUG-005's composition table wrote those 256 warnings off
-as "False. See BUG-004". They are now *undetermined*, which moves its
+as "False. See BUG-004". They are now _undetermined_, which moves its
 signal-to-noise estimate from 2.5% to as much as 32% and creates an awkward fact
 worth holding while deciding RMS0200's wording: the clause most criticised in
 that entry — "the engine will silently ignore it" — is plausibly **accurate** on
@@ -1470,8 +1470,8 @@ becomes evidence, check that the uses are independent and that at least one of
 them could have been observed to matter. Both checks were available here and
 neither was run, in an entry whose whole argument was a number. Same family as
 "prefer an observable to an argument" — and note the failure direction is
-symmetric to Sec.15 item 4's finding earlier the same day, where a *predicted*
-set matching an *observed* set was legitimate evidence. The difference is
+symmetric to Sec.15 item 4's finding earlier the same day, where a _predicted_
+set matching an _observed_ set was legitimate evidence. The difference is
 whether the observation could have come out otherwise.
 
 **No code or data changed.** `language.json` is untouched; the 256 warnings stand
@@ -1491,7 +1491,7 @@ follows the cursor.
 **The question as posed was malformed.** Sec.5 framed a binary — S1 (before the
 elevation pass) versus S2 (after elevation, before objects) — and revisions 3
 through 6 argued it as a coin-flip on PLAN.md:54's wording. Both readings assume
-Current selects a *stage snapshot*. It does not: a truncated script is a **prefix
+Current selects a _stage snapshot_. It does not: a truncated script is a **prefix
 of the source**, not a point in the pipeline, so neither answer was right and the
 ambiguity never needed resolving.
 
@@ -1527,7 +1527,7 @@ broken at those lines.
 
 ### Why the entry got it backwards
 
-The argument was "it appears in a DE-official map *and* a community map,
+The argument was "it appears in a DE-official map _and_ a community map,
 therefore it is fully supported syntax". Four things falsify it, and none needed
 the game:
 
@@ -1573,7 +1573,7 @@ is the more expensive one.
 A python round-trip re-serialised `language.json`; `git diff` showed +1080/-29
 and that was read as formatting churn from the script. It was not. This tree
 carries ~90 modified files and weeks of uncommitted work, so `git diff` compares
-against a HEAD from 2026-07-22 and the +1080 was the accumulated *real* work
+against a HEAD from 2026-07-22 and the +1080 was the accumulated _real_ work
 being shown for what it was. `git checkout -- reference/data/language.json`
 then discarded all of it: 138 `predefinedLabels`, the six BUG-003 `optional`
 flags, the `base_elevation`/`create_elevation` range fix, four `nonFunctional`
@@ -1641,7 +1641,7 @@ been observed, only inferred from the map having shipped.
 guide:1982 sources independently — real argument names (`X Y Identifier Radius`)
 replacing an `a`/`b`/`c`/`d` stub. Its note now draws a distinction the stub
 invited readers to miss: `create_actor_area` areas are hoisted before every
-`create_object`, but areas defined by the `actor_area` *attribute* are built as
+`create_object`, but areas defined by the `actor_area` _attribute_ are built as
 their objects are placed (guide:2782's "first object successfully created" only
 means anything if they are progressive), so `avoid_actor_area` can reference the
 former from anywhere and the latter only after placement.
@@ -1669,10 +1669,10 @@ thing CLAUDE.md's positive-resolver rule forbids. It fired **858 times** on the
 
 Split by evidence rather than softened wholesale:
 
-| branch | count | message |
-|---|---:|---|
-| did-you-mean fires | 272 | unchanged — a near-miss is positive evidence |
-| no suggestion | **586** | `Age of RMS doesn't recognise the <context> "X".` |
+| branch             |   count | message                                           |
+| ------------------ | ------: | ------------------------------------------------- |
+| did-you-mean fires |     272 | unchanged — a near-miss is positive evidence      |
+| no suggestion      | **586** | `Age of RMS doesn't recognise the <context> "X".` |
 
 The 581 `L` warnings — the Sec.2.1 token-ID alias idiom, a spec-sanctioned v1
 limitation rather than a defect — are the bulk of what got softened, which is
@@ -1691,7 +1691,7 @@ this entry's 858 and its composition exactly rather than trusting the figure.
 
 Piece 1 kept the confident wording where a did-you-mean fires, on the stated
 grounds that a near-miss is positive evidence of a typo. Measured, that branch
-is **256 of 272 `avoidance_distance`** — matched by *suffix* against
+is **256 of 272 `avoidance_distance`** — matched by _suffix_ against
 `other_zone_avoidance_distance`, not by edit distance, and the one name BUG-004
 closed as not-a-typo and explicitly undetermined. The retained behavioural claim
 now sits almost entirely on the case we decided we cannot judge.
@@ -1734,7 +1734,7 @@ it. Recovered from the install: 72 uses across `BR_BattleontheIce.rms` and
 GUARD_TOWER → 1), never on units, trees or resources.
 
 **Sharpening of the earlier claim, because the first version was loose.** The two
-maps have *identical* usage counts (11/10/10/4/1), so they are one template
+maps have _identical_ usage counts (11/10/10/4/1), so they are one template
 copied — the same lineage pattern as `avoidance_distance`, and "two maps" was
 never two decisions. What separates them is that the value **varies by object
 within the single template**, which means someone chose it and could have seen
@@ -1756,7 +1756,7 @@ Three things worth keeping:
 
 - **Mutation-tested both directions.** Floor raised to 99 → exit **1**; restored
   → exit **0**. The first attempt at checking this read `$?` after a pipe to
-  `tail` and got *tail's* status, reporting a misleading 0 — the exit code is the
+  `tail` and got _tail's_ status, reporting a misleading 0 — the exit code is the
   entire point of the guard, so it had to be measured without a pipe.
 - **File count is `testResults.length`, not `numTotalTestSuites`.** The latter
   counts `describe` blocks: one file with three describes reports 3. Using it
@@ -1823,7 +1823,7 @@ cost three rounds.
 origins): mean radius 33.2 tiles = 27.6% of dim, CV 0.44 — against the default
 ring's 50.4 / 0.14 and 24 / 0 for an absolute-value reading. Scattered rather
 than annular, centre-biased relative to uniform. The convenient answer, folding
-it into the `0`-disables branch, was recorded as the prediction *because* it was
+it into the `0`-disables branch, was recorded as the prediction _because_ it was
 convenient, and it is refuted. `radiusPercent` min widened 1 → −50, guarded by
 `src/parser/__tests__/circleRadius.test.ts` and mutation-tested against the old
 bound (0 and −20 go red at min 1; the out-of-range control stays green in both,
@@ -1835,9 +1835,9 @@ so the range check is not merely disabled).
 as confirming Sec.6.1's pinned zone choice. **It does not.** Ash's observation:
 two hypotheses predict eight separate patches — the pinned `playerNumber − 10`
 (zones −9..−2) and a plain `TeamNumber − 9` in which solo players still carry an
-engine-internal team number (zones −8..−1). Both give eight *distinct* zones.
+engine-internal team number (zones −8..−1). Both give eight _distinct_ zones.
 B is not in conflict with a team of one failing to register in
-`TEAMn_SIZEm`/`PLAYERx_TEAMy` — those report what the *lobby* sees, a zone is an
+`TEAMn_SIZEm`/`PLAYERx_TEAMy` — those report what the _lobby_ sees, a zone is an
 internal growth property, and they may disagree. The run also had **no
 instrument control**, so nothing proved `other_zone_avoidance_distance` was
 working. What survives: the single-merged-zone reading is refuted.
@@ -1901,7 +1901,7 @@ origins` exclusion and the diagonal bias do not compose independently.
 **Item 11(a) reproduces and does not close.** The disfavoured half's wrong-way
 gradient climbs 0.008 → 0.063 outward (8×) at a second size in a clean run.
 Spillover is ruled out — clumps growing across the line would raise the
-disfavoured density *nearest* the diagonal, and the measurement shows the
+disfavoured density _nearest_ the diagonal, and the measurement shows the
 opposite. No mechanism proposed. It is no longer a ~6% curiosity; it is the
 shape of the whole rule.
 
@@ -1949,11 +1949,11 @@ machine measures the machine.** Suite green afterwards at 19 files / 443 tests.
 
 `RMSTEST_37_zoneforced`, five runs, five distinct maps, unanimous:
 
-| probe | zone | min distance to player 1's land, runs 1–5 |
-|---|---|---|
-| DESERT | **−8** | **3, 1, 4, 3, 1 — contact** |
-| DIRT | −9 | 12, 12, 12, 12, 12 |
-| DIRT3 | 5 (control) | 12, 12, 12, 12, 12 |
+| probe  | zone        | min distance to player 1's land, runs 1–5 |
+| ------ | ----------- | ----------------------------------------- |
+| DESERT | **−8**      | **3, 1, 4, 3, 1 — contact**               |
+| DIRT   | −9          | 12, 12, 12, 12, 12                        |
+| DIRT3  | 5 (control) | 12, 12, 12, 12, 12                        |
 
 The `−9` probe and the control are identical to the tile in every run, and the
 `−8` probe is plainly different. So **an un-teamed player carries an
@@ -1978,7 +1978,7 @@ distinction before either was measured and both halves held.
 **Three attempts, and the failure modes were structural rather than unlucky.**
 RMSTEST_29 could not discriminate — both hypotheses predict eight separate
 patches — and had no control. RMSTEST_34 placed probes at random and returned
-every probe *including the control* at 17–21 tiles, which its own prediction 4
+every probe _including the control_ at 17–21 tiles, which its own prediction 4
 had described in advance as the likely null. **A test whose header names its own
 failure mode should be redesigned before it is run**; also added to Hard rules.
 RMSTEST_37 forced the geometry with `direct_placement` and fixed offsets, and
@@ -2001,7 +2001,7 @@ banding had mixed:
 
 The discontinuity is sharp in the interior and soft near the boundary, and
 essentially all of that sensitivity is on the disfavoured side. Tiles at large
-`|y − x|` are *necessarily* corner tiles, so the far bands were pure edge — that
+`|y − x|` are _necessarily_ corner tiles, so the far bands were pure edge — that
 is the bulk of the "wrong-way gradient". A weaker `|y − x|` term of ~3–5×
 survives inside a fixed edge column, so both are real.
 
@@ -2010,14 +2010,14 @@ log said earlier today.** RMSTEST_22a's bands span `y − x` = −15..+74 — ne
 diagonal, mostly interior — so its 18:1 belongs with the 29:1 interior cell.
 **22a and RMSTEST_35 measured different regions of the map, not different
 sizes.** The intermediate reading (bigger map, proportionally more weak-ratio
-area) had the right instinct and the wrong variable: Tiny has *more* near-edge
+area) had the right instinct and the wrong variable: Tiny has _more_ near-edge
 area than Normal, 55.6% against 36%, which would push the pooled ratio the other
 way. Do not model a size term. Player lands remain a separate real effect.
 
 Still open, and the question is now much sharper than "why does density rise
 outward": **why does the ratio soften from 29:1 to 3.7:1 within ~20 tiles of the
 boundary?** Spillover is ruled out — clumps growing across the line would raise
-disfavoured density nearest *the diagonal*, and it is raised nearest *the edge*,
+disfavoured density nearest _the diagonal_, and it is raised nearest _the edge_,
 including in far corners with no favoured tile within 100 tiles. Next test is
 the same script at a second size reading interior and edge ratios **separately**
 rather than pooled; that is the first thing in this whole batch that genuinely
@@ -2046,10 +2046,10 @@ are the same map — the recurring duplicate-export trap, harmless here since th
 pattern is unanimous). Bounding boxes never overlapped, so the one-map shortcut
 held and the no-interaction assumption is checked rather than assumed.
 
-| `cf` | −20 | 0 | 8 | 20 | 40 | 100 |
-|---|---|---|---|---|---|---|
-| pieces | 6–10 | 1–5 | 1–2 | **1** | **1** | **1** |
-| circularity | 0.133 | 0.181 | 0.360 | 0.409 | 0.428 | 0.463 |
+| `cf`         | −20       | 0     | 8     | 20    | 40    | 100   |
+| ------------ | --------- | ----- | ----- | ----- | ----- | ----- |
+| pieces       | 6–10      | 1–5   | 1–2   | **1** | **1** | **1** |
+| circularity  | 0.133     | 0.181 | 0.360 | 0.409 | 0.428 | 0.463 |
 | tiles vs 400 | **−6.5%** | +4.6% | +3.3% | +3.2% | +3.6% | +4.1% |
 
 **Piece count falls monotonically and reaches a hard 1 by `cf 20`** — fifteen
@@ -2072,7 +2072,7 @@ a community-reported maximum of 99.
 **The method lesson, and it is the reusable part.** Items 13 and 16 both rested
 on runs at `cf −5` and `cf 0`. Both sit at the spindly end of a range running
 −100 to 99, so fragmentation looked absolute rather than graded, and the model
-looked *refuted* rather than *mis-parameterised* — a much more expensive
+looked _refuted_ rather than _mis-parameterised_ — a much more expensive
 diagnosis than the truth. **Two points at one end of a range are not a
 measurement of the range.** What prompted the sweep was an hour of reading the
 public record: nobody has published the algorithm, but AoK Heaven's Cartographer
@@ -2081,8 +2081,8 @@ thread reports negatives giving "super spindly" lands and near-+100 giving
 rebuild into a one-line bucket change.
 
 **Also checked and worth recording as a near miss:** the community's "spindly"
-description raised the possibility that the fragmentation was a *4-connectivity
-artefact* — a diagonal snake splits under 4-connectivity and holds under 8. It
+description raised the possibility that the fragmentation was a _4-connectivity
+artefact_ — a diagonal snake splits under 4-connectivity and holds under 8. It
 is not; the pieces stay separate under both. That alternative would have
 invalidated items 13 and 16 entirely and was never tested until the search
 suggested it.
@@ -2205,7 +2205,7 @@ been read by it. It wrote `create_elevation` and `create_terrain` with their
 required arguments missing, and put `terrain_type` — a land-generation attribute
 — inside `create_terrain` blocks where `base_terrain` belongs. It has sat in
 `corpus.test.ts`'s `ZERO_ERROR_ALLOWLIST` the whole time, which is not a
-contradiction: that gate checks zero *errors*, and RMS0201 is a warning. **A
+contradiction: that gate checks zero _errors_, and RMS0201 is a warning. **A
 Phase-1-era fixture is an untested assertion about the language.**
 
 **The result that generalises, and it inverts the prescribed fix.** The entry
@@ -2213,11 +2213,11 @@ told the next session to sweep `language.json` for trailing arguments carrying a
 documented `default` and mark them optional, calling the sweep "mechanical".
 **Do not.** A documented `default` licenses nothing on its own:
 
-| | guide notation | guide sentence saying it may be omitted? | verdict |
-|---|---|---|---|
-| the five fixed 2026-07-31 | `default: N` | **yes** — e.g. guide:2719 "**No argument**, or a value of 0 imposes no further restrictions" | omissible |
-| `terrain_cost.TerrainType` | none at all | no | **required** |
-| `ai_info_map_type.showType` | `default: 0` | **no** | **UNDETERMINED — left required** |
+|                             | guide notation | guide sentence saying it may be omitted?                                                     | verdict                          |
+| --------------------------- | -------------- | -------------------------------------------------------------------------------------------- | -------------------------------- |
+| the five fixed 2026-07-31   | `default: N`   | **yes** — e.g. guide:2719 "**No argument**, or a value of 0 imposes no further restrictions" | omissible                        |
+| `terrain_cost.TerrainType`  | none at all    | no                                                                                           | **required**                     |
+| `ai_info_map_type.showType` | `default: 0`   | **no**                                                                                       | **UNDETERMINED — left required** |
 
 **Look for the sentence.** When there is none the answer is UNDETERMINED, and
 undetermined means leave the data alone and write down why. It does not mean fall
@@ -2280,22 +2280,22 @@ An independent review of `preview-design.md` rev 6 (`docs/preview-design-rev6-re
 
 **All three changes reverted the same day.** The rule is restored as the working model and keeps a verify slot (item 17b) — it is unmeasured and it silently suppresses a whole section, which is worth one map to confirm, and `Cliffbound.rms` is on the sub-3 list with a name that claims cliffs, so it is the cheapest thing to look at first. The data bound is back at `min: 3` carrying a `notes` entry that says it is deliberate, because the next reader will otherwise re-derive the same wrong fix.
 
-**The distinction that was missed, and it matters beyond this attribute.** `circle_radius 0` and `base_elevation 0` are documented as **functional** — 0 disables circular placement, 0 means not-elevated — so warning on them was a false positive. A sub-3 cliff length is documented as **non-functional**, so `RMS0203` there is a **true** positive telling the author their section does nothing. CLAUDE.md's *a documented range is not an accepted range* cuts both ways, and "shipped scripts use it" is not evidence that it works: six scripts using an inert value are six scripts with an inert section. The corpus tells you what authors **wrote**, never what the engine **did** with it.
+**The distinction that was missed, and it matters beyond this attribute.** `circle_radius 0` and `base_elevation 0` are documented as **functional** — 0 disables circular placement, 0 means not-elevated — so warning on them was a false positive. A sub-3 cliff length is documented as **non-functional**, so `RMS0203` there is a **true** positive telling the author their section does nothing. CLAUDE.md's _a documented range is not an accepted range_ cuts both ways, and "shipped scripts use it" is not evidence that it works: six scripts using an inert value are six scripts with an inert section. The corpus tells you what authors **wrote**, never what the engine **did** with it.
 
-**And the transferable one: a claim about a well-known artefact is itself an observable.** The false premise was about a map that ships with the game, was checkable by loading it or by asking anyone who plays, and was instead carried from a review into a spec and a data file. It flipped a blocking finding. The session verified the review's *citations* scrupulously — line numbers, corpus counts, comment-stripped scans — and did not verify its one claim about the world.
+**And the transferable one: a claim about a well-known artefact is itself an observable.** The false premise was about a map that ships with the game, was checkable by loading it or by asking anyone who plays, and was instead carried from a review into a spec and a data file. It flipped a blocking finding. The session verified the review's _citations_ scrupulously — line numbers, corpus counts, comment-stripped scans — and did not verify its one claim about the world.
 
 **Three more blockers, all the same failure — a withdrawn rule still standing elsewhere in the same document:**
 
-* **Goal 5 was guarded by a lint rule that did not exist.** "No `Math.sin`/`cos`/`pow`/`sqrt` — same lint rule" and Sec.14's "CI-greppable" both referred to nothing: `eslint.config.js` is 28 lines with no `no-restricted-*` of any kind, and CI runs lint, typecheck, test and validate:reference with no grep. The exact config is now normative, lands with `rng.ts` rather than "in 4.3", and is mutation-tested three ways in Sec.13. It also closes an **older** gap nobody had noticed: CLAUDE.md's hard rule that `src/parser/**` and `src/breakdown/patch/**` import no React/Monaco/Tauri has been unenforced since it was written.
-* **Sec.5 still closed with the snapshot model its own DECIDED block deletes.** Under a do-not-deviate banner the implementer got both readings and no tiebreak — the preamble's body-beats-appendix rule does not reach a body-against-body conflict, so the preamble now carries one that does (the dated statement wins). The same edit found the snapshots **orphaned**: after the Current/Final decision nothing read S1 to S5, leaving an 8 MB budget and the API's only cost knob pointing at no consumer. Sec.2 now names the 4.2 stage scrubber, because "the field exists and nothing reads it" reads as an oversight and gets deleted.
-* **Sec.6.1's bucket-0 repair was inert.** Item 16's fix was written as "the `neighborsOwned = 0` bucket exists", but the frontier is *defined* as candidates 4-adjacent to owned tiles, so that bucket is unreachable by construction: an implementer following the normative growth paragraph rebuilds the pre-item-16 model and never sees the `cf −20` fragmentation. The missing piece was never the weight, which is fittable, but the **candidate source**, which is not. Respecified as a per-land detached-seed reservoir, O(1), compatible with Sec.11.
+- **Goal 5 was guarded by a lint rule that did not exist.** "No `Math.sin`/`cos`/`pow`/`sqrt` — same lint rule" and Sec.14's "CI-greppable" both referred to nothing: `eslint.config.js` is 28 lines with no `no-restricted-*` of any kind, and CI runs lint, typecheck, test and validate:reference with no grep. The exact config is now normative, lands with `rng.ts` rather than "in 4.3", and is mutation-tested three ways in Sec.13. It also closes an **older** gap nobody had noticed: CLAUDE.md's hard rule that `src/parser/**` and `src/breakdown/patch/**` import no React/Monaco/Tauri has been unenforced since it was written.
+- **Sec.5 still closed with the snapshot model its own DECIDED block deletes.** Under a do-not-deviate banner the implementer got both readings and no tiebreak — the preamble's body-beats-appendix rule does not reach a body-against-body conflict, so the preamble now carries one that does (the dated statement wins). The same edit found the snapshots **orphaned**: after the Current/Final decision nothing read S1 to S5, leaving an 8 MB budget and the API's only cost knob pointing at no consumer. Sec.2 now names the 4.2 stage scrubber, because "the field exists and nothing reads it" reads as an oversight and gets deleted.
+- **Sec.6.1's bucket-0 repair was inert.** Item 16's fix was written as "the `neighborsOwned = 0` bucket exists", but the frontier is _defined_ as candidates 4-adjacent to owned tiles, so that bucket is unreachable by construction: an implementer following the normative growth paragraph rebuilds the pre-item-16 model and never sees the `cf −20` fragmentation. The missing piece was never the weight, which is fittable, but the **candidate source**, which is not. Respecified as a per-land detached-seed reservoir, O(1), compatible with Sec.11.
 
 **Where the review was wrong, or not right enough** — recorded because taking a review on trust is the same mistake as taking the guide on trust:
 
-* It proposed emitting `borderBlocked`/`zoneAvoidanceBlocked` from S1's origin-rejection path "per rejected candidate". That would put tens of thousands of records into a report 5.2 aggregates by count. The emitters are S6's `min_distance_to_map_edge` and `avoid_other_land_zones`; region stages roll their rejections into one `growthShortfall` carrying the dominant blocker, which is what the disjointness rule already said.
-* It proposed asserting **set equality per label category** in Sec.13 test (5). That would simply go red — `playerInTeam` emits 34 of 40 by design under the current rule. Written instead as equality for three categories and equality-minus-an-explicit-six-name-list for `playerInTeam`, which goes red precisely when the numbering rule changes, which is the point.
-* It said goal 4's "with cancellation" should be struck and Sec.11's "cancellable" fixed. Half right: per-run cancellation is genuinely withdrawn, but a 1000-run **batch** is cancellable between runs, that loop is ours, and CREATION_PLAN 5.2's UX asks for it. Both now say which they mean.
-* On `playerInTeam` it offered two readings and left them level. Checking the guide makes the finding sharper: it **enumerates both lists name by name** in adjacent paragraphs (3121–3150, 3151–3191), and prunes the `teamSize` one meticulously enough to drop `TEAM2_SIZE7` (which needs noticing that team 1 costs two players). An author that careful would have pruned six names from the grid if step 3 were the rule. And there is a numbering rule under which **all 40 are reachable** — order surviving groups by ascending *selected* number rather than by lowest player number. Note `teamSize` reachability is identical under both, so the 29-name match is evidence for the "at least 2 members" rule and evidence for step 3 under neither.
+- It proposed emitting `borderBlocked`/`zoneAvoidanceBlocked` from S1's origin-rejection path "per rejected candidate". That would put tens of thousands of records into a report 5.2 aggregates by count. The emitters are S6's `min_distance_to_map_edge` and `avoid_other_land_zones`; region stages roll their rejections into one `growthShortfall` carrying the dominant blocker, which is what the disjointness rule already said.
+- It proposed asserting **set equality per label category** in Sec.13 test (5). That would simply go red — `playerInTeam` emits 34 of 40 by design under the current rule. Written instead as equality for three categories and equality-minus-an-explicit-six-name-list for `playerInTeam`, which goes red precisely when the numbering rule changes, which is the point.
+- It said goal 4's "with cancellation" should be struck and Sec.11's "cancellable" fixed. Half right: per-run cancellation is genuinely withdrawn, but a 1000-run **batch** is cancellable between runs, that loop is ours, and CREATION_PLAN 5.2's UX asks for it. Both now say which they mean.
+- On `playerInTeam` it offered two readings and left them level. Checking the guide makes the finding sharper: it **enumerates both lists name by name** in adjacent paragraphs (3121–3150, 3151–3191), and prunes the `teamSize` one meticulously enough to drop `TEAM2_SIZE7` (which needs noticing that team 1 costs two players). An author that careful would have pruned six names from the grid if step 3 were the rule. And there is a numbering rule under which **all 40 are reachable** — order surviving groups by ascending _selected_ number rather than by lowest player number. Note `teamSize` reachability is identical under both, so the 29-name match is evidence for the "at least 2 members" rule and evidence for step 3 under neither.
 
 **So Sec.15 is reopened**, items 17 to 20, after being closed for one day. 17a (team numbering) is the one to run first: it either strengthens a rule that is already a CLAUDE.md hard rule, or invalidates `teamModel.ts` and every label the preview derives. It needs a lobby, not an instrument.
 
@@ -2303,7 +2303,7 @@ An independent review of `preview-design.md` rev 6 (`docs/preview-design-rev6-re
 
 **Rev 6's changelog moved to the archived-changelogs section above**, per the spec's own rule that only the current round's appendix lives in the doc. `preview-design.md` is at **rev 7**.
 
-**The process note, and it is the mirror image of rev 6's.** Rev 6 closed by observing that critique converges on internal consistency, which is necessary and not sufficient, and that nine minimal scripts bought more than four rounds of argument. Both halves true — and rev 7 is the other half: internal consistency is necessary, and rev 6 did not have it. Its measurements were right and were then written in *beside* the sentences they falsified, four separate times. Neither failure mode catches the other, and both are cheap. **The habit that would have caught all four: when a measurement lands, grep the document for the rule it replaces before writing the new one down.** Every rev-7 blocker was findable with one search for a phrase the author had just made false.
+**The process note, and it is the mirror image of rev 6's.** Rev 6 closed by observing that critique converges on internal consistency, which is necessary and not sufficient, and that nine minimal scripts bought more than four rounds of argument. Both halves true — and rev 7 is the other half: internal consistency is necessary, and rev 6 did not have it. Its measurements were right and were then written in _beside_ the sentences they falsified, four separate times. Neither failure mode catches the other, and both are cheap. **The habit that would have caught all four: when a measurement lands, grep the document for the rule it replaces before writing the new one down.** Every rev-7 blocker was findable with one search for a phrase the author had just made false.
 
 ## Parser spec review — parser-design.md rev 5 checked against the shipped parser (2026-08-05)
 
@@ -2315,9 +2315,9 @@ Independent critique written to `docs/parser-design-rev5-review.md`. No code, da
 
 **Three blocking findings, each demonstrated with a run rather than an argument.**
 
-* **Sec.5.3's "symbols and includes survive degradation" is false for the forward-extended half.** The backward half satisfies it for free, because those tokens were parsed before the imbalance was found. Rev 5's forward scan does not parse at all — it counts braces and keywords — so a `#const` there is absorbed into the RawNode and never recorded. A five-line fixture produces `symbols: []` and the exact false RMS0202 the pinned rule exists to prevent. Two corpus degradations today, neither carrying a directive, so the volume is zero and the invariant is still broken.
-* **RMS0217 asserts a crash the guide does not describe.** guide:887-890 says negative borders "can be used, as long as the land origin stays inside the map" and names two remedies; the shipped message says "can crash the game". It fires **169 times, all one message** — second only to RMS0200 — including 32 in DE-official `local/CoastalForest.rms`, and it fires on `local/Enclosed.rms`'s `land_position 99 1 top_border -10`, which is the guide's own first remedy applied in the same block. A per-argument `cautionBelow` scalar cannot see a mitigation, so the check fires hardest on authors who did the documented thing.
-* **RMS0308's thresholds are 100 where the guide says 99, and Sec.8 uses both numbers in one sentence.** guide:3006-3007 sets both rules at 99, guide:3003 gives the operand range as 0-99, guide:3010 says the 100th percent is never chosen. `33/33/33` draws a false "adds up to less than 100" info (live in `24hr_Mont Saint Michel.rms`), and `45/54/1` has a provably dead third branch that goes unreported (live in `TL Cape of Storms.rms`).
+- **Sec.5.3's "symbols and includes survive degradation" is false for the forward-extended half.** The backward half satisfies it for free, because those tokens were parsed before the imbalance was found. Rev 5's forward scan does not parse at all — it counts braces and keywords — so a `#const` there is absorbed into the RawNode and never recorded. A five-line fixture produces `symbols: []` and the exact false RMS0202 the pinned rule exists to prevent. Two corpus degradations today, neither carrying a directive, so the volume is zero and the invariant is still broken.
+- **RMS0217 asserts a crash the guide does not describe.** guide:887-890 says negative borders "can be used, as long as the land origin stays inside the map" and names two remedies; the shipped message says "can crash the game". It fires **169 times, all one message** — second only to RMS0200 — including 32 in DE-official `local/CoastalForest.rms`, and it fires on `local/Enclosed.rms`'s `land_position 99 1 top_border -10`, which is the guide's own first remedy applied in the same block. A per-argument `cautionBelow` scalar cannot see a mitigation, so the check fires hardest on authors who did the documented thing.
+- **RMS0308's thresholds are 100 where the guide says 99, and Sec.8 uses both numbers in one sentence.** guide:3006-3007 sets both rules at 99, guide:3003 gives the operand range as 0-99, guide:3010 says the 100th percent is never chosen. `33/33/33` draws a false "adds up to less than 100" info (live in `24hr_Mont Saint Michel.rms`), and `45/54/1` has a provably dead third branch that goes unreported (live in `TL Cape of Storms.rms`).
 
 **Ten significant, of which three can make a future session build the wrong thing.** Sec.6's RMS0202 paragraph still carries both readings BUG-002 withdrew — including the `identifier` argument type that was designed, half-built and reverted the same day — while its counts are still correct, so nothing about the section looks stale. Sec.8's bullets still specify the naive checks that measured 11,623 diagnostics, with the scoping rules that fixed them two sections away in Sec.10, and its wrong-section bullet specifies the `CommandDef.section` form Sec.10 explicitly forbids. And the positive-resolver rule appears only as a scoping rule for the RMS03xx block, in the document that governs the pass where BUG-005 happened.
 
@@ -2335,16 +2335,16 @@ CREATION_PLAN 4.2: "Implement the diamond-projection canvas renderer for a tile 
 
 ### What landed
 
-| File | What it is |
-|---|---|
-| `src/preview/generator/types.ts` | Every type the spec declares (Sec.4, 6.6, 7, 10). No implementation. Sec.10's whole reason for wanting this before generator code: "4.2 builds its hardcoded fixture against exactly this list" |
-| `src/preview/generator/mapDimensions.ts` | `resolveMapDim` — Sec.4's `MapSize` to `dim` lookup through `predefinedLabels`, the only representation allowed to answer that question |
-| `src/preview/render/projection.ts` | The diamond projection, its inverse, fit/zoom/pan/clamp. Pure |
-| `src/preview/render/palette.ts` | Stable hash colours, elevation shading, layer tint, cliff, category and player colours. Pure |
-| `src/preview/render/terrainBitmap.ts` | Snapshot to RGBA bytes, one pixel per tile, no projection applied. Pure |
-| `src/preview/render/drawPreview.ts` | The only file that touches a 2D context |
-| `src/preview/fixture.ts` | A hardcoded demo map. Deleted when the worker lands |
-| `src/components/preview/` | `PreviewPane`, `PreviewCanvas`, `PreviewNotes` + CSS modules |
+| File                                     | What it is                                                                                                                                                                                      |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/preview/generator/types.ts`         | Every type the spec declares (Sec.4, 6.6, 7, 10). No implementation. Sec.10's whole reason for wanting this before generator code: "4.2 builds its hardcoded fixture against exactly this list" |
+| `src/preview/generator/mapDimensions.ts` | `resolveMapDim` — Sec.4's `MapSize` to `dim` lookup through `predefinedLabels`, the only representation allowed to answer that question                                                         |
+| `src/preview/render/projection.ts`       | The diamond projection, its inverse, fit/zoom/pan/clamp. Pure                                                                                                                                   |
+| `src/preview/render/palette.ts`          | Stable hash colours, elevation shading, layer tint, cliff, category and player colours. Pure                                                                                                    |
+| `src/preview/render/terrainBitmap.ts`    | Snapshot to RGBA bytes, one pixel per tile, no projection applied. Pure                                                                                                                         |
+| `src/preview/render/drawPreview.ts`      | The only file that touches a 2D context                                                                                                                                                         |
+| `src/preview/fixture.ts`                 | A hardcoded demo map. Deleted when the worker lands                                                                                                                                             |
+| `src/components/preview/`                | `PreviewPane`, `PreviewCanvas`, `PreviewNotes` + CSS modules                                                                                                                                    |
 
 `src/breakdown/sidepanel/PreviewPlaceholder.{tsx,module.css}` deleted; `BreakdownSidePanel` now mounts `PreviewPane`. Ten new `ui-help.json` entries, and `breakdown.sidePanel.previewToggle` rewritten as Sec.5 requires (its copy still ended "Preview logic arrives in Phase 4").
 
@@ -2358,7 +2358,7 @@ The obvious renderer walks the grid and strokes a diamond path per tile. At 200x
 ctx.transform(halfWidth, -halfHeight, halfWidth, halfHeight, originX, originY)
 ```
 
-A canvas transform maps `(x, y)` to `(a*x + c*y + e, b*x + d*y + f)`, and the projection is `screenX = (x + y)*halfWidth`, `screenY = (y - x)*halfHeight` — so `a = c = halfWidth`, `b = -halfHeight`, `d = halfHeight`. Under that matrix the bitmap's unit-square pixel at `(x, y)` lands exactly on tile `(x, y)`'s diamond. The rotation is not approximated; the transform *is* the projection. One `drawImage` per frame, the bitmap rebuilt only when the grid or the palette changes, and pan/zoom become four numbers.
+A canvas transform maps `(x, y)` to `(a*x + c*y + e, b*x + d*y + f)`, and the projection is `screenX = (x + y)*halfWidth`, `screenY = (y - x)*halfHeight` — so `a = c = halfWidth`, `b = -halfHeight`, `d = halfHeight`. Under that matrix the bitmap's unit-square pixel at `(x, y)` lands exactly on tile `(x, y)`'s diamond. The rotation is not approximated; the transform _is_ the projection. One `drawImage` per frame, the bitmap rebuilt only when the grid or the palette changes, and pan/zoom become four numbers.
 
 One detail that is a decision rather than a default: `imageSmoothingEnabled` is **off above roughly two pixels a tile and on below it**. Nearest-neighbour keeps tile edges crisp and honest when zoomed in, but under two pixels a tile it silently drops whole rows — a lake can vanish — which is the wrong failure for a tool whose first goal is not showing something confidently wrong.
 
@@ -2385,28 +2385,28 @@ A plausible map drawn beside somebody's real script, with nothing saying which i
 ### Decisions taken here that the spec left open
 
 - **Tile aspect is 1:1 — a square rotated 45 degrees, not 2:1 isometric.** Nothing in the spec pins it. 1:1 is what the Breakdown mockup shows, it keeps tile distances isotropic (a ring of resources reads as a ring rather than an ellipse, which is most of what the preview is for), and it does not waste half the vertical space of a 288 px side panel. 2:1 would match a screenshot of DE's own minimap more closely. It is one constant, `TILE_ASPECT`, and 4.3's visual-calibration pass is the right place to revisit it.
-- **`PlacedObject.category` is `string`, not a union.** The spec's own list ends with "...", so a closed union would make the renderer's fallback branch unreachable-by-type while the data can still produce a value it has never heard of. Contrast `PredefinedLabelCategory` next door, which *is* a union because the schema pins its ten members.
+- **`PlacedObject.category` is `string`, not a union.** The spec's own list ends with "...", so a closed union would make the renderer's fallback branch unreachable-by-type while the data can still produce a value it has never heard of. Contrast `PredefinedLabelCategory` next door, which _is_ a union because the schema pins its ten members.
 - **The toggle keeps the id `breakdown.sidePanel.previewToggle`** rather than gaining `preview.toggle`. Sec.5 offers the latter "if the pane hosts its own toggle distinct from the Breakdown side panel"; it does not, and two ids for one control would leave 3.5's audit checking two entries for the same thing.
 
 ### Verification, and why it needed a throwaway
 
-The app cannot run in a plain browser — `useDocument.ts:94` calls `getCurrentWindow()`, which throws without the Tauri shell, and `AppContent` unmounts. That is pre-existing and unrelated, but it means the vite dev server alone cannot show the renderer. A throwaway harness mounting `PreviewPane` under its two providers (both of which only *reject a promise* outside Tauri rather than throwing) rendered it, and was deleted afterwards.
+The app cannot run in a plain browser — `useDocument.ts:94` calls `getCurrentWindow()`, which throws without the Tauri shell, and `AppContent` unmounts. That is pre-existing and unrelated, but it means the vite dev server alone cannot show the renderer. A throwaway harness mounting `PreviewPane` under its two providers (both of which only _reject a promise_ outside Tauri rather than throwing) rendered it, and was deleted afterwards.
 
 Read off the drawn canvas rather than by eye, which is the only part of this worth reusing:
 
-| reading | value | why it is the right check |
-|---|---|---|
-| non-background fraction | **0.467** | a diamond inscribed in a square covers exactly half of it, so this is the projection's geometry confirmed by area rather than by looking |
-| corner pixel | background | the diamond leaves the square's corners empty |
-| centre pixel | FOREST's hash colour | matches the tile the hover read-out names |
-| hover at canvas centre | **(100, 99)** on a 200 map | the inverse projection lands on the centre tile |
-| coverage after six zoom-in steps | **1.000** | zoom reaches and passes full-canvas |
+| reading                          | value                      | why it is the right check                                                                                                                |
+| -------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| non-background fraction          | **0.467**                  | a diamond inscribed in a square covers exactly half of it, so this is the projection's geometry confirmed by area rather than by looking |
+| corner pixel                     | background                 | the diamond leaves the square's corners empty                                                                                            |
+| centre pixel                     | FOREST's hash colour       | matches the tile the hover read-out names                                                                                                |
+| hover at canvas centre           | **(100, 99)** on a 200 map | the inverse projection lands on the centre tile                                                                                          |
+| coverage after six zoom-in steps | **1.000**                  | zoom reaches and passes full-canvas                                                                                                      |
 
 ### For 4.3
 
 - The Sec.8 lint rules. Their `src/preview/generator/**` glob is **no longer vacuous** — Sec.13 says the first mutation test is what proves the glob is right, and the directory now exists. Left out deliberately because Sec.8 assigns them to land with `rng.ts`.
 - `preview.pinLine` and the Current cut point. Not built, so no `ui-help.json` entry, per the convention that an entry lands with the control.
-- **Sec.15 item 5 is answerable now.** It was deferred *to* 4.2 on the grounds that marking failed placements on-canvas is a judgement about a rendering that did not exist. It exists. The failure count and the notes drawer are already wired to `CommandReport.failures`; what is undecided is whether a failure gets a mark at its span on the map.
+- **Sec.15 item 5 is answerable now.** It was deferred _to_ 4.2 on the grounds that marking failed placements on-canvas is a judgement about a rendering that did not exist. It exists. The failure count and the notes drawer are already wired to `CommandReport.failures`; what is undecided is whether a failure gets a mark at its span on the map.
 - `PreviewResult` is consumed only through the types file, so swapping `buildFixturePreview` for the worker touches one `useMemo` in `PreviewPane`.
 
 ---
@@ -2433,7 +2433,7 @@ Severity is now **info**, and a measurement decided it rather than the report's 
 
 **Verify item 21 is closed by the guide, not by an RMSTEST.** The report proposed a one-map experiment for `set_scale_by_size` vs `set_scale_by_groups`. Both guide entries answer both halves outright: `Mutually exclusive with:` declares the pair, and "**If you see a script scaling by both size and groups, only the final attribute will apply!**" (guide:1662 terrain, 1679 elevation) says which wins — with the workaround attached. Reading the entry the mutex was transcribed from was cheaper than measuring.
 
-The report was right about *why* item 21 was suspect and wrong about what follows. Its framing — 194 shipped co-occurrences, therefore "almost certainly a false-positive source" — is a frequency argument, the reasoning BUG-003 discredited. But inverting a frequency argument does not license demoting the check either. **194 co-occurrences are 194 lines whose earlier half does nothing**, in maps where nobody could have noticed, which is the case *for* the check.
+The report was right about _why_ item 21 was suspect and wrong about what follows. Its framing — 194 shipped co-occurrences, therefore "almost certainly a false-positive source" — is a frequency argument, the reasoning BUG-003 discredited. But inverting a frequency argument does not license demoting the check either. **194 co-occurrences are 194 lines whose earlier half does nothing**, in maps where nobody could have noticed, which is the case _for_ the check.
 
 **So I declined the recommended per-pair severity gating and fixed the message instead.** RMS0307 said a mutex pair "set the same thing two different ways" — false for the pair producing 51 of its 62 corpus hits, since `set_scale_by_size` scales the tile count and `set_scale_by_groups` scales the clump count. The base message now claims only what `mutexWith` records, and a new optional per-entry **`mutexNote`** carries the consequence and the fix where the guide states them. Only the `set_scale_by_*` pair has one; `land_percent`/`number_of_tiles` is declared exclusive with no consequence named, so it gets the base wording and no invented advice. The two descriptions were also wrong in the same direction and are corrected.
 
@@ -2449,7 +2449,7 @@ All five behaviour changes were mutation-tested together: each defect reintroduc
 
 ### Spec, rev 5 to rev 6
 
-Corpus-vintage tags defined and applied — three sets were live under a header claiming there was one. The positive-resolver rule and its "a hit says what a name *is*, not what the engine has done with it" corollary hoisted to Sec.1 to bind both passes, since the document governing the pass where BUG-005 happened never stated either. Sec.4's AST sketches reconciled with the shipped token-index representation. Sec.8's unknown-constant and wrong-section bullets rewritten to what shipped, `validate()`'s signature corrected to two parameters, and the direct-items-only scope for RMS0306/RMS0307 pinned — it existed only as a code comment and is the whole correctness argument for both. Sec.9's absolute benchmark threshold replaced by the relative per-token gate that runs. Sec.12 documents the two tiers, the `.rms2` exclusion, `validate()`'s own gates, and the deliberately-absent volume cap. Sec.13 gained a status table because half its items were done and still listed open. Seven cross-references to a `Sec.6.5`/`Sec.6.2` that never existed repointed. Appendix E is the full changelog.
+Corpus-vintage tags defined and applied — three sets were live under a header claiming there was one. The positive-resolver rule and its "a hit says what a name _is_, not what the engine has done with it" corollary hoisted to Sec.1 to bind both passes, since the document governing the pass where BUG-005 happened never stated either. Sec.4's AST sketches reconciled with the shipped token-index representation. Sec.8's unknown-constant and wrong-section bullets rewritten to what shipped, `validate()`'s signature corrected to two parameters, and the direct-items-only scope for RMS0306/RMS0307 pinned — it existed only as a code comment and is the whole correctness argument for both. Sec.9's absolute benchmark threshold replaced by the relative per-token gate that runs. Sec.12 documents the two tiers, the `.rms2` exclusion, `validate()`'s own gates, and the deliberately-absent volume cap. Sec.13 gained a status table because half its items were done and still listed open. Seven cross-references to a `Sec.6.5`/`Sec.6.2` that never existed repointed. Appendix E is the full changelog.
 
 Two small code lints fixed alongside: RMS0210's unglued-operand diagnostic double-fired on `( 5 + 1 )` (same code, message and span twice), and the glued-operator character class's deliberate exclusion of `-` is now documented rather than looking like an omission.
 
@@ -2465,7 +2465,7 @@ Three things, one session: `previewColor` is real data now rather than a hash, t
 
 The item said `Terrain.colors` is "sourced but NOT yet decodable — palette indices, not RGB", with the instruction to keep hash colours until the install's palette file is decoded. Decoding it took twenty minutes: `resources/_common/palettes/original.pal` is a plain-text JASC-PAL file, 256 entries, and `palettes.conf` confirms it is palette 0. Index 55 is `(0,169,0)` green, 19 is `(48,93,182)` blue, 137 is `(248,201,138)` sand. All sensible.
 
-**It does not fix the defect the item was written about.** The item's own evidence was that SNOW reads `(55,236,54)`, byte-identical to GRASS, and it read that as an encoding problem. It is not. Across the **131 enabled terrain records the field takes exactly 12 distinct values** — it is a legacy colour *class*, not a per-terrain colour. SNOW (32), Snow Light (73), Snow Deep (74), Snow Soft (124) and every grass variant all carry index 55. The collision is in the data, one level above the encoding, and no amount of correct decoding moves it.
+**It does not fix the defect the item was written about.** The item's own evidence was that SNOW reads `(55,236,54)`, byte-identical to GRASS, and it read that as an encoding problem. It is not. Across the **131 enabled terrain records the field takes exactly 12 distinct values** — it is a legacy colour _class_, not a per-terrain colour. SNOW (32), Snow Light (73), Snow Deep (74), Snow Soft (124) and every grass variant all carry index 55. The collision is in the data, one level above the encoding, and no amount of correct decoding moves it.
 
 **The fix was a different file.** DE ships terrain textures as ordinary `.dds` under `resources/_common/terrain/textures/2x/`, named by the Terrain record's `name_2` — which this repo already stores as `deTextureFile`. The mean of the opaque texels is one number per terrain, from the terrain the script actually places: `g_sno` is `(180,205,219)` pale blue-white, `g_grs` is `(129,146,63)` olive. That is `previewColor`, and it is the default.
 
@@ -2481,7 +2481,7 @@ Ash's call, and it turned a discarded source into a feature. `previewColor` is p
 
 `tools/extract-constants/` gained `average_texture_color`, `parse_jasc_palette`, `TextureExtraction`, `MinimapColorExtraction` and a `--colors-only` mode, plus Pillow in `requirements.txt`. The schema gained both fields, with the coarseness caveat written into `minimapColor`'s own description.
 
-Three details that were decisions rather than defaults, each commented at its site. The resample filter is NEAREST, not the usual box: the sheets hold diamond tiles on a transparent field, and any smoothing filter blends that border into the edge texels *before* the alpha test can drop them, dragging every average toward black by a shape-dependent amount. Texel access is `tobytes()` rather than `getdata()`, the one accessor whose spelling has not moved across Pillow versions. And `--colors-only` is a separate code path from a full run (`merge_terrain_colors`, not `merge_entry`) because a full run recomputes `verified` and rewrites `notes` wholesale — correct when re-extracting everything, wrong when adding a field to a tree carrying weeks of uncommitted reference-data edits.
+Three details that were decisions rather than defaults, each commented at its site. The resample filter is NEAREST, not the usual box: the sheets hold diamond tiles on a transparent field, and any smoothing filter blends that border into the edge texels _before_ the alpha test can drop them, dragging every average toward black by a shape-dependent amount. Texel access is `tobytes()` rather than `getdata()`, the one accessor whose spelling has not moved across Pillow versions. And `--colors-only` is a separate code path from a full run (`merge_terrain_colors`, not `merge_entry`) because a full run recomputes `verified` and rewrites `notes` wholesale — correct when re-extracting everything, wrong when adding a field to a tree carrying weeks of uncommitted reference-data edits.
 
 **A defect the tests caught, worth recording because it is the kind that survives.** The first `merge_terrain_colors` appended its provenance sentence unconditionally, so two runs produced two identical sentences in `notes`. A tool meant to be re-run after every DE patch has to be idempotent. Fixed with a regex that strips the previous sentence, and **mutation-tested** per CLAUDE.md: reintroducing the unconditional append turns `test_is_idempotent_across_runs` and `test_replaces_a_stale_colour_rather_than_keeping_both` red, restoring it turns them green. 43 tests in `test_extract_constants.py`.
 
@@ -2493,7 +2493,7 @@ Also caught by a gate rather than by review: `npm run validate:reference` failed
 
 `ReferenceTable` was the only real obstacle and it was not much of one. It read `gameConstants` and `lang` from `BreakdownContext` — two of that context's fifteen fields, both module-level JSON that never changes at runtime, while the rest of the context is edit intents, expansion anchors and card selection. It now imports the JSON directly, exactly as `PreviewPane` does, and has no Breakdown dependency at all. There is no `BreakdownProvider` over the Code tab and there should not be one.
 
-While there: the table's footnote read "IDs/textures pending extraction (Phase 4.0)". That extraction ran on 2026-07-30 and the values above it are real, so the note was telling users to distrust correct data. Replaced with the thing that *is* still true, that the table holds 31 of several hundred constants, so a name missing from it proves nothing about the game. Same shape as the stale-rule sweep rev 7 was mostly about: **when a pass lands, grep the UI strings it just falsified, not only the docs.**
+While there: the table's footnote read "IDs/textures pending extraction (Phase 4.0)". That extraction ran on 2026-07-30 and the values above it are real, so the note was telling users to distrust correct data. Replaced with the thing that _is_ still true, that the table holds 31 of several hundred constants, so a name missing from it proves nothing about the game. Same shape as the stale-rule sweep rev 7 was mostly about: **when a pass lands, grep the UI strings it just falsified, not only the docs.**
 
 `PreviewViewContext` is new and exists for one reason: the tabs are a conditional render, so the inactive one is genuinely unmounted and React discards its state. Seed, view and colour mode live above the switch, so walking to Code and back no longer resets a seed you re-rolled to. Zoom and pan deliberately stay in `PreviewCanvas` — they are derived from the canvas's measured pixel size, which does not exist until it mounts, and the viewport is refitted on mount anyway.
 
@@ -2549,7 +2549,7 @@ This is exactly the failure mode `PreviewViewContext.tsx`'s header comment alrea
 
 **Fix.** A second context, `PreviewViewportProvider`/`usePreviewViewport()`, added to `PreviewViewContext.tsx` and mounted in `App.tsx` alongside the existing `PreviewViewProvider` (both above the tab switch, both survive it). Deliberately a SEPARATE context rather than folded into the existing one: `viewport` changes on every pixel of a drag or wheel tick, and the existing context is read by `PreviewPane`'s whole control row (seed chip, view toggle, colour mode) — coupling them would re-render those controls on every drag frame for no reason.
 
-`userFramedRef` stays a ref inside `PreviewCanvas` — it still has to be, since the ResizeObserver and snapshot-change effects read it from closures that don't list it as a dependency, which needs a synchronous always-current value, the textbook reason for a ref over state. What changed is where it's *seeded*: `useRef(persistedUserFramed)` reads the context's persisted flag once, at mount, so a remount after a tab switch starts already-framed instead of defaulting to false; every write goes through a new `markUserFramed()` helper that sets both the local ref (for this instance's closures) and the context flag (for the next remount).
+`userFramedRef` stays a ref inside `PreviewCanvas` — it still has to be, since the ResizeObserver and snapshot-change effects read it from closures that don't list it as a dependency, which needs a synchronous always-current value, the textbook reason for a ref over state. What changed is where it's _seeded_: `useRef(persistedUserFramed)` reads the context's persisted flag once, at mount, so a remount after a tab switch starts already-framed instead of defaulting to false; every write goes through a new `markUserFramed()` helper that sets both the local ref (for this instance's closures) and the context flag (for the next remount).
 
 **Two small lint consequences, both fixed, not suppressed.** `setViewport` now arrives through `usePreviewViewport()` instead of a literal `useState` call in this component, so `react-hooks/exhaustive-deps` can no longer see through the indirection to know it's stable (it still is — a `useState` setter's identity never changes, regardless of how many hooks it passes through) — added to the two affected effects' dependency arrays rather than disabled, since it's true and free. And the new `usePreviewViewport` hook export is one more `react-refresh/only-export-components` warning on a file that already carried one for `usePreviewView`, the same pattern already standing in `GenerationSettingsContext.tsx` and `HelpSettingsContext.tsx` — not a new defect, the established shape of a context-plus-hook file in this codebase.
 
@@ -2567,7 +2567,7 @@ Continuing 4.3 in Sec.14's file order after the RNG/placement session: `mathEval
 
 ### A near-miss: `*/` inside a `+-*/%` inside a JSDoc comment
 
-First draft of the file's top JSDoc wrote the operator set as `` +-*/% `` in prose. `vite:esbuild` failed the whole file with `Unexpected "%"` — the literal substring `*/` inside that closes a `/** ... */` block comment early, so `%` landed outside the comment as bare syntax. Fixed by spelling it out ("one of the five operators") instead. Left as a build-log note because it is exactly the kind of failure that reads as a tooling bug from the error message alone (`Unexpected "%"` gives no hint the actual defect is nine characters earlier, inside a comment) and will recur the next time someone writes `*/` literally in a comment about arithmetic operators.
+First draft of the file's top JSDoc wrote the operator set as `+-*/%` in prose. `vite:esbuild` failed the whole file with `Unexpected "%"` — the literal substring `*/` inside that closes a `/** ... */` block comment early, so `%` landed outside the comment as bare syntax. Fixed by spelling it out ("one of the five operators") instead. Left as a build-log note because it is exactly the kind of failure that reads as a tooling bug from the error message alone (`Unexpected "%"` gives no hint the actual defect is nine characters earlier, inside a comment) and will recur the next time someone writes `*/` literally in a comment about arithmetic operators.
 
 ### Verification
 
@@ -2750,11 +2750,11 @@ Sec.6.2 gives a formula shape (`seedRatio = clamp(1.3 + A*max(0, density-d0), 1.
 **First attempt failed for an informative reason.** Measuring at the shipped default (clumps at the RMSTEST_22a 6-tile floor) gave almost no signal — a compact 6-tile clump frequently has ZERO tiles more than one step from its own boundary, so almost nothing is ever "elevated" (ring value > 0) to count favoured/disfavoured tiles from at all. Re-measured with a larger per-clump budget (tens of tiles per clump, enough to guarantee real interior tiles) to get a usable sample, landing `A = 900`:
 
 | clumps | target ratio | measured (this session's calibration) |
-|---|---|---|
-| 100 | 1.88 | 1.41 |
-| 250 | 3.74 | 1.30 (at the knee — see below) |
-| 500 | 7.01 | 5.98 |
-| 1000 | 14.88 | 14.64 |
+| ------ | ------------ | ------------------------------------- |
+| 100    | 1.88         | 1.41                                  |
+| 250    | 3.74         | 1.30 (at the knee — see below)        |
+| 500    | 7.01         | 5.98                                  |
+| 1000   | 14.88        | 14.64                                 |
 
 **Fits well above the knee, badly AT it.** 500 and 1000 clumps land within about 15% and 1.5% of the table; 250 clumps — sitting almost exactly at the modelled knee `d0`, where the formula is pinned to the flat 1.3 floor by construction — comes in at barely a third of the table's 3.74. No value of `A` fixes this specific point, since the formula is flat at the knee regardless of `A`; the mismatch says the knee's actual location (or the "flat below it" shape itself) is off, not that the amplification slope is. Recorded as a known, unresolved gap rather than quietly tuned away — Sec.6.2 itself flags the knee's location as `[verify]`, and this measurement is a first data point toward re-locating it, not a fix.
 
@@ -2858,7 +2858,7 @@ Per connection command, resolve a NODE SET and a PAIRING rule, then A* a path be
 
 **`create_connect_same_land_zones` is modelled identically to `create_connect_all_lands`** ("all land origins, all pairs"), per Sec.6.5's own text, which lists both commands together against one shared behaviour rather than describing a zone-partitioned grouping for the former. Surprising given the name, but the design doc is explicit and gives no separate rule for it, and nothing elsewhere in the doc contradicts this reading — implemented as written rather than improvised around (CLAUDE.md: escalate a spec that looks wrong, don't guess a deviation; this one reads as deliberate, not wrong).
 
-**Pathfinding is real A*, first genuine pathfinding need in this codebase.** Multi-source (every tile of the source land starts at cost 0) and multi-goal (search ends the moment ANY tile of the target land is reached) rather than point-to-point between origins, since a connection joins REGIONS, not single tiles. Heuristic is Manhattan distance from a candidate tile to the target land's bounding box — admissible because the guide's own "cost <=0 means impassable" puts a floor of 1 on any passable step, so true path cost can never undercut a box-distance lower bound. `Sec.11: "A* uses a binary heap"` — built one (`MinHeap`, exported and directly tested against a plain-sort reference over 200 random-priority pushes, including forced ties) rather than a naive linear-scan priority queue. **No special-casing needed for cliffs under a path**: `grid.terrain` already holds the terrain UNDER any cliff (`cliffs.ts` never writes to `terrain`, only to `cliff`), which is exactly Sec.9 item 7's own resolution of "what does the pathfinder see under a cliff" (guide:1325/1326, closed 2026-08-04) — the grid already reads that way for free.
+_*Pathfinding is real A*, first genuine pathfinding need in this codebase._* Multi-source (every tile of the source land starts at cost 0) and multi-goal (search ends the moment ANY tile of the target land is reached) rather than point-to-point between origins, since a connection joins REGIONS, not single tiles. Heuristic is Manhattan distance from a candidate tile to the target land's bounding box — admissible because the guide's own "cost <=0 means impassable" puts a floor of 1 on any passable step, so true path cost can never undercut a box-distance lower bound. `Sec.11: "A* uses a binary heap"` — built one (`MinHeap`, exported and directly tested against a plain-sort reference over 200 random-priority pushes, including forced ties) rather than a naive linear-scan priority queue. **No special-casing needed for cliffs under a path**: `grid.terrain` already holds the terrain UNDER any cliff (`cliffs.ts` never writes to `terrain`, only to `cliff`), which is exactly Sec.9 item 7's own resolution of "what does the pathfinder see under a cliff" (guide:1325/1326, closed 2026-08-04) — the grid already reads that way for free.
 
 **`accumulate_connections` is a standalone stream-state toggle**, same shape as `cliffs.ts`'s own standalone attributes (`kind: "standalone"`, sitting directly in the section rather than as a block attribute) — encountered in script order alongside the six `create_connect_*` block commands, and once seen, every LATER command reads terrain state (for both `terrain_cost` and `replace_terrain`'s "from" matching) from the LIVE grid instead of a snapshot frozen at the start of S5. `create_connect_to_nonplayer_land`'s documented bug (it silently blocks every connection command declared after it) is emulated deliberately — a blocked command still gets a `CommandReport` (never silently drop content) plus a `SimulationNote` naming why.
 
@@ -2960,7 +2960,7 @@ A review of the finished preview against real corpus maps reported five problems
 
 **`lands.ts` wrote `landId` and `zone` and never once wrote `grid.terrain`.** `stampOrigin` and `claimTile` both set land ownership; nothing anywhere turned a land's `terrain_type` into a terrain id on the grid. `AK_Six_Points_v1.4.rms` came back with a terrain histogram of exactly one entry — 40,000 tiles of `base_terrain WATER` — which is the flat blue diamond in the report's screenshot.
 
-**The shape of this bug is the lesson, not the fix.** A stage that silently produces a plausible grid is far harder to spot than one that throws, and the damage surfaced two stages later as an avalanche of *correct* diagnostics: `create_terrain { base_terrain DIRT2 }` genuinely had no DIRT2 to paint on, water objects genuinely had no water, and one map reported 19,608 placement failures that were all this single missing loop. Every stage's own test suite passed throughout, because every one of them hardcoded `createTileGrid(dim, GRASS)` in its `place()` helper and then asserted against a grid it had built itself — the same class of blind spot the base-terrain resolution work found in the previous session, one layer down. **Fixed** by `paintLandTerrain()`, deliberately shaped as a sibling of `applyBaseElevation` (one O(dim^2) pass over `grid.landId` after growth, so a land covers its final footprint rather than its origin stamp), and by adding it to every downstream stage's own test helper so the helpers run the real pipeline instead of an abridged one.
+**The shape of this bug is the lesson, not the fix.** A stage that silently produces a plausible grid is far harder to spot than one that throws, and the damage surfaced two stages later as an avalanche of _correct_ diagnostics: `create_terrain { base_terrain DIRT2 }` genuinely had no DIRT2 to paint on, water objects genuinely had no water, and one map reported 19,608 placement failures that were all this single missing loop. Every stage's own test suite passed throughout, because every one of them hardcoded `createTileGrid(dim, GRASS)` in its `place()` helper and then asserted against a grid it had built itself — the same class of blind spot the base-terrain resolution work found in the previous session, one layer down. **Fixed** by `paintLandTerrain()`, deliberately shaped as a sibling of `applyBaseElevation` (one O(dim^2) pass over `grid.landId` after growth, so a land covers its final footprint rather than its origin stamp), and by adding it to every downstream stage's own test helper so the helpers run the real pipeline instead of an abridged one.
 
 #### 3. Unknown terrains — three separate resolution failures wearing one symptom
 
@@ -2968,7 +2968,7 @@ A review of the finished preview against real corpus maps reported five problems
 
 - **The reference data held 15 of DE's 131 terrains.** Fixed from the community DE terrain table now in `reference-docs/AoE2 Terrains.xlsx` (Zetnus): all 131 now present with `constId`, `descriptiveName`, `deTextureFile`, and the two new flags below. New entries carry `verified: false` and no `idSource` (the schema's own documented "unknown provenance") because they came from a community sheet, not this repo's extraction. `previewColor` is filled in only where a terrain shares a `deTextureFile` with an already-extracted one, which is not a guess: `previewColor` is defined as the mean of that one `.dds`, so two terrains naming the same file have the same colour by construction. That covers 35 of 131; **the remaining 96 need one `python extract_constants.py --colors-only` run on a machine with the game installed** and are marked in the legend as having no colour until then.
 - **Bare numeric terrain ids never resolved.** Only 78 of the 131 have a callable constant, so `terrain_type 26` is the only way to reach the other 53 — and all five stages' private `terrainIdByName` copies took a `string`.
-- **Script-defined `#const` terrain names never resolved.** `instantiate.ts` deliberately leaves `terrainConstant` slots as strings (they are not Sec.6 "numeric slots"), so `#const WOODIES 48` then `create_terrain WOODIES` failed. This is a mainstream idiom precisely *because* 53 terrains have no name of their own: `TL Black Forest.rms` lost 33 commands to it, `AK_Namatjira.rms` more than 100.
+- **Script-defined `#const` terrain names never resolved.** `instantiate.ts` deliberately leaves `terrainConstant` slots as strings (they are not Sec.6 "numeric slots"), so `#const WOODIES 48` then `create_terrain WOODIES` failed. This is a mainstream idiom precisely _because_ 53 terrains have no name of their own: `TL Black Forest.rms` lost 33 commands to it, `AK_Namatjira.rms` more than 100.
 
 Fixed by one shared `resolveTerrainId(constants, value, symbols)` in `grid.ts` replacing all five private copies, and by exposing `InstantiatedScript.symbols` (numeric `#const` definitions only). **Resolution order is deliberate and testable: game constants first, `#const` second** — the engine loads `random_map.def` before the script and `#const` is first-definition-wins, so a script redefining `WATER` does not actually win in game and must not win here.
 
@@ -2987,7 +2987,7 @@ Then the generator itself, all three found by measurement rather than reading:
 - **`spacingIndex.ts` (new).** S2's `create_elevation spacing` and S6's `min_distance_group_placement` each kept a growing point list and rescanned it per candidate, O(n^2) per command. `TL Team Acropolis.rms` ran **545 million** distance comparisons inside S6's scan, `24hr_Blind Valley.rms` 238 million, `AK_Namatjira.rms` 188 million, together roughly two thirds of the whole preview's runtime. Replaced with a uniform grid (cells `ceil(d)` wide, nine-cell neighbourhood, exact for both metrics since Euclidean distance never exceeds Chebyshev). S6 on Acropolis 3174 ms to 1118 ms.
 - **`drawSeed` re-split its candidate pool on every call.** Its own doc comment said "split the pool by diagonal side once"; the implementation did it per clump, over up to 40,000 candidates, once per clump. Hoisted into `buildSeedPool`. S2 on `AK_Namatjira.rms` **3101 ms to 133 ms**.
 - **`buildCandidatePool` allocated 40,000 short-lived objects per frame** to sort by selection key. Now packs `key * dim^2 + tile` into one number and sorts a `Float64Array` with no comparator (the engine's fast path); the packing is exact and invertible, and it makes the tie break deterministic by tile index rather than incidentally stable.
-- **A* allocated a `neighbors` array per node expansion** and three `dim^2` arrays per search. The arrays are now allocated once per command and cleared by generation stamping rather than refilling.
+- _*A* allocated a `neighbors` array per node expansion_* and three `dim^2` arrays per search. The arrays are now allocated once per command and cleared by generation stamping rather than refilling.
 
 **Failure records were the other half of "slow", and the whole of "a LOT of error messages".** `Menindee_AUS_v2.3.rms` produced **280,427** failure records in one generation, `TC2 - Comeer v1.4.rms` 185,432, `24hr_Caverns.rms` 172,650 — each an object carrying a freshly built sentence, allocated during generation, structured-cloned across the worker boundary on every keystroke burst, and rendered as one `<li>` each the moment the notes drawer opened. They are now coalesced by bucket per command as they are made (`pushFailure`), keeping the first as the example and counting the rest: **280,427 to 165**. Sec.7 already licensed this ("5.2's report UI aggregates by bucket, and stable bucket identity matters more than forensic precision"); nothing downstream ever read the second record of a bucket.
 
@@ -3027,7 +3027,7 @@ A second review pass, driven by reading `AD4 - Pag - v1.2.rms` in the running ap
 
 #### The clump cap was truncating the most common `create_terrain` idiom
 
-Reported as "the DESERT terrain has not affected correctly in the terrain generation section". It had not: `MAX_CLUMP_ATTEMPTS_PER_DIM` capped S4 at `4 * dim` clump attempts, which is **800 on a 200 map**, and Pag's own commands ask for `number_of_clumps 9320` — the guide's own worked example — twenty-three times. So `create_terrain DIRT { base_terrain DESERT land_percent 100 number_of_clumps 9320 ... }`, which is how a script converts *all* of one terrain into another, was converting 8.6% of it. One generation emitted 23 `terrainIterationCapped` notes and nobody had looked at them.
+Reported as "the DESERT terrain has not affected correctly in the terrain generation section". It had not: `MAX_CLUMP_ATTEMPTS_PER_DIM` capped S4 at `4 * dim` clump attempts, which is **800 on a 200 map**, and Pag's own commands ask for `number_of_clumps 9320` — the guide's own worked example — twenty-three times. So `create_terrain DIRT { base_terrain DESERT land_percent 100 number_of_clumps 9320 ... }`, which is how a script converts _all_ of one terrain into another, was converting 8.6% of it. One generation emitted 23 `terrainIterationCapped` notes and nobody had looked at them.
 
 **The cap is gone, replaced by a bound that is a fact rather than a guess.** Every clump that runs claims at least its own seed tile, so `min(clumpCount, eligiblePool.length)` is an exact upper bound on useful clumps — and it terminates a `999999999`-clump command after at most `dim^2` iterations on its own, which is what the cap was there for. Seed draws now come from a shrinking pool with swap-remove instead of 100-attempt rejection sampling, so the whole command pays O(pool) for removals however many clumps it asks for, and saturation is detected exactly instead of guessed at after 100 failed draws. The DIRT layer on Pag went from 2,729 tiles to 9,204.
 
@@ -3035,7 +3035,7 @@ Reported as "the DESERT terrain has not affected correctly in the terrain genera
 
 #### `terrain_mask 1` and `terrain_mask 2` are different behaviours, not one
 
-This file's header listed collapsing them as a deliberate simplification, reasoning that Sec.9 renders masking as a flat tint anyway so "the over/under distinction would be invisible in the renderer's own contract even if modelled exactly". **That reasoning was wrong, and the review caught it directly: the distinction is not about rendering at all.** guide:1502-1509 says mask 1's new terrain "inherits its properties" from the base while mask 2's "provides new properties" — so mask 2 changes *which terrain owns the tile*, and therefore what every later `base_terrain` match, habitat check and automatic-object rule sees. guide:2486 confirms it from the object side (`layer_to_place_on` "works for terrain_mask 1, but not when set to 2 ... because the layer has become the main terrain").
+This file's header listed collapsing them as a deliberate simplification, reasoning that Sec.9 renders masking as a flat tint anyway so "the over/under distinction would be invisible in the renderer's own contract even if modelled exactly". **That reasoning was wrong, and the review caught it directly: the distinction is not about rendering at all.** guide:1502-1509 says mask 1's new terrain "inherits its properties" from the base while mask 2's "provides new properties" — so mask 2 changes _which terrain owns the tile_, and therefore what every later `base_terrain` match, habitat check and automatic-object rule sees. guide:2486 confirms it from the object side (`layer_to_place_on` "works for terrain_mask 1, but not when set to 2 ... because the layer has become the main terrain").
 
 Now modelled as two behaviours: mask 1 writes the layer and leaves the terrain alone; mask 2 moves the old terrain into the layer and takes the tile. Pag uses mask 2 in two of its first three terrain commands, where it had been a no-op for the rest of the pipeline.
 
@@ -3046,8 +3046,8 @@ Reported as trees in water, and it was worse than it sounded. `objectHabitat` re
 Three changes, and the second one is the one that actually mattered:
 
 1. **The unknown-object fallback is now `land`, not `any`.** The two defaults are not symmetric: land objects are the overwhelming majority of what scripts place, the water ones are a small known family, and a script placing a water object writes `terrain_to_place_on SHALLOW`-or-similar, which is honoured ahead of the guessed habitat. A forest floating on the sea is not a cautious approximation; it is a confident lie about the layout.
-2. **The habitat check is ADDITIVE to `layer_to_place_on`, not replaced by it.** This was the actual defect. Pag's tree stragglers carry `layer_to_place_on GRASS`, the GRASS layer survives underneath water terrain that a later mask-2 command laid down, and the old predicate chain treated any explicit terrain-or-layer attribute as standing in for the habitat — so the check never ran. `terrain_to_place_on` remains an exception on purpose: it names the *ground*, which is the same thing habitat is guessing at, so the author's statement outranks the guess. A layer carries no such claim.
-3. **A tight group's flood fill respects it too.** Test 8's measured rule — a tight group's members skip the command's *attributes* — stands untouched. The terrain table is not an attribute; it is an engine-level restriction on where the object can exist, which is precisely why `ignore_terrain_restrictions` exists as a separate opt-out. Without this a tight group of 7 GOLD anchored on the coast spilled into open water, 13 times on Pag.
+2. **The habitat check is ADDITIVE to `layer_to_place_on`, not replaced by it.** This was the actual defect. Pag's tree stragglers carry `layer_to_place_on GRASS`, the GRASS layer survives underneath water terrain that a later mask-2 command laid down, and the old predicate chain treated any explicit terrain-or-layer attribute as standing in for the habitat — so the check never ran. `terrain_to_place_on` remains an exception on purpose: it names the _ground_, which is the same thing habitat is guessing at, so the author's statement outranks the guess. A layer carries no such claim.
+3. **A tight group's flood fill respects it too.** Test 8's measured rule — a tight group's members skip the command's _attributes_ — stands untouched. The terrain table is not an attribute; it is an engine-level restriction on where the object can exist, which is precisely why `ignore_terrain_restrictions` exists as a separate opt-out. Without this a tight group of 7 GOLD anchored on the coast spilled into open water, 13 times on Pag.
 
 After all three, every object on Pag sits on land, and the water is empty.
 
@@ -3057,7 +3057,7 @@ After all three, every object on Pag sits on land, and the water is empty.
 
 #### Forest terrain now reads as forest
 
-Two halves of one complaint. Tree objects were drawn in the near-white unknown-object colour, burying the terrain under white confetti; they now resolve to the wood colour via a name pattern, which is deliberately confined to a cosmetic decision (the same precedent as `WALL_NAME_PATTERN`, and the alternative is not a correct colour but a worse one). And forest *terrain* was drawn in its own texture colour, which is the GROUND UNDER the trees — `MEDITERRANEAN_FOREST` and plain `LEAVES` are both `g_for`, an earthy brown — so 4,271 tiles of forest on Pag rendered as bare dirt. Forest terrains now take a canopy tint, driven by the `isForest` flag rather than a name, and following whichever terrain owns the tile, exactly as the engine's own automatic-object rule does.
+Two halves of one complaint. Tree objects were drawn in the near-white unknown-object colour, burying the terrain under white confetti; they now resolve to the wood colour via a name pattern, which is deliberately confined to a cosmetic decision (the same precedent as `WALL_NAME_PATTERN`, and the alternative is not a correct colour but a worse one). And forest _terrain_ was drawn in its own texture colour, which is the GROUND UNDER the trees — `MEDITERRANEAN_FOREST` and plain `LEAVES` are both `g_for`, an earthy brown — so 4,271 tiles of forest on Pag rendered as bare dirt. Forest terrains now take a canopy tint, driven by the `isForest` flag rather than a name, and following whichever terrain owns the tile, exactly as the engine's own automatic-object rule does.
 
 `LAYER_TINT_WEIGHT` also went 0.45 to 0.7. A mask is a real texture in game covering most of what you see, and at 0.45 a mask between two similar colours was invisible: Pag's DIRT-over-DESERT came out (218,169,110) against bare desert's (221,180,124), so the map read as undifferentiated sand and the mask looked like it had not run.
 
@@ -3081,7 +3081,7 @@ A follow-up question — "`base_layer` in object generation is determined by the
 
 guide:1471, on `base_layer` in `<TERRAIN_GENERATION>`: "If used together with base_terrain, the new terrain will be placed only where **both** the base and the layer apply." The eligibility predicate was an OR. So `create_terrain X { base_terrain GRASS base_layer DESERT }` — "the desert layered onto grass" — matched every bare GRASS tile on the map as well as the layered ones, which is the opposite of what the attribute is for. Fixed in both places it appeared: the candidate predicate and `spacing_to_other_terrain_types`'s own "this command's eligible ground" test. `base_terrain` still always applies, defaulting to GRASS (guide:1449); `base_layer` has no default and only narrows when written.
 
-The test that pinned the old behaviour was named *"base_layer is an alternative match, per the guide's disjunction (terrain OR layer)"* — it cited a disjunction the guide does not contain. Replaced with two tests: the layer narrows, and a matching layer does not rescue a tile whose base terrain is wrong.
+The test that pinned the old behaviour was named _"base_layer is an alternative match, per the guide's disjunction (terrain OR layer)"_ — it cited a disjunction the guide does not contain. Replaced with two tests: the layer narrows, and a matching layer does not rescue a tile whose base terrain is wrong.
 
 #### "No layer" and "layered with GRASS" were the same value
 
@@ -3163,7 +3163,7 @@ The previous entry replaced summing with `base_elevation + ring`, keeping Sec.6.
 
 So a command raises a tile toward MaxHeight, never past it, and never lowers one already higher — `if (ring > grid.elevation[tile]) grid.elevation[tile] = ring`. Nothing adds: not clumps within a command, not commands within a section, and not `base_elevation` underneath. Sec.6.2's "heights add on top of base_elevation" is withdrawn outright rather than narrowed, and Sec.15 item 25 has the run.
 
-Worth recording the shape of the mistake: the first fix was reached by asking what would stop `AD4 - Pag - v1.2.rms` reaching elevation 16, and `base_elevation + ring` does stop it. It fits the symptom without being the rule. The distinguishing observation — two lands at *different* base elevations under *one* command — was never constructed, and it is the only one that separates the two models.
+Worth recording the shape of the mistake: the first fix was reached by asking what would stop `AD4 - Pag - v1.2.rms` reaching elevation 16, and `base_elevation + ring` does stop it. It fits the symptom without being the rule. The distinguishing observation — two lands at _different_ base elevations under _one_ command — was never constructed, and it is the only one that separates the two models.
 
 #### Automatic beaches at the land/water boundary
 
@@ -3179,7 +3179,7 @@ Corrected to the engine's own moments: **the end of land generation, and the end
 
 No pass after S5. Connection painting can carve new water and whether the engine dresses it is unmeasured; the only datum nearby points away, since `beach_terrain` is documented to stop working entirely when a `<CONNECTION_GENERATION>` section exists. Adding a pass there to tidy the number above would be inventing a third moment nobody has observed.
 
-**The per-terrain `beachTerrain` field is new this session, not pre-existing data, and its provenance matters.** It was derived mechanically from the community DE table (Zetnus, the same source `isWater`/`isForest` came from) by four of that table's own columns: the beach terrains themselves are null (Building Allowed "walls only", or a Descriptive Name starting "Beach" — a beach does not grow a beach, and the guide's `beach_terrain DLC_BEACH2` example would be a no-op if it did); the four rows reading "no beaches" are null; water is null; snowy and icy terrains take ICYSHORE; everything else takes BEACH. That gives 78 BEACH, 16 ICYSHORE, 37 null. **One extrapolation, flagged in the schema rather than buried:** only ids 32/33/34 carry the explicit "icy beach when bordering water" annotation, and the other thirteen snow/ice rows are matched against the ICYSHORE row's own phrase "snowy terrains" using the table's Descriptive Name and Comments text. A first pass matched those as bare substrings and handed five *Rice* Farm rows an icy shore; the fix is a word-boundary match, and the lesson is the ordinary one — a derivation script needs its output read, not just its exit code.
+**The per-terrain `beachTerrain` field is new this session, not pre-existing data, and its provenance matters.** It was derived mechanically from the community DE table (Zetnus, the same source `isWater`/`isForest` came from) by four of that table's own columns: the beach terrains themselves are null (Building Allowed "walls only", or a Descriptive Name starting "Beach" — a beach does not grow a beach, and the guide's `beach_terrain DLC_BEACH2` example would be a no-op if it did); the four rows reading "no beaches" are null; water is null; snowy and icy terrains take ICYSHORE; everything else takes BEACH. That gives 78 BEACH, 16 ICYSHORE, 37 null. **One extrapolation, flagged in the schema rather than buried:** only ids 32/33/34 carry the explicit "icy beach when bordering water" annotation, and the other thirteen snow/ice rows are matched against the ICYSHORE row's own phrase "snowy terrains" using the table's Descriptive Name and Comments text. A first pass matched those as bare substrings and handed five _Rice_ Farm rows an icy shore; the fix is a word-boundary match, and the lesson is the ordinary one — a derivation script needs its output read, not just its exit code.
 
 **`beach_terrain` and the automatic pass are ONE rule, and were briefly built as two.** Two implementations landed in the same file within the same session: one placing beaches at the end of S4 with per-command `beach_terrain` support, one placing them after S5 from `index.ts` with none. Both ran, so every map got the pass twice and the second overwrote the first. Consolidated into one: the after-S5 call site is right (a beach follows the FINAL coastline, and S6 needs to see it), and `create_terrain` no longer dresses its own clump at all — it records its `beach_terrain` per tile into a `beachOverride` array returned on `TerrainsResult`, and the single pass consults that before the terrain's data default. Deciding adjacency once, at the end, is strictly better than deciding it per clump against a stage-start mask: a later command painting water beside an earlier clump now beaches it, and a clump painted over no longer leaves a stale strip of sand.
 
@@ -3445,7 +3445,7 @@ Reported: `QS_Three_Bays_v1.1.rms` line 1145 is a "tuna everywhere" command and 
 create_object TUNA { number_of_objects 4096 temp_min_distance_group_placement 8 min_distance_group_placement 7 max_distance_to_other_zones 4 set_gaia_object_only set_scaling_to_map_size avoid_actor_area 3110 }
 ```
 
-guide:2527, in its own capitals: *"Minimum (NOT maximum) distance, in tiles, that objects will stay away from terrains that they are restricted from being placed on"*, and guide:2528's worked example is "deep fish away from beaches". The predicate shipped as `dist !== UNREACHABLE && dist <= d` — a maximum, on both halves. So `max_distance_to_other_zones 4` confined the tuna to a 4-tile ribbon hugging the shoreline instead of pushing them 4 tiles off it into open sea: the exact inverse of what the line is for.
+guide:2527, in its own capitals: _"Minimum (NOT maximum) distance, in tiles, that objects will stay away from terrains that they are restricted from being placed on"_, and guide:2528's worked example is "deep fish away from beaches". The predicate shipped as `dist !== UNREACHABLE && dist <= d` — a maximum, on both halves. So `max_distance_to_other_zones 4` confined the tuna to a 4-tile ribbon hugging the shoreline instead of pushing them 4 tiles off it into open sea: the exact inverse of what the line is for.
 
 Two details worth keeping. The **UNREACHABLE half was inverted too**: no restricted terrain anywhere means the constraint cannot bind, so it must pass, and the old code failed it — an all-water map placed zero fish. And **preview-design Sec.6.6 already said "minimum, not maximum" and even flagged that the guide shouts it**; the spec was right and only the code was wrong, which is the failure mode a spec is supposed to prevent and does not when nothing tests the code against it.
 
@@ -3481,7 +3481,7 @@ The map preview + reference column shipped in 4.2 at a fixed 18rem, and 4.2 put 
 
 **A drag writes to the store once, not sixty times a second.** `setWidth` updates state only; `commitWidth` writes. Every store write is an IPC hop into the Rust host, and putting one in a pointermove loop would be a disk-backed round trip per frame for a value that only matters once the user lets go. Keyboard resizing commits per press, which auto-repeat makes a few per second rather than ~60.
 
-**The "leave room for the editor" rule is CSS (`max-width: 70%`), not drag arithmetic.** It has to hold when the *window* resizes, which is not a drag and would never run that code. One rule, in the layer that sees a resize without being told about it. `sidePanelLayout.ts` therefore clamps only to the panel's own bounds and says so.
+**The "leave room for the editor" rule is CSS (`max-width: 70%`), not drag arithmetic.** It has to hold when the _window_ resizes, which is not a drag and would never run that code. One rule, in the layer that sees a resize without being told about it. `sidePanelLayout.ts` therefore clamps only to the panel's own bounds and says so.
 
 **The collapse threshold has a margin (48px) below the minimum.** Without one, every drag that bottoms out collapses the panel, so the minimum width is unreachable — you can never actually sit at it. A test pins both edges of that margin.
 
@@ -3523,7 +3523,7 @@ Preferences was one box holding one radio group. It is now **Settings**, a tabbe
 
 **The tab strip is vertical.** Six labels do not fit across a dialog the width of its content, and a sidebar keeps the list cheap to extend.
 
-**Tabs are data, not a switch statement.** `SETTINGS_TABS` carries the panel *component* per entry and the dialog renders `<ActivePanel />`, so adding a tab is one table entry plus one file and the dialog never changes.
+**Tabs are data, not a switch statement.** `SETTINGS_TABS` carries the panel _component_ per entry and the dialog renders `<ActivePanel />`, so adding a tab is one table entry plus one file and the dialog never changes.
 
 **The box is a fixed size and the panel scrolls inside it.** A dialog that resizes per tab moves the tab strip out from under the cursor.
 
@@ -3671,12 +3671,12 @@ That is the second result. The first run of the first implementation moved every
 
 **The replacement asks a different question: which of the classes the app implements has a terrain set closest to this row?** Smallest symmetric difference wins. It reproduces every hand assignment by a margin rather than a hair:
 
-| row | objects | permits | best | runner-up |
-|---|---|---|---|---|
-| 19 (ordinary fish) | 12 | 15 | **water**, differs on 1 | amphibious, 18 |
-| 13 / 3 / 15 | 21 | 38 | **amphibious**, 5 | water, 24 |
-| 0 (unrestricted) | 72 | 131 | **any**, 0 | land, 21 |
-| 7 (most land objects) | 177 | 116 | **land**, 8 | any, 15 |
+| row                   | objects | permits | best                    | runner-up      |
+| --------------------- | ------- | ------- | ----------------------- | -------------- |
+| 19 (ordinary fish)    | 12      | 15      | **water**, differs on 1 | amphibious, 18 |
+| 13 / 3 / 15           | 21      | 38      | **amphibious**, 5       | water, 24      |
+| 0 (unrestricted)      | 72      | 131     | **any**, 0              | land, 21       |
+| 7 (most land objects) | 177     | 116     | **land**, 8             | any, 15        |
 
 The class sets are transcribed from `objects.ts`'s `habitatMask` and `grid.ts`'s `terrainDepth`, not paraphrased from the schema's prose, because the whole method is "which class does the app actually implement that comes closest" — scoring against a class the app does not have would be measuring nothing. Two transcription details look like slips and are not: `land` is `!isWater` and deliberately not `depth === LAND`, and `water` excludes hybrids even though they carry `isWater`, because `terrainDepth` tests `isHybrid` first and returns early.
 
@@ -3706,7 +3706,7 @@ Resolving is not the same as being right — 45 is `DOCK` and `CUSTOM` and `CIVI
 
 28 new Python tests (45 → 73 in `test_extract_constants.py`, which is stdlib unittest and not part of the vitest suite, so CLAUDE.md's test row is unaffected by them). Seven mutants run through a harness that asserts each match is unique before substituting and verifies the restore by hash.
 
-**Two of the seven survived the first pass, and both were real holes.** A `water` class that quietly includes the shallows still beat `amphibious` on the fish row, just by less — the ranking tests could not see it, and a `water` that includes shallows is a fish standing on walkable ground. Fixed by pinning the class *definition* (an open-water row must fit `water` **exactly**, mismatch 0) rather than only its rank. And the commented-out-`#const` guard survived because the fixture had no live definition *after* the comment, so the bogus section was never created and nothing was lost — which is precisely the shape of the real defect, where the damage is to the names *below* the comment. Fixed by adding one, and by asserting the name survives into the object namespace. All seven red after that.
+**Two of the seven survived the first pass, and both were real holes.** A `water` class that quietly includes the shallows still beat `amphibious` on the fish row, just by less — the ranking tests could not see it, and a `water` that includes shallows is a fish standing on walkable ground. Fixed by pinning the class _definition_ (an open-water row must fit `water` **exactly**, mismatch 0) rather than only its rank. And the commented-out-`#const` guard survived because the fixture had no live definition _after_ the comment, so the bogus section was never created and nothing was lost — which is precisely the shape of the real defect, where the damage is to the names _below_ the comment. Fixed by adding one, and by asserting the name survives into the object namespace. All seven red after that.
 
 Full vitest suite green (40 files / 1318 tests on this mount at the time of the run; a parallel session has since landed more). `npm run validate:reference` passes. A second `--habitat-only` run is byte-identical, so the mode is idempotent against the real file and not only in the unit test.
 
@@ -3816,7 +3816,7 @@ Measured over the 56 corpus maps: **397 distinct names reach `create_object`, 11
 
 The engine rule earns a diagnostic, so `AttributeDef` gained `requiresOneOf` and `requiresNote` (schema, TS type and one entry), and `validate()` gained RMS0315 at warning severity. One entry today; a second needs no code change. The bar for adding one is `requiresSection`'s: the guide must state the requirement AND the consequence must be known, which here means measured in game.
 
-**The search is block-WIDE, and the scope runs opposite to the two checks it sits between.** RMS0306/RMS0307 walk direct items only, because descending into branches would false-warn on the most ordinary conditional in RMS. RMS0315 asks "is the partner anywhere at all", and a partner inside an `if` is a partner. It matches on token text rather than a resolved `def`, so an unrecognised attribute still counts as present, which is the positive-resolver rule pointed at its own consequence: this answer *suppresses* a warning. It errs toward the false negative (a partner supplied in only one branch is still a bug on the other paths) and the code says so.
+**The search is block-WIDE, and the scope runs opposite to the two checks it sits between.** RMS0306/RMS0307 walk direct items only, because descending into branches would false-warn on the most ordinary conditional in RMS. RMS0315 asks "is the partner anywhere at all", and a partner inside an `if` is a partner. It matches on token text rather than a resolved `def`, so an unrecognised attribute still counts as present, which is the positive-resolver rule pointed at its own consequence: this answer _suppresses_ a warning. It errs toward the false negative (a partner supplied in only one branch is still a bug on the other paths) and the code says so.
 
 **Corpus: 56 sites across 12 maps**, reported by a new permanent reporter in the RMS0200/0201/0304 family. Unlike RMS0304's expected zero this one has plenty to say, and the clearest find is `AK_Vanguard_v1.2.rms:1508-1510`: three identical `create_object STONE` lines carrying the flag with no partner, directly above four `create_object GOLD` lines of the same shape without it. The author believed the flag was doing something. All three commands place nothing, and nothing in game would ever have told them. The engine's silence is why these survive.
 
@@ -3874,11 +3874,11 @@ The Current/Final toggle has been on screen since the worker landed and both pos
 
 ## 2026-08-10 — CREATION_PLAN 4.7: the terrain table itself lands in the file
 
-The other half of Sec.15 item 23, and the half 4.7 actually asked for. The pass earlier today automated the *derivation* — `--habitat-only` read the engine's restriction rows and wrote back a five-value `habitat` — but what it wrote back was the reading, and the row it was read from survived only as a sentence of prose in `notes`. 4.7's brief is "emit each object's terrain restriction and `placement_side_terrain` into `game-constants.json`", so the measurement now ships beside the class: **`terrainRestrictionId`, `allowedTerrains` and `placementSideTerrain` on all 31 resolvable object entries.**
+The other half of Sec.15 item 23, and the half 4.7 actually asked for. The pass earlier today automated the _derivation_ — `--habitat-only` read the engine's restriction rows and wrote back a five-value `habitat` — but what it wrote back was the reading, and the row it was read from survived only as a sentence of prose in `notes`. 4.7's brief is "emit each object's terrain restriction and `placement_side_terrain` into `game-constants.json`", so the measurement now ships beside the class: **`terrainRestrictionId`, `allowedTerrains` and `placementSideTerrain` on all 31 resolvable object entries.**
 
 ### The blocker was already solved, which is what made this small
 
-The brief leads with the namespace collision (45 is `DOCK` *and* `CIVILIZATION_GEORGIANS` *and* `ATTR_BLAST_DEFENSE`, so 1083 of 1114 constants "resolve" to a unit slot). `object_constants` already splits the file's own `/* SECTION */` comments into 618 object names, and every one of the 31 resolvable constants was already checked against its unit's name in the dat. So the work here is the write path, not the join. **Read the state before implementing the brief:** two of the three things 4.7 lists were done hours earlier by a parallel session, and the CREATION_PLAN entry could not know that.
+The brief leads with the namespace collision (45 is `DOCK` _and_ `CIVILIZATION_GEORGIANS` _and_ `ATTR_BLAST_DEFENSE`, so 1083 of 1114 constants "resolve" to a unit slot). `object_constants` already splits the file's own `/* SECTION */` comments into 618 object names, and every one of the 31 resolvable constants was already checked against its unit's name in the dat. So the work here is the write path, not the join. **Read the state before implementing the brief:** two of the three things 4.7 lists were done hours earlier by a parallel session, and the CREATION_PLAN entry could not know that.
 
 ### An extraction that is written even when the reading fails
 
@@ -3904,7 +3904,7 @@ The open half of item 23 is whether the coarse classes should be retired for the
 
 The schema gate was mutation-tested too, since three new fields with `additionalProperties: false` are worth nothing if they only ever pass: a three-slot `placementSideTerrain`, a slot below -1, a negative restriction id, a float in `allowedTerrains` and a misspelled field name are each rejected, and the good row is accepted.
 
-`npm run validate:reference` passes, `typecheck` and `lint` are clean (0 errors, the 15 standing warnings). **The full `npm test` run is NOT clean and the failure is not this work**: `src/preview/__tests__/truncateAst.test.ts` had 5 failing tests, and its implementation file `src/preview/generator/truncateAst.ts` was being written by a parallel session *during* the run (mtime landed 18 seconds after the suite finished). That is CREATION_PLAN 4.6 in flight. Everything that actually reads `game-constants.json` was re-run afterwards and is green — `corpus`, `validate`, `rms0315.measure`, `objects`, `index`, `palette`, `terrains`, `grid`, `tileInfo`: 589 tests. **CLAUDE.md's 42/1344 row is deliberately left alone**, for the reason that row's own caution gives: a suite measured while another session is writing to it is measuring both.
+`npm run validate:reference` passes, `typecheck` and `lint` are clean (0 errors, the 15 standing warnings). **The full `npm test` run is NOT clean and the failure is not this work**: `src/preview/__tests__/truncateAst.test.ts` had 5 failing tests, and its implementation file `src/preview/generator/truncateAst.ts` was being written by a parallel session _during_ the run (mtime landed 18 seconds after the suite finished). That is CREATION_PLAN 4.6 in flight. Everything that actually reads `game-constants.json` was re-run afterwards and is green — `corpus`, `validate`, `rms0315.measure`, `objects`, `index`, `palette`, `terrains`, `grid`, `tileInfo`: 589 tests. **CLAUDE.md's 42/1344 row is deliberately left alone**, for the reason that row's own caution gives: a suite measured while another session is writing to it is measuring both.
 
 ## 4.6 follow-up — the cut moves to the caret, the pin follows the code, and the remainder is shaded (2026-08-10)
 
@@ -4003,9 +4003,9 @@ Fourth independent critique round on the tools API spec, folded in as **rev 6**.
 
 **B1 — the sentinel encoding broke the flagship tool's first step, and the fix reverses a rev-3 pin.** `ToolContext.parseResult` was `SerializedParseResult` for both transports; `generatePreview` takes a `ParseResult`, of which the serialized form is a supertype, so the checker's opening line could never compile. Worse at runtime: every numeric read in the generator is `typeof v === "number"`, so a `{inf:1}` object takes the unresolved branch and the value vanishes silently. The sentinel is now **external-wire only**; built-ins get the real `ParseResult`, and `ToolContext` gained a type parameter defaulting to the wire form so a tool written against the published `.d.ts` still compiles in-process. "Byte-identical across transports" was a goal with no consumer.
 
-**B2 — the finding was right and the prescribed fix was wrong.** The round proposed stripping `undefined`-valued keys in the context builder to satisfy rev 5's "no property may be `undefined`". That is a per-run pass over 4,599 keys to enforce a rule the corpus disproves on line one. Rejected: an `undefined`-valued key on an *optional* property survives the boundary as an absent key and reads identically, while an `undefined` inside an **array** becomes `null` and does not. The prohibition is now on array elements only, the tolerance is explicit ("read optional keys, never enumerate them"), and Sec.9 item 1 splits into `toStrictEqual` over hand-built fixtures plus `toEqual` over a real corpus parse — `toEqual`'s one blind spot is exactly the declared tolerance, and it still catches `undefined` vs `null`.
+**B2 — the finding was right and the prescribed fix was wrong.** The round proposed stripping `undefined`-valued keys in the context builder to satisfy rev 5's "no property may be `undefined`". That is a per-run pass over 4,599 keys to enforce a rule the corpus disproves on line one. Rejected: an `undefined`-valued key on an _optional_ property survives the boundary as an absent key and reads identically, while an `undefined` inside an **array** becomes `null` and does not. The prohibition is now on array elements only, the tolerance is explicit ("read optional keys, never enumerate them"), and Sec.9 item 1 splits into `toStrictEqual` over hand-built fixtures plus `toEqual` over a real corpus parse — `toEqual`'s one blind spot is exactly the declared tolerance, and it still catches `undefined` vs `null`.
 
-**B4 — the finding was right, the prescribed fix was unimplementable, and the numbers were inflated.** Both deadlines were derived from a 3.8 s worst case measured at `DEFAULT_MAP_SIZE` = Normal, in a document whose own Sec.2 establishes that `dim` reaches 480. Real. But the prescribed fix — replace chunk-shaped deadlines with a bounded wall-clock progress interval — cannot work: `generatePreview` is synchronous and uninterruptible, so a tool whose atomic unit takes 20 s physically cannot emit inside it. And the round's Giant ratio (1.65–2.38×, measured under agent load, as it flagged itself) re-measures at **1.09–1.41×**. Re-derived from the doc's own 2026-08-07 reference rather than from either machine's absolutes: 3.8 s × 1.41 × 3.7 load ≈ 20 s per chunk, so **cancel grace 15s → 30s and run watchdog 30s → 60s**. Added the framing that makes rounding up cheap: the cancel grace is a *diagnosis* threshold, not a safety deadline — the run is being killed either way, and all a short grace buys is `reason: "killed"` printed against a tool that behaved. The `override_map_size 480` case is recorded as accepted residual rather than inflated away.
+**B4 — the finding was right, the prescribed fix was unimplementable, and the numbers were inflated.** Both deadlines were derived from a 3.8 s worst case measured at `DEFAULT_MAP_SIZE` = Normal, in a document whose own Sec.2 establishes that `dim` reaches 480. Real. But the prescribed fix — replace chunk-shaped deadlines with a bounded wall-clock progress interval — cannot work: `generatePreview` is synchronous and uninterruptible, so a tool whose atomic unit takes 20 s physically cannot emit inside it. And the round's Giant ratio (1.65–2.38×, measured under agent load, as it flagged itself) re-measures at **1.09–1.41×**. Re-derived from the doc's own 2026-08-07 reference rather than from either machine's absolutes: 3.8 s × 1.41 × 3.7 load ≈ 20 s per chunk, so **cancel grace 15s → 30s and run watchdog 30s → 60s**. Added the framing that makes rounding up cheap: the cancel grace is a _diagnosis_ threshold, not a safety deadline — the run is being killed either way, and all a short grace buys is `reason: "killed"` printed against a tool that behaved. The `override_map_size 480` case is recorded as accepted residual rather than inflated away.
 
 **B3 — measurement in hand, decision made.** The 8 MB cap now explicitly governs tool→host; the host→tool `run` payload gets its own 32 MB bound sized from the measurement, and `def` is stripped from the wire unconditionally with the capability consequence stated (a tool needing defs declares `read-reference`). In-process is untouched — structured clone preserves shared references, so the 38× blow-up is a JSON artefact specifically.
 
@@ -4087,7 +4087,7 @@ Second half of B1, verified and adopted as written: the strip rule named `Comman
 
 **B2 — CREATION_PLAN 4.6 landed a `ParseResult` that passes every staleness guard and is not the parse of its own source.** `truncateAst` (`truncateAst.ts:287`) returns `{ ...parse, script: { preamble, sections } }`, carrying `source`, `tokens`, `lineOffsets`, `symbols`, `includes` and `diagnostics` through unchanged and by design. `PreviewResultContext.tsx:76-80` memoises it. Sec.4.3's guards compare `ctx.source === ctx.parseResult.source` and `model.getValue() === ctx.parseResult.source`, and the truncated parse satisfies both while describing half the script. Both providers are mounted in `App.tsx` (`:70`, `:76`) and the one named after the preview holds the truncated one. Fixed in three places: the context builder reads `ParsedDocumentContext`, Sec.4.3 gains a provenance pin naming `truncateAst` as the counterexample, and the cut point gets the same three-part decision the seed already has (out of the context, in the output header if anywhere, `read-preview-view` escalation if 5.2 needs it).
 
-The generalisable half is recorded in Sec.10.2. Sec.9 item 2 was built to end this class of break and cannot catch this one — the cut is a *caller* concern that `generatePreview` knows nothing about, so the two types never meet. Four consecutive rounds have now been broken by the same dependency, and three of the four entered the app as a new root-level React context (`teams`, the seed chip, the cut point), the fourth as a pure module beside the generator (`mapSize.tiles`). The standing instruction now says where to look: **list `src/*Context.tsx` and diff the generator directory** before the next revision, which is mechanical and four for four.
+The generalisable half is recorded in Sec.10.2. Sec.9 item 2 was built to end this class of break and cannot catch this one — the cut is a _caller_ concern that `generatePreview` knows nothing about, so the two types never meet. Four consecutive rounds have now been broken by the same dependency, and three of the four entered the app as a new root-level React context (`teams`, the seed chip, the cut point), the fourth as a pure module beside the generator (`mapSize.tiles`). The standing instruction now says where to look: **list `src/*Context.tsx` and diff the generator directory** before the next revision, which is mechanical and four for four.
 
 **Adopted as written.** `rnd` bounds are the second numeric position in `ArgValue` and reach `Infinity` by the same route as a bare number token, so `ArgValue<N> = N | { rnd: [N, N] } | ...` is now stated explicitly and the round-trip fixture gains one (`JSON.stringify({rnd:[Infinity,1]})` is `{"rnd":[null,1]}`, confirmed). A new `host-error` reason, since all five existing members describe something the tool did while rev 6 added two host-side failure paths. Sec.9's sentinel mutation test was aimed at the corpus half, which **cannot go red** — zero `inf`/`-inf` words and zero 20+ digit literals across all 32 tracked maps — so it is re-aimed at the hand-built fixture, with a `test-maps/broken/` fixture map named as the optional corpus-scale version. Plus the minors: eight `ui-help.json` ids rather than seven, `rowSpans` length-checked by the inbound validator and tested in Sec.9 item 5, `multiSelect` defaults validated at registration against their own `minSelected`, the run watchdog described as a silence detector rather than a liveness guarantee, and the cheap `override_map_size` scan named beside the expensive `instantiateScript` one.
 
@@ -4097,7 +4097,7 @@ The generalisable half is recorded in Sec.10.2. Sec.9 item 2 was built to end th
 
 **The measurement lesson, which is the sharpest instance this project has produced.** The round's headline was that it re-derived every count in the document on 2026-08-11 and all of them reproduced exactly — the first time in this series. Re-measured later the same day: `game-constants.json` is **372 entries with a four-member `category` enum**, the 152 new rows being `attribute` constants from `random_map.def`; `resourceAmounts` is on 23 rows rather than 8, fifteen of them dat-extracted and `verified`; the schema has 24 properties rather than 23. And `language.json`'s verified counts, which the round did not re-derive, had moved from the doc's `28/41 commands` to `40/41`. So a verification decays as fast as the claim it verifies. Sec.10.1's five counts are replaced by a prescribed reporter — `src/tools/__tests__/dataReadiness.measure.test.ts`, in the shape of the four existing `*.measure.test.ts` files, carrying their known caveat that they print nothing without `--disableConsoleIntercept` and still exit 0. Sec.2's `category` bullet has now been wrong twice in two revisions and says so; the instruction is to read the enum out of the schema.
 
-**Declined.** The round's process note argues the doc is now "more archaeology than spec" and should lose about a quarter of its length by moving rev-N narration to this log. The diagnosis is fair and the edit is not this pass's — the same note's own "what should survive" section credits the habit of recording what was rejected and why as the reason the round was short, and a bulk strip takes those with it unless done deliberately. Worth its own pass, with the distinction the note itself draws: keep *how a number was reached*, move *what a previous revision believed*.
+**Declined.** The round's process note argues the doc is now "more archaeology than spec" and should lose about a quarter of its length by moving rev-N narration to this log. The diagnosis is fair and the edit is not this pass's — the same note's own "what should survive" section credits the habit of recording what was rejected and why as the reason the round was short, and a bulk strip takes those with it unless done deliberately. Worth its own pass, with the distinction the note itself draws: keep _how a number was reached_, move _what a previous revision believed_.
 
 **Also done.** The rev-4, rev-5 and rev-7 review files moved from the parent folder's `docs/` to `age-of-rms/docs/`, beside the doc they critique and matching every other design spec in the repo. That also repairs three existing citations — `preview-design.md:132` and two in `preview-design-rev5-review.md` already point at `docs/tools-api-design-rev4-review.md`, a path that did not resolve from inside this repo.
 
@@ -4291,7 +4291,7 @@ The engine resolves every token through one symbol table and the comment markers
 
 **Three things follow and all are done except the sweep.**
 
-The tracked copy of `RMSTEST_42` still carried the word and would have re-broken on its next run, since these scripts are tracked here and copied into the install. Fixed. Note that every other constant in that header â€” the salmon, the olive tree, the mangrove shallow â€” is now *proven safe*, because only the one word was changed and the file ran. That is worth more than a blanket rule and it is why the others were left alone rather than churned.
+The tracked copy of `RMSTEST_42` still carried the word and would have re-broken on its next run, since these scripts are tracked here and copied into the install. Fixed. Note that every other constant in that header â€” the salmon, the olive tree, the mangrove shallow â€” is now _proven safe_, because only the one word was changed and the file ran. That is worth more than a blanket rule and it is why the others were left alone rather than churned.
 
 The house rule from `RMSTEST_44` on is that no header comment writes a constant in full uppercase, stated in the directory README and in each new script's own header. These scripts carry long headers by design and that design has now silently voided one run.
 
@@ -4315,7 +4315,7 @@ Sec.13 item 6, TOP PRIORITY across three revisions and never scheduled. Settled 
 
 Filed as BUG-006 with the fix prescribed rather than applied, because the severity change touches the corpus gates' arithmetic and this session's scope was the scripts.
 
-**The residual is the difference between the two verbs and it must not be lost in the fix.** "Generates" refutes *rejects*, not *mangles* â€” an unclosed block swallows what follows as attributes, so BCC2's tail may be silently inert in a map that still looks right, which is exactly CLAUDE.md's "a shipped map is not a specification" shape. Warning is correct under either reading, but the note must say "the engine does not reject this" rather than "this is harmless". The run that settles the second half is one distinguishable object command after the glued brace.
+**The residual is the difference between the two verbs and it must not be lost in the fix.** "Generates" refutes _rejects_, not _mangles_ â€” an unclosed block swallows what follows as attributes, so BCC2's tail may be silently inert in a map that still looks right, which is exactly CLAUDE.md's "a shipped map is not a specification" shape. Warning is correct under either reading, but the note must say "the engine does not reject this" rather than "this is harmless". The run that settles the second half is one distinguishable object command after the glued brace.
 
 ### Batch 10 itself
 
@@ -4336,7 +4336,6 @@ Item 17(b) asks for "three arms on one map" and that is not constructible. The c
 `RMSTEST_40a/40b/40c` ran, and the elevation study cites all three at four runs each while batch 8's entire design is built on what they refuted, but the files exist only in the DE install. The directory's own rule is that the scripts are tracked here and not only where they run, and a header carrying a read-off table is most of what a run leaves behind. Recorded in the README; not recoverable from this side.
 
 No code changed this session and no gate was run, since nothing under `src/` was touched.
-
 
 ### Batch 10 readings, 2026-08-11 (same day it was written)
 
@@ -4383,8 +4382,8 @@ lowest player and is canonical 1. Under ascending-selected-number, selected team
 `PLAYER1_TEAM1`, which is what fired.** The map generated cleanly and returned a
 confident 120. **A setup that cannot discriminate does not announce itself**, and
 nothing in the export records which lobby produced it. The script's header now
-states the requirement as an invariant — *the lowest-numbered player must not be
-on the lowest-numbered selected team* — because the habitual lobby violates it by
+states the requirement as an invariant — _the lowest-numbered player must not be
+on the lowest-numbered selected team_ — because the habitual lobby violates it by
 construction, so the default setup is the one that can never answer this.
 
 Item 17(a) is also **downgraded from "the highest-value open item"**, on a
@@ -4535,7 +4534,7 @@ First sitting: the object attributed to the mode-unstated command placed 96 with
 23 off-patch and the loose command 32 with none. Second: the unstated command's
 object placed 32 with none, the tight command's 96 with 29 off. The two readings
 support opposite defaults. The only change between them was correcting a
-*different* command's constant, which cannot move an earlier command's
+_different_ command's constant, which cannot move an earlier command's
 behaviour, so **the object-to-command attribution is what is wrong, not the
 engine** — and it cannot be recovered from the exports. Do not average them.
 **The design fault is sharing one map between three commands whose only
@@ -4686,16 +4685,16 @@ resolved through the symbol table, and the aliasing path is words only.
 The sequence is worth keeping in full, because each step was reasonable and two
 of three were wrong:
 
-  1. Observed: a header containing `SHORE_FISH` blanked its file. Written up as
-     "an object constant in a comment can delete the script" — a class of names.
-  2. Corrected on user challenge: it is not a class, it is one number. `/*`
-     resolves to 69 and that object is 69. This was right about the shape and
-     came with the repo's own Sec.2.1 citation, which the first write-up had
-     failed to look up.
-  3. Corrected again by `RMSTEST_57`: the number alone is not sufficient. A
-     literal 69 does nothing.
+1. Observed: a header containing `SHORE_FISH` blanked its file. Written up as
+   "an object constant in a comment can delete the script" — a class of names.
+2. Corrected on user challenge: it is not a class, it is one number. `/*`
+   resolves to 69 and that object is 69. This was right about the shape and
+   came with the repo's own Sec.2.1 citation, which the first write-up had
+   failed to look up.
+3. Corrected again by `RMSTEST_57`: the number alone is not sufficient. A
+   literal 69 does nothing.
 
-**What is measured is still exactly one name.** Whether other *words* sharing the
+**What is measured is still exactly one name.** Whether other _words_ sharing the
 value behave the same is untested, and the case sits in our own reference data —
 `ATTR_PROJECTILE_ARC` is also 69. That single run separates "words valued 69"
 from "this one name is special", which is the difference between a two-entry
@@ -4740,7 +4739,7 @@ second, so it is not a sample of a class but the whole of what is left to test.
 `#const`s the parser already tracks — not the Equivalencies sheet import that
 Sec.13 item 7 has been blocked on for several revisions.
 
-The file also shows where `/*` does *not* get its id: nothing defines it there,
+The file also shows where `/*` does _not_ get its id: nothing defines it there,
 and the markers appear only as ordinary comments in the file's own prose. The
 comment-marker ids are in the engine's internal token table, so **the `*/` half
 is the only part of item 7 that still needs the sheet.**
@@ -4762,11 +4761,11 @@ script that paints snow. So a **word** resolving to 69 opens a nested comment
 whatever namespace it belongs to — `60` is an attribute constant against `56a`'s
 object one — and the four runs together give a precise rule:
 
-| leading comment | map |
-|---|---|
-| empty (`56b`) | snow |
-| `SHORE_FISH`, object 69 (`56a`) | blank |
-| literal `69` (`57`) | snow |
+| leading comment                            | map   |
+| ------------------------------------------ | ----- |
+| empty (`56b`)                              | snow  |
+| `SHORE_FISH`, object 69 (`56a`)            | blank |
+| literal `69` (`57`)                        | snow  |
 | `ATTR_PROJECTILE_ARC`, attribute 69 (`60`) | blank |
 
 Words yes, literals no, namespace irrelevant. **The complete engine-defined set
@@ -4809,7 +4808,7 @@ Two consequences are part of the fix rather than caveats. The AST below the
 offending comment is deliberately not what the engine produces, so nothing
 downstream may read a clean parse there as evidence the script works — RMS0111
 is the authority. And the preview will render a map the engine never would,
-which is acceptable *because the error is on screen*, and is the reason the
+which is acceptable _because the error is on screen_, and is the reason the
 severity is error rather than warning.
 
 **The message wording is part of the fix, not presentation.** This failure is
@@ -4933,16 +4932,16 @@ closes; what follows is what is worth knowing across them.
 
 ### The corpus numbers, because three of these move real maps
 
-| item | change | corpus effect (seed 7, Normal) |
-|---|---|---|
-| 1 · BUG-009 | land-origin cross is border-relative | bordered lands reach their box's middle; unbordered unchanged by construction |
-| 2 · BUG-007 | frameless `ignore_terrain_restrictions` is inert, not fatal | 56 sites across 12 maps stop placing nothing |
-| 3 · BUG-010 | no beach on the shallows/open-water boundary | 6 of 32 maps, beach **8984 → 7577** |
-| 4 · BUG-008 | sub-3 cliff length is a per-draw yield | six official maps get cliffs back |
-| 5 · BUG-011 | default grouping mode is loose | 13 of 32 maps, placements **159,732 → 141,281** |
-| 6 · BUG-003 r10 | `showType` omissible, arity three | RMS0201 **32 → 22** |
-| 7 · BUG-012 | RMS0111, a word valued 69 in a comment | corpus clean; the check is for authors, not for us |
-| 8 · BUG-006 | RMS0101 error → warning | no gate moved (see below) |
+| item            | change                                                      | corpus effect (seed 7, Normal)                                                |
+| --------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 1 · BUG-009     | land-origin cross is border-relative                        | bordered lands reach their box's middle; unbordered unchanged by construction |
+| 2 · BUG-007     | frameless `ignore_terrain_restrictions` is inert, not fatal | 56 sites across 12 maps stop placing nothing                                  |
+| 3 · BUG-010     | no beach on the shallows/open-water boundary                | 6 of 32 maps, beach **8984 → 7577**                                           |
+| 4 · BUG-008     | sub-3 cliff length is a per-draw yield                      | six official maps get cliffs back                                             |
+| 5 · BUG-011     | default grouping mode is loose                              | 13 of 32 maps, placements **159,732 → 141,281**                               |
+| 6 · BUG-003 r10 | `showType` omissible, arity three                           | RMS0201 **32 → 22**                                                           |
+| 7 · BUG-012     | RMS0111, a word valued 69 in a comment                      | corpus clean; the check is for authors, not for us                            |
+| 8 · BUG-006     | RMS0101 error → warning                                     | no gate moved (see below)                                                     |
 
 Item 5 is the one to look at twice. **Every one of the 13 maps places FEWER
 objects, and that is the fix working**: under tight, a group's fill skips the
@@ -5020,10 +5019,10 @@ are the same idiom — a commented-out `create_object SHORE_FISH { … }` block,
 which is what an author writes when disabling a command rather than anything
 exotic.
 
-| map | offending line | the engine loses |
-|---|---|---|
-| `Chaotic_Straitv0.99.rms` | 547 of 1110 | 563 lines, 51% |
-| `test-maps/broken/BCC2-Rekawa.rms` | 933 of 1993 | 1060 lines, 53% |
+| map                                | offending line | the engine loses |
+| ---------------------------------- | -------------- | ---------------- |
+| `Chaotic_Straitv0.99.rms`          | 547 of 1110    | 563 lines, 51%   |
+| `test-maps/broken/BCC2-Rekawa.rms` | 933 of 1993    | 1060 lines, 53%  |
 
 Half of each map is dead in game. Diagnosing without modelling leaves every
 downstream stage — and the preview, whose entire purpose is to show what the
@@ -5108,12 +5107,12 @@ and `Chaotic_Straitv0.99.rms` +2.0%. The flat total is real — most corpus obje
 placement is land decoration the `land` fallback was already right about. The
 observable the item was actually written about tells the other half:
 
-| `AD4 - Pag - v1.2.rms`, seed 7 | on water | on land |
-|---|---|---|
-| `ONGRID_PLACEHOLDER_NAVAL` before | 0 | 116 |
-| `ONGRID_PLACEHOLDER_NAVAL` after | 76 | 0 |
-| `FISH_PERCH` (its `second_object`) before | 0 | 116 |
-| `FISH_PERCH` after | 76 | 0 |
+| `AD4 - Pag - v1.2.rms`, seed 7            | on water | on land |
+| ----------------------------------------- | -------- | ------- |
+| `ONGRID_PLACEHOLDER_NAVAL` before         | 0        | 116     |
+| `ONGRID_PLACEHOLDER_NAVAL` after          | 76       | 0       |
+| `FISH_PERCH` (its `second_object`) before | 0        | 116     |
+| `FISH_PERCH` after                        | 76       | 0       |
 
 116 naval placeholders grew in a desert, each carrying a fish onto dry ground;
 now 76 sit in water with their fish. **A corpus total is not a corpus
@@ -5223,7 +5222,7 @@ goes missing in each: **an unrecognised word's block MERGES into the command
 before it**, later value winning on a repeated attribute. 61 folds `AX`'s DESERT
 onto the SNOW land; 62 folds `AX`'s SNOW onto the DIRT land. The rival
 explanation — a land lost because its origin was buried, already measured on this
-engine as Sec.15 item 30 — predicts one missing land but not *which*, so
+engine as Sec.15 item 30 — predicts one missing land but not _which_, so
 `RMSTEST_63_unknownblockmerge.rms` constructs the case that separates them (one
 real `create_land`→DIRT, one `AX`(33)→SNOW; the merge predicts a single SNOW land
 and no DIRT). **If it holds, every unrecognised command in a real script silently
@@ -5436,13 +5435,13 @@ The read, per land, 4-connected pieces and each centroid's distance from that
 land's own `land_position`:
 
 | `clumping_factor` | pieces | farthest piece centroid |
-|---|---|---|
-| −20 | 6–10 | 60.6 |
-| 0 | 1–5 | 25.0 |
-| 8 | 1–2 | 20.4 |
-| 20 | 1 | 15.7 |
-| 40 | 1 | 11.3 |
-| 100 | 1 | 13.2 |
+| ----------------- | ------ | ----------------------- |
+| −20               | 6–10   | 60.6                    |
+| 0                 | 1–5    | 25.0                    |
+| 8                 | 1–2    | 20.4                    |
+| 20                | 1      | 15.7                    |
+| 40                | 1      | 11.3                    |
+| 100               | 1      | 13.2                    |
 
 **Fragments are LOCAL.** The maps are dim 480, so a map-wide draw reaches 240+
 and the entire table sits inside a quarter of it.
@@ -5747,11 +5746,11 @@ it named:
   with the resolver deleted. Fixed by asserting the def alongside the token,
   which is the pairing the test is actually about.
 - **"never lets a #const shadow a real command name"** used `#const create_land
-  99`, and 99 is an id no command claims, so the lookup falls through to the
+99`, and 99 is an id no command claims, so the lookup falls through to the
   right answer whichever order it runs in. Rewriting it to alias one real command
   to another real command's id did not help either, and chasing that down found
   the real guard: `#const`'s NAME operand keeps the known-name stop, so `#const
-  create_elevation 32` consumes nothing and records no symbol at all. **There is
+create_elevation 32` consumes nothing and records no symbol at all. **There is
   no alias to shadow with, so the `??` order is unobservable and no test can pin
   it.** The test now asserts the reachability property instead, and goes red if
   the name slot ever gains `acceptsKnownName` — which is exactly when the order
@@ -5828,12 +5827,12 @@ So it was measured rather than assumed. Every corpus test names its map in its
 own title, which makes the attribution mechanical: take a JSON report, count the
 tests naming a map that is absent from `git ls-files`, and subtract.
 
-| | this mount | CI (11 maps, 0 local) |
-|---|---|---|
-| tests | 1453 | ~1124 |
-| floor | 1339 | 1032 |
-| margin | 114 | **92** |
-| files | 46 | 46, floor 42 |
+|        | this mount | CI (11 maps, 0 local) |
+| ------ | ---------- | --------------------- |
+| tests  | 1453       | ~1124                 |
+| floor  | 1339       | 1032                  |
+| margin | 114        | **92**                |
+| files  | 46         | 46, floor 42          |
 
 **No test file empties out on a clone**, which is what the file floor depends on
 and is not obvious. The two that come closest are `corpus.test.ts` (47 of 133
@@ -6139,14 +6138,14 @@ should ship the means.
 
 **Two departures from what the review prescribed.**
 
-*Declined:* the M5 de-changelogging. It is a real problem, correctly measured
+_Declined:_ the M5 de-changelogging. It is a real problem, correctly measured
 (108 of 404 lines carry a `rev N` back-reference, up from 86 of 354), and a
 whole-document rewrite of a 600-line spec is too risky to run as a side effect
 of folding in a round — the failure mode is deleting a pinned decision whose
 reason lives only in the sentence naming the revision that made it. Recorded in
 Sec.10.2 as owed work with the instruction to do it as a dedicated pass.
 
-*Narrowed:* the M2 refresh. Sec.10.1's own standing instruction is not to
+_Narrowed:_ the M2 refresh. Sec.10.1's own standing instruction is not to
 transcribe a fresh set of counts a fifth time, so only the figure whose **shape**
 changed was folded in (`resourceAmounts`, an order of magnitude) plus the two
 that **held** on re-measurement. The rest stay stale on purpose until item 10
@@ -6213,10 +6212,10 @@ while `node.def` held the answer the whole time.
 **Measured on the two maps that write their lands this way** (seed 7, Normal,
 `placeLandOrigins` + `growLands`, land origins / owned tiles):
 
-| | before | after |
-|---|---|---|
-| `24hr_Petra.rms` | 0 / 0 | 384 / 30,926 |
-| `24hr_Holler.rms` | 0 / 0 | 197 / 25,339 |
+|                   | before | after        |
+| ----------------- | ------ | ------------ |
+| `24hr_Petra.rms`  | 0 / 0  | 384 / 30,926 |
+| `24hr_Holler.rms` | 0 / 0  | 197 / 25,339 |
 
 Both are local-only — neither is whitelisted in `.gitignore` — so the numbers do
 not reproduce on a clone and the unit tests are the gate.
@@ -6434,8 +6433,7 @@ writes code, since the implementer is the reader this density is costing.
 **Independent checks run, beyond the review's.** `find src -name "*Context.tsx"`
 returns the recorded nine, no tenth. `src/preview/generator/` matches the
 modules the doc names. `language.json`: 41 commands, 94 attributes, zero
-variadic argument defs, `tokenId` exactly `create_land = 32`. `ui-help.json`
-108. `Parser.aliasedCommand` has exactly one call site. `truncateAst.ts` still
+variadic argument defs, `tokenId` exactly `create_land = 32`. `ui-help.json` 108. `Parser.aliasedCommand` has exactly one call site. `truncateAst.ts` still
 273 lines, `PreviewResultContext.tsx:79` still holds the call.
 
 **One more measurement, taken while verifying the review's probe 4 rather than
@@ -6473,15 +6471,15 @@ since a big line-count drop here would have meant decisions went with it.
 **The rule applied, which rev 7 wrote and rev 9 restated: keep how a number was
 reached, move what a previous revision believed.** In practice three shapes:
 
-- *A rule with a live reason* loses its tag and keeps its reason.
+- _A rule with a live reason_ loses its tag and keeps its reason.
   "Rev 5 said X, rev 6 corrected it to Y because Z" became "Y, because Z", with
   the failed alternative kept whenever it is the thing a reader would otherwise
   reach for. The `def?: never` and mode-parameter mechanisms, the descending-sort
   non-mechanism and the side-table rejection all survive in full for that reason.
-- *A count that decayed* keeps its whole sequence, because the sequence IS the
+- _A count that decayed_ keeps its whole sequence, because the sequence IS the
   argument for building the reporter — Sec.2's `game-constants.json` paragraph
   still carries all five numbers, just not the revisions that wrote them.
-- *A prescription that was wrong* keeps the correction and drops the attribution.
+- _A prescription that was wrong_ keeps the correction and drops the attribution.
   Sec.4.1's two deadline mistakes are now stated as the two mistakes available to
   whoever re-derives the number next, which is what they were always for.
 
@@ -6682,7 +6680,7 @@ does not.
 and the drift check would then fail on a file nobody edited. The script passes
 `format: false` and runs `prettier.format` with the resolved config instead.
 `npx prettier --check` on the generated file passes. (Note `tools-api/index.ts`
-itself does *not* satisfy prettier and did not before this change — the whole
+itself does _not_ satisfy prettier and did not before this change — the whole
 `scripts/` directory is the same. Left alone; reformatting the contract file is
 not a side effect this session should have.)
 
@@ -6711,7 +6709,7 @@ latent bug in this one. Naming it rather than silently widening this change.
 
 Spec only, no code. `tools-api-design.md` and `preview-design.md` had already
 pre-decided most of this tool's contract-facing shape while being written
-*for* it — the `multiSelect` param type, `OutputBlock`'s spanned `severity`/
+_for_ it — the `multiSelect` param type, `OutputBlock`'s spanned `severity`/
 `table`, the chunk-unit-is-one-generation rule, both deadlines, and the whole
 `PlacementFailure`/`CommandReport`/`FailureBucket` instrumentation all cite
 this tool by name as their reason for existing. This session's job was
@@ -7018,7 +7016,7 @@ not reproduce.**
   is what makes saying so urgent. guide:2211's placeholder idiom is 295 uses
   across 24 of 32 maps; `FISH`'s restriction 19 admits 15 terrains and
   `SHALLOW` is not one of them, so `create_object FISH_PLACEHOLDER
-  { terrain_to_place_on SHALLOW second_object FISH }` — Menindee's every pond —
+{ terrain_to_place_on SHALLOW second_object FISH }` — Menindee's every pond —
   would report empty-intersection against a script the engine runs correctly.
 - **`create_object_group` is not checked** (its first argument is a group name;
   `objects.ts` gives the command `habitat: "any"` for the same reason).
@@ -7074,13 +7072,13 @@ So: **a prose claim about data gets checked by a probe; a claim about a name, a 
 
 ### B1 — the reference-data handoff does not compile, and this tool is the first consumer of that seam
 
-Sec.4.1 closed with *"`constants` comes from `ctx.referenceData.gameConstants`, which structurally satisfies `ObjectConstant`."* It does not. `ToolReferenceData.gameConstants` is `PublishedGameConstants`, generated from the schema, whose element declares `constId?: number | null`; `PreviewReferenceData.constants` is `readonly ObjectConstant[]`, required `constId: number | null`. Compiled against the repo's own `tsconfig.json`, a five-line module assigning one to the other is a `TS2322` naming exactly that chain, and `constId` is the only incompatible member. Nothing in `src/` reads `ToolReferenceData.gameConstants` today — `preview/worker.ts` casts the raw JSON import and never names the published type — so the checker really is first across.
+Sec.4.1 closed with _"`constants` comes from `ctx.referenceData.gameConstants`, which structurally satisfies `ObjectConstant`."_ It does not. `ToolReferenceData.gameConstants` is `PublishedGameConstants`, generated from the schema, whose element declares `constId?: number | null`; `PreviewReferenceData.constants` is `readonly ObjectConstant[]`, required `constId: number | null`. Compiled against the repo's own `tsconfig.json`, a five-line module assigning one to the other is a `TS2322` naming exactly that chain, and `constId` is the only incompatible member. Nothing in `src/` reads `ToolReferenceData.gameConstants` today — `preview/worker.ts` casts the raw JSON import and never names the published type — so the checker really is first across.
 
-**The fix is the spec's decision and the obvious one was measured and rejected.** Widening `ObjectConstant.constId` to optional is inert at runtime (`objectIndex` already guards `!== null && !== undefined`) and is *not* inert to the toolchain: `ObjectConstant` is passed where `TerrainConstantForMasks` (required `constId: number | null`) is expected and its readers narrow with `!== null`, so making the edit and running `tsc` produces about 30 fresh errors across `grid.ts`, `palette.ts` and four test files. Rev 4 prescribes a **named conversion in `previewBridge.ts`** instead — the module whose entire stated purpose is this class of seam — defaulting an absent `constId` to `null`. Explicitly not an inline `as unknown as` at the call site, which is the cast that module exists to refuse.
+**The fix is the spec's decision and the obvious one was measured and rejected.** Widening `ObjectConstant.constId` to optional is inert at runtime (`objectIndex` already guards `!== null && !== undefined`) and is _not_ inert to the toolchain: `ObjectConstant` is passed where `TerrainConstantForMasks` (required `constId: number | null`) is expected and its readers narrow with `!== null`, so making the edit and running `tsc` produces about 30 fresh errors across `grid.ts`, `palette.ts` and four test files. Rev 4 prescribes a **named conversion in `previewBridge.ts`** instead — the module whose entire stated purpose is this class of seam — defaulting an absent `constId` to `null`. Explicitly not an inline `as unknown as` at the call site, which is the cast that module exists to refuse.
 
 ### B2 — two attribute names that are not the names of anything
 
-Sec.3.1 and Sec.3.4 both justified taking the player count through `set_scale_by_player_number`, and Sec.3.4 named `set_scale_by_map_size` beside it. **Neither string occurs in `language.json`, in `src/`, or in the corpus.** The real pair is `set_scaling_to_player_number` (9 uses across 3 maps) and `set_scaling_to_map_size` (246 across 26), read by `lastObjectScaleAttribute` and consumed by `resolveObjectCounts` exactly as the doc describes the *behaviour* — times dim squared over 10000 for map size, times playerCount for player number, floored at 1.
+Sec.3.1 and Sec.3.4 both justified taking the player count through `set_scale_by_player_number`, and Sec.3.4 named `set_scale_by_map_size` beside it. **Neither string occurs in `language.json`, in `src/`, or in the corpus.** The real pair is `set_scaling_to_player_number` (9 uses across 3 maps) and `set_scaling_to_map_size` (246 across 26), read by `lastObjectScaleAttribute` and consumed by `resolveObjectCounts` exactly as the doc describes the _behaviour_ — times dim squared over 10000 for map size, times playerCount for player number, floored at 1.
 
 The semantics were right and only the identifiers were wrong, which is what made it blocking rather than a typo: **design specs are authoritative here and a session is told not to improvise deviations**, so the natural action is to write `cmd.attributes.get("set_scale_by_player_number")`, get `undefined` forever, and ship a check that silently never scales — a stage producing a plausible wrong answer instead of throwing, which this repo has a standing rule about. `set_scale_by_groups` (525 corpus uses, a real terrain-side attribute) is close enough to keep the wrong name looking plausible during review.
 
@@ -7100,14 +7098,14 @@ New **Sec.7.0** exports the first two, `objectEntry` **generic over its row type
 
 Sec.2 rested on "580 of the 1034 name-resolvable `create_object` commands (56%)". Both halves reproduce — **over the comment-including text**, while the doc stated them as a subset of its own comment-stripped population. Four scans, each a refinement of the last:
 
-| scan | commands | resolvable | covered | share |
-|---|---|---|---|---|
-| token scan, comments in | 2052 | 1034 | 580 | 56% |
-| token scan, comments stripped | 1937 | 997 | 562 | 56% |
-| plus each file's own `#const` table | 1937 | 1790 | 575 | 32% |
-| through S0 at 4 players, seed 1, resolved as `objectIndex` does | 1475 | 1379 | **471** | **34%** |
+| scan                                                            | commands | resolvable | covered | share   |
+| --------------------------------------------------------------- | -------- | ---------- | ------- | ------- |
+| token scan, comments in                                         | 2052     | 1034       | 580     | 56%     |
+| token scan, comments stripped                                   | 1937     | 997        | 562     | 56%     |
+| plus each file's own `#const` table                             | 1937     | 1790       | 575     | 32%     |
+| through S0 at 4 players, seed 1, resolved as `objectIndex` does | 1475     | 1379       | **471** | **34%** |
 
-The family table's own note attributed its 18-use gap (562 against 580) to *resolution*; it is **comments**, and no resolver is involved in either number. And rev 3 wrote that the real resolver reaches the `#const` names a token scan misses "so the true split moves and the direction does not" — it moves **down** by twenty-two points, structurally: resolving `#const` names is what reaches the placeholder idiom (`PHON` times 152, `ONGRID_PLACEHOLDER` times 147), and placeholders are unrestricted carriers, so **every use the real resolver adds to the denominator is a use tier 1 cannot serve.**
+The family table's own note attributed its 18-use gap (562 against 580) to _resolution_; it is **comments**, and no resolver is involved in either number. And rev 3 wrote that the real resolver reaches the `#const` names a token scan misses "so the true split moves and the direction does not" — it moves **down** by twenty-two points, structurally: resolving `#const` names is what reaches the placeholder idiom (`PHON` times 152, `ONGRID_PLACEHOLDER` times 147), and placeholders are unrestricted carriers, so **every use the real resolver adds to the denominator is a use tier 1 cannot serve.**
 
 Sec.2's conclusion survives (the 261 restriction-8 uses are untouched, still the family a beginner script is made of, still the 27-terrain gap `BEACH` sits in) and its headline is now "about a third", with the population named. The two figures downstream were restated over the same population: **290 of 471** covered uses carry `terrain_to_place_on` (the misreading rev 3 fixed would have cancelled most of tier 1), and **47 carry `ignore_terrain_restrictions`, 25 valid against 22 inert** — both states live in comparable numbers, which is the point of modelling both.
 
@@ -7115,15 +7113,15 @@ Sec.2's conclusion survives (the 261 restriction-8 uses are untouched, still the
 
 Sec.3.0's table read as three measurements of the same kind. Re-measured over the range the tool actually runs (15 seeds across four player counts):
 
-| | one pair | swept |
-|---|---|---|
-| a watched input changes across 5 seeds | — | 23 / 32 |
-| command set changes with the seed | 4 / 32 (1 against 2) | **12 / 32** (seeds 1–5) |
-| command set changes with the player count | 7 / 32 (4 against 8) | **12 / 32** (2/4/6/8) |
+|                                           | one pair             | swept                   |
+| ----------------------------------------- | -------------------- | ----------------------- |
+| a watched input changes across 5 seeds    | —                    | 23 / 32                 |
+| command set changes with the seed         | 4 / 32 (1 against 2) | **12 / 32** (seeds 1–5) |
+| command set changes with the player count | 7 / 32 (4 against 8) | **12 / 32** (2/4/6/8)   |
 
 The 4 and 7 are correct for a single pair and understate the rate the `commandSpan` aggregator meets by 3 times. Sec.8 item 3's fixture is re-scoped to the swept figure. Two things caught while measuring, both worth carrying: the **fingerprint key has to be stated or the number cannot be re-measured** — rev 3's "13 of the 23 produce five distinct fingerprints" is 15 on this mount under `(section, command span, attribute)` to resolved values, deduped or per-occurrence alike; and the corpus's "`rnd(` in 23 of 32 maps" is a **coincidence** of the same corpus and not the same 23 as the first row, so neither may be derived from the other.
 
-**A probe bug worth recording, because it produced a confident wrong answer that looked plausible.** The first run of the fingerprint sweep read `cmd.attributes.get(name)` and then `.value` on the result — but that is an `InstantiatedAttribute`, whose values live on `.args`, so every key stringified to `undefined` and the probe silently measured attribute *presence* rather than attribute *values*: 9 of 32 instead of 23. It was caught only because 9 contradicted a number that had already reproduced twice. An instrument that answers `undefined` for every field still returns a tidy number.
+**A probe bug worth recording, because it produced a confident wrong answer that looked plausible.** The first run of the fingerprint sweep read `cmd.attributes.get(name)` and then `.value` on the result — but that is an `InstantiatedAttribute`, whose values live on `.args`, so every key stringified to `undefined` and the probe silently measured attribute _presence_ rather than attribute _values_: 9 of 32 instead of 23. It was caught only because 9 contradicted a number that had already reproduced twice. An instrument that answers `undefined` for every field still returns a tidy number.
 
 ### S3 — `group_variance` does not floor Sec.3.4's count, and the severity is error
 
@@ -7169,7 +7167,7 @@ The corrected form — `WeakMap<object, { byName: Map<string, unknown>; byId: Ma
 
 Implemented as specified and swept: **23 of 32 tracked maps warn at 4 players, 92 of 128 map/player-count pairs, ratios 100% to 1393%.** Reproduces the round's numbers exactly.
 
-The cause is an idiom. Two or more `create_land` commands at `land_percent 100` is how a script says *fill whatever is left* — growth stops when a land meets its target **or runs out of frontier** — and `AD4 - Ra.rms` labels it with the author's own `/* neutral space */` comment while summing to 800%. A true statement about 23 of 32 expert maps that names no defect, at warning severity, on a tool whose audience is beginners.
+The cause is an idiom. Two or more `create_land` commands at `land_percent 100` is how a script says _fill whatever is left_ — growth stops when a land meets its target **or runs out of frontier** — and `AD4 - Ra.rms` labels it with the author's own `/* neutral space */` comment while summing to 800%. A true statement about 23 of 32 expert maps that names no defect, at warning severity, on a tool whose audience is beginners.
 
 **Excluding lands that declare the whole map takes it to 6 of 32 maps and 24 of 128 pairs** — measured here, which the round asked for and did not do. That is the load-bearing half of the fix. **The severity demotion to info is the other half**, and it is needed because six expert maps still trip the corrected form (`AK_Vanguard_v1.2.rms` 554% and `OWWC1Tewaipounamu` 551% with no filler land at all). The round called the demotion "honest, and nearly worthless"; that undersells it. On a beginner writing three lands at 60% each the sentence is exactly what they want to know, and on an expert map it is harmless, which is what info is for.
 
@@ -7181,13 +7179,13 @@ Also confirmed: `declaredTargetTiles` defaults `land_percent` to 100, so a land 
 
 The round found three defects and prescribed four fixes. All three defects reproduce:
 
-- **`group_placement_radius` is a cohesion MAXIMUM, not a minimum separation.** `objects.ts` scans within it of a group's anchor to pull members *together*; nothing keeps two groups apart. N groups do not need N disjoint discs, so the packing bound is not a bound. Same class as `max_distance_to_other_zones` being a minimum — an attribute read from its name.
+- **`group_placement_radius` is a cohesion MAXIMUM, not a minimum separation.** `objects.ts` scans within it of a group's anchor to pull members _together_; nothing keeps two groups apart. N groups do not need N disjoint discs, so the packing bound is not a bound. Same class as `max_distance_to_other_zones` being a minimum — an attribute read from its name.
 - **The radius findings are a constraint the checker invented.** `DEFAULT_GROUP_PLACEMENT_RADIUS = 3` is the fallback for a grouped-but-bare command, and "resolve the spacing" picks it up: **190 of the 195 radius findings rest on the default**, 5 on an author-written number.
 - **The section read the minority attribute.** `objects.ts` resolves `temp_min_distance_group_placement` first; that spelling is dominant (**789 instantiated commands against 398**, 229 carrying both) and the section never named it. Its own headline example, `AK_Namatjira.rms`'s `number_of_groups 999999`, carries `temp_min_distance_group_placement 3` and so is caught by neither path the section describes.
 
 **Then the finding the round did not have.** Its fixes 2 and 3 are inconsistent with each other, and measuring shows which way: deleting the radius clause and correcting the resolution order takes the check from 11 sites to **207 findings across 26 of 32 maps**, because the corrected check finally reads the attribute the corpus writes. The round proposed stating "the corrected check finds 11 sites"; the corrected check finds 207.
 
-**So the bound is cut outright, not repaired.** The declared N on the 207 tripping commands runs min 16, **median 9999**, max 999999 — `number_of_objects 65536` means *fill the water with fish*, the same over-declaration idiom as `land_percent 100` and the guide's own `number_of_clumps 9320`. The engine places what fits and stops. An error-severity "guaranteed impossible" finding on 81% of an expert corpus is Sec.3.1's demotion one section over and one severity worse — and **what the bound wanted to say, the Monte Carlo layer already says better**: "you asked for 65536 and the map holds about 800" is a measured spawn rate on real terrain, needing no impossibility claim. A static packing bound is a weaker duplicate of Sec.4's own output.
+**So the bound is cut outright, not repaired.** The declared N on the 207 tripping commands runs min 16, **median 9999**, max 999999 — `number_of_objects 65536` means _fill the water with fish_, the same over-declaration idiom as `land_percent 100` and the guide's own `number_of_clumps 9320`. The engine places what fits and stops. An error-severity "guaranteed impossible" finding on 81% of an expert corpus is Sec.3.1's demotion one section over and one severity worse — and **what the bound wanted to say, the Monte Carlo layer already says better**: "you asked for 65536 and the map holds about 800" is a measured spawn rate on real terrain, needing no impossibility claim. A static packing bound is a weaker duplicate of Sec.4's own output.
 
 Sec.3.4 keeps one rule: the `minExceedsMax` promotion (`min_distance_to_players > max_distance_to_players`), which is deterministic, has no reading under which the author meant it, and **measures 0 on the corpus** — the RMS0304 shape, where near-zero is the expected result and the fixtures are the proof it fires. Recorded with the cut so nobody rebuilds it: the disc bound was **conservative** against the generator (`createSpacingIndex` uses Chebyshev, so the real exclusion region is a square of side `s`, area `s²`, against the disc's `0.785 s²`), and tightening it would make a check that already fires on 26 of 32 maps fire more. Rev 4's `group_variance` floor goes with the bound; the reasoning survives as Sec.3.0 rule 3 with nothing left to apply to.
 
@@ -7222,11 +7220,11 @@ Three static checks instead of four, one demoted to info and one split by severi
 
 Spec only, no code. Sixth review round on `docs/consistency-checker-design.md`, folded here after every finding was re-derived against the working tree — a scratch copy of `src/`, `reference/` and `tools-api/` outside the repo with a junction to `node_modules`, reading the real `test-maps/` off disk, driven by Vitest. Where the round and the tree disagreed, the tree won, and it won three times.
 
-**Rev 5's measurement work was the strongest of the series and every corpus figure it published reproduces to the unit.** Sec.3.1's 23 to 6 with the same six maps and the same six percentages; Sec.3.2's 59 commands across 10 maps; Sec.3.4's 0; Sec.3.0's other three rows; the reference-data census. It still shipped an error-severity false positive on a shipped map, and a baseline measured with the algorithm the section it belongs to exists to replace. **So the rule this round leaves is one level up from the last one: a measurement that stands in for a prescribed algorithm has to be validated against that algorithm, not only against the corpus.** Rev 5 obeyed its own rule — it ran the check and counted — and ran a *different* check from the one it specifies, labelled the substitution in the same paragraph ("to approximate the generous AST-wide scan above"), and never asked whether the approximation and the algorithm ever disagree. The tell was already inside the document, two sections later, as a live corpus fact.
+**Rev 5's measurement work was the strongest of the series and every corpus figure it published reproduces to the unit.** Sec.3.1's 23 to 6 with the same six maps and the same six percentages; Sec.3.2's 59 commands across 10 maps; Sec.3.4's 0; Sec.3.0's other three rows; the reference-data census. It still shipped an error-severity false positive on a shipped map, and a baseline measured with the algorithm the section it belongs to exists to replace. **So the rule this round leaves is one level up from the last one: a measurement that stands in for a prescribed algorithm has to be validated against that algorithm, not only against the corpus.** Rev 5 obeyed its own rule — it ran the check and counted — and ran a _different_ check from the one it specifies, labelled the substitution in the same paragraph ("to approximate the generous AST-wide scan above"), and never asked whether the approximation and the algorithm ever disagree. The tell was already inside the document, two sections later, as a live corpus fact.
 
 ### B1 — the shared-block idiom is invisible to both of Sec.3's input surfaces
 
-`parser-design.md` Sec.5.4: a `{` arriving right after a completed `if`/`start_random` whose branches end in block-capable commands becomes an `OrphanBlockNode` carrying **info RMS0110**, *"this block is shared by the command(s) chosen in the if/random above"*. It is guide Example2, cited in this repo's own parser spec as a guide-endorsed idiom, and the corpus uses it heavily.
+`parser-design.md` Sec.5.4: a `{` arriving right after a completed `if`/`start_random` whose branches end in block-capable commands becomes an `OrphanBlockNode` carrying **info RMS0110**, _"this block is shared by the command(s) chosen in the if/random above"_. It is guide Example2, cited in this repo's own parser spec as a guide-endorsed idiom, and the corpus uses it heavily.
 
 Those attributes are on **no command**, in either surface Sec.3 reads. An AST walk phrased "every `create_object` command carrying its own `actor_area` attribute" — which is Sec.3.2's declaration form (b), verbatim — does not reach them, because in the AST they are `AttributeNode`s inside an `OrphanBlockNode`. And `instantiate.ts` sends `orphanBlock` straight to `unsimulatedNote` and drops the contents, so `InstantiatedCommand.attributes` never holds them either. **Neither `objects.ts` nor `instantiate.ts` answers "what are the attributes of this command" on its own; the parser has a documented third case, and Sec.3.2 was written from the two files that do not know about it.**
 
@@ -7238,41 +7236,41 @@ New **Sec.3.0b** carries the construct, the census and one asymmetric rule: ever
 
 ### B2 — the Sec.3.2 baseline was measured with the algorithm Sec.3.2 replaces
 
-Sec.3.2 is explicit that the declaration side runs over the AST, all branches selected or not, *because* an id in an unselected branch would otherwise read as undefined. The measurement one paragraph later unioned instantiations across 2/4/6/8 by seeds 1 to 5 — and a union of instantiations at **Normal** cannot reach a branch gated on **map size**, which is exactly the shape this corpus contains. Three maps have it: `AK_Vanguard_v1.2.rms` declares 6756/6757 inside `if TINY_MAP / elseif … / elseif HUGE_MAP`, `Menindee_AUS_v2.3.rms` declares 9900/9901 inside `if HUGE_MAP`, `OWWC1Tewaipounamu-edited-v1.2.rms` declares 6900/6901 inside `if TINY_MAP`.
+Sec.3.2 is explicit that the declaration side runs over the AST, all branches selected or not, _because_ an id in an unselected branch would otherwise read as undefined. The measurement one paragraph later unioned instantiations across 2/4/6/8 by seeds 1 to 5 — and a union of instantiations at **Normal** cannot reach a branch gated on **map size**, which is exactly the shape this corpus contains. Three maps have it: `AK_Vanguard_v1.2.rms` declares 6756/6757 inside `if TINY_MAP / elseif … / elseif HUGE_MAP`, `Menindee_AUS_v2.3.rms` declares 9900/9901 inside `if HUGE_MAP`, `OWWC1Tewaipounamu-edited-v1.2.rms` declares 6900/6901 inside `if TINY_MAP`.
 
 Measured both ways at 4 players / Normal / seed 1 over 32 maps. The instantiation union reproduces rev 5 exactly, which is the control that says the instrument works, then:
 
-| declaration side | `actor_area_to_place_in` | `avoid_actor_area` | abstains |
-|---|---|---|---|
-| instantiation union (the approximation) | 11 ids / 12 commands / 4 maps | 59 / 10 maps | 0 |
-| **as Sec.3.2 prescribes** | **5 / 5 / 2** | **37 / 8** | 2 |
-| + descending into shared blocks (B1) | **4 / 4 / 2** | **30 / 7** | 2 |
-| + unioned with S0's own resolved values | **4 / 4 / 2** | **30 / 7** | **1** |
+| declaration side                        | `actor_area_to_place_in`      | `avoid_actor_area` | abstains |
+| --------------------------------------- | ----------------------------- | ------------------ | -------- |
+| instantiation union (the approximation) | 11 ids / 12 commands / 4 maps | 59 / 10 maps       | 0        |
+| **as Sec.3.2 prescribes**               | **5 / 5 / 2**                 | **37 / 8**         | 2        |
+| + descending into shared blocks (B1)    | **4 / 4 / 2**                 | **30 / 7**         | 2        |
+| + unioned with S0's own resolved values | **4 / 4 / 2**                 | **30 / 7**         | **1**    |
 
 **So the tool's "first real corpus win" is 4 genuine findings across 2 maps, not 12 across 4.** `Pa_Site` 81, 82, 91 and `Menindee` 1000 are declared nowhere in their files by either form; `Pa_Site` 8000 is B1's false positive; the other seven were declarations the approximation could not see. Still a real result, still the tool's first, now stated at its true size — and Sec.3.2 keeps both readings side by side the way Sec.3.1 keeps its 23-against-6, because the gap belongs to the measurement rather than to the check.
 
 **Sec.3.3 already named the first of the three maps, two sections later**, using it to justify a different design point, and nobody carried it back to the paragraph whose baseline it invalidates. Same shape as the hard rule this repo wrote after the `terrain_to_place_on` fix: a fact that overturns one rule is worth pointing at every rule quantifying over the same thing.
 
-Two defects rode along inside rule 2's own justification. It rested "rare enough to be free" on *"only 2 of the 286 declarations write a name rather than a literal"* — a form (a) count, in a section whose own text calls form (b) the larger path; over both forms there are **38 non-literal declaration ids, 2 in form (a) and 36 in form (b)**. And two of the 36 do not resolve, so two maps lost the check outright. The fix is to take the declaration set as the **union of the AST scan and the instantiation's own resolved values** — both sides only suppress, so unioning cannot introduce a false positive, and S0 evaluates math expressions, so `24hr_Caverns.rms`'s `actor_area (AA_TC)` resolves to 1 for free (`#const AA_TC 1`). After it, **one map abstains**: `AK_Vanguard_v1.2.rms`, whose `actor_area ACT_AREA_TEAM_RES_TERRAIN` names a constant no `#const` in the file defines.
+Two defects rode along inside rule 2's own justification. It rested "rare enough to be free" on _"only 2 of the 286 declarations write a name rather than a literal"_ — a form (a) count, in a section whose own text calls form (b) the larger path; over both forms there are **38 non-literal declaration ids, 2 in form (a) and 36 in form (b)**. And two of the 36 do not resolve, so two maps lost the check outright. The fix is to take the declaration set as the **union of the AST scan and the instantiation's own resolved values** — both sides only suppress, so unioning cannot introduce a false positive, and S0 evaluates math expressions, so `24hr_Caverns.rms`'s `actor_area (AA_TC)` resolves to 1 for free (`#const AA_TC 1`). After it, **one map abstains**: `AK_Vanguard_v1.2.rms`, whose `actor_area ACT_AREA_TEAM_RES_TERRAIN` names a constant no `#const` in the file defines.
 
 ### Three findings the round did not reach
 
-- **The reference side is blind to shared blocks too** — 9 `actor_area_to_place_in` and 27 `avoid_actor_area` occurrences — and the fix is *not* symmetric with the declaration side's. Sec.3.2's asymmetry says a reference in an unselected branch cannot fail on this seed; a shared block is not an unselected branch, it **executes**, on whichever command the `if`/`start_random` above chose. So those references belong in the strict half, anchored on the **attribute's own span**, worded to name the reference rather than a command's outcome, since RMS0110 is precisely a record that the owning command is ambiguous. Measured, the clause **adds 0 findings** on this corpus: insurance, written down so a later reader does not mistake the zero for a reason to drop it.
+- **The reference side is blind to shared blocks too** — 9 `actor_area_to_place_in` and 27 `avoid_actor_area` occurrences — and the fix is _not_ symmetric with the declaration side's. Sec.3.2's asymmetry says a reference in an unselected branch cannot fail on this seed; a shared block is not an unselected branch, it **executes**, on whichever command the `if`/`start_random` above chose. So those references belong in the strict half, anchored on the **attribute's own span**, worded to name the reference rather than a command's outcome, since RMS0110 is precisely a record that the owning command is ambiguous. Measured, the clause **adds 0 findings** on this corpus: insurance, written down so a later reader does not mistake the zero for a reason to drop it.
 - **The finding-counting convention was never pinned**, and it is where rev 5's "12" came from: the same run answers **11 by distinct id and 12 by referencing command**. Pinned to (map, id) — one id referenced from three commands is one defect with three rows of evidence. A reporter and a reader could otherwise disagree by one and both be right, which is the quiet way a measured baseline stops being reproducible.
 - **Sec.3's checks are pure over TWO inputs, not one.** Sec.3.1 and Sec.3.4 read only `InstantiatedScript`; Sec.3.2 and Sec.3.3 read the instantiation **and** `ParseResult`, because their suppressing scans run over the AST while their reporting scans run over the instantiation. Sec.7.3 now says so in the signature, so a check that reaches for the AST is visible in its own type and cannot quietly acquire a surface Sec.3.0's soundness argument does not cover. Sec.7.0 gains a fifth item with it: one `walkItems(parse, visit)` that descends into shared blocks, written once, because three scans need it and **nothing in `src/parser/` exports a general item walker today** — three hand-rolled recursions is three chances to forget the `orphanBlock` case.
 
 ### Standard and minor
 
 - **The corpus baseline was a 32-map measurement inside a reporter that sees 12 files.** `git ls-files test-maps` returns 11 top-level `.rms` plus `broken/BCC2-Rekawa.rms`; three of the four maps the old error row named are absent from a clone. Sec.8 item 2's table now has two columns, both measured: Sec.3.1 is **2 maps (8 without the exclusion)** against 6 (23), Sec.3.2's error row **1 finding / 1 map** (`Menindee`) against 4 / 2, and the abstention is the same one map either way. This repo had recorded the trap once already (`tools-api-design.md` rev 8) and Sec.8 item 6 applies it correctly while item 2 did not.
-- **Sec.5.4's notes passthrough collapsed nothing and discarded every span.** S0's dominant note is keyed **per span**, so "deduped by `key`" never merges two of them: `Pa_Site_v1.1.rms` produces **134**, `OWWC1Tewaipounamu` 18, `TL Cape of Storms` 15, `W4 - Immersion` 7 — every one a distinct key, one distinct text between them. The prescribed rendering was 134 identical lines. Group by **text**, carry the count and the spans, and emit `severity`/`codeRef` blocks rather than a `text` blob — `text` is the one `OutputBlock` kind carrying no span, and those spans are exactly B1's blind spot, which is what lets the report say *this finding sits next to a block the preview could not read*. Sec.5.4 already had the right instinct one paragraph down, where a per-run varying note becomes a range; one key with many texts becomes a range, many keys with one text becomes a count.
+- **Sec.5.4's notes passthrough collapsed nothing and discarded every span.** S0's dominant note is keyed **per span**, so "deduped by `key`" never merges two of them: `Pa_Site_v1.1.rms` produces **134**, `OWWC1Tewaipounamu` 18, `TL Cape of Storms` 15, `W4 - Immersion` 7 — every one a distinct key, one distinct text between them. The prescribed rendering was 134 identical lines. Group by **text**, carry the count and the spans, and emit `severity`/`codeRef` blocks rather than a `text` blob — `text` is the one `OutputBlock` kind carrying no span, and those spans are exactly B1's blind spot, which is what lets the report say _this finding sits next to a block the preview could not read_. Sec.5.4 already had the right instinct one paragraph down, where a per-run varying note becomes a range; one key with many texts becomes a range, many keys with one text becomes a count.
 - **Sec.3.0's map-size row is 11 of 32, not 8.** Re-derived with two independent fingerprints — sorted `(section, command, span)` triples and a plain sorted name multiset — both returning 11, while the other three rows reproduce unchanged (13/32 seeds-watched, 12/32 across seeds 1 to 5, 12/32 across 2/4/6/8), which is the control that says the instrument did not move. Nothing built on it moves and two arguments get stronger: Sec.5.2's case for putting `mapSize` in the header, and Sec.3.3's use of the row as a not-blind control for its 0-of-32 terrain-surface reading (that 0 reproduces). This is the third revision in which the row has been re-derived by a different method, so it now carries its fingerprint in the doc.
 - **Sec.3.2's scale figures were comment-including token scans**, one section after Sec.2 fixed exactly that. Restated with a population per column: through the parser, 284 `create_actor_area` across 15 maps, 742 form-(b) `actor_area` across 30, 2385 references across 30; through the instantiation, 2001 references. Against the token scan's 286 / 919 / 2586. `AK_Vanguard` carries a commented-out `create_object FLAG_A { … actor_area_to_place_in ACT_AREA_MIDDLE_LARGE … }` — a concrete member of the gap. Conclusions unchanged.
-- **An unresolvable *reference* was unspecified, and it is where the corpus's clearest actor-area defect lives.** `AK_Vanguard_v1.2.rms` carries `actor_area_to_place_in ACT_AREA_TEAM_RES_TERRAIN` on **18 `create_object` commands** and the name is defined nowhere; `objects.ts` reads `typeof id === "number" ? (liveActorAreas.get(id) ?? []) : []`, so every one of them **places nothing**, and `validate()`'s 5 diagnostics on that map name none of it. Decided rather than left open: **not a static finding** — an unresolved name in a numeric slot is the parser's territory, and a static finding here would put one claim in two vocabularies. The consequence is that the Monte Carlo layer is the only thing that reports it, at 0% with an `actorAreaMissing` bucket, so **Sec.5.1's suppression rule now says it keys on a PRESENT finding and never on the check's abstention** — phrased as "commands Sec.3.2 has an opinion about", it would erase the row, since Sec.3.2 abstained on the whole script and has no opinion at all. Sec.9 carries the parser question as a follow-up, noting the positive-resolver rule does not forbid it: the evidence is the script's own `#const` table, not absence from reference data.
+- **An unresolvable _reference_ was unspecified, and it is where the corpus's clearest actor-area defect lives.** `AK_Vanguard_v1.2.rms` carries `actor_area_to_place_in ACT_AREA_TEAM_RES_TERRAIN` on **18 `create_object` commands** and the name is defined nowhere; `objects.ts` reads `typeof id === "number" ? (liveActorAreas.get(id) ?? []) : []`, so every one of them **places nothing**, and `validate()`'s 5 diagnostics on that map name none of it. Decided rather than left open: **not a static finding** — an unresolved name in a numeric slot is the parser's territory, and a static finding here would put one claim in two vocabularies. The consequence is that the Monte Carlo layer is the only thing that reports it, at 0% with an `actorAreaMissing` bucket, so **Sec.5.1's suppression rule now says it keys on a PRESENT finding and never on the check's abstention** — phrased as "commands Sec.3.2 has an opinion about", it would erase the row, since Sec.3.2 abstained on the whole script and has no opinion at all. Sec.9 carries the parser question as a follow-up, noting the positive-resolver rule does not forbid it: the evidence is the script's own `#const` table, not absence from reference data.
 - `(AA_TC)` moved from Sec.3.2's reference list to the declaration side, where it is form (b) and the sole trigger of that map's abstention. Sec.3.1 now pins **which** of two readings the filler exclusion tests (the raw pre-division target; 0 of 32 maps flip between the two, which is why it needs a clause rather than a re-measurement later). Sec.4.3's worker sketch stopped inventing a third name for a message the published contract already calls `run`.
 
 ### Where the round was wrong, and it was wrong in its own favour
 
-Recorded because a round is audited like the spec it critiques. Its shared-block census reported **195 attributes against a measured 216**, with several per-attribute rows off — `min_distance_to_players` 17 against 21, `second_object` 1 against 15, `actor_area_to_place_in` 8/4 against 9/3 — because it did not descend into `if`/`start_random` nested *inside* a shared block, which `instantiate.ts` drops along with everything else in the block. It said "30+ `create_object` commands" carry the unresolvable reference; it is **18** (26 is the count of every occurrence of that name across all three attributes). And it read rev 5's "12" as an error when it is a counting convention the doc never stated — the real defect is the missing convention, which is now pinned. Every other number in it reproduces, including all four corrected baselines to the unit.
+Recorded because a round is audited like the spec it critiques. Its shared-block census reported **195 attributes against a measured 216**, with several per-attribute rows off — `min_distance_to_players` 17 against 21, `second_object` 1 against 15, `actor_area_to_place_in` 8/4 against 9/3 — because it did not descend into `if`/`start_random` nested _inside_ a shared block, which `instantiate.ts` drops along with everything else in the block. It said "30+ `create_object` commands" carry the unresolvable reference; it is **18** (26 is the count of every occurrence of that name across all three attributes). And it read rev 5's "12" as an error when it is a counting convention the doc never stated — the real defect is the missing convention, which is now pinned. Every other number in it reproduces, including all four corrected baselines to the unit.
 
 ### What rev 6 leaves
 
@@ -7331,14 +7329,14 @@ own comment), so cancel latency is one generation — the same 24–32 s Sec.4.4
 computes for the watchdog, against a **30 s** grace. `cancelGraceMs` moves to
 **60 s**, equal to `runWatchdogMs`, on an argument the round did not make: a
 worker runner's `kill()` is `worker.terminate()`, so the run stops either way
-and the only thing the grace decides is whether a cooperative tool is *recorded*
+and the only thing the grace decides is whether a cooperative tool is _recorded_
 as having misbehaved — which is what `DEADLINES`' own comment says the constant
 is for, and the reading under which erring long is nearly free. It is an
 amendment to `tools-api-design.md` Sec.4.1, not a local decision. The
 re-measured Giant multipliers (Petra 1.77x, Caverns 1.82x) are recorded beside
 the 1.2–1.6x band as a third reading, not folded as a correction — the repo's
 own rule — and nothing depends on them, since the finding holds at rev 6's own
-numbers. What *is* a real defect in the derivation is that the band was measured
+numbers. What _is_ a real defect in the derivation is that the band was measured
 over four heavy maps excluding `24hr_Petra.rms`, the map it is applied to.
 
 ### B3 — accepted, and the falseness checked against the data rather than the run
@@ -7354,8 +7352,8 @@ provenance rule both carry the split.
 
 ### B4 — the finding is real, the prescribed FIX is wrong in both directions, and it is replaced
 
-The round's rule was *abstain when a raw node sits in a surface-feeding
-section*. Measured here, that rule **abstains on 4 maps whose raw nodes provably
+The round's rule was _abstain when a raw node sits in a surface-feeding
+section_. Measured here, that rule **abstains on 4 maps whose raw nodes provably
 cannot hide anything** — `Pa_Site_v1.1.rms`'s 128 nodes are each 35 characters
 reading `avoidance_distance CIRCLE_AVOIDANCE`, `TC2 - Comeer`'s three are
 `4056`, `AK_ForeDaut`'s are `elseif 7_PLAYER_GAME` — **and it misses Rage
@@ -7365,7 +7363,7 @@ of "4 maps" does not include it.
 
 The replacement is a containment test over the raw node's **own source text**:
 abstain when it contains `terrain` (a substring of all six producer names, so
-its absence *proves* no producer is hidden), `#const` (can change what a terrain
+its absence _proves_ no producer is hidden), `#const` (can change what a terrain
 name resolves to) or `<` (a swallowed section header, which is the Rage Forest
 shape). **Measured: 1 of 32 maps abstains and it is Rage Forest.** The four
 false abstentions are kept as live coverage and the map that matters is caught.
@@ -7476,7 +7474,7 @@ on 32 maps: `AK_Namatjira.rms`'s `create_object SHORE_FISH { terrain_to_place_on
 DLC_MANGROVESHALLOW … ignore_terrain_restrictions }`, where the flag carries
 neither prerequisite and is therefore inert, so the pairing really is refused —
 the tool's first true tier-1 corpus finding, and `AK_ForeDaut_v1.3.rms` writes
-the same pairing *with* the prerequisite, so the corpus already contains the
+the same pairing _with_ the prerequisite, so the corpus already contains the
 matched fixture pair. The info row is **2**. (2) **`RawNode` is a blind spot for
 Sec.3.2's declaration side**, which is the only error-severity suppressing scan
 in the document, while Sec.3.0b states that the surface "is the only thing it
@@ -7493,7 +7491,7 @@ on 2 of 32 and costs the corpus baseline nothing.
 **The rule the round leaves, one turn past rev 7's own: a fix applied to a
 measurement has to be re-applied to every row that measurement produced.** Rev 7
 wrote that a prescribed fix is a claim checked the same way the finding was;
-this round found the fix checked correctly and the *rest of its own table* left
+this round found the fix checked correctly and the _rest of its own table_ left
 at the pre-fix values. Third round in a row on that shape — a number computed
 for one of two deadlines, a fork applied to tier 1 and owed to tier 2, and now a
 baseline corrected in one row and inherited in the next.
@@ -7530,8 +7528,8 @@ the real tree from a scratch directory outside the repo (vitest pointed at
 the repo was not modified.
 
 **The instrument was validated against numbers already trusted before any new
-number was read off it** — this project's own *"an instrument that cannot fail
-loudly has to be checked against a number you already trust"*. The Sec.3.2 probe
+number was read off it** — this project's own _"an instrument that cannot fail
+loudly has to be checked against a number you already trust"_. The Sec.3.2 probe
 reproduces the doc's own last-row baseline exactly (**4 findings / 4 commands /
 2 maps** error, **30 commands / 7 maps** info, **1** abstention, with the error
 ids `Menindee` 1000 and `Pa_Site` 81/82/91), and the Sec.3.3 probe reproduces
@@ -7572,14 +7570,14 @@ now takes the triple from the corpus rather than hand-building it.
 `Rage Forest 2026.rms` 87 (`actor_area 20000` through `20086`),
 `TL Cape of Storms.rms` id **2**, inside an 864-character node opened by a
 malformed `elseif`, with `actor_area_to_place_in 2` on two later ordinary
-commands. Sec.3.0b's sentence *"the surface is the only thing it can invalidate"*
+commands. Sec.3.0b's sentence _"the surface is the only thing it can invalidate"_
 is withdrawn.
 
 **The fix was measured with the check run both ways, because a prescribed fix is
 a claim in its own right — and it costs nothing.** Adding the abstention leaves
 both finding rows byte-identical (4/4/2 and 30/7) and moves only the abstention
 count, **1 to 3**. Rather than bolt a second containment test onto Sec.3.2,
-Sec.3.0b now owns the *shape* (a lexical containment test over the raw node's own
+Sec.3.0b now owns the _shape_ (a lexical containment test over the raw node's own
 text, abstaining direction only) and each scan names its own token in its own
 section: `terrain`/`#const`/`<` for Sec.3.3's surface (1 of 32), `actor_area` for
 Sec.3.2's declaration side (2 of 32). Sec.3.2 also gains the note that a hidden
@@ -7592,7 +7590,7 @@ resolves to no number.
 branch** (`Pa_Site` 6/6, `TL Cape of Storms` 9/12, `TL Team Acropolis` 1/2), and
 exactly **1 not reached by S0** at 4p/Normal/seed 1 — `TL Team Acropolis.rms` at
 offset 56719, tested by the presence of its own `unsimulated:<start>-<end>` note.
-So *"an `OrphanBlockNode` is not an unselected branch: it executes"* is false for
+So _"an `OrphanBlockNode` is not an unselected branch: it executes"_ is false for
 a majority of this corpus's blocks, and the reference side's strictness rested on
 it. The filter removes 0 findings today (the unreached block's three ids are
 declared elsewhere in that file) and is written down with its zero, like the two
@@ -7600,7 +7598,7 @@ clauses beside it.
 
 **S2** accepted with the review's own cheaper option taken: Sec.7.0 item 5's
 walker becomes **unconditionally generous with every caller filtering**, since
-the alternative — teaching it which `if` branch was *selected* — couples a pure
+the alternative — teaching it which `if` branch was _selected_ — couples a pure
 AST walk to S0's answer. The fork argument is restated over the parameter set
 (orphan flag **and** enclosing construct kind) rather than the orphan bit alone.
 
@@ -7611,7 +7609,7 @@ someone "improves" the check into the per-member test Sec.3.3 forbids by name.
 
 **M1** reproduces: `base_terrain` measures **1877** as `AttributeNode`s and
 **1908** over every item kind, where its four siblings are attribute/command
-counts. The doc now says which instrument the row used *and* that 1908 is the
+counts. The doc now says which instrument the row used _and_ that 1908 is the
 right number for a surface walk, since a `base_terrain` classified another way is
 still terrain the script lays down.
 
@@ -7620,7 +7618,7 @@ answers **843** (resolves a row and names a resolving terrain) and **801** (the
 same, after the 52 valid-`ignore` skips the baseline table removes before either
 tier sees a command); the doc had published **844**, which is neither. Pinned to
 **801** — the population the two tiers actually divide — the way Sec.3.2 pinned
-`(map, id)`. **M3** folded: "2 warnings" was that run's output *at one severity*,
+`(map, id)`. **M3** folded: "2 warnings" was that run's output _at one severity_,
 not its output.
 
 ### The finding this fold added, which the round did not reach
@@ -7629,7 +7627,7 @@ not its output.
 `git ls-files test-maps` returns it by name — `.gitignore` whitelists it on line
 50 — and `AK_Namatjira.rms` arrives through `!test-maps/AK_*.rms`. So **both** of
 the corrected info row's findings are on maps a clone gets, and that row goes
-from *"measure on the first CI run"* to the most reproducible row in the table:
+from _"measure on the first CI run"_ to the most reproducible row in the table:
 **2 / 2**. The neighbouring `avoid_actor_area` clone cell was also left as
 "fewer; measure on the first CI run" and needed no run at all — Sec.3.2 is
 per-script, so a per-map count does not depend on what else is on disk; it is
@@ -7638,7 +7636,7 @@ per-script, so a per-map count does not depend on what else is on disk; it is
 **This document has now made the tracked/untracked mistake in both directions** —
 `tools-api-design.md` rev 8 recorded calling 32 maps "tracked" when a clone gets
 12, and this round found a tracked map called untracked, which is the direction
-that silently *under*-sells CI coverage and so never gets challenged by a red
+that silently _under_-sells CI coverage and so never gets challenged by a red
 run. The rule written into Sec.8: run `git ls-files`, never reason from a map's
 name or its provenance.
 
@@ -7703,8 +7701,8 @@ schema defect fixed 2026-08-16 13:31**, a day before the fold: the quoted clause
 is at git HEAD only, the working tree's replacement states 2666-against-31 and
 cites this design doc by section, and `check:generated-types` is green.
 
-**The rule the round adds, one tier below rev 7's.** A *warning about a defect*
-decays exactly like *the reason a section could not be measured*, and it decays
+**The rule the round adds, one tier below rev 7's.** A _warning about a defect_
+decays exactly like _the reason a section could not be measured_, and it decays
 faster, because a warning invites nobody to re-run anything — its whole form is
 "we checked this, do not check it again". Rev 8 re-derived every count in the
 document and did not re-read the one file its own Sec.2 tells the reader to go
@@ -7744,15 +7742,15 @@ population the two tiers actually divide" and the tiers divide 802, with Sec.8's
 own control row already carrying the right number two sections away.
 
 **The half neither the doc nor the round checked is the subtraction.** Both
-write *"with the 52 valid `ignore_terrain_restrictions` skips removed … the same
-run answers 801"*, and 843 − 52 is **791**. Measured, only **42 of the 52** name
+write _"with the 52 valid `ignore_terrain_restrictions` skips removed … the same
+run answers 801"_, and 843 − 52 is **791**. Measured, only **42 of the 52** name
 a resolving terrain, so the real arithmetic is 843 − 42 — and a reader checking
 the sentence as written lands on 791 and concludes the run is broken. This is
 the round's own headline rule turned on the round: it re-derived both endpoints
 and never ran the operator between them. Sec.3.3 now carries a four-row table
 with the predicate in the row beside every number, and states the 42 explicitly.
 
-Sec.3.3 also now says what the 310 no-terrain-named commands *are*: **38% of the
+Sec.3.3 also now says what the 310 no-terrain-named commands _are_: **38% of the
 check's own traffic**, and the entire audience for the six-producer surface
 table, the `beachTerrainFor` pass, the shared-block descent and the `RawNode`
 abstention. That is the cost of the mislabel — not the unit, but a later
@@ -7795,7 +7793,7 @@ cites this design doc by section. Sec.9's bullet loses its schema half.
 
 **Sec.2's paragraph was not deleted, and that is a deliberate departure from the
 round's prescription.** The round treats the paragraph as a false warning to
-remove. The *claim* is false and is gone; the *rule* it was written to carry —
+remove. The _claim_ is false and is gone; the _rule_ it was written to carry —
 read the data, not the comment — is why the paragraph exists, and it now records
 its own instance as discharged plus the round's observation that a warning
 decays faster than a measurement because its form is "we checked, do not check
@@ -7889,7 +7887,7 @@ tree won, and on the blocking finding it won in the way that changes the fix.
 
 The mechanism reproduces exactly: **8095 reports, 467 with `attempted: 0`, on 30
 of 32 maps** — S6 **462** on 29 maps, S5 **4** on 3, S2 **1** on 1. The round
-then described all 467 as *"an early return carrying a failure bucket"* and
+then described all 467 as _"an early return carrying a failure bucket"_ and
 listed six such paths in `objects.ts`. Measured by bucket, that is not what the
 population is:
 
@@ -7908,7 +7906,7 @@ population is:
   pairing the round presented it as. Sec.5.1 says so in those terms and Sec.8
   item 1 carries the fixture.
 - **5 of the 467 carry no failure bucket at all**, which the round's prescription
-  (*"print the failure buckets"*) prints as an empty cell: `elevation.ts:393`
+  (_"print the failure buckets"_) prints as an empty cell: `elevation.ts:393`
   (a `create_elevation` whose `MaxHeight` is ≤ 0) and `connections.ts:784` (a
   `create_connect_to_nonplayer_land` neutralised by the documented engine bug,
   which at least emits a `SimulationNote`).
@@ -7922,7 +7920,7 @@ and from its stage where it does not.
 **One consequence neither the doc nor the round had: the suppression rule and
 this rule intersect on an empty row.** 242 of the 467 carry `actorAreaMissing`
 and nothing else, and Sec.3.2's suppression removes exactly that bucket from a
-command already carrying the static finding — leaving no rate *and* no bucket,
+command already carrying the static finding — leaving no rate _and_ no bucket,
 an entity name beside four empty cells. Sec.5.1 now says the suppression
 **replaces** the bucket with a pointer to the static finding. A suppression that
 empties a row is a silent drop.
@@ -7957,7 +7955,7 @@ surface is 5 ids against reading C's 11; `TL Black Forest.rms` loses 88 of 180,
 53 of which survive every reading.
 
 **The 183 are not aliases and no symbol-table choice reaches them** — they are
-names *no script defines anywhere*: `LAYER_A` ×41, `PLACEHOLDER_TERRAIN_A` ×36,
+names _no script defines anywhere_: `LAYER_A` ×41, `PLACEHOLDER_TERRAIN_A` ×36,
 `CESTA`, `MELCINA`, `FE_PLEASE_FIXED_CRACKED_SAND`. That is the population
 clause 2 exists for, and the round folded it in with the recoverable ones.
 Sec.3.3 now carries the three clauses (union the symbol tables; abstain from the
@@ -7967,9 +7965,8 @@ decide the alias case out loud) with the third deferred to BUG-015.
 **BUG-015, which is a preview defect before it is a checker one.** `#const
 TERR_CORNER GRASS2` is legal RMS; `instantiate.ts` keeps only numeric `#const`s
 (`:446-449`), so `terrains.ts` reports **97 `terrainAbsent` failures across the
-two maps** with a detail reading *"This map's reference data doesn't know the
-terrain TERR_CORNER"* — a false statement about data that holds `GRASS2` as id
-12. Most of Battle Lines' terrain is not painted at all.
+two maps** with a detail reading _"This map's reference data doesn't know the
+terrain TERR_CORNER"_ — a false statement about data that holds `GRASS2` as id 12. Most of Battle Lines' terrain is not painted at all.
 
 ### S3, M1, M2, M3 — accepted, every number reproduced
 
@@ -7990,13 +7987,13 @@ parameter is 5.1's. M3: 3011 rows scanned, **2672** indexed
 ### What rev 10 leaves
 
 **The rule this round adds, and it is about formulas rather than about numbers.**
-Rev 9's rule was *state the predicate beside the number, and run the operator
-between two numbers you publish*. Rev 10's: **a formula published in a spec
+Rev 9's rule was _state the predicate beside the number, and run the operator
+between two numbers you publish_. Rev 10's: **a formula published in a spec
 states its domain in the same sentence, or the first degenerate input prints as
 confident output.** `Σ placed / Σ attempted` was reviewed three times for
 honesty — sample size, "worst" being a claim about this run — and never once for
 whether the denominator could be zero. The tell is a spec that reasons about what
-a number *means* without ever reasoning about when it *exists*.
+a number _means_ without ever reasoning about when it _exists_.
 
 **And the fold's rule, which is the third fold in a row to earn one.** A round
 that reproduces every number can still mis-describe the **population** behind
@@ -8024,7 +8021,7 @@ are the rev-10 fix producing a second instance of the defect it closed.**
   at 4, 6 and 8 — across 7 maps, **3 of them tracked** (`AK_Six_Points` 15,
   `AK_Hourglass` 13, `Menindee` 10 = 38 rows on CI). Excluding the zero counts
   from the minimum makes "worst" resolve to **2**, the only count the command
-  works at, and the Spawn rate column (defined as the rate *at the worst count*)
+  works at, and the Spawn rate column (defined as the rate _at the worst count_)
   then prints a healthy percentage on a command that attempts nothing at three
   quarters of the matrix. The `NaN` version failed in a cell that looks broken;
   this one fails in a cell that looks measured. Sec.8's second corpus assertion
@@ -8114,22 +8111,22 @@ worst-player-count minimum, which on these 65 takes the minimum over `{2}` and
 prints that count's rate.
 
 **The round illustrated this with "94%"; measured, 60 of the 65 place 100.0% at 2
-players** (2 at 50%, 3 under 11%), so the row reads *"Worst player count 2 —
-spawn rate 100.0%"* about a command that attempts nothing at three of the four
+players** (2 at 50%, 3 under 11%), so the row reads _"Worst player count 2 —
+spawn rate 100.0%"_ about a command that attempts nothing at three of the four
 counts. 63 of the 65 carry `landMissing` at the higher counts — a
 `place_on_specific_land_id` naming a land that exists only in the 2-player
 branch, which is a finding worth printing — and the other 2 are S5 rows from B2's
 population, so **the two blocking findings intersect on two rows**.
 
 **The fix folded is the round's first shape, stated as an ordering rather than an
-exclusion**: a zero-attempt count ranks *below* every rate, "worst" names the
+exclusion**: a zero-attempt count ranks _below_ every rate, "worst" names the
 lowest such count, and the Spawn rate cell beside it takes the non-numeric marker
 rather than importing another count's percent. Plus a clause the round did not
 ask for: 402 rows that never attempt anything and 65 that work at 2 and stop are
 different findings and render identically under the ordering alone, so the row
 names the counts that attempted nothing. The invariant is written out for the
-implementer — *"worst" must never resolve to a player count the command succeeds
-at while another count in the same matrix attempted nothing* — and Sec.8 item 2
+implementer — _"worst" must never resolve to a player count the command succeeds
+at while another count in the same matrix attempted nothing_ — and Sec.8 item 2
 carries it as a corpus assertion (red 65 times, 38 on a clone), item 1 as a
 two-count fixture, item 6 as a mutant.
 
@@ -8143,25 +8140,25 @@ no early return, no note. Three of the four are not the command Sec.5.1 named
 `TL Black Forest` `create_connect_teams_lands`, `Menindee`
 `create_connect_to_nonplayer_land`), and **no S5 row carries a note at its own
 span** at any count. Implemented from rev 10's parenthesis, the tool would have
-printed *"a connection the engine bug neutralises"* on `sample.rms` on every CI
+printed _"a connection the engine bug neutralises"_ on `sample.rms` on every CI
 run — a specific, confident, wrong diagnosis, which this section's own ranking
 puts below `NaN%`.
 
 **The fold's own addition: `blocked` is set at `:860`, after a
 `create_connect_to_nonplayer_land` has been processed**, so that path reports the
-connections declared *after* one, never that command itself. The doc named both
+connections declared _after_ one, never that command itself. The doc named both
 the wrong path and the wrong command.
 
 The replacement reason comes from `resolvePairs` (`:717-737`) and is better than
-the one it replaces: *"this command connects nothing, because one side of the
-pairing is empty"* — true of all four rows, derivable from the command name plus
-the pairing the stage already resolved, and squarely PLAN.md's *this command
-contributes nothing to your map*. Sec.8 item 1 gains a two-line empty-pairing
+the one it replaces: _"this command connects nothing, because one side of the
+pairing is empty"_ — true of all four rows, derivable from the command name plus
+the pairing the stage already resolved, and squarely PLAN.md's _this command
+contributes nothing to your map_. Sec.8 item 1 gains a two-line empty-pairing
 fixture, since the sentence printed on four rows was pinned by nothing.
 
 **One correction to the round**: it wrote that the population is 5 bucketless
-rows at 4/6/8 and 3 at 2 because *"Menindee's and one of `TL Black Forest`'s do
-not exist there"*. They exist; they have a real rate at 2 players (0/26 and 1/1)
+rows at 4/6/8 and 3 at 2 because _"Menindee's and one of `TL Black Forest`'s do
+not exist there"_. They exist; they have a real rate at 2 players (0/26 and 1/1)
 and go to zero-attempt above. That is B1's population, which is how the two
 findings turn out to share rows.
 
@@ -8187,8 +8184,8 @@ findings turn out to share rows.
 - **S4 (the note census is one family).** Confirmed and enlarged: the largest
   same-text groups are `Pa_Site` 134 (`unsimulated`), `AK_Namatjira` 77
   (`terrainMaskApproximated`), `QS_Three_Bays` 69 (tile-shuffling), `Pa_Site` 43,
-  `24hr_Caverns` 38, `TC2 - Comeer` 36. The round put the reach at *"over 30
-  groups above 3 spans on 24 maps"*; measured, it is **76 groups above three
+  `24hr_Caverns` 38, `TC2 - Comeer` 36. The round put the reach at _"over 30
+  groups above 3 spans on 24 maps"_; measured, it is **76 groups above three
   notes on 28 of 32 maps**. Notes per map reach **184** (`Pa_Site`, 6 distinct
   texts), 138 (`AK_Namatjira`, **24** texts), 132 (`QS_Three_Bays`, 17) — so
   Sec.4.5's "8-block output" is now stated as the measured **48** blocks under
@@ -8219,11 +8216,11 @@ rule written to stop a column lying has to be evaluated against the rows it will
 now govern, not only against the rows that made it necessary.** Rev 10 measured
 467 rows three ways and prescribed a fix correct for the 402 it had numbers for.
 
-**And the fold's two.** *When a section names the code path a population comes
-from, run the path, not the population* — the 467 reproduces exactly and
+**And the fold's two.** _When a section names the code path a population comes
+from, run the path, not the population_ — the 467 reproduces exactly and
 `connections.ts:784` fires zero times, so re-deriving a count checks how many and
-never where from. *And a decomposition offered as a correction is itself a
-decomposition*: the round caught rev 10 stating a rule at 242 whose reach is 4,
+never where from. _And a decomposition offered as a correction is itself a
+decomposition_: the round caught rev 10 stating a rule at 242 whose reach is 4,
 and split the 242 into three parts summing to 246.
 
 ## 5.2 design — the rev 12 critique round (2026-08-18)
@@ -8243,7 +8240,7 @@ against rev 10.
 - **B1 (blocking): the ordering rule distinguishes two states and the aggregate
   has three.** Rev 11 replaced rev 10's exclusion with an ordering — a
   zero-attempt count ranks below every rate — and every quantifier in it ranges
-  over *the selected matrix*, while `Σ attempted` has a third state the matrix
+  over _the selected matrix_, while `Σ attempted` has a third state the matrix
   cannot express: **the command has no `CommandReport` at that count at all**.
   Reproduced exactly: keyed `(map, stage, commandSpan)` over 32 maps × 2/4/6/8,
   **8358 rows, of which 352 exist at some counts and not others**, patterns
@@ -8252,7 +8249,7 @@ against rev 10.
   carrying an `attempted: 0` cell anywhere**. **146 are on tracked maps**
   (`Menindee` 86, `AK_Namatjira` 54, `AK_Hourglass` 4, `AK_Six_Points` 2). Folded
   with the natural `row.get(pc)?.attempted ?? 0`, **233 print `Worst player
-  count 2`, 85 print `4`, 34 print `6`**, each beside the non-numeric marker,
+count 2`, 85 print `4`, 34 print `6`**, each beside the non-numeric marker,
   about commands that place 100% wherever they exist — and the same `?? 0`
   overstates the rule's own population 6.4× (417 "zero at some counts" against
   the true 65). Rev 10's exclusion was harmless on these rows because it dropped
@@ -8266,9 +8263,9 @@ against rev 10.
   distributed 142 rows in exactly 1 of 5 runs, 23 in 2, 6 in 3, 36 in 4. **The
   default is 15 runs per count, so the batch is where this population lives**,
   and a rate summed over 1 of 15 runs printed identically to one over 15 of 15.
-  Sec.8 item 3 had already commissioned exactly this case (*"a `commandSpan`
+  Sec.8 item 3 had already commissioned exactly this case (_"a `commandSpan`
   present in only one of two runs … never invents a zero row for a run that never
-  contained the command"*) — the same missing field, stated as an assertion three
+  contained the command"_) — the same missing field, stated as an assertion three
   sections before the record that would carry it. **So the fix is one field on
   both axes**: Sec.4.2's aggregate record gains `runs` and `runsContaining`,
   `runsContaining === 0` is absent, `0 < runsContaining < runs` is partial, and
@@ -8310,7 +8307,7 @@ against rev 10.
   group mixed. The round's family split (automatic beach **20**, `includes` 6,
   `landOverwrittenBeforeGrowth` 4, `teams` 1) sums to 31 against its own stated
   29; measured, the beach family is **18** and the total is 29. The sharp half
-  reproduces exactly: `landOverwrittenBeforeGrowth`, the family Sec.5.4's *other*
+  reproduces exactly: `landOverwrittenBeforeGrowth`, the family Sec.5.4's _other_
   new rule is written about by name, is **entirely spanless**, so the section's
   two rules met on a block with nothing to put in it.
 - **S3, accepted.** Sec.4.5's "worst corpus map" was not the worst. Ranked by
@@ -8351,14 +8348,14 @@ states the finding that prompted it had.** Rev 10 saw two states because its 467
 rows were all zero-attempt. Rev 11 measured that population three ways, found
 the 65 rev 10 had missed, and wrote an ordering over the same two states — while
 the aggregate it orders has a third, five times larger. The tell is a rule whose
-every quantifier says *"in the matrix"* and whose input is keyed by something
+every quantifier says _"in the matrix"_ and whose input is keyed by something
 that does not exist at every point of it.
 
 **And the fold's, which is where the 207 came from: a state census taken at one
 point of a swept parameter is a census of that point.** The round measured
 presence at seed 1, where a command is either in a batch or not; the tool's own
 default sweeps 15 seeds per count, and there the same population is
-*fractionally* present on 11 maps including a tracked one. Both the round and
+_fractionally_ present on 11 maps including a tracked one. Both the round and
 the document were reasoning about a matrix whose cells the default settings turn
 into distributions. **The second, smaller: a table is one artefact — a domain
 stated for one column is owed to every column that shares its denominator.**
@@ -8412,7 +8409,7 @@ two assertions are that the corpus is non-empty and the pin table is intact.
 All 86 original pins reproduced — but the reporter's author first computed
 Sec.5's failure sums from `PlacementFailure.occurrences` and got wildly
 different numbers, then reasoned back to the pinned values by counting failure
-*records* instead. The pins were wrong. **`PlacementFailure` has no `count`
+_records_ instead. The pins were wrong. **`PlacementFailure` has no `count`
 field** — `types.ts:372` declares `occurrences?: number`, because `pushFailure`
 coalesces by bucket as records are made. The rev-12 fold's probe was written as
 `failure.count ?? 1`, which silently evaluates to `1` for every record, **and
@@ -8426,8 +8423,8 @@ conventions are now computed, printed and pinned (89 figures, up from 86), and
 the design doc states the unit in the same sentence as the formula.
 
 **Two lessons, and the first is this repo's own rule arriving from a new
-direction.** *An instrument that cannot fail loudly has to be checked against a
-number you already trust* — recorded in rev 4, about a probe reading `.value`
+direction.** _An instrument that cannot fail loudly has to be checked against a
+number you already trust_ — recorded in rev 4, about a probe reading `.value`
 off a type whose values live on `.args`. **The new half is that the toolchain
 that would have caught it was available and simply not pointed at the probe**:
 a throwaway file under `src/preview/__tests__/` is typechecked by
@@ -8457,7 +8454,7 @@ assertion is now a **domain** test — the bucket cell must equal the buckets of
 the count named in the Worst player count cell, red on 2306 rows — and the
 exceeds-`attempted` figure (803 occurrences, 462 records) is printed as a
 tripwire rather than asserted as a gate. The domain finding itself is untouched:
-it rests on the 191 rows whose bucket *set* differs and the 2306 whose counts
+it rests on the 191 rows whose bucket _set_ differs and the 2306 whose counts
 do, where the two readings disagree about the same command in the same unit.
 
 ## 2026-08-18 (later still) — CLAUDE.md's status cells de-changelogged, and the false banner they were hiding
@@ -8478,8 +8475,8 @@ BUG-006 through BUG-012 all read **FIXED 2026-08-12**, one per 4.8b item. So the
 first thing every session read was that the preview generates against rules the
 engine has been shown not to follow, six days after that stopped being true.
 
-That is rev 9's own rule — *a warning about a defect decays faster than a
-measurement, because its form is "we checked, do not check again"* — published
+That is rev 9's own rule — _a warning about a defect decays faster than a
+measurement, because its form is "we checked, do not check again"_ — published
 in this file, unapplied to this file. **A status banner is the highest-traffic
 prose in the repo and the least likely to be re-read by whoever discharges it**,
 because the session that fixes the bug is reading the bug tracker, not the
@@ -8534,8 +8531,8 @@ finding this round is about a rule, not a count.**
 
 - **B1 (blocking): "worst" is not a function, and rev 12 made a second cell
   depend on it.** The document states a tie-break exactly once, inside the
-  zero-attempt clause, and the column definition says only *"the lowest spawn
-  rate"*. Measured over 32 maps × 2/4/6/8 at seed 1, restricted to rows with two
+  zero-attempt clause, and the column definition says only _"the lowest spawn
+  rate"_. Measured over 32 maps × 2/4/6/8 at seed 1, restricted to rows with two
   or more rated counts and no zero-attempt cell: **7623 rows, of which 7313
   (95.9%) are tied at the minimum**, 2041 tracked. That is the corpus rather than
   an edge case, because a healthy command places 100% at every count. **Harmless
@@ -8553,8 +8550,8 @@ finding this round is about a rule, not a count.**
   defined **absent** as `runsContaining === 0`, which is also the state of every
   count the run has not reached. Sec.4.5 emits a `partial` carrying the report
   table after each count's batch, and every quantifier in Sec.5.1 ranges over
-  *the selected matrix*, so after the 2-player batch the third reason clause
-  fires on every row: *"this command is only generated at 2 players"*. **8125
+  _the selected matrix_, so after the 2-player batch the third reason clause
+  fires on every row: _"this command is only generated at 2 players"_. **8125
   rows at 2 players, of which 8040 (99.0%) are also present at 4, 6 or 8**;
   swept seeds 1–5, 8260 and 8172; tracked only, 2497 and 2438. Only **85 rows**
   in the corpus are genuinely 2-players-only. **Three of the four outputs the
@@ -8568,20 +8565,20 @@ finding this round is about a rule, not a count.**
   sixty-generation input, and the one derived number prints 1418%.** Sec.5.4's
   own opening sentence is that notes are accumulated across the runs and the
   default is 4 × 15. Measured over 2/4/6/8 × seeds 1–5, the covered fraction the
-  section prescribes as *"arithmetic over data this block already holds"* reads
+  section prescribes as _"arithmetic over data this block already holds"_ reads
   **1418.1% on `Rage Forest 2026.rms`** naive at 20 runs against 70.9% merged,
   1099.7% / 41.9% on `QS_Three_Bays`, 885.8% / 34.2% on `Chaotic_Strait`
   (tracked). **Two independent defects and the second is why the first was
-  invisible**: across runs the sum multiplies by the run count, and *within* one
+  invisible**: across runs the sum multiplies by the run count, and _within_ one
   run the spans overlap, so even the per-run sum overstates — and **`Rage
-  Forest`'s 70.9%, the number that motivated the whole clause, is the single
+Forest`'s 70.9%, the number that motivated the whole clause, is the single
   figure the naive arithmetic gets right**, because its two raw nodes happen to
   be disjoint. The block and row caps were both checked at one generation too:
   the worst map's block count is 60 at one run and **570 at 20** against a cap of
   1000, and `Pa_Site`'s largest group is a **2680-row** table carrying 134
   distinct spans repeated. The mechanism is Sec.5.4's two grouping rules meeting
   with no stated order — texts multiply because notes interpolate per-run values
-  and *"group by TEXT"* makes each value its own group, while the range rule that
+  and _"group by TEXT"_ makes each value its own group, while the range rule that
   exists for exactly this is keyed by `key`.
 - **S1: `cliffs.ts:289-298` is a seventh zero-attempt report path and a second
   static contradiction, and the document named neither.** It returns
@@ -8600,7 +8597,7 @@ finding this round is about a rule, not a count.**
   for.** `severity` declares `level` required (`tools-api/index.ts:325`) and
   `SimulationNote` has no severity field — it carries `prominence`, a two-value
   pane display hint. **A `prominence`-derived mapping is wrong in both
-  directions on this corpus**: `cliffsMinExceedsMax` (*"crashes the real game"*)
+  directions on this corpus**: `cliffsMinExceedsMax` (_"crashes the real game"_)
   is `drawer` and would file lowest, while the spanless `includes` family is
   `banner`.
 - **S3: the row and absent censuses are quoted over the matrix and measured at
@@ -8631,8 +8628,8 @@ finding this round is about a rule, not a count.**
 verbatim: a state added to a record is a state in every consumer of that record,
 and the census that justified it was taken in one of them.** Rev 12 added
 `runsContaining` for the two consumers it measured — the completed matrix and
-the within-batch sweep — and the state it introduced also describes *a count
-that has not run yet* and *the same aggregate part way through*. The tell is a
+the within-batch sweep — and the state it introduced also describes _a count
+that has not run yet_ and _the same aggregate part way through_. The tell is a
 state defined by a field being zero, in a record built incrementally. **The
 fold's: a section that measures its inputs must measure them at the rate its own
 document says it consumes them** — Sec.5.4 took every figure at one generation
@@ -8668,7 +8665,7 @@ the differences are the fold's contribution.**
 
 - **B2's fix is stated as a DOMAIN on the table's quantifier, with the round's
   `runs === 0` test kept as a backstop rather than as the rule.** The round
-  proposed *a count with `runs === 0` is not yet measured*. In the aggregate as
+  proposed _a count with `runs === 0` is not yet measured_. In the aggregate as
   Sec.4.2 specifies it — a map keyed `(commandSpan, playerCount)` — a count that
   has not run has **no entry at all**, so `runs === 0` never materialises and the
   clause would be inert against the implementation that produces the defect. The
@@ -8693,8 +8690,8 @@ the differences are the fold's contribution.**
 - **S4 gets an interim constant rather than a fourth deferral.** The round asked
   for a Sec.9 entry, a fixture and a reporter row, all of which landed. It did
   not set the number, and the reason the clause had no fixture and no reporter
-  row for three revisions is that *"the threshold is not a tuned constant to be
-  guessed at here"* leaves a prescribed rule unimplementable — a decision
+  row for three revisions is that _"the threshold is not a tuned constant to be
+  guessed at here"_ leaves a prescribed rule unimplementable — a decision
   deferred into nobody's hands. **Take `unresolvable / total producers ≥ 1/3`,
   labelled interim**, an order of magnitude clear of both anchors in both
   directions, with the direction of an error named (too high abstains on nothing
@@ -8717,18 +8714,18 @@ tie-break is deterministic.
 **S1's second half decides the defaulted-max question out loud, against the
 section's own cut criterion.** A script writing only `min_number_of_cliffs 9`
 trips the comparison against a maximum its author never wrote, which reads like
-Sec.3.4(b)'s *"a constraint the author never wrote"* — the criterion the packing
+Sec.3.4(b)'s _"a constraint the author never wrote"_ — the criterion the packing
 bound was cut on. **It does not apply, and the difference is where the
-constraint comes from.** The packing bound was cut because the *checker* was
+constraint comes from.** The packing bound was cut because the _checker_ was
 inventing the constraint; here the default is the **engine's**, the generator
 already resolves and reports against it, and the real game really does crash on
 the resolved pair. Report it, at error, with the finding worded so the defaulted
 side is visible.
 
 **S2 is decided as uniform `info`, and the uniformity is the argument rather
-than a default.** Sec.5.4's stated principle is that notes stay visible *"rather
+than a default.** Sec.5.4's stated principle is that notes stay visible _"rather
 than this tool silently re-deriving its own opinion about what it could not
-check"*, and assigning a severity **is** that opinion. `info` is the level that
+check"_, and assigning a severity **is** that opinion. `info` is the level that
 carries none. Sec.3.5 assigns a level where it has a basis — a verified
 reference-data row — and the contrast is the whole case: there the gate reads a
 field that means what the level means, here neither side of the passthrough has
@@ -8867,8 +8864,7 @@ settings echo when the flag is set; `protocol.ts`'s manifest validation now
 rejects a non-boolean value. (b) `HostMessage<P extends SerializedParseResult =
 SerializedParseResult>`, parameterised the same way `ToolContext` already is —
 verified against a real worker-shaped write-up: unparameterised, `TS2345`
-(`WireNumber` not assignable to `number`); parameterised, `tsc --noEmit` exits
-0. (c) `DEADLINES.cancelGraceMs` 30 000 → 60 000, equal to `runWatchdogMs`,
+(`WireNumber` not assignable to `number`); parameterised, `tsc --noEmit` exits 0. (c) `DEADLINES.cancelGraceMs` 30 000 → 60 000, equal to `runWatchdogMs`,
 amending `tools-api-design.md` Sec.4.1's own derivation in place (same move
 that document's rev 6 made once already) rather than deciding it locally —
 existing tests already asserted against the constant, not the literal, so this
@@ -8929,7 +8925,7 @@ no build-log entry of its own yet.
   counting-convention paragraph pins **134 (map, id) pairs**), and Sec.3.0 rule 1
   runs the static layer once per count with nothing collapsing a finding
   identical at all four. Pa_Site is 256 distinct findings × 4. Sec.4.5 states
-  *"`maxBlocksPerOutput` is not the reason and must not be cited as one"* over a
+  _"`maxBlocksPerOutput` is not the reason and must not be cited as one"_ over a
   block population that omits the static half entirely.
 - **B2: Sec.5.4's ordered pipeline is implemented three steps out of four.**
   Spans are deduped per `(key, text)` and never again, so the range-collapse
@@ -8943,8 +8939,8 @@ no build-log entry of its own yet.
 - **B3: a spanless note group prints "(0 places)".** The count is derived from
   `spans.length`; 29 of 338 same-text groups at one run carry no span, on 24 of
   32 maps including `sample.rms`.
-- **Standard.** Sec.5.1's *"print the run count beside the rate whenever
-  `runsContaining < runs`"* is unimplemented and `runsAt`/`countsRun` are dead
+- **Standard.** Sec.5.1's _"print the run count beside the rate whenever
+  `runsContaining < runs`"_ is unimplemented and `runsAt`/`countsRun` are dead
   code, against **104 partially-present rows on `13_Rings`, 40 on `AK_Namatjira`
   and 2 on `sample.rms`** at the defaults (S1); Sec.3.3 clause 2's `≥ 1/3`
   abstention does not exist (S2); a malformed settings block yields an empty
@@ -8963,10 +8959,10 @@ no build-log entry of its own yet.
 **Repo state at the end of the round:** `tsc --noEmit` clean, `eslint .` 0 errors
 / 15 pre-existing warnings, full suite **57 files / 1639 tests** green on one run.
 
-**The rule the round adds.** *A rule that caps an output has to enumerate every
+**The rule the round adds.** _A rule that caps an output has to enumerate every
 producer that writes into it, and a rule that counts findings has to state its
-unit in the section that renders them.* **And the review's own:** *a doc comment
-that restates a rule the code does not implement is worse than no comment* —
+unit in the section that renders them._ **And the review's own:** _a doc comment
+that restates a rule the code does not implement is worse than no comment_ —
 `aggregate.ts` enumerates Sec.5.4's four steps in order, implements three, and
 states the missing one as a property of the field.
 
@@ -8978,20 +8974,20 @@ states the missing one as a property of the field.
 
 ### B1 — the tool's output was rejected by its own host, on an ordinary corpus map
 
-`Pa_Site_v1.1.rms` produced **1026 blocks** at the default 2/4/6/8 matrix against `LIMITS.maxBlocksPerOutput`'s **1000**. `protocol.ts` returns *"output has 1026 blocks, over the 1000 cap"*, `host.ts` logs a `Protocol error` and calls `finish(run, { reason: "protocol" })`, which sets `run.terminated` and drops every later message. On a full run the tool died at the **first** `partial`, one batch of four in. **The user got nothing — not a truncated report — on the map this design cites by name 27 times.** `24hr_Bazi is God.rms` sat at 866–888, 87–89% of the cap.
+`Pa_Site_v1.1.rms` produced **1026 blocks** at the default 2/4/6/8 matrix against `LIMITS.maxBlocksPerOutput`'s **1000**. `protocol.ts` returns _"output has 1026 blocks, over the 1000 cap"_, `host.ts` logs a `Protocol error` and calls `finish(run, { reason: "protocol" })`, which sets `run.terminated` and drops every later message. On a full run the tool died at the **first** `partial`, one batch of four in. **The user got nothing — not a truncated report — on the map this design cites by name 27 times.** `24hr_Bazi is God.rms` sat at 866–888, 87–89% of the cap.
 
 **Two multipliers, and Sec.4.5's cap arithmetic contained neither.**
 
 - Sec.3.0 rule 1 runs the whole static layer once per selected count and nothing collapsed the result. Measured: `Pa_Site`'s 1024 static blocks are **256 distinct, each appearing exactly four times**; `24hr_Bazi is God` 216 × 4; `Chaotic_Strait` 19 × 4; `Menindee` 1 × 4. On this corpus **every** static finding is identical at all four counts.
-- Sec.5.1 said *"one `severity` block per finding"* for four revisions and never pinned what a finding is. The undeclared-`avoid_actor_area` population on `Pa_Site` at 4 players is **495 attribute occurrences / 134 distinct `(map, id)` pairs / 30 commands / 4 error ids**, depending on which section you read the unit out of — and Sec.3.2 pins `(map, id)` explicitly, one section away from a renderer that inherited none of it.
+- Sec.5.1 said _"one `severity` block per finding"_ for four revisions and never pinned what a finding is. The undeclared-`avoid_actor_area` population on `Pa_Site` at 4 players is **495 attribute occurrences / 134 distinct `(map, id)` pairs / 30 commands / 4 error ids**, depending on which section you read the unit out of — and Sec.3.2 pins `(map, id)` explicitly, one section away from a renderer that inherited none of it.
 
 **Three separable fixes, all landed.**
 
-1. **`playerCount` is a field on `StaticFinding`, never an interpolation into its text.** `runStaticChecks` stamps it on the way out (an `UnstampedFinding = Omit<StaticFinding, "playerCount">` alias means no individual check can forget it), `report.ts`'s `collapseStaticFindings` groups on `(kind, severity, text, span, commandSpan)`, and the renderer prints `At 2, 4 players: ` **only** when a group does not cover the whole selected matrix. `checkLandOverAllocation` now takes no player count at all: Sec.3.1's own cancellation argument says the sum is player-count invariant, and the *"At N players,"* prefix was the single thing stopping four identical findings from collapsing.
+1. **`playerCount` is a field on `StaticFinding`, never an interpolation into its text.** `runStaticChecks` stamps it on the way out (an `UnstampedFinding = Omit<StaticFinding, "playerCount">` alias means no individual check can forget it), `report.ts`'s `collapseStaticFindings` groups on `(kind, severity, text, span, commandSpan)`, and the renderer prints `At 2, 4 players: ` **only** when a group does not cover the whole selected matrix. `checkLandOverAllocation` now takes no player count at all: Sec.3.1's own cancellation argument says the sum is player-count invariant, and the _"At N players,"_ prefix was the single thing stopping four identical findings from collapsing.
 2. **The three units are pinned separately in Sec.5.1** — occurrence = row, `(map, id)` = census, family = block — rather than one of them being picked silently.
 3. **A family is one `severity` plus one `table`.** One `(kind, severity)` pair renders as a headline naming the family and its size, plus a table with `Location` and `Finding` columns and one clickable `rowSpan` per occurrence. `(kind, severity)` and not `kind`, because `actorAreaUndeclaredSharedBlockReference` files at `error` or `info` depending on the attribute and a `severity` block carries one level. **This is the shape Sec.5.4 already argues for on the same ground**, and it is bounded by `maxTableRowsRendered` (10,000) instead of the block cap.
 
-**Measured after the fix: the worst map in the corpus produces 6 static-pass blocks, and 0 of 32 maps produce output the host rejects.** The static layer now carries a *constant* bound — seven kinds × at most two severities × two blocks plus a heading, at most 29 whatever the script says — which is the term Sec.4.5's arithmetic was missing and now states.
+**Measured after the fix: the worst map in the corpus produces 6 static-pass blocks, and 0 of 32 maps produce output the host rejects.** The static layer now carries a _constant_ bound — seven kinds × at most two severities × two blocks plus a heading, at most 29 whatever the script says — which is the term Sec.4.5's arithmetic was missing and now states.
 
 **The gate is a corpus walk through `validateToolMessage`, and it has to be, because NEITHER multiplier alone reaches the cap** — with the collapse removed `Pa_Site` sits at 258 and with the family shape removed at 256, both legal and both absurd, so any block-count assertion is green in both worlds. The unit tests pin each rule separately; the corpus test asserts what the host asserts, walking `test-maps/*.rms` **from disk** rather than by name (11 files on a clone, 32 on a maintainer's disk, `staticOnly` so it is one AST pass per count per map). **Mutation-tested: with both rules removed it goes red on exactly `Pa_Site_v1.1.rms` and nothing else.** Five further mutants were run and all go red — the span dedupe removed (2 aggregate tests), the spanless count taken per bucket (1), taken as `spans.length` (2), the collapse disabled (3, including the lifecycle one), and the family shape removed (2).
 
@@ -9011,7 +9007,7 @@ Spans were deduped per `(key, text)` bucket and never again. Steps 1 and 2 both 
 
 **The round prescribed counting per `(key, text)` pair, "the same way spans are". Measured, that reports 14.** `sample.rms`'s `automaticBeach` is **one key, no span, with a tile count interpolated into its text**; over the 60 default generations it produces 14 distinct texts, which step 1 has already range-collapsed into one entry. Counting buckets reports 14 occurrences of a thing that happened once per run and is being reported once.
 
-**Folded per KEY instead**, which reads 1. This is the same *a count that tracks `runsPerPlayerCount` is reporting on the tool's settings rather than on the script* rule as B2, arriving on the branch that has no span to dedupe by — which is why the two had to be decided together. **And "places" is now a claim about spans only**: a spanless group renders its bare text, or `"(N times)."` when several keys produced one sentence. Rendering `"(1 place)"` for something with no place is the same category of false claim as `"(0 places)"`, one unit over.
+**Folded per KEY instead**, which reads 1. This is the same _a count that tracks `runsPerPlayerCount` is reporting on the tool's settings rather than on the script_ rule as B2, arriving on the branch that has no span to dedupe by — which is why the two had to be decided together. **And "places" is now a claim about spans only**: a spanless group renders its bare text, or `"(N times)."` when several keys produced one sentence. Rendering `"(1 place)"` for something with no place is the same category of false claim as `"(0 places)"`, one unit over.
 
 ### S2 — Sec.3.3 clause 2's abstention, built, and the interim constant turned into a measurement
 
@@ -9019,26 +9015,26 @@ Spans were deduped per `(key, text)` bucket and never again. Steps 1 and 2 both 
 
 **Measured over all 32 maps, and the corpus is bimodal:**
 
-| map | unresolvable / producers | |
-|---|---|---|
-| `24hr_Battle Lines 1.0.rms` | 29 / 40 = **72.5%** | abstains |
-| `TL Black Forest.rms` | 48 / 89 = **53.9%** | abstains |
-| `TL Grand Bara.rms` | 1 / 12 = 8.3% | |
-| `Pa_Site_v1.1.rms` | 20 / 245 = 8.2% | |
-| `TL Frontline.rms` | 15 / 228 = 6.6% | |
-| `24hr_Bazi is God.rms` | 19 / 552 = 3.4% | |
-| the other 26 maps | 0.0%, plus `Rage Forest` already abstaining on rule 4 | |
+| map                         | unresolvable / producers                              |          |
+| --------------------------- | ----------------------------------------------------- | -------- |
+| `24hr_Battle Lines 1.0.rms` | 29 / 40 = **72.5%**                                   | abstains |
+| `TL Black Forest.rms`       | 48 / 89 = **53.9%**                                   | abstains |
+| `TL Grand Bara.rms`         | 1 / 12 = 8.3%                                         |          |
+| `Pa_Site_v1.1.rms`          | 20 / 245 = 8.2%                                       |          |
+| `TL Frontline.rms`          | 15 / 228 = 6.6%                                       |          |
+| `24hr_Bazi is God.rms`      | 19 / 552 = 3.4%                                       |          |
+| the other 26 maps           | 0.0%, plus `Rage Forest` already abstaining on rule 4 |          |
 
 **Nothing sits between 8.3% and 53.9%**, so `1/3` — 4.0× above one edge and 1.6× below the other — is **kept rather than re-tuned**: a threshold inside a gap that wide is decided by the gap, and moving it anywhere in `[0.09, 0.53]` changes no map. It stays labelled interim because 30 of 32 maps read exactly 0.0%, so the corpus barely constrains the low side.
 
-**Both of the clause's anchors were quoted from denominators that were not this one.** Battle Lines's *"50 of 67"* is BUG-015's count of terrain-producer occurrences including ones this walk never attempts to resolve; `Menindee`'s *"1 of 539"* a wider population again, and against the resolver's own denominator that map reads **0 of 75**. The ratios move and the two cases do not — which is this document's own *an unpinned denominator is reproducible only by accident*, for the third time. **The denominator is now in the same sentence as the rule: a producer is an occurrence this walk actually tried to resolve**, so an absent optional attribute is on neither side of the fraction.
+**Both of the clause's anchors were quoted from denominators that were not this one.** Battle Lines's _"50 of 67"_ is BUG-015's count of terrain-producer occurrences including ones this walk never attempts to resolve; `Menindee`'s _"1 of 539"_ a wider population again, and against the resolver's own denominator that map reads **0 of 75**. The ratios move and the two cases do not — which is this document's own _an unpinned denominator is reproducible only by accident_, for the third time. **The denominator is now in the same sentence as the rule: a producer is an occurrence this walk actually tried to resolve**, so an absent optional attribute is on neither side of the fraction.
 
 **Priced: it costs 0 findings.** `terrainImpossible` measures **2 corpus-wide** with the abstention live (`AK_Namatjira`'s `SHORE_FISH` on `DLC_MANGROVESHALLOW`, `Chaotic_Strait`'s `MAKE_WATER_TERRAIN` on `DLC_NEWSHALLOW`) — the same 2 the section already pins as the tool's first true corpus findings, neither on an abstaining map.
 
 ### The rest, in one paragraph each
 
 - **S1 — the denominator rule had its carrier built and never wired.** `AggregateCell.runsContaining` existed and `MonteCarloAggregate.runsAt()` existed; `report.ts` read the first only through `cellStateOf` and the second not at all, so every rate printed bare and a rate summed over 1 of 15 runs was ranked against one summed over 15 of 15 in the same comparison. **A field added for a rule is not the rule.** Now printed as `100.0% — generated in 3 of 15 runs` whenever `runsContaining < runsAt(pc)`. The population at the defaults is **104 of 330 rows on `13_Rings`, 40 of 476 on `AK_Namatjira`, 2 of 8 on `sample.rms`** — all tracked.
-- **S3 — a malformed settings block produced a confident empty report.** `if (!bridged.ok) continue;` skipped every count, `completed++` ran unconditionally, and the tool emitted a report reading *"Total generations 60"* over empty tables with no error, no note and no static finding. Now `error` / `host-error` on the first non-`ok` bridge, matching the missing-`referenceData` guard at the top of the run, and the counter no longer increments on a generation that produced no data.
+- **S3 — a malformed settings block produced a confident empty report.** `if (!bridged.ok) continue;` skipped every count, `completed++` ran unconditionally, and the tool emitted a report reading _"Total generations 60"_ over empty tables with no error, no note and no static finding. Now `error` / `host-error` on the first non-`ok` bridge, matching the missing-`referenceData` guard at the top of the run, and the counter no longer increments on a generation that produced no data.
 - **S4 — `MAX_GENERATIONS_CEILING` was exported, commented with a citation to Sec.8 item 5, and asserted nowhere.** `grep -rn` returned the declaration and nothing else, so the constant could not go red on the change it names. Two assertions now: the defaults are within it, **and** `MAX_RUNS_PER_PLAYER_COUNT` × the matrix exceeds it, so the ceiling bounds something rather than being trivially true.
 - **M1 — two `host.ts` line citations in Sec.4.5 went stale within an hour of rev 13 shipping**, moved by Sec.7.2 item 1's own `reset()` rewrite. **Both claims remained true**, which is the point: the tools-api rev-9 decay measurement reproducing at a half-life of hours, and both are now anchored on symbols instead.
 - **M2 — "Elapsed" excluded the static layer**, so `staticOnly: true` reported `0.0s` for a pass that on `Pa_Site` walks the AST four times. The clock starts above the static loop.
@@ -9051,13 +9047,13 @@ Spans were deduped per `(key, text)` bucket and never again. Steps 1 and 2 both 
 
 Rev 13 named this as owed: its cap margin was computed at **one** generation while the tool's default is **sixty**, and the arithmetic between the two printed 1418%. Re-taken over all 32 maps at 2/4/6/8 × 15 under the corrected pipeline:
 
-| | 1 run | 20 runs, naive | **60 runs, corrected** | cap |
-|---|---|---|---|---|
-| worst map, note blocks | `24hr_Petra` 60 | `24hr_Caverns` **570** | **`24hr_Petra` 65** | `maxBlocksPerOutput` **1000** |
-| worst tracked map | `AK_Namatjira` 48 | 538 | **`AK_Namatjira` 58** | |
-| largest single table | `Pa_Site` **134** | **2680** | **`Pa_Site` 134** | `maxTableRowsRendered` **10 000** |
-| same, tracked | `AK_Namatjira` 77 | 1540 | **`AK_Namatjira` 77** | |
-| largest covered fraction | `Rage Forest` 70.9% | **1418.1%** | **`Rage Forest` 70.9%** | 100% by construction |
+|                          | 1 run               | 20 runs, naive         | **60 runs, corrected**  | cap                               |
+| ------------------------ | ------------------- | ---------------------- | ----------------------- | --------------------------------- |
+| worst map, note blocks   | `24hr_Petra` 60     | `24hr_Caverns` **570** | **`24hr_Petra` 65**     | `maxBlocksPerOutput` **1000**     |
+| worst tracked map        | `AK_Namatjira` 48   | 538                    | **`AK_Namatjira` 58**   |                                   |
+| largest single table     | `Pa_Site` **134**   | **2680**               | **`Pa_Site` 134**       | `maxTableRowsRendered` **10 000** |
+| same, tracked            | `AK_Namatjira` 77   | 1540                   | **`AK_Namatjira` 77**   |                                   |
+| largest covered fraction | `Rage Forest` 70.9% | **1418.1%**            | **`Rage Forest` 70.9%** | 100% by construction              |
 
 **The two table figures are EXACTLY their one-generation values**, which is the strongest available check that the dedupe does what the ordering rule says rather than merely reducing a number — `Pa_Site`'s `unsimulated` group is 134 distinct spans however many times the tool visits them, and 60 runs finds the same 134. The block counts sit slightly **above** their one-run values (60 → 65, 48 → 58) rather than at them, and that is the range rule working rather than a residue: more runs genuinely produce note sentences one run does not, and each new sentence is one more group.
 
@@ -9065,13 +9061,13 @@ Rev 13 named this as owed: its cap margin was computed at **one** generation whi
 
 **And the whole output is now bounded with every term named**: notes ≤ 65 measured, static findings ≤ 29 by construction and 6 measured, finding tables ≤ 12 by construction (a `heading` plus a `table` per stage, six stages), header 1. The version of that sum which stood for four revisions omitted the static term entirely, which is the whole of B1.
 
-**One thing the re-take found on its own, and it is this document's recurring shape again.** The 60-run census's covered-fraction figures did not match Sec.5.4's table, and the reason is that they are **different populations**: Sec.5.4's table is a **per-map union of every group's spans**, while `coveredFraction` — the field the paragraph directly above that table prescribes — is **per group**. Re-derived on the table's own population (2/4/6/8 × seeds 1–5): `QS_Three_Bays` reads **41.9% as a per-map union and 30.8% as its largest single group**, `24hr_Caverns` **41.1% and 16.9%**, `Chaotic_Straitv0.99` (tracked) **34.2% and 16.0%** — **all five of the table's merged figures reproduce to the unit under the union reading and none under the per-group one.** They coincide only on `Rage Forest` (70.9% both ways), which has one dominant group — **the same map and the same coincidence that hid the 1418% for three revisions.** Nothing in the table was wrong; the sentence naming which population it counts was missing, one paragraph under the prescription for the other one. Added. *An unpinned population is reproducible only by accident*, fourth occurrence.
+**One thing the re-take found on its own, and it is this document's recurring shape again.** The 60-run census's covered-fraction figures did not match Sec.5.4's table, and the reason is that they are **different populations**: Sec.5.4's table is a **per-map union of every group's spans**, while `coveredFraction` — the field the paragraph directly above that table prescribes — is **per group**. Re-derived on the table's own population (2/4/6/8 × seeds 1–5): `QS_Three_Bays` reads **41.9% as a per-map union and 30.8% as its largest single group**, `24hr_Caverns` **41.1% and 16.9%**, `Chaotic_Straitv0.99` (tracked) **34.2% and 16.0%** — **all five of the table's merged figures reproduce to the unit under the union reading and none under the per-group one.** They coincide only on `Rage Forest` (70.9% both ways), which has one dominant group — **the same map and the same coincidence that hid the 1418% for three revisions.** Nothing in the table was wrong; the sentence naming which population it counts was missing, one paragraph under the prescription for the other one. Added. _An unpinned population is reproducible only by accident_, fourth occurrence.
 
-*One incidental confirmation, from a mistake.* A directory-wide `vitest run` re-ran the probe while the sweep was still going, so `13_Rings_v1.2.rms` was measured twice by two independent processes — **22 groups / 44 blocks / 68 rows / 39.8% both times**, which is a free determinism check on the aggregator across the player-count matrix. (The operational lesson is the other half: run a throwaway probe by its exact path, never by directory.)
+_One incidental confirmation, from a mistake._ A directory-wide `vitest run` re-ran the probe while the sweep was still going, so `13_Rings_v1.2.rms` was measured twice by two independent processes — **22 groups / 44 blocks / 68 rows / 39.8% both times**, which is a free determinism check on the aggregator across the player-count matrix. (The operational lesson is the other half: run a throwaway probe by its exact path, never by directory.)
 
 ### Sec.8 item 3, discharged rather than deferred
 
-The item says the aggregation case must be *"a **corpus** case on one of those maps, not a hand-built one"*, and the first cut answered it with two `addGeneration` calls and a literal report, citing the item by name. Both now exist: the hand-built one stays (it pins the sum arithmetic, which is the item's other half), and beside it `sample.rms` runs at the real defaults — **tracked, so it holds on a clone** — asserting the batch size on every count, that a partially-present cell's sum covers the runs that held the span, and, **first**, that the population is non-empty. That last line is the control this repo requires of any zero-capable measurement: a corpus that stopped carrying the shape now reads as a red flag rather than as a clean pass over nothing.
+The item says the aggregation case must be _"a **corpus** case on one of those maps, not a hand-built one"_, and the first cut answered it with two `addGeneration` calls and a literal report, citing the item by name. Both now exist: the hand-built one stays (it pins the sum arithmetic, which is the item's other half), and beside it `sample.rms` runs at the real defaults — **tracked, so it holds on a clone** — asserting the batch size on every count, that a partially-present cell's sum covers the runs that held the span, and, **first**, that the population is non-empty. That last line is the control this repo requires of any zero-capable measurement: a corpus that stopped carrying the shape now reads as a red flag rather than as a clean pass over nothing.
 
 ### Five new mutants, one per defect
 
@@ -9079,7 +9075,7 @@ Added to Sec.8 item 6, each against a world this repo has actually been in: the 
 
 ### What the round confirmed, kept here because the round file is deleted
 
-Recorded so the next session does not re-derive it. **Every one of rev 13's three blocking fixes is correctly implemented where it concerns the finding table**: `findWorstCount` sorts ascending and updates only on a **strict** rate improvement, so the lowest-player-count tie-break falls out by construction rather than by a comparator anyone can invert; zero-attempt counts are collected before the rate scan and the lowest is named; absent counts are filtered out of `present` and never ranked; the buckets cell reads the worst count's own domain; and a `partial` is built over `selectedCounts.slice(0, i + 1)`, so rev 13's *"this command is only generated at 2 players"* defect is genuinely gone on all three partials. **Sec.3.2's census reproduces to the unit through the check rather than through an approximation of it** — 4 error ids / 4 commands / 2 maps (`Pa_Site` 81, 82, 91 and `Menindee` 1000), 30 avoid commands / 7 maps, with `AK_Vanguard` abstaining and emitting nothing. **Sec.3.0b's asymmetry is implemented as an asymmetry**: `walkItems` is unconditionally generous and every filtering decision sits in its caller. **Sec.5.1's other pinned rules are all present**: the `NON_NUMERIC` marker rather than `0%` or `NaN%`, S3 always taking the stage label with a real borrowed span still linked, the S5 discriminator keyed on the note at the row's own span, the S3 reason keyed on the note's **key**, and the suppression keyed on a **present** `actorAreaUndeclaredToPlaceIn` finding for the same `commandSpan`, replacing the bucket rather than emptying the cell. **Sec.3.1's implementation is sharper than the section was** and has been folded back as the prescribed form: one `declaredTargetTiles(cmd, dim, 1)` call whose single value is both the exclusion test's input and the sum's contribution, so the pre-division reading and the cancellation argument cannot drift apart.
+Recorded so the next session does not re-derive it. **Every one of rev 13's three blocking fixes is correctly implemented where it concerns the finding table**: `findWorstCount` sorts ascending and updates only on a **strict** rate improvement, so the lowest-player-count tie-break falls out by construction rather than by a comparator anyone can invert; zero-attempt counts are collected before the rate scan and the lowest is named; absent counts are filtered out of `present` and never ranked; the buckets cell reads the worst count's own domain; and a `partial` is built over `selectedCounts.slice(0, i + 1)`, so rev 13's _"this command is only generated at 2 players"_ defect is genuinely gone on all three partials. **Sec.3.2's census reproduces to the unit through the check rather than through an approximation of it** — 4 error ids / 4 commands / 2 maps (`Pa_Site` 81, 82, 91 and `Menindee` 1000), 30 avoid commands / 7 maps, with `AK_Vanguard` abstaining and emitting nothing. **Sec.3.0b's asymmetry is implemented as an asymmetry**: `walkItems` is unconditionally generous and every filtering decision sits in its caller. **Sec.5.1's other pinned rules are all present**: the `NON_NUMERIC` marker rather than `0%` or `NaN%`, S3 always taking the stage label with a real borrowed span still linked, the S5 discriminator keyed on the note at the row's own span, the S3 reason keyed on the note's **key**, and the suppression keyed on a **present** `actorAreaUndeclaredToPlaceIn` finding for the same `commandSpan`, replacing the bucket rather than emptying the cell. **Sec.3.1's implementation is sharper than the section was** and has been folded back as the prescribed form: one `declaredTargetTiles(cmd, dim, 1)` call whose single value is both the exclusion test's input and the sum's contribution, so the pre-division reading and the cancellation argument cannot drift apart.
 
 ### Verification
 
@@ -9087,11 +9083,11 @@ Recorded so the next session does not re-derive it. **Every one of rev 13's thre
 
 ### The rules this round produced, both now in CLAUDE.md
 
-**The round's:** *a rule that caps an output has to enumerate every producer that writes into it, and a rule that counts findings has to state its unit in the section that renders them.* Three sections each correct in isolation — a cap paragraph naming two of three block populations, a render rule with no unit, and a per-count loop multiplying whatever that turned out to be — produced a flagship tool whose output its own protocol refuses. **The tell is a cap paragraph whose own arithmetic names fewer block kinds than the output contains.**
+**The round's:** _a rule that caps an output has to enumerate every producer that writes into it, and a rule that counts findings has to state its unit in the section that renders them._ Three sections each correct in isolation — a cap paragraph naming two of three block populations, a render rule with no unit, and a per-count loop multiplying whatever that turned out to be — produced a flagship tool whose output its own protocol refuses. **The tell is a cap paragraph whose own arithmetic names fewer block kinds than the output contains.**
 
-**The fold's, and it is the first round that could have one:** *a doc comment that restates a rule the code does not implement is worse than no comment.* `aggregate.ts:118-120` enumerated Sec.5.4's four steps in order and implemented three; `aggregate.ts:125` stated the missing step as a property of the field. Both read as verification to the next person and neither is — the *a warning about a defect decays exactly as a measurement does, and it decays faster* rule one layer down, because a comment asserting a property invites nobody to test it.
+**The fold's, and it is the first round that could have one:** _a doc comment that restates a rule the code does not implement is worse than no comment._ `aggregate.ts:118-120` enumerated Sec.5.4's four steps in order and implemented three; `aggregate.ts:125` stated the missing step as a property of the field. Both read as verification to the next person and neither is — the _a warning about a defect decays exactly as a measurement does, and it decays faster_ rule one layer down, because a comment asserting a property invites nobody to test it.
 
-**And a third, cheaper than both:** *a review's prescribed fix is measured, not transcribed.* This round's B3 fix was one sentence, obviously right, and reports 14 for a note that occurred once. The rule was already on the books from rev 8 — *price a prescribed fix by running the check with and without it* — and this is the first time it caught a fix rather than confirming one.
+**And a third, cheaper than both:** _a review's prescribed fix is measured, not transcribed._ This round's B3 fix was one sentence, obviously right, and reports 14 for a note that occurred once. The rule was already on the books from rev 8 — _price a prescribed fix by running the check with and without it_ — and this is the first time it caught a fix rather than confirming one.
 
 ## 2026-08-19 (evening) — four report-surface fixes from the first read of real output, and three of the four were mine
 
@@ -9099,7 +9095,7 @@ Recorded so the next session does not re-derive it. **Every one of rev 13's thre
 
 ### 1. Locations named in prose were character offsets, against a standing Hard rule with an exemplar in the same folder
 
-Both tables rendered `offset 40` — a position no editor displays. The rule (*a diagnostic that points at a SECOND place in the file names a LINE; spans stay character offsets*) has been in CLAUDE.md since 2026-08-13, it was written after seven RMS03xx diagnostics shipped to a release saying *"already set at offset 86970"*, and `scriptStats.ts` — one directory away, whose header comment is **about this exact distinction** — had it right from the start.
+Both tables rendered `offset 40` — a position no editor displays. The rule (_a diagnostic that points at a SECOND place in the file names a LINE; spans stay character offsets_) has been in CLAUDE.md since 2026-08-13, it was written after seven RMS03xx diagnostics shipped to a release saying _"already set at offset 86970"_, and `scriptStats.ts` — one directory away, whose header comment is **about this exact distinction** — had it right from the start.
 
 Fixed with `lineNumberOfOffset` (`src/parser/lineIndex.ts`) at both render sites, in the static family table and the notes table. The `rowSpans` entry beside each row still carries the offset, so the click-through is unchanged; only the cell a person reads and then acts on moved. **A rule that already has a working exemplar in the same folder is not self-enforcing**, which is the only durable thing here.
 
@@ -9111,11 +9107,11 @@ Now a terminator is appended only when the text does not already end in `.`/`!`/
 
 ### 3. `automaticBeach` is not a statement about what the preview could not check, and it was crowding out the ones that are
 
-*"The engine lays a beach wherever the ground meets deeper ground, with no command asking for it — N tiles here…"* — three sentences, on most of the corpus, under a heading that promises the opposite. **The preview models this correctly and completely**; the note is a true description of engine behaviour, and in the Advanced Tools pane its audience already knows the rule.
+_"The engine lays a beach wherever the ground meets deeper ground, with no command asking for it — N tiles here…"_ — three sentences, on most of the corpus, under a heading that promises the opposite. **The preview models this correctly and completely**; the note is a true description of engine behaviour, and in the Advanced Tools pane its audience already knows the rule.
 
 `NOTE_KEYS_NOT_PASSED_THROUGH` (`aggregate.ts`) now excludes it, filtered at **ingestion** so the group counts and the covered fraction describe exactly what the report shows. It stays in the preview pane's own drawer, where a reader who does not yet know the rule is the audience.
 
-**The bar for this list is a category test, not a usefulness judgement**, and the distinction is the whole of Sec.5.4: a note is excluded only when it is *not a statement about what the preview could not check at all*. `behaviorVersion2` and `atColor` look like noise and stay — they are real gaps between preview and engine, and **a limitation with low consequence is still a limitation**. Judging notes by usefulness is precisely the opinion the section's opening sentence forbids the tool from forming.
+**The bar for this list is a category test, not a usefulness judgement**, and the distinction is the whole of Sec.5.4: a note is excluded only when it is _not a statement about what the preview could not check at all_. `behaviorVersion2` and `atColor` look like noise and stay — they are real gaps between preview and engine, and **a limitation with low consequence is still a limitation**. Judging notes by usefulness is precisely the opinion the section's opening sentence forbids the tool from forming.
 
 ### 4. `hideHealthy`, defaulting ON — the tables were mostly rows with nothing to say
 
@@ -9129,7 +9125,7 @@ Read as `params.hideHealthy !== false` rather than `=== true`, because the defau
 
 `tsc --noEmit` clean **across `src/tools/**` and `tools-api/**`**; `eslint src/tools` exit 0. Tools suites **204 tests green**. Twelve new assertions: line numbers in both tables with the offset still on `rowSpans`, the doubled-terminator case and its negative, the beach key dropped with a live note beside it surviving, a beach-only script producing no passthrough section at all, the low-consequence notes kept, and five on the filter (drops the healthy row, keeps the 100%-with-bucket row, keeps zero-attempt, prints the count at 1 and at 0, prints nothing when off).
 
-**Two fixture bugs of my own, caught by the new tests going red for the right reason.** The line-number fixture asserted `line 3` for an offset on line 2 (the code was right, my arithmetic was not), and the filter helper folded one row per generation, making every row partially-present so Sec.5.1's denominator clause decorated every rate — a fixture measuring the wrong rule. Both fixed; recorded because *a fixture that cannot distinguish is not a test* has a mirror image, which is a fixture that distinguishes something other than what it names.
+**Two fixture bugs of my own, caught by the new tests going red for the right reason.** The line-number fixture asserted `line 3` for an offset on line 2 (the code was right, my arithmetic was not), and the filter helper folded one row per generation, making every row partially-present so Sec.5.1's denominator clause decorated every rate — a fixture measuring the wrong rule. Both fixed; recorded because _a fixture that cannot distinguish is not a test_ has a mirror image, which is a fixture that distinguishes something other than what it names.
 
 **Note for the next session:** `src/components/sidepanel/ReferenceTable.tsx` currently has four `tsc` errors and they are **not from this work** — the file was modified at 18:20 while this session was running, by a parallel session. Untouched here.
 
@@ -9141,7 +9137,7 @@ Read as `params.hideHealthy !== false` rather than `=== true`, because the defau
 
 **2026-08-22 — BUG-014 fixed: the Tools pane's settings echo now reads a per-run snapshot, not the live generation context.**
 
-`src/tools/ToolsPane.tsx`'s output header rendered `Run at {generation.playerCount} players, {generation.mapSize}` straight from `useGenerationSettings()` — the live context — so changing the player count or map size after a run finished silently re-labelled that finished result with settings it was never run at. The comment directly above the line named the intent correctly (*"Echoing the run's settings makes a stale result self-describing instead of silently wrong"*) and then read the wrong source for it.
+`src/tools/ToolsPane.tsx`'s output header rendered `Run at {generation.playerCount} players, {generation.mapSize}` straight from `useGenerationSettings()` — the live context — so changing the player count or map size after a run finished silently re-labelled that finished result with settings it was never run at. The comment directly above the line named the intent correctly (_"Echoing the run's settings makes a stale result self-describing instead of silently wrong"_) and then read the wrong source for it.
 
 Fixed by giving `ToolHost` a place to hold the run's own settings rather than making the pane reach for the live context at render time: `RunState` gained `settingsSnapshot: { playerCount: number; mapSize: string } | null` (`src/tools/host.ts`), `start()` takes it as an optional fifth argument (default `null`, so the ~24 existing `host.start(tool, {}, "src")` call sites in `protocol.test.ts` needed no changes), and it is folded into `this.state` once, at the same point `snapshot` (the document text) already is — never touched again for that run. `ToolsPane.startRun` passes `{ playerCount: generation.playerCount, mapSize: generation.mapSize }` alongside the runner argument, and the echo now reads `state.settingsSnapshot` instead of `generation`.
 
@@ -9169,7 +9165,7 @@ Rev 14's own five mutants (plus the two `fromOriginFallback` path-split mutants)
 
 **2026-08-23 — Terrain and Objects reference-table rows gained a `Description` column, transcribed from the community reference spreadsheets in `reference-docs/`.**
 
-Neither `game-constants.json` nor the reference table said anything about what a terrain or object actually *is* beyond its name — `isWater`/`isForest`/etc. are booleans the generator reads, not prose a person reads. The community spreadsheets already carry that prose: Zetnus's "AoE2 Terrains" has a `Comments` column (every one of the 131 terrain rows has one — "grassy", "no beaches", "automatically placed when land terrains border water"), and "Definitive Constants List" carries the same idea across three sheets keyed by the same genie unit id as `constId` — `DE only`'s `Description` (631 of 2701 rows, mostly age/variant disambiguation like "castle age" or "no graphics in DE"), `Resources`' and `Animals`' `Comments` (yield notes, habitat asides, and the odd caught bug — `FELLED_TREE_BAOBAB`/`FELLED_TREE_BAMBOO` are labelled backwards in the source data itself, "actually bamboo"/"actually baobab").
+Neither `game-constants.json` nor the reference table said anything about what a terrain or object actually _is_ beyond its name — `isWater`/`isForest`/etc. are booleans the generator reads, not prose a person reads. The community spreadsheets already carry that prose: Zetnus's "AoE2 Terrains" has a `Comments` column (every one of the 131 terrain rows has one — "grassy", "no beaches", "automatically placed when land terrains border water"), and "Definitive Constants List" carries the same idea across three sheets keyed by the same genie unit id as `constId` — `DE only`'s `Description` (631 of 2701 rows, mostly age/variant disambiguation like "castle age" or "no graphics in DE"), `Resources`' and `Animals`' `Comments` (yield notes, habitat asides, and the odd caught bug — `FELLED_TREE_BAOBAB`/`FELLED_TREE_BAMBOO` are labelled backwards in the source data itself, "actually bamboo"/"actually baobab").
 
 New nullable `description` field on `$defs/constant` in `game-constants.schema.json`, same shape and same "one-time transcription, not something `tools/extract-constants` derives" status as `isWater`/`isForest`/`isHybrid`/`beachTerrain` — added to that script's `CONSTANT_KEY_ORDER` so a future dat-driven run carries it through rather than silently dropping it (the exact `beachTerrain` near-miss this file already warns about). Merged into the 131 terrain rows (131/131 covered) and 2670 object rows (668/2670 — the rest are gaia-roster carcasses/blood decals and other rows the community table never annotated) by a one-off script, using `extract_constants.py`'s own `format_game_constants` writer so the diff touches exactly the 799 changed rows and nothing else (confirmed: `git diff --stat` shows 799 insertions / 799 deletions, one line each). Where more than one sheet had a comment for the same id, `DE only` wins — checked by hand across all 59 conflicts and it was consistently the more complete text (e.g. "herdable; brown" vs. `Animals`' bare "brown").
 
@@ -9183,9 +9179,9 @@ New nullable `description` field on `$defs/constant` in `game-constants.schema.j
 
 `src/tools/__tests__/consistencyChecker.measure.test.ts` had six sections (rev 12's original build) and owed four more per rev 13/14's own "four censuses are owed to it" paragraph. All four are now in: **Section 7** (tie-break census, Sec.5.1's "worst" as a minimum usually tied across counts — free, reuses sweepA's rows), **Sections 8/9** (the per-map static block count against `LIMITS.maxBlocksPerOutput`, and Sec.3.3 clause 2's unresolvable-producer ratio, replacing the interim `1/3` with a measurement — cheap, no generation), **Section 10** (presence and drift swept together, 2/4/6/8 × seeds 1–5, a new 640-generation sweep — the two axes no earlier sweep crossed), and **Section 11** (the note census at the tool's own DEFAULT run count, 2/4/6/8 × 15 seeds/map, 1920 generations — the re-take Sec.4.5's block-cap margin actually depends on, since every figure Sec.5.4 pinned before this file existed was taken at one generation against a default of sixty). Pin count 89 → 116.
 
-**The first full run found a genuine bug in the new code, not just corpus drift.** Section 10's "flip" control — rev 12's own finding that 0 rows move from absent-under-seed-1 to present-under-some-other-seed — measured **549** instead of 0. Cause: the control's loop counted every (row, playerCount) pair sweepC's 5-seed union found present, without excluding rows sweepC discovers that sweepA (seed 1 only) never saw at *any* player count — exactly the ~153 new rows that make `totalRows` itself grow 8358 → 8511, a population the design doc already accounts for separately. Fixed by restricting the control to rows sweepA already has a record for, checking only the specific counts that row's own seed-1 data marks absent. Re-run: **0**, matching rev 12's finding.
+**The first full run found a genuine bug in the new code, not just corpus drift.** Section 10's "flip" control — rev 12's own finding that 0 rows move from absent-under-seed-1 to present-under-some-other-seed — measured **549** instead of 0. Cause: the control's loop counted every (row, playerCount) pair sweepC's 5-seed union found present, without excluding rows sweepC discovers that sweepA (seed 1 only) never saw at _any_ player count — exactly the ~153 new rows that make `totalRows` itself grow 8358 → 8511, a population the design doc already accounts for separately. Fixed by restricting the control to rows sweepA already has a record for, checking only the specific counts that row's own seed-1 data marks absent. Re-run: **0**, matching rev 12's finding.
 
-**Two of Section 10's other figures were also wrong to pin as exact.** The design doc states its own convention for this census — *"Sec.8's invariant figures are pinned off this, with `≥`"* — because they're a measured floor over a 5-seed sample, not an exact invariant. The first cut used exact equality throughout and read `within-batch partial pairs` as 837 against a pinned 240 (3.5×), which is real growth from sampling more seeds, not drift. `makePinner` gained a `pinMin` variant (`actual >= expected`) and the two affected figures now use it; every other pin in the file stays exact by design.
+**Two of Section 10's other figures were also wrong to pin as exact.** The design doc states its own convention for this census — _"Sec.8's invariant figures are pinned off this, with `≥`"_ — because they're a measured floor over a 5-seed sample, not an exact invariant. The first cut used exact equality throughout and read `within-batch partial pairs` as 837 against a pinned 240 (3.5×), which is real growth from sampling more seeds, not drift. `makePinner` gained a `pinMin` variant (`actual >= expected`) and the two affected figures now use it; every other pin in the file stays exact by design.
 
 **Final run: 116 pins, 2 DRIFT** — both Section 11 note-block counts off by exactly one (`24hr_Petra` 64 vs pinned 65, `AK_Namatjira` 57 vs pinned 58), plausibly the ~3 days of uncommitted tree changes since rev 14's own 2026-08-19 measurement shifting one stochastic note discovery. Left as reported drift rather than chased, per the reporter's own stated rule that its expected values are as assumable as the numbers it prints.
 
@@ -9223,7 +9219,7 @@ That also settles the `never re-print code` question: the rule is scoped to Brea
 
 ### Defect 1 - the design pinned a corpus fact that is not one, and it was the tool's largest behaviour
 
-Rev 1's Sec.5 table put section items at `L = 0` and justified it in six words: *"matching the corpus"*. Diffing `local/Arena.rms` showed the whole file de-indenting: **4,746 of 5,403 lines changed at the all-preserve default**, and every one of them a DE official map's deliberate layout being thrown away.
+Rev 1's Sec.5 table put section items at `L = 0` and justified it in six words: _"matching the corpus"_. Diffing `local/Arena.rms` showed the whole file de-indenting: **4,746 of 5,403 lines changed at the all-preserve default**, and every one of them a DE official map's deliberate layout being thrown away.
 
 Measured properly: **87 of 263 corpus section bodies are stepped in under their header**, and the split is per script - 32 never, **13 always**, 3 mixed, with **eleven of the thirteen being DE official maps**. This is the identical bimodal shape as Sec.3.1's inline/expanded finding, arriving one level up, and rev 1 had answered it correctly there (`blockLayout: preserve`) and by assertion here. `sectionIndent: "preserve" | "flat" | "indented"` now classifies per section.
 
@@ -9275,29 +9271,29 @@ The diagnosis in the bug entry was exactly right. **Its numbers were not, and ne
 
 Census over the 52 corpus scripts, counting `#const NAME <string>` where the value is not already a script symbol:
 
-| the value names | definitions |
-|---|---|
-| a TERRAIN game constant | 96 |
-| an OBJECT game constant | **108** |
-| neither, and must stay dropped | 4 |
+| the value names                | definitions |
+| ------------------------------ | ----------- |
+| a TERRAIN game constant        | 96          |
+| an OBJECT game constant        | **108**     |
+| neither, and must stay dropped | 4           |
 
 The entry names only `create_terrain`/`terrain_type`/`base_terrain`. `#const LURE BOAR` + `create_object LURE` is the same defect on the larger population, and fixing one without the other would have left it half done. The four negatives are real and worth keeping: three are aliases to another script `#const` that is not defined yet at that point (so the engine cannot resolve them either), and one is `24hr_Battle Lines 1.0.rms`'s `#const restricted_terrain_distance max_distance_to_other_zones`, the attribute-name alias BUG-003's triage already knew about.
 
 ### The entry's headline figures do not reproduce, and the metric behind them is the wrong one
 
-It claims *"97 `terrainAbsent` failures across two maps"* and *"Battle Lines loses 50 of its 67 terrain-producer occurrences"*, measured 2026-08-18. Re-measured at the same 4 players / Normal / seed 1: **`terrainAbsent` is 1,569 across 46 maps.**
+It claims _"97 `terrainAbsent` failures across two maps"_ and _"Battle Lines loses 50 of its 67 terrain-producer occurrences"_, measured 2026-08-18. Re-measured at the same 4 players / Normal / seed 1: **`terrainAbsent` is 1,569 across 46 maps.**
 
 Two separate reasons, and the second one matters more than the correction.
 
-**One: the bucket does three jobs.** Of 127 distinct `terrainAbsent` details, only one family is *"reference data doesn't know the terrain X"*. The rest are *"no tile on the map currently matches this patch's base_terrain"* and *"no tile satisfies every constraint"* - a resolved terrain with nowhere to go, which is a different failure sharing a bucket. Neither is BUG-015.
+**One: the bucket does three jobs.** Of 127 distinct `terrainAbsent` details, only one family is _"reference data doesn't know the terrain X"_. The rest are _"no tile on the map currently matches this patch's base_terrain"_ and _"no tile satisfies every constraint"_ - a resolved terrain with nowhere to go, which is a different failure sharing a bucket. Neither is BUG-015.
 
 **Two, and this is the lesson: the failure count is nearly blind to this bug.** Fixing it moved corpus `terrainAbsent` **1,569 -> 1,552**, seventeen. Read on that number alone the fix looks negligible. The grid says otherwise, on the one map that carries the idiom:
 
-| `24hr_Battle Lines 1.0.rms` | before | after |
-|---|---|---|
-| distinct terrains on the final grid | **1** | **6** |
-| tiles of the base placeholder | 40,000 of 40,000 | 2,709 |
-| objects placed | 324 | **921** |
+| `24hr_Battle Lines 1.0.rms`         | before           | after   |
+| ----------------------------------- | ---------------- | ------- |
+| distinct terrains on the final grid | **1**            | **6**   |
+| tiles of the base placeholder       | 40,000 of 40,000 | 2,709   |
+| objects placed                      | 324              | **921** |
 
 The whole 200x200 map was a single flat unnamed terrain, and almost none of the damage ever reached a failure record - the terrain commands resolved to nothing and painted nothing, silently, and `create_object` then had no terrain to stand on. **CLAUDE.md's own rule, arriving from the other direction: a stage that silently produces a plausible output is harder to find than one that throws.** The corollary for bug entries is that a figure is only as good as the instrument behind it, and the instrument here should always have been the grid.
 
@@ -9361,15 +9357,15 @@ Settings > Hotkeys row, `ui-help.json` entries (`settings.hotkeys.codeToggleLayo
 
 ## 2026-08-29 — Design: source languages in the Code tab (`docs/source-languages-design.md`, rev 1)
 
-**A design document only, no code.** Covers PLAN.md's "Later" item *"multi-language dropdown in Code tab"*: letting the Code tab hold Python or Racket source that compiles to RMS, using the existing community compilers (`AntoineRoll/python-aoe2rms`, `Erbenos/aoe2-rms`) rather than writing one.
+**A design document only, no code.** Covers PLAN.md's "Later" item _"multi-language dropdown in Code tab"_: letting the Code tab hold Python or Racket source that compiles to RMS, using the existing community compilers (`AntoineRoll/python-aoe2rms`, `Erbenos/aoe2-rms`) rather than writing one.
 
-**The load-bearing decision is where the compiled RMS goes.** It fills the *existing* module-scope Monaco model (`inmemory://model/document.rms`), and the SOURCE gets the new second model. Everything downstream of that model — parser, preview, resource totals, tools-read, diagnostics — needs no change, which is five of the eight rows in the doc's own subsystem table. The cost is the other three: a generated document must become read-only, and the doc inventories every write path that has to be gated, including the non-obvious one (`stampHeader` deliberately edits the model rather than the bytes, so in generated mode it must become a write-time prepend or the next build erases it).
+**The load-bearing decision is where the compiled RMS goes.** It fills the _existing_ module-scope Monaco model (`inmemory://model/document.rms`), and the SOURCE gets the new second model. Everything downstream of that model — parser, preview, resource totals, tools-read, diagnostics — needs no change, which is five of the eight rows in the doc's own subsystem table. The cost is the other three: a generated document must become read-only, and the doc inventories every write path that has to be gated, including the non-obvious one (`stampHeader` deliberately edits the model rather than the bytes, so in generated mode it must become a write-time prepend or the next build erases it).
 
 **Two files, not three.** The build description (pack id, version, entry file, source hash) rides in the generated `.rms`'s own header comment, which the app already stamps, rather than in a `.aorms` sidecar. A `.aorms` holding the SOURCE was considered and rejected: `python-aoe2rms` is an ordinary library, so a non-`.py` module breaks `import`, and Racket's `#lang` reader and `raco` both want `.rkt` — renaming the source is renaming it out of the toolchain that is the entire reason to use it. Named cost of the banner: if someone gitignores the artefact, the association is not in version control.
 
 **Two findings that shaped the contract, both measured against the external projects on 2026-08-29.** `Map.compile()` already returns the finished script as a string, so an upstream build entry point is small (Appendix B); and `save_to_file(path, overwrite=False)` means a script written to the README's shape **raises `FileExistsError` on its second run**, which any build loop hits immediately. Until a CLI exists the pack must guess which file the script wrote (`newestRmsIn`), whose ambiguous cases fail the build rather than pick one — the same refusal-to-guess the checker's own report rules follow.
 
-**Security surface, stated because the app has none of it today.** `src-tauri` carries no process-spawn capability at all. The doc pins a bespoke Rust command over `tauri-plugin-shell`: the plugin's scope is static at build time while the command line comes from a pack installed after release, so a static scope would have to be wide enough to hand the webview a general execute primitive. Manifests name a runtime *id* resolved from settings, never an executable, which is what keeps opening a downloaded map from running anything.
+**Security surface, stated because the app has none of it today.** `src-tauri` carries no process-spawn capability at all. The doc pins a bespoke Rust command over `tauri-plugin-shell`: the plugin's scope is static at build time while the command line comes from a pack installed after release, so a static scope would have to be wide enough to hand the webview a general execute primitive. Manifests name a runtime _id_ resolved from settings, never an executable, which is what keeps opening a downloaded map from running anything.
 
 **Build history (Sec.6.7) is the answer to "roll back a bad build"**, and it is not git: a snapshot per build in app data, never beside the source, with Restore landing as one edit on Monaco's undo stack rather than a file overwrite. Restoring generated output without its source is deliberately not offered.
 
@@ -9381,9 +9377,9 @@ No tests, no typecheck run — nothing executable was added.
 
 **Scheduled after M6, and the ordering is now a decision rather than a roadmap accident.** External tools and language packs need the same install machinery, and whichever ships first builds it for both. M6 builds it: the tools contract already runs five built-ins, so its install story is the shorter step from where the code is, and a tool is the safer thing to get wrong first because it has no ambient authority beyond its stdin. Sec.11 says that where the two documents can disagree, M6 is right and this one is the bug — with one carve-out, the consent wording, since "this tool can read your script" and "building with this pack runs `python` on your map file" are different claims.
 
-**Sec.3.3 is new and is the other half of Sec.3.2.** The write-path inventory was done; the *save* machinery around it was not, and every part of it is singular in a way generated mode breaks. Dirty tracks the source model only (a build moves the generated model's version id, and prompting to save an artefact the app wrote itself is the wrong question); `ensureSavedBefore` saves the source; a failed build must not fail the save; Open and New have to clear the generated model or the previous map's totals and preview survive into a document that has not been built. Save As writes the source under the new name and **leaves the old `.rms` where it is** — deleting a playable map nobody asked about is not a Save As.
+**Sec.3.3 is new and is the other half of Sec.3.2.** The write-path inventory was done; the _save_ machinery around it was not, and every part of it is singular in a way generated mode breaks. Dirty tracks the source model only (a build moves the generated model's version id, and prompting to save an artefact the app wrote itself is the wrong question); `ensureSavedBefore` saves the source; a failed build must not fail the save; Open and New have to clear the generated model or the previous map's totals and preview survive into a document that has not been built. Save As writes the source under the new name and **leaves the old `.rms` where it is** — deleting a playable map nobody asked about is not a Save As.
 
-Three smaller ones, each a decision rather than a note. `stampHeader`'s per-row ownership state stays unused in generated mode, because it exists for headers a *user* may edit and nobody edits a banner that is rewritten every build. Line endings normalise to `\n` at the boundary, since this app is offset-based end to end and a compiler emitting CRLF would shift every span against the text the pack thinks it produced. And a build is refused while a tool run is active rather than cancelling it: a build takes seconds and can wait, a Monte Carlo run cannot be resumed.
+Three smaller ones, each a decision rather than a note. `stampHeader`'s per-row ownership state stays unused in generated mode, because it exists for headers a _user_ may edit and nobody edits a banner that is rewritten every build. Line endings normalise to `\n` at the boundary, since this app is offset-based end to end and a compiler emitting CRLF would shift every span against the text the pack thinks it produced. And a build is refused while a tool run is active rather than cancelling it: a build takes seconds and can wait, a Monte Carlo run cannot be resumed.
 
 Also added: the four empty states the Code tab now has where it had one (never built, pack missing, build failed, no file), with the rule that a failed build never blanks the pane, because the last good map is still what is on disk; and a CI test plan for the spawn boundary that does not need Python installed — a fake runtime the tests register and drive into every failure mode, with the honest note that it proves nothing about a real interpreter, which is what the manual acceptance item is for.
 
@@ -9395,21 +9391,21 @@ Also added: the four empty states the Code tab now has where it had one (never b
 
 **A design document, plus one real code fix it uncovered.** The tool chains lands to a parent land or the map centre so they hold position relative to it, lays lands out in shapes, and compiles user-written infix maths into RMS-legal left-associative arithmetic. Driven from `test-maps/Bulls_Eyes.rms` and `test-maps/Venn.rms`, which are the requirement: Bulls_Eyes places 8 lands and spends ~130 lines of `#const` doing it, ~110 of them the same 10-line trigonometry macro copied ten times with a different suffix.
 
-**It is not expressible as an Advanced Tool, and the contract says so in as many words.** `tools-api-design.md` line 31 lists "tool-defined interactive UI" as an explicit v1 non-goal; `ToolOutput.blocks` is declarative and its own comment reads *"the pane renders these; tools render nothing"*. So the doc opens a **panel tool** tier. The non-obvious half is the lifecycle: a panel must NOT go through `ToolHost.start()`, which models a one-shot compute with a 60 s silence watchdog and a cancel grace, because a panel recomputes on every pointer move and never terminates until the tab changes. Forcing it through means a watchdog that fires on an idle panel, or a watchdog disabled for one tool.
+**It is not expressible as an Advanced Tool, and the contract says so in as many words.** `tools-api-design.md` line 31 lists "tool-defined interactive UI" as an explicit v1 non-goal; `ToolOutput.blocks` is declarative and its own comment reads _"the pane renders these; tools render nothing"_. So the doc opens a **panel tool** tier. The non-obvious half is the lifecycle: a panel must NOT go through `ToolHost.start()`, which models a one-shot compute with a 60 s silence watchdog and a cancel grace, because a panel recomputes on every pointer move and never terminates until the tab changes. Forcing it through means a watchdog that fires on an idle panel, or a watchdog disabled for one tool.
 
 **The tier is built for community reuse, and the useful move was noticing that "let community tools do this" is four capabilities rather than one.** Layers 1–3 ship now and work over **any** transport including external NDJSON tools: `run-preview` (the preview becomes a service — the tool asks, the host runs, returning a handle plus summary rather than a 230,400-tile grid against an 8 MB line cap); a declarative `mapOverlay` output block; and `overlayEvent` for clicks and drags back. Layer 4, a declarative form vocabulary, is deferred until this panel exists to derive it from. Two consequences worth recording: layer 1 deletes `registry.ts`'s standing comment that the consistency checker "is inexpressible as an external tool until that generator is a standalone library", without making the generator standalone; and **"drag a connection between two lands" turns out to be expressible declaratively, over plain JSON, with no webview and no sandbox.**
 
 **The math compiler emits SSA, and the emit rule is exact rather than heuristic.** A DAG node emits as one `#const` iff, walking its left spine, every right-hand operand is a leaf. Anything else is hoisted to a temp first. Consequence: input already written in RMS's left-associative form emits verbatim as one line, so generated output looks like the hand-written map. The compiler then reads its own emitted block back through `evaluateExpressionTokens` and asserts **exact** equality against its own evaluation of the user's tree — not a tolerance, since both sides use identical operator rules, so any difference is a compiler bug and a tolerance would hide the class of bug worth catching.
 
-**Eight questions were answered the same day; two answers reversed conclusions.** Fenced-region ownership stands. The chaining invariant is **angle ABC** (A = map centre, B = parent, C = child), which forced a depth-2 derivation the brief did not cover: the reference ray must run back up the chain rather than back to the centre, because the tool emits a child's *position* and recovering its bearing from centre would need an `ATAN2` the language does not have. Shape counts are user-chosen with a repeating **role pattern** (`P A B A C`), where a role is a named set of `#const`s — which is what Bulls_Eyes already does by hand with `TERRAIN_PLAYER`/`BASE_SIZE_AUX` and friends. Random parameters get a `perPlayer` checkbox.
+**Eight questions were answered the same day; two answers reversed conclusions.** Fenced-region ownership stands. The chaining invariant is **angle ABC** (A = map centre, B = parent, C = child), which forced a depth-2 derivation the brief did not cover: the reference ray must run back up the chain rather than back to the centre, because the tool emits a child's _position_ and recovering its bearing from centre would need an `ATAN2` the language does not have. Shape counts are user-chosen with a repeating **role pattern** (`P A B A C`), where a role is a named set of `#const`s — which is what Bulls_Eyes already does by hand with `TERRAIN_PLAYER`/`BASE_SIZE_AUX` and friends. Random parameters get a `perPlayer` checkbox.
 
 ### The `%` operator: one fix, one owner decision, one instrument
 
 **Two unmeasured claims were living in one operator, and both moved on the same day.**
 
-**(a) The int cast — a genuine defect, now fixed.** `X % Y` casts *both* operands to int before taking the remainder and returns it with the sign of X (Discord report of undocumented patch behaviour; `github.com/twestura/RMS-Trigonometry-Example`). `mathEval.ts`'s `mod()` returned JS's `left % right` for finite divisors, which does not round: `5.7 % 3` gave `2.7` where the engine gives `2`. **⚠ verify #18 / `RMSTEST_47` does not cover this** — it pinned the SIGN, and every arm of that run used integer operands, so the cast was never in evidence. The two facts are orthogonal, and for three weeks "% is measured" was read as covering the whole operator. Fixed along with a reachable `NaN` (`Infinity % 5` is `NaN` in JS and the old code reached it; `PROHIBITED_VALUE_KINDS` forbids it crossing the tools boundary), and a newly reachable case the cast creates: any divisor with `|Y| < 1` truncates to 0, so `5.7 % 0.5` is a modulo by zero although neither operand is zero. Order matters — cast first, then test for zero.
+**(a) The int cast — a genuine defect, now fixed.** `X % Y` casts _both_ operands to int before taking the remainder and returns it with the sign of X (Discord report of undocumented patch behaviour; `github.com/twestura/RMS-Trigonometry-Example`). `mathEval.ts`'s `mod()` returned JS's `left % right` for finite divisors, which does not round: `5.7 % 3` gave `2.7` where the engine gives `2`. **⚠ verify #18 / `RMSTEST_47` does not cover this** — it pinned the SIGN, and every arm of that run used integer operands, so the cast was never in evidence. The two facts are orthogonal, and for three weeks "% is measured" was read as covering the whole operator. Fixed along with a reachable `NaN` (`Infinity % 5` is `NaN` in JS and the old code reached it; `PROHIBITED_VALUE_KINDS` forbids it crossing the tools boundary), and a newly reachable case the cast creates: any divisor with `|Y| < 1` truncates to 0, so `5.7 % 0.5` is a modulo by zero although neither operand is zero. Order matters — cast first, then test for zero.
 
-**(b) `x % 0` — an owner decision that reverses a sourced one.** The guide's main math text says *"Dividing by 0 gives 0. Modulo 0 also gives 0."* Sec.2.2 had called that line stale and implemented `Math.trunc(left)` from a Summer 2025 Update note at guide line 4550. Decided on the guide sentence; `parser-design.md` Sec.2.2 amended to match, because leaving the spec saying `trunc` while the code says `0` is worse than either choice. **Both readings are sourced and they contradict; this is not a measurement.** The `-inf` truncation idiom and RMSTEST_47's sign rule are unaffected either way — they rest on the "divisor larger than dividend" consequence, not on the zero branch.
+**(b) `x % 0` — an owner decision that reverses a sourced one.** The guide's main math text says _"Dividing by 0 gives 0. Modulo 0 also gives 0."_ Sec.2.2 had called that line stale and implemented `Math.trunc(left)` from a Summer 2025 Update note at guide line 4550. Decided on the guide sentence; `parser-design.md` Sec.2.2 amended to match, because leaving the spec saying `trunc` while the code says `0` is worse than either choice. **Both readings are sourced and they contradict; this is not a measurement.** The `-inf` truncation idiom and RMSTEST_47's sign rule are unaffected either way — they rest on the "divisor larger than dividend" consequence, not on the zero branch.
 
 **Verification.** Six pinned tests in `mathEval.test.ts`; **five mutation-confirmed red** against the pre-amendment code, with the sixth (RMSTEST_47's three sign arms) correctly staying green through the mutant because it was never wrong and is a regression guard. Restored from a scratch-copy backup rather than any tree-restoring git command. Green after: `mathEval` 27/27, `src/preview/__tests__/` 907/907 across 18 files, parser + tools 480/480 across 15 files, `tsc --noEmit` clean. **Corpus blast radius zero**, which is the expected result rather than a suspicious one — the cast is a no-op on integer-only arithmetic and almost all real script math is integer-only.
 
@@ -9417,7 +9413,7 @@ Also added: the four empty states the Code tab now has where it had one (never b
 
 **Filed as `docs/known-issues.md` BUG-022** with **`tools/scenario-probe/rmstest/RMSTEST_64_modzero_and_cast.rms` written and NOT YET RUN** (README batch 13). Ten `create_object` commands, header at the bottom per the house rule. The design point is that the two questions are independent, so it is a **2×2** and not a list of variants — all four cells live, including "no cast + truncate", which is what shipped from 2026-08-06 to 2026-08-29. Arms 1–2 read the zero rule alone (both cast columns agree); arms 5–6 read the cast alone (both zero columns agree); arm 7 is the interaction and is predicted by the other two jointly, so **if arm 7 disagrees with them, neither answer gets folded**.
 
-**Three controls, and the third is the one that would otherwise have produced a confident wrong answer.** A at 100 is the placement floor (RMSTEST_47's convention); B at 600 is the ceiling, because A licenses nothing about whether the largest computed arm can place. **C tests whether decimal literals survive at all** — if the engine does not read `5.7` as a decimal, arms 2, 5, 6 and 7 *all* read exactly as though the cast were real, and the run would confirm the cast while measuring nothing. Two explanations for one reading, which is the failure mode the "a run whose arms differ in two ways" rule already covers, arriving through an arm nobody thought to question.
+**Three controls, and the third is the one that would otherwise have produced a confident wrong answer.** A at 100 is the placement floor (RMSTEST_47's convention); B at 600 is the ceiling, because A licenses nothing about whether the largest computed arm can place. **C tests whether decimal literals survive at all** — if the engine does not read `5.7` as a decimal, arms 2, 5, 6 and 7 _all_ read exactly as though the cast were real, and the run would confirm the cast while measuring nothing. Two explanations for one reading, which is the failure mode the "a run whose arms differ in two ways" rule already covers, arriving through an arm nobody thought to question.
 
 The prediction table was verified by evaluating all four candidate models in node rather than by reasoning, which caught a float artifact: under either no-cast model `5.7 % 0.5` is `0.19999999999999996`, so arm 7 arrives as `120.00000000000001` and rounds to 120 — safe here, but an arm whose prediction landed on a `.5` boundary would not be, and the header says so before someone adds one.
 
@@ -9435,11 +9431,11 @@ The Sec.2 acceptance bar (regenerate Bulls_Eyes and match) had been stated in re
 
 **(b) The emit rule needs two normalisations before it is applied.** Re-association of a uniform `+`/`*` chain (`a + (b + c)` is a legal left spine written `a + b + c`; the rule as stated spends a temp on it), restricted to those two operators because `-`, `/` and `%` are not associative. And integer constant folding (`DEGREES_P1 + 180 + -135` is `DEGREES_P1 + 45`), restricted to integers so the fold is exact without consulting the evaluator. **With both: 104 emitted, 0 with no hand-written counterpart, all 104 byte-identical after normalising parens and whitespace, and 8 of 8 lands on the same tile with percentages agreeing to the last printed digit.**
 
-The shape of this is worth keeping. Both defects are *over-production* by a compiler whose entire stated purpose is deleting `#const` lines, and both had survived two rounds of careful reading of a rule that is correct as far as it goes. The probe took under four seconds to run.
+The shape of this is worth keeping. Both defects are _over-production_ by a compiler whose entire stated purpose is deleting `#const` lines, and both had survived two rounds of careful reading of a rule that is correct as far as it goes. The probe took under four seconds to run.
 
 ### `tsc` found three type names that do not exist
 
-Rev 2's five `ts` blocks, extracted verbatim and compiled under the repo's own `tsconfig.json`: **17 errors, every one `TS2304`, across three identifiers.** `Expr` at 14 sites (six interfaces in the model), plus `OverlayShape` and `PreviewSummary` — the payload types of the two capabilities the document calls "small" and ships to the community. A layer whose message type does not exist is not a small layer. This is the repo's own rule arriving one revision after it was written: *a claim about a NAME, a TYPE or an EXPORT gets checked by the toolchain, and that is the half that keeps getting skipped.* Rev 2 cites its sources by symbol throughout, which is what would have made the check mechanical.
+Rev 2's five `ts` blocks, extracted verbatim and compiled under the repo's own `tsconfig.json`: **17 errors, every one `TS2304`, across three identifiers.** `Expr` at 14 sites (six interfaces in the model), plus `OverlayShape` and `PreviewSummary` — the payload types of the two capabilities the document calls "small" and ships to the community. A layer whose message type does not exist is not a small layer. This is the repo's own rule arriving one revision after it was written: _a claim about a NAME, a TYPE or an EXPORT gets checked by the toolchain, and that is the half that keeps getting skipped._ Rev 2 cites its sources by symbol throughout, which is what would have made the check mechanical.
 
 Defining `Expr` was not bookkeeping. Four constraints from four sections meet in it, and each shows up as an **absence**: no `rnd` arm (hoisting becomes unrepresentable to break rather than stated three times in prose), no `Infinity` inside `num` (the fence round-trips through `JSON.parse`, the same problem `tools-api`'s `WireNumber` already solved), no cycles, and **no name arm that could carry a terrain** — rev 2 typed `LandRole.terrain` as `Expr` when a terrain is a name, which is the mistake BUG-015 already paid for when it split `aliases` out of `symbols` rather than widening to `number | string`. And one addition, found by reading Rage Forest rather than by design: a `node` arm, because that map's `T_PERP (T1 + T2 / 2)` is a placement whose angle is the **bisector of two other placements' angles**, which rev 2's model could not express at all. Rev 3's seven blocks now compile clean, 0 errors, extracted verbatim by script.
 
@@ -9449,11 +9445,11 @@ Rev 2 specified recognition as "the macro shape plus the `X_*` / `Y_*` pair". Me
 
 **Rev 2's stated reason for calling the importer best-effort was wrong.** It named Venn's `X_P1_TC (RADIUS_PLAYER_LANDS + DIST_TC_FROM_CENTRE * COS_P1 + 50)` as a varied idiom a recogniser would half-adopt. Read left-associatively that is `((RADIUS + DIST) * COS) + 50` — an ordinary compound radius, which is an `Expr` in the `r` slot and adopts exactly. Rev 2 applied school precedence in the one document that is entirely about not doing that. Structural recognition adopts **8 of 8 on Bulls_Eyes and 8 of 8 on Venn**, compound radii included. Rage Forest uses the same idiom for per-slot radius jitter, so it is the majority spelling, not an outlier.
 
-**The map the tool actually cannot read is Rage Forest, and trigonometry has nothing to do with it.** Lines 1131 to 5345 — **90,719 characters, 70.9% of the file** — are one `RawNode` inside `<PLAYER_SETUP>`, emitted by `RMS0110` (*"mixes if/random with command structure... it is valid RMS"*). `walkItems` cannot descend one, so of the file's 30 `create_land`, 10 `land_position` and 3 `<LAND_GENERATION>` sections, the AST carries **0, 0 and 0** — with **zero parser errors** and an `info`-severity diagnostic as the only signal. The 18 macro blocks in the preamble are visible and every land that uses them is not. Rev 3 adds a whole section (Sec.9, preconditions) and a panel strip that states the raw-covered fraction, because the failure mode is an empty tree indistinguishable from a map with nothing to manage.
+**The map the tool actually cannot read is Rage Forest, and trigonometry has nothing to do with it.** Lines 1131 to 5345 — **90,719 characters, 70.9% of the file** — are one `RawNode` inside `<PLAYER_SETUP>`, emitted by `RMS0110` (_"mixes if/random with command structure... it is valid RMS"_). `walkItems` cannot descend one, so of the file's 30 `create_land`, 10 `land_position` and 3 `<LAND_GENERATION>` sections, the AST carries **0, 0 and 0** — with **zero parser errors** and an `info`-severity diagnostic as the only signal. The 18 macro blocks in the preamble are visible and every land that uses them is not. Rev 3 adds a whole section (Sec.9, preconditions) and a panel strip that states the raw-covered fraction, because the failure mode is an empty tree indistinguishable from a map with nothing to manage.
 
 ### The perf figure was re-cited out of the file that warns against re-citing it
 
-Rev 2 quoted `tools-api/index.ts`'s "median ~460 ms and up to 3.8 s". `consistency-checker-design.md` Sec.4.4 superseded that on 2026-08-15 at 775-794 ms, in a section opening *"on numbers measured for this revision, because the older figure had drifted 1.7x while sitting in a document"*. **The re-cite came out of the tree's own warning about re-citing.**
+Rev 2 quoted `tools-api/index.ts`'s "median ~460 ms and up to 3.8 s". `consistency-checker-design.md` Sec.4.4 superseded that on 2026-08-15 at 775-794 ms, in a section opening _"on numbers measured for this revision, because the older figure had drifted 1.7x while sitting in a document"_. **The re-cite came out of the tree's own warning about re-citing.**
 
 And it priced the wrong quantity. The panel never asks for a full generation — Sec.7.1 has it request a cut at the end of `<LAND_GENERATION>`, which nobody had ever timed. Measured over all 34 maps, 5 reps after a warm run: **Normal full median 577 ms against land-cut 49 ms; Giant 920 ms against 78 ms; median ratio 0.129 and 0.131.** The land cut is worth about **8x**, and 49 ms is three frames rather than sixty.
 
@@ -9463,7 +9459,7 @@ The vector tier came out free by two orders of magnitude: re-evaluating Bulls_Ey
 
 ### The scale decision: a default that quantises to 2.52 tiles
 
-Rev 2's Sec.7.3 had snapping to integer percent on by default. Measured, the app's reachable sizes run Tiny 120 to **Giant 252**, so integer percent is a **2.52-tile lattice** at the largest size — a land placed two tiles from where the user put it. Both halves of the rationale fail: Sec.5.4's integrality requirement is about *angles*, which the compiler already resolves to integer literals at emit time, and a position const is `r * COS + 50` where `COS` is a float, so an integer `r` buys the emitted arithmetic nothing. Withdrawn; the surviving default is snap to the tile lattice for the current map size.
+Rev 2's Sec.7.3 had snapping to integer percent on by default. Measured, the app's reachable sizes run Tiny 120 to **Giant 252**, so integer percent is a **2.52-tile lattice** at the largest size — a land placed two tiles from where the user put it. Both halves of the rationale fail: Sec.5.4's integrality requirement is about _angles_, which the compiler already resolves to integer literals at emit time, and a position const is `r * COS + 50` where `COS` is a float, so an integer `r` buys the emitted arithmetic nothing. Withdrawn; the surviving default is snap to the tile lattice for the current map size.
 
 Five smaller measurements landed with it. **The corpus already picked a lattice and it is tiles**: of 13,322 `land_position` arguments across 34 maps, 734 are fractional, all 734 are in `Venn.rms`, and their smallest distinct gap is **0.833 = 100/120** — 463 hand-placed wall segments laid out in tiles on a 120-tile map and divided by 1.2. **The error budget is dominated by angular quantisation, not by Bhaskara**: run through the app's own evaluator at every integer degree, worst `|sin|` and `|cos|` error is **0.001630**, while 1 degree at Venn's 49% radius is 0.855% of the map, so rounding angles to nearest is worth half a tile to a full tile and total positional error stays under 1.2 tiles everywhere the corpus goes. **`land_position`'s declared range is `[0, 99]`**, not the `[0, 100]` rev 2 wrote, and the corpus exceeds it (`100 46`, `14 100`, eight more spellings), so the tool warns from `language.json` rather than hardcoding. **`grid.ts`'s `positionPercentToTile` — the documented helper carrying the Michi.rms round-then-clamp fix — has zero production callers**, and `lands.ts` inlines the conversion twice; rev 2 cited the helper's docstring as though it were the code path. And **the percent/tile confusion is not hypothetical**: `create_actor_area` takes tiles, `language.json` says so in capitals, and Bulls_Eyes scales three of its four calls by `MAPSIZE` and passes raw percent to the fourth.
 
@@ -9473,28 +9469,28 @@ One correction in the same family: rev 2 priced layer 1's grid-shipping argument
 
 `mathEval.ts`'s `mod()` fix was read out of the live function, not taken from the "DONE" line one section away, and the property it licenses was measured independently: **4,000 fractional angles from -1000 to +1054 degrees through the real macro, `S` = plus/minus 1 on every one, 0 failures.** Two revisions had reached opposite conclusions about that from the same code, so the reading that settles it is a run.
 
-One claim was **checked and withdrawn before it reached the document**: an initial read of `lands.ts` suggested the `direct_placement` path was unclamped where `neutralOrigin` clamps. Running it showed both paths clamp (line 855 does it for the ring slots) and the real finding is only the dead shared helper above. *Prefer an observable to an argument*, including when the argument is your own and points at a bug.
+One claim was **checked and withdrawn before it reached the document**: an initial read of `lands.ts` suggested the `direct_placement` path was unclamped where `neutralOrigin` clamps. Running it showed both paths clamp (line 855 does it for the ring slots) and the real finding is only the dead shared helper above. _Prefer an observable to an argument_, including when the argument is your own and points at a bug.
 
 ### Rules this round is evidence for
 
-- **A re-cite is not a citation, and checking the cited number would not have been enough** — the panel needed a *different* number, and no amount of validating the quoted one produces it. Ask what quantity the section actually bounds.
+- **A re-cite is not a citation, and checking the cited number would not have been enough** — the panel needed a _different_ number, and no amount of validating the quoted one produces it. Ask what quantity the section actually bounds.
 - **Running it beats reading it, and the margin is not close.** Both emit amendments, the `INBOUND` deletion and the reversal of the importer's stated limitation came out of one four-second probe, after two rounds of careful reading.
 - **A recogniser keyed on names is keyed on one author's habits.** Three maps, four naming schemes, and the rule that survives is the one that starts from the construct the engine actually consumes.
 - **A tool that reads the AST inherits every limit of the AST, and the parser's `RawNode` is the limit nobody had written down.** Severity `info`, zero errors, 70.9% of a file invisible. Any future tool in this tree owes the same precondition check.
 
-**Addendum, same day — the DE install was reinstalled mid-session and swept.** 211 official `.rms` plus 81 `.inc`. **Not one official map computes a land position**: 10,226 `land_position` uses, **0** with a `#const` operand, **0** files containing `40500`, **0** containing `SIN_`/`COS_`. Two consequences folded into rev 3. (a) **The idiom is community-only**, so the importer serves 3 scripts out of the 245 on this machine while the authoring path serves all of them — the importer is the deferrable half, which rev 2 had the other way round by implication. `Arena.rms` alone carries 3,774 literal `land_position` uses and Venn 463, hand-drawn geometry at a scale no chain-and-shape model addresses; that is a tile painter and it is out of scope. (b) **Rev 2 overstated the `rnd` hoisting rule.** `rnd` is illegal as a term inside an expression (confirmed: **0** occurrences in the whole install) but legal as a whole *argument* value, which the parser already models (`ArgValue`'s `{ rnd: [N, N] }` arm) and official maps use **5,222** times as `land_position rnd(a,b) rnd(a,b)`. So hoisting a purely-random position is a panel choice — re-rollable, shareable, pinnable for a drag — not a language constraint, and the doc now says which. Same shape as the `%` operator lesson: one rule covering two independent halves, with only one half ever in evidence.
+**Addendum, same day — the DE install was reinstalled mid-session and swept.** 211 official `.rms` plus 81 `.inc`. **Not one official map computes a land position**: 10,226 `land_position` uses, **0** with a `#const` operand, **0** files containing `40500`, **0** containing `SIN_`/`COS_`. Two consequences folded into rev 3. (a) **The idiom is community-only**, so the importer serves 3 scripts out of the 245 on this machine while the authoring path serves all of them — the importer is the deferrable half, which rev 2 had the other way round by implication. `Arena.rms` alone carries 3,774 literal `land_position` uses and Venn 463, hand-drawn geometry at a scale no chain-and-shape model addresses; that is a tile painter and it is out of scope. (b) **Rev 2 overstated the `rnd` hoisting rule.** `rnd` is illegal as a term inside an expression (confirmed: **0** occurrences in the whole install) but legal as a whole _argument_ value, which the parser already models (`ArgValue`'s `{ rnd: [N, N] }` arm) and official maps use **5,222** times as `land_position rnd(a,b) rnd(a,b)`. So hoisting a purely-random position is a panel choice — re-rollable, shareable, pinnable for a drag — not a language constraint, and the doc now says which. Same shape as the `%` operator lesson: one rule covering two independent halves, with only one half ever in evidence.
 
 **Second addendum, same day — rev 3 closed out with the two sections that stood between it and a buildable whole.** Both were written from `src/tools/host.ts` and `src/tools/ToolsPane.tsx` rather than from rev 2's prose, per the rule that a section describing a function is derived from that function.
 
 **Sec.3.6, the panel lifecycle.** Rev 2 gave it one sentence. The reframe that makes it small came out of reading `host.ts`: rev 2 argued a panel cannot go through `ToolHost.start()` because it "never terminates", which is right about the panel and **wrong about the work**. Everything a panel asks the host to do is one layer-1 `generate` — a single bounded synchronous computation, and exactly the quantity `DEADLINES` already bounds. So the panel gets a lifecycle with no timers and each of its requests keeps the existing watchdog and cancel grace. `ToolHost` gains a parallel `PanelState` slot and one clause in `isBusy()`; `cancel()`, `terminate()`, `finish()` and `canApply()` are untouched.
 
-Two transitions did not transfer from the run model and both were found in the code. **(a) `canApply(currentText)` compares against a snapshot taken at `start()`.** That is right for a checker, whose 30-minute result cannot be recomputed, and wrong for a panel, whose edits are a pure function of the model and the current parse and cost the 0.173 ms of Sec.7.2 to recompute. A panel therefore takes **no snapshot at mount** and computes its `TextEdit[]` synchronously at Apply, so "stale" is not reachable for it. What a document edit *can* do is move or damage the fence, which is a content check on the fence body, not a version check. **(b) `App.tsx` renders `{activeTab === "advanced-tools" && <ToolsPane …/>}`, so the pane unmounts on every tab switch**, and `host` is a `useMemo` inside it with no unmount cleanup. For a report tool that is wasteful; for a panel it is data loss, since the model is unsaved user work. The model is lifted above `activeTab` — a move `App.tsx` has already made twice, its own comment saying the preview cut lives there "specifically so it survives Breakdown <-> Code" — and **suspended** is the state a lifted model is in while the pane is not rendered: model retained, no generation requested, run slot released.
+Two transitions did not transfer from the run model and both were found in the code. **(a) `canApply(currentText)` compares against a snapshot taken at `start()`.** That is right for a checker, whose 30-minute result cannot be recomputed, and wrong for a panel, whose edits are a pure function of the model and the current parse and cost the 0.173 ms of Sec.7.2 to recompute. A panel therefore takes **no snapshot at mount** and computes its `TextEdit[]` synchronously at Apply, so "stale" is not reachable for it. What a document edit _can_ do is move or damage the fence, which is a content check on the fence body, not a version check. **(b) `App.tsx` renders `{activeTab === "advanced-tools" && <ToolsPane …/>}`, so the pane unmounts on every tab switch**, and `host` is a `useMemo` inside it with no unmount cleanup. For a report tool that is wasteful; for a panel it is data loss, since the model is unsaved user work. The model is lifted above `activeTab` — a move `App.tsx` has already made twice, its own comment saying the preview cut lives there "specifically so it survives Breakdown <-> Code" — and **suspended** is the state a lifted model is in while the pane is not rendered: model retained, no generation requested, run slot released.
 
 Two pre-existing observations fell out and are recorded rather than fixed. `ToolHost` has no `dispose()`, so a tab switch mid-run drops a host with an armed watchdog and a live worker, which survives until that orphaned watchdog fires up to 60 s later and kills it. And `ToolsPane.selectTool`'s `window.confirm` is unconditional on `isBusy()`, which would fire on every tool switch once a mounted panel counts as busy — it should key on the panel being `dirty`. Neither is caused by this design; this design is the first thing that makes the first one reachable in normal use.
 
 **Sec.3.7, the overlay budget.** The contract already contained the answer and it is `table`: one block holding N rows, with `maxTableRowsRendered` at 10,000 and a pane that renders the first N and says so. So **`mapOverlay` is one block holding N shapes**, never one block per shape, and the governing limit is a new per-block `maxOverlayShapesPerBlock` rather than `maxBlocksPerOutput`. That is the difference between one mark per land being unrepresentable and being ordinary.
 
-**The cap is derived from the worst real script.** Largest `create_land` counts measured: `Arena.rms` **3,774** and `Stranded.rms` 1,889 in the DE install, `24hr_A Heart Map.rms` **2,275** and `Venn.rms` 471 in the corpus. A per-land overlay needs ~3,800 shapes on a shipped map and a mark-plus-edge tool doubles it, so **10,000, equal to `maxTableRowsRendered`** — same order, same reason (a render budget, not a memory budget), and consistency with a constant the contract already carries beats a fresh number from the same argument. Three rules ride with it: over-budget **truncates and prints the count unconditionally including at zero**, never rejects (the checker's 1026-against-1000 failure produced *nothing*, which is the outcome to design against); shape count is bounded by land count so a tool cannot be surprised by it; and `overlayEvent` coalesces `drag` to one message per animation frame with `dragStart`/`dragEnd` unconditional, or a 60 fps drag is 60 messages a second against a transport whose cap is per-line.
+**The cap is derived from the worst real script.** Largest `create_land` counts measured: `Arena.rms` **3,774** and `Stranded.rms` 1,889 in the DE install, `24hr_A Heart Map.rms` **2,275** and `Venn.rms` 471 in the corpus. A per-land overlay needs ~3,800 shapes on a shipped map and a mark-plus-edge tool doubles it, so **10,000, equal to `maxTableRowsRendered`** — same order, same reason (a render budget, not a memory budget), and consistency with a constant the contract already carries beats a fresh number from the same argument. Three rules ride with it: over-budget **truncates and prints the count unconditionally including at zero**, never rejects (the checker's 1026-against-1000 failure produced _nothing_, which is the outcome to design against); shape count is bounded by land count so a tool cannot be surprised by it; and `overlayEvent` coalesces `drag` to one message per animation frame with `dragStart`/`dragEnd` unconditional, or a 60 fps drag is 60 messages a second against a transport whose cap is per-line.
 
 **Verification.** All **eight** `ts` blocks in the document extract verbatim and compile under the repo's own `tsconfig.json`, 0 errors — Sec.3.6's `PanelState` resolving `RunnerHandle` against `host.ts`'s real export rather than a lookalike, which is why the check runs against the tree instead of in isolation. `npm run typecheck` 0 errors, `npm run lint` 0 errors, no probe left in the tree, no test file added, test floor unmoved.
 
@@ -9504,7 +9500,7 @@ Two pre-existing observations fell out and are recorded rather than fixed. `Tool
 
 Pre-emptive design session for Phase 6 / M6, run against the contract that has been carrying five built-in tools since 2026-08-15. No code. Three decisions taken up front, then the consequences.
 
-**Decisions.** (1) One generic extension layer serves external tools and, later, language packs; **the install record is the authority, never the directory**, which is what makes consent unbypassable by copying a folder into place. (2) A tool's `entry` may be an executable *or* a script plus a declared `runtime` key resolved through a shared Settings > Runtimes panel — never a path in a manifest, so a stranger's manifest can never name an executable. (3) Local install only; the registry is deferred with its shape reserved in `source: { kind, url?, sha256? }`.
+**Decisions.** (1) One generic extension layer serves external tools and, later, language packs; **the install record is the authority, never the directory**, which is what makes consent unbypassable by copying a folder into place. (2) A tool's `entry` may be an executable _or_ a script plus a declared `runtime` key resolved through a shared Settings > Runtimes panel — never a path in a manifest, so a stranger's manifest can never name an executable. (3) Local install only; the registry is deferred with its shape reserved in `source: { kind, url?, sha256? }`.
 
 **The finding that reordered the phase.** The wire serializer rev 10 of `tools-api-design.md` specifies **does not exist and has never run**. `SerializedParseResult`, `WireNumber` and `InfSentinel` are declared and pinned by `wireTypes.test-d.ts`; `numeric()` has zero consumers; `parseInboundLine` is called only from `protocol.test.ts`; nothing anywhere converts a `ParseResult` to the wire form. So `known-issues.md` **BUG-017 is not tracked debt, it is step one** — and its own history sharpens that, since rev 10 Sec.9 records that the single gate meant to enforce "the encoder encodes at all" was aimed at the half of the test that structurally cannot fail (the corpus holds no non-finite value anywhere). The encoder is unwritten and the test that would have caught an unwritten encoder was misaimed. Phasing follows: **6.1 is a codec with no UI and no process.**
 
@@ -9524,9 +9520,9 @@ Pre-emptive design session for Phase 6 / M6, run against the contract that has b
 
 **Two arguments decided it, and the security one is not among them.** (1) `runtime.id` is **shared state**, so a manifest-carried probe makes it contested — two extensions naming `python` can disagree about how to probe it against one resolved path, and the app would have to pick a winner by install order. (2) A manifest would supply the easy tenth of a job the app already does the other nine tenths of: `PATHEXT` resolution, the `python`/`python3` split, and the Microsoft Store App Execution Alias (a real `python.exe` on `PATH` that opens the Store instead of an interpreter) are all app logic and none of it is expressible in a manifest.
 
-**The ReDoS objection was retired rather than relied on, and the reasoning is worth keeping.** "Bounded input" is *not* why a version regex is safe — catastrophic backtracking is a property of the pattern, not the input length, and `(\d+\.)+\d+` against a forty-character non-match is exponential in any backtracking engine. It is safe here because Sec.6.2 already puts runtime resolution in **Rust**, whose `regex` crate is linear-time by construction. The objection was an artefact of matching in JavaScript. The price is one contract clause: RE2 syntax, so a pattern using lookahead or a backreference fails at **registration**. Also pinned: fail **closed** on a non-matching pattern, with "found but unreadable version" and "not found" as **different** messages, since failing open makes `minVersion` decorative.
+**The ReDoS objection was retired rather than relied on, and the reasoning is worth keeping.** "Bounded input" is _not_ why a version regex is safe — catastrophic backtracking is a property of the pattern, not the input length, and `(\d+\.)+\d+` against a forty-character non-match is exponential in any backtracking engine. It is safe here because Sec.6.2 already puts runtime resolution in **Rust**, whose `regex` crate is linear-time by construction. The objection was an artefact of matching in JavaScript. The price is one contract clause: RE2 syntax, so a pattern using lookahead or a backreference fails at **registration**. Also pinned: fail **closed** on a non-matching pattern, with "found but unreadable version" and "not found" as **different** messages, since failing open makes `minVersion` decorative.
 
-**What it closes, recorded rather than left to be noticed.** A tool whose runtime is unknown *and* whose author will not write a fallback pattern needs a PR here and an app release. That narrows `source-languages-design.md` goal 4 ("no app release, no app code, no PR to this repo") and Sec.17 now carries that amendment alongside the Sec.9/Sec.11 one. This document's own goal 2 is untouched, being about implementing the protocol in any language.
+**What it closes, recorded rather than left to be noticed.** A tool whose runtime is unknown _and_ whose author will not write a fallback pattern needs a PR here and an app release. That narrows `source-languages-design.md` goal 4 ("no app release, no app code, no PR to this repo") and Sec.17 now carries that amendment alongside the Sec.9/Sec.11 one. This document's own goal 2 is untouched, being about implementing the protocol in any language.
 
 **Verification.** All **five** `ts` blocks in the document were **extracted programmatically from the Markdown** and compiled under the repo's own `tsconfig.json`, `tsc --noEmit` exit 0, with assertions appended that exercise what the blocks claim: Sec.10's `RegisteredTool` resolved against `tools-api/index.ts`'s real `ToolManifest`/`ToolImplementation` exports (pinning that `ToolHost` needs only `manifest.id` off it), `ExternalEntry` satisfied by both a runtime-backed and a self-contained tool, and `CONSENT_COPY` indexed by kind. **The extraction is what caught the one defect**: the consent block shipped a prose `{ ... }` elision that does not compile, now replaced with two `declare const`s so the wording stays in Sec.9.2 rather than being duplicated into a code block that could drift from it. Hand-retyping the blocks, which is what the first pass did, had missed it. Every repo claim in the document is dated 2026-08-30 per Sec.10.2's standing instruction. Sec.17 lists the amendments owed to `CREATION_PLAN.md`, `source-languages-design.md`, `tools-api-design.md`, `known-issues.md` and `tool-author-preview.md`; the `CREATION_PLAN.md` one is folded in, the rest are left for those documents' own next revisions.
 
@@ -9556,17 +9552,17 @@ Both scenarios were already on disk (`RMSTEST_63_extracted.aoe2scenario`, `RMSTE
 
 **A second, unrelated bug turned up reading RMSTEST_64's raw output, before the object identities above were cross-checked by id.** `probe_scenario.py`'s `load_constant_names()` bucketed every `game-constants.json` row whose `category` was not `"terrain"` into one `objects` dict keyed only by `constId` — safe while `object` was the only such category, broken the moment the 2026-08-30 `--misc-constants` extraction appended `terrainAlias`/`objectAlias` rows sharing ids with real objects later in the file. The histogram printed GOLD as "RICE_FARM_SEEDS", STONE as "GRAVEL_DESERT", and three more objects under equally wrong names — a fully-shaped, non-crashing result that was simply mislabelled, caught only because none of the ten printed names matched any of the ten `create_object` constants the script itself declares. Fixed to filter to exactly `category in ("terrain", "object")`; re-run against both scenarios to confirm correct names post-fix. Documented in `tools/scenario-probe/README.md`'s traps section. New Hard rules added for both findings — a bundled commit is as many claims as it changed, and a reference-data lookup must filter by the categories it means to report on rather than by excluding the one it doesn't.
 
-**Fourth addendum — the ground moved under rev 3 while it was being written, twice, both from a parallel session.** `RMSTEST_64` was **run and read on 2026-08-30**, closing BUG-022 and **reversing** the 2026-08-29 owner guess: `x % 0` returns the left operand truncated toward zero, so the Summer 2025 Update note was right and the guide's main math text ("Modulo 0 also gives 0.") is the stale sentence. `mod()`'s zero-divisor branch now returns `Math.trunc(left)`. **Sec.12 Q5 follow-up 1 had gone internally inconsistent with follow-up 2 in the same block** — item 1 still said `mod()` "returns `0` for a zero divisor" while item 2 said the opposite, one screen apart — and Sec.5.1 carried the same stale sentence. Both corrected. This is the *two sections quoting one figure must quote the same predicate* rule landing inside a single list, a day after the document that quotes that rule was written, which is about the half-life this repo keeps measuring. The upside is real: **every branch of Sec.5.5's oracle is now measured rather than argued**, including `x / 0` → `0`, confirmed by the same run's CYPRESS_TREE arm. Separately, `src/parser/validate.ts`'s early-terminated block comment (`CIVILIZATION_*/WD_*/CC_*`, where the `*/` closes the comment) was fixed by the same session; the repo typecheck is back to **0 errors** with this session's `ToolsPane` change in it.
+**Fourth addendum — the ground moved under rev 3 while it was being written, twice, both from a parallel session.** `RMSTEST_64` was **run and read on 2026-08-30**, closing BUG-022 and **reversing** the 2026-08-29 owner guess: `x % 0` returns the left operand truncated toward zero, so the Summer 2025 Update note was right and the guide's main math text ("Modulo 0 also gives 0.") is the stale sentence. `mod()`'s zero-divisor branch now returns `Math.trunc(left)`. **Sec.12 Q5 follow-up 1 had gone internally inconsistent with follow-up 2 in the same block** — item 1 still said `mod()` "returns `0` for a zero divisor" while item 2 said the opposite, one screen apart — and Sec.5.1 carried the same stale sentence. Both corrected. This is the _two sections quoting one figure must quote the same predicate_ rule landing inside a single list, a day after the document that quotes that rule was written, which is about the half-life this repo keeps measuring. The upside is real: **every branch of Sec.5.5's oracle is now measured rather than argued**, including `x / 0` → `0`, confirmed by the same run's CYPRESS_TREE arm. Separately, `src/parser/validate.ts`'s early-terminated block comment (`CIVILIZATION_*/WD_*/CC_*`, where the `*/` closes the comment) was fixed by the same session; the repo typecheck is back to **0 errors** with this session's `ToolsPane` change in it.
 
 **Fifth addendum — Sec.3.8, the layer-1 handle lifecycle, written and measured.** The last real gap in the panel tier. Rev 3 had shipped a `{ type: "release" }` message with no policy behind it: nothing said who releases, what bounds the retained results, or what happens when a tool never releases. That is an unbounded-memory path in the host, and this session had already paid for one of the same shape (the orphaned worker, third addendum).
 
-**Writing it found two things the sketch assumed and the tree does not have**, which is the *resolve the symbol against the tree* rule landing on rev 3's own work one section after Sec.11 was written about exactly that. **`generatePreview` does not return land origins** — `landResult.origins` is computed, handed to seven stages and dropped, so Sec.11's `PreviewSummary.landOrigins` is unbuildable, and `CommandReport` cannot stand in because it carries no position. **The final grid is not returned either** — only `snapshots`, and only when `collectSnapshots` is true — so `previewSlice` cannot be served from the design's own default at all. Both are small against `index.ts` (origins and grid both exist at the `return`) and both are now named as prerequisites that land before layer 1.
+**Writing it found two things the sketch assumed and the tree does not have**, which is the _resolve the symbol against the tree_ rule landing on rev 3's own work one section after Sec.11 was written about exactly that. **`generatePreview` does not return land origins** — `landResult.origins` is computed, handed to seven stages and dropped, so Sec.11's `PreviewSummary.landOrigins` is unbuildable, and `CommandReport` cannot stand in because it carries no position. **The final grid is not returned either** — only `snapshots`, and only when `collectSnapshots` is true — so `previewSlice` cannot be served from the design's own default at all. Both are small against `index.ts` (origins and grid both exist at the `return`) and both are now named as prerequisites that land before layer 1.
 
-**Priced, from the real struct widths** (`StageSnapshot` 6 bytes/tile, `TileGrid` 11): at Giant one snapshot is 372 KB, all six are **2.18 MB**, a full grid is **682 KB**. So a handle retains the final grid and never the snapshot sequence — the S1-S6 series is the preview pane's Current/Final feature, not this tool's. Snapshot *capture* turned out to be the wrong thing to worry about: `collectSnapshots` true against false measured between −22% and +47% across six runs, both signs, which on a machine with a documented 3.7× load spread is noise. The question is retention, not capture.
+**Priced, from the real struct widths** (`StageSnapshot` 6 bytes/tile, `TileGrid` 11): at Giant one snapshot is 372 KB, all six are **2.18 MB**, a full grid is **682 KB**. So a handle retains the final grid and never the snapshot sequence — the S1-S6 series is the preview pane's Current/Final feature, not this tool's. Snapshot _capture_ turned out to be the wrong thing to worry about: `collectSnapshots` true against false measured between −22% and +47% across six runs, both signs, which on a machine with a documented 3.7× load spread is noise. The question is retention, not capture.
 
 **The policy is one live result per tool**: a `generate` supersedes that tool's previous handle, the host retains at most one, and `release` survives only as an early free for a tool that knows it is done. Correctness never waits on a third-party process that may have crashed — same move as `Expr` having no `rnd` arm, the rule enforced by what the design can represent rather than by a validator. One tool, one grid, **682 KB worst case**; a Monte Carlo loop calling `generate` sixty times retains one grid, not sixty. Handles are run-scoped, so `documentReplaced()` and the panel's unmount `reset()` are the only places they die, and a `sliceRequest` against a stale handle returns `generateFailed` naming the reason rather than stale tiles.
 
-**And the measurement moved the headline claim.** Layer 1's whole argument has been "a handle plus a summary, never the whole grid". Measured JSON of a summary carrying everything *except* the grid: `Bulls_Eyes` 71 KB, **`Venn` 1,171 KB**, **`24hr_A Heart Map` @Giant 1,876 KB** — and dropping the object list takes those to 175 KB and 242 KB. **Objects are 85-87% of a real map's payload and dwarf a Giant grid's 682 KB once serialised**, so the grid was the wrong half of the economy to have worried about. `PreviewSummary` now carries `objectCount` and per-command reports; the object list is slice-requested like tiles. Land Placement needs none of them, so its common case ships neither. One cap the supersession rule does not close is named rather than left implicit: a tool can pull the whole grid one slice at a time, so `sliceRequest` needs a per-rect area cap and a per-run byte budget, with in-process built-ins exempt by construction because they read the live object with zero copy.
+**And the measurement moved the headline claim.** Layer 1's whole argument has been "a handle plus a summary, never the whole grid". Measured JSON of a summary carrying everything _except_ the grid: `Bulls_Eyes` 71 KB, **`Venn` 1,171 KB**, **`24hr_A Heart Map` @Giant 1,876 KB** — and dropping the object list takes those to 175 KB and 242 KB. **Objects are 85-87% of a real map's payload and dwarf a Giant grid's 682 KB once serialised**, so the grid was the wrong half of the economy to have worried about. `PreviewSummary` now carries `objectCount` and per-command reports; the object list is slice-requested like tiles. Land Placement needs none of them, so its common case ships neither. One cap the supersession rule does not close is named rather than left implicit: a tool can pull the whole grid one slice at a time, so `sliceRequest` needs a per-rect area cap and a per-run byte budget, with in-process built-ins exempt by construction because they read the live object with zero copy.
 
 All **eight** `ts` blocks in the document still extract verbatim and compile under the repo's own tsconfig, 0 errors. Probes archived and deleted; no test file added, test floor unmoved.
 
@@ -9604,13 +9600,13 @@ Sec.13 named, in order: the two `generatePreview` prerequisites (Sec.3.8 — sur
 
 **Layers 1-3 (Sec.3.4), each with its own tests.**
 
-*Types* (`tools-api/index.ts`): `Capability` gained `"read-preview-view"`, `ToolContext` gained `previewView?: {seed, cutOffset}` (read-only, per Sec.3.3), `ToolManifest` gained `surface?: "report" | "panel"`, `OutputBlock` gained `mapOverlay`, and two new standalone message-pair types — `ToolToHost` (`generate`/`sliceRequest`/`release`) and `HostToTool` (`generated`/`previewSlice`/`generateFailed`) — plus `OverlayEvent`, all as their OWN types rather than folded into the existing `ToolMessage`/`HostMessage` unions, matching the design doc's own code block: a panel's `generate` is a request-response exchange that happens many times over one long session, not once per report "run". `LIMITS.maxOverlayShapesPerBlock: 10_000` (Arena.rms's 3,774 `create_land` commands, doubled for a mark-plus-edge tool, same order as `maxTableRowsRendered` for the same reason).
+_Types_ (`tools-api/index.ts`): `Capability` gained `"read-preview-view"`, `ToolContext` gained `previewView?: {seed, cutOffset}` (read-only, per Sec.3.3), `ToolManifest` gained `surface?: "report" | "panel"`, `OutputBlock` gained `mapOverlay`, and two new standalone message-pair types — `ToolToHost` (`generate`/`sliceRequest`/`release`) and `HostToTool` (`generated`/`previewSlice`/`generateFailed`) — plus `OverlayEvent`, all as their OWN types rather than folded into the existing `ToolMessage`/`HostMessage` unions, matching the design doc's own code block: a panel's `generate` is a request-response exchange that happens many times over one long session, not once per report "run". `LIMITS.maxOverlayShapesPerBlock: 10_000` (Arena.rms's 3,774 `create_land` commands, doubled for a mark-plus-edge tool, same order as `maxTableRowsRendered` for the same reason).
 
-*Layer 1* (`src/tools/runPreview.ts`, new): `PreviewHandleStore` implements Sec.3.8's whole policy — one live result per tool (a `Map<toolId, HandleEntry>`, where setting a new entry IS the free of the old one), `generate` always supersedes, `release` is an early free that's a no-op against a non-current handle, `sliceRequest` checks handle identity for staleness (not a value re-comparison — under one-entry-per-tool supersession the two are equivalent, and identity is cheaper), a per-rect area cap (Giant-sized, 252×252 tiles) and a per-generation byte budget reusing `LIMITS.maxOutboundRunBytes` rather than a fresh constant ("the outbound sibling" the design doc names). `cutOffset` truncates via the existing `truncateAst` before generating (Sec.7.1); `runPreviewFromContext` (already-existing `previewBridge.ts`) does the actual in-process `generatePreview` call, zero copy, built-in only. `buildSummary()` uses `occurrences ?? 1`, never `.count` — the exact field-name confusion `build-log.md`'s rev-12 entry already paid for once, on a sibling `PlacementFailure`-reading function. 17 tests in `runPreview.test.ts`, including one that runs a real 10,000-iteration loop to confirm the byte budget actually exhausts.
+_Layer 1_ (`src/tools/runPreview.ts`, new): `PreviewHandleStore` implements Sec.3.8's whole policy — one live result per tool (a `Map<toolId, HandleEntry>`, where setting a new entry IS the free of the old one), `generate` always supersedes, `release` is an early free that's a no-op against a non-current handle, `sliceRequest` checks handle identity for staleness (not a value re-comparison — under one-entry-per-tool supersession the two are equivalent, and identity is cheaper), a per-rect area cap (Giant-sized, 252×252 tiles) and a per-generation byte budget reusing `LIMITS.maxOutboundRunBytes` rather than a fresh constant ("the outbound sibling" the design doc names). `cutOffset` truncates via the existing `truncateAst` before generating (Sec.7.1); `runPreviewFromContext` (already-existing `previewBridge.ts`) does the actual in-process `generatePreview` call, zero copy, built-in only. `buildSummary()` uses `occurrences ?? 1`, never `.count` — the exact field-name confusion `build-log.md`'s rev-12 entry already paid for once, on a sibling `PlacementFailure`-reading function. 17 tests in `runPreview.test.ts`, including one that runs a real 10,000-iteration loop to confirm the byte budget actually exhausts.
 
-*Layer 2* (`OutputBlock`'s `mapOverlay` arm): validated in `protocol.ts`'s `checkOutputBlock` — every one of the six `OverlayShape` variants checked structurally (a `handle` with no `id` is rejected even though nothing in JS enforces the type's required field over the wire), never trusting the discriminant, matching every other block kind's existing rigor. `overlayShapesToRender` mirrors `tableRowsToRender` exactly: truncates over the cap, never rejects, and reports `hidden: 0` (not an absent field) even for an empty overlay — the same "print the count unconditionally" lesson `consistency-checker-design.md`'s first human read of its own output paid for, cited directly in the doc comment. 8 new tests in `protocol.test.ts`.
+_Layer 2_ (`OutputBlock`'s `mapOverlay` arm): validated in `protocol.ts`'s `checkOutputBlock` — every one of the six `OverlayShape` variants checked structurally (a `handle` with no `id` is rejected even though nothing in JS enforces the type's required field over the wire), never trusting the discriminant, matching every other block kind's existing rigor. `overlayShapesToRender` mirrors `tableRowsToRender` exactly: truncates over the cap, never rejects, and reports `hidden: 0` (not an absent field) even for an empty overlay — the same "print the count unconditionally" lesson `consistency-checker-design.md`'s first human read of its own output paid for, cited directly in the doc comment. 8 new tests in `protocol.test.ts`.
 
-*Layer 3* (`src/tools/overlayEvents.ts`, new): `createDragCoalescer()` — a `drag` event replaces the immediately-preceding QUEUED `drag` (not any drag; only an adjacent one), so two separate drag runs inside one flush window stay two samples. Pure — no `requestAnimationFrame`, no timers; the caller (a future canvas) decides when a frame happens and calls `flush()`. 5 tests in `overlayEvents.test.ts`.
+_Layer 3_ (`src/tools/overlayEvents.ts`, new): `createDragCoalescer()` — a `drag` event replaces the immediately-preceding QUEUED `drag` (not any drag; only an adjacent one), so two separate drag runs inside one flush window stay two samples. Pure — no `requestAnimationFrame`, no timers; the caller (a future canvas) decides when a frame happens and calls `flush()`. 5 tests in `overlayEvents.test.ts`.
 
 **Full suite: 2086 of 2086 pass** (`npm test`, up from 2032 at slice 1 — 54 new tests across `panelState.test.ts`, `runPreview.test.ts`, `overlayEvents.test.ts`, plus additions to `protocol.test.ts` and `index.test.ts`). `tsc --noEmit` and `eslint .` both clean (one new warning, `ToolHostContext.tsx`'s Fast Refresh notice, is the same warning every sibling `*Context.tsx` file already carries).
 
@@ -9622,19 +9618,19 @@ Sec.13 named, in order: the two `generatePreview` prerequisites (Sec.3.8 — sur
 
 Rev 3's "still open" list carried three questions under one name: which nudges survive a `repeats` change, how members are matched across a count change, and — unstated but implied by both — what becomes of a member the new count has no room for. Sec.4.5 now answers all three, and Sec.4.1's own promise about re-expansion is **withdrawn** as part of the answer.
 
-**The match key forced the one model change: `PatternSlot` gains an `id`.** Neither candidate already in the model works, and both fail on edits the panel offers rather than on exotic ones. Flat index into `members` breaks the moment `pattern.length` changes — `[P, A, B] × 3` puts (repeat 1, slot P) at `members[3]`, and re-expanding to `[P, A] × 3` makes `members[3]` mean (repeat 1, slot A), so a flat match hands the P land's nudge to an A land with a different terrain and a different `base_size`. Slot *position* breaks on reorder, and Sec.8 specifies the pattern editor as "a reorderable strip of role chips", so reorder is a first-class edit and not a corner. `(repeatIndex, slotId)` survives reorder, slot insertion, deletion of other slots, and any `repeats` change, which is the whole trigger set.
+**The match key forced the one model change: `PatternSlot` gains an `id`.** Neither candidate already in the model works, and both fail on edits the panel offers rather than on exotic ones. Flat index into `members` breaks the moment `pattern.length` changes — `[P, A, B] × 3` puts (repeat 1, slot P) at `members[3]`, and re-expanding to `[P, A] × 3` makes `members[3]` mean (repeat 1, slot A), so a flat match hands the P land's nudge to an A land with a different terrain and a different `base_size`. Slot _position_ breaks on reorder, and Sec.8 specifies the pattern editor as "a reorderable strip of role chips", so reorder is a first-class edit and not a corner. `(repeatIndex, slotId)` survives reorder, slot insertion, deletion of other slots, and any `repeats` change, which is the whole trigger set.
 
 **`members` stays `string[]`.** The key is derived from position — `members[k]` is repeat `⌊k / pattern.length⌋`, slot `pattern[k mod pattern.length].id` — with the ordering (repeat-major, then pattern order) promoted to a stated invariant of the model rather than a rendering convenience. The old key is derivable at transition time because the transition holds the old group. Storing the key would be a second copy of a fact the array already carries, which is the trade Sec.6.2 already makes when it refuses an id comment and lets the constant name be the link.
 
-**`nudged` stops being decorative.** It was a flag nothing read; it is now the discriminator. Unset means the offset is base-derived and gets recomputed wholesale from the new group — the branch that has to survive a *symbolic* group, since a ring whose `rotation` is a `RandomParam` (Bulls_Eyes' `ROTATION_PLAYER`) expands to symbolic member offsets that must keep following the ring. Set means the offset carries user intent and is re-applied as a **delta** against the new base, derived at transition time and never stored. Delta rather than absolute because the alternative visibly breaks the shape: drag the rotation gizmo and every nudged member stays behind, which is exactly the "shape, but with exceptions" fork Sec.4.1 rejects one paragraph after introducing the group. The one exclusion is Sec.7.3's existing rule arriving somewhere else — a nudged member whose offset is not numeric-literal in every `Expr` is never rewritten and is reported as position-detached, because Sec.7.3 already refuses to discard a formula "because the user brushed the canvas" and re-expansion is a bigger brush.
+**`nudged` stops being decorative.** It was a flag nothing read; it is now the discriminator. Unset means the offset is base-derived and gets recomputed wholesale from the new group — the branch that has to survive a _symbolic_ group, since a ring whose `rotation` is a `RandomParam` (Bulls_Eyes' `ROTATION_PLAYER`) expands to symbolic member offsets that must keep following the ring. Set means the offset carries user intent and is re-applied as a **delta** against the new base, derived at transition time and never stored. Delta rather than absolute because the alternative visibly breaks the shape: drag the rotation gizmo and every nudged member stays behind, which is exactly the "shape, but with exceptions" fork Sec.4.1 rejects one paragraph after introducing the group. The one exclusion is Sec.7.3's existing rule arriving somewhere else — a nudged member whose offset is not numeric-literal in every `Expr` is never rewritten and is reported as position-detached, because Sec.7.3 already refuses to discard a formula "because the user brushed the canvas" and re-expansion is a bigger brush.
 
-**The finding: shrinking a group could dangle a constant, and Sec.6.2 had stated only the harmless direction of it.** Sec.6.2 says deleting a `create_land` by hand leaves its constants unreferenced, "which is harmless" — true. The reverse is not, and nothing in the document had said so: the `create_land` lives *outside* the fence and the tool does not own it, so deleting a member deletes `ALP_X_…`/`ALP_Y_…` out from under a command that still names them. A `repeats` decrease is the one ordinary edit that reaches that state. Hence the leave policy: a member with nowhere to go is **released** as an ordinary free `Placement` — keeping position, parent, label, children and its last per-repeat literals — and **deleted only if nothing references it**: no `Placement.parent` points at it (deleting a parent orphans a chain, and Sec.4.5's own closing argument is that ring members *are* chain parents), `nudged` is unset, and no `create_land` in the document references its constants. That third condition is checkable with machinery that already exists — `auditConstants(parse)`'s `ConstantUsage.useSpans` in `constantsAuditor.ts` — and it buys the interactive behaviour for free rather than by special case: while the user is trying counts out before ever pressing Apply nothing references anything, so `8 → 3` deletes cleanly and `8 → 3 → 8` leaves no litter, while the same rule protects applied lands.
+**The finding: shrinking a group could dangle a constant, and Sec.6.2 had stated only the harmless direction of it.** Sec.6.2 says deleting a `create_land` by hand leaves its constants unreferenced, "which is harmless" — true. The reverse is not, and nothing in the document had said so: the `create_land` lives _outside_ the fence and the tool does not own it, so deleting a member deletes `ALP_X_…`/`ALP_Y_…` out from under a command that still names them. A `repeats` decrease is the one ordinary edit that reaches that state. Hence the leave policy: a member with nowhere to go is **released** as an ordinary free `Placement` — keeping position, parent, label, children and its last per-repeat literals — and **deleted only if nothing references it**: no `Placement.parent` points at it (deleting a parent orphans a chain, and Sec.4.5's own closing argument is that ring members _are_ chain parents), `nudged` is unset, and no `create_land` in the document references its constants. That third condition is checkable with machinery that already exists — `auditConstants(parse)`'s `ConstantUsage.useSpans` in `constantsAuditor.ts` — and it buys the interactive behaviour for free rather than by special case: while the user is trying counts out before ever pressing Apply nothing references anything, so `8 → 3` deletes cleanly and `8 → 3 → 8` leaves no litter, while the same rule protects applied lands.
 
-**Writing that condition down immediately found a way to get it wrong**, so the doc states the filter rather than the intent. `useSpans` is every appearance of the name in the *file*, and the fence contains its own: a chained child's position const references its parent's (Sec.4.2). Counting those asks the tool whether its own about-to-be-regenerated output needs its own output — circular, and it answers yes forever, which would quietly delete the "`8 → 3 → 8` leaves no litter" property the condition was chosen for. The condition is therefore uses **outside the fence**, whose span Sec.6.1 already delimits. It is a one-line filter and a two-hour bug if it is left implicit.
+**Writing that condition down immediately found a way to get it wrong**, so the doc states the filter rather than the intent. `useSpans` is every appearance of the name in the _file_, and the fence contains its own: a chained child's position const references its parent's (Sec.4.2). Counting those asks the tool whether its own about-to-be-regenerated output needs its own output — circular, and it answers yes forever, which would quietly delete the "`8 → 3 → 8` leaves no litter" property the condition was chosen for. The condition is therefore uses **outside the fence**, whose span Sec.6.1 already delimits. It is a one-line filter and a two-hour bug if it is left implicit.
 
 **A reversal, recorded as one.** Sec.4.1 promised that re-expansion "says what it is about to overwrite before it does". Under the rule above it overwrites nothing carrying user intent — growth is additive, nudges move as deltas, symbolic and formula positions are untouched, departing members are released unless provably unreferenced — so the sentence is struck and replaced by an after-the-fact report with a one-click delete for released lands. A confirm dialog on a harmless edit is worse than no dialog, because it teaches the user to dismiss the dialog and the next one that matters gets dismissed the same way. `Apply` remains one `Ctrl+Z` (`useDocument.ts` batches for that reason), and since the model rides in the fence header undoing the text undoes the model — **provided the panel re-reads the fence on external document change**, which is named as Sec.3.6's obligation rather than assumed.
 
-**Four consequences are stated in the doc rather than left to be discovered**, the first two of which are the ones that will otherwise arrive as bug reports: shrink→grow is not a round trip (re-adoption is rejected — a released placement is ordinary, and ghost membership is exactly the hidden mechanism "the escape hatch is the absence of a mechanism" refuses), and growth moves *every* land because `N = pattern.length × repeats` sits in the denominator of Sec.4.5's own angle formula, so additive in membership is not additive on screen.
+**Four consequences are stated in the doc rather than left to be discovered**, the first two of which are the ones that will otherwise arrive as bug reports: shrink→grow is not a round trip (re-adoption is rejected — a released placement is ordinary, and ghost membership is exactly the hidden mechanism "the escape hatch is the absence of a mechanism" refuses), and growth moves _every_ land because `N = pattern.length × repeats` sits in the denominator of Sec.4.5's own angle formula, so additive in membership is not additive on screen.
 
 **Verification.** `tsc --noEmit` and `eslint` both clean; the 25 `landPlacement` tests pass unchanged; full suite **2086 of 2086 pass across 71 files** — identical to slice 2's baseline, which is the expected result for a required field added to a type with no consumers. The Sec.4.1 `ts` block was re-extracted **verbatim** and compiled under the repo's own tsconfig after the edit (Sec.11), 0 errors — the document still holds 8 `ts` blocks, unchanged in count. `PatternSlot`, `ShapeGroup`, `members` and `nudged` had **zero consumers** in the tree before this pass (grep across `src/` and `tools-api/`), which is why a required field could be added to a published-looking type without a migration: no panel has ever written an `@alp-model` fence, so there is no v1 data anywhere and a later session should not build a migration path for data that never existed.
 
@@ -9646,7 +9642,7 @@ Rev 3's "still open" list carried three questions under one name: which nudges s
 
 Also folded: the slice-3 brief (`docs/land-placement-slice3-brief.md`, written this session) now defers to Sec.6.1 rather than prescribing its own escape-or-reject fix, and `CLAUDE.md`'s expected files/tests row was updated 64/1942 → 71/2086 against a clean 142.62 s run, having gone stale across both prior Land Placement slices. Worth noting for whoever cites it next: `scriptHeader.ts`'s own comment attributes this hazard to "RMS0301", which is the redefinition diagnostic — the live code emits **RMS0111**.
 
-**And one piece of instruction-file hygiene the same session, because the contradiction was blocking a brief.** `CLAUDE.md`'s style bullet read *"Prettier defaults (don't hand-format)"* — an intention nobody executed. `.prettierrc.json` is `{}`, prettier is not in the CI chain, and the tree has never been formatted: measured over 57,545 lines of `src/` + `tools-api/`, median **42**, p90 **81**, **5,812 lines over 80** where a formatted tree would have ~0. The rule was unfollowable in both directions, so the bullet is now **descriptive** and the one-time reformat is scheduled as **CREATION_PLAN 5.4d**, whose precondition is the whole item: run it from a clean tree immediately after a version tag, never on top of the uncommitted work this repo normally carries. The measurement also **corrected a claim this project had been repeating** — the codebase is not "written at roughly 110 columns", and `printWidth: 110` would have churned *more* by joining deliberately-broken constructs, since printWidth governs joining. Default 80 is close to what the code already does.
+**And one piece of instruction-file hygiene the same session, because the contradiction was blocking a brief.** `CLAUDE.md`'s style bullet read _"Prettier defaults (don't hand-format)"_ — an intention nobody executed. `.prettierrc.json` is `{}`, prettier is not in the CI chain, and the tree has never been formatted: measured over 57,545 lines of `src/` + `tools-api/`, median **42**, p90 **81**, **5,812 lines over 80** where a formatted tree would have ~0. The rule was unfollowable in both directions, so the bullet is now **descriptive** and the one-time reformat is scheduled as **CREATION_PLAN 5.4d**, whose precondition is the whole item: run it from a clean tree immediately after a version tag, never on top of the uncommitted work this repo normally carries. The measurement also **corrected a claim this project had been repeating** — the codebase is not "written at roughly 110 columns", and `printWidth: 110` would have churned _more_ by joining deliberately-broken constructs, since printWidth governs joining. Default 80 is close to what the code already does.
 
 ---
 
@@ -9777,7 +9773,7 @@ All seven items landed, each with its own test file.
 
 **What's deliberately not done, matching the brief's own scope line for line.** Canvas dragging (Sec.7.3's move/chain/gizmo interactions — the vector tier draws and selects, it does not yet let the canvas edit). The formula field (Sec.8's live three-part feedback) — `NumberField` shows "(not a plain number — edit in Code)" for anything that isn't a bare `{k:"num"}` literal, matching "the panel edits by numbers" exactly. The roles editor's own `#const`-level slice-5 scope (a role's four attributes ARE editable here, since Sec.8 puts "a pattern slot picks an existing role" in 4b and "editing the `#const` set behind a chip" in slice 5 — the boundary drawn is that a role's OWN fields are 4b, a formula-valued one is not). Snapping. The importer. Layer 4. `RandomParam` hoisting — still open from 4a, and this slice confirms Sec.8's own worked example (a ring whose rotation is a `RandomParam`) is not reachable from anything 4b actually built, since the panel's "+ Ring" always creates a literal-numeric rotation; still worth closing before anyone wires a `RandomParam` picker into a ring's rotation field.
 
-**`docs/land-placement-design.md` amended — owed, not conditional, now that §1 is answered (per the brief's own §9 item 4).** Sec.3.4's "the host renders them on the existing `PreviewCanvas`" was stale; amended in place to name `OverlayCanvas.tsx` and both real render sites. Sec.7.1's "layer 1 *is* the pipeline" was also stale for this one tool — amended to record that the panel's Full tier calls `usePanelPreviewResultContext()` directly (a second instance of `PreviewResultContext.tsx`'s own channel), not `PreviewHandleStore`, for the reason item 4 above gives.
+**`docs/land-placement-design.md` amended — owed, not conditional, now that §1 is answered (per the brief's own §9 item 4).** Sec.3.4's "the host renders them on the existing `PreviewCanvas`" was stale; amended in place to name `OverlayCanvas.tsx` and both real render sites. Sec.7.1's "layer 1 _is_ the pipeline" was also stale for this one tool — amended to record that the panel's Full tier calls `usePanelPreviewResultContext()` directly (a second instance of `PreviewResultContext.tsx`'s own channel), not `PreviewHandleStore`, for the reason item 4 above gives.
 
 **Slice 5's scope line, written now while the omissions are fresh (§9 item 5).** Canvas dragging (move a land by dragging, chain-creation by dragging from a rim handle to another land, gizmo handles on the selection) — Sec.7.3, frame-dependent (`radial` edits `(r, θ)`, `absolute` edits `(dx, dy)`), including the invertibility check for a `formula`-valued node. The formula field itself (Sec.8's three-part live feedback: parse, resulting position, emitted RMS with line count) — `compiler/frontend.ts`'s `parseFormula` already exists and is unused by any UI. The roles editor's `#const`-level editing (today's roles list edits a role's OWN typed fields; slice 5 is presumably about attaching a `RandomParam`/formula to one of them, which is also where `RandomParam` hoisting — the still-open 4a/4b gap — has to be closed FIRST, since Sec.4.5's own worked ring example gives a `ShapeGroup.rotation` a `RandomParam`). Snapping (tile lattice, centre, parent axis — Sec.7.3's three survivors after rev 3 withdrew integer-percent). Per-vertex handles for anything beyond a circle's own centre (`kind: "polygon" | "line" | "arc"` shape groups exist in the model but the panel's own "+ Ring" only ever creates a circle).
 
@@ -10233,7 +10229,7 @@ Six real-engine exports came back today (RMSTEST_65-69 from Batch 14/15, written
 
 **BUG-020 (nested `start_random`) — REFUTED, not a bug.** `RMSTEST_68`: seven markers at every position the corruption hypothesis and correct nesting disagree or agree on, every `percent_chance` pinned 100/0. All seven read exactly as correct nesting predicts — outer branch 0 and inner branch 0 both silent, everything else present, including the outer's own tail after ITS `end_random`. The suspected defect (inner `end_random` closing the outer block) never fired. RMS0213's message rewritten to state the measured consequence (works, but unsupported — avoid for portability) instead of only the prohibition; `parser-design.md` item 20 closed to match. No `instantiate.ts`/`objects.ts` change needed, since nothing was actually broken.
 
-**BUG-021 (`#define` in a numeric slot) — the entry's own question was already answered correctly; the real bug was one layer downstream and untouched by the entry's own analysis.** `RMSTEST_69` confirmed `instantiate.ts`'s symbol table already does first-definition-wins correctly across `#define`/`#const` (a name with a prior `#const` reads its `#const` value unchanged after a `#define`, matching Sec.2.1's existing model). What was wrong: `numAttr`, duplicated identically across four stage files (`elevation.ts`, `lands.ts`, `objects.ts`, `terrains.ts`), could not tell "argument absent, use the fallback default" from "argument present, symbol known, resolved to JS `undefined`" — both cases hit the same fallback. Measured: a bare `#define` with no prior `#const` should place 0 objects (STONE, absent from the histogram) but the shipped code predicted ~1 (the `number_of_objects` fallback). Fixed in all four files: `numAttr` now checks the arg node's presence directly rather than only whether its resolved value is a number; an unknown name never `#define`'d/`#const`'d anywhere still falls through to the fallback unchanged, since `resolveArg` gives it a different (string) value than a known-but-valueless symbol's `undefined`. This is the session's clearest example of *"check the code, don't reason about it"* — the symbol-table half was verified by reading the function, and reading it stopped one layer too early the first time through.
+**BUG-021 (`#define` in a numeric slot) — the entry's own question was already answered correctly; the real bug was one layer downstream and untouched by the entry's own analysis.** `RMSTEST_69` confirmed `instantiate.ts`'s symbol table already does first-definition-wins correctly across `#define`/`#const` (a name with a prior `#const` reads its `#const` value unchanged after a `#define`, matching Sec.2.1's existing model). What was wrong: `numAttr`, duplicated identically across four stage files (`elevation.ts`, `lands.ts`, `objects.ts`, `terrains.ts`), could not tell "argument absent, use the fallback default" from "argument present, symbol known, resolved to JS `undefined`" — both cases hit the same fallback. Measured: a bare `#define` with no prior `#const` should place 0 objects (STONE, absent from the histogram) but the shipped code predicted ~1 (the `number_of_objects` fallback). Fixed in all four files: `numAttr` now checks the arg node's presence directly rather than only whether its resolved value is a number; an unknown name never `#define`'d/`#const`'d anywhere still falls through to the fallback unchanged, since `resolveArg` gives it a different (string) value than a known-but-valueless symbol's `undefined`. This is the session's clearest example of _"check the code, don't reason about it"_ — the symbol-table half was verified by reading the function, and reading it stopped one layer too early the first time through.
 
 **RMSTEST_65 (SOUTH_AMERICAN_FOREST mixing model, `terrain_unit_density` per-mille) — both arms confirmed, no code change.** Two runs: Model A (sequential first-hit down the six-slot list) predicted 35.0/9.8/16.6/16.2/16.8/5.6 percent of terrain-128 tiles; measured 35.07/9.83/16.10/16.47/16.72/5.81, reproduced on run 2. TREE_GREEN_OAK and DLC_AFRICANBUSH — the two discriminators the script's own header named — ruled out every rival model (D predicted both at 0%, C predicted 25.3%/33.7%, B predicted a single winner-take-all species). `terrain_unit_density` read 24.98%/25.59% against a documented 25%, confirming the per-mille reading `game-constants.schema.json` already assumed. `computeForestWood`'s per-species selection premise (Sec.15 item 23(c), shipped 2026-09-02 earlier this same day) is now measured rather than merely inferred, and the "documented caveat" the previous entry's "Still open" note named is retired.
 
@@ -10253,7 +10249,7 @@ The existing "Angle (deg)" field keeps meaning exactly what it has meant since s
 
 The alternative considered and rejected: making the Angle field itself display whichever value is active at the currently-previewed player count. That was rejected for two reasons. First, it is precisely the invisible-override trap the brief names — an override set while previewing 2 players would vanish from view the moment the panel is switched to preview 6, which is worse than not having overrides shown at all, since it looks like there is nothing to find. Second, it would make one plain-looking field's meaning depend on a global generation setting, a kind of implicit coupling nothing else in this panel does — every other field on this panel means the same thing regardless of what player count is being previewed. The always-visible list costs one extra row when a ring has no overrides ("No per-count overrides — every count uses the rule above.") in exchange for an override at count 2 staying visible while previewing count 6, which is the trade the brief asked for explicitly ("obvious at a glance... for a count you are not currently previewing").
 
-**Item 3, the bounded jitter control.** `panel/jitter.ts`, a new pure module beside `snapping.ts`: `computeSafeJitterDegrees(count, patternLength, requestedMinSeparationDegrees)`. Even gap is `360 / (count * patternLength)` (matching `evenAngleOffsetDegrees`'s own population, not just the player count, so a multi-slot pattern's aux lands count too), safe jitter is `(evenGap - requested) / 2`, and a negative result is refused with a stated reason rather than clamped to zero (hazard 2). Wired into the panel as `MinSeparationHelper`, shown on a `perPlayer` ring's `GroupEditor`: an input for the desired minimum separation, and a live readout of the safe jitter (or the refusal) **at the currently previewed player count only**. Deliberately advisory rather than model-writing — it does not author a `RandomParam` into the ring itself. The reason is that the safe bound is a function of the count, and `RandomParam` has no per-count shape (nor was one asked for; hazard 4 warns against scope-creeping a per-count *radius* into existence "while you are in there", and inventing a per-count-varying random draw shape is the same caution one field over). A single hoisted `rnd(-j,+j)` shared across all eight prologue branches could only ever be as generous as the tightest count it is used at, which the control does not attempt to solve for, since the author only asked about the count in front of them; the panel's own note says as much ("Recompute before relying on this at a different player count").
+**Item 3, the bounded jitter control.** `panel/jitter.ts`, a new pure module beside `snapping.ts`: `computeSafeJitterDegrees(count, patternLength, requestedMinSeparationDegrees)`. Even gap is `360 / (count * patternLength)` (matching `evenAngleOffsetDegrees`'s own population, not just the player count, so a multi-slot pattern's aux lands count too), safe jitter is `(evenGap - requested) / 2`, and a negative result is refused with a stated reason rather than clamped to zero (hazard 2). Wired into the panel as `MinSeparationHelper`, shown on a `perPlayer` ring's `GroupEditor`: an input for the desired minimum separation, and a live readout of the safe jitter (or the refusal) **at the currently previewed player count only**. Deliberately advisory rather than model-writing — it does not author a `RandomParam` into the ring itself. The reason is that the safe bound is a function of the count, and `RandomParam` has no per-count shape (nor was one asked for; hazard 4 warns against scope-creeping a per-count _radius_ into existence "while you are in there", and inventing a per-count-varying random draw shape is the same caution one field over). A single hoisted `rnd(-j,+j)` shared across all eight prologue branches could only ever be as generous as the tightest count it is used at, which the control does not attempt to solve for, since the author only asked about the count in front of them; the panel's own note says as much ("Recompute before relying on this at a different player count").
 
 **Item 4, the collision disclaimer.** One sentence, in `ThetaPerCountEditor`, where a per-player member's angle is actually authored: a free (independent) bearing can still land on top of another player's, and nothing in the emission prevents it. Matches the drag-refusal messages' own register per CLAUDE.md's language rules.
 
@@ -10262,6 +10258,7 @@ The alternative considered and rejected: making the Angle field itself display w
 **Verification.** `npm run typecheck`, `npm run lint`, `npm run validate:reference` all clean (lint's 25 warnings are all pre-existing `react-refresh/only-export-components` and one pre-existing `react-hooks/exhaustive-deps`, none in a file this session touched). Full `npm test`: **110/2675 on a clean run, 121.97 s** — 109/2618 + 1 file/57 tests exactly, no parallel-session drift. New file: `panel/__tests__/jitter.test.ts` (+1/+37). Assertions added to three existing files: `prologue.test.ts` (+8), `panel/__tests__/modelOps.test.ts` (+5, `setThetaPerCountOverride`'s add/replace/remove), `panel/__tests__/viewModel.test.ts` (+7, the two new range-computing helpers). Sec.10.1's Bulls_Eyes acceptance gate is untouched by anything in this slice (it carries no `perPlayer` ring), and the corpus regression suite passed unchanged.
 
 **Run sheet for `npm run tauri dev` (owed, not run — this environment cannot render the Tauri host, see CLAUDE.md's Environment section):**
+
 1. Open a script with a `perPlayer` ring (or build one fresh: + Role, + Ring, tick "One land per player").
 2. Select a ring member, add a per-count override at 2 players via the new select, give it a distinct angle from the default.
 3. Switch the generation player count between 2 and 6 in Generation Settings; confirm the canvas shows the override's own angle at 2 players and the default rule's angle at 6, and confirm the override row stays visible in the panel at both settings.
@@ -10342,7 +10339,7 @@ Two unrelated pieces of debt closed in one session, neither part of Land Placeme
 
 **Item 3, what was left of slice 5's item 6.** The escalation's own §7 (this session's biggest finding, though it isn't new reasoning — it is the write-up of what slice 5 already suspected when it cut the item): **a perimeter kind needs no vertex handles.** Once `square`/`triangle`/`polygon` are all a fixed circumradius and rotation, every vertex is already determined by the two numbers the existing radius/rotation gizmo edits — a vertex handle could only mean "set radius and rotation together," which is what dragging either existing handle already does. Nothing was built for these three kinds, and the escalation doc's §7 now states this explicitly so the question does not get reopened from the type alone next time someone reads `ShapeGroup.kind`'s six values and assumes six symmetric handle sets.
 
-What remained was two handles, one per *polar* kind slice A introduced, both new small exported functions in `gizmoGeometry.ts` (not extra fields on `gizmoHandlePositions`, matching that file's own stated reason for keeping per-kind geometry separate) and both interpreted as pure, tested functions in `canvasInteraction.ts` (not inline in the canvas component, per the brief's own instruction — a deliberate improvement on the existing `radius`/`rotation` handles' own inline `handleGizmoDrag`, whose symbolic checks and `dragPolar` calls stayed where they were rather than being retrofitted):
+What remained was two handles, one per _polar_ kind slice A introduced, both new small exported functions in `gizmoGeometry.ts` (not extra fields on `gizmoHandlePositions`, matching that file's own stated reason for keeping per-kind geometry separate) and both interpreted as pure, tested functions in `canvasInteraction.ts` (not inline in the canvas component, per the brief's own instruction — a deliberate improvement on the existing `radius`/`rotation` handles' own inline `handleGizmoDrag`, whose symbolic checks and `dragPolar` calls stayed where they were rather than being retrofitted):
 
 - **A line's near end** (`lineEndHandlePosition`), the anchor's own mirror of the far end the existing radius handle already sits on: `(radius, rotation + 180)`. It sits EXACTLY on the line's own member 0 by construction (`lineOffset` at `m = 0` evaluates to `-radius`), which is the first handle in this feature where overlapping a member circle is guaranteed rather than incidental — a one-line comment now says so at the hit-test site, since handles were already checked before member circles and this is the case that makes that ordering load-bearing rather than merely correct. `computeLineEndDrag` sets `radius` (drop distance) and `rotation` (drop bearing plus 180, folded — `dragMath.ts`'s `foldBearing`, exported for this) in ONE result, committed through ONE `applyGroupEdit` call — hazard 2's own warning against measuring a second delta against a group only half updated. Declines through the SAME `symbolicDeclineReason` wording the radius/rotation handles already use, checking both fields before computing either, with both labels together when both are symbolic.
 - **An arc's sweep** (`arcSweepHandlePosition`), at its own last member, `(radius, rotation + sweep)`. `computeArcSweepDrag` sets `sweep` only — a plain `number`, never an `Expr`, so it can never hit the symbolic decline the line-end handle needs — to the drop bearing minus the group's own currently-resolved rotation, WRAPPED into `(0, 360]` via a small local `wrapSweepDegrees`, deliberately NOT folded through `dragPolar`'s own signed bearing range (hazard 3): a sweep is a span, never negative, and a fold would read a drop just past 180 as a negative number. An exact multiple of 360 wraps to 360, the honest reading of "a full turn," not the degenerate 0 a naive modulo would give.
@@ -10848,7 +10845,7 @@ had no structural safety guarantee at all. RMS's lexer is a plain whitespace spl
 (parser-design Sec.2), so a comment's own delimiters only tokenize as such when a run of
 non-whitespace doesn't glue onto them, and `CommentCard`'s textarea shows the user the FULL inner
 region including its existing padding, with nothing stopping an edit from deleting that padding.
-Committing "hello" over an existing "/* x */" produced "/*hello*/", which doesn't parse as a
+Committing "hello" over an existing "/* x */" produced "/_hello_/", which doesn't parse as a
 comment at all; it lexes as one plain word and silently corrupts whatever comes after it in the
 file. New `padCommentContent` in `comments.ts` closes it: pads whichever side (leading, trailing,
 or both, for an empty replacement) is actually missing whitespace, so an intentional multi-line
@@ -11001,7 +10998,7 @@ ahead of 6.2 (the transport, the expensive remaining part) rather than decided u
    overflowing single line used to need.
 2. `SectionView.module.css`: `.addWrapper` (the Add Command/Add Comment row) gained bottom padding
    and a `border-bottom`, separating the button row from the scrolling card list below it.
-3, 4, 8. Unified the per-button border scheme across `TitleBar.module.css` (`.menuItem`),
+   3, 4, 8. Unified the per-button border scheme across `TitleBar.module.css` (`.menuItem`),
    `TabBar.module.css` (`.tab`), `SectionTabs.module.css` (`.tab`), and `StatusBar.module.css`
    (`.settingsCog`, the bug-report button): each used to carry its own partial box border
    (`border: 1px solid var(--border); border-top: none; border-left: none;`), which is what read
@@ -11011,8 +11008,8 @@ ahead of 6.2 (the transport, the expensive remaining part) rather than decided u
    rather than a boxed cell. `SectionTabs.module.css`'s `.countBadge` padding aligned to
    `cards.module.css`'s `.problemBadge` so the two pill badges on a section tab read as the same
    weight.
-5. `tauri.conf.json` sets `"decorations": false` on the main window; `src-tauri/capabilities/
-   default.json` gained the six `core:window:allow-*` permissions a custom titlebar needs
+3. `tauri.conf.json` sets `"decorations": false` on the main window; `src-tauri/capabilities/
+default.json` gained the six `core:window:allow-*` permissions a custom titlebar needs
    (minimize, maximize, unmaximize, toggle-maximize, is-maximized, start-dragging).
    `TitleBar.tsx`/`.module.css` now render the app icon (`public/app-icon.png`, copied from
    `src-tauri/icons/32x32.png`) and "Age of RMS" name, the File/Edit/Help/Settings menu, and
@@ -11023,9 +11020,9 @@ ahead of 6.2 (the transport, the expensive remaining part) rather than decided u
    moment the module loads outside the real Tauri host (the same trap CLAUDE.md's Environment
    section already documents for the settings contexts). **Highest-risk item in this pass**: native
    window chrome across three platforms, unverifiable in this sandbox by construction. `npm run
-   tauri dev` is owed before trusting drag/minimize/maximize/close behave correctly on the real
+tauri dev` is owed before trusting drag/minimize/maximize/close behave correctly on the real
    Windows build; reverting is a one-line `"decorations": false` → `true` if it doesn't.
-6. `TitleBar.module.css`'s `.menuItem` and `TabBar.module.css`'s `.tab` font-size cut 0.95rem to
+4. `TitleBar.module.css`'s `.menuItem` and `TabBar.module.css`'s `.tab` font-size cut 0.95rem to
    0.85rem. A new app-wide "UI size" slider lives in Theme Settings (`ThemeSettings.tsx`, a
    `settings.theme.uiScale` fieldset above Customize), backed by `theme.ts`'s new
    `uiFontScale`/`applyUiFontScale`/`sanitizeUiFontScale` and a `uiFontScale` field on
@@ -11036,31 +11033,31 @@ ahead of 6.2 (the transport, the expensive remaining part) rather than decided u
    0.85 to 1.25 rather than a typical browser zoom range, since padding scales along with text
    here and a wide swing risks clipping fixed-height rows. Does not reach Monaco's own editor text
    in the Code tab, which sets its font size directly in px; the settings hint says so.
-7. `MapHeader.tsx` now accepts `children` and renders them in a new centred `.center` flex region
+5. `MapHeader.tsx` now accepts `children` and renders them in a new centred `.center` flex region
    between the map name and the last-saved timestamp; `App.tsx` passes `<TabBar>` as those
    children instead of rendering it as a separate row below `MapHeader`, and `TabBar.module.css`'s
    own `border-bottom` was dropped (the merged row's own border covers it). Saves one row of
    vertical space for the editors below.
-9. Two new theme tokens, `scrollbarTrack`/`scrollbarThumb` (`theme.ts`, a new "Scrollbars" group
+6. Two new theme tokens, `scrollbarTrack`/`scrollbarThumb` (`theme.ts`, a new "Scrollbars" group
    in `THEME_TOKEN_GROUPS`, so they show up in Theme Settings' existing Customize section for
    free). Dark theme's defaults deliberately invert light's own hover/active relationship, a dark
    grey track (`#2d2d30`) with a lighter grey thumb (`#8a8a8e`), per the request to "swap" the
    usual look. `App.css` reads both through `scrollbar-color` (Firefox) and
    `::-webkit-scrollbar*` pseudo-elements (WebView2, the runtime this app actually ships on, and
    every other Chromium-based engine).
-10. `DiagnosticsRuler.tsx`: each tick's screen position used to be a raw content-position fraction
-    of `scrollHeight`, which can reach 100% (the literal bottom of the track) even though a real
-    scrollbar thumb's own top position never does, since the thumb has height and its BOTTOM
-    reaches 100% at max scroll, not its top. Rescaled every tick's fraction by
-    `1 - (clientHeight / scrollHeight)`, the same factor the viewport indicator already uses for
-    its own top position, so the two tracks' usable ranges now match exactly. Putting the warning
-    ticks directly on the real OS/WebView2 scrollbar (the "if easy, just do that" option) is not
-    feasible without fully custom-drawing the scrollbar; went with the explicitly-offered fallback
-    instead.
-11. `CodePane.module.css`'s `.editorFrame`: left/right margin dropped from `1.25rem` to `0` (the
-    editor now runs to the resizer on its left and the pane's own right edge instead of floating
-    with a gap on both sides), top/bottom margin cut from `0.75rem` to a quarter, `0.1875rem`, and
-    a `border-radius: 4px` added (the frame's own `overflow: hidden` clips Monaco's canvas to it).
+7. `DiagnosticsRuler.tsx`: each tick's screen position used to be a raw content-position fraction
+   of `scrollHeight`, which can reach 100% (the literal bottom of the track) even though a real
+   scrollbar thumb's own top position never does, since the thumb has height and its BOTTOM
+   reaches 100% at max scroll, not its top. Rescaled every tick's fraction by
+   `1 - (clientHeight / scrollHeight)`, the same factor the viewport indicator already uses for
+   its own top position, so the two tracks' usable ranges now match exactly. Putting the warning
+   ticks directly on the real OS/WebView2 scrollbar (the "if easy, just do that" option) is not
+   feasible without fully custom-drawing the scrollbar; went with the explicitly-offered fallback
+   instead.
+8. `CodePane.module.css`'s `.editorFrame`: left/right margin dropped from `1.25rem` to `0` (the
+   editor now runs to the resizer on its left and the pane's own right edge instead of floating
+   with a gap on both sides), top/bottom margin cut from `0.75rem` to a quarter, `0.1875rem`, and
+   a `border-radius: 4px` added (the frame's own `overflow: hidden` clips Monaco's canvas to it).
 
 **Verification.** `npm run typecheck` and `npm run lint` clean (0 errors; the lint warnings
 present are pre-existing `react-refresh/only-export-components` notices on files this session
@@ -11603,3 +11600,27 @@ capability), Tutorial A end to end (closing out the several rounds of callout-po
 this session made on reasoning alone, never on a render), and the UI size slider in Theme Settings.
 Only the Settings > Code tab controls (tab width, insert-spaces) remain unverified from this
 backlog.
+
+## 2026-09-16 (final) — CREATION_PLAN 5.4d: the one-time Prettier reformat, run on schedule
+
+The v0.5.0 tag (pushed and built green the same day) was the precondition this item was waiting
+on — a clean tree, immediately after a version tag, per CREATION_PLAN's own instruction not to
+bring it forward. New `.prettierignore` excludes `CLAUDE.md` first, since that file is deliberately
+absent from the tracked tree and this pass has no business touching it. `npm run format`
+(`.prettierrc.json` stays `{}`, defaults) then ran over everything else: **367 files, +78,914/
+-13,326**, matching the 2026-08-30 measurement's own prediction of a large, boring diff.
+
+**One run of `npm test` came back 2 files / 3 tests failed, all three by worker-start timeout
+("Timeout waiting for worker to respond") rather than a real assertion, at 3021s against a normal
+~150-300s** — an order of magnitude off, and by count and shape this is the laptop-sleep artifact
+this file already has two prior entries about, not a Prettier regression. A clean re-run came back
+**114/114 files, 2815/2815 tests, 198s**, confirming it. `npm run typecheck` and `npm run lint`
+(0 errors, the same 27 pre-existing warnings) were both clean on the first pass, before the retest.
+
+**`prettier --check .` added to `ci.yml`**, ahead of Lint, so formatting stops being a per-session
+judgement call from here on. `CLAUDE.md`'s own Prettier bullet rewritten from a blanket
+"do not run it" to the current state: formatted, gated, `.prettierignore`'d against itself. Still
+owed from this pass specifically: `git status` after `npm run format` was not reviewed file-by-file
+before committing, per the item's own "if it is not boring, stop and read it" caveat — the size
+(78,914 insertions) makes that impractical by hand, so `npm run typecheck`/`lint`/`test` all green
+is the substitute evidence, same trade this file already makes for other large mechanical passes.

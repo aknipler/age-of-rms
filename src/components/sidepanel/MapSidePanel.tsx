@@ -4,7 +4,10 @@ import { ReferenceTable } from "./ReferenceTable";
 import { useSidePanelLayout } from "./SidePanelLayoutContext";
 import { SidePanelReopener, SidePanelResizer } from "./SidePanelResizer";
 import { usePreviewReferenceSplit } from "./PreviewReferenceSplitContext";
-import { PreviewReferenceReopener, PreviewReferenceResizer } from "./PreviewReferenceResizer";
+import {
+  PreviewReferenceReopener,
+  PreviewReferenceResizer,
+} from "./PreviewReferenceResizer";
 import styles from "./MapSidePanel.module.css";
 
 /**
@@ -65,7 +68,9 @@ export function MapSidePanel() {
         {collapsedSide !== "preview" && (
           <div
             className={styles.previewSlot}
-            style={{ flex: collapsedSide === "reference" ? "1 1 0" : `${fraction} 1 0` }}
+            style={{
+              flex: collapsedSide === "reference" ? "1 1 0" : `${fraction} 1 0`,
+            }}
           >
             <PreviewPane />
           </div>
@@ -78,7 +83,10 @@ export function MapSidePanel() {
         {collapsedSide !== "reference" && (
           <div
             className={styles.referenceSlot}
-            style={{ flex: collapsedSide === "preview" ? "1 1 0" : `${1 - fraction} 1 0` }}
+            style={{
+              flex:
+                collapsedSide === "preview" ? "1 1 0" : `${1 - fraction} 1 0`,
+            }}
           >
             <ReferenceTable />
           </div>

@@ -8,7 +8,7 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 - **Code editor**, a full Monaco editor with RMS syntax highlighting, hover docs and search.
 - **Advanced Live Diagnostics**, 48 diagnostic codes covering unclosed blocks, unknown names, argument problems and semantic mistakes the game reports no error for. Several catch lines that parse cleanly and then do nothing in game, such as an attribute whose required partner is missing, or a command sitting in a section the engine will not run it from.
 - **Approximate map preview**, a canvas render of what your script generates including a notes drawer listing every approximation and placement failure.
-- **Reference panel**, look up terrains, objects, commands and the attributes each command accepts, and read a list of every create_object object in your script beside how many of it the last generation actually placed. 
+- **Reference panel**, look up terrains, objects, commands and the attributes each command accepts, and read a list of every create_object object in your script beside how many of it the last generation actually placed.
 - **Advanced Tools**, a pane of built-in tools that analyze or edit your script: a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. Community-contributed external tools are planned for a later release.
 
 Code is always the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.

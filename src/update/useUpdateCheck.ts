@@ -58,7 +58,11 @@ export function useUpdateCheck(): {
         const update = await check();
         if (cancelled || update === null) return;
         updateRef.current = update;
-        setState({ status: "available", version: update.version, notes: update.body ?? null });
+        setState({
+          status: "available",
+          version: update.version,
+          notes: update.body ?? null,
+        });
       } catch {
         // Deliberately swallowed. See the note on this hook.
       }

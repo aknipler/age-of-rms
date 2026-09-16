@@ -23,10 +23,19 @@
 import type { PreviewReferenceData } from "../preview/generator/index";
 import { countOwnedTiles } from "../preview/generator/lands";
 import { truncateAst } from "../preview/generator/truncateAst";
-import type { PlacementFailure, PreviewResult } from "../preview/generator/types";
+import type {
+  PlacementFailure,
+  PreviewResult,
+} from "../preview/generator/types";
 import type { ParseResult } from "../parser/types";
 import { runPreviewFromContext } from "./previewBridge";
-import { LIMITS, type HostToTool, type PreviewSummary, type ToolContext, type ToolToHost } from "../../tools-api/index";
+import {
+  LIMITS,
+  type HostToTool,
+  type PreviewSummary,
+  type ToolContext,
+  type ToolToHost,
+} from "../../tools-api/index";
 
 /**
  * Sec.3.8: "a result describes one (source text, playerCount, mapSize, seed,
@@ -62,10 +71,14 @@ export class PreviewHandleStore {
     refDb: PreviewReferenceData,
     msg: Extract<ToolToHost, { type: "generate" }>,
   ): HostToTool {
-    if (!ctx.parseResult) return { type: "generateFailed", reason: "no parse result in context" };
+    if (!ctx.parseResult)
+      return { type: "generateFailed", reason: "no parse result in context" };
 
     const cutOffset = msg.cutOffset ?? null;
-    const parse = cutOffset === null ? ctx.parseResult : truncateAst(ctx.parseResult, cutOffset);
+    const parse =
+      cutOffset === null
+        ? ctx.parseResult
+        : truncateAst(ctx.parseResult, cutOffset);
     // A real panel always pins its own seed (Sec.3.3: "an unpinned draw
     // inside a land_position cannot be held still between two frames") and
     // supplies it on every call; the fallback exists only so an omitted
@@ -77,7 +90,9 @@ export class PreviewHandleStore {
       { ...ctx, parseResult: parse },
       refDb,
       { seed, collectSnapshots: false },
-      msg.settings?.playerCount !== undefined ? { playerCount: msg.settings.playerCount } : undefined,
+      msg.settings?.playerCount !== undefined
+        ? { playerCount: msg.settings.playerCount }
+        : undefined,
     );
     if (!bridged.ok) return { type: "generateFailed", reason: bridged.reason };
 
@@ -89,24 +104,42 @@ export class PreviewHandleStore {
   }
 
   /** Sec.3.4 layer 1's `sliceRequest`, bounded by Sec.3.8's per-rect area cap and per-run byte budget. */
-  sliceRequest(toolId: string, msg: Extract<ToolToHost, { type: "sliceRequest" }>): HostToTool {
+  sliceRequest(
+    toolId: string,
+    msg: Extract<ToolToHost, { type: "sliceRequest" }>,
+  ): HostToTool {
     const entry = this.byTool.get(toolId);
     if (!entry || entry.handle !== msg.handle) {
-      return { type: "generateFailed", reason: "this handle is stale, a newer generate has already superseded it" };
+      return {
+        type: "generateFailed",
+        reason:
+          "this handle is stale, a newer generate has already superseded it",
+      };
     }
 
     const { rect } = msg;
-    if (rect.w <= 0 || rect.h <= 0) return { type: "generateFailed", reason: "sliceRequest rect must have positive width and height" };
+    if (rect.w <= 0 || rect.h <= 0)
+      return {
+        type: "generateFailed",
+        reason: "sliceRequest rect must have positive width and height",
+      };
     const area = rect.w * rect.h;
     if (area > MAX_SLICE_AREA_TILES) {
-      return { type: "generateFailed", reason: `sliceRequest rect covers ${area} tiles, over the ${MAX_SLICE_AREA_TILES}-tile cap` };
+      return {
+        type: "generateFailed",
+        reason: `sliceRequest rect covers ${area} tiles, over the ${MAX_SLICE_AREA_TILES}-tile cap`,
+      };
     }
     // Sec.13: "the outbound sibling" of LIMITS.maxInboundLineBytes, same
     // asymmetry tools-api/index.ts already draws between the inbound line
     // cap and maxOutboundRunBytes, reused rather than a fresh constant.
     const bytesThisSlice = area * BYTES_PER_SLICED_TILE;
     if (entry.bytesServed + bytesThisSlice > LIMITS.maxOutboundRunBytes) {
-      return { type: "generateFailed", reason: "this generation's slice budget is exhausted, request a smaller rect or call generate again" };
+      return {
+        type: "generateFailed",
+        reason:
+          "this generation's slice budget is exhausted, request a smaller rect or call generate again",
+      };
     }
 
     const { dim, grid } = entry.result;
@@ -125,7 +158,13 @@ export class PreviewHandleStore {
     }
 
     entry.bytesServed += bytesThisSlice;
-    return { type: "previewSlice", handle: entry.handle, rect, terrain, elevation };
+    return {
+      type: "previewSlice",
+      handle: entry.handle,
+      rect,
+      terrain,
+      elevation,
+    };
   }
 
   /** Sec.3.4 layer 1's `release`, an early free, never a step a correct host waits for. */
@@ -196,8 +235,11 @@ function buildSummary(result: PreviewResult): PreviewSummary {
  * figure once already (build-log.md's rev-12 fold: `failure.count ?? 1`
  * evaluated to `1` for every record because the field does not exist).
  */
-function failureBucketCounts(failures: readonly PlacementFailure[]): Record<string, number> {
+function failureBucketCounts(
+  failures: readonly PlacementFailure[],
+): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const f of failures) out[f.bucket] = (out[f.bucket] ?? 0) + (f.occurrences ?? 1);
+  for (const f of failures)
+    out[f.bucket] = (out[f.bucket] ?? 0) + (f.occurrences ?? 1);
   return out;
 }

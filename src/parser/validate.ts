@@ -82,7 +82,10 @@ export interface ValidateReferenceDb {
  * carries "extracted" as of Phase 4.0's .dat run; "patch-notes" is reserved
  * for the IDs Sec.13 item 7 sources from DE's dated patch notes.
  */
-const VERIFIED_PROVENANCE: ReadonlySet<string> = new Set(["extracted", "patch-notes"]);
+const VERIFIED_PROVENANCE: ReadonlySet<string> = new Set([
+  "extracted",
+  "patch-notes",
+]);
 
 /**
  * Which game-constants category a typed argument slot expects. `otherConstant`
@@ -129,7 +132,10 @@ export const COMMENT_OPEN_ID = 69;
  * data. A per-row provenance flag would be needed to keep it exact if that
  * ever changes, this is a known gap, not an oversight.
  */
-const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set(["terrainAlias", "objectAlias"]);
+const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set([
+  "terrainAlias",
+  "objectAlias",
+]);
 
 /**
  * The words the lexer must treat as `/*` when it meets them INSIDE a comment,
@@ -145,7 +151,11 @@ export function commentOpenAliases(
   // null AND undefined: the JSON carries null, `ValidateConstant` models the
   // same absence as optional, and a parameter narrower than either caller is a
   // compile error rather than a bug, which is how this signature was found.
-  constants: readonly { rmsConstant?: string | null; constId?: number | null; category?: string | null }[],
+  constants: readonly {
+    rmsConstant?: string | null;
+    constId?: number | null;
+    category?: string | null;
+  }[],
 ): ReadonlySet<string> {
   const names = new Set<string>();
   for (const c of constants) {
@@ -178,7 +188,10 @@ class Validator {
   private readonly symbolsByName = new Map<string, SymbolInfo[]>();
   private readonly predefinedByName = new Map<string, PredefinedLabel>();
   private readonly constantsByName = new Map<string, ValidateConstant>();
-  private readonly constantsByCategoryAndId = new Map<string, ValidateConstant>();
+  private readonly constantsByCategoryAndId = new Map<
+    string,
+    ValidateConstant
+  >();
   private readonly sectionNames = new Set<string>();
 
   // Names whose #define/#const is present in the file but COMMENTED OUT.
@@ -270,10 +283,14 @@ class Validator {
         // Keyed by category too: terrain 0 and object 0 are different id
         // spaces, and conflating them is exactly the bug the Phase 4.0
         // extraction run hit when it joined Graphic.slp against Terrain.slp.
-        this.constantsByCategoryAndId.set(`${constant.category}:${constant.constId}`, constant);
+        this.constantsByCategoryAndId.set(
+          `${constant.category}:${constant.constId}`,
+          constant,
+        );
       }
     }
-    for (const section of result.script.sections) this.sectionNames.add(section.name);
+    for (const section of result.script.sections)
+      this.sectionNames.add(section.name);
 
     // The lexer tokenizes comment interiors normally and only flags the tokens
     // `isTrivia` afterwards (lexer.ts, the comment-span pass), so a
@@ -328,7 +345,9 @@ class Validator {
     // Emit in source order. The parser's diagnostics come out in token order
     // for free; these don't (file-level checks run first), and the Breakdown
     // diagnostics ruler and Monaco's marker list both read better sorted.
-    this.diagnostics.sort((a, b) => a.span.start - b.span.start || a.code.localeCompare(b.code));
+    this.diagnostics.sort(
+      (a, b) => a.span.start - b.span.start || a.code.localeCompare(b.code),
+    );
   }
 
   // ---- file-level checks ------------------------------------------------
@@ -361,8 +380,16 @@ class Validator {
     for (const token of this.tokens) {
       if (!token.isTrivia || token.kind !== "word") continue;
       const constant = this.constantsByName.get(token.text);
-      if (constant?.constId === COMMENT_OPEN_ID && !NON_AMBIENT_CONSTANT_CATEGORIES.has(constant.category)) {
-        this.diagnostics.push(d.commentOpensNestedComment(token, `the game's own ${constant.category} constant`));
+      if (
+        constant?.constId === COMMENT_OPEN_ID &&
+        !NON_AMBIENT_CONSTANT_CATEGORIES.has(constant.category)
+      ) {
+        this.diagnostics.push(
+          d.commentOpensNestedComment(
+            token,
+            `the game's own ${constant.category} constant`,
+          ),
+        );
         return;
       }
       // A script `#const NAME 69` reaches the same table the engine's names do.
@@ -370,8 +397,16 @@ class Validator {
       // `#const` value can be an expression, so the literal case is the one
       // that can be answered here, and it is the one that matters.
       const symbols = this.symbolsByName.get(token.text);
-      if (symbols?.some((s) => s.valueToken !== undefined && this.tokens[s.valueToken]?.text === String(COMMENT_OPEN_ID))) {
-        this.diagnostics.push(d.commentOpensNestedComment(token, "this script defines it as 69"));
+      if (
+        symbols?.some(
+          (s) =>
+            s.valueToken !== undefined &&
+            this.tokens[s.valueToken]?.text === String(COMMENT_OPEN_ID),
+        )
+      ) {
+        this.diagnostics.push(
+          d.commentOpensNestedComment(token, "this script defines it as 69"),
+        );
         return;
       }
     }
@@ -411,7 +446,9 @@ class Validator {
    */
   private checkOverridesEngineCondition(name: string, first: SymbolInfo): void {
     if (!this.predefinedByName.has(name)) return;
-    this.diagnostics.push(d.overridesEngineCondition(this.tokens[first.nameToken]));
+    this.diagnostics.push(
+      d.overridesEngineCondition(this.tokens[first.nameToken]),
+    );
   }
 
   /**
@@ -436,7 +473,9 @@ class Validator {
     // compare against, so the mismatch branch can't run and the check falls
     // back to the value-agnostic note.
     const engineValue =
-      constant.constId !== undefined && constant.idSource !== undefined && VERIFIED_PROVENANCE.has(constant.idSource)
+      constant.constId !== undefined &&
+      constant.idSource !== undefined &&
+      VERIFIED_PROVENANCE.has(constant.idSource)
         ? constant.constId
         : undefined;
 
@@ -445,14 +484,23 @@ class Validator {
         const written = this.writtenIntegerValue(definition);
         if (written !== undefined && written !== engineValue) {
           this.diagnostics.push(
-            d.shadowedConstantValueIgnored(this.tokens[definition.nameToken], engineValue, written),
+            d.shadowedConstantValueIgnored(
+              this.tokens[definition.nameToken],
+              engineValue,
+              written,
+            ),
           );
           return; // one report per name, on the definition that actually differs
         }
       }
     }
 
-    this.diagnostics.push(d.redundantConstantDefinition(this.tokens[definitions[0].nameToken], engineValue));
+    this.diagnostics.push(
+      d.redundantConstantDefinition(
+        this.tokens[definitions[0].nameToken],
+        engineValue,
+      ),
+    );
   }
 
   /**
@@ -474,7 +522,9 @@ class Validator {
     const sections = this.result.script.sections;
     if (sections.length === 0) return; // empty or preamble-only: nothing to say
     if (this.sectionNames.has("PLAYER_SETUP")) return;
-    this.diagnostics.push(d.missingPlayerSetup(this.tokenSpan(sections[0].header)));
+    this.diagnostics.push(
+      d.missingPlayerSetup(this.tokenSpan(sections[0].header)),
+    );
   }
 
   // ---- traversal --------------------------------------------------------
@@ -542,7 +592,11 @@ class Validator {
     // whitespace-delimited token (or "!" plus one), so a space can never occur
     // inside one and two different stacks can never collide. Joining with ""
     // would make ["AB"] and ["A", "B"] the same path.
-    this.constDefinitions.push({ symbol, guards: [...this.guards], path: this.guards.join(" ") });
+    this.constDefinitions.push({
+      symbol,
+      guards: [...this.guards],
+      path: this.guards.join(" "),
+    });
   }
 
   /**
@@ -628,7 +682,10 @@ class Validator {
             d.subsumedDefinition(
               this.tokens[later.symbol.nameToken],
               this.lineOf(this.tokens[subsuming.symbol.nameToken].start),
-              subsuming.guards.filter((g) => !g.startsWith("!") && !g.startsWith(RANDOM_BRANCH_PREFIX)),
+              subsuming.guards.filter(
+                (g) =>
+                  !g.startsWith("!") && !g.startsWith(RANDOM_BRANCH_PREFIX),
+              ),
             ),
           );
         }
@@ -665,15 +722,21 @@ class Validator {
    * those are checked, and any definition of one landing between the two
    * sites makes the claim unsound and silences it.
    */
-  private subsumes(earlier: GuardedDefinition, later: GuardedDefinition): boolean {
+  private subsumes(
+    earlier: GuardedDefinition,
+    later: GuardedDefinition,
+  ): boolean {
     if (!earlier.guards.every((g) => later.guards.includes(g))) return false;
 
     for (const literal of earlier.guards) {
-      if (literal.startsWith("!") || literal.startsWith(RANDOM_BRANCH_PREFIX)) continue;
+      if (literal.startsWith("!") || literal.startsWith(RANDOM_BRANCH_PREFIX))
+        continue;
       const definitions = this.symbolsByName.get(literal);
       if (!definitions) continue; // engine label or never defined here: stable
       const flipped = definitions.some(
-        (s) => s.nameToken > earlier.symbol.nameToken && s.nameToken < later.symbol.nameToken,
+        (s) =>
+          s.nameToken > earlier.symbol.nameToken &&
+          s.nameToken < later.symbol.nameToken,
       );
       if (flipped) return false;
     }
@@ -716,9 +779,13 @@ class Validator {
         const negated: string[] = [];
         for (const branch of item.branches) {
           this.checkCondition(branch);
-          const condition = branch.condition === undefined ? undefined : this.tokens[branch.condition].text;
-          this.withGuards([...negated, ...(condition === undefined ? [] : [condition])], () =>
-            this.walkItems(branch.items),
+          const condition =
+            branch.condition === undefined
+              ? undefined
+              : this.tokens[branch.condition].text;
+          this.withGuards(
+            [...negated, ...(condition === undefined ? [] : [condition])],
+            () => this.walkItems(branch.items),
           );
           if (condition !== undefined) negated.push(`!${condition}`);
         }
@@ -735,7 +802,9 @@ class Validator {
         const randomId = this.randomCounter++;
         item.branches.forEach((branch, index) => {
           if (branch.chance) this.checkArg(branch.chance);
-          this.withGuards([`${RANDOM_BRANCH_PREFIX}${randomId}#${index}`], () => this.walkItems(branch.items));
+          this.withGuards([`${RANDOM_BRANCH_PREFIX}${randomId}#${index}`], () =>
+            this.walkItems(branch.items),
+          );
         });
         break;
       }
@@ -760,7 +829,9 @@ class Validator {
   /** RMS0309, read off the def, so the deprecation list lives in the data. */
   private checkDeprecated(item: CommandNode): void {
     if (!item.def?.deprecated) return;
-    this.diagnostics.push(d.deprecatedCommand(this.tokens[item.name], item.def.deprecated));
+    this.diagnostics.push(
+      d.deprecatedCommand(this.tokens[item.name], item.def.deprecated),
+    );
   }
 
   /**
@@ -798,7 +869,9 @@ class Validator {
     if (section === undefined || !section.known) return;
     if (item.def?.sectionLocked !== true) return;
     if (section.name === item.def.section) return;
-    this.diagnostics.push(d.wrongSection(this.tokens[item.name], item.def.section, section.name));
+    this.diagnostics.push(
+      d.wrongSection(this.tokens[item.name], item.def.section, section.name),
+    );
   }
 
   /** RMS0311, the one error. Data-driven via AttributeDef.requiresSection. */
@@ -809,7 +882,9 @@ class Validator {
     const key = `${this.tokens[item.name].text}:${required}`;
     if (this.reportedMissingSections.has(key)) return;
     this.reportedMissingSections.add(key);
-    this.diagnostics.push(d.missingRequiredSection(this.tokens[item.name], required));
+    this.diagnostics.push(
+      d.missingRequiredSection(this.tokens[item.name], required),
+    );
   }
 
   /**
@@ -827,8 +902,16 @@ class Validator {
   private checkNonFunctional(item: DirectiveNode | AttributeNode): void {
     const def = item.def;
     if (!def?.nonFunctional) return;
-    const token = item.kind === "directive" ? this.tokens[item.hash] : this.tokens[item.name];
-    this.diagnostics.push(d.nonFunctionalSyntax(token, "replacedBy" in def ? def.replacedBy : undefined));
+    const token =
+      item.kind === "directive"
+        ? this.tokens[item.hash]
+        : this.tokens[item.name];
+    this.diagnostics.push(
+      d.nonFunctionalSyntax(
+        token,
+        "replacedBy" in def ? def.replacedBy : undefined,
+      ),
+    );
   }
 
   /**
@@ -847,7 +930,11 @@ class Validator {
       const above = definitions.filter((s) => s.nameToken < index);
       if (above.length === 0) {
         this.diagnostics.push(
-          d.usedBeforeDefinition(token, this.lineOf(this.tokens[definitions[0].nameToken].start), this.includesPresent),
+          d.usedBeforeDefinition(
+            token,
+            this.lineOf(this.tokens[definitions[0].nameToken].start),
+            this.includesPresent,
+          ),
         );
       }
       // Sec.8 also asks for an info note when the only definitions sit inside
@@ -878,7 +965,9 @@ class Validator {
     // presumed to be a label we simply don't know about yet, and stays silent.
     const suggestion = this.nearestKnownName(token.text);
     if (!suggestion) return;
-    this.diagnostics.push(d.undefinedName(token, suggestion, this.includesPresent));
+    this.diagnostics.push(
+      d.undefinedName(token, suggestion, this.includesPresent),
+    );
   }
 
   /**
@@ -947,25 +1036,48 @@ class Validator {
     if (typeof arg.value !== "object" || !("rnd" in arg.value)) return;
     const [min, max] = arg.value.rnd;
     if (max > min) return;
-    this.diagnostics.push(d.chanceLint(max === min ? "constantRange" : "reversedRange", arg.span));
+    this.diagnostics.push(
+      d.chanceLint(max === min ? "constantRange" : "reversedRange", arg.span),
+    );
   }
 
   /** RMS0204, only when we can actually name the ID. */
   private checkBareNumericId(arg: ArgNode, category: string): void {
-    const constant = this.constantsByCategoryAndId.get(`${category}:${arg.value as number}`);
+    const constant = this.constantsByCategoryAndId.get(
+      `${category}:${arg.value as number}`,
+    );
     // Not in the DB means we have nothing useful to say, "use a named
     // constant" without being able to name it is worse than silence.
     if (!constant || !arg.def) return;
-    const named = constant.idSource !== undefined && VERIFIED_PROVENANCE.has(constant.idSource);
-    this.diagnostics.push(d.bareNumericId(this.tokens[arg.firstToken], arg.def, named ? constant.rmsConstant : undefined));
+    const named =
+      constant.idSource !== undefined &&
+      VERIFIED_PROVENANCE.has(constant.idSource);
+    this.diagnostics.push(
+      d.bareNumericId(
+        this.tokens[arg.firstToken],
+        arg.def,
+        named ? constant.rmsConstant : undefined,
+      ),
+    );
   }
 
   /** RMS0205, fires on positive evidence only: the name IS in the DB, in the wrong category. */
-  private checkCrossCategory(token: Token, expectedCategory: string, arg: ArgNode): void {
+  private checkCrossCategory(
+    token: Token,
+    expectedCategory: string,
+    arg: ArgNode,
+  ): void {
     const constant = this.constantsByName.get(token.text);
     if (!constant || !arg.def) return;
     if (constant.category === expectedCategory) return;
-    this.diagnostics.push(d.crossCategoryConstant(token, constant.category, expectedCategory, arg.def));
+    this.diagnostics.push(
+      d.crossCategoryConstant(
+        token,
+        constant.category,
+        expectedCategory,
+        arg.def,
+      ),
+    );
   }
 
   /**
@@ -978,7 +1090,11 @@ class Validator {
     if (!definitions) return;
     if (definitions.some((s) => s.nameToken < tokenIndex)) return;
     this.diagnostics.push(
-      d.usedBeforeDefinition(token, this.lineOf(this.tokens[definitions[0].nameToken].start), this.includesPresent),
+      d.usedBeforeDefinition(
+        token,
+        this.lineOf(this.tokens[definitions[0].nameToken].start),
+        this.includesPresent,
+      ),
     );
   }
 
@@ -1008,7 +1124,10 @@ class Validator {
       // and without it this check false-warns on every connection block.
       if (item.def.repeatable === true) continue;
       this.diagnostics.push(
-        d.duplicateAttribute(this.tokens[item.name], this.lineOf(this.tokens[previous.name].start)),
+        d.duplicateAttribute(
+          this.tokens[item.name],
+          this.lineOf(this.tokens[previous.name].start),
+        ),
       );
     }
 
@@ -1030,8 +1149,17 @@ class Validator {
     for (const [, node] of firstByName) {
       const options = node.def?.requiresOneOf;
       if (!options || options.length === 0) continue;
-      if (options.some((partner) => this.blockDeclaresAttribute(block, partner))) continue;
-      this.diagnostics.push(d.missingRequiredPartner(this.tokens[node.name], options, node.def?.requiresNote));
+      if (
+        options.some((partner) => this.blockDeclaresAttribute(block, partner))
+      )
+        continue;
+      this.diagnostics.push(
+        d.missingRequiredPartner(
+          this.tokens[node.name],
+          options,
+          node.def?.requiresNote,
+        ),
+      );
     }
 
     const reportedPairs = new Set<string>();
@@ -1072,9 +1200,14 @@ class Validator {
   private blockDeclaresAttribute(block: BlockNode, name: string): boolean {
     const search = (items: readonly Item[]): boolean =>
       items.some((item) => {
-        if (item.kind === "attribute") return this.tokens[item.name].text === name;
-        if (item.kind === "if") return item.branches.some((b) => search(b.items));
-        if (item.kind === "random") return search(item.preamble) || item.branches.some((b) => search(b.items));
+        if (item.kind === "attribute")
+          return this.tokens[item.name].text === name;
+        if (item.kind === "if")
+          return item.branches.some((b) => search(b.items));
+        if (item.kind === "random")
+          return (
+            search(item.preamble) || item.branches.some((b) => search(b.items))
+          );
         return false;
       });
     return search(block.items);
@@ -1103,7 +1236,10 @@ class Validator {
 
     for (let i = 0; i < node.branches.length; i++) {
       const branch = node.branches[i];
-      const value = typeof branch.chance?.value === "number" ? branch.chance.value : undefined;
+      const value =
+        typeof branch.chance?.value === "number"
+          ? branch.chance.value
+          : undefined;
 
       if (value === undefined) {
         // An rnd() or expression chance can't be reasoned about statically.
@@ -1117,16 +1253,22 @@ class Validator {
       // first: later zero-chance branches are simply never selected, which is
       // unremarkable.
       if (i === 0 && value === 0) {
-        this.diagnostics.push(d.chanceLint("zeroFirst", this.tokenSpan(branch.chanceKeyword)));
+        this.diagnostics.push(
+          d.chanceLint("zeroFirst", this.tokenSpan(branch.chanceKeyword)),
+        );
       }
       if (evaluable && cumulative >= 99) {
-        this.diagnostics.push(d.chanceLint("unreachable", this.tokenSpan(branch.chanceKeyword)));
+        this.diagnostics.push(
+          d.chanceLint("unreachable", this.tokenSpan(branch.chanceKeyword)),
+        );
       }
       cumulative += value;
     }
 
     if (evaluable && cumulative < 99) {
-      this.diagnostics.push(d.chanceLint("under99", this.tokenSpan(node.start)));
+      this.diagnostics.push(
+        d.chanceLint("under99", this.tokenSpan(node.start)),
+      );
     }
   }
 
@@ -1147,7 +1289,10 @@ class Validator {
  * (Sec.7), is explicitly out of scope for v1, and a parameter that silently
  * does nothing is worse than one that isn't there yet.
  */
-export function validate(result: ParseResult, refDb: ValidateReferenceDb): Diagnostic[] {
+export function validate(
+  result: ParseResult,
+  refDb: ValidateReferenceDb,
+): Diagnostic[] {
   const validator = new Validator(result, refDb);
   validator.run();
   return validator.diagnostics;

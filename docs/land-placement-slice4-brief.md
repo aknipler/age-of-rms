@@ -2,7 +2,7 @@
 
 **This is a work brief, not a design document.** The design is
 `docs/land-placement-design.md` (rev 3, plus the 2026-08-30 addenda in Sec.4.2 and Sec.4.5).
-Read this file for *what to build and in what order*; read the design doc for *why*, and treat
+Read this file for _what to build and in what order_; read the design doc for _why_, and treat
 it as authoritative wherever the two disagree.
 
 **It covers two sessions, not one.** Slices 1-3 were cut at "provable by an automated test",
@@ -28,15 +28,15 @@ did not change; 4b grew two refactors.**
 Slices 1-3 and 4a are built and green. `docs/build-log.md`'s **2026-08-31 entry (Land Placement
 Slice 4a)** is the record; read it first, then the 2026-08-30 slice 3 entry, before starting.
 
-| | status |
-|---|---|
-| Sec.5 math compiler, Sec.4.2 frame algebra, Sec.10.1 acceptance gate | **built** (slice 1) |
-| `generatePreview` prerequisites, `PanelState`, layers 1-3 | **built** (slice 2) |
-| Fence writer, `create_land` skeletons, `ShapeGroup` expansion, `reExpand()`, remaining offsets/frames, P2-P5 | **built** (slice 3) |
-| The `RegisteredTool` seam, the emission orchestrator, panel Apply, `read-preview-view`, the cut offset, the overlay builder, P1 | **built** (slice 4a) |
-| The preview pipeline per-consumer, the shared overlay canvas, the panel lifecycle wired, the canvas (Sec.7), the panel (Sec.8), HelpTip ids | **slice 4b** |
-| Canvas dragging (Sec.7.3), the formula field, the roles editor, snapping | **slice 5, not this one** |
-| The importer (Sec.6.4, Sec.10.3) | **slice 6, not this one** |
+|                                                                                                                                             | status                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| Sec.5 math compiler, Sec.4.2 frame algebra, Sec.10.1 acceptance gate                                                                        | **built** (slice 1)       |
+| `generatePreview` prerequisites, `PanelState`, layers 1-3                                                                                   | **built** (slice 2)       |
+| Fence writer, `create_land` skeletons, `ShapeGroup` expansion, `reExpand()`, remaining offsets/frames, P2-P5                                | **built** (slice 3)       |
+| The `RegisteredTool` seam, the emission orchestrator, panel Apply, `read-preview-view`, the cut offset, the overlay builder, P1             | **built** (slice 4a)      |
+| The preview pipeline per-consumer, the shared overlay canvas, the panel lifecycle wired, the canvas (Sec.7), the panel (Sec.8), HelpTip ids | **slice 4b**              |
+| Canvas dragging (Sec.7.3), the formula field, the roles editor, snapping                                                                    | **slice 5, not this one** |
+| The importer (Sec.6.4, Sec.10.3)                                                                                                            | **slice 6, not this one** |
 
 **Almost everything slice 2 built is still unwired.** `PanelState`, `mountPanel`, `unmountPanel`,
 `PreviewHandleStore`, `createDragCoalescer`, `overlayShapesToRender` — all built, all tested, and
@@ -96,16 +96,16 @@ guessed at.
 **It is TWO questions, and rev 1 of this brief asked only the first.** §1.1 is where the canvas
 COMPONENT lives. §1.2 is which preview RESULT that canvas draws. They are orthogonal — every
 answer to §1.1 still needs an answer to §1.2 — and §1.1 alone ships a canvas that faithfully
-draws the *Breakdown tab's* map. Do not merge the two tables: (d)-(f) are not more options for
+draws the _Breakdown tab's_ map. Do not merge the two tables: (d)-(f) are not more options for
 §1.1, and picking one of them is not an alternative to picking (a).
 
 ### 1.1 Where the canvas component lives
 
-| option | what it costs |
-|---|---|
-| **(a) One shared overlay canvas, used both places** *(CHOSEN)* | Extract the projection/viewport/hit-test core of `PreviewCanvas` into a component that takes `OverlayShape[]` and an optional terrain layer. `ToolsPane` renders it for a panel tool; `PreviewPane` renders overlay blocks on it later. Land Placement really does go through the declarative overlay path, so Sec.3.5's "reference implementation" claim stays true. Only one renderer. |
-| (b) A private canvas inside the panel | Fastest to a first pixel. Land Placement draws directly from its model and never emits an `OverlayShape`, so layer 2 stays unproven and Sec.3.5's claim becomes false. A second renderer to keep in sync with `projection.ts` forever. |
-| (c) Put `MapSidePanel` on the Advanced Tools tab | Cheapest change to `App.tsx`, wrong shape: Sec.7/Sec.8 want the canvas to *be* the panel's left half, not a side panel beside it. It also does not dodge §1.2 — it answers it with "share everything", which is the one answer Sec.7.1/Sec.3.3 rule out. |
+| option                                                         | what it costs                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **(a) One shared overlay canvas, used both places** _(CHOSEN)_ | Extract the projection/viewport/hit-test core of `PreviewCanvas` into a component that takes `OverlayShape[]` and an optional terrain layer. `ToolsPane` renders it for a panel tool; `PreviewPane` renders overlay blocks on it later. Land Placement really does go through the declarative overlay path, so Sec.3.5's "reference implementation" claim stays true. Only one renderer. |
+| (b) A private canvas inside the panel                          | Fastest to a first pixel. Land Placement draws directly from its model and never emits an `OverlayShape`, so layer 2 stays unproven and Sec.3.5's claim becomes false. A second renderer to keep in sync with `projection.ts` forever.                                                                                                                                                   |
+| (c) Put `MapSidePanel` on the Advanced Tools tab               | Cheapest change to `App.tsx`, wrong shape: Sec.7/Sec.8 want the canvas to _be_ the panel's left half, not a side panel beside it. It also does not dodge §1.2 — it answers it with "share everything", which is the one answer Sec.7.1/Sec.3.3 rule out.                                                                                                                                 |
 
 The choice is **(a)**, and the reason is not aesthetic: option (b) makes the tool's own
 canvas the one thing no community tool can reproduce, which inverts the entire argument of
@@ -116,7 +116,7 @@ Sec.3.4.
 `StageSnapshot`, `usePreviewViewport()` and `hiddenObjects`". Read the file: the coupling is not
 spread over those 352 lines, it is concentrated in two call sites.
 
-- Everything that makes it *a canvas* — the `ResizeObserver`/fit effect, pan, zoom, the
+- Everything that makes it _a canvas_ — the `ResizeObserver`/fit effect, pan, zoom, the
   click-vs-pan slop, hover, `screenToTile` — touches the snapshot only through `snapshot.dim`.
   That is one number, across `PreviewCanvas.tsx:100-250`.
 - The thick coupling is the terrain-bitmap memo (`PreviewCanvas.tsx:98`) and the single
@@ -128,7 +128,7 @@ spread over those 352 lines, it is concentrated in two call sites.
   changes no existing layer.
 
 So the seam is "parameterise on `dim`, make the content layer pluggable", not "untangle 352
-lines" — which makes (a) *less* code than (b), not more, since (b) still has to write a second
+lines" — which makes (a) _less_ code than (b), not more, since (b) still has to write a second
 `projection.ts` consumer from scratch.
 
 **One framing correction while you are here.** "There is no `PreviewCanvas` on the Advanced
@@ -151,11 +151,11 @@ calls `usePreviewResultContext()` therefore gets Breakdown's cut and Breakdown's
 built `cutOffset.ts` precisely because the panel's cut is a different one (at the fence, not at
 the caret).
 
-| option | what it costs |
-|---|---|
-| (d) `ToolsPane` mounts its own `PreviewResultProvider` inside the tab branch | Smallest diff, and it re-introduces exactly the failure `PreviewResultContext.tsx:11-28` was written to kill: the provider unmounts on every tab switch, terminating the worker and throwing away a generation that "can take seconds on a real map". |
-| (e) The panel drives the shared provider while mounted | No new worker. But the panel's fence cut has to be pushed into `PreviewCutContext`, whose value is *derived* from the caret (`PreviewCutContext.tsx:86`) rather than set — and the pinned seed then leaks to Breakdown/Code when the user switches back. |
-| **(f) A second, panel-scoped provider above the tab switch** *(CHOSEN)* | Each consumer owns its cut and seed; neither dies on a tab switch; the second worker generates only while the panel asks it to. Costs one more idle worker, and requires the change below. |
+| option                                                                       | what it costs                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (d) `ToolsPane` mounts its own `PreviewResultProvider` inside the tab branch | Smallest diff, and it re-introduces exactly the failure `PreviewResultContext.tsx:11-28` was written to kill: the provider unmounts on every tab switch, terminating the worker and throwing away a generation that "can take seconds on a real map".    |
+| (e) The panel drives the shared provider while mounted                       | No new worker. But the panel's fence cut has to be pushed into `PreviewCutContext`, whose value is _derived_ from the caret (`PreviewCutContext.tsx:86`) rather than set — and the pinned seed then leaks to Breakdown/Code when the user switches back. |
+| **(f) A second, panel-scoped provider above the tab switch** _(CHOSEN)_      | Each consumer owns its cut and seed; neither dies on a tab switch; the second worker generates only while the panel asks it to. Costs one more idle worker, and requires the change below.                                                               |
 
 **(f) is not "render `PreviewResultProvider` twice".** As written, a second instance reads the
 same singleton seed and cut out of context and computes the same result twice over. Making it
@@ -188,7 +188,7 @@ not invitations to redesign anything:
 - **Item 2 splits one component in two.** It does not change the projection, the terrain bitmap,
   the palette, the draw order of existing layers, or what `PreviewPane` renders.
 
-If either item starts changing what the preview *shows*, it has left its scope. Run sheet R1/R2
+If either item starts changing what the preview _shows_, it has left its scope. Run sheet R1/R2
 exist to catch exactly that.
 
 **Out, and do not drift into these:**
@@ -200,7 +200,7 @@ exist to catch exactly that.
 - **The formula field** (Sec.8's three-part live feedback). `compiler/frontend.ts` already
   parses the grammar, so this is a UI item, and it belongs with the drag work because both are
   about editing one node's offset.
-- **The roles editor.** 4b lets a pattern slot *pick* an existing role. Editing the `#const`
+- **The roles editor.** 4b lets a pattern slot _pick_ an existing role. Editing the `#const`
   set behind a chip is slice 5.
 - **The importer** (Sec.6.4, Sec.10.3). Slice 6.
 - **Layer 4** (declarative forms). Deferred by design, Sec.3.4. The right panel is native React
@@ -239,18 +239,18 @@ export type RegisteredTool =
 
 Build that union with the arms this slice needs — `builtin` and a new
 `{ kind: "panel"; manifest: ToolManifest; component: … }` — and leave `external` for M6 to
-add. Sec.10 already pins the consequences and they are small: *"`ToolHost` touches only
-`tool.manifest.id`, verified 2026-08-30, so it is unaffected beyond the type"*, and
-*"`ToolsPane` gains one branch, not a mode"* — the runner selection it performs by id today
+add. Sec.10 already pins the consequences and they are small: _"`ToolHost` touches only
+`tool.manifest.id`, verified 2026-08-30, so it is unaffected beyond the type"_, and
+_"`ToolsPane` gains one branch, not a mode"_ — the runner selection it performs by id today
 (`WORKER_RUNTIME_TOOL_IDS`) becomes selection by `kind`. Name the concept when you write it:
 this is a **discriminated union**, and `kind` is its tag.
 
 **The security boundary then costs nothing, because it becomes structural.** Sec.3.2 asks the
 registry to reject a `panel` manifest "arriving over the external transport". A `panel` arm
-carries a React component — a *function* — and JSON cannot carry a function, so an external
+carries a React component — a _function_ — and JSON cannot carry a function, so an external
 manifest can never produce a panel entry **by construction**. That is strictly stronger than a
-validator check, and it is the same move Sec.3.8 makes when it gives `Expr` no `rnd` arm: *the
-rule enforced by what the design can represent rather than by a validator*.
+validator check, and it is the same move Sec.3.8 makes when it gives `Expr` no `rnd` arm: _the
+rule enforced by what the design can represent rather than by a validator_.
 
 **One obligation is deferred, and deferring it is the point.** `validateManifest(manifest)`
 (`protocol.ts:136`) takes a bare manifest with no notion of origin, and **there is no external
@@ -274,8 +274,8 @@ function, one shared `NameAllocator`, in the order Sec.5 and Sec.6 already fix:
 3. Build the frame algebra over the placements (`buildFrame`).
 4. Lower to `#const` cells (`emitCells`) and render them (`formatConstLine`) — this is the
    fence **body**.
-5. Verify (`verifyEmission`) — Sec.5.5 is explicit that on disagreement *the tool emits
-   nothing and reports the offending node*. That branch is part of this function's contract,
+5. Verify (`verifyEmission`) — Sec.5.5 is explicit that on disagreement _the tool emits
+   nothing and reports the offending node_. That branch is part of this function's contract,
    not a caller's option.
 
 It returns the body text, the `create_land` text per placement, **and
@@ -296,8 +296,8 @@ Apply produces **two kinds of edit**, and slice 3 built only the first.
 
 - **The fence, regenerated wholesale** — `buildFenceEdits(parse, model, body)`, done.
 - **`create_land` skeletons, which live OUTSIDE the fence** — Sec.6.2. Nothing computes where
-  they go. They are written once and thereafter hand-owned: *"From that moment the tool owns
-  only what is inside the fence."*
+  they go. They are written once and thereafter hand-owned: _"From that moment the tool owns
+  only what is inside the fence."_
 
 Three things this item owes, none of them written down anywhere yet:
 
@@ -310,14 +310,14 @@ Three things this item owes, none of them written down anywhere yet:
    `checkLandAttachment` (`landCommand.ts:117`) is the predicate slice 3 built for the
    neighbouring question; use it or extend it rather than writing a second matcher.
 3. **Where a brand-new fence goes.** `buildFenceEdits`'s own comment calls its end-of-document
-   append *"a placeholder insertion point. Sec.8's panel is what decides where a freshly-created
-   fence should actually go"*. That decision is owed here. Sec.6.1's constraint is that the
+   append _"a placeholder insertion point. Sec.8's panel is what decides where a freshly-created
+   fence should actually go"_. That decision is owed here. Sec.6.1's constraint is that the
    `#const`s must precede their uses.
 
 **Apply for a panel is not Apply for a run, and this is the clause most likely to be built
 wrong.** Sec.3.6(a): a panel takes **no snapshot at mount**; it computes its `TextEdit[]`
 synchronously against the current parse at the moment Apply is pressed, and `canApply` compares
-against *that* string. "Stale" is unreachable for a panel. Do not route panel edits through
+against _that_ string. "Stale" is unreachable for a panel. Do not route panel edits through
 `RunState.edits` and `host.canApply()` — those exist for a computation that cannot be re-run,
 which is the opposite of this.
 
@@ -369,7 +369,7 @@ chain link, gizmos on the selection only.
 - **Positions come from item 2's `verifyEmission().resolved`** — the name→value map produced by
   reading the emitted block back exactly as the engine will (Sec.5.5 step 2). Not a parallel
   geometry routine, and not a standalone `evalExpr` of the user's DAG: the whole point is that
-  the overlay *cannot* disagree with what will be emitted. Cost is not a concern — re-evaluating
+  the overlay _cannot_ disagree with what will be emitted. Cost is not a concern — re-evaluating
   Bulls_Eyes' entire 143-const table measures 0.173 ms, which is 97 full re-evaluations inside
   one 16.7 ms frame.
 - **Percent in, tiles out.** `OverlayShape` is in tile coordinates (Sec.3.4); the model is in
@@ -378,7 +378,7 @@ chain link, gizmos on the selection only.
   (`protocol.ts:493`) already implements the truncation. The count is printed
   **unconditionally, including at zero**, because a filtered overlay and an empty one are
   different claims. The checker has already shipped the failure this rule exists to prevent —
-  1026 blocks against a 1000 cap produced *nothing at all*.
+  1026 blocks against a 1000 cap produced _nothing at all_.
 
 **Acceptance:** shape counts and coordinates for a Bulls_Eyes-shaped model; the truncation path
 at `maxOverlayShapesPerBlock` (10,000) reporting the hidden count; the zero case printing its
@@ -438,7 +438,7 @@ nothing until its inputs stop coming from context.** That is this item.
 This changes a file both other tabs render through, so **Breakdown and Code must come out
 behaviourally identical**: same seed, same cut, same re-roll, same survival across a tab switch.
 
-**Acceptance:** the full suite green and *unchanged* — no new test, no edited test — plus run
+**Acceptance:** the full suite green and _unchanged_ — no new test, no edited test — plus run
 sheet R1. A pure refactor is the one place in this brief where "the existing tests still pass"
 is the whole of it.
 
@@ -453,7 +453,7 @@ finally exists for report tools too.
 The seam is narrower than this brief's rev 1 costed it. Read the file before believing the
 number: the coupling is concentrated in two call sites, not spread over 352 lines.
 
-- Everything that makes it *a canvas* — the `ResizeObserver`/fit effect, pan, zoom, the
+- Everything that makes it _a canvas_ — the `ResizeObserver`/fit effect, pan, zoom, the
   click-vs-pan slop, hover, `screenToTile` — needs only `snapshot.dim`. **Parameterise on `dim`,**
   not on `StageSnapshot`.
 - The terrain bitmap (`PreviewCanvas.tsx:98`) and the `drawPreview` scene (`:167-173`) are the
@@ -480,8 +480,8 @@ it does today.** That is the regression this item can actually produce.
 - **select this tool** → `mountPanel()`; it returns `false` if `isBusy()`, and the pane shows an
   inline message rather than crashing (that is why it returns a boolean).
 - **select another tool** → confirm **if `dirty`**, then `unmountPanel()`. This is the change
-  Sec.3.6(b)'s second note deferred: *"the confirm should key on the panel being `dirty`, not on
-  `isBusy()` — but only once a panel exists… a speculative change would be a regression."* A
+  Sec.3.6(b)'s second note deferred: _"the confirm should key on the panel being `dirty`, not on
+  `isBusy()` — but only once a panel exists… a speculative change would be a regression."_ A
   panel now exists. Make the change, and keep the unconditional confirm for the run path.
 - **document replaced** → unconditional unmount. `noteOpenDocument` already detects the
   transition; the panel branch is what is missing.
@@ -493,15 +493,15 @@ it does today.** That is the regression this item can actually produce.
 
 Two tiers, and the split is not a compromise forced by cost:
 
-| Tier | When | What |
-|---|---|---|
-| **Vector** | every pointer move, 60 fps | 4a item 6's shapes. Pure function of the model. |
-| **Full** | drag end, debounced | One layer-1 `generate` at the pinned seed and 4a item 5's `cutOffset`, drawn underneath. |
+| Tier       | When                       | What                                                                                     |
+| ---------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| **Vector** | every pointer move, 60 fps | 4a item 6's shapes. Pure function of the model.                                          |
+| **Full**   | drag end, debounced        | One layer-1 `generate` at the pinned seed and 4a item 5's `cutOffset`, drawn underneath. |
 
 - **The seed is pinned on mount, shown, and re-rollable** (Sec.3.3). With `rnd()` in the script
   an unpinned seed makes dragging impossible — Bulls_Eyes' `ROTATION_PLAYER` is
   `rnd(-10000,10000)` and every land jumps between two frames.
-- **The debounce is adaptive**: the last measured land-cut duration for *this* script, floored
+- **The debounce is adaptive**: the last measured land-cut duration for _this_ script, floored
   at 100 ms. A fixed 250 ms is wrong at both ends of a 26× spread — 49 ms median at Normal
   against Venn's 1279 ms at Giant. The panel gets the measurement free from the generation it
   already ran.
@@ -536,9 +536,9 @@ Apply.**
   size (Sec.4.3). The one corpus map that places lands sub-percent was working in tiles the
   whole time.
 - **The preconditions strip at the top, above the tree** (Sec.9), rendering 4a item 7's P1 and
-  slice 3's P2-P5. Empty on a healthy script. On `Rage Forest 2026.rms` it reads: *"70.9% of
+  slice 3's P2-P5. Empty on a healthy script. On `Rage Forest 2026.rms` it reads: _"70.9% of
   this script is code the app can only show as raw text, including 30 `create_land` commands.
-  Land Placement cannot manage those."* — with a `codeRef` to the raw node's first line. **The
+  Land Placement cannot manage those."_ — with a `codeRef` to the raw node's first line. **The
   failure this tool can produce is an empty panel that looks identical to a map with nothing to
   manage**, which is why the strip is the first thing on screen rather than a footnote.
 - A **Generated code** section showing the fence body before Apply. Sec.8 says "as a diff" and
@@ -581,8 +581,8 @@ Two rules, and the first is most of the answer.
 **(1) Push everything provable out of the components.** A React component in 4b should be glue
 over tested functions and contain no arithmetic, no coordinate maths, no cycle checks, no
 truncation logic, no formatting. That is why 4a exists as a separate slice at all. The measure
-of a good split is that the run sheet checks *wiring and legibility*, never *correctness of a
-calculation* — if a run-sheet step could fail because a number is wrong, that number belonged
+of a good split is that the run sheet checks _wiring and legibility_, never _correctness of a
+calculation_ — if a run-sheet step could fail because a number is wrong, that number belonged
 in 4a.
 
 **(2) The manual pass is a written run sheet, run once, with its results recorded in the build
@@ -623,8 +623,8 @@ Then, with the panel:
     yet" fallback.
 
 **Record the result of each step in the build-log entry, including anything that looked wrong
-and was left.** Sec.13 names one thing that needs a person rather than an agent — *"the first
-read of the panel's real output by a human"* — and notes this repo has twice found a class of
+and was left.** Sec.13 names one thing that needs a person rather than an agent — _"the first
+read of the panel's real output by a human"_ — and notes this repo has twice found a class of
 defect no number of review rounds reaches, on the checker and on the formatter, and both times
 it was **legibility rather than correctness**. Step 12 and the readability of steps 5-10 are
 that read. Write down what was ugly even when it was not wrong.
@@ -636,21 +636,21 @@ that read. Write down what was ugly even when it was not wrong.
 **`isBusy()` is true whenever a panel is mounted, and every report tool runs through `start()`
 which throws on it.** Mount the panel by default, or leave it mounted after a tool switch, and
 the Advanced Tools pane stops being able to run anything at all — with an exception message
-written for a different situation. The mount is on *selecting this tool*, the unmount is on
-*selecting another*, and a suspended panel deliberately does not hold the slot.
+written for a different situation. The mount is on _selecting this tool_, the unmount is on
+_selecting another_, and a suspended panel deliberately does not hold the slot.
 
 **One `NameAllocator` per emission.** 4a item 2 says it; it is repeated here because a second
 allocator produces output that looks right and shadows a script symbol, which is a silent
 no-op in the engine (first-definition-wins, Sec.5.6) rather than an error.
 
-**The fence's span is re-derived on every reparse; the fence's *contents* are a separate
+**The fence's span is re-derived on every reparse; the fence's _contents_ are a separate
 concern.** A document edit does not invalidate a panel. But if the text **inside** the fence
 changed by hand, the panel says so and offers to re-adopt or overwrite — it never silently
 regenerates over the edit. That is what `PanelState.dirty` and `setPanelDirty` are for.
 
 **`useSpans` counts uses inside the fence too.** Slice 3's brief flagged this for the delete
 condition and it lands again anywhere this slice asks "is this constant referenced?". Filter to
-uses *outside* the fence or the tool asks whether its own about-to-be-regenerated output needs
+uses _outside_ the fence or the tool asks whether its own about-to-be-regenerated output needs
 its own output.
 
 **The RMS comment hazards have not gone anywhere.** `fence.ts` closed them by escaping every
@@ -671,7 +671,7 @@ does not resolve `{ k: "param" }` to `sym(emittedName)` before lowering, though 
 `leafText` comment says it is supposed to. Every model Bulls_Eyes exercises references a
 pre-existing script `#const` via `sym`, so nothing has hit it yet. **A `RandomParam` the panel
 creates will not emit correctly.** Sec.8 gives shape groups a `rotation` field and Sec.4.5's
-worked example is a ring whose rotation *is* a `RandomParam` — so settle whether item 5's fields
+worked example is a ring whose rotation _is_ a `RandomParam` — so settle whether item 5's fields
 can produce one **before** building them, and close the hoisting gap first if they can. Slice
 5's formula field certainly can.
 
@@ -705,12 +705,12 @@ more transferable than slice 3's:
   is the worked example already in the tree), **`useSyncExternalStore`** (how the pane
   subscribes to `ToolHost` without React owning the state).
 - Explain the non-obvious decision, never the syntax. Why 4b's components are thin shells over
-  4a's pure functions is a *testability* decision forced by this repo's inability to render
+  4a's pure functions is a _testability_ decision forced by this repo's inability to render
   `App.tsx` — say that, because it is the reason for the whole 4a/4b split.
 - Say whether something is standard React practice or a choice specific to this codebase.
   `useSyncExternalStore` over a class instance is not how most React apps hold state; why it is
   right here is worth one paragraph.
-- Comment the *why* in the code. `src/hooks/useDocument.ts` and
+- Comment the _why_ in the code. `src/hooks/useDocument.ts` and
   `src/components/preview/PreviewCanvas.tsx` are the standard to match.
 - End each session by offering two or three questions that check understanding.
 

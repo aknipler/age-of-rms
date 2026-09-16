@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PreviewWorker from "./preview/worker?worker";
 import type { ParseResult } from "./parser/types";
-import type { PreviewRequest, PreviewResponse, PreviewSettings, PreviewWireResult } from "./preview/generator/types";
-import type { MapSize, TeamNumber } from "./generationSettings/generationSettingsConstants";
+import type {
+  PreviewRequest,
+  PreviewResponse,
+  PreviewSettings,
+  PreviewWireResult,
+} from "./preview/generator/types";
+import type {
+  MapSize,
+  TeamNumber,
+} from "./generationSettings/generationSettingsConstants";
 
 // docs/preview-design.md Sec.10. Mirrors useParsedDocument.ts's shape
 // closely on purpose (same worker lifecycle, same request-id staleness
@@ -97,7 +105,10 @@ export function usePreviewResult(
   // rather than growing for the life of the session.
   const retriesRef = useRef<Map<number, number>>(new Map());
 
-  const settings: PreviewSettings = useMemo(() => ({ playerCount, mapSize, teams }), [playerCount, mapSize, teams]);
+  const settings: PreviewSettings = useMemo(
+    () => ({ playerCount, mapSize, teams }),
+    [playerCount, mapSize, teams],
+  );
 
   const clearWatchdog = useCallback((): void => {
     if (watchdogTimeoutRef.current !== null) {
@@ -193,7 +204,12 @@ export function usePreviewResult(
       latestRequestIdRef.current = id;
       retriesRef.current.clear(); // every earlier id is superseded and can never retry again
       setPending(true);
-      postRequest({ id, parse: parseResult, settings, opts: { seed, collectSnapshots: true } });
+      postRequest({
+        id,
+        parse: parseResult,
+        settings,
+        opts: { seed, collectSnapshots: true },
+      });
     }, DEBOUNCE_MS);
     return () => window.clearTimeout(timeoutId);
   }, [parseResult, settings, seed, postRequest]);

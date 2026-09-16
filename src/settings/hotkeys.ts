@@ -20,7 +20,12 @@ export interface Hotkey {
   alt: boolean;
 }
 
-export const DEFAULT_SAVE_HOTKEY: Hotkey = { key: "s", ctrl: true, shift: false, alt: false };
+export const DEFAULT_SAVE_HOTKEY: Hotkey = {
+  key: "s",
+  ctrl: true,
+  shift: false,
+  alt: false,
+};
 
 /**
  * Every rebindable action in the app. One-handed by design (CLAUDE.md's
@@ -132,7 +137,12 @@ export function formatHotkey(hotkey: Hotkey): string {
 
 /** Whether two bindings are the same combination, used to decide whether "Reset to default" has anything to do. */
 export function hotkeysEqual(a: Hotkey, b: Hotkey): boolean {
-  return a.key === b.key && a.ctrl === b.ctrl && a.shift === b.shift && a.alt === b.alt;
+  return (
+    a.key === b.key &&
+    a.ctrl === b.ctrl &&
+    a.shift === b.shift &&
+    a.alt === b.alt
+  );
 }
 
 /** Whether a live keydown is this binding being pressed. */

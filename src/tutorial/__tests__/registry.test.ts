@@ -9,7 +9,9 @@ import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { TUTORIALS } from "../registry";
 
-const uiHelp = JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "ui-help.json"), "utf8")) as {
+const uiHelp = JSON.parse(
+  readFileSync(join(REPO_ROOT, "reference", "data", "ui-help.json"), "utf8"),
+) as {
   entries: { id: string; text: string }[];
 };
 const uiHelpIds = new Set(uiHelp.entries.map((e) => e.id));
@@ -18,7 +20,9 @@ const SRC_DIR = join(REPO_ROOT, "src");
 
 function sourceFiles(extension: string): string[] {
   const relPaths = readdirSync(SRC_DIR, { recursive: true }) as string[];
-  return relPaths.filter((p) => p.endsWith(extension)).map((p) => join(SRC_DIR, p));
+  return relPaths
+    .filter((p) => p.endsWith(extension))
+    .map((p) => join(SRC_DIR, p));
 }
 
 function idsMatching(files: string[], pattern: RegExp): Set<string> {
@@ -37,8 +41,14 @@ function idsMatching(files: string[], pattern: RegExp): Set<string> {
 // example, per src/tools/__tests__/helpCoverage.test.ts), this test only
 // needs SOME evidence the id resolves, and a ui-help.json entry is exactly
 // that evidence regardless of how the id reaches its wrapper.
-const helpTipIdsInSource = idsMatching(sourceFiles(".tsx"), /<HelpTip\s+id="([^"]+)"/g);
-const regionAnchorIdsInSource = idsMatching(sourceFiles(".tsx"), /data-tutorial-anchor="([^"]+)"/g);
+const helpTipIdsInSource = idsMatching(
+  sourceFiles(".tsx"),
+  /<HelpTip\s+id="([^"]+)"/g,
+);
+const regionAnchorIdsInSource = idsMatching(
+  sourceFiles(".tsx"),
+  /data-tutorial-anchor="([^"]+)"/g,
+);
 
 describe("tutorial registry", () => {
   it("has at least one tutorial", () => {
@@ -53,16 +63,23 @@ describe("tutorial registry", () => {
   it("step ids are unique within each tutorial", () => {
     for (const t of TUTORIALS) {
       const ids = t.steps.map((s) => s.id);
-      expect(new Set(ids).size, `duplicate step id somewhere in "${t.id}"`).toBe(ids.length);
+      expect(
+        new Set(ids).size,
+        `duplicate step id somewhere in "${t.id}"`,
+      ).toBe(ids.length);
     }
   });
 
-  it("every kind:\"help\" anchor id (including extraAnchors) exists as a HelpTip id in source or a ui-help.json entry", () => {
+  it('every kind:"help" anchor id (including extraAnchors) exists as a HelpTip id in source or a ui-help.json entry', () => {
     const missing: string[] = [];
     for (const t of TUTORIALS) {
       for (const step of t.steps) {
         for (const anchor of [step.anchor, ...(step.extraAnchors ?? [])]) {
-          if (anchor?.kind === "help" && !helpTipIdsInSource.has(anchor.id) && !uiHelpIds.has(anchor.id)) {
+          if (
+            anchor?.kind === "help" &&
+            !helpTipIdsInSource.has(anchor.id) &&
+            !uiHelpIds.has(anchor.id)
+          ) {
             missing.push(`${t.id}/${step.id}: help:${anchor.id}`);
           }
         }
@@ -71,12 +88,15 @@ describe("tutorial registry", () => {
     expect(missing).toEqual([]);
   });
 
-  it("every kind:\"region\" anchor id (including extraAnchors) appears in a data-tutorial-anchor attribute somewhere in src/", () => {
+  it('every kind:"region" anchor id (including extraAnchors) appears in a data-tutorial-anchor attribute somewhere in src/', () => {
     const missing: string[] = [];
     for (const t of TUTORIALS) {
       for (const step of t.steps) {
         for (const anchor of [step.anchor, ...(step.extraAnchors ?? [])]) {
-          if (anchor?.kind === "region" && !regionAnchorIdsInSource.has(anchor.id)) {
+          if (
+            anchor?.kind === "region" &&
+            !regionAnchorIdsInSource.has(anchor.id)
+          ) {
             missing.push(`${t.id}/${step.id}: region:${anchor.id}`);
           }
         }
@@ -101,7 +121,8 @@ describe("tutorial registry", () => {
     const tooLong: string[] = [];
     for (const t of TUTORIALS) {
       for (const step of t.steps) {
-        if (step.title.trim().split(/\s+/).length > 6) tooLong.push(`${t.id}/${step.id}: "${step.title}"`);
+        if (step.title.trim().split(/\s+/).length > 6)
+          tooLong.push(`${t.id}/${step.id}: "${step.title}"`);
       }
     }
     expect(tooLong).toEqual([]);
@@ -110,9 +131,15 @@ describe("tutorial registry", () => {
   it("feature tours carry a version and every other kind does not", () => {
     for (const t of TUTORIALS) {
       if (t.kind === "feature") {
-        expect(t.version, `${t.id} is a feature tour with no version`).toBeTruthy();
+        expect(
+          t.version,
+          `${t.id} is a feature tour with no version`,
+        ).toBeTruthy();
       } else {
-        expect(t.version, `${t.id} is kind "${t.kind}" but carries a version`).toBeUndefined();
+        expect(
+          t.version,
+          `${t.id} is kind "${t.kind}" but carries a version`,
+        ).toBeUndefined();
       }
     }
   });

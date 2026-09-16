@@ -24,7 +24,14 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["command", "attribute", "directive", "controlKeyword", "constant", "ui"]
+          "enum": [
+            "command",
+            "attribute",
+            "directive",
+            "controlKeyword",
+            "constant",
+            "ui"
+          ]
         },
         "summary": {
           "type": "string",

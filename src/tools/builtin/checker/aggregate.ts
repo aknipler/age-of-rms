@@ -13,7 +13,13 @@
  */
 
 import type { Span } from "../../../parser/types";
-import type { CommandReport, FailureBucket, PlacementFailure, SimulationNote, StageId } from "../../../preview/generator/types";
+import type {
+  CommandReport,
+  FailureBucket,
+  PlacementFailure,
+  SimulationNote,
+  StageId,
+} from "../../../preview/generator/types";
 
 // ---------------------------------------------------------------------------
 // CommandReport aggregation
@@ -62,18 +68,34 @@ export class MonteCarloAggregate {
   }
 
   /** Called once per completed generation, BEFORE folding in its reports. A count's `runs` tracks how many generations were attempted at it, independent of which commandSpans any one of them produced. */
-  addGeneration(playerCount: number, reports: readonly CommandReport[], notes: readonly SimulationNote[]): void {
-    this.runsPerCount.set(playerCount, (this.runsPerCount.get(playerCount) ?? 0) + 1);
+  addGeneration(
+    playerCount: number,
+    reports: readonly CommandReport[],
+    notes: readonly SimulationNote[],
+  ): void {
+    this.runsPerCount.set(
+      playerCount,
+      (this.runsPerCount.get(playerCount) ?? 0) + 1,
+    );
     for (const report of reports) {
       const key = spanKey(report.commandSpan);
       let row = this.rows.get(key);
       if (!row) {
-        row = { commandSpan: report.commandSpan, stage: report.stage, cells: new Map() };
+        row = {
+          commandSpan: report.commandSpan,
+          stage: report.stage,
+          cells: new Map(),
+        };
         this.rows.set(key, row);
       }
       let cell = row.cells.get(playerCount);
       if (!cell) {
-        cell = { runsContaining: 0, attempted: 0, placed: 0, failures: new Map() };
+        cell = {
+          runsContaining: 0,
+          attempted: 0,
+          placed: 0,
+          failures: new Map(),
+        };
         row.cells.set(playerCount, cell);
       }
       cell.runsContaining++;
@@ -81,8 +103,14 @@ export class MonteCarloAggregate {
       cell.placed += report.placed;
       for (const f of report.failures) {
         const existing = cell.failures.get(f.bucket);
-        if (existing) existing.occurrences = (existing.occurrences ?? 1) + (f.occurrences ?? 1);
-        else cell.failures.set(f.bucket, { ...f, occurrences: f.occurrences ?? 1 });
+        if (existing)
+          existing.occurrences =
+            (existing.occurrences ?? 1) + (f.occurrences ?? 1);
+        else
+          cell.failures.set(f.bucket, {
+            ...f,
+            occurrences: f.occurrences ?? 1,
+          });
       }
     }
     this.notes.addGeneration(notes);
@@ -224,7 +252,9 @@ interface CollapsedEntry {
  * `atColor`), those are real limitations, and a limitation with low
  * consequence is still a limitation.
  */
-export const NOTE_KEYS_NOT_PASSED_THROUGH: ReadonlySet<string> = new Set(["automaticBeach"]);
+export const NOTE_KEYS_NOT_PASSED_THROUGH: ReadonlySet<string> = new Set([
+  "automaticBeach",
+]);
 
 class NoteAggregate {
   /** key -> text -> the spans seen under that `(key, text)` pair (deduped by span string) plus whether it was ever reported with no span at all. */
@@ -276,11 +306,19 @@ class NoteAggregate {
         // happened once per run and is being reported once. This is the same
         // "the count must not track the run count" rule the span dedupe below
         // enforces, on the branch where there is no span to dedupe by.
-        collapsed.push({ text: ranged, spans, spanlessCount: anySpanless ? 1 : 0 });
+        collapsed.push({
+          text: ranged,
+          spans,
+          spanlessCount: anySpanless ? 1 : 0,
+        });
       } else {
         for (const t of texts) {
           const bucket = byText.get(t)!;
-          collapsed.push({ text: t, spans: [...bucket.spans.values()], spanlessCount: bucket.spanless ? 1 : 0 });
+          collapsed.push({
+            text: t,
+            spans: [...bucket.spans.values()],
+            spanlessCount: bucket.spanless ? 1 : 0,
+          });
         }
       }
     }
@@ -315,7 +353,10 @@ class NoteAggregate {
         continue;
       }
       const merged = mergeSpans(spans);
-      const coveredChars = merged.reduce((sum, s) => sum + (s.end - s.start), 0);
+      const coveredChars = merged.reduce(
+        (sum, s) => sum + (s.end - s.start),
+        0,
+      );
       groups.push({
         text,
         spans,

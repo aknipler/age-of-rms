@@ -1,4 +1,10 @@
-import type { Diagnostic, LexOptions, LexResult, Token, TokenKind } from "./types";
+import type {
+  Diagnostic,
+  LexOptions,
+  LexResult,
+  Token,
+  TokenKind,
+} from "./types";
 import {
   embeddedMarker,
   leadingByteOrderMark,
@@ -36,11 +42,15 @@ const BOM = String.fromCharCode(0xfeff);
 // above as its own trivia token before this check ever runs. Built from
 // numeric code points at runtime for the same corruption-avoidance
 // reason as BOM.
-const NON_STANDARD_SPACE_CODE_POINTS = [0x00a0, 0x1680, 0x202f, 0x205f, 0x3000, 0xfeff];
+const NON_STANDARD_SPACE_CODE_POINTS = [
+  0x00a0, 0x1680, 0x202f, 0x205f, 0x3000, 0xfeff,
+];
 for (let cp = 0x2000; cp <= 0x200b; cp++) {
   NON_STANDARD_SPACE_CODE_POINTS.push(cp);
 }
-const NON_STANDARD_SPACE_CHARS = new Set(NON_STANDARD_SPACE_CODE_POINTS.map((cp) => String.fromCharCode(cp)));
+const NON_STANDARD_SPACE_CHARS = new Set(
+  NON_STANDARD_SPACE_CODE_POINTS.map((cp) => String.fromCharCode(cp)),
+);
 
 function findNonStandardSpaceChar(text: string): string | undefined {
   for (const ch of text) {
@@ -89,7 +99,13 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
   // ever silently dropped) but marked trivia since it carries no
   // meaning to the engine.
   if (source.length > 0 && source[0] === BOM) {
-    const bomToken: Token = { text: BOM, start: 0, end: 1, kind: "word", isTrivia: true };
+    const bomToken: Token = {
+      text: BOM,
+      start: 0,
+      end: 1,
+      kind: "word",
+      isTrivia: true,
+    };
     tokens.push(bomToken);
     diagnostics.push(leadingByteOrderMark(bomToken));
     cursor = 1;
@@ -105,7 +121,13 @@ export function tokenize(source: string, opts: LexOptions = {}): LexResult {
       cursor++;
     }
     const text = source.slice(start, cursor);
-    tokens.push({ text, start, end: cursor, kind: classify(text), isTrivia: false });
+    tokens.push({
+      text,
+      start,
+      end: cursor,
+      kind: classify(text),
+      isTrivia: false,
+    });
   }
 
   markComments(tokens, nestedComments, opts.commentOpenAliases, diagnostics);

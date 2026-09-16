@@ -30,8 +30,14 @@ import type {
   RandomNode,
   Span,
 } from "../../parser/types";
-import { NUMERIC_ARGUMENT_TYPES, type LanguageIndex } from "../../parser/language";
-import { canonicaliseTeams, teamLabels } from "../../generationSettings/teamModel";
+import {
+  NUMERIC_ARGUMENT_TYPES,
+  type LanguageIndex,
+} from "../../parser/language";
+import {
+  canonicaliseTeams,
+  teamLabels,
+} from "../../generationSettings/teamModel";
 import { createSubstream, nextInt } from "./rng";
 import { evaluateExpressionTokens, roundForIntegerSlot } from "./mathEval";
 import { resolveMapDim } from "./mapDimensions";
@@ -99,7 +105,8 @@ export function instantiateScript(
 
   const env = new Set<string>();
   for (const label of predefinedLabels) {
-    if (label.category === "mapSize" && label.mapSize === settings.mapSize) env.add(label.name);
+    if (label.category === "mapSize" && label.mapSize === settings.mapSize)
+      env.add(label.name);
   }
   env.add(`${settings.playerCount}_PLAYER_GAME`);
   env.add("RANDOM_MAP"); // standard random-map game mode (rule 1)
@@ -110,10 +117,15 @@ export function instantiateScript(
   // startingAge, none of these are derivable from PreviewSettings, so
   // "standard-lobby defaults for the rest" means they stay undefined/false.
 
-  const canonicalTeams = canonicaliseTeams(settings.teams, settings.playerCount);
+  const canonicalTeams = canonicaliseTeams(
+    settings.teams,
+    settings.playerCount,
+  );
   for (const label of teamLabels(canonicalTeams)) env.add(label);
 
-  const lobbyDim = resolveMapDim(settings.mapSize, refDb.data.predefinedLabels) ?? FALLBACK_DIM;
+  const lobbyDim =
+    resolveMapDim(settings.mapSize, refDb.data.predefinedLabels) ??
+    FALLBACK_DIM;
 
   // -------------------------------------------------------------------
   // Mutable stream state (rules 4, 7, 8, 11) and RNG ordinals (Sec.8).
@@ -138,7 +150,8 @@ export function instantiateScript(
   const actorAreas = new Map<number, InstantiatedCommand[]>();
   const sections = new Map<string, InstantiatedCommand[]>();
 
-  const isDefined = (name: string): boolean => env.has(name) || symbols.has(name);
+  const isDefined = (name: string): boolean =>
+    env.has(name) || symbols.has(name);
   const tokenText = (idx: number): string => parse.tokens[idx].text;
 
   function unsimulatedNote(span: Span): SimulationNote {
@@ -163,7 +176,9 @@ export function instantiateScript(
     // terrainConstant/objectConstant do NOT: those names resolve against
     // game-constants.json elsewhere (CREATION_PLAN A.2's alias table is the
     // unbuilt feature that would extend this to them).
-    const numericContext = type !== undefined && (NUMERIC_ARGUMENT_TYPES.has(type) || type === "otherConstant");
+    const numericContext =
+      type !== undefined &&
+      (NUMERIC_ARGUMENT_TYPES.has(type) || type === "otherConstant");
 
     const raw = node.value;
     let value: InstantiatedValue;
@@ -181,7 +196,12 @@ export function instantiateScript(
       value = evaluateExpressionTokens(texts, (name) => symbols.get(name));
     }
 
-    if (numericContext && typeof value === "number" && Number.isFinite(value) && !Number.isInteger(value)) {
+    if (
+      numericContext &&
+      typeof value === "number" &&
+      Number.isFinite(value) &&
+      !Number.isInteger(value)
+    ) {
       value = roundForIntegerSlot(value);
     }
 
@@ -189,11 +209,18 @@ export function instantiateScript(
   }
 
   function resolveAttribute(node: AttributeNode): InstantiatedAttribute {
-    return { name: tokenText(node.name), args: node.args.map(resolveArg), span: node.span };
+    return {
+      name: tokenText(node.name),
+      args: node.args.map(resolveArg),
+      span: node.span,
+    };
   }
 
   /** Rule 10: last-wins, except attributes language.json flags `repeatable`. */
-  function foldAttribute(sink: Map<string, InstantiatedAttribute[]>, node: AttributeNode): void {
+  function foldAttribute(
+    sink: Map<string, InstantiatedAttribute[]>,
+    node: AttributeNode,
+  ): void {
     const inst = resolveAttribute(node);
     if (node.def?.repeatable) {
       const existing = sink.get(inst.name);
@@ -210,7 +237,11 @@ export function instantiateScript(
   function selectIfBranch(node: IfNode): IfBranch | undefined {
     for (const branch of node.branches) {
       if (tokenText(branch.keyword) === "else") return branch; // always matches
-      if (branch.condition !== undefined && isDefined(tokenText(branch.condition))) return branch;
+      if (
+        branch.condition !== undefined &&
+        isDefined(tokenText(branch.condition))
+      )
+        return branch;
     }
     return undefined;
   }
@@ -228,10 +259,13 @@ export function instantiateScript(
     let cumulative = 0;
     for (const branch of node.branches) {
       if (cumulative >= 99) break; // nothing left to claim
-      const resolved = branch.chance ? resolveArg(branch.chance).value : undefined;
+      const resolved = branch.chance
+        ? resolveArg(branch.chance).value
+        : undefined;
       const pct = typeof resolved === "number" ? resolved : 0;
       const width = Math.max(0, Math.min(pct, 99 - cumulative));
-      if (width > 0 && roll >= cumulative + 1 && roll <= cumulative + width) return branch;
+      if (width > 0 && roll >= cumulative + 1 && roll <= cumulative + width)
+        return branch;
       cumulative += width;
     }
     return undefined;
@@ -244,23 +278,33 @@ export function instantiateScript(
     const directiveName = tokenText(node.hash);
     if (directiveName === "#define" || directiveName === "#const") {
       const nameArg = node.args[0];
-      const symbolName = nameArg && typeof nameArg.value === "string" ? nameArg.value : undefined;
+      const symbolName =
+        nameArg && typeof nameArg.value === "string"
+          ? nameArg.value
+          : undefined;
       if (symbolName === undefined || symbols.has(symbolName)) return; // first-definition-wins
       if (directiveName === "#define") {
         symbols.set(symbolName, undefined);
       } else {
         const valueArg = node.args[1];
         const resolved = valueArg ? resolveArg(valueArg).value : undefined;
-        symbols.set(symbolName, typeof resolved === "number" ? resolved : undefined);
+        symbols.set(
+          symbolName,
+          typeof resolved === "number" ? resolved : undefined,
+        );
         // BUG-015: a value that stayed a STRING is a name-to-name alias
         // (`#const TERR_CORNER GRASS2`). It cannot go in `symbols`, which
         // holds ids, and dropping it is what made the preview claim our own
         // reference data does not know a terrain it does. Recorded UNRESOLVED,
         // see `InstantiatedScript.aliases` for why resolving it here would
         // be worse than the bug.
-        if (typeof resolved === "string" && resolved !== symbolName) aliases.set(symbolName, resolved);
+        if (typeof resolved === "string" && resolved !== symbolName)
+          aliases.set(symbolName, resolved);
       }
-    } else if (directiveName === "#include_drs" || directiveName === "#includeXS") {
+    } else if (
+      directiveName === "#include_drs" ||
+      directiveName === "#includeXS"
+    ) {
       addNote({
         key: "includes",
         prominence: "banner",
@@ -274,7 +318,10 @@ export function instantiateScript(
   // -------------------------------------------------------------------
   // Rules 7, 8, 11, 12: command instantiation + stream-variable side effects.
   // -------------------------------------------------------------------
-  function resolveCommand(node: CommandNode, sectionName: string): InstantiatedCommand {
+  function resolveCommand(
+    node: CommandNode,
+    sectionName: string,
+  ): InstantiatedCommand {
     // `InstantiatedCommand.name` means "which command is this", NOT "what did
     // the author type". `#const L 32` + `L { … }` is `create_land` (the parser
     // resolves the alias through `commandsByTokenId` and writes the real def
@@ -289,7 +336,8 @@ export function instantiateScript(
     const name = node.def?.name ?? tokenText(node.name);
     const args = node.args.map(resolveArg);
     const attributes = new Map<string, InstantiatedAttribute[]>();
-    if (node.block) walkItems(node.block.items, sectionName, attributes, undefined);
+    if (node.block)
+      walkItems(node.block.items, sectionName, attributes, undefined);
 
     if (name === "behavior_version") {
       const requested = args[0]?.value;
@@ -332,7 +380,14 @@ export function instantiateScript(
       landCommandSeen = true;
     }
 
-    const inst: InstantiatedCommand = { name, def: node.def, span: node.span, args, attributes, behaviorVersion };
+    const inst: InstantiatedCommand = {
+      name,
+      def: node.def,
+      span: node.span,
+      args,
+      attributes,
+      behaviorVersion,
+    };
 
     // Rule 12: collected as encountered in the executed stream, regardless
     // of where in the file the referencing command sits.

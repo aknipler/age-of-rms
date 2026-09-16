@@ -1,11 +1,15 @@
-import { useCodeSettings, TAB_SIZE_OPTIONS } from "../../settings/CodeSettingsContext";
+import {
+  useCodeSettings,
+  TAB_SIZE_OPTIONS,
+} from "../../settings/CodeSettingsContext";
 import { HelpTip } from "../HelpTip";
 import dialogStyles from "../dialog.module.css";
 import settingsStyles from "./SettingsDialog.module.css";
 import styles from "./BreakdownSettings.module.css";
 
 export function CodeSettings() {
-  const { tabSize, setTabSize, insertSpaces, setInsertSpaces } = useCodeSettings();
+  const { tabSize, setTabSize, insertSpaces, setInsertSpaces } =
+    useCodeSettings();
 
   return (
     <>

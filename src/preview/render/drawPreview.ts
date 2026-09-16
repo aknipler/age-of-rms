@@ -53,7 +53,11 @@ export function createBitmapCanvas(bitmap: TerrainBitmap): HTMLCanvasElement {
   // kind, which cannot happen for one we just made, but the type says it
   // can, so say what happens rather than assert it away.
   if (ctx !== null) {
-    ctx.putImageData(new ImageData(bitmap.pixels, bitmap.dim, bitmap.dim), 0, 0);
+    ctx.putImageData(
+      new ImageData(bitmap.pixels, bitmap.dim, bitmap.dim),
+      0,
+      0,
+    );
   }
   return canvas;
 }
@@ -110,7 +114,11 @@ export interface PreviewScene {
  * everything below is in CSS pixels and composes onto whatever is already
  * there, which is why this uses `transform` rather than `setTransform`.
  */
-export function drawPreview(ctx: CanvasRenderingContext2D, viewport: Viewport, scene: PreviewScene): void {
+export function drawPreview(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  scene: PreviewScene,
+): void {
   ctx.clearRect(0, 0, viewport.width, viewport.height);
   ctx.fillStyle = BACKGROUND;
   ctx.fillRect(0, 0, viewport.width, viewport.height);
@@ -128,12 +136,26 @@ export function drawPreview(ctx: CanvasRenderingContext2D, viewport: Viewport, s
     drawOverlay(ctx, viewport, scene.overlayShapes);
   }
   if (scene.highlight) {
-    drawTileOutline(ctx, viewport, scene.highlight.x, scene.highlight.y, HIGHLIGHT, 1.5);
+    drawTileOutline(
+      ctx,
+      viewport,
+      scene.highlight.x,
+      scene.highlight.y,
+      HIGHLIGHT,
+      1.5,
+    );
   }
   // After the hover outline, so the selection stays visible when the pointer
   // happens to be resting on the tile that is already selected.
   if (scene.selection) {
-    drawTileOutline(ctx, viewport, scene.selection.x, scene.selection.y, SELECTION, 2.5);
+    drawTileOutline(
+      ctx,
+      viewport,
+      scene.selection.x,
+      scene.selection.y,
+      SELECTION,
+      2.5,
+    );
   }
 }
 
@@ -147,7 +169,11 @@ export function drawPreview(ctx: CanvasRenderingContext2D, viewport: Viewport, s
  * lands exactly on tile (x, y)'s diamond, the image is not "rotated by 45
  * degrees and hoped for", the transform IS the projection.
  */
-function drawTerrain(ctx: CanvasRenderingContext2D, viewport: Viewport, base: PreviewBaseLayer): void {
+function drawTerrain(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  base: PreviewBaseLayer,
+): void {
   const halfHeight = halfHeightOf(viewport);
   ctx.save();
   // Zoomed in, nearest-neighbour keeps tile edges crisp and honest about
@@ -167,7 +193,11 @@ function drawTerrain(ctx: CanvasRenderingContext2D, viewport: Viewport, base: Pr
   ctx.restore();
 }
 
-function drawMapEdge(ctx: CanvasRenderingContext2D, viewport: Viewport, dim: number): void {
+function drawMapEdge(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  dim: number,
+): void {
   const west = tileToScreen(viewport, -0.5, -0.5);
   const north = tileToScreen(viewport, dim - 0.5, -0.5);
   const east = tileToScreen(viewport, dim - 0.5, dim - 0.5);
@@ -204,14 +234,20 @@ function drawObjects(
       // fill: the fill has to keep saying WHAT the thing is, since that is
       // the question the map is being read for.
       ctx.strokeStyle =
-        object.player === undefined ? "rgba(0, 0, 0, 0.55)" : cssColor(playerColor(object.player));
+        object.player === undefined
+          ? "rgba(0, 0, 0, 0.55)"
+          : cssColor(playerColor(object.player));
       ctx.lineWidth = object.player === undefined ? 1 : 1.5;
       ctx.stroke();
     }
   }
 }
 
-function drawPlayers(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewWireResult): void {
+function drawPlayers(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  result: PreviewWireResult,
+): void {
   const size = Math.max(7, Math.min(18, viewport.halfWidth * 2.6));
   for (const marker of result.players) {
     const point = tileToScreen(viewport, marker.x, marker.y);
@@ -245,7 +281,11 @@ function drawPlayers(ctx: CanvasRenderingContext2D, viewport: Viewport, result: 
  * their density, so it may become texture; a mark is one of a handful and its
  * whole job is to be noticed from the zoom level the map opens at.
  */
-function drawFailureMarks(ctx: CanvasRenderingContext2D, viewport: Viewport, result: PreviewWireResult): void {
+function drawFailureMarks(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  result: PreviewWireResult,
+): void {
   const size = Math.max(9, Math.min(20, viewport.halfWidth * 2.4));
   const half = size / 2;
   for (const mark of result.failureMarks) {
@@ -284,7 +324,12 @@ function drawFailureMarks(ctx: CanvasRenderingContext2D, viewport: Viewport, res
  * correct without re-deriving the algebra if that ever changes, since it
  * just measures how far the transform sends one tile-length in practice.
  */
-function circleScreenRadius(viewport: Viewport, cx: number, cy: number, rTiles: number): number {
+function circleScreenRadius(
+  viewport: Viewport,
+  cx: number,
+  cy: number,
+  rTiles: number,
+): number {
   const centre = tileToScreen(viewport, cx, cy);
   const edge = tileToScreen(viewport, cx + rTiles, cy);
   return Math.hypot(edge.x - centre.x, edge.y - centre.y);
@@ -296,7 +341,11 @@ function circleScreenRadius(viewport: Viewport, cx: number, cy: number, rTiles: 
  * outlines (`drawPreview`'s own ordering), additive, and it changes no
  * existing layer.
  */
-function drawOverlay(ctx: CanvasRenderingContext2D, viewport: Viewport, shapes: readonly OverlayShape[]): void {
+function drawOverlay(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  shapes: readonly OverlayShape[],
+): void {
   for (const shape of shapes) {
     const color = OVERLAY_COLORS[shape.role];
     switch (shape.kind) {
@@ -398,8 +447,18 @@ function drawTileOutline(
   ctx.stroke();
 }
 
-function offCanvas(x: number, y: number, viewport: Viewport, margin: number): boolean {
-  return x < -margin || y < -margin || x > viewport.width + margin || y > viewport.height + margin;
+function offCanvas(
+  x: number,
+  y: number,
+  viewport: Viewport,
+  margin: number,
+): boolean {
+  return (
+    x < -margin ||
+    y < -margin ||
+    x > viewport.width + margin ||
+    y > viewport.height + margin
+  );
 }
 
 /** Black or white, whichever the player colour can actually be read against. */

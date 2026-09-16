@@ -13,7 +13,9 @@ function toCamelCase(snake: string): string {
   return snake
     .toLowerCase()
     .split("_")
-    .map((word, i) => (i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+    .map((word, i) =>
+      i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1),
+    )
     .join("");
 }
 
@@ -29,9 +31,18 @@ interface SectionTabsProps {
 // any unknown sections (RMS0100), each with a count badge and a problem
 // badge computed by diagnostic-span containment over the tab's (possibly
 // disjoint, for aggregated duplicate sections) ranges.
-export function SectionTabs({ tabs, activeId, onSelect, diagnostics }: SectionTabsProps) {
+export function SectionTabs({
+  tabs,
+  activeId,
+  onSelect,
+  diagnostics,
+}: SectionTabsProps) {
   return (
-    <div className={styles.tabBar} role="tablist" data-tutorial-anchor="breakdown.sectionTabs">
+    <div
+      className={styles.tabBar}
+      role="tablist"
+      data-tutorial-anchor="breakdown.sectionTabs"
+    >
       {tabs.map((tab) => {
         const severity = tabProblemSeverity(tab, diagnostics);
         const helpId =
@@ -60,9 +71,18 @@ export function SectionTabs({ tabs, activeId, onSelect, diagnostics }: SectionTa
                 {tab.number}. {tab.label}
               </span>
               <span className={styles.countBadge}>{tab.items.length}</span>
-              {!tab.known && <span className={styles.warnBadge} title="Unknown section name (RMS0100)">?</span>}
+              {!tab.known && (
+                <span
+                  className={styles.warnBadge}
+                  title="Unknown section name (RMS0100)"
+                >
+                  ?
+                </span>
+              )}
               {severity && (
-                <span className={`${cardStyles.problemBadge} ${cardStyles[`severity-${severity}`]}`}>
+                <span
+                  className={`${cardStyles.problemBadge} ${cardStyles[`severity-${severity}`]}`}
+                >
                   {severity}
                 </span>
               )}

@@ -13,7 +13,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = join(here, "..", "..", "..");
 
 export function loadLanguage(): LanguageData {
-  const raw = readFileSync(join(REPO_ROOT, "reference", "data", "language.json"), "utf8");
+  const raw = readFileSync(
+    join(REPO_ROOT, "reference", "data", "language.json"),
+    "utf8",
+  );
   return JSON.parse(raw) as LanguageData;
 }
 
@@ -25,20 +28,34 @@ interface Ranged {
 }
 
 /** Flatten every ranged node in the AST (depth-first, parents before children). */
-export function collectNodes(result: ParseResult): { node: Ranged; children: Ranged[] }[] {
+export function collectNodes(
+  result: ParseResult,
+): { node: Ranged; children: Ranged[] }[] {
   const out: { node: Ranged; children: Ranged[] }[] = [];
 
-  function argRanges(args: { firstToken: number; lastToken: number; span: { start: number; end: number } }[]): Ranged[] {
+  function argRanges(
+    args: {
+      firstToken: number;
+      lastToken: number;
+      span: { start: number; end: number };
+    }[],
+  ): Ranged[] {
     return args.map((a, i) => ({ ...a, label: `arg[${i}]` }));
   }
 
   function visitItem(item: Item): Ranged {
-    const self: Ranged = { firstToken: item.firstToken, lastToken: item.lastToken, span: item.span, label: item.kind };
+    const self: Ranged = {
+      firstToken: item.firstToken,
+      lastToken: item.lastToken,
+      span: item.span,
+      label: item.kind,
+    };
     const children: Ranged[] = [];
     switch (item.kind) {
       case "command": {
         children.push(...argRanges(item.args));
-        if (item.block) children.push(visitBlockLike(item.block.items, item.block));
+        if (item.block)
+          children.push(visitBlockLike(item.block.items, item.block));
         break;
       }
       case "attribute":
@@ -46,7 +63,8 @@ export function collectNodes(result: ParseResult): { node: Ranged; children: Ran
         children.push(...argRanges(item.args));
         break;
       case "if":
-        for (const b of item.branches) for (const i of b.items) children.push(visitItem(i));
+        for (const b of item.branches)
+          for (const i of b.items) children.push(visitItem(i));
         break;
       case "random":
         for (const i of item.preamble) children.push(visitItem(i));
@@ -56,7 +74,8 @@ export function collectNodes(result: ParseResult): { node: Ranged; children: Ran
         }
         break;
       case "orphanBlock":
-        if (item.block) children.push(visitBlockLike(item.block.items, item.block));
+        if (item.block)
+          children.push(visitBlockLike(item.block.items, item.block));
         break;
       case "raw":
         break;
@@ -65,8 +84,20 @@ export function collectNodes(result: ParseResult): { node: Ranged; children: Ran
     return self;
   }
 
-  function visitBlockLike(items: Item[], block: { firstToken: number; lastToken: number; span: { start: number; end: number } }): Ranged {
-    const self: Ranged = { firstToken: block.firstToken, lastToken: block.lastToken, span: block.span, label: "block" };
+  function visitBlockLike(
+    items: Item[],
+    block: {
+      firstToken: number;
+      lastToken: number;
+      span: { start: number; end: number };
+    },
+  ): Ranged {
+    const self: Ranged = {
+      firstToken: block.firstToken,
+      lastToken: block.lastToken,
+      span: block.span,
+      label: "block",
+    };
     const children = items.map(visitItem);
     out.push({ node: self, children });
     return self;
@@ -77,7 +108,12 @@ export function collectNodes(result: ParseResult): { node: Ranged; children: Ran
     const s: SectionNode = section;
     const children = s.items.map(visitItem);
     out.push({
-      node: { firstToken: s.firstToken, lastToken: s.lastToken, span: s.span, label: `section<${s.name}>` },
+      node: {
+        firstToken: s.firstToken,
+        lastToken: s.lastToken,
+        span: s.span,
+        label: `section<${s.name}>`,
+      },
       children,
     });
   }
@@ -104,15 +140,24 @@ export function checkProperties(result: ParseResult): string[] {
       continue;
     }
     if (node.span.start !== first.start || node.span.end !== last.end) {
-      problems.push(`${node.label}: span (${node.span.start},${node.span.end}) != tokens (${first.start},${last.end})`);
+      problems.push(
+        `${node.label}: span (${node.span.start},${node.span.end}) != tokens (${first.start},${last.end})`,
+      );
     }
     const slice = result.source.slice(node.span.start, node.span.end);
     if (!slice.startsWith(first.text) || !slice.endsWith(last.text)) {
-      problems.push(`${node.label}: source slice does not start/end with its boundary tokens`);
+      problems.push(
+        `${node.label}: source slice does not start/end with its boundary tokens`,
+      );
     }
     for (const child of children) {
-      if (child.firstToken < node.firstToken || child.lastToken > node.lastToken) {
-        problems.push(`${node.label}: child ${child.label} [${child.firstToken},${child.lastToken}] escapes parent [${node.firstToken},${node.lastToken}]`);
+      if (
+        child.firstToken < node.firstToken ||
+        child.lastToken > node.lastToken
+      ) {
+        problems.push(
+          `${node.label}: child ${child.label} [${child.firstToken},${child.lastToken}] escapes parent [${node.firstToken},${node.lastToken}]`,
+        );
       }
     }
   }
@@ -120,11 +165,18 @@ export function checkProperties(result: ParseResult): string[] {
   // Coverage: every non-trivia token inside >=1 node range.
   const covered = new Array<boolean>(result.tokens.length).fill(false);
   for (const { node } of nodes) {
-    for (let i = node.firstToken; i <= node.lastToken && i < result.tokens.length; i++) covered[i] = true;
+    for (
+      let i = node.firstToken;
+      i <= node.lastToken && i < result.tokens.length;
+      i++
+    )
+      covered[i] = true;
   }
   for (let i = 0; i < result.tokens.length; i++) {
     if (!result.tokens[i].isTrivia && !covered[i]) {
-      problems.push(`token ${i} ("${result.tokens[i].text}" at ${result.tokens[i].start}) reachable from no AST node`);
+      problems.push(
+        `token ${i} ("${result.tokens[i].text}" at ${result.tokens[i].start}) reachable from no AST node`,
+      );
     }
   }
 

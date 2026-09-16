@@ -34,12 +34,15 @@ function row(field, actual, expected, note, { informational = false } = {}) {
 const language = readJson("reference/data/language.json");
 
 // repeatable — rev 5 table: 5, the rev-4 four plus avoid_actor_area
-const repeatableAttrs = language.attributes.filter((a) => a.repeatable === true).map((a) => a.name).sort();
+const repeatableAttrs = language.attributes
+  .filter((a) => a.repeatable === true)
+  .map((a) => a.name)
+  .sort();
 row(
   "repeatable",
   `${repeatableAttrs.length} (${repeatableAttrs.join(", ") || "none"})`,
   "5 (avoid_actor_area, replace_terrain, spacing_to_specific_terrain, terrain_cost, terrain_size)",
-  "Sec.3.3 ground-truth rule renders duplicates as a list regardless of this flag — it only governs whether \"add another\" is offered.",
+  'Sec.3.3 ground-truth rule renders duplicates as a list regardless of this flag — it only governs whether "add another" is offered.',
 );
 
 // predefinedLabels — rev 5 table: 138 engine-defined condition labels.
@@ -47,7 +50,9 @@ row(
 // branch selection (docs/preview-design.md Sec.3.1); the count is expected
 // to move only if a DE patch adds lobby settings or map sizes.
 const predefinedLabels = language.predefinedLabels ?? [];
-const labelCategories = [...new Set(predefinedLabels.map((l) => l.category))].sort();
+const labelCategories = [
+  ...new Set(predefinedLabels.map((l) => l.category)),
+].sort();
 row(
   "predefinedLabels",
   `${predefinedLabels.length} (${labelCategories.length} categories)`,
@@ -56,20 +61,27 @@ row(
 );
 
 // nonFunctional — rev 4 table: 2, #undefine/#include
-const nonFunctionalDirectives = language.directives.filter((d) => d.nonFunctional === true).map((d) => d.name).sort();
+const nonFunctionalDirectives = language.directives
+  .filter((d) => d.nonFunctional === true)
+  .map((d) => d.name)
+  .sort();
 row(
   "nonFunctional",
   `${nonFunctionalDirectives.length} (${nonFunctionalDirectives.join(", ") || "none"})`,
   "2 (#include, #undefine)",
-  "Drives Sec.3.6's \"has no effect in DE\" badge.",
+  'Drives Sec.3.6\'s "has no effect in DE" badge.',
 );
 
 // #ifdef family removed from directives[]
 const ifdefFamily = ["#ifdef", "#ifndef", "#else", "#endif"];
-const stillPresent = language.directives.filter((d) => ifdefFamily.includes(d.name)).map((d) => d.name);
+const stillPresent = language.directives
+  .filter((d) => ifdefFamily.includes(d.name))
+  .map((d) => d.name);
 row(
   "#ifdef family in directives[]",
-  stillPresent.length === 0 ? "removed" : `still present: ${stillPresent.join(", ")}`,
+  stillPresent.length === 0
+    ? "removed"
+    : `still present: ${stillPresent.join(", ")}`,
   "removed",
   "parser-design Sec.13 item 2 — these don't exist in DE.",
 );
@@ -85,7 +97,9 @@ if (existsSync(path.join(repoRoot, sectionLabelsPath))) {
   // which reuses the same canonical-name keys and would double-count if
   // matched file-wide.
   const objectMatch = src.match(/SECTION_LABELS[^{]*\{([\s\S]*?)\}/);
-  const keyMatches = objectMatch ? (objectMatch[1].match(/^\s*[A-Z_]+\s*:/gm) ?? []) : [];
+  const keyMatches = objectMatch
+    ? (objectMatch[1].match(/^\s*[A-Z_]+\s*:/gm) ?? [])
+    : [];
   sectionLabelsKeyCount = keyMatches.length;
   sectionLabelsStatus = `exists (${sectionLabelsKeyCount} keys)`;
 }
@@ -111,13 +125,21 @@ function scanArgs(arr) {
 scanArgs(language.commands);
 scanArgs(language.attributes);
 scanArgs(language.directives);
-row("argument default coverage", `${withDefault}/${totalArgs}`, "34/130", "Not blocking (Sec.3.3's no-default absent-row path is the common case) — shapes the pitch, not correctness.");
+row(
+  "argument default coverage",
+  `${withDefault}/${totalArgs}`,
+  "34/130",
+  "Not blocking (Sec.3.3's no-default absent-row path is the common case) — shapes the pitch, not correctness.",
+);
 
 // Diagnostic.suggestion field on types.ts
 const typesSrc = read("src/parser/types.ts");
 row(
   "Diagnostic.suggestion field",
-  typesSrc.includes("suggestion") && /interface Diagnostic[\s\S]*?suggestion\??:/.test(typesSrc) ? "exists" : "missing",
+  typesSrc.includes("suggestion") &&
+    /interface Diagnostic[\s\S]*?suggestion\??:/.test(typesSrc)
+    ? "exists"
+    : "missing",
   "exists",
   "Sec.7 item 10 — populated by unknownName() in diagnostics.ts, consumed by the raw-card quick-fix / applySuggestion intent.",
 );
@@ -127,24 +149,38 @@ row(
 const hasPatchDir = existsSync(path.join(repoRoot, "src/breakdown/patch"));
 results.push({
   field: "applySuggestion intent (Sec.4.1, 3.3 scope)",
-  actual: hasPatchDir ? "src/breakdown/patch/ exists — check intents.ts" : "not built (src/breakdown/patch/ absent)",
+  actual: hasPatchDir
+    ? "src/breakdown/patch/ exists — check intents.ts"
+    : "not built (src/breakdown/patch/ absent)",
   expected: "not built until 3.3",
   ok: true,
   note: "Expected absent through 3.2; do not treat as a regression.",
 });
 
 // useParsedDocument hook exists (Sec.6.2)
-const hasUseParsedDocument = existsSync(path.join(repoRoot, "src/useParsedDocument.ts"));
-row("useParsedDocument.ts (Sec.6.2)", hasUseParsedDocument ? "exists" : "missing", "exists", "Lifts the single worker parse to app level.");
+const hasUseParsedDocument = existsSync(
+  path.join(repoRoot, "src/useParsedDocument.ts"),
+);
+row(
+  "useParsedDocument.ts (Sec.6.2)",
+  hasUseParsedDocument ? "exists" : "missing",
+  "exists",
+  "Lifts the single worker parse to app level.",
+);
 
 // CodePane staleness guard — just report the line it's on so the spec's
 // "line drifts, grep for it" note has a live answer.
 const codePaneSrc = read("src/components/CodePane.tsx");
 const lines = codePaneSrc.split("\n");
-const guardLineIndex = lines.findIndex((l) => l.includes("getValue()") && /source/i.test(l));
+const guardLineIndex = lines.findIndex(
+  (l) => l.includes("getValue()") && /source/i.test(l),
+);
 results.push({
   field: "CodePane staleness guard location",
-  actual: guardLineIndex >= 0 ? `line ${guardLineIndex + 1}` : "not found — check CodePane.tsx by hand",
+  actual:
+    guardLineIndex >= 0
+      ? `line ${guardLineIndex + 1}`
+      : "not found — check CodePane.tsx by hand",
   expected: "present somewhere in CodePane.tsx",
   ok: guardLineIndex >= 0,
   note: "Guards against applying markers for a stale parse; Sec.6.2 depends on useParsedDocument still exposing `source`. Line number drifts — this is just a pointer, not a spec claim.",

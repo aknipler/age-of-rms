@@ -204,6 +204,7 @@ Run together, in this order:
 ---
 
 ## 10. Land Placement perimeter rotation, slices A and B (`land-placement-perimeter-symbolic-
+
     rotation-slice-a-brief.md`, `-slice-b-brief.md`)
 
 A replaced the perimeter kinds' `cartesian` offset with `polar` and let their rotation be

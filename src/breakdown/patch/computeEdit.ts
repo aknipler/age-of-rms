@@ -2,7 +2,14 @@
 // Pure: no I/O, no React/Monaco/Tauri. Every intent reduces to one span
 // replace or one anchored insert (Sec.4.2), computed from token spans only.
 
-import type { AttributeNode, BlockNode, CommandNode, Item, ParseResult, SectionNode } from "../../parser/types";
+import type {
+  AttributeNode,
+  BlockNode,
+  CommandNode,
+  Item,
+  ParseResult,
+  SectionNode,
+} from "../../parser/types";
 import type { LanguageIndex } from "../../parser/language";
 import {
   detectIndentStep,
@@ -15,7 +22,14 @@ import {
   renderValue,
   type Rendered,
 } from "./formatStyle";
-import { PatchError, type BranchRef, type EditIntent, type EditResult, type InsertTarget, type TextEdit } from "./intents";
+import {
+  PatchError,
+  type BranchRef,
+  type EditIntent,
+  type EditResult,
+  type InsertTarget,
+  type TextEdit,
+} from "./intents";
 import { padCommentContent } from "../comments";
 
 export function applyEdit(source: string, edit: TextEdit): string {
@@ -34,39 +48,67 @@ function wsOnlyBefore(src: string, pos: number): boolean {
   return /^[ \t]*$/.test(src.slice(lineStartOf(src, pos), pos));
 }
 
-export function computeEdit(result: ParseResult, intent: EditIntent, lang: LanguageIndex): EditResult {
+export function computeEdit(
+  result: ParseResult,
+  intent: EditIntent,
+  lang: LanguageIndex,
+): EditResult {
   const src = result.source;
   const tokens = result.tokens;
   const eol = detectEol(src);
 
   // ---- shared insert helpers (Sec.4.5) ----
 
-  function ownLineInsert(anchorTokenStart: number, indent: string, rendered: Rendered): EditResult {
+  function ownLineInsert(
+    anchorTokenStart: number,
+    indent: string,
+    rendered: Rendered,
+  ): EditResult {
     // Insert a full line so the anchor token keeps its own line + indent.
     if (wsOnlyBefore(src, anchorTokenStart)) {
       const at = lineStartOf(src, anchorTokenStart);
       const newText = indent + rendered.text + eol;
-      return { edit: { start: at, end: at, newText }, caret: at + indent.length + rendered.caretOffset };
+      return {
+        edit: { start: at, end: at, newText },
+        caret: at + indent.length + rendered.caretOffset,
+      };
     }
     // Anchor shares its line with other content, degrade to inline (Sec.4.3 governs).
     const newText = rendered.text + " ";
-    return { edit: { start: anchorTokenStart, end: anchorTokenStart, newText }, caret: anchorTokenStart + rendered.caretOffset };
+    return {
+      edit: { start: anchorTokenStart, end: anchorTokenStart, newText },
+      caret: anchorTokenStart + rendered.caretOffset,
+    };
   }
 
   function insertIntoBlock(block: BlockNode, rendered: Rendered): EditResult {
-    if (block.close === undefined) throw new PatchError("block is unclosed — finish it in the Code tab first");
+    if (block.close === undefined)
+      throw new PatchError(
+        "block is unclosed — finish it in the Code tab first",
+      );
     const style = inferStyle(
       result,
       tokens[block.open].end,
       tokens[block.close].start,
       block.items.map((i) => i.span),
     );
-    if (style.onOwnLines) return ownLineInsert(tokens[block.close].start, style.indentUnit, rendered);
+    if (style.onOwnLines)
+      return ownLineInsert(
+        tokens[block.close].start,
+        style.indentUnit,
+        rendered,
+      );
     const at = tokens[block.close].start;
-    return { edit: { start: at, end: at, newText: rendered.text + " " }, caret: at + rendered.caretOffset };
+    return {
+      edit: { start: at, end: at, newText: rendered.text + " " },
+      caret: at + rendered.caretOffset,
+    };
   }
 
-  function insertIntoSection(section: SectionNode, rendered: Rendered): EditResult {
+  function insertIntoSection(
+    section: SectionNode,
+    rendered: Rendered,
+  ): EditResult {
     const items = section.items;
     if (items.length === 0) {
       const at = tokens[section.header].end;
@@ -74,17 +116,31 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       // sit at the header's own indent (usually column 0).
       const indent = lineIndentOf(src, tokens[section.header].start);
       const newText = eol + indent + rendered.text;
-      return { edit: { start: at, end: at, newText }, caret: at + eol.length + indent.length + rendered.caretOffset };
+      return {
+        edit: { start: at, end: at, newText },
+        caret: at + eol.length + indent.length + rendered.caretOffset,
+      };
     }
     const last = items[items.length - 1];
-    const style = inferStyle(result, tokens[section.header].end, undefined, items.map((i) => i.span));
+    const style = inferStyle(
+      result,
+      tokens[section.header].end,
+      undefined,
+      items.map((i) => i.span),
+    );
     const at = tokens[last.lastToken].end;
     if (style.onOwnLines) {
       const indent = lineIndentOf(src, items[items.length - 1].span.start);
       const newText = eol + indent + rendered.text;
-      return { edit: { start: at, end: at, newText }, caret: at + eol.length + indent.length + rendered.caretOffset };
+      return {
+        edit: { start: at, end: at, newText },
+        caret: at + eol.length + indent.length + rendered.caretOffset,
+      };
     }
-    return { edit: { start: at, end: at, newText: " " + rendered.text }, caret: at + 1 + rendered.caretOffset };
+    return {
+      edit: { start: at, end: at, newText: " " + rendered.text },
+      caret: at + 1 + rendered.caretOffset,
+    };
   }
 
   // The Header tab's fallback target when nothing is selected, mirrors
@@ -96,7 +152,10 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     const items = result.script.preamble;
     if (items.length === 0) {
       const newText = rendered.text + eol;
-      return { edit: { start: 0, end: 0, newText }, caret: rendered.caretOffset };
+      return {
+        edit: { start: 0, end: 0, newText },
+        caret: rendered.caretOffset,
+      };
     }
     const last = items[items.length - 1];
     const at = tokens[last.lastToken].end;
@@ -108,15 +167,29 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     if (items.length === 1) {
       const indent = lineIndentOf(src, last.span.start);
       const newText = eol + indent + rendered.text;
-      return { edit: { start: at, end: at, newText }, caret: at + eol.length + indent.length + rendered.caretOffset };
+      return {
+        edit: { start: at, end: at, newText },
+        caret: at + eol.length + indent.length + rendered.caretOffset,
+      };
     }
-    const style = inferStyle(result, tokens[items[0].firstToken].start, undefined, items.map((i) => i.span));
+    const style = inferStyle(
+      result,
+      tokens[items[0].firstToken].start,
+      undefined,
+      items.map((i) => i.span),
+    );
     if (style.onOwnLines) {
       const indent = lineIndentOf(src, items[items.length - 1].span.start);
       const newText = eol + indent + rendered.text;
-      return { edit: { start: at, end: at, newText }, caret: at + eol.length + indent.length + rendered.caretOffset };
+      return {
+        edit: { start: at, end: at, newText },
+        caret: at + eol.length + indent.length + rendered.caretOffset,
+      };
     }
-    return { edit: { start: at, end: at, newText: " " + rendered.text }, caret: at + 1 + rendered.caretOffset };
+    return {
+      edit: { start: at, end: at, newText: " " + rendered.text },
+      caret: at + 1 + rendered.caretOffset,
+    };
   }
 
   // A canonical tab whose section doesn't exist in the file at all yet (no
@@ -145,7 +218,12 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     const newText = `${prefix}${tag}${eol}${rendered.text}${eol}`;
     return {
       edit: { start: anchorEnd, end: anchorEnd, newText },
-      caret: anchorEnd + prefix.length + tag.length + eol.length + rendered.caretOffset,
+      caret:
+        anchorEnd +
+        prefix.length +
+        tag.length +
+        eol.length +
+        rendered.caretOffset,
     };
   }
 
@@ -166,7 +244,10 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       };
     }
     const newText = " " + rendered.text;
-    return { edit: { start: anchorEnd, end: anchorEnd, newText }, caret: anchorEnd + 1 + rendered.caretOffset };
+    return {
+      edit: { start: anchorEnd, end: anchorEnd, newText },
+      caret: anchorEnd + 1 + rendered.caretOffset,
+    };
   }
 
   function branchTerminator(ref: BranchRef): number | undefined {
@@ -180,25 +261,40 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
   }
 
   function branchOf(ref: BranchRef) {
-    const b = ref.parent.kind === "if" ? ref.parent.branches[ref.index] : undefined;
-    const rb = ref.parent.kind === "random" ? ref.parent.branches[ref.index] : undefined;
+    const b =
+      ref.parent.kind === "if" ? ref.parent.branches[ref.index] : undefined;
+    const rb =
+      ref.parent.kind === "random" ? ref.parent.branches[ref.index] : undefined;
     if (!b && !rb) throw new PatchError("branch index out of range");
     return { ifBranch: b, randomBranch: rb };
   }
 
   function insertIntoBranch(ref: BranchRef, rendered: Rendered): EditResult {
     const term = branchTerminator(ref);
-    if (term === undefined) throw new PatchError("conditional is unclosed — finish it in the Code tab first");
+    if (term === undefined)
+      throw new PatchError(
+        "conditional is unclosed — finish it in the Code tab first",
+      );
     const { ifBranch, randomBranch } = branchOf(ref);
     const items = (ifBranch?.items ?? randomBranch?.items)!;
     const openerEnd =
       ifBranch !== undefined
         ? tokens[ifBranch.condition ?? ifBranch.keyword].end
-        : tokens[randomBranch!.chance?.lastToken ?? randomBranch!.chanceKeyword].end;
-    const style = inferStyle(result, openerEnd, tokens[term].start, items.map((i) => i.span));
-    if (style.onOwnLines) return ownLineInsert(tokens[term].start, style.indentUnit, rendered);
+        : tokens[randomBranch!.chance?.lastToken ?? randomBranch!.chanceKeyword]
+            .end;
+    const style = inferStyle(
+      result,
+      openerEnd,
+      tokens[term].start,
+      items.map((i) => i.span),
+    );
+    if (style.onOwnLines)
+      return ownLineInsert(tokens[term].start, style.indentUnit, rendered);
     const at = tokens[term].start;
-    return { edit: { start: at, end: at, newText: rendered.text + " " }, caret: at + rendered.caretOffset };
+    return {
+      edit: { start: at, end: at, newText: rendered.text + " " },
+      caret: at + rendered.caretOffset,
+    };
   }
 
   // ---- Sec.4.6 deletion: whole-line vs surgical, all-or-nothing ----
@@ -237,9 +333,15 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     case "setArgValue": {
       const first = tokens[intent.arg.firstToken];
       const quoted = first.text.startsWith('"');
-      const text = quoted ? `"${renderValue(intent.value)}"` : renderValue(intent.value);
+      const text = quoted
+        ? `"${renderValue(intent.value)}"`
+        : renderValue(intent.value);
       return {
-        edit: { start: intent.arg.span.start, end: intent.arg.span.end, newText: text },
+        edit: {
+          start: intent.arg.span.start,
+          end: intent.arg.span.end,
+          newText: text,
+        },
         caret: intent.arg.span.start,
       };
     }
@@ -250,7 +352,10 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
         throw new PatchError("suggestion token lies outside the raw node");
       }
       const tok = tokens[tokenIndex];
-      return { edit: { start: tok.start, end: tok.end, newText: replacement }, caret: tok.start };
+      return {
+        edit: { start: tok.start, end: tok.end, newText: replacement },
+        caret: tok.start,
+      };
     }
 
     case "removeNode":
@@ -259,16 +364,26 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
     case "addAttribute":
     case "toggleFlag": {
       if (intent.kind === "toggleFlag" && !intent.on) {
-        if (intent.target.kind !== "block") throw new PatchError("cannot remove a flag from a block-less command");
+        if (intent.target.kind !== "block")
+          throw new PatchError(
+            "cannot remove a flag from a block-less command",
+          );
         const matches = intent.target.items.filter(
-          (i): i is AttributeNode => i.kind === "attribute" && tokens[i.name].text === intent.name,
+          (i): i is AttributeNode =>
+            i.kind === "attribute" && tokens[i.name].text === intent.name,
         );
-        if (matches.length === 0) throw new PatchError(`flag "${intent.name}" is not present`);
+        if (matches.length === 0)
+          throw new PatchError(`flag "${intent.name}" is not present`);
         return removeSpan(matches[matches.length - 1].span);
       }
       const def = lang.attributesByName.get(intent.name);
-      const rendered = renderAttribute(def, intent.name, intent.kind === "addAttribute" ? intent.value : []);
-      if (intent.target.kind === "block") return insertIntoBlock(intent.target, rendered);
+      const rendered = renderAttribute(
+        def,
+        intent.name,
+        intent.kind === "addAttribute" ? intent.value : [],
+      );
+      if (intent.target.kind === "block")
+        return insertIntoBlock(intent.target, rendered);
       // Sec.4.6 brace synthesis, the command has no block at all.
       const cmd: CommandNode = intent.target;
       if (cmd.block !== undefined) return insertIntoBlock(cmd.block, rendered);
@@ -276,7 +391,10 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       const cmdIndent = lineIndentOf(src, cmd.span.start);
       const inner = cmdIndent + detectIndentStep(src);
       const newText = ` {${eol}${inner}${rendered.text}${eol}${cmdIndent}}`;
-      return { edit: { start: at, end: at, newText }, caret: at + 2 + eol.length + inner.length + rendered.caretOffset };
+      return {
+        edit: { start: at, end: at, newText },
+        caret: at + 2 + eol.length + inner.length + rendered.caretOffset,
+      };
     }
 
     case "addCommand": {
@@ -306,54 +424,95 @@ export function computeEdit(result: ParseResult, intent: EditIntent, lang: Langu
       // formatStyle.ts already makes (CommentCard.tsx separately owns the
       // content policy of rejecting an embedded comment marker).
       const text = padCommentContent(intent.text);
-      return { edit: { start: innerSpan.start, end: innerSpan.end, newText: text }, caret: innerSpan.start + text.length };
+      return {
+        edit: { start: innerSpan.start, end: innerSpan.end, newText: text },
+        caret: innerSpan.start + text.length,
+      };
     }
 
     case "setCondition": {
       const { ifBranch } = branchOf(intent.branch);
-      if (!ifBranch) throw new PatchError("setCondition targets an if/elseif branch");
+      if (!ifBranch)
+        throw new PatchError("setCondition targets an if/elseif branch");
       const kwText = tokens[ifBranch.keyword].text;
-      if (kwText === "else") throw new PatchError("an else branch has no condition");
+      if (kwText === "else")
+        throw new PatchError("an else branch has no condition");
       if (ifBranch.condition !== undefined) {
         const tok = tokens[ifBranch.condition];
-        return { edit: { start: tok.start, end: tok.end, newText: intent.value }, caret: tok.start };
+        return {
+          edit: { start: tok.start, end: tok.end, newText: intent.value },
+          caret: tok.start,
+        };
       }
       const at = tokens[ifBranch.keyword].end; // Sec.4.4 absent case: insert after keyword
-      return { edit: { start: at, end: at, newText: " " + intent.value }, caret: at + 1 };
+      return {
+        edit: { start: at, end: at, newText: " " + intent.value },
+        caret: at + 1,
+      };
     }
 
     case "setChance": {
       const { randomBranch } = branchOf(intent.branch);
-      if (!randomBranch) throw new PatchError("setChance targets a percent_chance branch");
+      if (!randomBranch)
+        throw new PatchError("setChance targets a percent_chance branch");
       const text = renderValue(intent.value);
       if (randomBranch.chance !== undefined) {
         const span = randomBranch.chance.span;
-        return { edit: { start: span.start, end: span.end, newText: text }, caret: span.start };
+        return {
+          edit: { start: span.start, end: span.end, newText: text },
+          caret: span.start,
+        };
       }
       const at = tokens[randomBranch.chanceKeyword].end;
-      return { edit: { start: at, end: at, newText: " " + text }, caret: at + 1 };
+      return {
+        edit: { start: at, end: at, newText: " " + text },
+        caret: at + 1,
+      };
     }
 
     case "addBranch": {
-      const closer = intent.parent.kind === "if" ? intent.parent.endif : intent.parent.end;
-      if (closer === undefined) throw new PatchError("construct is unclosed — finish it in the Code tab first");
+      const closer =
+        intent.parent.kind === "if" ? intent.parent.endif : intent.parent.end;
+      if (closer === undefined)
+        throw new PatchError(
+          "construct is unclosed — finish it in the Code tab first",
+        );
       const text =
-        intent.branch === "elseif" ? "elseif TODO" : intent.branch === "else" ? "else" : "percent_chance 0";
-      const rendered: Rendered = { text, caretOffset: intent.branch === "else" ? 0 : text.indexOf(" ") + 1 };
+        intent.branch === "elseif"
+          ? "elseif TODO"
+          : intent.branch === "else"
+            ? "else"
+            : "percent_chance 0";
+      const rendered: Rendered = {
+        text,
+        caretOffset: intent.branch === "else" ? 0 : text.indexOf(" ") + 1,
+      };
       // Branch keywords sit at the closer's own indent, not one step deeper.
-      return ownLineInsert(tokens[closer].start, lineIndentOf(src, tokens[closer].start), rendered);
+      return ownLineInsert(
+        tokens[closer].start,
+        lineIndentOf(src, tokens[closer].start),
+        rendered,
+      );
     }
 
     case "removeBranch": {
       const { parent, index } = intent.branch;
       if (parent.branches.length <= 1) {
-        throw new PatchError("cannot remove the only branch — delete the whole construct instead");
+        throw new PatchError(
+          "cannot remove the only branch — delete the whole construct instead",
+        );
       }
       const closer = parent.kind === "if" ? parent.endif : parent.end;
-      if (closer === undefined) throw new PatchError("construct is unclosed — finish it in the Code tab first");
+      if (closer === undefined)
+        throw new PatchError(
+          "construct is unclosed — finish it in the Code tab first",
+        );
       const startTok =
-        parent.kind === "if" ? parent.branches[index].keyword : parent.branches[index].chanceKeyword;
-      if (startTok === undefined) throw new PatchError("branch index out of range");
+        parent.kind === "if"
+          ? parent.branches[index].keyword
+          : parent.branches[index].chanceKeyword;
+      if (startTok === undefined)
+        throw new PatchError("branch index out of range");
       const nextTok =
         parent.kind === "if"
           ? (parent.branches[index + 1]?.keyword ?? closer)

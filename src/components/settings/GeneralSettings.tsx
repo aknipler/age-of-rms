@@ -18,7 +18,8 @@ const HELP_MODE_OPTIONS: ReadonlyArray<{ value: HelpMode; label: string }> = [
 // different place in the tree.
 export function GeneralSettings() {
   const { mode, setMode } = useHelpSettings();
-  const { shortenLongNames, setShortenLongNames, authorName, setAuthorName } = useAppSettings();
+  const { shortenLongNames, setShortenLongNames, authorName, setAuthorName } =
+    useAppSettings();
 
   return (
     <>
@@ -58,7 +59,9 @@ export function GeneralSettings() {
                 checked={mode === option.value}
                 onChange={() => setMode(option.value)}
               />
-              <label htmlFor={`help-mode-${option.value}`}>{option.label}</label>
+              <label htmlFor={`help-mode-${option.value}`}>
+                {option.label}
+              </label>
             </div>
           ))}
         </fieldset>
@@ -74,7 +77,9 @@ export function GeneralSettings() {
               checked={shortenLongNames}
               onChange={(event) => setShortenLongNames(event.target.checked)}
             />
-            <label htmlFor="shorten-long-names">Shorten long #const / #define names</label>
+            <label htmlFor="shorten-long-names">
+              Shorten long #const / #define names
+            </label>
           </div>
         </fieldset>
       </HelpTip>

@@ -65,7 +65,8 @@ export function buildTerrainBitmap(
       // (projection.ts's compass). At the y = 0 edge there is no neighbour,
       // so the tile compares against itself and reads as flat — which is
       // right: an unknown slope should not be drawn as a lit one.
-      const lightNeighbour = y === 0 ? elevation[index] : elevation[index - dim];
+      const lightNeighbour =
+        y === 0 ? elevation[index] : elevation[index - dim];
       color = shadeForElevation(color, elevation[index], lightNeighbour);
 
       if (cliff[index] !== 0) {

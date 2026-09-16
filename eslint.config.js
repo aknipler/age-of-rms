@@ -58,7 +58,13 @@ export default tseslint.config(
               allowTypeImports: true,
             },
             {
-              group: ["react", "react-dom", "monaco-editor", "@monaco-editor/*", "@tauri-apps/*"],
+              group: [
+                "react",
+                "react-dom",
+                "monaco-editor",
+                "@monaco-editor/*",
+                "@tauri-apps/*",
+              ],
               message:
                 "tools-api/ is a published contract and must carry nothing executable from the app shell.",
             },

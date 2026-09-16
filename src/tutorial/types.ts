@@ -63,7 +63,10 @@ export interface TutorialStep {
    * null means the step isn't in a state the shortcut can act on (already
    * done, or missing a prerequisite), so no button-triggered edit fires.
    */
-  autoFill?: { label: string; buildEdit: (ctx: StepContext) => StepTextEdit | null };
+  autoFill?: {
+    label: string;
+    buildEdit: (ctx: StepContext) => StepTextEdit | null;
+  };
   /** Shown under the body while a `check` step is still unsatisfied. */
   hint?: string;
   /**

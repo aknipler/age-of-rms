@@ -19,8 +19,17 @@ export const num = (v: number): Expr => ({ k: "num", v });
 export const infE = (sign: 1 | -1): Expr => ({ k: "inf", sign });
 export const sym = (name: string): Expr => ({ k: "sym", name });
 export const param = (id: string): Expr => ({ k: "param", id });
-export const nodeRef = (id: string, field: NodeField): Expr => ({ k: "node", id, field });
-export const bin = (op: BinOp, l: Expr, r: Expr): Expr => ({ k: "bin", op, l, r });
+export const nodeRef = (id: string, field: NodeField): Expr => ({
+  k: "node",
+  id,
+  field,
+});
+export const bin = (op: BinOp, l: Expr, r: Expr): Expr => ({
+  k: "bin",
+  op,
+  l,
+  r,
+});
 export const add = (l: Expr, r: Expr): Expr => bin("+", l, r);
 export const sub = (l: Expr, r: Expr): Expr => bin("-", l, r);
 export const mul = (l: Expr, r: Expr): Expr => bin("*", l, r);
@@ -33,13 +42,18 @@ export const cosE = (e: Expr): Expr => ({ k: "cos", e });
 /** Left-fold a list of terms into one left-associative `+` (or `*`) chain. */
 export function chain(op: "+" | "*", terms: readonly Expr[]): Expr {
   if (terms.length === 0) throw new Error("chain() needs at least one term");
-  return terms.slice(1).reduce<Expr>((acc, term) => bin(op, acc, term), terms[0]);
+  return terms
+    .slice(1)
+    .reduce<Expr>((acc, term) => bin(op, acc, term), terms[0]);
 }
 
 /** Fold a sequence of (op, operand) steps onto an initial left operand, the
  *  general non-uniform-operator case `chain()` cannot express (Sec.5.4's
  *  macro mixes `%`, `+`, `*`). */
-export function foldLeft(initial: Expr, steps: ReadonlyArray<readonly [BinOp, Expr]>): Expr {
+export function foldLeft(
+  initial: Expr,
+  steps: ReadonlyArray<readonly [BinOp, Expr]>,
+): Expr {
   return steps.reduce<Expr>((acc, [op, rhs]) => bin(op, acc, rhs), initial);
 }
 
@@ -150,7 +164,11 @@ export function evalExpr(e: Expr, r: EvalResolvers): number | undefined {
  * twice and they must not drift apart.
  */
 export function evalClosed(e: Expr): number | undefined {
-  return evalExpr(e, { resolveSym: () => undefined, resolveParam: () => undefined, resolveNode: () => undefined });
+  return evalExpr(e, {
+    resolveSym: () => undefined,
+    resolveParam: () => undefined,
+    resolveNode: () => undefined,
+  });
 }
 
 // -----------------------------------------------------------------------

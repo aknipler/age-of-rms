@@ -12,7 +12,12 @@ import { loadLanguage, REPO_ROOT } from "../../../parser/__tests__/testUtils";
 import { resolveMapDim } from "../../../preview/generator/mapDimensions";
 import { DEFAULT_TEAMS } from "../../../generationSettings/generationSettingsConstants";
 import type { ParseResult } from "../../../parser/types";
-import { TOOLS_API_VERSION, type PublishedGameConstants, type ToolContext, type ToolMessage } from "../../../../tools-api/index";
+import {
+  TOOLS_API_VERSION,
+  type PublishedGameConstants,
+  type ToolContext,
+  type ToolMessage,
+} from "../../../../tools-api/index";
 import { validateManifest, validateToolMessage } from "../../protocol";
 import { checkRegistry } from "../../registry";
 import {
@@ -25,7 +30,12 @@ import {
 
 const lang = loadLanguage();
 const gameConstants = (
-  JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8")) as { constants: PublishedGameConstants }
+  JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as { constants: PublishedGameConstants }
 ).constants;
 
 const SCRIPT = `
@@ -39,7 +49,12 @@ const SCRIPT = `
   create_object DEER { actor_area_to_place_in 999 }
 `;
 
-function context(overrides: Partial<{ playerCount: number; params: Record<string, unknown> }> = {}): ToolContext<ParseResult> {
+function context(
+  overrides: Partial<{
+    playerCount: number;
+    params: Record<string, unknown>;
+  }> = {},
+): ToolContext<ParseResult> {
   const name = "Tiny";
   const tiles = resolveMapDim(name as never, lang.predefinedLabels ?? []) ?? 0;
   return {
@@ -52,11 +67,22 @@ function context(overrides: Partial<{ playerCount: number; params: Record<string
       teams: [...DEFAULT_TEAMS],
     },
     referenceData: { language: lang, gameConstants },
-    params: { playerCounts: ["2", "4"], runsPerPlayerCount: 5, baseSeed: 1, staticOnly: false, ...overrides.params },
+    params: {
+      playerCounts: ["2", "4"],
+      runsPerPlayerCount: 5,
+      baseSeed: 1,
+      staticOnly: false,
+      ...overrides.params,
+    },
   };
 }
 
-function collect(ctxOverrides: Partial<{ playerCount: number; params: Record<string, unknown> }> = {}): Promise<ToolMessage[]> {
+function collect(
+  ctxOverrides: Partial<{
+    playerCount: number;
+    params: Record<string, unknown>;
+  }> = {},
+): Promise<ToolMessage[]> {
   return new Promise((resolve) => {
     const messages: ToolMessage[] = [];
     const handle = consistencyChecker.run(context(ctxOverrides), (msg) => {
@@ -73,7 +99,14 @@ describe("consistencyChecker manifest", () => {
   });
 
   it("declares exactly the four capabilities tools-api-design.md Sec.6 pins by name", () => {
-    expect(consistencyChecker.manifest.capabilities.sort()).toEqual(["read-ast", "read-generation-settings", "read-reference", "read-source"].sort());
+    expect(consistencyChecker.manifest.capabilities.sort()).toEqual(
+      [
+        "read-ast",
+        "read-generation-settings",
+        "read-reference",
+        "read-source",
+      ].sort(),
+    );
   });
 
   it("declares ownsSettingsHeader — Sec.5.2's echo-suppression flag", () => {
@@ -107,16 +140,28 @@ describe("consistencyChecker.run — lifecycle", () => {
     // Static findings still ran: the undeclared actor_area_to_place_in in
     // SCRIPT should surface as a severity block even with no generation.
     if (result?.type !== "result") return;
-    expect(result.output.blocks.some((b) => b.kind === "severity" && b.level === "error")).toBe(true);
+    expect(
+      result.output.blocks.some(
+        (b) => b.kind === "severity" && b.level === "error",
+      ),
+    ).toBe(true);
   });
 
   it("cancel() stops the run and emits a cancelled error rather than a result", async () => {
     const messages: ToolMessage[] = [];
     await new Promise<void>((resolve) => {
-      const handle = consistencyChecker.run(context({ params: { runsPerPlayerCount: 200, playerCounts: ["2", "4", "6", "8"] } }), (msg) => {
-        messages.push(msg);
-        if (msg.type === "error" || msg.type === "result") resolve();
-      });
+      const handle = consistencyChecker.run(
+        context({
+          params: {
+            runsPerPlayerCount: 200,
+            playerCounts: ["2", "4", "6", "8"],
+          },
+        }),
+        (msg) => {
+          messages.push(msg);
+          if (msg.type === "error" || msg.type === "result") resolve();
+        },
+      );
       // Cancel almost immediately, before the run could plausibly finish 800 generations.
       setTimeout(() => handle.cancel(), 5);
     });
@@ -152,10 +197,14 @@ describe("consistencyChecker.run — lifecycle", () => {
     const messages = await collect({ params: { staticOnly: true } });
     const result = messages.find((m) => m.type === "result");
     if (result?.type !== "result") throw new Error("no result");
-    const errorBlocks = result.output.blocks.filter((b) => b.kind === "severity" && b.level === "error");
+    const errorBlocks = result.output.blocks.filter(
+      (b) => b.kind === "severity" && b.level === "error",
+    );
     expect(errorBlocks).toHaveLength(1);
     // One finding => a family of one => no table beside it.
-    expect(result.output.blocks.filter((b) => b.kind === "table")).toHaveLength(0);
+    expect(result.output.blocks.filter((b) => b.kind === "table")).toHaveLength(
+      0,
+    );
     // And the count is not written into the sentence.
     const only = errorBlocks[0];
     if (only.kind !== "severity") throw new Error("not a severity block");
@@ -169,7 +218,9 @@ describe("consistencyChecker.run — lifecycle", () => {
     const messages = await collect();
     for (const msg of messages) {
       const check = validateToolMessage(msg);
-      expect(check.ok, check.ok ? "" : `${msg.type}: ${check.problem}`).toBe(true);
+      expect(check.ok, check.ok ? "" : `${msg.type}: ${check.problem}`).toBe(
+        true,
+      );
     }
   });
 
@@ -182,8 +233,12 @@ describe("consistencyChecker.run — lifecycle", () => {
   // per player count per map, which is where every block in the population
   // comes from anyway.
   describe("corpus: the static pass's output stays inside the host's block cap", () => {
-    const mapNames = readdirSync(join(REPO_ROOT, "test-maps"), { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"))
+    const mapNames = readdirSync(join(REPO_ROOT, "test-maps"), {
+      withFileTypes: true,
+    })
+      .filter(
+        (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"),
+      )
       .map((entry) => entry.name)
       .sort();
 
@@ -195,7 +250,10 @@ describe("consistencyChecker.run — lifecycle", () => {
 
     for (const mapName of mapNames) {
       it(`${mapName} produces an output the protocol accepts`, async () => {
-        const source = readFileSync(join(REPO_ROOT, "test-maps", mapName), "utf8");
+        const source = readFileSync(
+          join(REPO_ROOT, "test-maps", mapName),
+          "utf8",
+        );
         const mapSizeName = "Normal";
         const ctx: ToolContext<ParseResult> = {
           apiVersion: TOOLS_API_VERSION,
@@ -203,11 +261,23 @@ describe("consistencyChecker.run — lifecycle", () => {
           source,
           settings: {
             playerCount: 4,
-            mapSize: { name: mapSizeName, tiles: resolveMapDim(mapSizeName as never, lang.predefinedLabels ?? []) ?? 0 },
+            mapSize: {
+              name: mapSizeName,
+              tiles:
+                resolveMapDim(
+                  mapSizeName as never,
+                  lang.predefinedLabels ?? [],
+                ) ?? 0,
+            },
             teams: [...DEFAULT_TEAMS],
           },
           referenceData: { language: lang, gameConstants },
-          params: { playerCounts: ["2", "4", "6", "8"], runsPerPlayerCount: 5, baseSeed: 1, staticOnly: true },
+          params: {
+            playerCounts: ["2", "4", "6", "8"],
+            runsPerPlayerCount: 5,
+            baseSeed: 1,
+            staticOnly: true,
+          },
         };
         const result = await new Promise<ToolMessage>((resolve) => {
           consistencyChecker.run(ctx, (msg) => {
@@ -223,7 +293,10 @@ describe("consistencyChecker.run — lifecycle", () => {
 
   it("a malformed settings block is an error, not a confident empty report over 'Total generations 60'", async () => {
     const ctx = context();
-    ctx.settings = { ...ctx.settings!, mapSize: { name: "Enormous Nonsense", tiles: 0 } };
+    ctx.settings = {
+      ...ctx.settings!,
+      mapSize: { name: "Enormous Nonsense", tiles: 0 },
+    };
     const messages: ToolMessage[] = [];
     await new Promise<void>((resolve) => {
       consistencyChecker.run(ctx, (msg) => {
@@ -232,15 +305,22 @@ describe("consistencyChecker.run — lifecycle", () => {
       });
     });
     expect(messages.some((m) => m.type === "result")).toBe(false);
-    expect(messages[messages.length - 1]).toMatchObject({ type: "error", reason: "host-error" });
+    expect(messages[messages.length - 1]).toMatchObject({
+      type: "error",
+      reason: "host-error",
+    });
   });
 
   it("the budget ceiling Sec.8 item 5 asks for actually bounds the shipped defaults", () => {
     // The constant existed, was exported, carried a comment citing Sec.8
     // item 5, and was asserted nowhere. So it could not go red on the
     // change it names.
-    expect(DEFAULT_RUNS_PER_PLAYER_COUNT * DEFAULT_PLAYER_COUNTS.length).toBeLessThanOrEqual(MAX_GENERATIONS_CEILING);
-    expect(MAX_RUNS_PER_PLAYER_COUNT * DEFAULT_PLAYER_COUNTS.length).toBeGreaterThan(MAX_GENERATIONS_CEILING);
+    expect(
+      DEFAULT_RUNS_PER_PLAYER_COUNT * DEFAULT_PLAYER_COUNTS.length,
+    ).toBeLessThanOrEqual(MAX_GENERATIONS_CEILING);
+    expect(
+      MAX_RUNS_PER_PLAYER_COUNT * DEFAULT_PLAYER_COUNTS.length,
+    ).toBeGreaterThan(MAX_GENERATIONS_CEILING);
   });
 });
 

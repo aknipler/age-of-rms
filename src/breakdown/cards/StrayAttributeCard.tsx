@@ -10,7 +10,11 @@ import cardStyles from "./cards.module.css";
  * ("belongs inside a { } block") rather than as an AttributeRow, it's
  * not part of any command's all-attributes list here.
  */
-export function StrayAttributeCard({ attribute }: { attribute: AttributeNode }) {
+export function StrayAttributeCard({
+  attribute,
+}: {
+  attribute: AttributeNode;
+}) {
   const { tokens } = useBreakdownContext();
   const name = tokens[attribute.name].text;
   return (
@@ -21,7 +25,9 @@ export function StrayAttributeCard({ attribute }: { attribute: AttributeNode }) 
             {name} {renderArgs(attribute.args, tokens)}
           </span>
         </HelpTip>
-        <span className={`${cardStyles.problemBadge} ${cardStyles["severity-warning"]}`}>
+        <span
+          className={`${cardStyles.problemBadge} ${cardStyles["severity-warning"]}`}
+        >
           belongs inside a {"{ }"} block
         </span>
       </div>

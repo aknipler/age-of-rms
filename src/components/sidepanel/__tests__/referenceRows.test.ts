@@ -10,12 +10,28 @@ import {
   orphanAttributeRows,
   type ConstantSortKey,
 } from "../referenceRows";
-import type { GameConstantEntry, GameConstantsData } from "../../../breakdown/gameConstants";
-import type { AttributeDef, CommandDef, LanguageData } from "../../../parser/language";
+import type {
+  GameConstantEntry,
+  GameConstantsData,
+} from "../../../breakdown/gameConstants";
+import type {
+  AttributeDef,
+  CommandDef,
+  LanguageData,
+} from "../../../parser/language";
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const REPO_ROOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "..",
+);
 const gameConstants = JSON.parse(
-  readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+  readFileSync(
+    join(REPO_ROOT, "reference", "data", "game-constants.json"),
+    "utf8",
+  ),
 ) as GameConstantsData;
 const languageData = JSON.parse(
   readFileSync(join(REPO_ROOT, "reference", "data", "language.json"), "utf8"),
@@ -35,7 +51,10 @@ function row(partial: Partial<GameConstantEntry>): GameConstantEntry {
 
 describe("compareConstantRows", () => {
   it("orders by descriptive name first", () => {
-    const rows = [row({ descriptiveName: "Wolf" }), row({ descriptiveName: "Deer" })].sort(compareConstantRows);
+    const rows = [
+      row({ descriptiveName: "Wolf" }),
+      row({ descriptiveName: "Deer" }),
+    ].sort(compareConstantRows);
     expect(rows.map((r) => r.descriptiveName)).toEqual(["Deer", "Wolf"]);
   });
 
@@ -43,9 +62,16 @@ describe("compareConstantRows", () => {
     // The real pair: 450 is both MARLIN1 and GREAT_FISH_MARLIN, same name.
     const rows = [
       row({ descriptiveName: "Marlin", rmsConstant: "MARLIN1", constId: 450 }),
-      row({ descriptiveName: "Marlin", rmsConstant: "GREAT_FISH_MARLIN", constId: 450 }),
+      row({
+        descriptiveName: "Marlin",
+        rmsConstant: "GREAT_FISH_MARLIN",
+        constId: 450,
+      }),
     ].sort(compareConstantRows);
-    expect(rows.map((r) => r.rmsConstant)).toEqual(["GREAT_FISH_MARLIN", "MARLIN1"]);
+    expect(rows.map((r) => r.rmsConstant)).toEqual([
+      "GREAT_FISH_MARLIN",
+      "MARLIN1",
+    ]);
   });
 
   it("falls to the constant id when name and constant both tie", () => {
@@ -75,10 +101,14 @@ describe("compareConstantRows", () => {
 
   it("produces a total order over the real terrain and object tables", () => {
     for (const category of ["terrain", "object"]) {
-      const rows = gameConstants.constants.filter((c) => c.category === category).sort(compareConstantRows);
+      const rows = gameConstants.constants
+        .filter((c) => c.category === category)
+        .sort(compareConstantRows);
       expect(rows.length).toBeGreaterThan(0);
       for (let i = 1; i < rows.length; i++) {
-        expect(compareConstantRows(rows[i - 1], rows[i])).toBeLessThanOrEqual(0);
+        expect(compareConstantRows(rows[i - 1], rows[i])).toBeLessThanOrEqual(
+          0,
+        );
       }
       // Ascending by descriptive name, which is the tier the user asked for.
       const names = rows.map((r) => r.descriptiveName);
@@ -126,7 +156,9 @@ describe("compareConstantRowsBy", () => {
           .filter((c) => c.category === category)
           .sort((a, b) => compareConstantRowsBy(key, a, b));
         for (let i = 1; i < rows.length; i++) {
-          expect(compareConstantRowsBy(key, rows[i - 1], rows[i])).toBeLessThanOrEqual(0);
+          expect(
+            compareConstantRowsBy(key, rows[i - 1], rows[i]),
+          ).toBeLessThanOrEqual(0);
         }
       }
     }
@@ -160,7 +192,13 @@ describe("matchesQuery", () => {
 });
 
 function command(partial: Partial<CommandDef>): CommandDef {
-  return { name: "cmd", section: "OBJECTS_GENERATION", kind: "block", verified: true, ...partial };
+  return {
+    name: "cmd",
+    section: "OBJECTS_GENERATION",
+    kind: "block",
+    verified: true,
+    ...partial,
+  };
 }
 
 function attribute(partial: Partial<AttributeDef>): AttributeDef {
@@ -178,7 +216,11 @@ describe("matchingCommandRows", () => {
   const commandB = command({ name: "commandB" });
 
   it("returns every command with every one of its attributes on an empty query", () => {
-    const rows = matchingCommandRows([commandA, commandB], attributesByName, "");
+    const rows = matchingCommandRows(
+      [commandA, commandB],
+      attributesByName,
+      "",
+    );
     expect(rows).toEqual([
       { command: commandA, attributes: [foo, bar] },
       { command: commandB, attributes: [] },
@@ -186,7 +228,11 @@ describe("matchingCommandRows", () => {
   });
 
   it("keeps a command whose own name matches, with no attributes attached", () => {
-    const rows = matchingCommandRows([commandA, commandB], attributesByName, "commandB");
+    const rows = matchingCommandRows(
+      [commandA, commandB],
+      attributesByName,
+      "commandB",
+    );
     expect(rows).toEqual([{ command: commandB, attributes: [] }]);
   });
 
@@ -194,17 +240,29 @@ describe("matchingCommandRows", () => {
     // "commandA" matches the command's own name but neither foo's nor bar's
     // name/description. If attributes were still being narrowed by the
     // query, this would come back empty instead of carrying both.
-    const rows = matchingCommandRows([commandA, commandB], attributesByName, "commandA");
+    const rows = matchingCommandRows(
+      [commandA, commandB],
+      attributesByName,
+      "commandA",
+    );
     expect(rows).toEqual([{ command: commandA, attributes: [foo, bar] }]);
   });
 
   it("keeps a command found only through a matching attribute, carrying just that attribute", () => {
-    const rows = matchingCommandRows([commandA, commandB], attributesByName, "foo");
+    const rows = matchingCommandRows(
+      [commandA, commandB],
+      attributesByName,
+      "foo",
+    );
     expect(rows).toEqual([{ command: commandA, attributes: [foo] }]);
   });
 
   it("drops a command that matches neither by name nor by any attribute", () => {
-    const rows = matchingCommandRows([commandA, commandB], attributesByName, "zzz");
+    const rows = matchingCommandRows(
+      [commandA, commandB],
+      attributesByName,
+      "zzz",
+    );
     expect(rows).toEqual([]);
   });
 
@@ -218,10 +276,24 @@ describe("matchingCommandRows", () => {
     // No command's attributes[] names one of the four non-functional strings
     // today, but the filter has to hold even if one someday does. It is the
     // reference table's own vocabulary, not just orphanAttributeRows'.
-    const deadAttr = attribute({ name: "dead", nonFunctional: true, replacedBy: "foo" });
-    const attributesWithGhost = new Map([...attributesByName, ["dead", deadAttr]]);
-    const commandWithGhost = command({ name: "commandD", attributes: ["foo", "dead"] });
-    const rows = matchingCommandRows([commandWithGhost], attributesWithGhost, "");
+    const deadAttr = attribute({
+      name: "dead",
+      nonFunctional: true,
+      replacedBy: "foo",
+    });
+    const attributesWithGhost = new Map([
+      ...attributesByName,
+      ["dead", deadAttr],
+    ]);
+    const commandWithGhost = command({
+      name: "commandD",
+      attributes: ["foo", "dead"],
+    });
+    const rows = matchingCommandRows(
+      [commandWithGhost],
+      attributesWithGhost,
+      "",
+    );
     expect(rows).toEqual([{ command: commandWithGhost, attributes: [foo] }]);
   });
 });
@@ -243,12 +315,22 @@ describe("orphanAttributeRows", () => {
   it("pins the real corpus: the four non-functional legacy strings are orphaned but excluded", () => {
     // Same four names as before the nonFunctional filter landed. They are
     // still nameless of a command, just no longer worth showing.
-    const names = orphanAttributeRows(languageData.commands, languageData.attributes, "").map((a) => a.name);
+    const names = orphanAttributeRows(
+      languageData.commands,
+      languageData.attributes,
+      "",
+    ).map((a) => a.name);
     expect(names).toEqual([]);
   });
 
   it("drops a non-functional attribute even though nothing references it", () => {
-    const ghost = attribute({ name: "ghost", nonFunctional: true, replacedBy: "real" });
-    expect(orphanAttributeRows([commandA], [foo, bar, ghost], "")).toEqual([bar]);
+    const ghost = attribute({
+      name: "ghost",
+      nonFunctional: true,
+      replacedBy: "real",
+    });
+    expect(orphanAttributeRows([commandA], [foo, bar, ghost], "")).toEqual([
+      bar,
+    ]);
   });
 });

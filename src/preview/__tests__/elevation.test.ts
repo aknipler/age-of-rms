@@ -7,7 +7,12 @@ import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
 import { createSpacingIndex } from "../generator/spacingIndex";
 import { createTileGrid, scaleToMapArea, tileIndex } from "../generator/grid";
-import { placeLandOrigins, growLands, paintLandTerrain, applyBaseElevation } from "../generator/lands";
+import {
+  placeLandOrigins,
+  growLands,
+  paintLandTerrain,
+  applyBaseElevation,
+} from "../generator/lands";
 import {
   applyElevation,
   growClump,
@@ -22,19 +27,36 @@ import {
   type TerrainConstantForElevation,
 } from "../generator/elevation";
 import { mulberry32 } from "../generator/rng";
-import type { InstantiatedScript, LandOrigin, TileGrid } from "../generator/types";
-import { DEFAULT_TEAMS, type MapSize, type TeamNumber } from "../../generationSettings/generationSettingsConstants";
+import type {
+  InstantiatedScript,
+  LandOrigin,
+  TileGrid,
+} from "../generator/types";
+import {
+  DEFAULT_TEAMS,
+  type MapSize,
+  type TeamNumber,
+} from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
 const refDb: LanguageIndex = buildLanguageIndex(lang);
 const rawConstants = JSON.parse(
-  readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+  readFileSync(
+    join(REPO_ROOT, "reference", "data", "game-constants.json"),
+    "utf8",
+  ),
 ) as { constants: TerrainConstantForElevation[] };
 const constants: TerrainConstantForElevation[] = rawConstants.constants;
 const GRASS = constants.find((c) => c.rmsConstant === "GRASS")!.constId!;
 const WATER = constants.find((c) => c.rmsConstant === "WATER")!.constId!;
 
-function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: readonly TeamNumber[] } = {}) {
+function settings(
+  overrides: {
+    playerCount?: number;
+    mapSize?: MapSize;
+    teams?: readonly TeamNumber[];
+  } = {},
+) {
   return {
     playerCount: overrides.playerCount ?? 8,
     mapSize: overrides.mapSize ?? "Normal",
@@ -42,15 +64,35 @@ function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: 
   };
 }
 
-function place(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
-  const instantiated: InstantiatedScript = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+function place(
+  source: string,
+  seed = 1,
+  overrides?: Parameters<typeof settings>[0],
+) {
+  const instantiated: InstantiatedScript = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const grid: TileGrid = createTileGrid(instantiated.dim, GRASS);
   const landResult = placeLandOrigins(instantiated, grid, constants, seed);
   growLands(landResult.origins, grid, landResult.reports, seed);
   paintLandTerrain(landResult.origins, grid);
   applyBaseElevation(instantiated, landResult.origins, grid, constants);
-  const elevationResult = applyElevation(instantiated, grid, constants, landResult.origins, seed);
-  return { grid, dim: instantiated.dim, origins: landResult.origins, ...elevationResult };
+  const elevationResult = applyElevation(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    seed,
+  );
+  return {
+    grid,
+    dim: instantiated.dim,
+    origins: landResult.origins,
+    ...elevationResult,
+  };
 }
 
 function elevatedTileCount(grid: TileGrid): number {
@@ -60,8 +102,17 @@ function elevatedTileCount(grid: TileGrid): number {
 }
 
 /** The first create_elevation command's InstantiatedCommand, for testing resolveTileBudget/resolveClumpCount directly against real attribute folding. */
-function elevationCommand(source: string, seed = 1, overrides?: Parameters<typeof settings>[0]) {
-  const instantiated = instantiateScript(parseRms(source, lang), refDb, settings(overrides), seed);
+function elevationCommand(
+  source: string,
+  seed = 1,
+  overrides?: Parameters<typeof settings>[0],
+) {
+  const instantiated = instantiateScript(
+    parseRms(source, lang),
+    refDb,
+    settings(overrides),
+    seed,
+  );
   const cmd = instantiated.sections.get("ELEVATION_GENERATION")?.[0];
   if (!cmd) throw new Error("fixture has no create_elevation command");
   return { cmd, dim: instantiated.dim };
@@ -69,7 +120,11 @@ function elevationCommand(source: string, seed = 1, overrides?: Parameters<typeo
 
 const ZERO_SPAN = { start: 0, end: 0 };
 
-function fabricateOrigin(x: number, y: number, player: number | undefined): LandOrigin {
+function fabricateOrigin(
+  x: number,
+  y: number,
+  player: number | undefined,
+): LandOrigin {
   return {
     commandSpan: ZERO_SPAN,
     x,
@@ -92,7 +147,11 @@ function fabricateOrigin(x: number, y: number, player: number | undefined): Land
 
 describe("resolveTileBudget / resolveClumpCount (Sec.6.2, tested directly against real attribute folding)", () => {
   it("defaults number_of_tiles to dim, NOT area-scaled (RMSTEST_14)", () => {
-    const { cmd, dim } = elevationCommand("<ELEVATION_GENERATION>\ncreate_elevation 10 {\n}\n", 1, { mapSize: "Tiny" });
+    const { cmd, dim } = elevationCommand(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\n}\n",
+      1,
+      { mapSize: "Tiny" },
+    );
     expect(resolveTileBudget(cmd, dim)).toBe(dim);
   });
 
@@ -116,16 +175,27 @@ describe("resolveTileBudget / resolveClumpCount (Sec.6.2, tested directly agains
   });
 
   it("an explicit number_of_tiles with no scale attribute is used exactly as written", () => {
-    const { cmd, dim } = elevationCommand("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_tiles 77\n}\n", 1);
+    const { cmd, dim } = elevationCommand(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_tiles 77\n}\n",
+      1,
+    );
     expect(resolveTileBudget(cmd, dim)).toBe(77);
   });
 
   it("number_of_clumps defaults to 1 and set_scale_by_groups scales the default too (it has no RMSTEST_14-style special case)", () => {
-    const { cmd, dim } = elevationCommand("<ELEVATION_GENERATION>\ncreate_elevation 10 {\n}\n", 1);
+    const { cmd, dim } = elevationCommand(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\n}\n",
+      1,
+    );
     expect(resolveClumpCount(cmd, dim)).toBe(1);
 
-    const scaled = elevationCommand("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nset_scale_by_groups\n}\n", 1);
-    expect(resolveClumpCount(scaled.cmd, scaled.dim)).toBe(Math.max(1, scaleToMapArea(1, scaled.dim)));
+    const scaled = elevationCommand(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nset_scale_by_groups\n}\n",
+      1,
+    );
+    expect(resolveClumpCount(scaled.cmd, scaled.dim)).toBe(
+      Math.max(1, scaleToMapArea(1, scaled.dim)),
+    );
   });
 
   it("only the LAST scale attribute applies when both are written (guide:1257/1274)", () => {
@@ -135,7 +205,9 @@ describe("resolveTileBudget / resolveClumpCount (Sec.6.2, tested directly agains
       { mapSize: "Tiny" },
     );
     expect(resolveClumpCount(sizeLast.cmd, sizeLast.dim)).toBe(3); // unscaled -- set_scale_by_size won
-    expect(resolveTileBudget(sizeLast.cmd, sizeLast.dim)).toBe(scaleToMapArea(100, sizeLast.dim));
+    expect(resolveTileBudget(sizeLast.cmd, sizeLast.dim)).toBe(
+      scaleToMapArea(100, sizeLast.dim),
+    );
 
     const groupsLast = elevationCommand(
       "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_tiles 100\nnumber_of_clumps 3\nset_scale_by_size\nset_scale_by_groups\n}\n",
@@ -143,7 +215,9 @@ describe("resolveTileBudget / resolveClumpCount (Sec.6.2, tested directly agains
       { mapSize: "Tiny" },
     );
     expect(resolveTileBudget(groupsLast.cmd, groupsLast.dim)).toBe(100); // unscaled -- set_scale_by_groups won
-    expect(resolveClumpCount(groupsLast.cmd, groupsLast.dim)).toBe(Math.max(1, scaleToMapArea(3, groupsLast.dim)));
+    expect(resolveClumpCount(groupsLast.cmd, groupsLast.dim)).toBe(
+      Math.max(1, scaleToMapArea(3, groupsLast.dim)),
+    );
   });
 
   it("perClumpTarget enforces the RMSTEST_22a floor of 6 tiles even when the even split would be less", () => {
@@ -152,7 +226,9 @@ describe("resolveTileBudget / resolveClumpCount (Sec.6.2, tested directly agains
   });
 
   it("maxHeight 0 is a real no-op — nothing attempted, nothing elevated", () => {
-    const { grid, reports } = place("<ELEVATION_GENERATION>\ncreate_elevation 0 {\n}\n");
+    const { grid, reports } = place(
+      "<ELEVATION_GENERATION>\ncreate_elevation 0 {\n}\n",
+    );
     expect(elevatedTileCount(grid)).toBe(0);
     expect(reports[0]).toMatchObject({ attempted: 0, placed: 0 });
   });
@@ -217,7 +293,10 @@ describe("eligibleSeedCandidates (Sec.7's two-predicate attribution)", () => {
 describe("drawSeed (Sec.6.2's diagonally-biased seed draw)", () => {
   it("favours the y > x side at roughly the requested ratio over many draws", () => {
     const dim = 40;
-    const pool = buildSeedPool(dim, Int32Array.from({ length: dim * dim }, (_, i) => i));
+    const pool = buildSeedPool(
+      dim,
+      Int32Array.from({ length: dim * dim }, (_, i) => i),
+    );
     const rng = mulberry32(7);
     const noSpacing = createSpacingIndex(dim, 0, "euclidean");
     let favored = 0;
@@ -237,7 +316,10 @@ describe("drawSeed (Sec.6.2's diagonally-biased seed draw)", () => {
 
   it("rejects a draw within `spacing` of a prior seed", () => {
     const dim = 20;
-    const pool = buildSeedPool(dim, Int32Array.from({ length: dim * dim }, (_, i) => i));
+    const pool = buildSeedPool(
+      dim,
+      Int32Array.from({ length: dim * dim }, (_, i) => i),
+    );
     const rng = mulberry32(3);
     const placed = createSpacingIndex(dim, 5, "euclidean");
     placed.add(10, 10);
@@ -252,7 +334,10 @@ describe("drawSeed (Sec.6.2's diagonally-biased seed draw)", () => {
 
   it("returns undefined when every candidate is within spacing of a prior seed", () => {
     const dim = 4;
-    const pool = buildSeedPool(dim, Int32Array.from({ length: dim * dim }, (_, i) => i));
+    const pool = buildSeedPool(
+      dim,
+      Int32Array.from({ length: dim * dim }, (_, i) => i),
+    );
     const rng = mulberry32(1);
     const placed = createSpacingIndex(dim, 100, "euclidean"); // spacing bigger than the whole grid
     placed.add(2, 2);
@@ -263,7 +348,12 @@ describe("drawSeed (Sec.6.2's diagonally-biased seed draw)", () => {
 
 describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds)", () => {
   function elevationOf(source: string, seed = 1) {
-    const instantiated = instantiateScript(parseRms(source, lang), refDb, settings({ playerCount: 1 }), seed);
+    const instantiated = instantiateScript(
+      parseRms(source, lang),
+      refDb,
+      settings({ playerCount: 1 }),
+      seed,
+    );
     const grid = createTileGrid(instantiated.dim, GRASS);
     applyElevation(instantiated, grid, constants, [], seed);
     let max = 0;
@@ -275,15 +365,27 @@ describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds
     // The idiom that broke this: `AD4 - Pag - v1.2.rms` writes the same
     // flood-the-map `create_elevation 7` five times for coverage, and summing
     // them put 36,877 of its 40,000 tiles at the elevation ceiling.
-    const one = "<ELEVATION_GENERATION>@create_elevation 7 {@number_of_clumps 1@number_of_tiles 230400@}@".replace(/@/g, "\n");
+    const one =
+      "<ELEVATION_GENERATION>@create_elevation 7 {@number_of_clumps 1@number_of_tiles 230400@}@".replace(
+        /@/g,
+        "\n",
+      );
     const five = one + one.replace("<ELEVATION_GENERATION>\n", "").repeat(4);
     expect(elevationOf(five)).toBe(elevationOf(one));
     expect(elevationOf(five)).toBeLessThanOrEqual(7);
   });
 
   it("a later, shorter command does not lower what an earlier one raised", () => {
-    const tall = "<ELEVATION_GENERATION>@create_elevation 7 {@number_of_clumps 1@number_of_tiles 230400@}@".replace(/@/g, "\n");
-    const short = "create_elevation 2 {@number_of_clumps 1@number_of_tiles 230400@}@".replace(/@/g, "\n");
+    const tall =
+      "<ELEVATION_GENERATION>@create_elevation 7 {@number_of_clumps 1@number_of_tiles 230400@}@".replace(
+        /@/g,
+        "\n",
+      );
+    const short =
+      "create_elevation 2 {@number_of_clumps 1@number_of_tiles 230400@}@".replace(
+        /@/g,
+        "\n",
+      );
     expect(elevationOf(tall + short)).toBe(elevationOf(tall));
   });
 
@@ -299,7 +401,12 @@ describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds
     ]
       .join("\n")
       .replace(/@/g, "\n");
-    const instantiated = instantiateScript(parseRms(source, lang), refDb, settings({ playerCount: 1 }), seed);
+    const instantiated = instantiateScript(
+      parseRms(source, lang),
+      refDb,
+      settings({ playerCount: 1 }),
+      seed,
+    );
     const grid = createTileGrid(instantiated.dim, WATER);
     const land = placeLandOrigins(instantiated, grid, constants, seed);
     growLands(land.origins, grid, land.reports, seed);
@@ -308,7 +415,8 @@ describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds
     const maxOn = (landIndex: number) => {
       let max = 0;
       for (let i = 0; i < grid.elevation.length; i++) {
-        if (grid.landId[i] === landIndex && grid.elevation[i] > max) max = grid.elevation[i];
+        if (grid.landId[i] === landIndex && grid.elevation[i] > max)
+          max = grid.elevation[i];
       }
       return max;
     };
@@ -339,28 +447,45 @@ describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds
 describe("integration: seed placement respects player-origin avoidance end to end", () => {
   it("reports playerOriginAvoidance when a tiny, fully-occupied map leaves nothing eligible", () => {
     const grid = createTileGrid(10, GRASS);
-    const instantiated = instantiateScript(parseRms("<ELEVATION_GENERATION>\ncreate_elevation 10 {\n}\n", lang), refDb, settings({ playerCount: 1 }), 1);
+    const instantiated = instantiateScript(
+      parseRms("<ELEVATION_GENERATION>\ncreate_elevation 10 {\n}\n", lang),
+      refDb,
+      settings({ playerCount: 1 }),
+      1,
+    );
     const origin = fabricateOrigin(5, 5, 1);
     const result = applyElevation(instantiated, grid, constants, [origin], 1);
     expect(result.reports[0].placed).toBe(0);
-    expect(result.reports[0].failures.some((f) => f.bucket === "playerOriginAvoidance")).toBe(true);
+    expect(
+      result.reports[0].failures.some(
+        (f) => f.bucket === "playerOriginAvoidance",
+      ),
+    ).toBe(true);
   });
 
   it("reports terrainAbsent when the declared base_terrain never appears on the grid", () => {
-    const { reports } = place("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nbase_terrain WATER\n}\n"); // grid is all GRASS
+    const { reports } = place(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nbase_terrain WATER\n}\n",
+    ); // grid is all GRASS
     expect(reports[0]).toMatchObject({ placed: 0 });
-    expect(reports[0].failures.some((f) => f.bucket === "terrainAbsent")).toBe(true);
+    expect(reports[0].failures.some((f) => f.bucket === "terrainAbsent")).toBe(
+      true,
+    );
   });
 
   it("seeds only on tiles matching base_terrain when the grid has more than one terrain", () => {
     const instantiated = instantiateScript(
-      parseRms("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nbase_terrain WATER\nnumber_of_clumps 1\nnumber_of_tiles 20\n}\n", lang),
+      parseRms(
+        "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nbase_terrain WATER\nnumber_of_clumps 1\nnumber_of_tiles 20\n}\n",
+        lang,
+      ),
       refDb,
       settings({ mapSize: "Tiny" }),
       1,
     );
     const grid = createTileGrid(instantiated.dim, GRASS);
-    for (let y = 5; y < 15; y++) for (let x = 5; x < 15; x++) grid.terrain[tileIndex(grid, x, y)] = WATER;
+    for (let y = 5; y < 15; y++)
+      for (let x = 5; x < 15; x++) grid.terrain[tileIndex(grid, x, y)] = WATER;
     const result = applyElevation(instantiated, grid, constants, [], 1);
     expect(result.reports[0].placed).toBe(1);
     for (let i = 0; i < grid.elevation.length; i++) {
@@ -377,9 +502,13 @@ describe("height profile (Sec.6.2)", () => {
     // (h+1)^2*pi tiles for that, ~50 here) -- 300 tiles on a Normal map
     // gives comfortable headroom so this tests the "no roll" rule itself,
     // not whether the clump happened to grow deep enough.
-    const { grid } = place("<ELEVATION_GENERATION>\ncreate_elevation 3 {\nnumber_of_clumps 1\nnumber_of_tiles 300\n}\n", 1, {
-      mapSize: "Normal",
-    });
+    const { grid } = place(
+      "<ELEVATION_GENERATION>\ncreate_elevation 3 {\nnumber_of_clumps 1\nnumber_of_tiles 300\n}\n",
+      1,
+      {
+        mapSize: "Normal",
+      },
+    );
     const peak = Math.max(...grid.elevation);
     expect(peak).toBe(3);
   });
@@ -403,22 +532,39 @@ describe("height profile (Sec.6.2)", () => {
   });
 
   it("forms concentric rings: the clump's deepest tile is strictly higher than its shallowest elevated tile, for spacing 1", () => {
-    const { grid } = place("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_clumps 1\nnumber_of_tiles 80\n}\n", 1, {
-      mapSize: "Tiny",
-    });
+    const { grid } = place(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_clumps 1\nnumber_of_tiles 80\n}\n",
+      1,
+      {
+        mapSize: "Tiny",
+      },
+    );
     const elevatedValues = [...grid.elevation].filter((v) => v > 0);
-    expect(Math.max(...elevatedValues)).toBeGreaterThan(Math.min(...elevatedValues));
+    expect(Math.max(...elevatedValues)).toBeGreaterThan(
+      Math.min(...elevatedValues),
+    );
   });
 
   it("a larger spacing produces wider flats (fewer distinct height values for the same clump)", () => {
-    const narrow = place("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_clumps 1\nnumber_of_tiles 150\nspacing 1\n}\n", 1, {
-      mapSize: "Small",
-    });
-    const wide = place("<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_clumps 1\nnumber_of_tiles 150\nspacing 4\n}\n", 1, {
-      mapSize: "Small",
-    });
-    const distinctLevels = (grid: TileGrid) => new Set([...grid.elevation].filter((v) => v > 0)).size;
-    expect(distinctLevels(wide.grid)).toBeLessThanOrEqual(distinctLevels(narrow.grid));
+    const narrow = place(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_clumps 1\nnumber_of_tiles 150\nspacing 1\n}\n",
+      1,
+      {
+        mapSize: "Small",
+      },
+    );
+    const wide = place(
+      "<ELEVATION_GENERATION>\ncreate_elevation 10 {\nnumber_of_clumps 1\nnumber_of_tiles 150\nspacing 4\n}\n",
+      1,
+      {
+        mapSize: "Small",
+      },
+    );
+    const distinctLevels = (grid: TileGrid) =>
+      new Set([...grid.elevation].filter((v) => v > 0)).size;
+    expect(distinctLevels(wide.grid)).toBeLessThanOrEqual(
+      distinctLevels(narrow.grid),
+    );
   });
 
   it("adds onto base_elevation rather than overwriting it (DE-relative behaviour)", () => {
@@ -465,7 +611,9 @@ describe("corpus: applyElevation never throws", () => {
   // individual map is slow (see docs/build-log.md, the lands.ts growth
   // session's corpus-gate fix, for the incident this convention prevents).
   const elevationCorpusDir = join(REPO_ROOT, "test-maps");
-  const elevationCorpusFiles = readdirSync(elevationCorpusDir, { withFileTypes: true })
+  const elevationCorpusFiles = readdirSync(elevationCorpusDir, {
+    withFileTypes: true,
+  })
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".rms"))
     .map((e) => e.name);
 

@@ -52,7 +52,9 @@ const whatsNew050: TutorialDefinition = {
       title: "Add and edit comments",
       anchor: { kind: "help", id: "breakdown.addComment" },
       navigate: { tab: "breakdown" },
-      body: ["Add a comment anywhere a command can go, and click any existing comment card to edit its text in place."],
+      body: [
+        "Add a comment anywhere a command can go, and click any existing comment card to edit its text in place.",
+      ],
       completion: { kind: "manual" },
     },
     {
@@ -70,7 +72,9 @@ const whatsNew050: TutorialDefinition = {
       title: "Export the preview as PNG",
       anchor: { kind: "help", id: "preview.exportPng" },
       navigate: { tab: "breakdown" },
-      body: ["Save exactly what the preview is showing right now, at its current zoom, pan, and seed, as a PNG file. You may need to scroll down in the preview pane to see this button (at the bottom right of the generated preview)."],
+      body: [
+        "Save exactly what the preview is showing right now, at its current zoom, pan, and seed, as a PNG file. You may need to scroll down in the preview pane to see this button (at the bottom right of the generated preview).",
+      ],
       completion: { kind: "manual" },
     },
     {
@@ -78,7 +82,9 @@ const whatsNew050: TutorialDefinition = {
       title: "Sort the reference table",
       anchor: { kind: "help", id: "breakdown.sidePanel.referenceSort" },
       navigate: { tab: "breakdown" },
-      body: ["The Terrain and Objects tabs can now sort by name, constant, or id, ascending or descending."],
+      body: [
+        "The Terrain and Objects tabs can now sort by name, constant, or id, ascending or descending.",
+      ],
       completion: { kind: "manual" },
     },
   ],

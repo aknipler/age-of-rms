@@ -9,8 +9,13 @@ import { evalExpr } from "../expr";
 import { parseFormula } from "../frontend";
 
 // test-only oracle for conventional operator precedence
-function evalConventional(source: string, vars: Record<string, number>): number {
-  return new Function(...Object.keys(vars), `return (${source});`)(...Object.values(vars));
+function evalConventional(
+  source: string,
+  vars: Record<string, number>,
+): number {
+  return new Function(...Object.keys(vars), `return (${source});`)(
+    ...Object.values(vars),
+  );
 }
 
 describe("parseFormula — Sec.5.2", () => {
@@ -19,9 +24,12 @@ describe("parseFormula — Sec.5.2", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const vars = { a: 2, b: 3, c: 4 };
-    expect(evalExpr(r.expr, { resolveSym: (n) => vars[n as keyof typeof vars], resolveParam: () => undefined })).toBe(
-      evalConventional("a + b * c", vars),
-    );
+    expect(
+      evalExpr(r.expr, {
+        resolveSym: (n) => vars[n as keyof typeof vars],
+        resolveParam: () => undefined,
+      }),
+    ).toBe(evalConventional("a + b * c", vars));
   });
 
   it("respects explicit grouping: (a + b) * c", () => {
@@ -29,23 +37,36 @@ describe("parseFormula — Sec.5.2", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const vars = { a: 2, b: 3, c: 4 };
-    expect(evalExpr(r.expr, { resolveSym: (n) => vars[n as keyof typeof vars], resolveParam: () => undefined })).toBe(
-      evalConventional("(a + b) * c", vars),
-    );
+    expect(
+      evalExpr(r.expr, {
+        resolveSym: (n) => vars[n as keyof typeof vars],
+        resolveParam: () => undefined,
+      }),
+    ).toBe(evalConventional("(a + b) * c", vars));
   });
 
   it("parses unary minus", () => {
     const r = parseFormula("-x + 5");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(evalExpr(r.expr, { resolveSym: (n) => (n === "x" ? 3 : undefined), resolveParam: () => undefined })).toBe(2);
+    expect(
+      evalExpr(r.expr, {
+        resolveSym: (n) => (n === "x" ? 3 : undefined),
+        resolveParam: () => undefined,
+      }),
+    ).toBe(2);
   });
 
   it("parses SIN/COS calls", () => {
     const r = parseFormula("SIN(theta) + COS(theta)");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.expr).toEqual({ k: "bin", op: "+", l: { k: "sin", e: { k: "sym", name: "theta" } }, r: { k: "cos", e: { k: "sym", name: "theta" } } });
+    expect(r.expr).toEqual({
+      k: "bin",
+      op: "+",
+      l: { k: "sin", e: { k: "sym", name: "theta" } },
+      r: { k: "cos", e: { k: "sym", name: "theta" } },
+    });
   });
 
   it("parses rnd(a,b) as a param leaf, never inline as a bin operand type error", () => {

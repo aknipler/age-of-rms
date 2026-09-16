@@ -7,21 +7,42 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../../../parser/parser";
 import { buildLanguageIndex } from "../../../../parser/language";
-import { loadLanguage, REPO_ROOT } from "../../../../parser/__tests__/testUtils";
+import {
+  loadLanguage,
+  REPO_ROOT,
+} from "../../../../parser/__tests__/testUtils";
 import { DEFAULT_TEAMS } from "../../../../generationSettings/generationSettingsConstants";
-import { generatePreview, type PreviewReferenceData } from "../../../../preview/generator/index";
+import {
+  generatePreview,
+  type PreviewReferenceData,
+} from "../../../../preview/generator/index";
 import type { PublishedGameConstants } from "../../../../../tools-api/index";
 import { objectConstantsFromPublished } from "../../../previewBridge";
-import type { CommandReport, SimulationNote } from "../../../../preview/generator/types";
+import type {
+  CommandReport,
+  SimulationNote,
+} from "../../../../preview/generator/types";
 import { cellStateOf, MonteCarloAggregate } from "../aggregate";
 
 const lang = loadLanguage();
 const gameConstants = (
-  JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8")) as { constants: PublishedGameConstants }
+  JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as { constants: PublishedGameConstants }
 ).constants;
 
 function report(overrides: Partial<CommandReport> = {}): CommandReport {
-  return { commandSpan: { start: 10, end: 20 }, stage: "S6", attempted: 3, placed: 3, failures: [], ...overrides };
+  return {
+    commandSpan: { start: 10, end: 20 },
+    stage: "S6",
+    attempted: 3,
+    placed: 3,
+    failures: [],
+    ...overrides,
+  };
 }
 
 describe("MonteCarloAggregate — CommandReport folding", () => {
@@ -38,8 +59,41 @@ describe("MonteCarloAggregate — CommandReport folding", () => {
 
   it("coalesces failures by bucket, summing occurrences", () => {
     const agg = new MonteCarloAggregate();
-    agg.addGeneration(4, [report({ failures: [{ bucket: "occupancyFull", commandSpan: { start: 10, end: 20 }, stage: "S6", entity: "GOLD", detail: "d", occurrences: 3 }] })], []);
-    agg.addGeneration(4, [report({ failures: [{ bucket: "occupancyFull", commandSpan: { start: 10, end: 20 }, stage: "S6", entity: "GOLD", detail: "d" }] })], []);
+    agg.addGeneration(
+      4,
+      [
+        report({
+          failures: [
+            {
+              bucket: "occupancyFull",
+              commandSpan: { start: 10, end: 20 },
+              stage: "S6",
+              entity: "GOLD",
+              detail: "d",
+              occurrences: 3,
+            },
+          ],
+        }),
+      ],
+      [],
+    );
+    agg.addGeneration(
+      4,
+      [
+        report({
+          failures: [
+            {
+              bucket: "occupancyFull",
+              commandSpan: { start: 10, end: 20 },
+              stage: "S6",
+              entity: "GOLD",
+              detail: "d",
+            },
+          ],
+        }),
+      ],
+      [],
+    );
     const cell = agg.allRows()[0].cells.get(4)!;
     expect(cell.failures.get("occupancyFull")?.occurrences).toBe(4); // 3 + (absent -> 1)
   });
@@ -98,15 +152,30 @@ describe("Sec.8 item 3 — the partially-present case, on the CORPUS rather than
   // `runsContaining` is that a rate summed over those runs must not be read
   // as though it covered the batch.
   it("sample.rms carries a row whose runsContaining is below its batch size, and the sum is over exactly those runs", () => {
-    const source = readFileSync(join(REPO_ROOT, "test-maps", "sample.rms"), "utf8");
+    const source = readFileSync(
+      join(REPO_ROOT, "test-maps", "sample.rms"),
+      "utf8",
+    );
     const parse = parseRms(source, lang);
-    const refDb: PreviewReferenceData = { language: buildLanguageIndex(lang), constants: objectConstantsFromPublished(gameConstants) };
+    const refDb: PreviewReferenceData = {
+      language: buildLanguageIndex(lang),
+      constants: objectConstantsFromPublished(gameConstants),
+    };
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(source.length);
     const RUNS = 15;
     for (const pc of [2, 4, 6, 8]) {
       for (let r = 0; r < RUNS; r++) {
-        const result = generatePreview(parse, refDb, { playerCount: pc, mapSize: "Normal", teams: [...DEFAULT_TEAMS] } as never, { seed: 1 + r, collectSnapshots: false });
+        const result = generatePreview(
+          parse,
+          refDb,
+          {
+            playerCount: pc,
+            mapSize: "Normal",
+            teams: [...DEFAULT_TEAMS],
+          } as never,
+          { seed: 1 + r, collectSnapshots: false },
+        );
         agg.addGeneration(pc, result.reports, result.notes);
       }
     }
@@ -116,8 +185,13 @@ describe("Sec.8 item 3 — the partially-present case, on the CORPUS rather than
 
     const partiallyPresent = agg
       .allRows()
-      .flatMap((row) => [...row.cells.entries()].map(([pc, cell]) => ({ pc, cell })))
-      .filter(({ pc, cell }) => cell.runsContaining > 0 && cell.runsContaining < agg.runsAt(pc));
+      .flatMap((row) =>
+        [...row.cells.entries()].map(([pc, cell]) => ({ pc, cell })),
+      )
+      .filter(
+        ({ pc, cell }) =>
+          cell.runsContaining > 0 && cell.runsContaining < agg.runsAt(pc),
+      );
 
     // A control that cannot come back zero: if the corpus stops carrying this
     // shape the assertions below are vacuous, and the rule loses its case.
@@ -136,16 +210,34 @@ describe("Sec.8 item 3 — the partially-present case, on the CORPUS rather than
 
 describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
   function note(overrides: Partial<SimulationNote> = {}): SimulationNote {
-    return { key: "k", prominence: "drawer", stage: "S0", text: "t", ...overrides };
+    return {
+      key: "k",
+      prominence: "drawer",
+      stage: "S0",
+      text: "t",
+      ...overrides,
+    };
   }
 
   it("groups by TEXT, merging many distinct per-span keys sharing one sentence into one group", () => {
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
-    agg.addGeneration(4, [], [
-      note({ key: "unsimulated:0-10", span: { start: 0, end: 10 }, text: "not simulated" }),
-      note({ key: "unsimulated:20-30", span: { start: 20, end: 30 }, text: "not simulated" }),
-    ]);
+    agg.addGeneration(
+      4,
+      [],
+      [
+        note({
+          key: "unsimulated:0-10",
+          span: { start: 0, end: 10 },
+          text: "not simulated",
+        }),
+        note({
+          key: "unsimulated:20-30",
+          span: { start: 20, end: 30 },
+          text: "not simulated",
+        }),
+      ],
+    );
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
     expect(groups[0].count).toBe(2);
@@ -155,8 +247,28 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
   it("dedupes the SAME span reported by two different runs — one row, not two", () => {
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
-    agg.addGeneration(4, [], [note({ key: "unsimulated:0-10", span: { start: 0, end: 10 }, text: "not simulated" })]);
-    agg.addGeneration(4, [], [note({ key: "unsimulated:0-10", span: { start: 0, end: 10 }, text: "not simulated" })]);
+    agg.addGeneration(
+      4,
+      [],
+      [
+        note({
+          key: "unsimulated:0-10",
+          span: { start: 0, end: 10 },
+          text: "not simulated",
+        }),
+      ],
+    );
+    agg.addGeneration(
+      4,
+      [],
+      [
+        note({
+          key: "unsimulated:0-10",
+          span: { start: 0, end: 10 },
+          text: "not simulated",
+        }),
+      ],
+    );
     const groups = agg.noteGroups();
     expect(groups[0].count).toBe(1);
   });
@@ -164,10 +276,14 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
   it("merges OVERLAPPING spans within a run for the covered fraction, rather than summing them", () => {
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(100);
-    agg.addGeneration(4, [], [
-      note({ key: "a", span: { start: 0, end: 50 }, text: "t" }),
-      note({ key: "b", span: { start: 40, end: 60 }, text: "t" }), // overlaps a by 10
-    ]);
+    agg.addGeneration(
+      4,
+      [],
+      [
+        note({ key: "a", span: { start: 0, end: 50 }, text: "t" }),
+        note({ key: "b", span: { start: 40, end: 60 }, text: "t" }), // overlaps a by 10
+      ],
+    );
     const groups = agg.noteGroups();
     // union is [0,60) = 60 chars, not 50+20=70
     expect(groups[0].coveredFraction).toBeCloseTo(0.6, 5);
@@ -176,7 +292,11 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
   it("a spanless group (run-level note) has no table and no covered fraction", () => {
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
-    agg.addGeneration(4, [], [note({ key: "teams", text: "no teams in this lobby" })]);
+    agg.addGeneration(
+      4,
+      [],
+      [note({ key: "teams", text: "no teams in this lobby" })],
+    );
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
     expect(groups[0].spans).toEqual([]);
@@ -195,7 +315,11 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     agg.setSourceLength(1000);
     const span = { start: 0, end: 10 };
     for (const n of [62, 70, 64, 62, 70]) {
-      agg.addGeneration(4, [], [note({ key: "k", span, text: `${n} tiles overwritten` })]);
+      agg.addGeneration(
+        4,
+        [],
+        [note({ key: "k", span, text: `${n} tiles overwritten` })],
+      );
     }
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
@@ -208,7 +332,14 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
     const span = { start: 5, end: 15 };
-    agg.addGeneration(4, [], [note({ key: "a", span, text: "same sentence" }), note({ key: "b", span, text: "same sentence" })]);
+    agg.addGeneration(
+      4,
+      [],
+      [
+        note({ key: "a", span, text: "same sentence" }),
+        note({ key: "b", span, text: "same sentence" }),
+      ],
+    );
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
     expect(groups[0].spans).toHaveLength(1);
@@ -228,7 +359,17 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     // fixture green for the wrong reason.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
-    for (const n of [2, 5, 3, 2, 4]) agg.addGeneration(4, [], [note({ key: "landOverwrittenBeforeGrowth", text: `${n} lands are missing from this preview` })]);
+    for (const n of [2, 5, 3, 2, 4])
+      agg.addGeneration(
+        4,
+        [],
+        [
+          note({
+            key: "landOverwrittenBeforeGrowth",
+            text: `${n} lands are missing from this preview`,
+          }),
+        ],
+      );
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
     expect(groups[0].text).toBe("2-5 lands are missing from this preview");
@@ -238,7 +379,11 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
   it("a suppressed key contributes nothing at all — not an empty group, not a zero count", () => {
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
-    agg.addGeneration(4, [], [note({ key: "automaticBeach", text: "beach happened" })]);
+    agg.addGeneration(
+      4,
+      [],
+      [note({ key: "automaticBeach", text: "beach happened" })],
+    );
     expect(agg.noteGroups()).toEqual([]);
   });
 
@@ -248,7 +393,12 @@ describe("MonteCarloAggregate — notes passthrough (Sec.5.4)", () => {
     // with a false number welded to it, on most of the corpus.
     const agg = new MonteCarloAggregate();
     agg.setSourceLength(1000);
-    for (let i = 0; i < 20; i++) agg.addGeneration(4, [], [note({ key: "teams", text: "no teams in this lobby" })]);
+    for (let i = 0; i < 20; i++)
+      agg.addGeneration(
+        4,
+        [],
+        [note({ key: "teams", text: "no teams in this lobby" })],
+      );
     const groups = agg.noteGroups();
     expect(groups).toHaveLength(1);
     expect(groups[0].spans).toEqual([]);

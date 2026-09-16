@@ -18,7 +18,14 @@
 // `activeTab === "advanced-tools"`), and re-rolling on every one of those
 // would throw away a seed the user is mid-edit against.
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 export interface PanelPreviewSeedValue {
   seed: number;
@@ -34,15 +41,26 @@ function randomSeed(): number {
   return Math.floor(Math.random() * 1_000_000);
 }
 
-export function PanelPreviewSeedProvider({ children }: { children: ReactNode }) {
+export function PanelPreviewSeedProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [seed, setSeed] = useState(randomSeed);
   const reseed = useCallback(() => setSeed(randomSeed()), []);
   const value = useMemo(() => ({ seed, reseed }), [seed, reseed]);
-  return <PanelPreviewSeedCtx.Provider value={value}>{children}</PanelPreviewSeedCtx.Provider>;
+  return (
+    <PanelPreviewSeedCtx.Provider value={value}>
+      {children}
+    </PanelPreviewSeedCtx.Provider>
+  );
 }
 
 export function usePanelPreviewSeed(): PanelPreviewSeedValue {
   const ctx = useContext(PanelPreviewSeedCtx);
-  if (!ctx) throw new Error("usePanelPreviewSeed must be used within PanelPreviewSeedProvider");
+  if (!ctx)
+    throw new Error(
+      "usePanelPreviewSeed must be used within PanelPreviewSeedProvider",
+    );
   return ctx;
 }

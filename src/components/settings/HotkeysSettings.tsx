@@ -1,6 +1,12 @@
 import { useEffect } from "react";
 import { useHotkeySettings } from "../../settings/HotkeySettingsContext";
-import { DEFAULT_HOTKEYS, formatHotkey, hotkeyFromEvent, hotkeysEqual, type HotkeyId } from "../../settings/hotkeys";
+import {
+  DEFAULT_HOTKEYS,
+  formatHotkey,
+  hotkeyFromEvent,
+  hotkeysEqual,
+  type HotkeyId,
+} from "../../settings/hotkeys";
 import { HelpTip } from "../HelpTip";
 import dialogStyles from "../dialog.module.css";
 import styles from "./SettingsDialog.module.css";
@@ -13,7 +19,11 @@ import hotkeyStyles from "./HotkeysSettings.module.css";
  * is the order rows render in, grouped by where the action lives.
  */
 const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
-  { id: "save", legend: "Save", hint: "Saves the open file, wherever you are in the app, including while editing." },
+  {
+    id: "save",
+    legend: "Save",
+    hint: "Saves the open file, wherever you are in the app, including while editing.",
+  },
   {
     id: "saveAs",
     legend: "Save As",
@@ -56,8 +66,17 @@ const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
   },
 ];
 
-function HotkeyRow({ id, legend, hint }: { id: HotkeyId; legend: string; hint: string }) {
-  const { hotkeys, resetHotkey, recordingId, setRecordingId } = useHotkeySettings();
+function HotkeyRow({
+  id,
+  legend,
+  hint,
+}: {
+  id: HotkeyId;
+  legend: string;
+  hint: string;
+}) {
+  const { hotkeys, resetHotkey, recordingId, setRecordingId } =
+    useHotkeySettings();
   const recording = recordingId === id;
   const isDefault = hotkeysEqual(hotkeys[id], DEFAULT_HOTKEYS[id]);
 
@@ -66,7 +85,9 @@ function HotkeyRow({ id, legend, hint }: { id: HotkeyId; legend: string; hint: s
       <fieldset className={styles.fieldset}>
         <legend className={styles.legend}>{legend}</legend>
         <div className={dialogStyles.optionRow}>
-          <kbd className={hotkeyStyles.keyChip}>{recording ? "Press a key…" : formatHotkey(hotkeys[id])}</kbd>
+          <kbd className={hotkeyStyles.keyChip}>
+            {recording ? "Press a key…" : formatHotkey(hotkeys[id])}
+          </kbd>
           <button
             type="button"
             className={hotkeyStyles.button}
@@ -75,13 +96,19 @@ function HotkeyRow({ id, legend, hint }: { id: HotkeyId; legend: string; hint: s
             {recording ? "Cancel" : "Change"}
           </button>
           {!isDefault && !recording && (
-            <button type="button" className={hotkeyStyles.button} onClick={() => resetHotkey(id)}>
+            <button
+              type="button"
+              className={hotkeyStyles.button}
+              onClick={() => resetHotkey(id)}
+            >
               Reset to {formatHotkey(DEFAULT_HOTKEYS[id])}
             </button>
           )}
         </div>
         <p className={styles.hint}>
-          {recording ? "Press a key combination that includes Ctrl or Alt. Escape cancels." : hint}
+          {recording
+            ? "Press a key combination that includes Ctrl or Alt. Escape cancels."
+            : hint}
         </p>
       </fieldset>
     </HelpTip>

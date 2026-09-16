@@ -25,9 +25,13 @@ export interface PercentPoint {
  * Matches `percentToTile` exactly (viewModel.ts) so the panel's own readout
  * never disagrees with where a snapped drag actually lands.
  */
-export function snapToTileLattice(pt: PercentPoint, mapDim: number): PercentPoint {
+export function snapToTileLattice(
+  pt: PercentPoint,
+  mapDim: number,
+): PercentPoint {
   if (mapDim <= 0) return pt;
-  const snapAxis = (v: number): number => (percentToTile(v, mapDim) / mapDim) * 100;
+  const snapAxis = (v: number): number =>
+    (percentToTile(v, mapDim) / mapDim) * 100;
   return { x: snapAxis(pt.x), y: snapAxis(pt.y) };
 }
 
@@ -100,10 +104,19 @@ export interface SnapContext {
  * tile lattice runs last, over whatever the magnetic snaps produced, so
  * every returned point still lands on a real tile either way.
  */
-export function applyDefaultSnapping(pt: PercentPoint, ctx: SnapContext): PercentPoint {
+export function applyDefaultSnapping(
+  pt: PercentPoint,
+  ctx: SnapContext,
+): PercentPoint {
   const centre = ctx.centre ?? { x: 50, y: 50 };
   const tolerance = ctx.toleranceTiles ?? DEFAULT_SNAP_TOLERANCE_TILES;
   let snapped = snapToCentre(pt, centre, tolerance, ctx.mapDim);
-  if (ctx.parentAnchor) snapped = snapToParentAxis(snapped, ctx.parentAnchor, tolerance, ctx.mapDim);
+  if (ctx.parentAnchor)
+    snapped = snapToParentAxis(
+      snapped,
+      ctx.parentAnchor,
+      tolerance,
+      ctx.mapDim,
+    );
   return snapToTileLattice(snapped, ctx.mapDim);
 }

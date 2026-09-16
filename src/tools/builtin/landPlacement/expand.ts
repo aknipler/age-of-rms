@@ -21,13 +21,27 @@ import type { Placement, ShapeGroup, PatternSlot } from "./model";
 import { perimeterPolar } from "./perimeterOffset";
 
 /** Sec.4.5's stated invariant, as a function rather than a comment: `members[k]`'s key is derived from its POSITION, never stored. */
-export function memberKeyAt(index: number, pattern: readonly PatternSlot[]): { repeatIndex: number; slotId: string } {
+export function memberKeyAt(
+  index: number,
+  pattern: readonly PatternSlot[],
+): { repeatIndex: number; slotId: string } {
   const patternLength = pattern.length;
-  if (patternLength === 0) throw new Error("memberKeyAt: an empty pattern has no slots to key against");
-  return { repeatIndex: Math.floor(index / patternLength), slotId: pattern[index % patternLength].id };
+  if (patternLength === 0)
+    throw new Error(
+      "memberKeyAt: an empty pattern has no slots to key against",
+    );
+  return {
+    repeatIndex: Math.floor(index / patternLength),
+    slotId: pattern[index % patternLength].id,
+  };
 }
 
-function angleOffsetDegrees(repeatIndex: number, slotIndex: number, patternLength: number, repeats: number): number {
+function angleOffsetDegrees(
+  repeatIndex: number,
+  slotIndex: number,
+  patternLength: number,
+  repeats: number,
+): number {
   const n = patternLength * repeats;
   const repeatTerm = repeats > 0 ? (360 / repeats) * repeatIndex : 0;
   const slotTerm = n > 0 ? (360 / n) * slotIndex : 0;
@@ -101,12 +115,27 @@ function arcStepDegrees(sweep: number, m: number, span: number): number {
  * `slot.perimeterShift ?? 0`, threaded straight through to `perimeterPolar`.
  * The whole change this slice makes to this function.
  */
-function perimeterKindOffset(sides: number, base: Expr, group: ShapeGroup, m: number, n: number, shiftPercent: number): { r: Expr; theta: Expr } {
-  const { radiusScale, bearingDegrees } = perimeterPolar(sides, n, m, shiftPercent);
+function perimeterKindOffset(
+  sides: number,
+  base: Expr,
+  group: ShapeGroup,
+  m: number,
+  n: number,
+  shiftPercent: number,
+): { r: Expr; theta: Expr } {
+  const { radiusScale, bearingDegrees } = perimeterPolar(
+    sides,
+    n,
+    m,
+    shiftPercent,
+  );
   // Rotation is the OUTER addend, exactly as `circle` writes it below and
   // for exactly the reason `circle`'s own comment gives: a symbolic
   // rotation has to keep steering every member.
-  return { r: mul(base, num(radiusScale)), theta: add(group.rotation, num(bearingDegrees)) };
+  return {
+    r: mul(base, num(radiusScale)),
+    theta: add(group.rotation, num(bearingDegrees)),
+  };
 }
 
 /**
@@ -134,7 +163,8 @@ function clampSides(sides: number | undefined): number {
  */
 export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
   const { pattern, repeats } = group;
-  if (pattern.length === 0 || repeats <= 0) return { placements: [], members: [] };
+  if (pattern.length === 0 || repeats <= 0)
+    return { placements: [], members: [] };
 
   const n = pattern.length * repeats;
   const span = n - 1;
@@ -154,12 +184,20 @@ export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
           // differently under float association and would move Sec.10.1's
           // byte-identical acceptance gate.
           const base: Expr = slot.radius ?? group.radius;
-          offset = { kind: "polar", r: lineOffset(base, m, span), theta: add(group.rotation, slot.theta ?? num(0)) };
+          offset = {
+            kind: "polar",
+            r: lineOffset(base, m, span),
+            theta: add(group.rotation, slot.theta ?? num(0)),
+          };
           break;
         }
         case "arc": {
           const step = arcStepDegrees(group.sweep ?? 180, m, span);
-          offset = { kind: "polar", r: slot.radius ?? group.radius, theta: add(group.rotation, slot.theta ?? num(step)) };
+          offset = {
+            kind: "polar",
+            r: slot.radius ?? group.radius,
+            theta: add(group.rotation, slot.theta ?? num(step)),
+          };
           break;
         }
         // Perimeter kinds (shape-kinds-slice-c-brief.md item 1, now polar —
@@ -173,17 +211,47 @@ export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
         // than refused (`clampSides`).
         case "square": {
           const base: Expr = slot.radius ?? group.radius;
-          offset = { kind: "polar", ...perimeterKindOffset(4, base, group, m, n, slot.perimeterShift ?? 0) };
+          offset = {
+            kind: "polar",
+            ...perimeterKindOffset(
+              4,
+              base,
+              group,
+              m,
+              n,
+              slot.perimeterShift ?? 0,
+            ),
+          };
           break;
         }
         case "triangle": {
           const base: Expr = slot.radius ?? group.radius;
-          offset = { kind: "polar", ...perimeterKindOffset(3, base, group, m, n, slot.perimeterShift ?? 0) };
+          offset = {
+            kind: "polar",
+            ...perimeterKindOffset(
+              3,
+              base,
+              group,
+              m,
+              n,
+              slot.perimeterShift ?? 0,
+            ),
+          };
           break;
         }
         case "polygon": {
           const base: Expr = slot.radius ?? group.radius;
-          offset = { kind: "polar", ...perimeterKindOffset(clampSides(group.sides), base, group, m, n, slot.perimeterShift ?? 0) };
+          offset = {
+            kind: "polar",
+            ...perimeterKindOffset(
+              clampSides(group.sides),
+              base,
+              group,
+              m,
+              n,
+              slot.perimeterShift ?? 0,
+            ),
+          };
           break;
         }
         case "circle":
@@ -193,12 +261,18 @@ export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
           // forms round differently under float association at an exact
           // half degree, and Sec.10.1's acceptance gate is a byte
           // comparison.
-          const offsetTerm: Expr = slot.theta ?? num(angleOffsetDegrees(i, j, pattern.length, repeats));
+          const offsetTerm: Expr =
+            slot.theta ??
+            num(angleOffsetDegrees(i, j, pattern.length, repeats));
           // rotation is always the outermost addend, so a SYMBOLIC rotation
           // (Bulls_Eyes' own ROTATION_PLAYER, if this were a patterned ring
           // rather than a chain) keeps steering every member (Sec.4.5: "must
           // survive a symbolic group").
-          offset = { kind: "polar", r: slot.radius ?? group.radius, theta: add(group.rotation, offsetTerm) };
+          offset = {
+            kind: "polar",
+            r: slot.radius ?? group.radius,
+            theta: add(group.rotation, offsetTerm),
+          };
         }
       }
 

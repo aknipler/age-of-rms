@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import type { ArgNode, CommandNode, Diagnostic } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { useBreakdownSettings } from "../../settings/BreakdownSettingsContext";
-import { buildCommandBreakdown, sortKnownSlots, splitAttributeColumns, type AttributeSlot } from "../attributeModel";
+import {
+  buildCommandBreakdown,
+  sortKnownSlots,
+  splitAttributeColumns,
+  type AttributeSlot,
+} from "../attributeModel";
 import type { AttributeTarget } from "../patch/intents";
 import { renderArgs } from "../renderValue";
 import { diagnosticsWithin, maxSeverityWithin } from "../diagnosticsForSpan";
 import { argumentHelpText } from "../helpText";
 import { HelpTip } from "../../components/HelpTip";
-import { DiagnosticPopup, useDiagnosticHover } from "../../components/DiagnosticTooltip";
+import {
+  DiagnosticPopup,
+  useDiagnosticHover,
+} from "../../components/DiagnosticTooltip";
 import { AttributeRow, AttributeValueEditor } from "./AttributeRow";
 import { OtherContentsRow } from "./OtherContentsRow";
 import { ProblemBadge } from "./ProblemBadge";
@@ -59,7 +67,11 @@ function AttributeSlotRow({
     >
       {draggable && (
         <HelpTip id="breakdown.commandCard.attributeDragHandle">
-          <span className={styles.dragHandle} title="Drag to reorder" aria-hidden="true">
+          <span
+            className={styles.dragHandle}
+            title="Drag to reorder"
+            aria-hidden="true"
+          >
             ⠿
           </span>
         </HelpTip>
@@ -94,7 +106,9 @@ function ArgRow({
   // a problem on a totally different argument or attribute.
   const argSeverity = maxSeverityWithin(diagnostics, arg.span);
   const argMessage = argSeverity
-    ? diagnosticsWithin(diagnostics, arg.span).map((d) => d.message).join("\n")
+    ? diagnosticsWithin(diagnostics, arg.span)
+        .map((d) => d.message)
+        .join("\n")
     : undefined;
   // Custom-positioned popup instead of a native `title`, see
   // DiagnosticTooltip.tsx: a browser tooltip can't be repositioned, so it
@@ -108,18 +122,29 @@ function ArgRow({
       {...(argSeverity ? diagHover.handlers : {})}
     >
       {argSeverity && diagHover.hovering && (
-        <DiagnosticPopup message={argMessage!} severity={argSeverity} side={diagHover.side} />
+        <DiagnosticPopup
+          message={argMessage!}
+          severity={argSeverity}
+          side={diagHover.side}
+        />
       )}
       {/* .argLabelSlot (not .argLabel) is the fixed-width column, see
           AttributeRow.module.css's .labelSlot comment for why this can't
           live on .argLabel itself (it's nested inside HelpTip, which is
           the actual flex item once help mode is on). */}
       <span className={styles.argLabelSlot}>
-        <HelpTip id="breakdown.commandCard.argumentName" text={argumentHelpText(argDef, commandName)}>
+        <HelpTip
+          id="breakdown.commandCard.argumentName"
+          text={argumentHelpText(argDef, commandName)}
+        >
           <span className={styles.argLabel}>{argLabel}</span>
         </HelpTip>
       </span>
-      <AttributeValueEditor arg={arg} type={argDef?.type ?? "string"} helpId="breakdown.commandCard.argument" />
+      <AttributeValueEditor
+        arg={arg}
+        type={argDef?.type ?? "string"}
+        helpId="breakdown.commandCard.argument"
+      />
     </div>
   );
 }
@@ -136,8 +161,14 @@ interface CommandCardProps {
 // rather than local state, so it survives a reparse triggered by an edit
 // elsewhere in the document.
 export function CommandCard({ command }: CommandCardProps) {
-  const { tokens, lang, diagnostics, applyEdit, isExpanded, toggleExpanded } = useBreakdownContext();
-  const { attributeOrderMode, customAttributeOrder, setCustomAttributeOrderFor, density } = useBreakdownSettings();
+  const { tokens, lang, diagnostics, applyEdit, isExpanded, toggleExpanded } =
+    useBreakdownContext();
+  const {
+    attributeOrderMode,
+    customAttributeOrder,
+    setCustomAttributeOrderFor,
+    density,
+  } = useBreakdownSettings();
   const expanded = isExpanded(command.span);
   const name = tokens[command.name].text;
   const severity = maxSeverityWithin(diagnostics, command.span);
@@ -147,12 +178,17 @@ export function CommandCard({ command }: CommandCardProps) {
   // 3.4) and this one, a def-less CommandNode via the word+`{` upgrade.
   // Both got the same suggestion field from unknownName(), but only
   // RawCard's fix path got wired originally; this closes that gap.
-  const suggestion = !known ? diagnosticsWithin(diagnostics, command.span).find((d) => d.suggestion)?.suggestion : undefined;
+  const suggestion = !known
+    ? diagnosticsWithin(diagnostics, command.span).find((d) => d.suggestion)
+        ?.suggestion
+    : undefined;
 
   const posArgsText = renderArgs(command.args, tokens);
   let preview = "";
   if (command.block) {
-    const attrs = command.block.items.filter((i) => i.kind === "attribute").slice(0, 3);
+    const attrs = command.block.items
+      .filter((i) => i.kind === "attribute")
+      .slice(0, 3);
     preview = attrs
       .map((a) => `${tokens[a.name].text} ${renderArgs(a.args, tokens)}`.trim())
       .join(" · ");
@@ -172,7 +208,8 @@ export function CommandCard({ command }: CommandCardProps) {
   // unknown command, i.e. word immediately followed by `{`, a bare
   // unknown name never becomes a def-less CommandNode, it's a RawNode,
   // see cardKind.ts/ItemCard.tsx).
-  const genericOtherContents = !known && command.block ? command.block.items : [];
+  const genericOtherContents =
+    !known && command.block ? command.block.items : [];
   // Sec.4.6 brace synthesis: addAttribute needs a BlockNode when the command
   // has one, else the CommandNode itself (computeEdit synthesizes `{ }`).
   const attributeTarget = command.block ?? command;
@@ -182,7 +219,11 @@ export function CommandCard({ command }: CommandCardProps) {
   // where the chosen mode actually reorders it for display.
   const persistedCustomOrder = customAttributeOrder[name];
   const orderedSlots = breakdown
-    ? sortKnownSlots(breakdown.knownSlots, attributeOrderMode, persistedCustomOrder?.order)
+    ? sortKnownSlots(
+        breakdown.knownSlots,
+        attributeOrderMode,
+        persistedCustomOrder?.order,
+      )
     : [];
 
   // A live drag (custom mode only) is kept as a local list of NAMES rather
@@ -198,7 +239,9 @@ export function CommandCard({ command }: CommandCardProps) {
   // mode, or another card/session saving a new default for this same
   // command name.
   const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
-  const [draftRightColumn, setDraftRightColumn] = useState<string[] | null>(null);
+  const [draftRightColumn, setDraftRightColumn] = useState<string[] | null>(
+    null,
+  );
   useEffect(() => {
     setDraftOrder(null);
     setDraftRightColumn(null);
@@ -207,9 +250,14 @@ export function CommandCard({ command }: CommandCardProps) {
   const displayedSlots = (() => {
     if (!draftOrder) return orderedSlots;
     const byName = new Map(orderedSlots.map((s) => [s.name, s] as const));
-    const matched = draftOrder.map((n) => byName.get(n)).filter((s): s is AttributeSlot => s !== undefined);
+    const matched = draftOrder
+      .map((n) => byName.get(n))
+      .filter((s): s is AttributeSlot => s !== undefined);
     const matchedNames = new Set(matched.map((s) => s.name));
-    return [...matched, ...orderedSlots.filter((s) => !matchedNames.has(s.name))];
+    return [
+      ...matched,
+      ...orderedSlots.filter((s) => !matchedNames.has(s.name)),
+    ];
   })();
 
   // The compact density's two-column layout (settings.breakdown
@@ -222,7 +270,9 @@ export function CommandCard({ command }: CommandCardProps) {
     density === "compact"
       ? splitAttributeColumns(
           displayedSlots,
-          attributeOrderMode === "custom" ? (draftRightColumn ?? persistedCustomOrder?.rightColumn) : undefined,
+          attributeOrderMode === "custom"
+            ? (draftRightColumn ?? persistedCustomOrder?.rightColumn)
+            : undefined,
         )
       : null;
 
@@ -231,7 +281,10 @@ export function CommandCard({ command }: CommandCardProps) {
   // two-column one below since a flat-layout drag index and a
   // column-scoped one aren't comparable.
   const dragFromFlat = useRef<number | null>(null);
-  const dragFromColumn = useRef<{ col: "left" | "right"; index: number } | null>(null);
+  const dragFromColumn = useRef<{
+    col: "left" | "right";
+    index: number;
+  } | null>(null);
 
   function renderAttributesBody() {
     if (compactColumns) {
@@ -251,13 +304,19 @@ export function CommandCard({ command }: CommandCardProps) {
         if (!draggedSlot) return;
         if (from.col === toCol && from.index === toIndex) return;
 
-        const withoutDragged = displayedSlots.map((s) => s.name).filter((n) => n !== draggedSlot.name);
+        const withoutDragged = displayedSlots
+          .map((s) => s.name)
+          .filter((n) => n !== draggedSlot.name);
         const neighborName = (toCol === "left" ? left : right)[toIndex]?.name;
         const newOrder =
           neighborName && neighborName !== draggedSlot.name
             ? (() => {
                 const pos = withoutDragged.indexOf(neighborName);
-                return [...withoutDragged.slice(0, pos), draggedSlot.name, ...withoutDragged.slice(pos)];
+                return [
+                  ...withoutDragged.slice(0, pos),
+                  draggedSlot.name,
+                  ...withoutDragged.slice(pos),
+                ];
               })()
             : [...withoutDragged, draggedSlot.name];
 
@@ -349,7 +408,9 @@ export function CommandCard({ command }: CommandCardProps) {
             {name}
             {posArgsText ? ` ${posArgsText}` : ""}
             {preview ? ` · ${preview}` : ""}
-            {!known && <span className={cardStyles.unknownBadge}>unknown name</span>}
+            {!known && (
+              <span className={cardStyles.unknownBadge}>unknown name</span>
+            )}
           </span>
         </HelpTip>
         {suggestion && (
@@ -358,7 +419,12 @@ export function CommandCard({ command }: CommandCardProps) {
               type="button"
               className={cardStyles.fixButton}
               onClick={() =>
-                applyEdit({ kind: "applySuggestion", node: command, tokenIndex: command.name, replacement: suggestion })
+                applyEdit({
+                  kind: "applySuggestion",
+                  node: command,
+                  tokenIndex: command.name,
+                  replacement: suggestion,
+                })
               }
               title={`Replace with "${suggestion}"`}
             >
@@ -418,17 +484,28 @@ export function CommandCard({ command }: CommandCardProps) {
                     nudging everything below it on every drop. Visibility
                     keeps the box in the layout permanently, so the row's
                     height never changes. */}
-                <span style={{ visibility: attributeOrderMode === "custom" && draftOrder ? "visible" : "hidden" }}>
+                <span
+                  style={{
+                    visibility:
+                      attributeOrderMode === "custom" && draftOrder
+                        ? "visible"
+                        : "hidden",
+                  }}
+                >
                   <HelpTip id="breakdown.commandCard.setAttributeOrderDefault">
                     <button
                       type="button"
                       className={styles.setDefaultButton}
-                      tabIndex={attributeOrderMode === "custom" && draftOrder ? 0 : -1}
+                      tabIndex={
+                        attributeOrderMode === "custom" && draftOrder ? 0 : -1
+                      }
                       onClick={() => {
                         if (!draftOrder) return;
                         setCustomAttributeOrderFor(name, {
                           order: draftOrder,
-                          rightColumn: draftRightColumn ?? persistedCustomOrder?.rightColumn,
+                          rightColumn:
+                            draftRightColumn ??
+                            persistedCustomOrder?.rightColumn,
                         });
                         setDraftOrder(null);
                         setDraftRightColumn(null);
@@ -454,7 +531,9 @@ export function CommandCard({ command }: CommandCardProps) {
 
           {genericOtherContents.length > 0 && (
             <section className={styles.group}>
-              <h4 className={styles.groupTitle}>Block contents (unknown command — generic)</h4>
+              <h4 className={styles.groupTitle}>
+                Block contents (unknown command — generic)
+              </h4>
               {genericOtherContents.map((item) => (
                 <OtherContentsRow key={item.span.start} item={item} />
               ))}

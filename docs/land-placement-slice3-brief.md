@@ -2,7 +2,7 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-design.md` (rev 3, plus the 2026-08-30 merge rule in Sec.4.5). Read this
-file for *what to build and in what order*; read the design doc for *why*, and treat it as
+file for _what to build and in what order_; read the design doc for _why_, and treat it as
 authoritative wherever the two disagree.
 
 ---
@@ -12,13 +12,13 @@ authoritative wherever the two disagree.
 Slices 1 and 2 are built and green. `docs/build-log.md`'s last three entries are the record;
 read them before starting, they are the fastest orientation in the repo.
 
-| | status |
-|---|---|
-| Sec.5 math compiler, Sec.4.2 frame algebra, Sec.10.1 acceptance gate | **built** (slice 1) |
-| `generatePreview` prerequisites, `PanelState`, layers 1–3 | **built** (slice 2) |
-| Sec.4.5 re-expansion merge rule | **designed 2026-08-30**, not implemented |
-| Fence writer (Sec.6.1/6.2), `ShapeGroup` expansion, remaining offset kinds | **this slice** |
-| Canvas (Sec.7), panel (Sec.8), HelpTip ids, `surface: "panel"` manifest | **slice 4, not this one** |
+|                                                                            | status                                   |
+| -------------------------------------------------------------------------- | ---------------------------------------- |
+| Sec.5 math compiler, Sec.4.2 frame algebra, Sec.10.1 acceptance gate       | **built** (slice 1)                      |
+| `generatePreview` prerequisites, `PanelState`, layers 1–3                  | **built** (slice 2)                      |
+| Sec.4.5 re-expansion merge rule                                            | **designed 2026-08-30**, not implemented |
+| Fence writer (Sec.6.1/6.2), `ShapeGroup` expansion, remaining offset kinds | **this slice**                           |
+| Canvas (Sec.7), panel (Sec.8), HelpTip ids, `surface: "panel"` manifest    | **slice 4, not this one**                |
 
 **The cut between slice 3 and slice 4 is "can it be proven by an automated test".** Nothing in
 this repo can render `ToolsPane`/`App.tsx` — the Tauri store plugin throws outside the real
@@ -70,8 +70,8 @@ New file, suggested `src/tools/builtin/landPlacement/fence.ts`.
 - Locate the `/* @alp v1 begin … */ … /* @alp end */` region in a `ParseResult`; parse the
   `@alp-model` JSON out of the header comment; serialise a model back into one.
 - **Regenerate wholesale.** Everything outside the fence is byte-identical, always.
-- **Never repair, never guess.** Missing or malformed `@alp-model`, or a wrong `v`, means *no
-  association* — the script is a plain RMS script and the tool starts empty. Sec.6.1 is
+- **Never repair, never guess.** Missing or malformed `@alp-model`, or a wrong `v`, means _no
+  association_ — the script is a plain RMS script and the tool starts empty. Sec.6.1 is
   explicit and Sec.9's P5 repeats it.
 - Emit edits as `TextEdit[]` (`tools-api/index.ts:339`); `src/tools/protocol.ts:450`'s
   `validateEdits` is the existing validator and your edits must pass it.
@@ -90,7 +90,7 @@ comment at all.
 - There is no id comment and no marker. **The constant name is the link.** Do not add one.
 
 **Acceptance:** a generated `create_land` references role constants by name; a hand-edited
-attribute detaches that land from its role and the detachment is *detectable* (a pure
+attribute detaches that land from its role and the detachment is _detectable_ (a pure
 predicate — the reporting UI is slice 4).
 
 ### 3. Fence and edit safety (Sec.10.4) — the gate that makes items 1 and 2 trustworthy
@@ -175,7 +175,7 @@ UI consequence is the panel strip. Leave it for slice 4.
 a silent map-breaking bug. `src/hooks/scriptHeader.ts`'s header comment documents both halves,
 from a feature that already paid for them:
 
-1. **Comment markers are whole tokens.** The lexer splits on whitespace and *then* asks whether
+1. **Comment markers are whole tokens.** The lexer splits on whitespace and _then_ asks whether
    a token is `/*` or `*/`. A closing `====*/` does not close the comment — it lexes as one
    `word`, and the rest of the script stays commented out, silently, with the map still
    generating. Each marker gets its own line.
@@ -192,7 +192,7 @@ The requirement is structural: no token in the fence header can be read as a wor
 fixture that defines a constant at 69. (Note: `scriptHeader.ts`'s comment cites this as "RMS0301"
 — that is stale, RMS0301 is redefinition. Cite RMS0111.)
 
-**`useSpans` counts uses inside the fence too.** Item 5's delete condition is uses *outside* the
+**`useSpans` counts uses inside the fence too.** Item 5's delete condition is uses _outside_ the
 fence. A chained child's position const references its parent's, so an unfiltered count asks the
 tool whether its own about-to-be-regenerated output needs its own output — it answers yes
 forever, and quietly deletes the behaviour the condition exists for.
@@ -211,12 +211,12 @@ and teaches nothing has half-failed.**
 
 What that means concretely for a slice that is almost entirely pure functions:
 
-- Explain the non-obvious *decision*, never the syntax. Why a discriminated union rather than
+- Explain the non-obvious _decision_, never the syntax. Why a discriminated union rather than
   an enum for the leave-set outcome; why `readonly` on the members array; why the transition
   function takes both groups rather than mutating one.
 - **Name the concept out loud** — "this is a discriminated union", "this is structural typing".
   An unnamed explanation teaches nothing durable because it cannot be looked up later.
-- Comment the *why* in the code. `src/hooks/useDocument.ts` is the standard to match.
+- Comment the _why_ in the code. `src/hooks/useDocument.ts` is the standard to match.
 - Say whether something is standard TypeScript practice or a choice specific to this codebase,
   so the habits transfer and the quirks do not get cargo-culted.
 - End the session by offering two or three questions that check understanding of what was built.

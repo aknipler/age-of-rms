@@ -19,7 +19,9 @@ describe("snapToTileLattice", () => {
     expect(percentToTile(snapped.x, dim)).toBe(percentToTile(37.3, dim));
     expect(percentToTile(snapped.y, dim)).toBe(percentToTile(62.9, dim));
     // Round-tripping the snapped value through percentToTile again must be a no-op. It's already exactly on a tile.
-    expect(percentToTile(snapped.x, dim)).toBe(Math.round(percentToTile(snapped.x, dim)));
+    expect(percentToTile(snapped.x, dim)).toBe(
+      Math.round(percentToTile(snapped.x, dim)),
+    );
   });
 
   it("is idempotent — snapping an already-snapped point changes nothing", () => {
@@ -51,7 +53,9 @@ describe("snapToCentre", () => {
     // 2 tiles = 1% at dim 200. hypot(0.9, 0.9) ≈ 1.27 > 1, outside the radius
     // despite each axis individually being inside a 1%-wide box.
     const diagonalCorner = { x: 50.9, y: 50.9 };
-    expect(snapToCentre(diagonalCorner, centre, 2, dim)).toEqual(diagonalCorner);
+    expect(snapToCentre(diagonalCorner, centre, 2, dim)).toEqual(
+      diagonalCorner,
+    );
     // A point the same total distance but on one axis stays inside.
     const onAxis = { x: 50.7, y: 50 };
     expect(snapToCentre(onAxis, centre, 2, dim)).toEqual(centre);
@@ -81,7 +85,10 @@ describe("snapToParentAxis", () => {
 
 describe("snapToIntegerPercent", () => {
   it("rounds both axes to a whole percent — the explicit modifier, never a default", () => {
-    expect(snapToIntegerPercent({ x: 12.6, y: 87.4 })).toEqual({ x: 13, y: 87 });
+    expect(snapToIntegerPercent({ x: 12.6, y: 87.4 })).toEqual({
+      x: 13,
+      y: 87,
+    });
   });
 });
 
@@ -95,20 +102,29 @@ describe("applyDefaultSnapping — the composition Sec.7.3 actually ships", () =
 
   it("a point near the parent's axis snaps to it, then still lands on a real tile", () => {
     const parentAnchor = { x: 30, y: 60 };
-    const result = applyDefaultSnapping({ x: 30.3, y: 90 }, { mapDim: dim, parentAnchor, toleranceTiles: 2 });
+    const result = applyDefaultSnapping(
+      { x: 30.3, y: 90 },
+      { mapDim: dim, parentAnchor, toleranceTiles: 2 },
+    );
     expect(result.x).toBe(30); // 30 is already tile-exact at dim 200
     expect(percentToTile(result.y, dim)).toBe(percentToTile(90, dim));
   });
 
   it("a point far from every magnet still gets the tile-lattice snap", () => {
-    const result = applyDefaultSnapping({ x: 12.34, y: 87.65 }, { mapDim: dim });
+    const result = applyDefaultSnapping(
+      { x: 12.34, y: 87.65 },
+      { mapDim: dim },
+    );
     expect(percentToTile(result.x, dim)).toBe(percentToTile(12.34, dim));
     expect(percentToTile(result.y, dim)).toBe(percentToTile(87.65, dim));
   });
 
-  it("omitting parentAnchor skips the parent-axis snap entirely (a placement parented to \"center\")", () => {
+  it('omitting parentAnchor skips the parent-axis snap entirely (a placement parented to "center")', () => {
     // No parentAnchor: only centre + tile-lattice apply. A point far from centre is untouched by anything but the lattice.
-    const result = applyDefaultSnapping({ x: 12.34, y: 87.65 }, { mapDim: dim });
+    const result = applyDefaultSnapping(
+      { x: 12.34, y: 87.65 },
+      { mapDim: dim },
+    );
     expect(result).toEqual(snapToTileLattice({ x: 12.34, y: 87.65 }, dim));
   });
 });

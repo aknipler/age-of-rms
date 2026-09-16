@@ -38,11 +38,11 @@ Two properties of the instrument constrain the design of every experiment.
 
 For each run, the elevation grid is reduced to the set of tiles with elevation greater than zero, and that set is decomposed into 4-connected components. Three ratios are then computed, each as favoured (`y > x`) over disfavoured (`y < x`), with tiles on the diagonal excluded:
 
-| quantity | definition |
-|---|---|
+| quantity       | definition                                |
+| -------------- | ----------------------------------------- |
 | **seed ratio** | count of component centroids on each side |
-| **size ratio** | mean component size on each side |
-| **tile ratio** | count of elevated tiles on each side |
+| **size ratio** | mean component size on each side          |
+| **tile ratio** | count of elevated tiles on each side      |
 
 These are related by construction, `tileRatio = seedRatio × sizeRatio`, which serves as an internal consistency check. The identity held to within 1.5% in every configuration where component merging was low.
 
@@ -53,15 +53,15 @@ These are related by construction, `tileRatio = seedRatio × sizeRatio`, which s
 Component merging is the dominant confound. It was quantified by comparing recovered component counts against declared clump counts:
 
 | declared clumps | tile budget | components recovered | usable for seed/size |
-|---|---|---|---|
-| 50 | 300 | 47.8 | yes |
-| 50 | 1250 | 45.8 | yes |
-| 50 | 5000 | 36.5 | no |
-| 100 | 600 | 94.0 | yes |
-| 250 | 1500 | 189.8 | marginal |
-| 500 | 2000 | 283 | no |
-| 500 | 3000 | 249.5 | no |
-| 1000 | 6000 | 175.0 | no |
+| --------------- | ----------- | -------------------- | -------------------- |
+| 50              | 300         | 47.8                 | yes                  |
+| 50              | 1250        | 45.8                 | yes                  |
+| 50              | 5000        | 36.5                 | no                   |
+| 100             | 600         | 94.0                 | yes                  |
+| 250             | 1500        | 189.8                | marginal             |
+| 500             | 2000        | 283                  | no                   |
+| 500             | 3000        | 249.5                | no                   |
+| 1000            | 6000        | 175.0                | no                   |
 
 At 1000 declared clumps only 17.5% of components survive as distinct, and the seed ratio inverts to 0.49, below unity, which is a clear signature of measurement failure rather than of an inverted bias.
 
@@ -75,21 +75,21 @@ All measurements below are on 200×200 maps with a grass base terrain, no player
 
 Setting the per-clump tile budget to the engine's own minimum clump size, and using only 100 clumps, produces near-isolated clumps whose component centroids approximate seed positions to within one or two tiles. Six runs yielded 560 seeds from 600 declared.
 
-| quantity | value |
-|---|---|
-| seeds, favoured | 318 |
-| seeds, disfavoured | 242 |
-| **seed ratio** | **1.31 : 1** |
+| quantity           | value        |
+| ------------------ | ------------ |
+| seeds, favoured    | 318          |
+| seeds, disfavoured | 242          |
+| **seed ratio**     | **1.31 : 1** |
 
 The deviation from parity is 38 seeds against an expected standard error of 11.8, so the bias is real at approximately 3.2 standard deviations. Its magnitude is an order of magnitude below the accepted 18:1.
 
 Profiling the same seeds against distance from the nearest map edge:
 
-| edge distance | 0–9 | 10–19 | 20–29 | 30–39 | 40–49 | 50–59 |
-|---|---|---|---|---|---|---|
-| favoured seeds | 68 | 54 | 52 | 41 | 30 | 29 |
-| disfavoured seeds | 48 | 43 | 35 | 35 | 25 | 19 |
-| **ratio** | 1.4 | 1.3 | 1.5 | 1.2 | 1.2 | 1.5 |
+| edge distance     | 0–9 | 10–19 | 20–29 | 30–39 | 40–49 | 50–59 |
+| ----------------- | --- | ----- | ----- | ----- | ----- | ----- |
+| favoured seeds    | 68  | 54    | 52    | 41    | 30    | 29    |
+| disfavoured seeds | 48  | 43    | 35    | 35    | 25    | 19    |
+| **ratio**         | 1.4 | 1.3   | 1.5   | 1.2   | 1.2   | 1.5   |
 
 **Seed placement is uniform with respect to the map boundary.** No border effect is present.
 
@@ -98,23 +98,23 @@ Profiling the same seeds against distance from the nearest map edge:
 Holding the per-clump budget at the 6-tile floor and varying only the number of clumps:
 
 | clumps | coverage | seed ratio | size ratio | **tile ratio** |
-|---|---|---|---|---|
-| 50 | 0.78% | 1.25 | 1.16 | **1.45** |
-| 100 | 1.55% | 1.31 | 1.41 | **1.88** |
-| 250 | 4.14% | 1.78 | 2.09 | **3.74** |
-| 500 | 9.06% | 1.60 | 4.35 | **7.01** |
-| 1000 | 20.14% | 0.49 | 30.23 | **14.88** |
+| ------ | -------- | ---------- | ---------- | -------------- |
+| 50     | 0.78%    | 1.25       | 1.16       | **1.45**       |
+| 100    | 1.55%    | 1.31       | 1.41       | **1.88**       |
+| 250    | 4.14%    | 1.78       | 2.09       | **3.74**       |
+| 500    | 9.06%    | 1.60       | 4.35       | **7.01**       |
+| 1000   | 20.14%   | 0.49       | 30.23      | **14.88**      |
 
 Seed and size columns beyond 250 clumps are contaminated by merging and are reported for completeness only. The tile column is valid throughout.
 
 Above 250 clumps the relationship is proportional. Expressing density as clumps per tile of map area:
 
 | clumps | density | tile ratio | ratio / density |
-|---|---|---|---|
-| 250 | 0.00625 | 3.74 | 598 |
-| 500 | 0.01250 | 7.01 | 561 |
-| 500 | 0.01250 | 7.16 | 573 |
-| 1000 | 0.02500 | 14.88 | 595 |
+| ------ | ------- | ---------- | --------------- |
+| 250    | 0.00625 | 3.74       | 598             |
+| 500    | 0.01250 | 7.01       | 561             |
+| 500    | 0.01250 | 7.16       | 573             |
+| 1000   | 0.02500 | 14.88      | 595             |
 
 The constant is 582 ± 17 across these four points. Below 250 clumps the ratio flattens toward the seed-bias floor of 1.3 to 1.9 measured in §3.1.
 
@@ -123,9 +123,9 @@ The constant is 582 ± 17 across these four points. Below 250 clumps the ratio f
 Two scripts differing only in per-clump budget, at identical clump count:
 
 | clumps | tiles per clump | coverage | tile ratio |
-|---|---|---|---|
-| 500 | 4 | 6.21% | 7.16 |
-| 500 | 6 | 9.06% | 7.01 |
+| ------ | --------------- | -------- | ---------- |
+| 500    | 4               | 6.21%    | 7.16       |
+| 500    | 6               | 9.06%    | 7.01       |
 
 A 50% increase in per-clump budget, producing 46% more coverage, changes the ratio by 2%. These runs were separated by four days and use independently written scripts, so this also serves as a replication.
 
@@ -134,11 +134,11 @@ A 50% increase in per-clump budget, producing 46% more coverage, changes the rat
 Coverage and clump count covary in §3.2, and are separated by pairing runs of similar coverage and dissimilar clump count:
 
 | coverage | clumps | tile ratio |
-|---|---|---|
-| 3.29% | 50 | 1.41 |
-| 4.14% | 250 | **3.74** |
-| 13.11% | 50 | 2.08 |
-| 20.14% | 1000 | **14.88** |
+| -------- | ------ | ---------- |
+| 3.29%    | 50     | 1.41       |
+| 4.14%    | 250    | **3.74**   |
+| 13.11%   | 50     | 2.08       |
+| 20.14%   | 1000   | **14.88**  |
 
 At comparable coverage, five times the clumps yields 2.7 times the ratio, and twenty times the clumps yields seven times the ratio. Coverage does not order the data; clump density does.
 
@@ -146,10 +146,10 @@ At comparable coverage, five times the clumps yields 2.7 times the ratio, and tw
 
 Two scripts identical but for the attribute, at 21.5% coverage on a 120×120 map:
 
-| condition | coverage | tile ratio |
-|---|---|---|
-| unbalanced | 21.47% | 12.86 |
-| balanced | 21.45% | 12.27 |
+| condition  | coverage | tile ratio |
+| ---------- | -------- | ---------- |
+| unbalanced | 21.47%   | 12.86      |
+| balanced   | 21.45%   | 12.27      |
 
 The attribute reduces the ratio by 4.6%. The previously recorded softening from 20:1 to 12:1 is not reproduced.
 
@@ -157,10 +157,10 @@ The attribute reduces the ratio by 4.6%. The previously recorded softening from 
 
 The same script and map size, with and without eight player lands:
 
-| condition | tile ratio |
-|---|---|
-| no player lands | 7.16 |
-| eight player lands | 2.24 |
+| condition          | tile ratio |
+| ------------------ | ---------- |
+| no player lands    | 7.16       |
+| eight player lands | 2.24       |
 
 The engine's exclusion of elevation within 9 tiles of each player origin removes area from a ring that crosses the diagonal. The exclusion and the bias therefore do not compose independently.
 
@@ -229,29 +229,29 @@ Two mechanistic hypotheses (H1, H2) were advanced and refuted during this study.
 
 Scripts are minimal, isolate one variable, and record their predictions before the run. Each is retained with its reasoning in its own header.
 
-| script | varies | runs |
-|---|---|---|
-| `RMSTEST_22a` | baseline, 120×120 | 3 |
-| `RMSTEST_22b` | `enable_balanced_elevation` | 3 |
-| `RMSTEST_32` | player lands present | 3 |
-| `RMSTEST_35` | baseline, 200×200 and 480×480 | 3 + 6 |
-| `RMSTEST_39` | 100 clumps at the size floor, for seed recovery | 6 |
-| `RMSTEST_40a/b/c` | per-clump budget 6, 25, 100 at fixed count | 4 each |
-| `RMSTEST_41a/b/c` | clump count 250, 500, 1000 at fixed budget | 4 each |
+| script            | varies                                          | runs   |
+| ----------------- | ----------------------------------------------- | ------ |
+| `RMSTEST_22a`     | baseline, 120×120                               | 3      |
+| `RMSTEST_22b`     | `enable_balanced_elevation`                     | 3      |
+| `RMSTEST_32`      | player lands present                            | 3      |
+| `RMSTEST_35`      | baseline, 200×200 and 480×480                   | 3 + 6  |
+| `RMSTEST_39`      | 100 clumps at the size floor, for seed recovery | 6      |
+| `RMSTEST_40a/b/c` | per-clump budget 6, 25, 100 at fixed count      | 4 each |
+| `RMSTEST_41a/b/c` | clump count 250, 500, 1000 at fixed budget      | 4 each |
 
 ## Appendix B: consistency of the decomposition
 
 `tileRatio = seedRatio × sizeRatio` verified per configuration. Divergence indicates merging.
 
-| configuration | seed | size | product | tile | agreement |
-|---|---|---|---|---|---|
-| 100 clumps, 6 tiles | 1.31 | 1.41 | 1.86 | 1.88 | 1.1% |
-| 500 clumps, 4 tiles | 1.78 | 4.03 | 7.18 | 7.16 | 0.3% |
-| 50 clumps, 6 tiles | 1.25 | 1.16 | 1.45 | 1.45 | 0.0% |
-| 50 clumps, 25 tiles | 1.26 | 1.13 | 1.43 | 1.41 | 1.4% |
-| 50 clumps, 100 tiles | 1.09 | 1.93 | 2.10 | 2.08 | 1.0% |
-| 250 clumps, 6 tiles | 1.78 | 2.09 | 3.72 | 3.74 | 0.5% |
-| 500 clumps, 6 tiles | 1.60 | 4.35 | 6.96 | 7.01 | 0.7% |
-| 1000 clumps, 6 tiles | 0.49 | 30.23 | 14.81 | 14.88 | 0.5% |
+| configuration        | seed | size  | product | tile  | agreement |
+| -------------------- | ---- | ----- | ------- | ----- | --------- |
+| 100 clumps, 6 tiles  | 1.31 | 1.41  | 1.86    | 1.88  | 1.1%      |
+| 500 clumps, 4 tiles  | 1.78 | 4.03  | 7.18    | 7.16  | 0.3%      |
+| 50 clumps, 6 tiles   | 1.25 | 1.16  | 1.45    | 1.45  | 0.0%      |
+| 50 clumps, 25 tiles  | 1.26 | 1.13  | 1.43    | 1.41  | 1.4%      |
+| 50 clumps, 100 tiles | 1.09 | 1.93  | 2.10    | 2.08  | 1.0%      |
+| 250 clumps, 6 tiles  | 1.78 | 2.09  | 3.72    | 3.74  | 0.5%      |
+| 500 clumps, 6 tiles  | 1.60 | 4.35  | 6.96    | 7.01  | 0.7%      |
+| 1000 clumps, 6 tiles | 0.49 | 30.23 | 14.81   | 14.88 | 0.5%      |
 
 The identity holds throughout, including where the individual factors are corrupted by merging, since both errors are compensating. It validates the decomposition arithmetic and not the interpretation of its terms.

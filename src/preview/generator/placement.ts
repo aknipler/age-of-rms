@@ -7,7 +7,11 @@
 // live, so S1 and S6 don't each grow a slightly different version of the
 // same algorithm the way rev 3 let borderBlocked/zoneAvoidanceBlocked drift.
 
-import type { FailureBucket, PlacementFailure, PlacementOutcome } from "./types";
+import type {
+  FailureBucket,
+  PlacementFailure,
+  PlacementOutcome,
+} from "./types";
 
 export function ok<T>(value: T): PlacementOutcome<T> {
   return { ok: true, value };
@@ -41,7 +45,10 @@ export function fail<T>(failure: PlacementFailure): PlacementOutcome<T> {
  * this command, which is at most the size of `FailureBucket` (single digits),
  * so this stays O(1) per call without needing a Map per command.
  */
-export function pushFailure(failures: PlacementFailure[], failure: PlacementFailure): void {
+export function pushFailure(
+  failures: PlacementFailure[],
+  failure: PlacementFailure,
+): void {
   for (const existing of failures) {
     if (existing.bucket !== failure.bucket) continue;
     existing.occurrences = (existing.occurrences ?? 1) + 1;
@@ -92,7 +99,11 @@ export function intersectCandidates(
   predicates: readonly AttributedPredicate[],
 ): IntersectionResult {
   if (initialCount === 0) {
-    return { survivors: scratch.subarray(0, 0), count: 0, failedBucket: "noValidTiles" };
+    return {
+      survivors: scratch.subarray(0, 0),
+      count: 0,
+      failedBucket: "noValidTiles",
+    };
   }
   let count = initialCount;
   for (const predicate of predicates) {
@@ -106,7 +117,11 @@ export function intersectCandidates(
     }
     count = writeIndex;
     if (count === 0) {
-      return { survivors: scratch.subarray(0, 0), count: 0, failedBucket: predicate.bucket };
+      return {
+        survivors: scratch.subarray(0, 0),
+        count: 0,
+        failedBucket: predicate.bucket,
+      };
     }
   }
   return { survivors: scratch.subarray(0, count), count };

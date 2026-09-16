@@ -19,7 +19,9 @@ interface UiHelpData {
 }
 
 const uiHelpData = uiHelpDataRaw as UiHelpData;
-const HELP_TEXT_BY_ID = new Map(uiHelpData.entries.map((entry) => [entry.id, entry.text]));
+const HELP_TEXT_BY_ID = new Map(
+  uiHelpData.entries.map((entry) => [entry.id, entry.text]),
+);
 
 /** The written help for an id, or undefined when nobody has authored one yet. */
 export function helpTextFor(id: string): string | undefined {

@@ -18,14 +18,22 @@ describe("rebaseEdit", () => {
     // entirely after the prior edit's end -> shifts to [10,20).
     const prior = { start: 0, end: 10, newText: "" };
     const edit = { start: 20, end: 30, newText: "" };
-    expect(rebaseEdit(edit, [prior])).toEqual({ start: 10, end: 20, newText: "" });
+    expect(rebaseEdit(edit, [prior])).toEqual({
+      start: 10,
+      end: 20,
+      newText: "",
+    });
   });
 
   it("shifts an edit entirely after a prior insertion by the prior edit's delta", () => {
     // Prior: insert 5 chars at offset 0 -> delta +5.
     const prior = { start: 0, end: 0, newText: "AAAAA" };
     const edit = { start: 10, end: 15, newText: "" };
-    expect(rebaseEdit(edit, [prior])).toEqual({ start: 15, end: 20, newText: "" });
+    expect(rebaseEdit(edit, [prior])).toEqual({
+      start: 15,
+      end: 20,
+      newText: "",
+    });
   });
 
   it("leaves an edit entirely before a prior edit untouched", () => {
@@ -55,7 +63,11 @@ describe("rebaseEdit", () => {
     // POST-prior-1 coordinate space by construction of this test):
     // entirely after -> +2 -> [17,27).
     const edit = { start: 20, end: 30, newText: "" };
-    expect(rebaseEdit(edit, priors)).toEqual({ start: 17, end: 27, newText: "" });
+    expect(rebaseEdit(edit, priors)).toEqual({
+      start: 17,
+      end: 27,
+      newText: "",
+    });
   });
 });
 

@@ -24,7 +24,7 @@ code rather than transcribed from either document's prose.
 
 - **The instrumentation this tool is built on already ships.** `PlacementFailure`,
   `FailureBucket` (19 members), `CommandReport { commandSpan, stage, attempted,
-  placed, failures }` and `PreviewResult.reports` are real, in
+placed, failures }` and `PreviewResult.reports` are real, in
   `src/preview/generator/types.ts`, and every stage (`lands.ts`, `elevation.ts`,
   `cliffs.ts`, `terrains.ts`, `connections.ts`, `objects.ts`) already populates
   them unconditionally — "no `collectReports` option, because reports are goal 2
@@ -34,8 +34,8 @@ code rather than transcribed from either document's prose.
   (rev 10) has a `multiSelect` param type whose own doc comment names the
   2/4/6/8 player-count matrix as the reason it exists; `OutputBlock`'s `severity`
   and `table` carry optional `Span`s whose own doc comment names this tool's
-  per-`create_object` table as the reason; `run`'s chunk unit is pinned as *one
-  generation* (`tools-api-design.md` Sec.4.1); the two deadlines are derived from
+  per-`create_object` table as the reason; `run`'s chunk unit is pinned as _one
+  generation_ (`tools-api-design.md` Sec.4.1); the two deadlines are derived from
   this tool's own cost profile. Sec.4 and Sec.5 below consume this surface; they
   do not re-litigate it.
 - **The bridge from `ToolContext` to `PreviewSettings` already ships, and it is
@@ -123,7 +123,7 @@ believing the framing.
 The preview generator's object placement (`src/preview/generator/objects.ts`)
 filters candidate tiles by the **coarse** `Habitat` enum (`"land" | "water" |
 "amphibious" | "shore" | "any"`, five values) via `objectHabitat()`.
-`PublishedGameConstant.allowedTerrains` is the *exact* permitted-terrain-id
+`PublishedGameConstant.allowedTerrains` is the _exact_ permitted-terrain-id
 list expanded from the game's own restriction table, and the schema's doc
 comment on it quantifies what the vocabulary costs: **restriction 8
 (GOLD/STONE/FORAGE) permits 83 terrains while the `land` class covers 110, so
@@ -131,14 +131,14 @@ comment on it quantifies what the vocabulary costs: **restriction 8
 
 **Where the field actually is, measured against `reference/data/game-constants.json`:**
 
-| | |
-|---|---|
-| object rows | 2672 |
-| carrying `allowedTerrains` | **31** |
-| carrying `terrainRestrictionId` (no expansion table in `reference/`) | 2666 |
-| carrying `habitat` | 2668 |
+|                                                                      |        |
+| -------------------------------------------------------------------- | ------ |
+| object rows                                                          | 2672   |
+| carrying `allowedTerrains`                                           | **31** |
+| carrying `terrainRestrictionId` (no expansion table in `reference/`) | 2666   |
+| carrying `habitat`                                                   | 2668   |
 
-So on 99.9% of *rows* the two layers are not two engines at different precision;
+So on 99.9% of _rows_ the two layers are not two engines at different precision;
 they are two readers of `habitat`. **Rows are the wrong denominator for this
 tool, and the right one keeps the section alive**: the 31 are the 4.7-era
 hand-set family — `GOLD`, `STONE`, `FORAGE`, `DEER`, `BOAR`, `SHEEP`, `WOLF`,
@@ -149,12 +149,12 @@ overwhelmingly place.
 say which population each number is over.** Four scans over the 32 maps on
 this mount, each a strict refinement of the one above it:
 
-| scan | `create_object` | resolvable | covered by `allowedTerrains` | share |
-|---|---|---|---|---|
-| token scan, `/* */` comments left in | 2052 | 1034 built-in names | 580 | 56% |
-| token scan, comments stripped | 1937 | 997 built-in names | 562 | 56% |
-| + each file's own `#const NAME <int>` table | 1937 | 1790 | 575 | 32% |
-| through S0, instantiated at 4 players, seed 1 | 1475 | 1379 | **471** | **34%** |
+| scan                                          | `create_object` | resolvable          | covered by `allowedTerrains` | share   |
+| --------------------------------------------- | --------------- | ------------------- | ---------------------------- | ------- |
+| token scan, `/* */` comments left in          | 2052            | 1034 built-in names | 580                          | 56%     |
+| token scan, comments stripped                 | 1937            | 997 built-in names  | 562                          | 56%     |
+| + each file's own `#const NAME <int>` table   | 1937            | 1790                | 575                          | 32%     |
+| through S0, instantiated at 4 players, seed 1 | 1475            | 1379                | **471**                      | **34%** |
 
 **The last row is the one this tool lives on** — it is `instantiateScript`'s
 own output resolved the way `objects.ts` resolves it (name first, then the
@@ -178,12 +178,12 @@ and both of those qualifiers matter.
 each row's `allowedTerrains` against the 110 terrains `isWater: false` admits
 (the `uses` column here is the comment-stripped token scan, row two above):
 
-| family | restriction | uses | land terrains the exact table refuses |
-|---|---|---|---|
-| `GOLD` / `STONE` / `FORAGE` | 8 | 261 | **27**, including `BEACH` |
-| `TOWN_CENTER` / `HOUSE` / `DEER` / `WOLF` | 4, 1 | 57 | 16–17 |
-| `VILLAGER` / `RELIC` / `BOAR` / `SHEEP` / `KING` | 7 | 180 | **1** (`DLC_BLACK`) |
-| the fish/water family | 19, 13, 3, 15 | 64 | n/a — water-side |
+| family                                           | restriction   | uses | land terrains the exact table refuses |
+| ------------------------------------------------ | ------------- | ---- | ------------------------------------- |
+| `GOLD` / `STONE` / `FORAGE`                      | 8             | 261  | **27**, including `BEACH`             |
+| `TOWN_CENTER` / `HOUSE` / `DEER` / `WOLF`        | 4, 1          | 57   | 16–17                                 |
+| `VILLAGER` / `RELIC` / `BOAR` / `SHEEP` / `KING` | 7             | 180  | **1** (`DLC_BLACK`)                   |
+| the fish/water family                            | 19, 13, 3, 15 | 64   | n/a — water-side                      |
 
 (The four rows total 562 exactly, which is the comment-stripped token scan and
 nothing to do with resolution — the 18-use gap to 580 is comments, not the
@@ -227,12 +227,12 @@ document.
 **Standing rule, because this section was built on a doc comment once already —
 and the warning that used to sit here has been discharged.**
 `game-constants.schema.json`'s description of `terrainRestrictionId` said the id
-sat beside the expanded row, *"which is why `allowedTerrains` carries the row
-itself beside it"*, which was false on 2666 rows. **It was rewritten on
+sat beside the expanded row, _"which is why `allowedTerrains` carries the row
+itself beside it"_, which was false on 2666 rows. **It was rewritten on
 2026-08-16**: the description now states the correction in this document's own
 terms (2666 rows carry the id, 31 carry `allowedTerrains` beside it) and
-`allowedTerrains`'s own description leads with *"PRESENT ON 31 OBJECT ROWS ONLY,
-NOT ON THE ROSTER"*, citing this document by section.
+`allowedTerrains`'s own description leads with _"PRESENT ON 31 OBJECT ROWS ONLY,
+NOT ON THE ROSTER"_, citing this document by section.
 `npm run check:generated-types` is green, so the generated type went with it.
 
 The rule survives its instance and is the reason this paragraph is kept rather
@@ -240,7 +240,7 @@ than deleted. Neither gate would have caught the original: `validate:reference`
 checks data against the schema and the field is optional,
 `check:generated-types` diffs the generated type against the schema and never
 looks at the data. **Read the data, not the comment, before this section is
-quoted again** — and note which way this one decayed. A *warning about a defect*
+quoted again** — and note which way this one decayed. A _warning about a defect_
 decays exactly as a measurement does, and it decays faster, because a warning
 invites nobody to re-run anything; its whole form is "we checked, do not check
 again". A revision that re-derived every count in this document went one further
@@ -260,7 +260,7 @@ terrain or actor-area reference the reference data has no row for is
 third outcome — "cannot determine" — and a check that cannot determine reports
 nothing, per the same rule that keeps RMS0200 silent on a mere miss.
 
-### 3.0 There is no such object as *the* `InstantiatedScript`, and every check below inherits that
+### 3.0 There is no such object as _the_ `InstantiatedScript`, and every check below inherits that
 
 `instantiateScript(parse, refDb, settings, masterSeed)` **takes the seed, and
 uses it twice**: `rnd(a,b)` in any numeric slot draws from an S0 substream, and
@@ -274,12 +274,12 @@ the tool actually runs, not over one pair of points** — the two-point readings
 are kept beside them because they are what an earlier revision published, and
 they understate the rate a reader will apply to Sec.4.2's aggregation by 3×:
 
-| | one pair | **swept over what the tool runs** |
-|---|---|---|
-| a **watched static-check input** changes across seeds 1–5 | — | **13 / 32** |
-| the instantiated **command set** changes with the seed | 4 / 32 (seed 1 vs 2) | **12 / 32** (seeds 1–5) |
-| the instantiated **command set** changes with the player count | 7 / 32 (4 vs 8) | **12 / 32** (2/4/6/8) |
-| the instantiated **command set** changes with the map size | — | **11 / 32** (all seven sizes) |
+|                                                                | one pair             | **swept over what the tool runs** |
+| -------------------------------------------------------------- | -------------------- | --------------------------------- |
+| a **watched static-check input** changes across seeds 1–5      | —                    | **13 / 32**                       |
+| the instantiated **command set** changes with the seed         | 4 / 32 (seed 1 vs 2) | **12 / 32** (seeds 1–5)           |
+| the instantiated **command set** changes with the player count | 7 / 32 (4 vs 8)      | **12 / 32** (2/4/6/8)             |
+| the instantiated **command set** changes with the map size     | —                    | **11 / 32** (all seven sizes)     |
 
 "Watched" means the attributes these checks read, **and that set shrank in this
 revision, so the rate did too.** An earlier revision measured eight attributes —
@@ -331,6 +331,7 @@ reading implies.
    unchanged and still earns its cost: what moves across counts is the command
    **set**, on 12 of 32 maps (Sec.3.0's own drift census), and running once at
    `ctx.settings.playerCount` would label four columns with one.
+
 2. **Demote any finding whose inputs are seed-derived** from "guaranteed" to
    "guaranteed on this seed", and say so in the finding's own text. This is not
    a guess about provenance: `InstantiatedArg.source` keeps the originating
@@ -347,7 +348,7 @@ A check that skipped all three would report a per-draw outcome as a guaranteed
 error — confidently wrong, in the one direction this whole document exists to
 avoid.
 
-### 3.0b There is no such thing as *the attributes of a command* either, and no instantiation contains them all
+### 3.0b There is no such thing as _the attributes of a command_ either, and no instantiation contains them all
 
 Sec.3.0 pins the layer's input. This section pins what that input is missing,
 because the answer is not "nothing" and every check below inherits it.
@@ -355,7 +356,7 @@ because the answer is not "nothing" and every check below inherits it.
 **The construct.** `parser-design.md` Sec.5.4's shared-block rule: a `{`
 arriving right after a completed `if`/`start_random` whose branches end in
 block-capable commands becomes an `OrphanBlockNode` carrying **info RMS0110**,
-*"this block is shared by the command(s) chosen in the if/random above"*. It is
+_"this block is shared by the command(s) chosen in the if/random above"_. It is
 guide Example2, cited in this repo's own parser spec as a guide-endorsed idiom,
 and the corpus uses it heavily. `Pa_Site_v1.1.rms`:
 
@@ -385,25 +386,25 @@ is why this sits beside Sec.3.0 rather than inside one check.
 `TL Team Acropolis.rms`, `W4 - Immersion.rms`,
 `OWWC1Tewaipounamu-edited-v1.2.rms`), carrying **216 attributes** between them,
 against 31 RMS0110 diagnostics corpus-wide. The count descends into `if` and
-`start_random` nested *inside* a shared block, because `instantiate.ts` drops
+`start_random` nested _inside_ a shared block, because `instantiate.ts` drops
 the block whole and so drops those too. The rows that matter to a check here:
 
-| attribute | occurrences | maps | which check reads it |
-|---|---|---|---|
-| `avoid_actor_area` | 27 | 4 | Sec.3.2, reference side |
-| `min_distance_to_players` | **21** | 5 | Sec.3.4 — the only surviving static check |
-| `second_object` | 15 | 3 | Sec.3.3's never-check rule |
-| `actor_area` | **14** | 3 | Sec.3.2, declaration side |
-| `actor_area_radius` | 14 | 3 | — |
-| `actor_area_to_place_in` | 9 | 3 | Sec.3.2, reference side |
-| `max_distance_to_players` | 7 | 3 | Sec.3.4 |
-| `terrain_to_place_on` | 4 | 2 | Sec.3.3 |
-| `base_terrain` | 3 | 1 | Sec.3.3's terrain surface |
-| `land_percent` | 3 | 1 | Sec.3.1's sum |
+| attribute                 | occurrences | maps | which check reads it                      |
+| ------------------------- | ----------- | ---- | ----------------------------------------- |
+| `avoid_actor_area`        | 27          | 4    | Sec.3.2, reference side                   |
+| `min_distance_to_players` | **21**      | 5    | Sec.3.4 — the only surviving static check |
+| `second_object`           | 15          | 3    | Sec.3.3's never-check rule                |
+| `actor_area`              | **14**      | 3    | Sec.3.2, declaration side                 |
+| `actor_area_radius`       | 14          | 3    | —                                         |
+| `actor_area_to_place_in`  | 9           | 3    | Sec.3.2, reference side                   |
+| `max_distance_to_players` | 7           | 3    | Sec.3.4                                   |
+| `terrain_to_place_on`     | 4           | 2    | Sec.3.3                                   |
+| `base_terrain`            | 3           | 1    | Sec.3.3's terrain surface                 |
+| `land_percent`            | 3           | 1    | Sec.3.1's sum                             |
 
 **The direction differs per check, and only the declaration side is dangerous.**
 A hidden `land_percent` understates declared area and a hidden
-`min_distance_to_players` never trips `minExceedsMax` — false *negatives*, in
+`min_distance_to_players` never trips `minExceedsMax` — false _negatives_, in
 the "your map is fine" direction, which this document tolerates and states
 rather than fixes, because Sec.3.1 and Sec.3.4 read `InstantiatedScript` and
 cannot see these attributes at all without a second input surface. A hidden
@@ -415,10 +416,10 @@ two different reasons does not get one fix:
 
 1. **Every scan that only ever SUPPRESSES a finding descends into
    `OrphanBlockNode`s** — Sec.3.2's declaration side (both forms), Sec.3.3's
-   terrain surface. *Which* command the attribute belongs to does not matter,
+   terrain surface. _Which_ command the attribute belongs to does not matter,
    because a suppressing scan is allowed to be over-generous.
 2. **A REPORTING scan may descend only where it can honestly anchor the
-   finding.** Sec.3.2's reference side does, because a shared block *executes*
+   finding.** Sec.3.2's reference side does, because a shared block _executes_
    and the attribute's own span is real, clickable code; the finding is then
    worded to name the reference rather than a command's outcome, since which
    command consumes the block is exactly what RMS0110 records as ambiguous.
@@ -444,9 +445,9 @@ which is why the two are easy to conflate and why the difference is written down
 here rather than left to the reader.
 
 **A raw node damages EVERY suppressing scan, not only the terrain surface, and
-an earlier revision said the opposite in terms.** It read *"Sec.3.3's own
+an earlier revision said the opposite in terms.** It read _"Sec.3.3's own
 `RawNode` subsection carries it, because the surface is the only thing it can
-invalidate"* — false, and the corpus carries the counterexample twice. Sec.3.2's
+invalidate"_ — false, and the corpus carries the counterexample twice. Sec.3.2's
 declaration side is also a suppressing scan over the AST, and a missed
 declaration is a missed **suppression**, so the check calls an id
 guaranteed-undefined at **error** severity on a script that declares it. That is
@@ -469,10 +470,10 @@ own text, used only in the abstaining direction, never as a population count
 measures its own abstention rate, because the token is a property of what that
 scan reads:
 
-| scan | token | abstains on |
-|---|---|---|
-| Sec.3.3's terrain surface | `terrain` / `#const` / `<` | **1 of 32** (`Rage Forest 2026.rms`) |
-| Sec.3.2's declaration side | `actor_area` | **2 of 32** (`Rage Forest`, `TL Cape of Storms`) |
+| scan                       | token                      | abstains on                                      |
+| -------------------------- | -------------------------- | ------------------------------------------------ |
+| Sec.3.3's terrain surface  | `terrain` / `#const` / `<` | **1 of 32** (`Rage Forest 2026.rms`)             |
+| Sec.3.2's declaration side | `actor_area`               | **2 of 32** (`Rage Forest`, `TL Cape of Storms`) |
 
 Sec.3.1's sum and Sec.3.4's comparison need no entry: both read
 `InstantiatedScript`, both lose whatever the node hides as a **false negative**,
@@ -493,8 +494,8 @@ identified and described as unable to reach it.
 from `objects.ts` and `instantiate.ts`, correctly — which is why its severity
 split is right — and "the attributes of a command" is a question **neither file
 answers on its own**: the parser has a documented third case where the
-attributes are not inside the command. The standing rule is *a spec section that
-says it mirrors a function must be written FROM that function*; the extension is
+attributes are not inside the command. The standing rule is _a spec section that
+says it mirrors a function must be written FROM that function_; the extension is
 that **a section reading a CONSTRUCT must be written from the parser's model of
 that construct**, because the generator's model of it is `unsimulatedNote` and
 silence.
@@ -515,9 +516,9 @@ the player count and turn this check into a false-alarm generator on every map
 using the idiom. Compare the sum to `dim * dim`
 (`InstantiatedScript.dim`, **post**-`override_map_size` — never the lobby
 `mapSize.tiles`, which is exactly the trap `tools-api-design.md` Sec.2 names by
-quoting this check specifically: *"A static check keyed on map area... computes
+quoting this check specifically: _"A static check keyed on map area... computes
 against the wrong grid on every script that overrides, and fails quietly, in
-the direction of 'your map is fine'."*).
+the direction of 'your map is fine'."_).
 
 **A land declaring the whole map or more is EXCLUDED from the sum, and that
 exclusion is the difference between a check and a noise floor.** Specified
@@ -525,13 +526,13 @@ without it and run over the corpus, this check warns on **23 of 32 tracked maps
 at 4 players (92 of 128 map/player-count pairs), with ratios from 100% to
 1393%** (`AK_ForeDaut_v1.3.rms`). The cause is an idiom rather than a defect:
 two or more `create_land` commands each asking for `land_percent 100` is how a
-script says *fill whatever is left*, and growth stops when a land meets its
+script says _fill whatever is left_, and growth stops when a land meets its
 target **or runs out of frontier** (`lands.ts`, `growLands`), so the
 over-declaration is the mechanism working. `AD4 - Ra.rms` is the clean specimen,
 labelled by its own author's comment (`/* neutral space */`) and summing to
 800%. Excluding lands whose declared target is `>= dim*dim` takes the check to
 **6 of 32 maps and 24 of 128 pairs**, and leaves a question the check can
-answer: do the lands that named a *size* fit?
+answer: do the lands that named a _size_ fit?
 
 Keep both numbers beside each other, because a later reader will otherwise
 reintroduce the sum-everything form as a simplification: **23 of 32 as first
@@ -587,7 +588,7 @@ can drift apart under a later edit and this cannot. Folded back as the form, not
 left as a deviation.
 
 **And this check takes no player count at all.** It is invariant by the argument
-above; the count belonged only to the finding's old *"At N players,"* prefix,
+above; the count belonged only to the finding's old _"At N players,"_ prefix,
 and that prefix was the single thing stopping four identical findings from
 collapsing into one block (Sec.5.1). The count is now a FIELD on the finding,
 stamped by `runStaticChecks`.
@@ -609,7 +610,7 @@ Six of 32 expert maps still trip the exclusion-corrected form
 (`AK_Vanguard_v1.2.rms` 554% and `OWWC1Tewaipounamu-edited-v1.2.rms` 551% with
 no filler land at all, `24hr_Holler.rms` 396%, `AD4 - Pag - v1.2.rms` 133%,
 `AK_Namatjira.rms` 127%, `QS_Three_Bays_v1.1.rms` 114%), and every one of them
-is a finished, shipped map that plays. The statement is *true* on all six and
+is a finished, shipped map that plays. The statement is _true_ on all six and
 names no defect on any, which is the definition of an info: a beginner writing
 three lands at 60% each is told something they want to know, and an expert is
 told something harmless. A warning here would be the "confidently wrong" failure
@@ -643,11 +644,11 @@ and indexes the whole check on the wrong one.
 scan over comment-including text answers 286 / 2586; through the parser and
 the instantiation the same corpus answers:
 
-| | token scan (comments in) | **through the parser (AST)** | **through the instantiation, 4p/seed 1** |
-|---|---|---|---|
-| `create_actor_area` commands | 286 / 15 maps | **284 / 15 maps** | 100 / 12 maps |
-| `actor_area_to_place_in` + `avoid_actor_area` | 2586 / 31 maps | **2385 / 30 maps** | **2001 / 30 maps** |
-| bare `actor_area` attribute (form b) | 919 / 31 maps | **742 / 30 maps** | 629 / 30 maps |
+|                                               | token scan (comments in) | **through the parser (AST)** | **through the instantiation, 4p/seed 1** |
+| --------------------------------------------- | ------------------------ | ---------------------------- | ---------------------------------------- |
+| `create_actor_area` commands                  | 286 / 15 maps            | **284 / 15 maps**            | 100 / 12 maps                            |
+| `actor_area_to_place_in` + `avoid_actor_area` | 2586 / 31 maps           | **2385 / 30 maps**           | **2001 / 30 maps**                       |
+| bare `actor_area` attribute (form b)          | 919 / 31 maps            | **742 / 30 maps**            | 629 / 30 maps                            |
 
 Still the highest-traffic check in Sec.3 by an order of magnitude, and the
 conclusions do not change — but the gap is real material rather than rounding:
@@ -678,7 +679,7 @@ attribute with that id **anywhere in the script** — inside a
 `create_object`/`create_object_group` block, or inside a shared block attached
 to one (Sec.3.0b). Block-wide, the same scope rule RMS0315 already uses for a
 "does a partner exist anywhere" question (`parser-design.md` Sec.8). Phrasing
-(b) as *"every `create_object` command carrying its own `actor_area`"* is what
+(b) as _"every `create_object` command carrying its own `actor_area`"_ is what
 made an earlier revision miss the shared-block form: in the AST that attribute
 is on no command at all.
 
@@ -712,7 +713,7 @@ reference.
 
 **The reference side takes shared-block references too, and that is not a
 breach of the asymmetry — but it takes them only where S0 reached the block.**
-An `OrphanBlockNode` is not an unselected *branch* in its own right: it
+An `OrphanBlockNode` is not an unselected _branch_ in its own right: it
 executes, on whichever command the `if`/`start_random` immediately above chose,
 so a reference inside one really does run on this seed and belongs in the strict
 half. What it lacks is an owning command — which is exactly what RMS0110
@@ -745,7 +746,7 @@ them — the same shape as Sec.3.3's `start_random` clause below.
 
 **And S0's symbol table cannot resolve the declaration side, which is the same
 finding one level down.** `instantiate.ts`'s file header states the rule it
-implements: *"a symbol inside an UNTAKEN branch never exists"*. So a
+implements: _"a symbol inside an UNTAKEN branch never exists"_. So a
 `#const MY_AREA 7` sitting in the same unselected `start_random` branch as its
 `create_actor_area … MY_AREA …` is absent from `InstantiatedScript.symbols`,
 the declaration resolves to nothing, is dropped, and the check emits the
@@ -774,20 +775,21 @@ two suppressing scans is still a suppressing scan.
    declaration forms there are **38 non-literal declaration ids — 2 in form (a)
    and 36 in form (b)** — and after both rules exactly **one map abstains**.
    That map is `AK_Vanguard_v1.2.rms`, which writes `actor_area
-   ACT_AREA_TEAM_RES_TERRAIN`, a name **no `#const` in the file defines** (see
+ACT_AREA_TEAM_RES_TERRAIN`, a name **no `#const` in the file defines** (see
    the unresolvable-reference rule below — the same name, on the other side,
    is where the corpus's clearest actor-area defect lives).
 
    **The "2 of 286" this rule used to rest on was form (a) only**, in a section
    whose own text calls form (b) the larger path. A rule quantifying over both
    forms has to be measured over both.
+
 4. **A `RawNode` whose own source text contains `actor_area` makes the check
    abstain for that script** — Sec.3.0b's per-scan containment rule, with this
    section's token. A raw node is opaque, so rule 1 has nothing to descend into
    and a hidden declaration is a missed suppression, which is this check's one
    fatal direction. `actor_area` is a substring of **both** declaration forms
    (`create_actor_area` and the bare attribute), so its absence from a span of
-   source *proves* no declaration is hidden there — which is what makes this a
+   source _proves_ no declaration is hidden there — which is what makes this a
    decision procedure rather than a judgement. **Measured: 2 of 32 maps abstain**
    (`Rage Forest 2026.rms`, `TL Cape of Storms.rms`) and both finding rows below
    are unchanged, so the rule costs this corpus nothing and buys the 88
@@ -812,7 +814,7 @@ rule 3's abstention on that map.)
 
 **An unresolvable REFERENCE is not a static finding, and saying so is a
 decision rather than an omission.** Rules 1–3 pin what an unresolvable
-*declaration* does and an earlier revision said nothing about the other side.
+_declaration_ does and an earlier revision said nothing about the other side.
 The corpus has one, and it is the finding a beginner-facing tool exists to
 print: `AK_Vanguard_v1.2.rms` carries `actor_area_to_place_in
 ACT_AREA_TEAM_RES_TERRAIN` on **18 `create_object` commands**, and that name is
@@ -874,17 +876,17 @@ paragraph whose baseline it invalidates.
 Measured at 4 players / Normal / seed 1 over the 32 tracked maps, each row a
 strict refinement of the one above it:
 
-| declaration side | `actor_area_to_place_in` (error) | `avoid_actor_area` (info) | scripts abstaining |
-|---|---|---|---|
-| instantiation union — the approximation, kept as the control | 11 ids / 12 commands / 4 maps | 59 commands / 10 maps | 0 |
-| **as this section prescribes** (AST scan, all branches) | **5 / 5 / 2** | **37 / 8** | 2 |
-| + descending into `OrphanBlockNode`s (Sec.3.0b) | **4 / 4 / 2** | **30 / 7** | 2 |
-| + unioned with S0's own resolved values (rule 2) | **4 / 4 / 2** | **30 / 7** | **1** |
-| **+ the `RawNode` abstention (rule 4)** | **4 / 4 / 2** | **30 / 7** | **3** |
+| declaration side                                             | `actor_area_to_place_in` (error) | `avoid_actor_area` (info) | scripts abstaining |
+| ------------------------------------------------------------ | -------------------------------- | ------------------------- | ------------------ |
+| instantiation union — the approximation, kept as the control | 11 ids / 12 commands / 4 maps    | 59 commands / 10 maps     | 0                  |
+| **as this section prescribes** (AST scan, all branches)      | **5 / 5 / 2**                    | **37 / 8**                | 2                  |
+| + descending into `OrphanBlockNode`s (Sec.3.0b)              | **4 / 4 / 2**                    | **30 / 7**                | 2                  |
+| + unioned with S0's own resolved values (rule 2)             | **4 / 4 / 2**                    | **30 / 7**                | **1**              |
+| **+ the `RawNode` abstention (rule 4)**                      | **4 / 4 / 2**                    | **30 / 7**                | **3**              |
 
 The last row is the check as specified above and the number to hold this tool
 to. The first row is kept beside it the way Sec.3.1 keeps its 23-against-6,
-because the gap is the *measurement's* and not the check's, and a later reader
+because the gap is the _measurement's_ and not the check's, and a later reader
 will otherwise re-derive the loose form as a simplification.
 
 **Rule 4 is the one row whose finding columns do not move, and that is the
@@ -946,13 +948,13 @@ two-step rule. Then:
 
    - **`terrain_to_place_on` resolves to a terrain id ⇒ test
      `allowedTerrains ∩ {that terrain}` and nothing else.** This is the pure
-     engine-table question, it is the one the *"exact terrain table"* provenance
+     engine-table question, it is the one the _"exact terrain table"_ provenance
      label is entitled to make, and it is what
      `create_object DEER { terrain_to_place_on WATER }` fails. **Whether the
      script ever lays that terrain down is a different question with an existing
      owner** — `terrainAbsent`, a `FailureBucket` the Monte Carlo layer already
      reports with a spawn count attached (Sec.4), assigned by Sec.2 to the
-     *approximate preview* provenance. Do not intersect the surface here.
+     _approximate preview_ provenance. Do not intersect the surface here.
    - **`terrain_to_place_on` is written but does NOT resolve ⇒ report nothing
      for this command.** This is the positive-resolver rule the section's own
      opening paragraph states, applied to the fork rather than around it, and it
@@ -979,9 +981,9 @@ two-step rule. Then:
 
    **This fork exists because rev 6 stated the tier-1 test twice, in two
    subsections, in two forms that disagree, and never said which was meant.**
-   Tier 1 read *"compute the script's terrain surface … if the intersection with
-   `allowedTerrains` is empty"*; the override subsection read *"the finding is
-   `allowedTerrains` ∩ {the named terrain} is empty"*. Three sets against two,
+   Tier 1 read _"compute the script's terrain surface … if the intersection with
+   `allowedTerrains` is empty"_; the override subsection read _"the finding is
+   `allowedTerrains` ∩ {the named terrain} is empty"_. Three sets against two,
    and on this corpus the difference was the whole of the output: the three-set
    reading — the one an implementer writes, because the surface is the section's
    headline machinery and the override subsection reads as a refinement of it —
@@ -998,8 +1000,9 @@ two-step rule. Then:
    part of how the info row survived the fork.** The other three were the same
    defect gated to info by Sec.3.5 (below), which is a distinction Sec.8 item 2's
    own table draws two rows apart. A count of findings and a count of findings
-   *at one severity* are two numbers, and a section that reports the second while
+   _at one severity_ are two numbers, and a section that reports the second while
    saying "output" has already mislaid the first.
+
 2. **Else if only `habitat` is present**, fall back to the coarser test, **and
    fork it the same way tier 1 forks**, because the argument is the same one
    tier down and rev 6 made the same omission in both places. Where
@@ -1015,19 +1018,19 @@ two-step rule. Then:
    because whether the automatic-beach rule (`preview-design.md`, the per-tile
    depth-boundary rule) reliably produces a `"shore"`-eligible tile from an
    arbitrary land/water surface has not been measured the way the beach rule's
-   *rendering* has, and a habitat this check cannot bound soundly must abstain
+   _rendering_ has, and a habitat this check cannot bound soundly must abstain
    rather than guess. `"any"` never restricts, by definition.
 3. **Else (no reference row at all)**: report nothing. Absence proves nothing.
 
 **Finding.** Severity: warning, worded to name which precision produced it —
-*"the exact terrain table"* for case 1, *"this object's terrain category"* for
+_"the exact terrain table"_ for case 1, _"this object's terrain category"_ for
 case 2 — per Sec.2's provenance requirement.
 
 **That severity is CONFIRMED, and the run that confirmed it is the one three
 revisions declined to make.** Sec.3.1 shipped a warning that fired on 23 of 32
 maps and Sec.3.4 an error that fired on 26 of 32, both predicted near-zero and
-neither run; this section then inherited *"cannot be run until Sec.7.0's
-resolver export lands"* from rev 5 — which was true when rev 5 wrote it, and
+neither run; this section then inherited _"cannot be run until Sec.7.0's
+resolver export lands"_ from rev 5 — which was true when rev 5 wrote it, and
 stopped being true the moment rev 6 wrote the export out in full and verified
 that it compiles. Applying Sec.7.0 item 1 verbatim to a scratch copy takes ten
 minutes and the check then runs over the corpus in seconds. **The reason a
@@ -1040,21 +1043,21 @@ valid `ignore_terrain_restrictions` abstaining, the surface taking all six
 producers plus `beachTerrainFor`, descending into shared blocks and both
 `start_random` branches):
 
-| | 32 maps |
-|---|---|
-| tier 1 checked (`allowedTerrains` present) | 446 commands |
-| tier 2 checked (`habitat` land/water) | 356 commands |
-| skipped, valid `ignore_terrain_restrictions` | 52 |
-| **case 3, resolver returns no row** | **75** |
-| **case 3, names a `create_object_group`** | **21** |
-| **warnings, three-set reading (rev 6 as written)** | **2 — both false** |
-| **warnings, as specified above** | **0** |
-| **info (Sec.3.5 gate)** | **2** — 1 tier 1, 1 tier 2 |
+|                                                    | 32 maps                    |
+| -------------------------------------------------- | -------------------------- |
+| tier 1 checked (`allowedTerrains` present)         | 446 commands               |
+| tier 2 checked (`habitat` land/water)              | 356 commands               |
+| skipped, valid `ignore_terrain_restrictions`       | 52                         |
+| **case 3, resolver returns no row**                | **75**                     |
+| **case 3, names a `create_object_group`**          | **21**                     |
+| **warnings, three-set reading (rev 6 as written)** | **2 — both false**         |
+| **warnings, as specified above**                   | **0**                      |
+| **info (Sec.3.5 gate)**                            | **2** — 1 tier 1, 1 tier 2 |
 
 **The two case-3 rows used to be one column reading 96, and splitting them is
 what makes it a control.** 75 + 21 = 96, and 1475 − 1379 = 96, so both readings
-close — but a single column mixes *"the resolver could not answer"* with *"the
-spec says do not ask"*, which is the un-decomposed number this document pins
+close — but a single column mixes _"the resolver could not answer"_ with _"the
+spec says do not ask"_, which is the un-decomposed number this document pins
 conventions against everywhere else. Sec.8 item 2 makes the checked counts a
 control precisely so a zero can be told from a broken probe; the object-group row
 is the one that goes to 0 the day someone "improves" the check into the
@@ -1064,7 +1067,7 @@ The tier-2 fork was run before being written down rather than after: **230 of
 the `create_object` commands that resolve a row and name a terrain reach tier 2
 before the valid-`ignore_terrain_restrictions` skip is applied, and 228 after
 it** (habitat `land`/`water`, no `allowedTerrains`) — the pinned table below
-counts the 228, and *"checkable"* was the word doing the damage, since the two
+counts the 228, and _"checkable"_ was the word doing the damage, since the two
 the skip removes are never checked. The fork produces
 **1 finding on 32 maps** — the undecided `Chaotic_Straitv0.99.rms` row Sec.3.5
 downgrades to info and Sec.9 carries. One finding is near-zero and the severity
@@ -1077,12 +1080,12 @@ by naming the predicate it counts in the same sentence, not by picking one of th
 three.** An earlier revision published **844**, which is none of them. All figures
 below are one run at 4 players / Normal / seed 1 over the 32 maps on this mount:
 
-| population | predicate | count |
-|---|---|---|
-| resolves a row and names a terrain that itself resolves | before any skip | **843** |
-| the same, less the valid-skip members that name a terrain | 42 of the 52 do | **801** |
-| **tier 1 checked + tier 2 checked** | what the two tiers divide | **802** |
-| checked **and** naming a resolving terrain | the fork's first bullet | **492** |
+| population                                                | predicate                 | count   |
+| --------------------------------------------------------- | ------------------------- | ------- |
+| resolves a row and names a terrain that itself resolves   | before any skip           | **843** |
+| the same, less the valid-skip members that name a terrain | 42 of the 52 do           | **801** |
+| **tier 1 checked + tier 2 checked**                       | what the two tiers divide | **802** |
+| checked **and** naming a resolving terrain                | the fork's first bullet   | **492** |
 
 **801 and 802 are one apart by coincidence and they are different sets.** 801
 counts **309** commands neither tier ever sees — they name a terrain but carry
@@ -1093,8 +1096,8 @@ never sees, the checked commands **not naming a resolving terrain** (182 at tier
 
 **A complement is not a predicate, and that is how the odd command hid for a
 revision.** `264 + 228 = 492` and `182 + 128 = 310` both close whichever side the
-one unresolvable-name command falls on, because 492's predicate is *checked
-**and** naming a resolving terrain* and the arithmetic never cared what the
+one unresolvable-name command falls on, because 492's predicate is _checked
+**and** naming a resolving terrain_ and the arithmetic never cared what the
 remainder was made of. Rev 9 wrote that remainder down as "naming no terrain at
 all" — a complement described as though it were a category — in the same table it
 added to stop exactly this. The number was right; the sentence was not.
@@ -1131,9 +1134,9 @@ and its evidence is worked examples plus red mutants, not a corpus census. If a
 later corpus does make it fire broadly, it demotes the same way Sec.3.1 did.
 
 **The info row is 2, and the revision that published 4 had carried three of them
-across the fork unre-derived.** An earlier revision described them as *"Sec.3.5's
-gate firing exactly where it said it would (`SHORE_FISH` twice, `FISH` once)"*.
-That paragraph is **withdrawn**: those three are the *three-set* reading's
+across the fork unre-derived.** An earlier revision described them as _"Sec.3.5's
+gate firing exactly where it said it would (`SHORE_FISH` twice, `FISH` once)"_.
+That paragraph is **withdrawn**: those three are the _three-set_ reading's
 output, not this section's. Run the three-set reading and it produces **5**
 findings, which decompose exactly as that revision reported them — the two on
 `verified: true` rows are `AK_Six_Points_v1.4.rms`'s `TUNA` on `WATER` and
@@ -1144,18 +1147,18 @@ and `FISH` on `WATER`, and `AK_Namatjira`'s `SHORE_FISH` on
 fold re-derived the warning half under the two-set reading and took it to 0;
 nobody re-derived the other half. Under the two-set reading:
 
-| finding | named terrain | in the object's own table? | as specified |
-|---|---|---|---|
-| `AK_Six_Points_v1.4.rms` `SHORE_FISH` | `WATER` (1) | **yes** (restriction 19) | **no finding** |
-| `AK_Six_Points_v1.4.rms` `FISH` | `WATER` (1) | **yes** (restriction 19) | **no finding** |
-| `AK_Namatjira.rms` `SHORE_FISH` | `DLC_MANGROVESHALLOW` (54) | **no** | finding, info (row unverified) |
+| finding                               | named terrain              | in the object's own table? | as specified                   |
+| ------------------------------------- | -------------------------- | -------------------------- | ------------------------------ |
+| `AK_Six_Points_v1.4.rms` `SHORE_FISH` | `WATER` (1)                | **yes** (restriction 19)   | **no finding**                 |
+| `AK_Six_Points_v1.4.rms` `FISH`       | `WATER` (1)                | **yes** (restriction 19)   | **no finding**                 |
+| `AK_Namatjira.rms` `SHORE_FISH`       | `DLC_MANGROVESHALLOW` (54) | **no**                     | finding, info (row unverified) |
 
 The first two are the identical defect the fork exists to remove — `WATER` is
 present in both objects' engine tables, so both are `terrainAbsent` wearing the
 exact table's label, on the same map as `TUNA`/`WATER` and for the same reason.
-This section's own words about the warning pair — *"checked against
+This section's own words about the warning pair — _"checked against
 `game-constants.json` directly, so the falseness is a property of the data rather
-than of the run that found it"* — apply verbatim to them.
+than of the run that found it"_ — apply verbatim to them.
 
 **The general rule, because this is the third round in a row on the same shape:
 when a fix changes what a run MEANS, re-derive every row that run produced, not
@@ -1181,8 +1184,8 @@ create_object SHORE_FISH
 
 The command carries `ignore_terrain_restrictions` with **neither**
 `set_place_for_every_player` nor `place_on_specific_land_id`, so the flag is
-**inert** (BUG-007, and this section's own *"the flag's presence alone must not
-suppress the check"*). `SHORE_FISH`'s restriction-19 row admits 15 terrains and
+**inert** (BUG-007, and this section's own _"the flag's presence alone must not
+suppress the check"_). `SHORE_FISH`'s restriction-19 row admits 15 terrains and
 no shallow; 54 is a shallow. So the author wrote the override, did not earn it,
 and the engine refuses the pairing — exactly the shape this check exists for,
 arriving on an expert map. It prints at **info** only because `SHORE_FISH`
@@ -1206,14 +1209,14 @@ re-cite 56%") and Sec.3.2 fixed again with a three-column table. Both columns
 are kept here so the gap is visible rather than resolved silently; **the walk
 reaches the right-hand column and nothing more.**
 
-| producer | where | comment-stripped token scan | **through the parser (AST)** |
-|---|---|---|---|
-| `base_terrain` | `<LAND_GENERATION>` | 2262 / 32 | **1908 / 31** — see below |
-| a land's own `terrain_type` | `create_land`, `create_player_lands` | 6548 / 32 | **6505 / 31** |
-| `create_terrain <T>` | `<TERRAIN_GENERATION>` | 2198 / 32 | **1855 / 31** |
-| **`replace_terrain`'s target** | S5 `create_connect_*` | 82 / 8 | **47 / 7** |
-| **`beach_terrain`'s target** | `create_terrain` | 77 / 4 | **10 / 3** |
-| **the engine's automatic beach pass** | every coastline | — | every map with one |
+| producer                              | where                                | comment-stripped token scan | **through the parser (AST)** |
+| ------------------------------------- | ------------------------------------ | --------------------------- | ---------------------------- |
+| `base_terrain`                        | `<LAND_GENERATION>`                  | 2262 / 32                   | **1908 / 31** — see below    |
+| a land's own `terrain_type`           | `create_land`, `create_player_lands` | 6548 / 32                   | **6505 / 31**                |
+| `create_terrain <T>`                  | `<TERRAIN_GENERATION>`               | 2198 / 32                   | **1855 / 31**                |
+| **`replace_terrain`'s target**        | S5 `create_connect_*`                | 82 / 8                      | **47 / 7**                   |
+| **`beach_terrain`'s target**          | `create_terrain`                     | 77 / 4                      | **10 / 3**                   |
+| **the engine's automatic beach pass** | every coastline                      | —                           | every map with one           |
 
 **The `beach_terrain` row is a 7.7× shortfall and it has one cause**: 67 of the
 67 missing occurrences are inside `Rage Forest 2026.rms`'s raw node (below), and
@@ -1251,11 +1254,11 @@ this table specifies (every branch, orphan blocks descended, the producers above
 `beachTerrainFor` applied over the result), 32 maps at 4 players / Normal /
 seed 1: **10,325 producer occurrences**.
 
-| reading of "script `#const` second" | occurrences resolving to nothing | maps |
-|---|---|---|
-| A — `InstantiatedScript.symbols` (what an implementer holding `inst` writes) | **271** | 8 |
-| B — A ∪ an AST-wide numeric `#const` scan (Sec.3.2 rule 1's analogue) | **228** | 8 |
-| C — B plus following a `#const NAME OTHER_NAME` alias | **183** | 7 |
+| reading of "script `#const` second"                                          | occurrences resolving to nothing | maps |
+| ---------------------------------------------------------------------------- | -------------------------------- | ---- |
+| A — `InstantiatedScript.symbols` (what an implementer holding `inst` writes) | **271**                          | 8    |
+| B — A ∪ an AST-wide numeric `#const` scan (Sec.3.2 rule 1's analogue)        | **228**                          | 8    |
+| C — B plus following a `#const NAME OTHER_NAME` alias                        | **183**                          | 7    |
 
 **Two maps carry most of it, and the second lands on a rule this section already
 wrote.**
@@ -1277,8 +1280,8 @@ wrote.**
   branch is not taken, the symbol never exists, and all **34**
   `create_terrain WOODIES` commands — the map's entire middle forest — resolve
   to nothing. **The sweep this section already ran cannot reach it.** Sec.3.3
-  says *"the surface takes `start_random`'s untaken branches too, and does not
-  take `if`'s"* and defends the `if` half with a map-size sweep at 0 of 32 — but
+  says _"the surface takes `start_random`'s untaken branches too, and does not
+  take `if`'s"_ and defends the `if` half with a map-size sweep at 0 of 32 — but
   that sweep is about **producers**, and the hole is in the **symbol table**: a
   `#const` inside an untaken `if`, gated on a label a `start_random` defines,
   kills the resolution of producers sitting in taken branches at the top level.
@@ -1291,8 +1294,8 @@ alike.** The control, because a counter that only ever answers 0 proves nothing:
 the same counter against an **emptied** surface returns **309 findings on 28
 maps**, and against a surface of GRASS alone **23 on 8**. So the instrument fails
 loudly and the zero is real. That puts this in the same register as Sec.3.2's
-shared-block clause (*"adds 0 findings on this corpus"*) and the `RawNode`
-abstention (*"both finding rows byte-identical"*), and it gets the same treatment
+shared-block clause (_"adds 0 findings on this corpus"_) and the `RawNode`
+abstention (_"both finding rows byte-identical"_), and it gets the same treatment
 rather than a louder one. What stops it being ignorable is the margin: Battle
 Lines is already carrying a 5-id surface, and a 1-id surface is worth 23 findings
 across 8 maps.
@@ -1310,9 +1313,9 @@ anything.**
    in `TL Black Forest.rms` and `TL Frontline.rms`, `PLACEHOLDER_TERRAIN_A` ×36
    and `PLACEHOLDER_TERRAIN_B` in `Pa_Site_v1.1.rms` and `24hr_Bazi is God.rms`,
    plus `CESTA`, `MELCINA` and `FE_PLEASE_FIXED_CRACKED_SAND`. No symbol-table
-   choice reaches them. This section's own stated direction — *"every omission
+   choice reaches them. This section's own stated direction — _"every omission
    shrinks the surface, and a smaller surface makes an empty intersection MORE
-   likely"* — is Sec.3.2 rule 3's direction exactly, so it takes the same answer:
+   likely"_ — is Sec.3.2 rule 3's direction exactly, so it takes the same answer:
    **a script that loses a large fraction of its producers to unresolvable names
    abstains from the surface-half checks**, while the tier-1 named-terrain half,
    which reads no surface, keeps running. The rule has to exist, because 183
@@ -1322,8 +1325,8 @@ anything.**
 
    **The threshold is an INTERIM constant, labelled as one, and the reason it is
    written down rather than deferred is that a rule with no number is not
-   implementable.** An earlier revision said *"the threshold is not a tuned
-   constant to be guessed at here"* and stopped, which left the one clause in
+   implementable.** An earlier revision said _"the threshold is not a tuned
+   constant to be guessed at here"_ and stopped, which left the one clause in
    this section with no value, no fixture, no reporter row and no entry in
    Sec.9 — a decision deferred into nobody's hands, in the clause whose own
    subject is a check that cannot fail loudly. The two anchors bound it three
@@ -1351,21 +1354,21 @@ anything.**
    **IMPLEMENTED, and the corpus ratio is now measured rather than bounded by
    two anchors** (`UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO` in `staticChecks.ts`;
    `computeTerrainSurface` returns a `{ surface, producersTotal,
-   producersUnresolvable }` census and `runStaticChecks` folds the ratio into
+producersUnresolvable }` census and `runStaticChecks` folds the ratio into
    the single `surfaceAbstained` flag alongside rule 4's `RawNode` abstention).
    Over the 32 maps at 4 players / Normal / seed 1:
 
-   | map | unresolvable / producers | |
-   |---|---|---|
-   | `24hr_Battle Lines 1.0.rms` | **29 / 40 = 72.5%** | **abstains** |
-   | `TL Black Forest.rms` | **48 / 89 = 53.9%** | **abstains** |
-   | `TL Grand Bara.rms` | 1 / 12 = 8.3% | |
-   | `Pa_Site_v1.1.rms` | 20 / 245 = 8.2% | |
-   | `TL Frontline.rms` | 15 / 228 = 6.6% | |
-   | `24hr_Bazi is God.rms` | 19 / 552 = 3.4% | |
-   | `24hr_Mont Saint Michel.rms` | 1 / 54 = 1.9% | |
-   | `Rage Forest 2026.rms` | 0 / 0 | abstains already, on rule 4's `RawNode` test |
-   | the other 24 maps | 0 / 8 … 0 / 2294 = **0.0%** | |
+   | map                          | unresolvable / producers    |                                              |
+   | ---------------------------- | --------------------------- | -------------------------------------------- |
+   | `24hr_Battle Lines 1.0.rms`  | **29 / 40 = 72.5%**         | **abstains**                                 |
+   | `TL Black Forest.rms`        | **48 / 89 = 53.9%**         | **abstains**                                 |
+   | `TL Grand Bara.rms`          | 1 / 12 = 8.3%               |                                              |
+   | `Pa_Site_v1.1.rms`           | 20 / 245 = 8.2%             |                                              |
+   | `TL Frontline.rms`           | 15 / 228 = 6.6%             |                                              |
+   | `24hr_Bazi is God.rms`       | 19 / 552 = 3.4%             |                                              |
+   | `24hr_Mont Saint Michel.rms` | 1 / 54 = 1.9%               |                                              |
+   | `Rage Forest 2026.rms`       | 0 / 0                       | abstains already, on rule 4's `RawNode` test |
+   | the other 24 maps            | 0 / 8 … 0 / 2294 = **0.0%** |                                              |
 
    **The corpus is bimodal and the interim constant survives with room on both
    sides**: 33% sits **4.0× above** the highest non-firing map (8.3%) and
@@ -1378,14 +1381,14 @@ anything.**
    information.
 
    **The two anchors this clause was written from are both restated, because
-   neither denominator was this one.** Battle Lines's *"50 of 67"* comes from
+   neither denominator was this one.** Battle Lines's _"50 of 67"_ comes from
    BUG-015's count of terrain-producer OCCURRENCES including the ones this walk
-   never attempts to resolve; `Menindee`'s *"1 of 539"* counted a wider
+   never attempts to resolve; `Menindee`'s _"1 of 539"_ counted a wider
    population again, and against the resolver's own denominator that map reads
    **0 of 75**. The ratios move, the two cases do not, and the anchors are the
    argument rather than the figures — which is exactly the failure this
-   document has filed twice as *an unpinned denominator is reproducible only by
-   accident*. **The denominator is now stated in the same sentence as the rule:
+   document has filed twice as _an unpinned denominator is reproducible only by
+   accident_. **The denominator is now stated in the same sentence as the rule:
    a producer is an occurrence this walk ACTUALLY TRIED to resolve** — an absent
    optional attribute contributes to neither side, or the ratio would measure
    how many optional attributes a script declines to write.
@@ -1395,14 +1398,15 @@ anything.**
    `DLC_MANGROVESHALLOW`, `Chaotic_Strait`'s `MAKE_WATER_TERRAIN` on
    `DLC_NEWSHALLOW`), which is the same 2 the section already pins as the tool's
    first true corpus findings, and neither is on a map that abstains.
+
 3. **Decide the alias case out loud.** `#const TERR_CORNER GRASS2` is legal RMS
    that the engine resolves trivially and this repo's data model does not carry.
    Whether the checker follows it is a **decision**, and leaving it unstated
    means the surface silently depends on which of two functions the implementer
    reaches for. **It is a live preview-generator question before it is a checker
    one** — those 50 occurrences are terrain `terrains.ts` is not painting either,
-   and it says so in a `terrainAbsent` detail reading *"This map's reference data
-   doesn't know the terrain TERR_CORNER"*, which is false: the data knows
+   and it says so in a `terrainAbsent` detail reading _"This map's reference data
+   doesn't know the terrain TERR_CORNER"_, which is false: the data knows
    `GRASS2`. Filed as `docs/known-issues.md` **BUG-015** (97 such failures on the
    two maps above) rather than absorbed here. Until that entry lands, the checker
    resolves at **reading B** and treats an alias as unresolvable, which is the
@@ -1435,11 +1439,11 @@ token** in it, and Sec.3.2 rule 4 is the same rule with its own. The construct
 is not an idiom — it is the parser's own honesty surface.
 `RawNode` is the "never silently drop content" degradation CLAUDE.md makes a
 hard rule, and it is **opaque by construction**: `validate.ts`'s own comment
-says so (*"a RawNode has no children"*), so no walk can descend into one and no
+says so (_"a RawNode has no children"_), so no walk can descend into one and no
 descent rule can help. A raw node inside the wrong place makes the surface
 **incomplete by construction**, and this section's own rule says which direction
-that moves the answer: *every omission shrinks the surface, and a smaller
-surface makes an empty intersection MORE likely.* A raw node is the largest
+that moves the answer: _every omission shrinks the surface, and a smaller
+surface makes an empty intersection MORE likely._ A raw node is the largest
 omission available.
 
 **Census over the 32 maps: 10 carry at least one `RawNode`, 159 in total.** One
@@ -1460,8 +1464,8 @@ severity, under the exact table's label.
 
 **The trigger is a containment test over the raw node's own TEXT, not the
 section it sits in, and the difference is not cosmetic — it decides the answer
-on this corpus in both directions.** The obvious rule (*abstain when a raw node
-sits in a surface-feeding section*) was written, measured and **rejected**: it
+on this corpus in both directions.** The obvious rule (_abstain when a raw node
+sits in a surface-feeding section_) was written, measured and **rejected**: it
 abstains on 4 maps whose raw nodes provably cannot hide anything —
 `Pa_Site_v1.1.rms`'s 128 are each 35 characters reading
 `avoidance_distance CIRCLE_AVOIDANCE`, `TC2 - Comeer`'s three are `4056`,
@@ -1474,7 +1478,7 @@ contains `terrain`, `#const`, or `<`.** Each of the three is a decision
 procedure rather than a judgement, and each closes one way in:
 
 - **`terrain`** is a substring of all six producer names, so its absence from a
-  span of source *proves* no producer is hidden there. This is a lexical
+  span of source _proves_ no producer is hidden there. This is a lexical
   containment test used only in the abstaining direction — not a population
   count, which is what Sec.2 and Sec.3.2 forbid.
 - **`#const`** can redefine what a terrain name resolves to, and an unresolvable
@@ -1482,7 +1486,7 @@ procedure rather than a judgement, and each closes one way in:
 - **`<`** catches a swallowed section header — the Rage Forest shape, where the
   hidden producers are not merely inside the node but inside whole
   `<TERRAIN_GENERATION>` sections the parse does not contain. It is the clause
-  that is *about* that case; all three happen to fire on it, and keeping the
+  that is _about_ that case; all three happen to fire on it, and keeping the
   other two is what makes the rule hold on a file shaped differently.
 
 **Measured, this abstains on 1 of 32 maps and it is Rage Forest.** The four maps
@@ -1504,13 +1508,13 @@ Three consequences, in Sec.3.0b's own asymmetric shape:
    `<OBJECTS_GENERATION>`. A false negative needs no abstention and no
    suppression; it needs saying.
 3. **Sec.5.4's passthrough carries the covered fraction** (below). It already
-   groups by text and keeps the spans, so *"these spans cover N% of the script"*
+   groups by text and keeps the spans, so _"these spans cover N% of the script"_
    is arithmetic over data it already holds — and it is the one thing that turns
    Rage Forest's report from silently empty into honestly empty.
 
 **The corpus cannot pin this rule and Sec.8 must not ask it to.** `Rage
 Forest 2026.rms` is not tracked — `.gitignore` whitelists a handful of names and
-a clone gets 12 files — and of the two RawNode-carrying maps that *are* tracked
+a clone gets 12 files — and of the two RawNode-carrying maps that _are_ tracked
 (`AK_ForeDaut_v1.3.rms`, `TC2 - Comeer v1.4.rms`) both are correctly classified
 harmless, so **on CI this rule never fires**. A corpus assertion here would pass
 vacuously, which is the mistake the rev-8 tools-api round made when it put a
@@ -1557,7 +1561,7 @@ reason the rule is unnecessary.
 **`terrain_to_place_on` does NOT override the terrain table — it narrows
 alongside it.** This is the defect measured and reversed on 2026-08-08 and it
 is a CLAUDE.md hard rule: `objects.ts`'s own comment carries the correction in
-capitals (*"It does NOT lift the engine's terrain table"*), with the refutation
+capitals (_"It does NOT lift the engine's terrain table"_), with the refutation
 (Menindee's placeholder idiom, read from the other side: nobody buys an
 unrestricted carrier object if naming the terrain already worked) and the cost
 (`AK_Hourglass_v2.0.rms`'s 200000 shore fish over open sea). guide:2510's
@@ -1617,11 +1621,11 @@ only one swings the check to the other kind of error:
   main slot and the object the author wants on the second — 295 uses across 24
   of 32 maps here. `objects.ts` deliberately never re-checks the second
   object's own habitat, because it is the only route a fish has to a shallow.
-  Checking it *under the `terrain_to_place_on` fix above* would be a guaranteed
+  Checking it _under the `terrain_to_place_on` fix above_ would be a guaranteed
   false positive on the idiom in its canonical form: `FISH`'s restriction 19
   admits 15 terrains and **`SHALLOW` is not one of them**, so
   `create_object FISH_PLACEHOLDER { terrain_to_place_on SHALLOW second_object
-  FISH }` — Menindee's every pond — would report empty-intersection against a
+FISH }` — Menindee's every pond — would report empty-intersection against a
   script the engine runs correctly.
 - **`create_object_group` is not checked.** Its first argument is a group name,
   not an object, and its members' habitats can differ; `objects.ts` gives the
@@ -1635,7 +1639,7 @@ only one swings the check to the other kind of error:
 **What this check is, after the packing bound was cut.** One rule, promoted from the
 generator rather than invented: `objects.ts` already computes
 `min_distance_to_players > max_distance_to_players ⇒ minExceedsMax`
-(line-anchored comment: *"no tile can ever satisfy both"*) purely from
+(line-anchored comment: _"no tile can ever satisfy both"_) purely from
 instantiated attribute values — **already deterministic**, just currently only
 surfaced once generation reaches that command. Run the same comparison at the
 static layer so it is reported once, instantly, rather than rediscovered
@@ -1660,7 +1664,7 @@ with `lastByName`, compares them, and on a contradiction pushes a
 generator rather than invented, it is already deterministic, and it is currently
 only surfaced once generation reaches `<CLIFF_GENERATION>`. **Its consequence is
 strictly worse than `minExceedsMax`'s**: the generator's own note says the pair
-*"crashes the real game when the map is generated"*, where an object command
+_"crashes the real game when the map is generated"_, where an object command
 that satisfies no tile merely places nothing. Severity **error**, on the same
 sentence Sec.3.4 already gives — there is no reading of the script under which
 the author meant it.
@@ -1682,15 +1686,15 @@ because the two candidate answers differ and Sec.3.4(b) reads the wrong way on
 it.** `DEFAULT_MIN_CLIFFS` is 3 and `DEFAULT_MAX_CLIFFS` is 8 (`cliffs.ts:51-52`),
 and `resolveCliffSettings` uses `lastByName`, so a script writing only
 `min_number_of_cliffs 9` trips the comparison against a maximum its author never
-wrote. Sec.3.4(b)'s cut criterion — *"a constraint the author never wrote"* —
+wrote. Sec.3.4(b)'s cut criterion — _"a constraint the author never wrote"_ —
 would say abstain. **It does not apply, and the difference is where the
-constraint comes from.** The packing bound was cut because the *checker* was
+constraint comes from.** The packing bound was cut because the _checker_ was
 inventing the constraint; here the default is the **engine's**, the generator
 already resolves and reports against it, and the real game really does crash on
 the resolved pair. A script that writes `min_number_of_cliffs 9` and nothing else
 is a script that crashes. **So: report it, at error, and word the finding so the
-defaulted side is visible** (*"against the default maximum of 8, which this
-script does not set"*), because a user who never wrote a maximum needs to be told
+defaulted side is visible** (_"against the default maximum of 8, which this
+script does not set"_), because a user who never wrote a maximum needs to be told
 which number the comparison used.
 
 **The 0 has a second mechanism behind it besides "expert-written", and it is
@@ -1718,7 +1722,7 @@ way to get this wrong.
 **(a) It read an attribute whose behaviour is not what its name suggests.**
 `group_placement_radius` is a cohesion **maximum**, not a minimum separation:
 `objects.ts` scans within `group_placement_radius` of a group's anchor
-(Chebyshev) to pull members *together*. Nothing keeps two groups apart — only
+(Chebyshev) to pull members _together_. Nothing keeps two groups apart — only
 `min_distance_group_placement` does that, and it is a separate attribute. So N
 groups do not require N disjoint discs and the packing bound is not a bound on
 anything. Same class as `max_distance_to_other_zones` being a minimum: an
@@ -1740,12 +1744,12 @@ corpus (**789 instantiated commands carry it against 398 for the plain form,
 example is caught by neither path it describes: `AK_Namatjira.rms`'s
 `number_of_groups 999999` command carries `temp_min_distance_group_placement 3`.
 
-| spacing driver, at 4 players | findings | maps |
-|---|---|---|
-| `min_distance_group_placement` alone — as the section specified it | 11 | 9 |
-| `group_placement_radius`, author-written | 5 | 4 |
-| `group_placement_radius`, defaulted to 3 by the checker | **190** | 12 |
-| **resolved the way `objects.ts` resolves it (`temp_` first)** | **207** | **26** |
+| spacing driver, at 4 players                                       | findings | maps   |
+| ------------------------------------------------------------------ | -------- | ------ |
+| `min_distance_group_placement` alone — as the section specified it | 11       | 9      |
+| `group_placement_radius`, author-written                           | 5        | 4      |
+| `group_placement_radius`, defaulted to 3 by the checker            | **190**  | 12     |
+| **resolved the way `objects.ts` resolves it (`temp_` first)**      | **207**  | **26** |
 
 **The last row is the fix making it worse, and that is the finding.** Deleting
 the radius clause and correcting the resolution order — the two obvious repairs
@@ -1755,10 +1759,10 @@ attribute the corpus actually writes.
 
 **(d) The reason no repair works: over-declaration is an RMS idiom, not a
 defect.** The declared N on the 207 tripping commands runs min 16, median
-**9999**, max 999999. `number_of_objects 65536` means *fill the water with
-fish*, exactly as `land_percent 100` means *take the remainder* (Sec.3.1) and
-`number_of_clumps 9320` — the guide's own worked example — means *convert all of
-this terrain*. The engine places what fits and stops. So the finding is a true
+**9999**, max 999999. `number_of_objects 65536` means _fill the water with
+fish_, exactly as `land_percent 100` means _take the remainder_ (Sec.3.1) and
+`number_of_clumps 9320` — the guide's own worked example — means _convert all of
+this terrain_. The engine places what fits and stops. So the finding is a true
 statement about a working script, on 81% of the corpus, at error severity: the
 same failure Sec.3.1 was demoted for, one section over and one severity worse.
 
@@ -1796,8 +1800,8 @@ rate, never as an error on its own.
 Per Sec.0's inherited warning: before emitting **any** Sec.3.3 finding, check
 `PublishedGameConstant.verified` on the resolved row. An unverified row's
 `allowedTerrains`/`habitat`/`resourceAmounts` are placeholders, not facts
-(`gameConstants.ts`'s own doc comment: *"Treat unverified numeric fields...
-as placeholders, not facts"*). `verified: false` downgrades a Sec.3.3 finding
+(`gameConstants.ts`'s own doc comment: _"Treat unverified numeric fields...
+as placeholders, not facts"_). `verified: false` downgrades a Sec.3.3 finding
 to info with a "this object's terrain data has not been checked against the
 game's files" clause, mirroring RMS0201/0202's own `verified`-gated
 warning/info split (`parser-design.md` Sec.6 rule 2) rather than inventing a
@@ -1818,7 +1822,7 @@ uses that row.
 
 **The gate covers EVERY row the comparison reads, and reading it as "the
 object's row" is what makes the 116 look irrelevant.** A Sec.3.3 finding is
-always a claim about a *pairing*, and tier 2's is
+always a claim about a _pairing_, and tier 2's is
 `habitat(object) × isWater(terrain)` — so the terrain row is an input to the
 finding exactly as the object row is, and its `verified` flag governs it exactly
 as much. The paragraph above got as far as counting the 116 and then set them
@@ -1837,12 +1841,12 @@ Two consequences, and the first is a real change to what the tool prints:
 - **The corpus's one tier-2 finding is an info row, which is the severity it
   deserves, because nothing here can decide it.** `Chaotic_Straitv0.99.rms`
   writes `create_object MAKE_WATER_TERRAIN { … terrain_to_place_on
-  TEMP_POND_TERRAIN }`, where `MAKE_WATER_TERRAIN` is `#const … 1641`
+TEMP_POND_TERRAIN }`, where `MAKE_WATER_TERRAIN` is `#const … 1641`
   (restriction 4, `habitat: "land"`, `verified: true`) and `TEMP_POND_TERRAIN`
   is `#const … 59` = `DLC_NEWSHALLOW` (`isWater: true`, **`verified: false`**).
   A land-restricted building on a shallow is either a real defect the engine
-  passed silently — the shape CLAUDE.md's *"a shipped map is not a
-  specification"* rule names — or a terrain flag we transcribed rather than
+  passed silently — the shape CLAUDE.md's _"a shipped map is not a
+  specification"_ rule names — or a terrain flag we transcribed rather than
   measured. **Sec.9 carries it as the one thing the tier-2 fork owes**, with the
   run that would settle it.
 
@@ -1868,8 +1872,8 @@ the seam guard that module exists to be (it stops compiling the day
 **The override belongs on `previewSettingsFromContext`, with
 `runPreviewFromContext` passing it through — not on `runPreviewFromContext`
 alone, which is where rev 6 put it and which leaves the STATIC layer with no
-sanctioned path.** Sec.3.0 rule 1 says *"run the static layer once per selected
-player count"*, and that needs `instantiateScript(parse, langIndex, settings,
+sanctioned path.** Sec.3.0 rule 1 says _"run the static layer once per selected
+player count"_, and that needs `instantiateScript(parse, langIndex, settings,
 seed)` — a `PreviewSettings` per count, which is what
 `previewSettingsFromContext` returns and `runPreviewFromContext` swallows inside
 a `PreviewResult`. With the override on the wrapper only, the implementing
@@ -1885,7 +1889,7 @@ independently at 2/4/6/8, the findings, the info rows and the abstention are
 **identical at all four counts** (`Menindee` 1000; `Pa_Site` 81/82/91;
 `AK_Vanguard` abstaining), and Sec.3.1's six maps are identical at all four (24
 of 128 pairs is exactly 6 × 4). The only movement is in the reference
-*population* — 10 references present at 4p and absent at 2p, 1 the other way —
+_population_ — 10 references present at 4p and absent at 2p, 1 the other way —
 and none of it changes a finding. So this is insurance, in the same register
 Sec.3.2 uses for its own shared-block reference clause ("adds 0 findings on this
 corpus"), and it gets the same treatment: put the override where both layers can
@@ -1941,7 +1945,7 @@ type), so **this tool is the first to cross the seam** and the spec has to say
 which side gives way.
 
 **It is the adapter, and the alternative was measured rather than argued.**
-Widening `ObjectConstant.constId` to optional is inert at *runtime* —
+Widening `ObjectConstant.constId` to optional is inert at _runtime_ —
 `objectIndex` already guards `c.constId !== null && c.constId !== undefined` —
 and it is not inert to the toolchain: `ObjectConstant` is passed where
 `TerrainConstantForMasks` (required `constId: number | null`) is expected, and
@@ -1961,9 +1965,9 @@ The static layer needs no adapter at all: Sec.3.3 reads
 place the loop can produce a confident empty report.** The three reasons
 (`no-settings`, `bad-map-size`, `bad-teams`) are all properties of `ctx` and all
 deterministic, so a `continue` skips **every** player count and the tool then
-emits a report whose header reads *"Total generations 60"* over empty tables,
-with no error, no note and no static finding. That is the *"clean report on a
-script the tool read none of"* failure Sec.5.4's covered-fraction clause was
+emits a report whose header reads _"Total generations 60"_ over empty tables,
+with no error, no note and no static finding. That is the _"clean report on a
+script the tool read none of"_ failure Sec.5.4's covered-fraction clause was
 written against, arriving through the settings door instead of the `RawNode`
 one, and it is worse than that failure because the covered fraction at least
 prints something. **Emit `error` / `host-error` on the first non-`ok` bridge**,
@@ -1993,11 +1997,11 @@ is confined to this one line (a stronger derivation, e.g. hashing `baseSeed`
 with `runIndex`) and touches nothing else in this design.
 
 **`runIndex` RESETS at each player count, and the sentence above admits the
-other reading.** *"Each generation uses `baseSeed + runIndex`"* is equally
+other reading.** _"Each generation uses `baseSeed + runIndex`"_ is equally
 satisfied by a counter monotonic across the whole matrix, and the two produce
 different runs. Two things in this document already assume the reset and neither
-says so: Sec.3.0 rule 1 pins the static layer to *"the same `baseSeed` the Monte
-Carlo layer starts from"* **at every count**, which is only true if every count's
+says so: Sec.3.0 rule 1 pins the static layer to _"the same `baseSeed` the Monte
+Carlo layer starts from"_ **at every count**, which is only true if every count's
 batch starts at `runIndex 0`; and Sec.4.2's drift census is measured seeds 1–5 at
 one count, i.e. the seed set the reset reading gives every count. **The reset is
 also the better instrument, which is the reason to pin it rather than the
@@ -2030,7 +2034,7 @@ the minimum (Sec.5.1).
 represent a command that is not generated at that player count at all.**
 "Summing `attempted`/`placed`" over an empty set of reports and summing over
 reports that total zero both produce `{ attempted: 0 }`, and Sec.5.1's rules —
-every quantifier of which ranges over *the selected matrix* — then rank a
+every quantifier of which ranges over _the selected matrix_ — then rank a
 count the command never reached as though the command had reached it and
 failed. So the record is:
 
@@ -2058,7 +2062,7 @@ built `runsAt()` and never called it.
 
 **Both populations are measured, and neither is small.**
 
-*Absent at a count.* Keyed `(map, stage, commandSpan)` over the 32 maps at
+_Absent at a count._ Keyed `(map, stage, commandSpan)` over the 32 maps at
 2/4/6/8, Normal, seed 1 — **8358 distinct rows, of which 352 exist at some
 player counts and not at others**, presence patterns `--P-` 86, `P---` 85,
 `---P` 71, `PP-P` 34, `-PPP` 29, `-P--` 26, `--PP` 21. **All 352 are rated at
@@ -2073,7 +2077,7 @@ CI-visible; the rest are `TL Cape of Storms` 78, `OWWC1Tewaipounamu` 68,
 `TL Black Forest` 20, `TL Frontline` 20, `24hr_Blind Valley` 12, `W4` 7,
 `24hr_Battle Lines` 1.
 
-*Partially present within one count's batch.* At **4 players over seeds 1–5**,
+_Partially present within one count's batch._ At **4 players over seeds 1–5**,
 **207 of 8231 rows appear in some runs and not others** on **11 of 32 maps** —
 `13_Rings` 62, `AK_Vanguard` 60, `Pa_Site` 25, `TL Cape of Storms` 22,
 `AK_Namatjira` 16, `TL Frontline` 8, `24hr_Arrakeen` 5, `24hr_Holler` 3,
@@ -2089,11 +2093,11 @@ it, and the populations move when the batch is swept.** The absent census is
 default runs 4 counts × 15 runs, and no census above crosses the two axes.
 Swept 2/4/6/8 × seeds 1–5 (a third of the default):
 
-| census | quoted (one axis) | swept 2/4/6/8 × seeds 1–5 |
-|---|---|---|
-| distinct rows, keyed `(map, stage, commandSpan)` | 8358 | **8511** |
-| absent at ≥1 count | 352 (146 tracked) | **373 (149 tracked)** |
-| partially present at ≥1 count | 207, **at 4 players only** | **240 (145 tracked)**, across the matrix |
+| census                                           | quoted (one axis)          | swept 2/4/6/8 × seeds 1–5                |
+| ------------------------------------------------ | -------------------------- | ---------------------------------------- |
+| distinct rows, keyed `(map, stage, commandSpan)` | 8358                       | **8511**                                 |
+| absent at ≥1 count                               | 352 (146 tracked)          | **373 (149 tracked)**                    |
+| partially present at ≥1 count                    | 207, **at 4 players only** | **240 (145 tracked)**, across the matrix |
 
 **153 rows exist somewhere in the batch that seed 1 never generates**, which is
 the same `start_random` drift arriving on the row set itself rather than on a
@@ -2111,11 +2115,11 @@ it. **The absent state and the membership of its 352 stand**; what grows is the
 population around them.
 
 **The two axes are one missing field and the test plan already knew about the
-second.** Sec.8 item 3 commissions exactly this case — *"a `commandSpan`
+second.** Sec.8 item 3 commissions exactly this case — _"a `commandSpan`
 present in only one of two runs … assert the merge neither crashes nor invents
-a zero row for a run that never contained the command"* — which is
+a zero row for a run that never contained the command"_ — which is
 `runsContaining` stated as an assertion three sections before the record that
-would carry it. A merge that satisfies item 3 by *skipping* absent runs and
+would carry it. A merge that satisfies item 3 by _skipping_ absent runs and
 then reports the sum as though it covered `runs` runs has moved the same
 conflation one level up rather than fixing it.
 
@@ -2130,7 +2134,7 @@ subsection in front of him.
 
 **`PreviewResult.failureMarks` is ignored entirely, and the reason is that
 folding it would corrupt the tally rather than enrich it.** The one kind that
-exists is `landAtMapCenter`, and it is *derived* — `index.ts`'s
+exists is `landAtMapCenter`, and it is _derived_ — `index.ts`'s
 `collectLandOutcomes` emits one for every origin with `fromOriginFallback` set,
 which is the same flag `lands.ts` sets on the paths that have **already pushed a
 failure record** for that event. So every mark's event is in
@@ -2140,7 +2144,7 @@ double-counts a population `types.ts` measures at "6 times, on 2 maps".
 **That population re-measures at zero, which changes nothing here and matters
 for Sec.8.** Across all 51 maps on this mount at 4 players, Normal, seeds 1 and
 2, no map produces a mark at all (Sec.8 item 6 has the run and its control).
-The argument above is unaffected — it is about what folding *would* do, and it
+The argument above is unaffected — it is about what folding _would_ do, and it
 would still do it — but the decision must not be re-justified by the size of a
 population that is currently empty. It rests on the double-count and the
 fabrication being wrong in kind.
@@ -2226,15 +2230,15 @@ is responsible for — and `HostMessage` has **zero consumers in the tree** (`gr
 -rn "HostMessage" src/ tools-api/` returns the declaration and nothing else), so
 this worker would be its first instantiation ever and no compiler elsewhere was
 ever going to object. It breaks at the exact seam `tools-api-design.md` rev 6
-reversed a pin over (*"Re-scope it to both transports and this line stops
-compiling"*).
+reversed a pin over (_"Re-scope it to both transports and this line stops
+compiling"_).
 
 **Fix, verified.** Give `HostMessage` the parameter its payload already has:
 
 ```ts
-export type HostMessage<P extends SerializedParseResult = SerializedParseResult> =
-  | { type: "run"; context: ToolContext<P> }
-  | { type: "cancel" };
+export type HostMessage<
+  P extends SerializedParseResult = SerializedParseResult,
+> = { type: "run"; context: ToolContext<P> } | { type: "cancel" };
 ```
 
 The worker then types itself `HostMessage<ParseResult> & { toolId?: string }`
@@ -2259,8 +2263,8 @@ already the right shape (`start(tool, contextJson, onMessage): RunnerHandle`).
 and the invariant is why.** The obvious wiring is to add `selectedId` to
 `ToolsPane.tsx`'s `host` `useMemo` dependency array so each tool gets a host
 constructed with its own runner. That silently breaks the contract's own
-words: `start()` throws on `isBusy()` to enforce *"one run at a time,
-app-wide"*, and `isBusy()` is per-instance. A cancelled-but-not-yet-terminated
+words: `start()` throws on `isBusy()` to enforce _"one run at a time,
+app-wide"_, and `isBusy()` is per-instance. A cancelled-but-not-yet-terminated
 run on H1 and a fresh run on H2 are two live workers, 60 generations each,
 with neither host able to see the other — and the 30 s cancel grace makes that
 window ordinary rather than exotic. Keep one host and give it the policy
@@ -2279,9 +2283,9 @@ only arms a 30 s grace. After that pair: two timers still armed, `isBusy()`
 false, so a second `start()` is accepted and overwrites `this.active`. When the
 **first** run's grace expires, `terminate()` reads `this.active` — now the
 **second** run — kills it and reports it. The innocent tool is blamed in the one
-field `tools-api/index.ts` says is a verdict on the tool: *"only `killed` and
+field `tools-api/index.ts` says is a verdict on the tool: _"only `killed` and
 `unresponsive` mean 'this tool did not behave', and only they should ever be
-counted anywhere."* The overwritten `ActiveRun` is also never killed, so the
+counted anywhere."_ The overwritten `ActiveRun` is also never killed, so the
 first run's worker leaks.
 
 It is unreachable today only because `inProcessRunner` calls `tool.run(...)`
@@ -2316,7 +2320,7 @@ statements are scoped rather than left contradicting each other.
 Two things follow, and the second is the useful one:
 
 - **Do not price the clone off the JSON number.** The worst tracked parse is
-  13.97 MB *as `JSON.stringify` output*, ~41% of which is `def` re-expansion —
+  13.97 MB _as `JSON.stringify` output_, ~41% of which is `def` re-expansion —
   but `postMessage` uses the structured clone algorithm, which **preserves
   internal aliasing**: a `def` object shared by a thousand nodes is cloned once,
   not a thousand times. The JSON figure is an upper bound on a different
@@ -2325,8 +2329,8 @@ Two things follow, and the second is the useful one:
 - **The checker takes its reference data from the context, and the argument for
   a private import does not transfer.** The tempting move is to copy
   `src/preview/worker.ts`, which holds its own import for the reason `types.ts`
-  records — *"Shipping it per request would structured-clone ~111 KB of JSON on
-  every keystroke burst for data that never changes"* — and to note that the
+  records — _"Shipping it per request would structured-clone ~111 KB of JSON on
+  every keystroke burst for data that never changes"_ — and to note that the
   reference data here is **1.50 MB** on disk — the 1.44/1.30 an earlier revision
   published are MiB, and the files measure 1,364,320 and 142,644 bytes
   (`game-constants.json` 1.36 MB +
@@ -2357,16 +2361,15 @@ drifted 1.7× while sitting in a document**.
 **Corpus cost, `generatePreview` once per player count per map at Normal,
 `collectSnapshots: false`, meaned per map, this machine (2026-08-15):**
 
-| | measured |
-|---|---|
-| median map | **794 ms/generation** (`AD4 - Ra.rms`) |
-| mean | 960 ms |
-| worst | **`24hr_Petra.rms`, 4669 ms** |
-| next four | Grand Bara 2239, Caverns 1804, Pag 1600, Mont Saint Michel 1540 |
+|            | measured                                                        |
+| ---------- | --------------------------------------------------------------- |
+| median map | **794 ms/generation** (`AD4 - Ra.rms`)                          |
+| mean       | 960 ms                                                          |
+| worst      | **`24hr_Petra.rms`, 4669 ms**                                   |
+| next four  | Grand Bara 2239, Caverns 1804, Pag 1600, Mont Saint Michel 1540 |
 
 **Re-run on 2026-08-16, same method: median 775 ms, mean 980 ms, worst Petra
-4524 ms, then Caverns 2870 / Grand Bara 2268 / Mont Saint Michel 1812 / Pag
-1510.** The level reproduces and the top of the ordering does not quite (the
+4524 ms, then Caverns 2870 / Grand Bara 2268 / Mont Saint Michel 1812 / Pag 1510.** The level reproduces and the top of the ordering does not quite (the
 middle three swap), which is what a 3.7× load factor on a shared machine looks
 like. A third reading of the same corpus on a loaded machine put the worst map
 at 6208 ms. **Treat every number in this table as ±50% and never as a point** —
@@ -2382,18 +2385,18 @@ a clone will not reproduce 4669 ms; a maintainer's disk will.)
 Giant against Normal measures 1.2–1.6× on four heavy maps (Caverns 2489 → 3536,
 Pag 2084 → 2837, Namatjira 1696 → 2700, Three Bays 1739 → 2243), consistent with
 the 1.09–1.41× `tools-api/index.ts` records; and this machine's load factor
-reaches 3.7×. `DEADLINES`' own comment names the two available mistakes — *"a
+reaches 3.7×. `DEADLINES`' own comment names the two available mistakes — _"a
 deadline shorter than one unit of the tool's own work, and a worst case measured
-at ONE map size"* — and a budget section that quoted one median at one map size
+at ONE map size"_ — and a budget section that quoted one median at one map size
 would be making the second again.
 
 **What that gives at the defaults (4 × 15 = 60 generations):**
 
-| | Normal, unloaded | with Giant × load |
-|---|---|---|
-| median map | **48 s** | up to ~4 min |
-| worst map | **280 s** | ~24 min |
-| worst map at N=200 (the max) | **62 min** | several hours |
+|                              | Normal, unloaded | with Giant × load |
+| ---------------------------- | ---------------- | ----------------- |
+| median map                   | **48 s**         | up to ~4 min      |
+| worst map                    | **280 s**        | ~24 min           |
+| worst map at N=200 (the max) | **62 min**       | several hours     |
 
 So N=1000 across four player counts is **hours, not the ~30 minutes**
 `tools-api-design.md` Sec.10 estimated, and is emphatically not this tool's
@@ -2416,8 +2419,8 @@ default. Concretely:
   framing true at all; batching would break it.
 - **That same 24–32 s bounds the CANCEL GRACE too, and rev 6 computed the
   number for both deadlines and checked it against one.** Cancel is a message,
-  not a flag (`host.ts`: *"a tool in a tight synchronous loop never services its
-  event loop"*), and Sec.4.1 pins that `generatePreview` is synchronous and
+  not a flag (`host.ts`: _"a tool in a tight synchronous loop never services its
+  event loop"_), and Sec.4.1 pins that `generatePreview` is synchronous and
   cannot yield inside itself — so the tool services a `cancel` only at the
   macrotask boundary **between** generations. **Cancel latency is therefore one
   generation, the same quantity**, against `DEADLINES.cancelGraceMs` of **30 s**,
@@ -2425,21 +2428,21 @@ default. Concretely:
   first and `host.ts` calls
   `terminate("The tool did not stop when asked and was killed.", "killed")` —
   and `killed` is one of the two reasons `tools-api/index.ts` says are a verdict
-  on the tool (*"only `killed` and `unresponsive` mean 'this tool did not
-  behave', and only they should ever be counted anywhere"*), collected against a
+  on the tool (_"only `killed` and `unresponsive` mean 'this tool did not
+  behave', and only they should ever be counted anywhere"_), collected against a
   tool that honoured the cancel exactly as specified, on the flagship tool, on
   the heaviest maps.
 
   **So `cancelGraceMs` moves 30 s to 60 s**, equal to `runWatchdogMs`, because
   the two bound the same quantity and a factor of two between them is the
-  asymmetry `DEADLINES`' own comment already argues against (*"Asymmetric, so
-  round up"*). **What the grace costs when it expires is smaller than it looks,
+  asymmetry `DEADLINES`' own comment already argues against (_"Asymmetric, so
+  round up"_). **What the grace costs when it expires is smaller than it looks,
   and being exact about it is what decides the side**: a worker-backed runner's
   `kill()` is `worker.terminate()`, which needs no cooperation from the tool, so
   the run stops either way. The only thing the grace decides is whether a
   cooperative tool is RECORDED as having misbehaved — which is what `DEADLINES`'
-  comment says the constant is for (*"a DIAGNOSIS threshold, not a safety
-  deadline"*), and it is the reading under which erring long is nearly free. A
+  comment says the constant is for (_"a DIAGNOSIS threshold, not a safety
+  deadline"_), and it is the reading under which erring long is nearly free. A
   wedged tool holds the app-wide run slot for 60 s rather than 30 s; against a
   legitimate run of 8 to 30 minutes that is not worth a false verdict.
 
@@ -2450,6 +2453,7 @@ default. Concretely:
   **Sec.7.2 item 4**. **The general rule, now twice in three rounds: when a
   document computes a number for one constant, check every constant that number
   bounds.**
+
 - **A third and fourth reading of the Giant multiplier, recorded rather than
   folded.** Re-measured best-of-two with the Normal and Giant arms interleaved:
   `24hr_Petra.rms` 6935 → 12308 ms (**1.77×**), Caverns 2503 → 4556 (1.82×), Pag
@@ -2458,7 +2462,7 @@ default. Concretely:
   1.2–1.6× band stated above, and the band was taken over four heavy maps that
   **exclude `24hr_Petra.rms`, the worst map it is then applied to**. Per this
   repo's own rule a contrary reading is a third data point rather than a
-  correction, so the band stands and this sits beside it — but the *set* it was
+  correction, so the band stands and this sits beside it — but the _set_ it was
   measured over is a real defect in the derivation, and nothing above depends on
   the multiplier's exact value: the grace finding holds at rev 6's own 24–32 s.
 - **The UI must not tell a user that raising N costs minutes.** On the heaviest
@@ -2486,13 +2490,13 @@ generation-to-generation).
 
 #### A `partial`'s table ranges over the counts RUN, never over the selected matrix
 
-**Every quantifier in Sec.5.1 ranges over *the selected matrix*, and part way
+**Every quantifier in Sec.5.1 ranges over _the selected matrix_, and part way
 through a run the matrix is not what the aggregate holds.** Sec.4.2 defines
 **absent** as `runsContaining === 0`, and that is also the state of every player
 count the loop has not reached yet. Prescribed without a domain, the first
 `partial` of a 2/4/6/8 run has 4, 6 and 8 absent on every row, and Sec.5.1's
-third reason clause fires on all of them: *"this command is only generated at 2
-players"*.
+third reason clause fires on all of them: _"this command is only generated at 2
+players"_.
 
 **Measured, and it is not a rounding error on the output.** At 2 players, seed 1
 — this document's own census point — **8125 rows, of which 8040 (99.0%) are also
@@ -2507,11 +2511,11 @@ be wrong on ~99% of their rows**, and only the final `result` right.
 `host.ts`'s `"partial"` case sets `output` with a bare `this.set({ output })`,
 and `finish()` sets `phase: "done"` without clearing it, so a cancelled run
 leaves the last partial on screen as its permanent result. Sec.4.4 designs for
-exactly that cancel (*"the user can cancel on evidence rather than on a
-promise"*) on runs it prices at 8 to 30 minutes.
+exactly that cancel (_"the user can cancel on evidence rather than on a
+promise"_) on runs it prices at 8 to 30 minutes.
 
-*Both claims were written with raw line numbers (`:243`, `:278-283`) and both
-line numbers were stale within an hour* — Sec.7.2's own `reset()` rewrite moved
+_Both claims were written with raw line numbers (`:243`, `:278-283`) and both
+line numbers were stale within an hour_ — Sec.7.2's own `reset()` rewrite moved
 them to `:272` and `:305-310` the morning after this section shipped, while
 leaving both claims true. That is the tools-api rev-9 decay measurement
 reproducing on this document, and the fix is the one that round already
@@ -2523,12 +2527,12 @@ written against a completed matrix: the worst count named is a count the command
 really was generated at, and no row reports "attempted nothing" at an absent
 count.
 
-**The rule, and the discriminator is already in the record.** *A player count the
+**The rule, and the discriminator is already in the record.** _A player count the
 run has not started is **not yet measured**: it is not ranked, it contributes no
-"only generated at" claim, and no reason clause may mention it.* The report
+"only generated at" claim, and no reason clause may mention it._ The report
 table a `partial` carries quantifies over the counts whose batches have
 completed, and Sec.5.2's `keyValue` header already draws this distinction one
-block away — its first row is *"player counts run"*, so *selected* versus *run*
+block away — its first row is _"player counts run"_, so _selected_ versus _run_
 was modelled in the header and nowhere in the table's rules.
 
 **Stated twice, because the natural implementation makes the primary form
@@ -2560,8 +2564,8 @@ most 29 blocks from the static layer, whatever the script says**) and the worst
 map measures **6**; the cap conclusion below is restated with the term present
 rather than inherited.
 
-**A `partial` **replaces** the output** — *"A full self-contained output, never a
-delta"* — so blocks never accumulate across partials. The 8-block figure an
+**A `partial` **replaces** the output** — _"A full self-contained output, never a
+delta"_ — so blocks never accumulate across partials. The 8-block figure an
 earlier revision used counted the finding tables alone; with Sec.5.4's notes
 passthrough the worst corpus map is **`24hr_Petra.rms`'s 30 distinct note
 texts**, which under Sec.5.4's shape (a `severity` plus a `table` per group) is
@@ -2569,8 +2573,8 @@ texts**, which under Sec.5.4's shape (a `severity` plus a `table` per group) is
 one-block-per-span rendering tops out at `Pa_Site`'s **184**. Render cost is the
 whole of the argument and stands on its own.
 
-**The rule this section owes its own successors**: *a paragraph that closes a
-cap question has to enumerate every producer that writes into the capped thing.*
+**The rule this section owes its own successors**: _a paragraph that closes a
+cap question has to enumerate every producer that writes into the capped thing._
 The tell is a cap arithmetic naming fewer block kinds than the output contains,
 and this one named two of three while a third section, one page later,
 prescribed one block per static finding with no unit and a fourth multiplied
@@ -2579,7 +2583,7 @@ in isolation.
 
 **That margin was computed at ONE generation and this tool's default is sixty,
 and the figures move by an order of magnitude.** Sec.5.4's own opening sentence
-is that notes are *"accumulated across the Monte Carlo runs"*; the defaults are
+is that notes are _"accumulated across the Monte Carlo runs"_; the defaults are
 4 counts × 15 runs. Measured over 2/4/6/8 × seeds 1–5 (20 runs, a third of the
 default), under the accumulation this section had before Sec.5.4's ordering rule
 below:
@@ -2592,14 +2596,14 @@ corrected pipeline. The first two columns are kept only so the saturation is
 visible; **neither is the margin, and a later reader must not cite them as
 one.**
 
-| | 1 run | 20 runs, naive | **60 runs, corrected** | cap |
-|---|---|---|---|---|
-| worst map, note blocks (`severity` + `table` per group) | `24hr_Petra` 60 | `24hr_Caverns` **570** | **`24hr_Petra` 65** | `maxBlocksPerOutput` **1000** |
-| worst tracked map, note blocks | `AK_Namatjira` 48 | `AK_Namatjira` 538 | **`AK_Namatjira` 58** | |
-| largest single group's table rows | `Pa_Site` **134** | **2680** (distinct spans still 134) | **`Pa_Site` 134** | `maxTableRowsRendered` **10 000** |
-| same, tracked | `AK_Namatjira` 77 | **1540** | **`AK_Namatjira` 77** | |
-| covered fraction, `Rage Forest` (the one map where per-group and per-map coincide — see Sec.5.4) | 70.9% | **1418.1%** | **70.9%** | 100% by construction |
-| corpus same-text groups | 338 | **1847** (tracked 124 → 639) | not re-taken | |
+|                                                                                                  | 1 run             | 20 runs, naive                      | **60 runs, corrected** | cap                               |
+| ------------------------------------------------------------------------------------------------ | ----------------- | ----------------------------------- | ---------------------- | --------------------------------- |
+| worst map, note blocks (`severity` + `table` per group)                                          | `24hr_Petra` 60   | `24hr_Caverns` **570**              | **`24hr_Petra` 65**    | `maxBlocksPerOutput` **1000**     |
+| worst tracked map, note blocks                                                                   | `AK_Namatjira` 48 | `AK_Namatjira` 538                  | **`AK_Namatjira` 58**  |                                   |
+| largest single group's table rows                                                                | `Pa_Site` **134** | **2680** (distinct spans still 134) | **`Pa_Site` 134**      | `maxTableRowsRendered` **10 000** |
+| same, tracked                                                                                    | `AK_Namatjira` 77 | **1540**                            | **`AK_Namatjira` 77**  |                                   |
+| covered fraction, `Rage Forest` (the one map where per-group and per-map coincide — see Sec.5.4) | 70.9%             | **1418.1%**                         | **70.9%**              | 100% by construction              |
+| corpus same-text groups                                                                          | 338               | **1847** (tracked 124 → 639)        | not re-taken           |                                   |
 
 **Every figure saturates to its one-generation value, and the two table rows
 land on it EXACTLY.** That is the strongest available check that the dedupe does
@@ -2620,7 +2624,7 @@ magnitude of `maxBlocksPerOutput`, and unlike the version of this paragraph that
 stood for four revisions, the static term is in the sum.
 
 **The conclusion survives, and the reason it survives is Sec.5.4's accumulation
-rule rather than headroom.** The 570 is a count of *groups* under a naive
+rule rather than headroom.** The 570 is a count of _groups_ under a naive
 accumulation that lets one note's interpolated text found a new group per run,
 which is precisely the defect Sec.5.4's ordering rule below closes: group by
 `key` first, collapse same-key/different-text into a range, then group by text,
@@ -2654,12 +2658,12 @@ already records one revision earlier, arriving through the other input.
 mechanism is worth a sentence because it is this document's own recurring
 shape.** An earlier revision published `AK_Namatjira`'s **24** texts (48 blocks)
 as the worst; it had swept **notes per map** — 184 / 138 / 132 — and read the
-distinct-text count off the top three of *that* ranking. The two rankings are
+distinct-text count off the top three of _that_ ranking. The two rankings are
 different orders: `Pa_Site`'s 184 notes are 6 texts, while Petra's 99 are 30.
 Ranked by distinct texts the corpus reads **Petra 30, `AK_Namatjira` 24,
 `24hr_Caverns` 23, `AD4 - Pag` 23, `Chaotic_Strait` 21, `QS_Three_Bays` 17**.
 The conclusion never moved, which is exactly why it was worth correcting rather
-than arguing: a superlative published with the population it was *not* measured
+than arguing: a superlative published with the population it was _not_ measured
 over, in the paragraph whose own subject is that the earlier figure had never
 been taken.
 
@@ -2678,28 +2682,28 @@ uses; `StageId` itself has **seven** values, S0–S6, and S0 emits no
 so the two statements are scoped rather than left to look contradictory), each
 row one aggregated `commandSpan`:
 
-| Column | Source |
-|---|---|
-| Command | the command's own text, sliced from `ctx.source` at `commandSpan` (see below) |
-| Spawn rate | `Σ placed / Σ attempted` across all runs at the **worst** player count (below), as a percent — **and it is not a percent when `Σ attempted` is 0**, which is 467 of 8095 reports on this corpus (below) |
+| Column             | Source                                                                                                                                                                                                                                                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command            | the command's own text, sliced from `ctx.source` at `commandSpan` (see below)                                                                                                                                                                                                                                                    |
+| Spawn rate         | `Σ placed / Σ attempted` across all runs at the **worst** player count (below), as a percent — **and it is not a percent when `Σ attempted` is 0**, which is 467 of 8095 reports on this corpus (below)                                                                                                                          |
 | Worst player count | the `playerCount` in the selected matrix with the lowest spawn rate for this command, **ties broken by the lowest player count** (below) — **and the ranking is over three states, not two: a count that attempted nothing ranks below every rate, and a count where the command is not generated at all is not ranked** (below) |
-| Failure buckets | comma-joined `FailureBucket` names with counts, e.g. `occupancyFull ×140, spacingConflict ×12` — **at the worst player count, the same domain as the rate beside it** (below), never the matrix union |
-| Provenance | `"simulated"` for every row this section produces |
+| Failure buckets    | comma-joined `FailureBucket` names with counts, e.g. `occupancyFull ×140, spacingConflict ×12` — **at the worst player count, the same domain as the rate beside it** (below), never the matrix union                                                                                                                            |
+| Provenance         | `"simulated"` for every row this section produces                                                                                                                                                                                                                                                                                |
 
 **`rowSpans` is one array on the block, not a property of a row.** The contract
 is `{ kind: "table"; columns; rows: string[][]; rowSpans?: (Span | null)[] }`,
 and its own doc comment requires exactly `rows.length` entries — so the block
 carries `rowSpans: reports.map(spanForRow)`, in row order. A user clicking a row
 jumps the Code tab there, same as `scriptStats`'s section table already
-demonstrates. (An earlier revision wrote *"`rowSpans: cmd.commandSpan` on every
-row"*, which names the right intent in a shape that does not compile.)
+demonstrates. (An earlier revision wrote _"`rowSpans: cmd.commandSpan` on every
+row"_, which names the right intent in a shape that does not compile.)
 
 **The Command column has to come from the source, because `CommandReport` has no
 label.** `entity` ("GOLD", "land #3") lives on `PlacementFailure`, not on
 `CommandReport` — so a command that never failed carries no failures and
 therefore no name, which is precisely the row a healthy report is full of. Slice
 `ctx.source` at `commandSpan` and take the first line, trimmed. Where the row
-*does* have failures, the first failure's `entity` is a good short label and may
+_does_ have failures, the first failure's `entity` is a good short label and may
 be preferred.
 
 #### `Σ attempted` is 0 on 467 of 8095 reports, and the prescribed formula on them is `0 / 0`
@@ -2708,26 +2712,26 @@ be preferred.
 `Σ placed / Σ attempted` is `NaN` when the denominator is 0,
 `(NaN * 100).toFixed(1)` is `"NaN"`, and nothing here or in Sec.4.2's
 aggregation ("summing `attempted`/`placed`") says what a row with nothing
-attempted does. Sec.5.3 thought carefully about the rate's **honesty** — *"a
-command showing 100% at `runsPerPlayerCount: 5` is not proven reliable"* — and
+attempted does. Sec.5.3 thought carefully about the rate's **honesty** — _"a
+command showing 100% at `runsPerPlayerCount: 5` is not proven reliable"_ — and
 never about whether it exists.
 
 **Measured, one generation per map at 4 players / Normal / seed 1 over the 32
 maps on this mount: 8095 `CommandReport`s, of which 467 carry `attempted: 0`,
 spread over 30 of the 32 maps.**
 
-| stage | zero-attempt reports | maps | what the row carries |
-|---|---|---|---|
-| S6 objects | **462** | **29** | exactly one failure bucket each |
-| S5 connections | 4 | 3 (`Menindee`, `TL Black Forest`, `sample.rms`) | **no failures at all** |
-| S2 elevation | 1 | 1 (`AK_ForeDaut_v1.3.rms`) | **no failures at all** |
+| stage          | zero-attempt reports | maps                                            | what the row carries            |
+| -------------- | -------------------- | ----------------------------------------------- | ------------------------------- |
+| S6 objects     | **462**              | **29**                                          | exactly one failure bucket each |
+| S5 connections | 4                    | 3 (`Menindee`, `TL Black Forest`, `sample.rms`) | **no failures at all**          |
+| S2 elevation   | 1                    | 1 (`AK_ForeDaut_v1.3.rms`)                      | **no failures at all**          |
 
 **Pinned at 4 players, in a subsection about a four-count matrix, so the other
 three were swept.** 6 and 8 players are identical to the unit — 467 of 8142 and
 of 8161, 30 maps, the same 242 / 203 / 17, the same five bucketless rows.
 **2 players is 402 of 8125 on 29 maps**, decomposing `actorAreaMissing` **251**,
 `landMissing` **128**, `gaiaOnlyRequired` **20**, with **3** bucketless: the
-total moves 14%, the largest bucket *grows* by 9 while the second falls by 75,
+total moves 14%, the largest bucket _grows_ by 9 while the second falls by 75,
 and the bucketless half loses two of five. Nothing below changes and the ordering
 is stable. The decomposition is quoted at 4 because that is where this document's
 other figures are taken; the rule further down is stated over the **whole
@@ -2744,11 +2748,11 @@ unresolvable type (`:1345`), an object group with no valid `add_object` members
 (`:1354`), `place_on_specific_land_id` naming a land no command declares
 (`:1361`), a reference frame matching no land (`:1372`),
 an object that must carry `set_gaia_object_only` and does not (`:1379` —
-*"without it the engine places nothing"*), and
-`min_distance_to_players > max_distance_to_players` (`:1417`). *(All six cite
+_"without it the engine places nothing"_), and
+`min_distance_to_players > max_distance_to_players` (`:1417`). _(All six cite
 the `pushFailure(` line, which is the `if`'s first statement; two of them are
 multi-line calls, so the `bucket:` line is one further down and is not the
-anchor.)* **Only three of
+anchor.)_ **Only three of
 the six fire on this corpus** — the two `landMissing` paths and
 `gaiaOnlyRequired`. The 242 come from the ordinary path instead:
 `buildCandidatePredicates` returns `undefined` when `actor_area_to_place_in`
@@ -2765,7 +2769,7 @@ do **not** come from `connections.ts:784`. That is the blocked-by-bug path; it
 pushes a `connectionBlockedByBug:<span>` note beside its report, and measured
 across the 32 maps at **2, 4, 6 and 8 players there are 0 such notes** — the path
 is never taken on this corpus at any count the tool runs. It is also not about
-the command this section used to name: `blocked` is set at `:860` *after* a
+the command this section used to name: `blocked` is set at `:860` _after_ a
 `create_connect_to_nonplayer_land` has been processed, so the path reports the
 connections declared **after** one, never that command itself.
 
@@ -2774,18 +2778,18 @@ connections declared **after** one, never that command itself.
 reach `:858` with `pairs.length === 0` — an empty pairing, no early return, no
 note. Measured at 4 players:
 
-| map | command | tracked |
-|---|---|---|
-| `sample.rms` | `create_connect_all_players_land` | **yes** |
-| `TL Black Forest.rms` | `create_connect_all_players_land` | no |
-| `TL Black Forest.rms` | `create_connect_teams_lands` | no |
+| map                     | command                            | tracked |
+| ----------------------- | ---------------------------------- | ------- |
+| `sample.rms`            | `create_connect_all_players_land`  | **yes** |
+| `TL Black Forest.rms`   | `create_connect_all_players_land`  | no      |
+| `TL Black Forest.rms`   | `create_connect_teams_lands`       | no      |
 | `Menindee_AUS_v2.3.rms` | `create_connect_to_nonplayer_land` | **yes** |
 
 **And no S5 row carries a note at its own span**, checked at all four counts —
 including Menindee's, which is the named command but did not come from the bug
 path. `TL Black Forest`'s `create_connect_teams_lands` does produce an
-explanation, the run-level `teams` note (*"this script connects team lands, but
-the current lobby has no teams"*), and it has **no span**, so it is exactly the
+explanation, the run-level `teams` note (_"this script connects team lands, but
+the current lobby has no teams"_), and it has **no span**, so it is exactly the
 kind Sec.5.4's span-carrying rendering cannot anchor to a row.
 
 **The mechanism is `resolvePairs` (`:717-737`), and it is a better row than any
@@ -2795,11 +2799,11 @@ below two player-land origins — `sample.rms` declares its `create_player_lands
 inside `<PLAYER_SETUP>`, which S1 does not read, so it has none;
 `create_connect_teams_lands` → `teamPairs`, empty when no two lands share a team;
 `create_connect_to_nonplayer_land` → `crossPairs`, empty when either side is.
-*"This command connects nothing, because one side of the pairing is empty"* is
-true of all four, is PLAN.md's *this command contributes nothing to your map*
+_"This command connects nothing, because one side of the pairing is empty"_ is
+true of all four, is PLAN.md's _this command contributes nothing to your map_
 exactly, and is derivable from the command name plus the pairing the stage has
-already resolved. *"Print the failure buckets instead of a rate"* prints nothing
-on any of the five, and *"say it from the stage"* prints a named engine bug on a
+already resolved. _"Print the failure buckets instead of a rate"_ prints nothing
+on any of the five, and _"say it from the stage"_ prints a named engine bug on a
 tracked map about a command the bug never touched.
 
 **Four consequences, in ascending order of how bad they look to a user.**
@@ -2812,8 +2816,8 @@ tracked map about a command the bug never touched.
    case; `Math.min` returns `NaN` and the column renders empty. Both are
    confident-sounding output about a command the tool never measured.
 3. **The rows it lands on are this tool's own best findings.** `landMissing`,
-   `gaiaOnlyRequired` and an unresolvable type are precisely *this command
-   contributes nothing to your map*, the class PLAN.md commissioned the tool
+   `gaiaOnlyRequired` and an unresolvable type are precisely _this command
+   contributes nothing to your map_, the class PLAN.md commissioned the tool
    for. This is goal 1's "confidently wrong" arriving through a **division**
    rather than through a claim, and it is worse than the `{0,0}` span below:
    a wrong span fails at the point of a click, while `NaN%` sits in a table of
@@ -2824,11 +2828,11 @@ the zero-attempt rows are not all zero at every player count.** Keyed by
 `(map, stage, commandSpan)` over the 32 maps at 2/4/6/8, Normal, seed 1 —
 **8358 distinct rows**:
 
-| | rows |
-|---|---|
+|                                                         | rows    |
+| ------------------------------------------------------- | ------- |
 | `Σ attempted` 0 at **every** player count in the matrix | **402** |
-| **zero at some counts, with a real rate at others** | **65** |
-| never zero | 7891 |
+| **zero at some counts, with a real rate at others**     | **65**  |
+| never zero                                              | 7891    |
 
 **All 65 carry one pattern** — a rate at 2 players and `attempted: 0` at 4, 6 and
 8 (`N000` ×65; no other pattern occurs) — across 7 maps: `AK_Six_Points` 15,
@@ -2841,16 +2845,16 @@ branch, which is a **finding**, not noise — and the other 2 are S5 rows from t
 bucketless five above. **And the surviving rate is not a middling one: 60 of the
 65 place 100% at 2 players**, 2 place 50%, 3 place under 11%. A rule that merely
 **excludes** zero-attempt counts from the minimum takes the minimum over `{2}`
-and prints, on 60 rows, *"Worst player count 2 — spawn rate 100.0%"* about a
+and prints, on 60 rows, _"Worst player count 2 — spawn rate 100.0%"_ about a
 command that attempts nothing at three of the four counts in the matrix: every
 cell individually defensible, the row as a whole a confident falsehood, and this
 time in a cell that looks **measured** rather than one that looks broken. It is
 consequence 2 again, arriving through consequence 2's own fix.
 
-*Scope note: the 402/65 split is at seed 1, and over 15 seeds the two populations
+_Scope note: the 402/65 split is at seed 1, and over 15 seeds the two populations
 will move — Sec.3.0's 12-of-32 command-set drift is the mechanism. The direction
 will not: the pattern is unanimous and its cause is that more players means more
-frames to miss.*
+frames to miss._
 
 **The rule.**
 
@@ -2870,7 +2874,7 @@ frames to miss.*
     matrix contains, and the column has to be able to say so. "Worst" names the
     **lowest** such count, and the Spawn rate cell beside it takes the
     non-numeric marker rather than importing a different count's percent (which
-    keeps *"`0%` is a measurement and this is the absence of one"* true of the
+    keeps _"`0%` is a measurement and this is the absence of one"_ true of the
     cell it actually lands in).
   - An **absent** count is **not ranked at all** — not as a rate, not as a
     zero. There is no outcome to rank: the user's script does not contain this
@@ -2889,15 +2893,15 @@ frames to miss.*
   maps. That is the corpus rather than an edge case, because a healthy command
   places 100% at every count, and 100% ties with 100%. **The tie is the
   lowest player count**, which is the same tie-break the zero-attempt clause
-  above already uses (*"'Worst' names the lowest such count"*) and is what this
+  above already uses (_"'Worst' names the lowest such count"_) and is what this
   document's own worked exemplar has been assuming without saying so:
-  `13_Rings_v1.2.rms` at `:128660` is `attempted 3, placed 3` at *every* count,
+  `13_Rings_v1.2.rms` at `:128660` is `attempted 3, placed 3` at _every_ count,
   so its published "worst count 2" is a tie-break result and not a measurement.
 
   **An undetermined tie stopped being harmless when the Failure buckets column
-  got its domain.** While the tie chose only a *label*, either count printed a
-  true statement. Pinning the buckets cell to *"the worst player count's, the
-  same domain as the rate"* makes the undetermined key select the **evidence cell
+  got its domain.** While the tie chose only a _label_, either count printed a
+  true statement. Pinning the buckets cell to _"the worst player count's, the
+  same domain as the rate"_ makes the undetermined key select the **evidence cell
   beside the fraction**: of the 7313 tied rows, **2022 carry a failure at a tied
   count**, and the tied counts disagree on the bucket **set** on **146** rows (10
   tracked) and on the bucket **counts** on **250** (29 tracked). The set
@@ -2939,20 +2943,21 @@ frames to miss.*
   too; ranking them below every rate promotes them to the answer. A rule that
   fixes a column by ordering its states is only as good as its census of the
   states.
+
 - **A row that is zero at some counts and not others says which, and a row that
   EXISTS at some counts and not others says that instead.** They are three
   findings, not one, and they otherwise render identically:
-  - 402 rows attempt nothing at every count — *this command contributes nothing
-    to your map*.
-  - 65 rows work at 2 players and attempt nothing above — *"attempted nothing
-    at 4, 6, 8"*, with the reason from the buckets (`landMissing ×N`).
-  - 352 rows are generated at some counts only — *"this command is only
-    generated at 2 players"*, which is a finding a user wants and is **not** a
+  - 402 rows attempt nothing at every count — _this command contributes nothing
+    to your map_.
+  - 65 rows work at 2 players and attempt nothing above — _"attempted nothing
+    at 4, 6, 8"_, with the reason from the buckets (`landMissing ×N`).
+  - 352 rows are generated at some counts only — _"this command is only
+    generated at 2 players"_, which is a finding a user wants and is **not** a
     failure. Never phrase it as attempting nothing: the command is not in the
     script there.
 
   **The counts need a home that does not assume a bucket cell.** The natural
-  vehicle is the Failure buckets cell (*`landMissing ×N at 4, 6, 8`*) and it
+  vehicle is the Failure buckets cell (_`landMissing ×N at 4, 6, 8`_) and it
   exists on 63 of the 65 — the other **2 are the bucketless S5 rows**, which
   have no bucket cell to annotate, and all 352 of the absent-at-a-count rows
   are healthy and so carry no bucket either. So the per-count annotation is
@@ -2960,6 +2965,7 @@ frames to miss.*
   every row has by construction, and rendered into the Failure buckets cell
   only where that cell is non-empty. A rule whose only carrier is a cell that
   is empty on the rows it governs is not a rule.
+
 - **A row whose `runsContaining` is between 1 and `runs` at a count says its
   denominator.** Sec.4.2 measures **207 rows at 4 players over seeds 1–5** that
   appear in some runs of one batch and not others, on 11 maps including
@@ -2967,7 +2973,7 @@ frames to miss.*
   `start_random` population lives. A rate summed over 1 of 15 runs and one
   summed over 15 of 15 print identically today and are ranked against each
   other as if measured equally. Print the run count beside the rate whenever
-  `runsContaining < runs` (*"100% — generated in 3 of 15 runs"*); it is the
+  `runsContaining < runs` (_"100% — generated in 3 of 15 runs"_); it is the
   same honesty Sec.5.3 already demands of the rate itself, on the axis Sec.5.3
   does not cover.
 
@@ -2981,10 +2987,11 @@ frames to miss.*
   item 3's assertion must take one of those three CORPUS cases, which is what it
   already says and which the first implementation answered with a hand-built
   two-`addGeneration` fixture.
+
 - **The three reason populations are not disjoint, and a row in two of them says
   both.** A row can be absent at some counts and zero-attempt at others; nothing
-  above prevents it and the presentation of 402 / 65 / 352 as *"three findings,
-  not one"* reads as though something did. The reporter measures the overlap at
+  above prevents it and the presentation of 402 / 65 / 352 as _"three findings,
+  not one"_ reads as though something did. The reporter measures the overlap at
   **0** today (`partial carrying a zero cell 0`), so this is insurance, priced
   the way this document prices its other zero-cost clauses rather than left for
   an implementer to resolve by picking one. The row states its absent counts and
@@ -3006,8 +3013,8 @@ frames to miss.*
   non-numeric worst count, an empty bucket cell, and under the reason clause as
   written **no reason at all**, because that clause enumerates its causes by name
   and this is a third. It is the row this section's own rule forbids. The reason
-  is *this section asks for more cliffs at minimum than it allows at maximum, so
-  no cliffs are generated*, and Sec.3.4's static check reports the same
+  is _this section asks for more cliffs at minimum than it allows at maximum, so
+  no cliffs are generated_, and Sec.3.4's static check reports the same
   contradiction at error severity on the same script.
 - **The S3 reason keys on the note's KEY, not on a note at the row's own span,
   and copying the S5 discriminator here would work on one arm and fail on the
@@ -3016,15 +3023,15 @@ frames to miss.*
   `maxCliffsCmd?.span ?? minCliffsCmd?.span`. Where the script writes only a
   minimum the two coincide; where it writes both they **differ** — a fixture
   writing `min 20` then `max 5` produces the row at `152-175` and the note at
-  `176-198`. So the discriminator is *an S3 zero-attempt row in a run whose notes
-  carry `cliffsMinExceedsMax`*, which is unambiguous because `applyCliffs` emits
+  `176-198`. So the discriminator is _an S3 zero-attempt row in a run whose notes
+  carry `cliffsMinExceedsMax`_, which is unambiguous because `applyCliffs` emits
   exactly one report for the whole section. The S5 rule stays keyed on its own
   span, where the generator does anchor the note to the row.
 - **The S5 reason is conditioned on the note, because the row shape alone
   cannot tell the two paths apart.** `connections.ts:784` pushes
   `{ commandSpan, stage: "S5", attempted: 0, placed: 0, failures: [] }` and
-  `:858` pushes the same bytes whenever `pairs.length === 0` — so *"the pairing
-  came back empty"*, stated unconditionally over the shape, is a confident
+  `:858` pushes the same bytes whenever `pairs.length === 0` — so _"the pairing
+  came back empty"_, stated unconditionally over the shape, is a confident
   diagnosis of the wrong cause the first time `:784` fires, on a command whose
   pairing may be full and which was neutralised by a
   `create_connect_to_nonplayer_land` above it. **The discriminator is free and
@@ -3054,14 +3061,14 @@ declared-but-not-live case Sec.3.2 explicitly leaves to this layer (`Menindee`
 `AK_Vanguard`'s non-numeric id, which Sec.3.2 abstains on and the last clause of
 this section exists to protect, and **4** are Sec.3.2's four corpus findings:
 `Menindee` 1000 and `Pa_Site` 81, 82, 91. **So the suppression reaches 4 rows
-here** — and *4 rows* and *4 findings* are the same number here only because
+here** — and _4 rows_ and _4 findings_ are the same number here only because
 each of those four findings is a **single** row, which the decomposition states
 rather than the count implying it: the 242 split by `(map, referenced id)` into
 **86 distinct pairs**, exactly one of them non-numeric (`AK_Vanguard|?` ×18),
 and the four Sec.3.2 ids carry one row apiece, and the rule must not touch the other 238. It is still right, and it is
 insurance of the kind this document prices honestly elsewhere — the shared-block
-reference clause (*"adds 0 findings on this corpus"*), rule 4 (*"both finding
-rows byte-identical"*) — so it is priced rather than left standing beside the
+reference clause (_"adds 0 findings on this corpus"_), rule 4 (_"both finding
+rows byte-identical"_) — so it is priced rather than left standing beside the
 largest number in the paragraph. Where it does fire, the suppression
 **replaces** the bucket rather than deleting it: the cell says the static layer
 has already reported this command, which is what the suppression asserts
@@ -3087,7 +3094,7 @@ have no rate for a bucket cell to be the evidence for):
 
 **The unit is `occurrences`, not records, and this document got that wrong once
 already.** `PlacementFailure` has no `count` field — it carries
-`occurrences?: number` (`types.ts:372`, *"Absent means one"*), because
+`occurrences?: number` (`types.ts:372`, _"Absent means one"_), because
 `pushFailure` coalesces by bucket as records are made. The Failure buckets cell
 renders that number (`occupancyFull ×140`), so every figure about what the cell
 prints must be occurrence-weighted. A probe written against `failure.count`
@@ -3097,13 +3104,13 @@ first measurement of this subsection was taken. **Both readings are published
 below and both are pinned in Sec.8's reporter**, because this document's own
 rule is to pin a counting convention rather than let one be inferred.
 
-| | records | occurrences (what the cell prints) |
-|---|---|---|
-| numeric-rate rows carrying at least one failure somewhere in the matrix | **2498** | **2498** |
-| of those, rows where the bucket **set** differs between the two readings | **191** | **191** |
-| rows where the bucket **counts** differ | — | **2306** |
-| summed failure totals, worst count vs matrix union | **2833 vs 10647 — 3.76×** | **2 026 194 vs 8 105 519 — 4.00×** |
-| rows where the matrix-union total **exceeds the `Σ attempted` the rate divides by** | **462** | **803** |
+|                                                                                     | records                   | occurrences (what the cell prints) |
+| ----------------------------------------------------------------------------------- | ------------------------- | ---------------------------------- |
+| numeric-rate rows carrying at least one failure somewhere in the matrix             | **2498**                  | **2498**                           |
+| of those, rows where the bucket **set** differs between the two readings            | **191**                   | **191**                            |
+| rows where the bucket **counts** differ                                             | —                         | **2306**                           |
+| summed failure totals, worst count vs matrix union                                  | **2833 vs 10647 — 3.76×** | **2 026 194 vs 8 105 519 — 4.00×** |
+| rows where the matrix-union total **exceeds the `Σ attempted` the rate divides by** | **462**                   | **803**                            |
 
 The last row is the one that prints as nonsense rather than as ambiguity.
 `13_Rings_v1.2.rms` (**tracked**) `create_terrain LOWER_HILLTOPS { base_terrain
@@ -3122,7 +3129,7 @@ at all: `growthShortfall` counts **tiles short of a budget**, not failed
 placement attempts, so 4 occurrences against 3 attempts is a unit mismatch
 rather than a widened domain — visible in the exemplar above at its own worst
 count. The domain finding does not rest on that row: it rests on the **191**
-rows whose bucket *set* differs and the **2306** whose counts do, where the two
+rows whose bucket _set_ differs and the **2306** whose counts do, where the two
 readings disagree about the same command in the same unit. The 803 is worth
 printing because a cell that can exceed its neighbour's denominator by either
 mechanism needs its domain stated either way, and Sec.8's assertion is scoped
@@ -3167,7 +3174,7 @@ degenerate script — this repo's own RMSTEST batch generated cliffs exactly tha
 way (`docs/build-log.md`, the 4.3 calibration entry), and the numbers above are
 four real cliffs placed successfully. So the row is a healthy row about real
 cliffs, and both prescriptions above mishandle it: `source.slice(0, 0)` is `""`,
-and the `entity` fallback is conditioned on the row *having* failures, which is
+and the `entity` fallback is conditioned on the row _having_ failures, which is
 the one thing a healthy row does not have.
 
 **The rule, and the predicate is the STAGE, not the span.**
@@ -3181,11 +3188,11 @@ non-empty the borrow **succeeds**, and succeeding is what makes it invisible.
 Measured over the 32 maps at 4 players / Normal / seed 1, the parse's answer
 rather than a grep's:
 
-| `<CLIFF_GENERATION>` | maps | what a `{0,0}` test gives the row |
-|---|---|---|
-| absent | 25 | no report at all |
-| present, 0 commands | **2** | `rowSpans` `null` + stage label — caught |
-| present, ≥1 command | **5** | the first standalone attribute's own line, presented as a per-command row — **missed** |
+| `<CLIFF_GENERATION>` | maps  | what a `{0,0}` test gives the row                                                      |
+| -------------------- | ----- | -------------------------------------------------------------------------------------- |
+| absent               | 25    | no report at all                                                                       |
+| present, 0 commands  | **2** | `rowSpans` `null` + stage label — caught                                               |
+| present, ≥1 command  | **5** | the first standalone attribute's own line, presented as a per-command row — **missed** |
 
 The five, with the line the Command column would carry: `24hr_Bazi is God.rms`
 and `Pa_Site_v1.1.rms` (`cliff_type CLIFF_TYPE`),
@@ -3196,11 +3203,11 @@ and `Pa_Site_v1.1.rms` (`cliff_type CLIFF_TYPE`),
 failures, and clicking it jumps the Code tab to that attribute.
 
 **The missed case is the worse one, and this document's own hard rule is why.**
-The `{0,0}` case fails loudly at offset 0. This one points a person at *a* real
+The `{0,0}` case fails loudly at offset 0. This one points a person at _a_ real
 place, one that is even inside the right section — so it looks correct, it reads
 as a per-command row in a table whose every other row is a per-command row, and
-there is nothing for a reader to notice. That is the RMS03xx *"already set at
-offset 86970"* shape with the diagnostic pointing at a plausible neighbour
+there is nothing for a reader to notice. That is the RMS03xx _"already set at
+offset 86970"_ shape with the diagnostic pointing at a plausible neighbour
 instead of at nothing.
 
 **So the rule is stated on the stage: S3's row always takes its Command label
@@ -3240,12 +3247,12 @@ said what a finding is, and the answer differs by a factor of 124 depending on
 which section you read it out of.** Measured on `Pa_Site_v1.1.rms` at 4 players
 / Normal / seed 1, the undeclared-`avoid_actor_area` population is:
 
-| unit | `Pa_Site` | what reads it |
-|---|---|---|
-| attribute **occurrence** | **253** | the renderer, one table ROW each |
-| distinct **(map, id)** pair | **134** | Sec.3.2's own counting-convention paragraph, and `npm run measure:checker` |
-| **command** | **8** | Sec.3.2's census table's second column |
-| **family** — one `(kind, severity)` pair | **1** | the renderer, one `severity` + one `table` |
+| unit                                     | `Pa_Site` | what reads it                                                              |
+| ---------------------------------------- | --------- | -------------------------------------------------------------------------- |
+| attribute **occurrence**                 | **253**   | the renderer, one table ROW each                                           |
+| distinct **(map, id)** pair              | **134**   | Sec.3.2's own counting-convention paragraph, and `npm run measure:checker` |
+| **command**                              | **8**     | Sec.3.2's census table's second column                                     |
+| **family** — one `(kind, severity)` pair | **1**     | the renderer, one `severity` + one `table`                                 |
 
 None of the four is wrong; leaving the choice implicit is. **Pinned: the
 occurrence is the ROW unit, the `(map, id)` pair is the CENSUS unit, and the
@@ -3262,9 +3269,9 @@ nothing collapsed the result.** Measured over 2/4/6/8 at seed 1: `Pa_Site`'s
 On this corpus **every** static finding is identical at all four counts.
 
 Only Sec.3.1's finding ever carried the count in its own text, **and Sec.3.1 is
-the section that proves it need not**: *"The per-player-count arithmetic cancels
-exactly… the sum is player-count invariant."* So the layer ran it four times and
-printed four blocks differing only by the words *"At 2 / 4 / 6 / 8 players"* in
+the section that proves it need not**: _"The per-player-count arithmetic cancels
+exactly… the sum is player-count invariant."_ So the layer ran it four times and
+printed four blocks differing only by the words _"At 2 / 4 / 6 / 8 players"_ in
 front of one identical percentage.
 
 **The rule: `playerCount` is a FIELD on the finding, never an interpolation into
@@ -3326,7 +3333,7 @@ others is a finding in its own right:
 filtered table and an empty one are different claims, and a reader who cannot
 tell them apart has been told the script is clean when it was only quiet — the
 same never-silently-drop rule the rest of this project runs on. Printing it at
-0 as well is deliberate: the sentence's *absence* must never be what carries
+0 as well is deliberate: the sentence's _absence_ must never be what carries
 the information.
 
 #### A family of many findings is one `severity` plus one `table`, which is the ONLY shape with a bound
@@ -3334,7 +3341,7 @@ the information.
 **The tool's output was rejected by its own host on an ordinary corpus map.**
 `Pa_Site_v1.1.rms` produced **1026 blocks** at the default matrix against
 `LIMITS.maxBlocksPerOutput`'s **1000** (`tools-api/index.ts`); `protocol.ts`
-returns *"output has 1026 blocks, over the 1000 cap"*, `host.ts` logs a
+returns _"output has 1026 blocks, over the 1000 cap"_, `host.ts` logs a
 `Protocol error` and calls `finish(run, { reason: "protocol" })`, which sets
 `run.terminated` and drops every later message. On a full run the tool died at
 the **first** `partial`, one batch of four in. **The user got nothing at all —
@@ -3400,9 +3407,9 @@ line — 30 commands on this corpus.
 
 **The same shape governs terrain, and this is the second place the two layers
 answer adjacent questions.** `terrainAbsent` is the Monte Carlo layer's and it
-means *the script never lays this terrain down*; Sec.3.3's tier 1, where the
-command names a terrain, means *the engine's table refuses this pairing*. Only
-the second may carry the *"the exact terrain table"* provenance, and rev 6
+means _the script never lays this terrain down_; Sec.3.3's tier 1, where the
+command names a terrain, means _the engine's table refuses this pairing_. Only
+the second may carry the _"the exact terrain table"_ provenance, and rev 6
 printed the first under that label twice out of a total output of two. No
 suppression is needed in either direction — they are different findings about
 different data and a script can legitimately produce both — but a static finding
@@ -3456,7 +3463,7 @@ imprecise but says the opposite of what happened.
 **The pane prints its own settings echo above this, and for this tool it is
 wrong twice.** `ToolsPane.tsx` renders `Run at {generation.playerCount} players,
 {generation.mapSize}` above every tool's output, to keep a stale result
-self-describing. For a tool whose report *is* a 2/4/6/8 matrix it names one
+self-describing. For a tool whose report _is_ a 2/4/6/8 matrix it names one
 player count the report is not about; and it reads the **live** generation
 context rather than the run's snapshot, so changing the player count after a run
 re-labels a finished report with a setting it was never run at — the failure the
@@ -3527,11 +3534,11 @@ bounded by `maxTableRowsRendered` (10,000) rather than by `maxBlocksPerOutput`
 (1000), and `rowSpans` must have exactly `rows.length` entries (Sec.5.1).
 **A group whose notes carry NO span emits the `severity` alone — there is no
 table, because there is nothing to put in it.** `SimulationNote.span` is
-optional (`types.ts:307`, *"Absent for run-level notes"*) and the corpus is
+optional (`types.ts:307`, _"Absent for run-level notes"_) and the corpus is
 full of them: measured at 4 players over the 32 maps, **338 same-text note
 groups, of which 29 carry no span at all**, spread over **24 of the 32 maps**,
 and no group is mixed — the automatic-beach note (18 groups), `includes`
-(*"depends on include files the preview cannot see"*, 6),
+(_"depends on include files the preview cannot see"_, 6),
 `landOverwrittenBeforeGrowth` (4) and `teams` (1). Prescribed without this
 clause, the shape above emits an empty `table` on three quarters of the corpus,
 in the section whose own argument is that a block carrying nothing is worse
@@ -3542,17 +3549,17 @@ with nothing in it.
 
 Those spans are exactly Sec.3.0b's blind spot — the shared blocks whose
 attributes no check can read — so keeping them is what lets the report say
-*this finding sits next to a block the preview could not read*, which is the
+_this finding sits next to a block the preview could not read_, which is the
 whole reason a notes passthrough is worth having rather than a disclaimer.
 
 **Carry the COVERED FRACTION beside the count, and it is the one line that
 turns a silently-empty report into an honestly-empty one.** The spans are
 already in hand and the script's length is `ctx.parseResult.source.length`, so
-*"these spans cover N% of the script"* is arithmetic over data this block
+_"these spans cover N% of the script"_ is arithmetic over data this block
 already holds. It exists because of `Rage Forest 2026.rms` (Sec.3.3's `RawNode`
 subsection): the tool's entire output on that map today is six empty tables plus
-one `SimulationNote` reading *"This part of the script isn't simulated in the
-preview."* — no count, no fraction, no indication that the span it carries is
+one `SimulationNote` reading _"This part of the script isn't simulated in the
+preview."_ — no count, no fraction, no indication that the span it carries is
 **71% of the file**. A user reads a clean report on a script the tool read 29%
 of, which is goal 1's failure mode arriving through silence rather than through
 a wrong number. Print the fraction whenever it is non-trivial, and treat a large
@@ -3566,13 +3573,13 @@ this subsection was measured at one generation while this subsection's own
 opening sentence says the notes are accumulated across sixty.** Measured over
 2/4/6/8 × seeds 1–5 (20 runs, a third of the default):
 
-| map | 1 run, naive | 20 runs, naive | 20 runs, spans merged |
-|---|---|---|---|
-| **`Rage Forest 2026.rms`** | 70.9% | **1418.1%** | 70.9% |
-| `QS_Three_Bays_v1.1.rms` | 55.3% | 1099.7% | **41.9%** |
-| `24hr_Caverns.rms` | 53.6% | 1053.6% | **41.1%** |
-| `Chaotic_Straitv0.99.rms` (tracked) | 44.3% | 885.8% | **34.2%** |
-| `TC2 - Comeer v1.4.rms` (tracked) | 39.0% | 827.2% | 37.4% |
+| map                                 | 1 run, naive | 20 runs, naive | 20 runs, spans merged |
+| ----------------------------------- | ------------ | -------------- | --------------------- |
+| **`Rage Forest 2026.rms`**          | 70.9%        | **1418.1%**    | 70.9%                 |
+| `QS_Three_Bays_v1.1.rms`            | 55.3%        | 1099.7%        | **41.9%**             |
+| `24hr_Caverns.rms`                  | 53.6%        | 1053.6%        | **41.1%**             |
+| `Chaotic_Straitv0.99.rms` (tracked) | 44.3%        | 885.8%         | **34.2%**             |
+| `TC2 - Comeer v1.4.rms` (tracked)   | 39.0%        | 827.2%         | 37.4%                 |
 
 **THIS TABLE IS PER MAP AND `coveredFraction` IS PER GROUP, and the two are
 different numbers on every map with more than one note group.** The column
@@ -3596,7 +3603,7 @@ larger" is the whole of the fix. They coincide on `Rage Forest`
 and the same coincidence, that made the 1418% invisible for three revisions.**
 Nothing in the table is wrong; what was missing is the sentence saying which
 population it counts, in a table sitting directly under the prescription for
-the other one. *An unpinned population is reproducible only by accident*, for
+the other one. _An unpinned population is reproducible only by accident_, for
 the fourth time in this document — and the tell each time is a figure quoted
 one paragraph away from a field it is not measuring.
 
@@ -3622,8 +3629,8 @@ naive accumulation, carrying the same 134 spans repeated — a table whose row
 count is a function of the run count is reporting on the tool's settings rather
 than on the script.
 
-*Two figures about the same file measure different things and agree by
-coincidence, which is worth one sentence so nobody derives one from the other.*
+_Two figures about the same file measure different things and agree by
+coincidence, which is worth one sentence so nobody derives one from the other._
 Sec.3.3's 70.9% for `Rage Forest` is a parse-time figure over `RawNode`
 extents; this one is a run-time figure over `unsimulated` note spans. They
 coincide on that map because the raw nodes are exactly what S0 declines to
@@ -3642,7 +3649,7 @@ implementation's only counter was the span map, so a spanless group rendered
 included, so on every CI run. **It is goal 1 in miniature**: a true note
 delivered with a false number welded to it, in the passthrough whose whole
 argument is that the tool does not re-derive its own opinion about what it could
-not check. Saying *"this happened in 0 places"* about something that happened is
+not check. Saying _"this happened in 0 places"_ about something that happened is
 a stronger claim than saying nothing, and it is the wrong one.
 
 **"Places" is a claim about spans, so a spanless group does not make it.** Count
@@ -3690,8 +3697,8 @@ produced**. Measured at the defaults (2/4/6/8 × 15 = 60 generations, the rate t
 subsection's own opening sentence names): `AK_Namatjira.rms` **23 of 30** groups
 inflated, worst reading `count = 58` for **one** span with a 58-row table beside
 it; `24hr_Petra.rms` 20 of 32; `13_Rings_v1.2.rms` 7 of 22. That is verbatim the
-shape this section already filed — *"a table whose row count is a function of the
-run count is reporting on the tool's settings rather than on the script"* —
+shape this section already filed — _"a table whose row count is a function of the
+run count is reporting on the tool's settings rather than on the script"_ —
 surviving because only the arithmetic half of the fix landed.
 
 **The dominant corpus mechanism is exactly the one the range rule exists for**,
@@ -3710,8 +3717,8 @@ fraction, which was already merging correctly and is why the defect stayed
 invisible: `coveredFraction` was verified and `count` was not).
 
 **A note whose text differs across runs sharing one `key` is reported as a
-range.** `landOverwrittenBeforeGrowth` interpolates *"N lands are missing from
-this preview"*, and N varies across 60 runs — grouped naively, the report shows
+range.** `landOverwrittenBeforeGrowth` interpolates _"N lands are missing from
+this preview"_, and N varies across 60 runs — grouped naively, the report shows
 whichever run got there first, presented as if it described the run. Report
 "2–5 lands", which is the honest shape and is detectable without a new field:
 collect the texts per key and compare. This is the same instinct as the
@@ -3719,7 +3726,7 @@ grouping rule above, pointed the other way — one key with many texts becomes a
 range, many keys with one text become a count.
 
 **Applied in the other order, or in no stated order, the range rule never fires
-and every interpolated value founds its own group.** *"Group by TEXT"* makes
+and every interpolated value founds its own group.** _"Group by TEXT"_ makes
 `"2 lands are missing"` and `"5 lands are missing"` two groups, at which point
 there is no key left to range over; the corpus's same-text group count goes
 338 → **1847** over 20 runs and the worst map's block count 60 → **570**, which
@@ -3730,9 +3737,9 @@ the fix for both sections.**
 #### The passthrough has ONE exclusion, and the bar for it is not "low value"
 
 **A note is excluded only when it is not a statement about what the preview
-could not check at all.** `automaticBeach` is the one on this corpus: *"The
+could not check at all.** `automaticBeach` is the one on this corpus: _"The
 engine lays a beach wherever the ground meets deeper ground, with no command
-asking for it — N tiles here."* The preview models that **correctly and
+asking for it — N tiles here."_ The preview models that **correctly and
 completely**; the sentence is a true description of engine behaviour, in a
 section whose title promises the opposite. It fires on most of the corpus and
 pushes real findings down the page.
@@ -3743,8 +3750,8 @@ is the checker's alone, and the Advanced Tools pane is the argument for the
 split: this tool's reader has already chosen the advanced surface.
 
 **Everything that is genuinely a limitation stays, including the cheap-sounding
-ones.** `behaviorVersion2` (*"simulated the same as version 1"*) and `atColor`
-(*"AT_COLOR is treated the same as AT_PLAYER"*) look like noise and are not —
+ones.** `behaviorVersion2` (_"simulated the same as version 1"_) and `atColor`
+(_"AT_COLOR is treated the same as AT_PLAYER"_) look like noise and are not —
 they are real gaps between the preview and the engine, and **a limitation with
 low consequence is still a limitation**. The bar is a category test, never a
 usefulness judgement, because a usefulness judgement is exactly the opinion
@@ -3757,8 +3764,8 @@ would leave both quietly measuring a population the reader never sees.
 #### The renderer appends no punctuation to text it is passing through
 
 The generator's note texts are authored sentences and most already end in a
-full stop, so a period appended unconditionally printed *"…with
-beach_terrain.."*. Append a terminator only when the text does not already
+full stop, so a period appended unconditionally printed _"…with
+beach_terrain.."_. Append a terminator only when the text does not already
 carry one and no count clause follows it. **Punctuation invented by the
 renderer is the smallest possible version of this section's own defect** — the
 tool editing text whose whole contract is that it is passed through verbatim —
@@ -3777,14 +3784,14 @@ nothing more.
 
 **A `prominence`-derived mapping is the obvious guess and it is wrong in both
 directions on this corpus.** `cliffsMinExceedsMax` — whose own text says it
-*"crashes the real game"* — is `drawer`, so it would file at the lowest level,
+_"crashes the real game"_ — is `drawer`, so it would file at the lowest level,
 while the spanless `includes` family (6 of the 29 spanless groups) is `banner`
 and would file above it.
 
 **So every note group renders at `info`, and the uniformity is the point rather
 than a default.** This section's stated principle is that notes stay visible
-*"rather than this tool silently re-deriving its own opinion about what it could
-not check"*, and **assigning a severity is that opinion**. `info` is the level
+_"rather than this tool silently re-deriving its own opinion about what it could
+not check"_, and **assigning a severity is that opinion**. `info` is the level
 that carries none. Sec.3.5 shows this document assigning a level where it has a
 basis — a verified reference-data row — and the contrast is the argument: there
 the gate reads a field that means what the level means, here there is no such
@@ -3900,6 +3907,7 @@ nobody names, which is how they were going to be copied.
    each array only ever yields the index built from itself — which is the
    argument this item already made, pointed at the cast instead of at the
    absence of one.
+
 2. **`declaredTargetTiles` (`lands.ts`) becomes exported.** Sec.3.1 sums it
    and it is a private function; `LandOrigin.declaredTargetTiles` carries the
    same value on the exported type but is reachable only by running S1, which
@@ -3940,11 +3948,11 @@ nobody names, which is how they were going to be copied.
    revision specified the walk as taking both branch kinds and its three named
    callers want three different branch policies:**
 
-   | caller | wants | a both-branches walk gives |
-   |---|---|---|
-   | Sec.3.2 declaration side | **every** branch, selected or not | every branch ✓ |
-   | Sec.3.3 terrain surface | `start_random` all branches, **`if` as selected** | every branch ✗ |
-   | Sec.3.2 reference side | shared blocks **in taken branches only** | every branch ✗ |
+   | caller                   | wants                                             | a both-branches walk gives |
+   | ------------------------ | ------------------------------------------------- | -------------------------- |
+   | Sec.3.2 declaration side | **every** branch, selected or not                 | every branch ✓             |
+   | Sec.3.3 terrain surface  | `start_random` all branches, **`if` as selected** | every branch ✗             |
+   | Sec.3.2 reference side   | shared blocks **in taken branches only**          | every branch ✗             |
 
    Written as a single policy, an implementer building Sec.3.3's surface on this
    walker violates Sec.3.3's own stated rule, and **nothing in Sec.8 goes red for
@@ -3954,7 +3962,7 @@ nobody names, which is how they were going to be copied.
    harmless today, which is the worst way for a rule to be wrong.
 
    The alternative — teach the walker the branch policies — was rejected: knowing
-   which `if` branch was *selected* means knowing S0's answer, which couples a
+   which `if` branch was _selected_ means knowing S0's answer, which couples a
    pure AST walk to the instantiation. So the walk yields everything and each
    section carries its own filter in its own text: Sec.3.3's surface drops
    unselected `if` branches, and Sec.3.2's reference side keeps only shared blocks
@@ -4056,33 +4064,34 @@ the runner and not about any `useMemo` change).
    `tools-api/index.ts` spends a doc comment on. The parameter's name predates
    the worker transport; **renaming it is 5.1's, not this document's**, so the
    clause has to live here instead.
+
 4. **Three changes to `tools-api/index.ts`, the published contract — grouped
    because they carry the same obligation: a doc comment naming this tool as the
    reason, the way `multiSelect` and `OutputBlock.severity` already do.**
 
    a. **`ToolManifest` gains `ownsSettingsHeader?: boolean`**, with
-      `ToolsPane.tsx` suppressing its settings echo when it is set (Sec.5.2),
-      and `protocol.ts`'s manifest validation gaining the optional field.
+   `ToolsPane.tsx` suppressing its settings echo when it is set (Sec.5.2),
+   and `protocol.ts`'s manifest validation gaining the optional field.
 
    b. **`HostMessage` gains the type parameter its payload already has**
-      (Sec.4.3):
-      `HostMessage<P extends SerializedParseResult = SerializedParseResult>`,
-      with `context: ToolContext<P>`. Without it the worker sketch does not
-      compile, because the unparameterised form carries the WIRE context and
-      `ToolImplementation.run` demands the in-process one. Verified: the sketch
-      written out as a real file goes from `TS2345` to `tsc --noEmit` EXIT 0,
-      and the default keeps every external reading unchanged. **Not a cast** —
-      `context as ToolContext<ParseResult>` is the move `previewBridge.ts`
-      exists to refuse.
+   (Sec.4.3):
+   `HostMessage<P extends SerializedParseResult = SerializedParseResult>`,
+   with `context: ToolContext<P>`. Without it the worker sketch does not
+   compile, because the unparameterised form carries the WIRE context and
+   `ToolImplementation.run` demands the in-process one. Verified: the sketch
+   written out as a real file goes from `TS2345` to `tsc --noEmit` EXIT 0,
+   and the default keeps every external reading unchanged. **Not a cast** —
+   `context as ToolContext<ParseResult>` is the move `previewBridge.ts`
+   exists to refuse.
 
    c. **`DEADLINES.cancelGraceMs` moves 30_000 → 60_000**, equal to
-      `runWatchdogMs` (Sec.4.4): both bound one generation, the worst of which
-      this document measures at 24–32 s, so a 30 s grace prints `killed` — a
-      verdict on the tool — against a tool that cancelled exactly as specified.
-      This one is **not** this document's to land alone: it is an amendment to
-      `tools-api-design.md` Sec.4.1, which owns the derivation and has moved
-      both constants once already for the same reason. Its tests assert against
-      the constant rather than a literal, so nothing there needs editing.
+   `runWatchdogMs` (Sec.4.4): both bound one generation, the worst of which
+   this document measures at 24–32 s, so a 30 s grace prints `killed` — a
+   verdict on the tool — against a tool that cancelled exactly as specified.
+   This one is **not** this document's to land alone: it is an amendment to
+   `tools-api-design.md` Sec.4.1, which owns the derivation and has moved
+   both constants once already for the same reason. Its tests assert against
+   the constant rather than a literal, so nothing there needs editing.
 
 ### 7.3 The checker implementation
 
@@ -4139,7 +4148,7 @@ without a `TileGrid`.
      `beach_terrain`, and only through the automatic beach pass (all three must
      not warn);
    - the placeholder idiom verbatim — `create_object FISH_PLACEHOLDER
-     { terrain_to_place_on SHALLOW second_object FISH }`, **preceded by its own
+{ terrain_to_place_on SHALLOW second_object FISH }`, **preceded by its own
      `#const FISH_PLACEHOLDER 647`** — which must report nothing, and is the
      fixture that goes red the day someone "improves" the check into following
      `second_object`. **Both halves of that sentence are load-bearing and the
@@ -4156,12 +4165,12 @@ without a `TileGrid`.
    - an `allowedTerrains` row with `verified: false` (`FISH` or `SHORE_FISH`,
      Sec.3.5) downgrading to info rather than warning;
    - **the fork's third arm**: `create_object GOLD
-     { terrain_to_place_on SOME_UNDEFINED_NAME }`, asserting **abstention** —
+{ terrain_to_place_on SOME_UNDEFINED_NAME }`, asserting **abstention** —
      the command is tier-skipped, not merely finding-free. Three mechanisms
      produce the same green here, exactly as with the `FISH_PLACEHOLDER` fixture,
      and the one that must be pinned is the third arm rather than a lucky
      intersection. Its partner is the same command with `#const
-     SOME_UNDEFINED_NAME GRASS2` added, which must route to the named-terrain
+SOME_UNDEFINED_NAME GRASS2` added, which must route to the named-terrain
      branch (reading C) or abstain (reading B) — whichever BUG-015 lands on, and
      the fixture is where that decision becomes visible.
 
@@ -4191,7 +4200,7 @@ without a `TileGrid`.
    **same** pairing with the flag inert (must report, at **info** — Sec.3.5).
    Both maps are tracked, so unlike the `RawNode` fixtures below this one can be
    a corpus assertion. Keep a hand-built `create_object DEER
-   { terrain_to_place_on WATER }` beside it for the beginner shape the check is
+{ terrain_to_place_on WATER }` beside it for the beginner shape the check is
    aimed at, since the corpus contains no such thing by construction.
 
    **Sec.3.3's `RawNode` abstention needs two fixtures and CANNOT be pinned by
@@ -4241,7 +4250,7 @@ without a `TileGrid`.
      Spawn rate cell is the non-numeric one, its Worst player count cell is too,
      and its Failure buckets cell names the bucket.
    - The **same** `minExceedsMax` pair Sec.3.4 already asks for, asserted here as
-     well — the static finding at error severity *and* the Monte Carlo row on the
+     well — the static finding at error severity _and_ the Monte Carlo row on the
      same command, so the two layers' treatment of one command is pinned
      together. It is the only place that pairing exists: on this corpus the
      static check finds 0 and the bucket contributes 0 rows.
@@ -4250,7 +4259,7 @@ without a `TileGrid`.
      Without it the rule reads as "print the buckets" and the five bucketless
      rows print an empty cell. It covers **1 of the 5**, so:
    - **an empty-pairing connection** — `create_connect_all_players_land` with no
-     player lands declared is two lines — asserting the row states the *pairing*
+     player lands declared is two lines — asserting the row states the _pairing_
      reason rather than a stage label. This is the fixture that pins the sentence
      the tool prints on the **other four** bucketless rows, one of which is
      `sample.rms` on every CI run, and it goes red the day someone re-derives
@@ -4266,15 +4275,15 @@ without a `TileGrid`.
      one above cannot stand in for**: the same 2/4 matrix with the **command**
      inside `if 2_PLAYER_GAME` rather than its land, so at 4 players no
      `CommandReport` exists for that span at all. Assert the Worst player count
-     cell names **2** with its **real percent**, that the row says *only
-     generated at 2 players*, and that it never says the command attempted
+     cell names **2** with its **real percent**, that the row says _only
+     generated at 2 players_, and that it never says the command attempted
      nothing. 352 corpus rows have this shape, 146 on tracked maps, and every
      one of them is healthy — an implementation folding the matrix with
      `?? 0` prints a worst-case verdict on all of them and passes both the
      mixed-matrix fixture and item 2's invariant.
    - **a partially-present row**: a command inside a `start_random` branch, run
      at one player count over several seeds, asserting the row prints its run
-     count (*"generated in N of M runs"*) rather than a bare rate. 207 corpus
+     count (_"generated in N of M runs"_) rather than a bare rate. 207 corpus
      rows at 4 players over seeds 1–5 have this shape, on 11 maps including
      `sample.rms`, and at the default 15 runs per count it is the common case
      rather than the exotic one.
@@ -4320,8 +4329,9 @@ without a `TileGrid`.
      0 findings under every reading, so a threshold set wrongly changes no number
      the reporter prints — which is why the constant is interim and these two
      fixtures are what a later measurement re-runs against.
+
 2. **Corpus measurement, reporter not gate** — `src/tools/__tests__
-   /consistencyChecker.measure.test.ts`, same family as `rms0304.measure.test.ts`
+/consistencyChecker.measure.test.ts`, same family as `rms0304.measure.test.ts`
    /`rms0315.measure.test.ts`: run the static layer over every tracked
    `test-maps/*.rms` and print counts per check.
 
@@ -4382,8 +4392,8 @@ without a `TileGrid`.
    first session to run this on CI would otherwise see numbers matching nothing
    in the doc — with **three of the four maps the error row names absent from
    their disk**. This repo has recorded the trap once already
-   (`tools-api-design.md` rev 8: *"'tracked' was used 14 times to mean 32 maps
-   when a clone gets 12"*) and item 6 below applies it correctly for the
+   (`tools-api-design.md` rev 8: _"'tracked' was used 14 times to mean 32 maps
+   when a clone gets 12"_) and item 6 below applies it correctly for the
    `FailureMark` mutant. Print both populations; the table has two columns for
    that reason.
 
@@ -4398,21 +4408,21 @@ without a `TileGrid`.
    players / Normal / seed 1 over the 32 tracked maps, belongs in the test as
    the number to diff against:
 
-   | check | 32 maps (a maintainer's disk) | 12 files (a clone, CI) |
-   |---|---|---|
-   | Sec.3.1 land over-allocation, fillers excluded (info) | **6 maps** — 23 without the exclusion | **2 maps** (`AK_Namatjira`, `AK_Vanguard`) — 8 without |
-   | Sec.3.2 undeclared `actor_area_to_place_in` (error) | **4 findings / 2 maps** (`Menindee` 1000; `Pa_Site` 81, 82, 91) | **1 finding / 1 map** (`Menindee`) |
-   | Sec.3.2 undeclared `avoid_actor_area` (info) | **30 commands / 7 maps** | **14 commands / 2 maps** (`AD4 - Ra` 3, `Chaotic_Strait` 11) |
-   | Sec.3.2 scripts abstaining (rule 3, unresolvable declaration) | **1** (`AK_Vanguard`) | **1** (same map) |
-   | Sec.3.2 scripts abstaining (rule 4, `RawNode`) | **2** (`Rage Forest 2026.rms`, `TL Cape of Storms.rms`) | **0** — both untracked; pin it with fixtures, never here |
-   | Sec.3.3 terrain impossibility (warning) | **0** — 446 commands checked at tier 1, 356 at tier 2, 52 skipped as validly `ignore_terrain_restrictions`, 75 resolving to no row, 21 naming an object group | **0**, and both of the maps that produced the three-set reading's false warnings (`AK_Six_Points`, `sample.rms`) are tracked, so this row is real on CI |
-   | Sec.3.3 terrain impossibility (info, Sec.3.5 gate) | **2** — 1 tier 1 (`AK_Namatjira` `SHORE_FISH`/`DLC_MANGROVESHALLOW`, an inert-flag true positive) and 1 tier 2 (`Chaotic_Strait`, undecided — Sec.9) | **2** — **both maps are tracked**, so this row is fully reproducible on CI |
-   | Sec.3.3 scripts abstaining (`RawNode`, Sec.3.3) | **1** (`Rage Forest 2026.rms`) | **0** — the map is untracked and no tracked map trips the rule; pin it with fixtures, never here |
-   | Sec.3.4 `minExceedsMax` (error) | **0** — near-zero here is real, and the fixtures are the proof it fires | **0** |
+   | check                                                         | 32 maps (a maintainer's disk)                                                                                                                                 | 12 files (a clone, CI)                                                                                                                                  |
+   | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Sec.3.1 land over-allocation, fillers excluded (info)         | **6 maps** — 23 without the exclusion                                                                                                                         | **2 maps** (`AK_Namatjira`, `AK_Vanguard`) — 8 without                                                                                                  |
+   | Sec.3.2 undeclared `actor_area_to_place_in` (error)           | **4 findings / 2 maps** (`Menindee` 1000; `Pa_Site` 81, 82, 91)                                                                                               | **1 finding / 1 map** (`Menindee`)                                                                                                                      |
+   | Sec.3.2 undeclared `avoid_actor_area` (info)                  | **30 commands / 7 maps**                                                                                                                                      | **14 commands / 2 maps** (`AD4 - Ra` 3, `Chaotic_Strait` 11)                                                                                            |
+   | Sec.3.2 scripts abstaining (rule 3, unresolvable declaration) | **1** (`AK_Vanguard`)                                                                                                                                         | **1** (same map)                                                                                                                                        |
+   | Sec.3.2 scripts abstaining (rule 4, `RawNode`)                | **2** (`Rage Forest 2026.rms`, `TL Cape of Storms.rms`)                                                                                                       | **0** — both untracked; pin it with fixtures, never here                                                                                                |
+   | Sec.3.3 terrain impossibility (warning)                       | **0** — 446 commands checked at tier 1, 356 at tier 2, 52 skipped as validly `ignore_terrain_restrictions`, 75 resolving to no row, 21 naming an object group | **0**, and both of the maps that produced the three-set reading's false warnings (`AK_Six_Points`, `sample.rms`) are tracked, so this row is real on CI |
+   | Sec.3.3 terrain impossibility (info, Sec.3.5 gate)            | **2** — 1 tier 1 (`AK_Namatjira` `SHORE_FISH`/`DLC_MANGROVESHALLOW`, an inert-flag true positive) and 1 tier 2 (`Chaotic_Strait`, undecided — Sec.9)          | **2** — **both maps are tracked**, so this row is fully reproducible on CI                                                                              |
+   | Sec.3.3 scripts abstaining (`RawNode`, Sec.3.3)               | **1** (`Rage Forest 2026.rms`)                                                                                                                                | **0** — the map is untracked and no tracked map trips the rule; pin it with fixtures, never here                                                        |
+   | Sec.3.4 `minExceedsMax` (error)                               | **0** — near-zero here is real, and the fixtures are the proof it fires                                                                                       | **0**                                                                                                                                                   |
 
    **Two clone-column cells were guesses and one of them was wrong in the
-   direction that costs coverage.** An earlier revision wrote *"measure on the
-   first CI run; `Chaotic_Strait` is untracked"* against the Sec.3.3 info row, and
+   direction that costs coverage.** An earlier revision wrote _"measure on the
+   first CI run; `Chaotic_Strait` is untracked"_ against the Sec.3.3 info row, and
    `git ls-files test-maps` returns `test-maps/Chaotic_Straitv0.99.rms` — the
    `.gitignore` whitelists it by name, and `AK_Namatjira.rms` arrives through the
    `!test-maps/AK_*.rms` line. So **both** of the corrected info row's findings
@@ -4502,8 +4512,8 @@ without a `TileGrid`.
 
    **Written against the row's own Worst player count cell instead, it passes
    under every tie-break including a hash order, and 95.9% of the rows it governs
-   are tied.** *"Every row's bucket cell equals the buckets of the count named in
-   its own Worst player count cell"* tests consistency between two cells the same
+   are tied.** _"Every row's bucket cell equals the buckets of the count named in
+   its own Worst player count cell"_ tests consistency between two cells the same
    undetermined choice produced. The assertion has to name the count the **rule**
    prescribes, independently recomputed, or it is self-referential. Beside it,
    **as a reporter line rather than a gate**: of the 7623 rows with at least two
@@ -4542,8 +4552,8 @@ without a `TileGrid`.
    measuring the wrong thing twice.
 
    **Sec.3.3's row was owed for three revisions and the reason it was owed had
-   already expired.** Rev 5 wrote *"the check needs the exported resolver
-   (Sec.7.0) before it can be run at all"*, which was true then; rev 6 wrote the
+   already expired.** Rev 5 wrote _"the check needs the exported resolver
+   (Sec.7.0) before it can be run at all"_, which was true then; rev 6 wrote the
    export out in full and verified that it compiles, and inherited the blocker's
    conclusion without re-pricing its premise. Applying Sec.7.0 item 1 verbatim
    to a scratch copy takes ten minutes and the check then runs in seconds — and
@@ -4555,14 +4565,14 @@ without a `TileGrid`.
    **The row that fold produced was then wrong for one more revision, in the line
    below the one it corrected.** The warning row was re-derived under the
    corrected tier-1 fork and went to 0; the info row of the same table, from the
-   same run, was inherited at 4 — and two of those four were the *same two false
-   positives on the same map* the fork was written to eliminate, wearing a
+   same run, was inherited at 4 — and two of those four were the _same two false
+   positives on the same map_ the fork was written to eliminate, wearing a
    different severity. **A fix applied to a measurement must be re-applied to
    every row that measurement produced.**
 
    **Zero is not evidence a check is dead; the fixtures in item 1 are the proof
    it can fire** (`parser-design.md` Sec.8 on RMS0314/RMS0304) — but zero is
-   only reassuring where it was *measured* rather than assumed, which is the
+   only reassuring where it was _measured_ rather than assumed, which is the
    distinction this table exists to keep. Sec.3.3's zero is now measured, and it
    is a zero on an expert corpus for a check aimed at beginners, which is the
    RMS0304 shape exactly.
@@ -4573,8 +4583,8 @@ without a `TileGrid`.
    entirely wrong zero — because `MAP_SIZES` is a `readonly string[]` of plain
    names and the probe read `.name` off each entry, giving seven identical runs
    over `undefined`. No error, no exception, no tell. That is this repo's own
-   *"an instrument that cannot fail loudly has to be checked against a number
-   you already trust"*, and the reporter prescribed here will make the identical
+   _"an instrument that cannot fail loudly has to be checked against a number
+   you already trust"_, and the reporter prescribed here will make the identical
    mistake unless it prints a control: the count of commands **checked** beside
    the count of findings, per check. A findings row of 0 beside a checked row of
    802 is a measurement; a findings row of 0 beside a checked row of 0 is a
@@ -4597,6 +4607,7 @@ without a `TileGrid`.
    bound was cut). A hardcoded attribute list in a reporter
    decays the day a check is added or cut, and it decays silently, since it goes
    on printing a plausible number.
+
 3. **Aggregation.** A hand-built two-run fixture with known `attempted`/`placed`
    per run, asserting the merged `CommandReport` sums correctly. Then the case
    that is **not** hypothetical: a `commandSpan` present in only one of two runs.
@@ -4613,7 +4624,7 @@ without a `TileGrid`.
    carries the field it needs** — so assert the merged record's
    `runsContaining` against the runs that actually held the span, not merely
    that nothing crashed. A merge that satisfies the no-invented-zero clause by
-   *skipping* absent runs and then reports the sum as though it covered every
+   _skipping_ absent runs and then reports the sum as though it covered every
    run has moved the conflation up a level rather than fixing it, and no
    assertion phrased over `attempted` alone can see the difference. Measured, the
    population is **207 rows at 4 players over seeds 1–5, on 11 of 32 maps**
@@ -4622,17 +4633,18 @@ without a `TileGrid`.
 
    **IMPLEMENTED, after the first cut answered it with a hand-built fixture**
    (`aggregate.test.ts`, two `addGeneration` calls with a literal report)
-   citing this item by name, in the item whose own sentence is *"a **corpus**
-   case on one of those maps, not a hand-built one"*. The corpus case exists at
+   citing this item by name, in the item whose own sentence is _"a **corpus**
+   case on one of those maps, not a hand-built one"_. The corpus case exists at
    the defaults on three tracked maps: **104 of 330 rows on
    `13_Rings_v1.2.rms`, 40 of 476 on `AK_Namatjira.rms`, 2 of 8 on
    `sample.rms`** at 2/4/6/8 × 15. The hand-built one stays — it pins the sum
    arithmetic, which is this item's other half — and the corpus one runs
    `sample.rms` at the real defaults, because `sample.rms` is **tracked** and
    so the assertion holds on a clone. It carries the control this document
-   requires of any zero-capable measurement: *the population is non-empty*
+   requires of any zero-capable measurement: _the population is non-empty_
    asserted first, so a corpus that stopped carrying the shape reads as a red
    flag rather than as a clean pass over nothing.
+
 4. **Worker plumbing, mirroring `tools-api-design.md` Sec.9 item 3's lifecycle
    list**: progress→partial→result ordering across the worker boundary; cancel
    mid-batch (between generations, honoring the Sec.4.1 yield point) stops
@@ -4656,11 +4668,12 @@ without a `TileGrid`.
    with a citation to this item, and `grep -rn` returned that one line, so the
    constant could not go red on the change it names. An exported constant with a
    comment naming its test reads as done and is the same shape as this
-   document's own *a doc comment that restates a rule the code does not
-   implement is worse than no comment*. The assertion is one line and now sits
+   document's own _a doc comment that restates a rule the code does not
+   implement is worse than no comment_. The assertion is one line and now sits
    in `consistencyChecker.test.ts`, with a second line pinning that
    `MAX_RUNS_PER_PLAYER_COUNT` × the matrix EXCEEDS the ceiling, so the ceiling
    is bounding something rather than being trivially true.
+
 6. **Mutation-test per CLAUDE.md's standing rule** — a check that has only ever
    passed proves nothing. At minimum: Sec.3.1's `>` boundary flipped to `>=`;
    **Sec.3.1's filler exclusion removed** (must go red on a corpus map — this is
@@ -4765,7 +4778,7 @@ without a `TileGrid`.
    **Pin the control's counting convention or it stops being reproducible, the
    same way Sec.3.2's did.** A re-run of this measurement reproduces the zeros
    and the 10,673 to the unit and reads `growthShortfall` as **622**, because
-   summing `PlacementFailure.count` and counting failure *records* are two
+   summing `PlacementFailure.count` and counting failure _records_ are two
    different numbers over the same data. Sec.3.2 pinned "(map, id)" for its
    findings in the previous revision and nobody carried the same clause down to
    this control. Which is which is forced rather than guessed: every
@@ -4842,10 +4855,10 @@ without a `TileGrid`.
   name a terrain), which neither this note nor the bug entry mentioned.
 
   Two corrections to the paragraph above, both worth keeping because they are
-  about the instrument rather than the fact. *"97 `terrainAbsent` failures
-  across two corpus maps"* does not reproduce: the real figure is **1,569 across
-  46 maps**, because the bucket also carries *"no tile currently matches this
-  patch's `base_terrain`"*, which is a resolved terrain with nowhere to go and
+  about the instrument rather than the fact. _"97 `terrainAbsent` failures
+  across two corpus maps"_ does not reproduce: the real figure is **1,569 across
+  46 maps**, because the bucket also carries _"no tile currently matches this
+  patch's `base_terrain`"_, which is a resolved terrain with nowhere to go and
   not this defect at all. And the fix moves that count by **seventeen** while
   taking `24hr_Battle Lines 1.0.rms` from **one distinct terrain on the entire
   grid to six, and 324 objects to 921** — so the failure count was very nearly
@@ -4854,6 +4867,7 @@ without a `TileGrid`.
   **Still owed here:** Sec.3.3 abstains where the loss is large, and that
   abstention was sized against the pre-fix surface. Re-measure it before
   trusting the current threshold.
+
 - **Sec.4.3's structured-clone cost is unmeasured.** The JSON figure is an upper
   bound on a different operation (Sec.4.3). What the tool actually pays per run
   is one `postMessage` of a `ToolContext` with aliasing preserved, and nobody has
@@ -4907,8 +4921,8 @@ without a `TileGrid`.
   a run**: 30 of 32 maps read exactly 0.0%, so nothing here constrains the low
   side, and the first script that lands at 15–25% is new information.
   **Also closed with it**: the clause's two anchors were quoted from
-  denominators that were not this one (Battle Lines's *"50 of 67"* is BUG-015's
-  occurrence count, `Menindee`'s *"1 of 539"* a wider population again, and
+  denominators that were not this one (Battle Lines's _"50 of 67"_ is BUG-015's
+  occurrence count, `Menindee`'s _"1 of 539"_ a wider population again, and
   against the resolver's own denominator `Menindee` reads 0 of 75) — the
   denominator is now stated in the same sentence as the rule. The abstention
   costs **0 findings**: `terrainImpossible` measures 2 corpus-wide with it live,

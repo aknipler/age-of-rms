@@ -24,7 +24,11 @@ describe("createDragCoalescer", () => {
     c.push(evt("drag", 1, 1));
     c.push(evt("drag", 2, 2));
     c.push(evt("dragEnd", 2, 2));
-    expect(c.flush()).toEqual([evt("dragStart", 0, 0), evt("drag", 2, 2), evt("dragEnd", 2, 2)]);
+    expect(c.flush()).toEqual([
+      evt("dragStart", 0, 0),
+      evt("drag", 2, 2),
+      evt("dragEnd", 2, 2),
+    ]);
   });
 
   it("keeps two separate drag runs in one flush window as two samples, not one", () => {
@@ -34,7 +38,11 @@ describe("createDragCoalescer", () => {
     c.push(evt("dragEnd", 2, 2));
     c.push(evt("drag", 5, 5));
     c.push(evt("drag", 6, 6));
-    expect(c.flush()).toEqual([evt("drag", 2, 2), evt("dragEnd", 2, 2), evt("drag", 6, 6)]);
+    expect(c.flush()).toEqual([
+      evt("drag", 2, 2),
+      evt("dragEnd", 2, 2),
+      evt("drag", 6, 6),
+    ]);
   });
 
   it("flush empties the queue — a second flush with nothing new returns nothing", () => {
@@ -49,6 +57,10 @@ describe("createDragCoalescer", () => {
     c.push(evt("drag", 1, 1));
     c.push(evt("click", 9, 9));
     c.push(evt("drag", 2, 2));
-    expect(c.flush()).toEqual([evt("drag", 1, 1), evt("click", 9, 9), evt("drag", 2, 2)]);
+    expect(c.flush()).toEqual([
+      evt("drag", 1, 1),
+      evt("click", 9, 9),
+      evt("drag", 2, 2),
+    ]);
   });
 });

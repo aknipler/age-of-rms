@@ -82,7 +82,9 @@ describe("fuzz-lite (seeded)", () => {
       const result = parseRms(source, lang); // must not throw
       const problems = checkProperties(result);
       if (problems.length > 0) {
-        throw new Error(`iteration ${iter} failed:\n${problems.slice(0, 5).join("\n")}\nsource:\n${source}`);
+        throw new Error(
+          `iteration ${iter} failed:\n${problems.slice(0, 5).join("\n")}\nsource:\n${source}`,
+        );
       }
     }
   });

@@ -40,7 +40,8 @@
   --info-bg-subtle: rgba(23, 162, 184, 0.06);
   --canvas-bg: #14161a;
   --canvas-text: #ffffff;
-  --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   --ui-font-scale: 0.9;
   --scrollbar-track: #f0f0f0;
   --scrollbar-thumb: #b3b3b3;

@@ -76,7 +76,11 @@ import type {
   TileGrid,
 } from "./types";
 import { createSubstream, nextInt, type Rng } from "./rng";
-import { resolveTerrainId, tileIndex, type TerrainConstantForMasks } from "./grid";
+import {
+  resolveTerrainId,
+  tileIndex,
+  type TerrainConstantForMasks,
+} from "./grid";
 import { pushFailure } from "./placement";
 
 // ---------------------------------------------------------------------------
@@ -127,13 +131,17 @@ function neutralLandIndices(origins: readonly LandOrigin[]): number[] {
 function allPairs(indices: readonly number[]): Array<[number, number]> {
   const pairs: Array<[number, number]> = [];
   for (let i = 0; i < indices.length; i++) {
-    for (let j = i + 1; j < indices.length; j++) pairs.push([indices[i], indices[j]]);
+    for (let j = i + 1; j < indices.length; j++)
+      pairs.push([indices[i], indices[j]]);
   }
   return pairs;
 }
 
 /** Bipartite pairs between two disjoint sets, `create_connect_to_nonplayer_land`'s "player x neutral pairs only". */
-export function crossPairs(a: readonly number[], b: readonly number[]): Array<[number, number]> {
+export function crossPairs(
+  a: readonly number[],
+  b: readonly number[],
+): Array<[number, number]> {
   const pairs: Array<[number, number]> = [];
   for (const i of a) for (const j of b) pairs.push([i, j]);
   return pairs;
@@ -144,7 +152,10 @@ export function crossPairs(a: readonly number[], b: readonly number[]): Array<[n
  * independently, never across teams, and canonical team 0 (un-teamed)
  * produces no pairs at all, "not the team of everyone left over" (Sec.6.5).
  */
-export function teamPairs(origins: readonly LandOrigin[], teams: InstantiatedScript["teams"]): Array<[number, number]> {
+export function teamPairs(
+  origins: readonly LandOrigin[],
+  teams: InstantiatedScript["teams"],
+): Array<[number, number]> {
   const byTeam = new Map<number, number[]>();
   origins.forEach((o, i) => {
     if (o.player === undefined) return;
@@ -159,7 +170,11 @@ export function teamPairs(origins: readonly LandOrigin[], teams: InstantiatedScr
   return pairs;
 }
 
-export function landZonePairs(origins: readonly LandOrigin[], zoneA: number, zoneB: number): Array<[number, number]> {
+export function landZonePairs(
+  origins: readonly LandOrigin[],
+  zoneA: number,
+  zoneB: number,
+): Array<[number, number]> {
   const indices: number[] = [];
   origins.forEach((o, i) => {
     if (o.zone === zoneA || o.zone === zoneB) indices.push(i);
@@ -179,7 +194,9 @@ export function landZonePairs(origins: readonly LandOrigin[], zoneA: number, zon
  * `create_connect_all_lands`. Zone -12 ("belongs to no zone", Sec.6.1) is
  * excluded from grouping, mirroring lands.ts's own exemption for it.
  */
-export function sameZonePairs(origins: readonly LandOrigin[]): Array<[number, number]> {
+export function sameZonePairs(
+  origins: readonly LandOrigin[],
+): Array<[number, number]> {
   const byZone = new Map<number, number[]>();
   origins.forEach((o, i) => {
     if (o.zone === -12) return;
@@ -241,8 +258,10 @@ export class MinHeap {
         const left = 2 * i + 1;
         const right = 2 * i + 2;
         let smallest = i;
-        if (left < n && this.priorities[left] < this.priorities[smallest]) smallest = left;
-        if (right < n && this.priorities[right] < this.priorities[smallest]) smallest = right;
+        if (left < n && this.priorities[left] < this.priorities[smallest])
+          smallest = left;
+        if (right < n && this.priorities[right] < this.priorities[smallest])
+          smallest = right;
         if (smallest === i) break;
         this.swap(i, smallest);
         i = smallest;
@@ -358,7 +377,11 @@ export function buildConnectivityIndex(
 }
 
 /** Whether any route at all could exist from `source` to `target`, the cheap half of the question `findConnectionPaths` answers exactly. */
-export function landsCanConnect(index: ConnectivityIndex, source: number, target: number): boolean {
+export function landsCanConnect(
+  index: ConnectivityIndex,
+  source: number,
+  target: number,
+): boolean {
   const from = index.source[source];
   const to = index.target[target];
   if (from === undefined || to === undefined) return false;
@@ -533,12 +556,22 @@ export function findConnectionPaths(
 // ---------------------------------------------------------------------------
 
 /** `terrain_cost Terrain Cost` (repeatable): builds a lookup, unlisted terrains default to 1 (Sec.6.5). Last declaration wins for a repeated terrain, matching Sec.3 rule 10's general policy. */
-export function readTerrainCosts(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): Map<number, number> {
+export function readTerrainCosts(
+  cmd: InstantiatedCommand,
+  constants: readonly TerrainConstantForMasks[],
+  symbols?: Symbols,
+  aliases?: Aliases,
+): Map<number, number> {
   const costs = new Map<number, number>();
   for (const attr of cmd.attributes.get("terrain_cost") ?? []) {
     const cost = attr.args[1]?.value;
     if (typeof cost !== "number") continue;
-    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
+    const terrainId = resolveTerrainId(
+      constants,
+      attr.args[0]?.value,
+      symbols,
+      aliases,
+    );
     if (terrainId !== undefined) costs.set(terrainId, cost);
   }
   return costs;
@@ -550,14 +583,28 @@ export interface TerrainSize {
 }
 
 /** `terrain_size Terrain Radius Variance` (repeatable, language.json labels the last two args "width"/"spacing" but Sec.6.5's own prose calls them radius/variance, read positionally, the labels are cosmetic). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
-export function readTerrainSizes(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): Map<number, TerrainSize> {
+export function readTerrainSizes(
+  cmd: InstantiatedCommand,
+  constants: readonly TerrainConstantForMasks[],
+  symbols?: Symbols,
+  aliases?: Aliases,
+): Map<number, TerrainSize> {
   const sizes = new Map<number, TerrainSize>();
   for (const attr of cmd.attributes.get("terrain_size") ?? []) {
     const radius = attr.args[1]?.value;
     const variance = attr.args[2]?.value;
     if (typeof radius !== "number") continue;
-    const terrainId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
-    if (terrainId !== undefined) sizes.set(terrainId, { radius, variance: typeof variance === "number" ? variance : 0 });
+    const terrainId = resolveTerrainId(
+      constants,
+      attr.args[0]?.value,
+      symbols,
+      aliases,
+    );
+    if (terrainId !== undefined)
+      sizes.set(terrainId, {
+        radius,
+        variance: typeof variance === "number" ? variance : 0,
+      });
   }
   return sizes;
 }
@@ -579,23 +626,48 @@ export interface ReplacementRule {
  * every terrain; a specific rule written after the wildcard still wins for
  * its own terrain, since it is later and it also matches.
  */
-export function readReplacementRules(cmd: InstantiatedCommand, constants: readonly TerrainConstantForMasks[], symbols?: Symbols, aliases?: Aliases): ReplacementRule[] {
+export function readReplacementRules(
+  cmd: InstantiatedCommand,
+  constants: readonly TerrainConstantForMasks[],
+  symbols?: Symbols,
+  aliases?: Aliases,
+): ReplacementRule[] {
   const rules: ReplacementRule[] = [];
   for (const attr of cmd.attributes.get("replace_terrain") ?? []) {
-    const fromId = resolveTerrainId(constants, attr.args[0]?.value, symbols, aliases);
-    const toId = resolveTerrainId(constants, attr.args[1]?.value, symbols, aliases);
-    if (fromId !== undefined && toId !== undefined) rules.push({ from: fromId, to: toId, order: attr.span.start });
+    const fromId = resolveTerrainId(
+      constants,
+      attr.args[0]?.value,
+      symbols,
+      aliases,
+    );
+    const toId = resolveTerrainId(
+      constants,
+      attr.args[1]?.value,
+      symbols,
+      aliases,
+    );
+    if (fromId !== undefined && toId !== undefined)
+      rules.push({ from: fromId, to: toId, order: attr.span.start });
   }
   const defaultAttr = cmd.attributes.get("default_terrain_replacement")?.[0];
   if (defaultAttr) {
-    const toId = resolveTerrainId(constants, defaultAttr.args[0]?.value, symbols, aliases);
-    if (toId !== undefined) rules.push({ from: undefined, to: toId, order: defaultAttr.span.start });
+    const toId = resolveTerrainId(
+      constants,
+      defaultAttr.args[0]?.value,
+      symbols,
+      aliases,
+    );
+    if (toId !== undefined)
+      rules.push({ from: undefined, to: toId, order: defaultAttr.span.start });
   }
   rules.sort((a, b) => a.order - b.order);
   return rules;
 }
 
-export function resolveReplacement(rules: readonly ReplacementRule[], terrainId: number): number | undefined {
+export function resolveReplacement(
+  rules: readonly ReplacementRule[],
+  terrainId: number,
+): number | undefined {
   let result: number | undefined;
   for (const rule of rules) {
     if (rule.from === undefined || rule.from === terrainId) result = rule.to;
@@ -664,7 +736,8 @@ export function applyTerrainAlongPath(
     if (coverage !== undefined && coverage.remaining === 0) return;
     const terrainHere = terrainOf[tile];
     const size = sizes.get(terrainHere) ?? { radius: 1, variance: 0 };
-    const roll = size.variance > 0 ? nextInt(rng, -size.variance, size.variance) : 0;
+    const roll =
+      size.variance > 0 ? nextInt(rng, -size.variance, size.variance) : 0;
     const radius = size.radius + roll;
     if (radius < 0) continue;
 
@@ -716,7 +789,11 @@ function landLabel(origins: readonly LandOrigin[], index: number): string {
   return origin.player !== undefined ? `P${origin.player}` : `N${index}`;
 }
 
-function resolvePairs(cmd: InstantiatedCommand, origins: readonly LandOrigin[], teams: InstantiatedScript["teams"]): Array<[number, number]> {
+function resolvePairs(
+  cmd: InstantiatedCommand,
+  origins: readonly LandOrigin[],
+  teams: InstantiatedScript["teams"],
+): Array<[number, number]> {
   switch (cmd.name) {
     case "create_connect_all_players_land":
       return allPairs(playerLandIndices(origins));
@@ -727,12 +804,17 @@ function resolvePairs(cmd: InstantiatedCommand, origins: readonly LandOrigin[], 
     case "create_connect_same_land_zones":
       return sameZonePairs(origins);
     case "create_connect_land_zones": {
-      const zoneA = typeof cmd.args[0]?.value === "number" ? cmd.args[0].value : 0;
-      const zoneB = typeof cmd.args[1]?.value === "number" ? cmd.args[1].value : 0;
+      const zoneA =
+        typeof cmd.args[0]?.value === "number" ? cmd.args[0].value : 0;
+      const zoneB =
+        typeof cmd.args[1]?.value === "number" ? cmd.args[1].value : 0;
       return landZonePairs(origins, zoneA, zoneB);
     }
     case "create_connect_to_nonplayer_land":
-      return crossPairs(playerLandIndices(origins), neutralLandIndices(origins));
+      return crossPairs(
+        playerLandIndices(origins),
+        neutralLandIndices(origins),
+      );
     default:
       return [];
   }
@@ -783,7 +865,13 @@ export function applyConnections(
         span: cmd.span,
         text: "create_connect_to_nonplayer_land has no effect on connections declared after it — a documented engine bug the preview reproduces rather than silently fixing, so this command produced nothing.",
       });
-      reports.push({ commandSpan: cmd.span, stage: "S5", attempted: 0, placed: 0, failures: [] });
+      reports.push({
+        commandSpan: cmd.span,
+        stage: "S5",
+        attempted: 0,
+        placed: 0,
+        failures: [],
+      });
       continue;
     }
 
@@ -793,17 +881,36 @@ export function applyConnections(
     // header), so a snapshot is what the flag means, the copy costs one
     // dim^2 read per accumulating command, and two corpus maps have one.
     const terrainOf = accumulating ? grid.terrain.slice() : startOfS5Terrain;
-    const costs = readTerrainCosts(cmd, constants, instantiated.symbols, instantiated.aliases);
-    const sizes = readTerrainSizes(cmd, constants, instantiated.symbols, instantiated.aliases);
-    const rules = readReplacementRules(cmd, constants, instantiated.symbols, instantiated.aliases);
+    const costs = readTerrainCosts(
+      cmd,
+      constants,
+      instantiated.symbols,
+      instantiated.aliases,
+    );
+    const sizes = readTerrainSizes(
+      cmd,
+      constants,
+      instantiated.symbols,
+      instantiated.aliases,
+    );
+    const rules = readReplacementRules(
+      cmd,
+      constants,
+      instantiated.symbols,
+      instantiated.aliases,
+    );
     // Resolved into a flat table once per command rather than a Map lookup
     // per neighbour expansion. Terrain ids are small and dense (0-130 today),
     // so the table stays tiny; `?? 1` is Sec.6.5's "unlisted terrains cost 1".
     const costTable = new Float64Array(MAX_TERRAIN_ID + 1).fill(1);
     for (const [terrainId, cost] of costs) {
-      if (terrainId >= 0 && terrainId <= MAX_TERRAIN_ID) costTable[terrainId] = cost;
+      if (terrainId >= 0 && terrainId <= MAX_TERRAIN_ID)
+        costTable[terrainId] = cost;
     }
-    const costOf = (terrainId: number): number => (terrainId <= MAX_TERRAIN_ID ? costTable[terrainId] : (costs.get(terrainId) ?? 1));
+    const costOf = (terrainId: number): number =>
+      terrainId <= MAX_TERRAIN_ID
+        ? costTable[terrainId]
+        : (costs.get(terrainId) ?? 1);
 
     const pairs = resolvePairs(cmd, origins, instantiated.teams);
     const failures: PlacementFailure[] = [];
@@ -832,12 +939,30 @@ export function applyConnections(
     // rather than by a search that exhausts its component to find out, see
     // ConnectivityIndex. They still report `connectionBlocked` below, from
     // the same "absent from the map" branch a failed search produces.
-    const connectivity = buildConnectivityIndex(grid, terrainOf, costOf, origins.length);
+    const connectivity = buildConnectivityIndex(
+      grid,
+      terrainOf,
+      costOf,
+      origins.length,
+    );
     const pathsBySource = new Map<number, Map<number, number[]>>();
     for (const [source, targets] of targetsBySource) {
-      const reachable = targets.filter((target) => landsCanConnect(connectivity, source, target));
+      const reachable = targets.filter((target) =>
+        landsCanConnect(connectivity, source, target),
+      );
       if (reachable.length === 0) continue;
-      pathsBySource.set(source, findConnectionPaths(grid, terrainOf, costOf, source, reachable, pathScratch, tilesByLand[source]));
+      pathsBySource.set(
+        source,
+        findConnectionPaths(
+          grid,
+          terrainOf,
+          costOf,
+          source,
+          reachable,
+          pathScratch,
+          tilesByLand[source],
+        ),
+      );
     }
 
     for (const [a, b] of pairs) {
@@ -848,16 +973,31 @@ export function applyConnections(
           commandSpan: cmd.span,
           stage: "S5",
           entity: `connection ${landLabel(origins, a)}-${landLabel(origins, b)}`,
-          detail: "No passable route exists between these two lands' regions, so this connection was not produced.",
+          detail:
+            "No passable route exists between these two lands' regions, so this connection was not produced.",
         });
         continue;
       }
       const pairRng = nextSubstream();
-      applyTerrainAlongPath(grid, path, terrainOf, sizes, rules, pairRng, coverage);
+      applyTerrainAlongPath(
+        grid,
+        path,
+        terrainOf,
+        sizes,
+        rules,
+        pairRng,
+        coverage,
+      );
       placed++;
     }
 
-    reports.push({ commandSpan: cmd.span, stage: "S5", attempted: pairs.length, placed, failures });
+    reports.push({
+      commandSpan: cmd.span,
+      stage: "S5",
+      attempted: pairs.length,
+      placed,
+      failures,
+    });
 
     if (cmd.name === "create_connect_to_nonplayer_land") blocked = true;
   }

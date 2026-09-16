@@ -17,7 +17,10 @@
 // document's PRE-EXISTING `#const`s are worth).
 
 import { useMemo } from "react";
-import { buildLanguageIndex, type LanguageData } from "../../../../parser/language";
+import {
+  buildLanguageIndex,
+  type LanguageData,
+} from "../../../../parser/language";
 import type { ParseResult } from "../../../../parser/types";
 import { instantiateScript } from "../../../../preview/generator/instantiate";
 import type { MapSize } from "../../../../generationSettings/generationSettingsConstants";
@@ -43,9 +46,21 @@ export function useEmission(
   return useMemo(() => {
     if (parse === null || model === null) return null;
     const refDb = buildLanguageIndex(lang);
-    const instantiated = instantiateScript(parse, refDb, { playerCount, mapSize, teams: [] }, seed);
-    const namer = new NameAllocator({ reserved: reservedNamesForApply(parse, lang) });
-    const emission = emitAlpModel(model, namer, instantiated.symbols, playerCount);
+    const instantiated = instantiateScript(
+      parse,
+      refDb,
+      { playerCount, mapSize, teams: [] },
+      seed,
+    );
+    const namer = new NameAllocator({
+      reserved: reservedNamesForApply(parse, lang),
+    });
+    const emission = emitAlpModel(
+      model,
+      namer,
+      instantiated.symbols,
+      playerCount,
+    );
     return { emission, scriptSymbols: instantiated.symbols };
   }, [parse, model, lang, playerCount, mapSize, seed]);
 }

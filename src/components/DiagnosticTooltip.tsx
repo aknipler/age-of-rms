@@ -52,9 +52,16 @@ interface DiagnosticPopupProps {
   side: "above" | "below";
 }
 
-export function DiagnosticPopup({ message, severity, side }: DiagnosticPopupProps) {
+export function DiagnosticPopup({
+  message,
+  severity,
+  side,
+}: DiagnosticPopupProps) {
   return (
-    <div className={`${styles.popup} ${styles[side]}`} style={{ borderColor: SEVERITY_BORDER[severity] }}>
+    <div
+      className={`${styles.popup} ${styles[side]}`}
+      style={{ borderColor: SEVERITY_BORDER[severity] }}
+    >
       {message}
     </div>
   );

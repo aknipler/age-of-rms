@@ -83,7 +83,10 @@ export function TeamSection() {
         {teams.map((team, index) => {
           const active = index < playerCount;
           return (
-            <div className={`${styles.row} ${active ? "" : styles.rowInactive}`} key={index}>
+            <div
+              className={`${styles.row} ${active ? "" : styles.rowInactive}`}
+              key={index}
+            >
               <span className={styles.playerLabel}>Player {index + 1}</span>
               <HelpTip
                 id="generationSettings.teamButton"
@@ -100,16 +103,23 @@ export function TeamSection() {
                     // decrement. Only meaningful because the button is the
                     // whole hit area.
                     event.preventDefault();
-                    if (!teamsLocked && active) setPlayerTeam(index, cycleTeam(team, -1));
+                    if (!teamsLocked && active)
+                      setPlayerTeam(index, cycleTeam(team, -1));
                   }}
                   onKeyDown={(event) => {
                     // Right click is unreachable from a keyboard, so the arrows
                     // carry the decrement. Enter/Space already advance via the
                     // button's native click.
-                    if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
+                    if (
+                      event.key === "ArrowDown" ||
+                      event.key === "ArrowLeft"
+                    ) {
                       event.preventDefault();
                       setPlayerTeam(index, cycleTeam(team, -1));
-                    } else if (event.key === "ArrowUp" || event.key === "ArrowRight") {
+                    } else if (
+                      event.key === "ArrowUp" ||
+                      event.key === "ArrowRight"
+                    ) {
                       event.preventDefault();
                       setPlayerTeam(index, cycleTeam(team, 1));
                     }
@@ -126,7 +136,9 @@ export function TeamSection() {
       <HelpTip id="generationSettings.teamReadout">
         <div className={styles.readout}>
           {summary}
-          {unteamedCount > 0 && teamCount > 0 && ` · ${unteamedCount} un-teamed`}
+          {unteamedCount > 0 &&
+            teamCount > 0 &&
+            ` · ${unteamedCount} un-teamed`}
           {strandedCount > 0 &&
             ` · ${strandedCount} ${strandedCount === 1 ? "player is" : "players are"} alone on a team, which the engine reads as un-teamed`}
         </div>

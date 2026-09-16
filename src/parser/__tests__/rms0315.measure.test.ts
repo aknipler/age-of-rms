@@ -22,7 +22,11 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
-import { validate, type GameConstantsForValidate, type ValidateReferenceDb } from "../validate";
+import {
+  validate,
+  type GameConstantsForValidate,
+  type ValidateReferenceDb,
+} from "../validate";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
 
 function walk(dir: string): string[] {
@@ -39,7 +43,10 @@ describe("RMS0315 corpus census", () => {
   it("reports every site, per map", () => {
     const lang = loadLanguage();
     const gameConstants = JSON.parse(
-      readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+      readFileSync(
+        join(REPO_ROOT, "reference", "data", "game-constants.json"),
+        "utf8",
+      ),
     ) as GameConstantsForValidate;
     const refDb: ValidateReferenceDb = { language: lang, gameConstants };
     const files = walk(join(REPO_ROOT, "test-maps"));
@@ -64,7 +71,9 @@ describe("RMS0315 corpus census", () => {
     }
 
     const total = [...byMap.values()].reduce((a, b) => a + b, 0);
-    const lines = [`\n===== RMS0315 across ${files.length} corpus files: ${total} =====`];
+    const lines = [
+      `\n===== RMS0315 across ${files.length} corpus files: ${total} =====`,
+    ];
     for (const [map, count] of [...byMap].sort((a, b) => b[1] - a[1])) {
       lines.push(`  ${String(count).padStart(3)}  ${map}`);
     }

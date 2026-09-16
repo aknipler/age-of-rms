@@ -18,11 +18,20 @@ import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { generatePreview, type PreviewReferenceData } from "../generator/index";
 import type { ObjectConstant } from "../generator/objects";
 import type { PreviewResult } from "../generator/types";
-import { DEFAULT_TEAMS, type MapSize, type TeamNumber } from "../../generationSettings/generationSettingsConstants";
+import {
+  DEFAULT_TEAMS,
+  type MapSize,
+  type TeamNumber,
+} from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
 const language: LanguageIndex = buildLanguageIndex(lang);
-const rawConstants = JSON.parse(readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8")) as {
+const rawConstants = JSON.parse(
+  readFileSync(
+    join(REPO_ROOT, "reference", "data", "game-constants.json"),
+    "utf8",
+  ),
+) as {
   constants: ObjectConstant[];
 };
 const constants: readonly ObjectConstant[] = rawConstants.constants;
@@ -30,7 +39,13 @@ const refDb: PreviewReferenceData = { language, constants };
 const WATER = constants.find((c) => c.rmsConstant === "WATER")!.constId!;
 const GRASS = constants.find((c) => c.rmsConstant === "GRASS")!.constId!;
 
-function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: readonly TeamNumber[] } = {}) {
+function settings(
+  overrides: {
+    playerCount?: number;
+    mapSize?: MapSize;
+    teams?: readonly TeamNumber[];
+  } = {},
+) {
   return {
     playerCount: overrides.playerCount ?? 4,
     mapSize: overrides.mapSize ?? "Tiny",
@@ -38,9 +53,17 @@ function settings(overrides: { playerCount?: number; mapSize?: MapSize; teams?: 
   };
 }
 
-function run(source: string, seed = 1, collectSnapshots = false, overrides?: Parameters<typeof settings>[0]): PreviewResult {
+function run(
+  source: string,
+  seed = 1,
+  collectSnapshots = false,
+  overrides?: Parameters<typeof settings>[0],
+): PreviewResult {
   const parse = parseRms(source, lang);
-  return generatePreview(parse, refDb, settings(overrides), { seed, collectSnapshots });
+  return generatePreview(parse, refDb, settings(overrides), {
+    seed,
+    collectSnapshots,
+  });
 }
 
 describe("generatePreview: base fill (Sec.6.1 — no stage file owns this)", () => {
@@ -57,35 +80,57 @@ describe("generatePreview: base fill (Sec.6.1 — no stage file owns this)", () 
   });
 
   it("the LAST base_terrain occurrence wins (guide:167 duplicate-attribute rule)", () => {
-    const result = run("<LAND_GENERATION>\nbase_terrain WATER\nbase_terrain GRASS\n", 1, true);
+    const result = run(
+      "<LAND_GENERATION>\nbase_terrain WATER\nbase_terrain GRASS\n",
+      1,
+      true,
+    );
     const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
     expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => GRASS));
   });
 
   it("an unresolvable base_terrain name falls back to GRASS with a note, never throws", () => {
-    const result = run("<LAND_GENERATION>\nbase_terrain NOT_A_REAL_TERRAIN\n", 1, true);
+    const result = run(
+      "<LAND_GENERATION>\nbase_terrain NOT_A_REAL_TERRAIN\n",
+      1,
+      true,
+    );
     const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
     expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => GRASS));
-    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(true);
+    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(
+      true,
+    );
   });
 
   // BUG-015 end to end. The orchestration level is the right home: the defect
   // spans S0 (which records the alias) and every stage that resolves a name,
   // and it is invisible to any one of them.
   it("a name-to-name #const paints the terrain it names (BUG-015)", () => {
-    const result = run("#const T2 WATER\n<LAND_GENERATION>\nbase_terrain T2\n", 1, true);
+    const result = run(
+      "#const T2 WATER\n<LAND_GENERATION>\nbase_terrain T2\n",
+      1,
+      true,
+    );
     const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
     expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => WATER));
-    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(false);
+    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(
+      false,
+    );
   });
 
   it("an alias to something that is not a terrain still resolves to nothing", () => {
     // The negative half, and the one that keeps the fix from being worse than
     // the bug: `#const` values share a namespace with flags and attribute ids.
-    const result = run("#const T2 NOT_A_REAL_TERRAIN\n<LAND_GENERATION>\nbase_terrain T2\n", 1, true);
+    const result = run(
+      "#const T2 NOT_A_REAL_TERRAIN\n<LAND_GENERATION>\nbase_terrain T2\n",
+      1,
+      true,
+    );
     const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
     expect(Array.from(s1.terrain)).toEqual(Array.from(s1.terrain, () => GRASS));
-    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(true);
+    expect(result.notes.some((n) => n.key === "baseTerrainUnresolved")).toBe(
+      true,
+    );
   });
 });
 
@@ -94,7 +139,8 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
   // stages, which is the half no stage file can see. What a single run of
   // the step writes is terrains.test.ts's job.
   const BEACH = constants.find((c) => c.rmsConstant === "BEACH")!.constId!;
-  const coastline = "<LAND_GENERATION>\nbase_terrain WATER\ncreate_land {\nterrain_type GRASS\nland_percent 40\n}\n";
+  const coastline =
+    "<LAND_GENERATION>\nbase_terrain WATER\ncreate_land {\nterrain_type GRASS\nland_percent 40\n}\n";
 
   it("lays a beach on a map with no <TERRAIN_GENERATION> section at all, and says so in the drawer", () => {
     const result = run(coastline, 3);
@@ -107,17 +153,24 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
     // <TERRAIN_GENERATION> then matches an empty pool.
     const result = run(coastline, 3, true);
     const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
-    expect(Array.from(s1.terrain).filter((t) => t === BEACH).length).toBeGreaterThan(0);
+    expect(
+      Array.from(s1.terrain).filter((t) => t === BEACH).length,
+    ).toBeGreaterThan(0);
   });
 
   it("`base_terrain BEACH` therefore has tiles to match: the command places rather than reporting terrainAbsent", () => {
     // 67 uses across the tracked corpus. This is the observable that
     // refuted the single-late-pass design; those commands did not error,
     // they silently painted nothing.
-    const result = run(`${coastline}<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nbase_terrain BEACH\nland_percent 100\nnumber_of_clumps 9320\n}\n`, 3);
+    const result = run(
+      `${coastline}<TERRAIN_GENERATION>\ncreate_terrain DIRT {\nbase_terrain BEACH\nland_percent 100\nnumber_of_clumps 9320\n}\n`,
+      3,
+    );
     const report = result.reports.at(-1)!;
     expect(report.placed).toBeGreaterThan(0);
-    expect(report.failures.some((f) => f.bucket === "terrainAbsent")).toBe(false);
+    expect(report.failures.some((f) => f.bucket === "terrainAbsent")).toBe(
+      false,
+    );
   });
 
   it("dresses the boundary a connection command carves through open water (Sec.15 item 31, RMSTEST_70)", () => {
@@ -142,7 +195,12 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
           [x, y + 1],
         ];
         dirtBesideBeach = neighbours.some(
-          ([nx, ny]) => nx >= 0 && nx < dim && ny >= 0 && ny < dim && terrain[ny * dim + nx] === BEACH,
+          ([nx, ny]) =>
+            nx >= 0 &&
+            nx < dim &&
+            ny >= 0 &&
+            ny < dim &&
+            terrain[ny * dim + nx] === BEACH,
         );
       }
     }
@@ -152,14 +210,31 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
 
 describe("generatePreview: snapshots (Sec.5)", () => {
   it("collectSnapshots: false omits snapshots entirely", () => {
-    const result = run("<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n", 1, false, { playerCount: 2 });
+    const result = run(
+      "<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n",
+      1,
+      false,
+      { playerCount: 2 },
+    );
     expect(result.snapshots).toBeUndefined();
   });
 
   it("collectSnapshots: true returns exactly one snapshot per stage S1-S6, in order, each dim x dim", () => {
-    const result = run("<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n", 1, true, { playerCount: 2 });
+    const result = run(
+      "<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n",
+      1,
+      true,
+      { playerCount: 2 },
+    );
     expect(result.snapshots).toHaveLength(6);
-    expect(result.snapshots!.map((s) => s.stage)).toEqual(["S1", "S2", "S3", "S4", "S5", "S6"]);
+    expect(result.snapshots!.map((s) => s.stage)).toEqual([
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+    ]);
     for (const s of result.snapshots!) {
       expect(s.dim).toBe(result.dim);
       expect(s.terrain).toHaveLength(result.dim * result.dim);
@@ -199,21 +274,33 @@ describe("generatePreview: land-placement-design.md Sec.3.8's two prerequisites"
   });
 
   it("grid is always present, regardless of collectSnapshots, and is the FINAL (S6) state", () => {
-    const withoutSnapshots = run("<LAND_GENERATION>\nbase_terrain WATER\n", 1, false);
+    const withoutSnapshots = run(
+      "<LAND_GENERATION>\nbase_terrain WATER\n",
+      1,
+      false,
+    );
     expect(withoutSnapshots.grid).toBeDefined();
     expect(withoutSnapshots.grid.dim).toBe(withoutSnapshots.dim);
-    expect(Array.from(withoutSnapshots.grid.terrain)).toEqual(Array.from(withoutSnapshots.grid.terrain, () => WATER));
+    expect(Array.from(withoutSnapshots.grid.terrain)).toEqual(
+      Array.from(withoutSnapshots.grid.terrain, () => WATER),
+    );
   });
 
   it("grid matches the S6 snapshot's own terrain layer when both are collected", () => {
-    const result = run("<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n", 1, true, { playerCount: 2 });
+    const result = run(
+      "<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n",
+      1,
+      true,
+      { playerCount: 2 },
+    );
     const s6 = result.snapshots!.find((s) => s.stage === "S6")!;
     expect(Array.from(result.grid.terrain)).toEqual(Array.from(s6.terrain));
     expect(Array.from(result.grid.elevation)).toEqual(Array.from(s6.elevation));
   });
 
   it("landOrigins[].commandSpan lets a caller click through to the create_land that placed it", () => {
-    const source = "<LAND_GENERATION>\ncreate_land {\nterrain_type GRASS\nland_percent 20\nland_position 30 30\n}\n";
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nterrain_type GRASS\nland_percent 20\nland_position 30 30\n}\n";
     const result = run(source, 1, false, { playerCount: 2 });
     const span = result.landOrigins[0].commandSpan;
     expect(source.slice(span.start, span.end)).toContain("create_land");
@@ -265,7 +352,9 @@ describe("generatePreview: failure marks (Sec.15 item 5)", () => {
         "create_land { land_position 50 50 base_size 8 number_of_tiles 20 clumping_factor 100 }\n",
     );
     expect(result.failureMarks).toHaveLength(0);
-    const note = result.notes.find((n) => n.key === "landOverwrittenBeforeGrowth");
+    const note = result.notes.find(
+      (n) => n.key === "landOverwrittenBeforeGrowth",
+    );
     expect(note?.text).toContain("1 land is missing");
   });
 
@@ -278,7 +367,9 @@ describe("generatePreview: failure marks (Sec.15 item 5)", () => {
         "create_land { land_position 50 50 base_size 0 number_of_tiles 0 clumping_factor 100 }\n" +
         "create_land { land_position 50 50 base_size 8 number_of_tiles 20 clumping_factor 100 }\n",
     );
-    expect(result.notes.some((n) => n.key === "landOverwrittenBeforeGrowth")).toBe(false);
+    expect(
+      result.notes.some((n) => n.key === "landOverwrittenBeforeGrowth"),
+    ).toBe(false);
   });
 
   it("does NOT mark an ordinary growth shortfall, which is the normal outcome", () => {
@@ -314,7 +405,10 @@ describe("generatePreview: failure marks (Sec.15 item 5)", () => {
   });
 
   it("every mark sits on the map and points at a real command", () => {
-    const source = readFileSync(join(REPO_ROOT, "test-maps", "AK_Namatjira.rms"), "utf8");
+    const source = readFileSync(
+      join(REPO_ROOT, "test-maps", "AK_Namatjira.rms"),
+      "utf8",
+    );
     const result = run(source, 7, false);
     for (const mark of result.failureMarks) {
       expect(mark.x).toBeGreaterThanOrEqual(0);
@@ -345,21 +439,18 @@ describe("generatePreview: determinism (Sec.13 bedrock)", () => {
       // which is exactly the shape connections.test.ts's own corpus gate
       // already found tips vitest's default under full-suite parallel load
       // even though each run is fast standalone.
-      it(
-        `${name} @ seed ${seed}: same (parse, settings, seed) -> deep-equal PreviewResult`,
-        () => {
-          const source = readFileSync(join(corpusDir, name), "utf8");
-          const a = run(source, seed, true);
-          const b = run(source, seed, true);
-          expect(a).toEqual(b);
-        },
-        15000,
-      );
+      it(`${name} @ seed ${seed}: same (parse, settings, seed) -> deep-equal PreviewResult`, () => {
+        const source = readFileSync(join(corpusDir, name), "utf8");
+        const a = run(source, seed, true);
+        const b = run(source, seed, true);
+        expect(a).toEqual(b);
+      }, 15000);
     }
   }
 
   it("different seeds move player origins (sanity that the seed is actually consumed)", () => {
-    const source = "<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n";
+    const source =
+      "<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands { base_size 3 }\n";
     const a = run(source, 1, false, { playerCount: 4 });
     const b = run(source, 2, false, { playerCount: 4 });
     const positionsA = a.players.map((p) => `${p.x},${p.y}`).sort();
@@ -408,11 +499,15 @@ describe("corpus: generatePreview never throws, and its output is internally con
 
     for (const report of result.reports) {
       expect(report.commandSpan.start).toBeGreaterThanOrEqual(0);
-      expect(report.commandSpan.end).toBeGreaterThanOrEqual(report.commandSpan.start);
+      expect(report.commandSpan.end).toBeGreaterThanOrEqual(
+        report.commandSpan.start,
+      );
       expect(report.placed).toBeLessThanOrEqual(report.attempted);
       for (const failure of report.failures) {
         expect(failure.commandSpan.start).toBeGreaterThanOrEqual(0);
-        expect(failure.commandSpan.end).toBeGreaterThanOrEqual(failure.commandSpan.start);
+        expect(failure.commandSpan.end).toBeGreaterThanOrEqual(
+          failure.commandSpan.start,
+        );
       }
     }
     for (const obj of result.objects) {
@@ -424,44 +519,34 @@ describe("corpus: generatePreview never throws, and its output is internally con
   }
 
   for (const name of corpusFiles) {
-    it(
-      `${name} @ 4p, seed 1`,
-      () => {
-        const source = readFileSync(join(corpusDir, name), "utf8");
-        let result: PreviewResult | undefined;
-        expect(() => {
-          result = run(source, 1, false, { playerCount: 4 });
-        }).not.toThrow();
-        if (result) assertConsistent(result);
-      },
-      15000,
-    );
+    it(`${name} @ 4p, seed 1`, () => {
+      const source = readFileSync(join(corpusDir, name), "utf8");
+      let result: PreviewResult | undefined;
+      expect(() => {
+        result = run(source, 1, false, { playerCount: 4 });
+      }).not.toThrow();
+      if (result) assertConsistent(result);
+    }, 15000);
   }
 
   for (const name of subsetMaps) {
     for (const playerCount of [2, 6, 8] as const) {
-      it(
-        `${name} @ ${playerCount}p, seed 1 (subset, extra player counts)`,
-        () => {
-          const source = readFileSync(join(corpusDir, name), "utf8");
-          let result: PreviewResult | undefined;
-          expect(() => {
-            result = run(source, 1, false, { playerCount });
-          }).not.toThrow();
-          if (result) assertConsistent(result);
-        },
-        15000,
-      );
+      it(`${name} @ ${playerCount}p, seed 1 (subset, extra player counts)`, () => {
+        const source = readFileSync(join(corpusDir, name), "utf8");
+        let result: PreviewResult | undefined;
+        expect(() => {
+          result = run(source, 1, false, { playerCount });
+        }).not.toThrow();
+        if (result) assertConsistent(result);
+      }, 15000);
     }
     for (const seed of [2, 3] as const) {
-      it(
-        `${name} @ seed ${seed} (subset, extra seeds)`,
-        () => {
-          const source = readFileSync(join(corpusDir, name), "utf8");
-          expect(() => run(source, seed, false, { playerCount: 4 })).not.toThrow();
-        },
-        15000,
-      );
+      it(`${name} @ seed ${seed} (subset, extra seeds)`, () => {
+        const source = readFileSync(join(corpusDir, name), "utf8");
+        expect(() =>
+          run(source, seed, false, { playerCount: 4 }),
+        ).not.toThrow();
+      }, 15000);
     }
   }
 });

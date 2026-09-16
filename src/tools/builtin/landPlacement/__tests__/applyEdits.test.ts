@@ -41,17 +41,48 @@ function role(over: Partial<LandRole> = {}): LandRole {
 
 function twoPlayerModel(): AlpModel {
   const placements: Placement[] = [
-    { id: "P1", parent: "center", frame: "radial", label: "P1", role: "player", repeatIndex: 0, offset: { kind: "polar", r: { k: "num", v: 26 }, theta: { k: "num", v: 0 } } },
-    { id: "P2", parent: "center", frame: "radial", label: "P2", role: "player", repeatIndex: 1, offset: { kind: "polar", r: { k: "num", v: 26 }, theta: { k: "num", v: 180 } } },
+    {
+      id: "P1",
+      parent: "center",
+      frame: "radial",
+      label: "P1",
+      role: "player",
+      repeatIndex: 0,
+      offset: {
+        kind: "polar",
+        r: { k: "num", v: 26 },
+        theta: { k: "num", v: 0 },
+      },
+    },
+    {
+      id: "P2",
+      parent: "center",
+      frame: "radial",
+      label: "P2",
+      role: "player",
+      repeatIndex: 1,
+      offset: {
+        kind: "polar",
+        r: { k: "num", v: 26 },
+        theta: { k: "num", v: 180 },
+      },
+    },
   ];
   return { v: 1, placements, roles: [role()], randomParams: [], groups: [] };
 }
 
 describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
   it("produces both kinds of edit on a fresh script with a <LAND_GENERATION> section", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
     const parse = parseRms(source, lang);
-    const { edits, emissionProblems } = computeApplyEdits(parse, twoPlayerModel(), lang, new Map(), 2);
+    const { edits, emissionProblems } = computeApplyEdits(
+      parse,
+      twoPlayerModel(),
+      lang,
+      new Map(),
+      2,
+    );
 
     expect(emissionProblems).toEqual([]);
     // At least one fence edit (new fence) and one skeleton-insertion edit.
@@ -81,7 +112,8 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
   });
 
   it("Apply twice produces ZERO edits the second time (Sec.10.4 #4 — idempotence)", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
     const model = twoPlayerModel();
     const parse1 = parseRms(source, lang);
     const first = computeApplyEdits(parse1, model, lang, new Map(), 2);
@@ -96,7 +128,8 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
   });
 
   it("a hand-edited create_land (role attribute changed, position left alone) is detected as detached — NOT silently re-emitted", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
     const model = twoPlayerModel();
     const parse1 = parseRms(source, lang);
     const first = computeApplyEdits(parse1, model, lang, new Map(), 2);
@@ -104,7 +137,10 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
 
     // Hand-edit ONE land's terrain_type to a literal, detaching it from its
     // role while leaving land_position (the identity signal) untouched.
-    const handEdited = applied.replace("terrain_type ALP_ROLE_TERRAIN_PLAYER", "terrain_type GRASS2");
+    const handEdited = applied.replace(
+      "terrain_type ALP_ROLE_TERRAIN_PLAYER",
+      "terrain_type GRASS2",
+    );
     expect(handEdited).not.toBe(applied); // the replace actually matched something
 
     const parse2 = parseRms(handEdited, lang);
@@ -117,14 +153,18 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
   });
 
   it("a hand-edited land_position (the identity signal itself changed) regenerates a fresh skeleton — the documented 'no marker' outcome", () => {
-    const source = "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
+    const source =
+      "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\n<OBJECTS_GENERATION>\n";
     const model = twoPlayerModel();
     const parse1 = parseRms(source, lang);
     const first = computeApplyEdits(parse1, model, lang, new Map(), 2);
     const applied = applyEdits(source, first.edits);
 
     // Sever the link for P1 specifically by rewriting its land_position.
-    const handEdited = applied.replace(/land_position ALP_X_P1 ALP_Y_P1/, "land_position 10 10");
+    const handEdited = applied.replace(
+      /land_position ALP_X_P1 ALP_Y_P1/,
+      "land_position 10 10",
+    );
     expect(handEdited).not.toBe(applied);
 
     const parse2 = parseRms(handEdited, lang);
@@ -140,7 +180,13 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
   it("a script with no <LAND_GENERATION> at all still produces a valid, well-formed edit set (falls back to end-of-document)", () => {
     const source = "<PLAYER_SETUP>\ndirect_placement\n";
     const parse = parseRms(source, lang);
-    const { edits } = computeApplyEdits(parse, twoPlayerModel(), lang, new Map(), 2);
+    const { edits } = computeApplyEdits(
+      parse,
+      twoPlayerModel(),
+      lang,
+      new Map(),
+      2,
+    );
     expect(validateEdits(edits, source.length).ok).toBe(true);
     const result = applyEdits(source, edits);
     expect((result.match(/create_land/g) ?? []).length).toBe(2);
@@ -150,14 +196,26 @@ describe("computeApplyEdits — the whole edit set (Sec.6.1, Sec.6.2)", () => {
     const { vi } = await import("vitest");
     vi.resetModules();
     vi.doMock("../emitModel", () => ({
-      emitAlpModel: () => ({ ok: false, problems: [{ name: "ALP_X_P1", emittedValue: 1, directValue: 2 }] }),
+      emitAlpModel: () => ({
+        ok: false,
+        problems: [{ name: "ALP_X_P1", emittedValue: 1, directValue: 2 }],
+      }),
     }));
-    const { computeApplyEdits: computeApplyEditsMocked } = await import("../applyEdits");
+    const { computeApplyEdits: computeApplyEditsMocked } =
+      await import("../applyEdits");
     const source = "<LAND_GENERATION>\nbase_terrain GRASS\n";
     const parse = parseRms(source, lang);
-    const result = computeApplyEditsMocked(parse, twoPlayerModel(), lang, new Map(), 2);
+    const result = computeApplyEditsMocked(
+      parse,
+      twoPlayerModel(),
+      lang,
+      new Map(),
+      2,
+    );
     expect(result.edits).toEqual([]);
-    expect(result.emissionProblems).toEqual([{ name: "ALP_X_P1", emittedValue: 1, directValue: 2 }]);
+    expect(result.emissionProblems).toEqual([
+      { name: "ALP_X_P1", emittedValue: 1, directValue: 2 },
+    ]);
     vi.doUnmock("../emitModel");
     vi.resetModules();
   });

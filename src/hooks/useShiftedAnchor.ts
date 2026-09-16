@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { getDocumentModel } from "./useDocument";
-import { shiftSingleAnchor, type OffsetEdit } from "../breakdown/ephemeralAnchors";
+import {
+  shiftSingleAnchor,
+  type OffsetEdit,
+} from "../breakdown/ephemeralAnchors";
 
 /**
  * One source offset that survives edits to the document.
@@ -35,7 +44,10 @@ import { shiftSingleAnchor, type OffsetEdit } from "../breakdown/ephemeralAnchor
  */
 export function useShiftedAnchor(
   source: string,
-  shift: (anchor: number | null, edit: OffsetEdit) => number | null = shiftSingleAnchor,
+  shift: (
+    anchor: number | null,
+    edit: OffsetEdit,
+  ) => number | null = shiftSingleAnchor,
 ): [number | null, Dispatch<SetStateAction<number | null>>] {
   const [anchor, setAnchor] = useState<number | null>(null);
 
@@ -46,7 +58,9 @@ export function useShiftedAnchor(
   const shiftRef = useRef(shift);
   shiftRef.current = shift;
 
-  const pendingRef = useRef<{ edits: OffsetEdit[]; expectedSource: string }[]>([]);
+  const pendingRef = useRef<{ edits: OffsetEdit[]; expectedSource: string }[]>(
+    [],
+  );
 
   useEffect(() => {
     const model = getDocumentModel();
@@ -60,7 +74,11 @@ export function useShiftedAnchor(
       // (a keystroke, or a single pushEditOperations call), where this
       // ordering is moot.
       const edits: OffsetEdit[] = e.changes
-        .map((c) => ({ start: c.rangeOffset, end: c.rangeOffset + c.rangeLength, newText: c.text }))
+        .map((c) => ({
+          start: c.rangeOffset,
+          end: c.rangeOffset + c.rangeLength,
+          newText: c.text,
+        }))
         .sort((a, b) => b.start - a.start);
       // model.getValue() here is the text AFTER this exact change (the
       // event fires post-apply), no manual string surgery needed to

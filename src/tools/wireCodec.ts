@@ -33,7 +33,11 @@ import type {
   ScriptNode,
   SectionNode,
 } from "../parser/types";
-import type { InfSentinel, SerializedParseResult, WireNumber } from "../../tools-api/index";
+import type {
+  InfSentinel,
+  SerializedParseResult,
+  WireNumber,
+} from "../../tools-api/index";
 import { PROHIBITED_VALUE_KINDS } from "../../tools-api/index";
 
 export class WireEncodingError extends Error {}
@@ -41,7 +45,10 @@ export class WireEncodingError extends Error {}
 function encodeNumber(n: number): WireNumber {
   // NaN is not representable at all (tools-api/index.ts's PROHIBITED_VALUE_KINDS).
   // There is no sentinel for it, unlike ±Infinity, so it can only be rejected.
-  if (Number.isNaN(n)) throw new WireEncodingError("cannot encode NaN onto the wire — there is no sentinel for it");
+  if (Number.isNaN(n))
+    throw new WireEncodingError(
+      "cannot encode NaN onto the wire — there is no sentinel for it",
+    );
   if (n === Infinity) return { inf: 1 };
   if (n === -Infinity) return { inf: -1 };
   return n;
@@ -55,7 +62,8 @@ function encodeNumber(n: number): WireNumber {
 export function encodeArgValue(v: ArgValue): ArgValue<WireNumber> {
   if (typeof v === "string") return v;
   if (typeof v === "number") return encodeNumber(v);
-  if ("rnd" in v) return { rnd: [encodeNumber(v.rnd[0]), encodeNumber(v.rnd[1])] };
+  if ("rnd" in v)
+    return { rnd: [encodeNumber(v.rnd[0]), encodeNumber(v.rnd[1])] };
   return v; // { expr: { tokens: number[] } }
 }
 
@@ -63,7 +71,12 @@ function encodeArg(arg: ArgNode): ArgNode<WireNumber, never> {
   // `def` is omitted from the returned object entirely (not set to
   // `undefined`) so JSON.stringify produces the same smaller payload the real
   // wire does, not merely a type-level fiction.
-  return { firstToken: arg.firstToken, lastToken: arg.lastToken, span: arg.span, value: encodeArgValue(arg.value) };
+  return {
+    firstToken: arg.firstToken,
+    lastToken: arg.lastToken,
+    span: arg.span,
+    value: encodeArgValue(arg.value),
+  };
 }
 
 function encodeArgs(args: ArgNode[]): ArgNode<WireNumber, never>[] {
@@ -121,7 +134,11 @@ function encodeItem(item: Item): Item<WireNumber, never> {
     case "if": {
       const node: IfNode<WireNumber, never> = {
         kind: "if",
-        branches: item.branches.map((b) => ({ keyword: b.keyword, condition: b.condition, items: b.items.map(encodeItem) })),
+        branches: item.branches.map((b) => ({
+          keyword: b.keyword,
+          condition: b.condition,
+          items: b.items.map(encodeItem),
+        })),
         endif: item.endif,
         firstToken: item.firstToken,
         lastToken: item.lastToken,
@@ -193,28 +210,35 @@ function encodeScript(script: ScriptNode): ScriptNode<WireNumber, never> {
  * and they survive `JSON.stringify` as an absent key, which reads identically
  * on both sides of the wire.
  */
-export function findProhibitedValue(value: unknown, path = "$"): { path: string; kind: string } | null {
+export function findProhibitedValue(
+  value: unknown,
+  path = "$",
+): { path: string; kind: string } | null {
   if (typeof value === "function") return { path, kind: "function" };
   if (typeof value === "number") {
     if (Number.isNaN(value)) return { path, kind: "NaN" };
-    if (value === Infinity || value === -Infinity) return { path, kind: "±Infinity outside the sentinel" };
+    if (value === Infinity || value === -Infinity)
+      return { path, kind: "±Infinity outside the sentinel" };
     return null;
   }
-  if (value === null || value === undefined || typeof value !== "object") return null;
+  if (value === null || value === undefined || typeof value !== "object")
+    return null;
   if (value instanceof Map) return { path, kind: "Map" };
   if (value instanceof Set) return { path, kind: "Set" };
   if (value instanceof Date) return { path, kind: "Date" };
   if (value instanceof RegExp) return { path, kind: "RegExp" };
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) {
-      if (value[i] === undefined) return { path: `${path}[${i}]`, kind: "undefined as an array element" };
+      if (value[i] === undefined)
+        return { path: `${path}[${i}]`, kind: "undefined as an array element" };
       const bad = findProhibitedValue(value[i], `${path}[${i}]`);
       if (bad) return bad;
     }
     return null;
   }
   const proto = Object.getPrototypeOf(value);
-  if (proto !== Object.prototype && proto !== null) return { path, kind: "class instance" };
+  if (proto !== Object.prototype && proto !== null)
+    return { path, kind: "class instance" };
   for (const [key, v] of Object.entries(value)) {
     if (v === undefined) continue; // an absent-reading optional key, not a prohibited value
     const bad = findProhibitedValue(v, `${path}.${key}`);
@@ -228,17 +252,18 @@ export function findProhibitedValue(value: unknown, path = "$"): { path: string;
  * kind added there without a matching case here is at least visible at the
  * call site rather than silently unchecked.
  */
-export const _PROHIBITED_KINDS_COVERED: readonly (typeof PROHIBITED_VALUE_KINDS)[number][] = [
-  "Map",
-  "Set",
-  "Date",
-  "RegExp",
-  "class instance",
-  "function",
-  "NaN",
-  "±Infinity outside the sentinel",
-  "undefined as an array element",
-];
+export const _PROHIBITED_KINDS_COVERED: readonly (typeof PROHIBITED_VALUE_KINDS)[number][] =
+  [
+    "Map",
+    "Set",
+    "Date",
+    "RegExp",
+    "class instance",
+    "function",
+    "NaN",
+    "±Infinity outside the sentinel",
+    "undefined as an array element",
+  ];
 
 /**
  * The whole encode: real `ParseResult` in, `SerializedParseResult` out,
@@ -249,7 +274,9 @@ export const _PROHIBITED_KINDS_COVERED: readonly (typeof PROHIBITED_VALUE_KINDS)
  * `ErrorReason`'s `"host-error"` (tools-api/index.ts): the payload was never
  * the tool's fault.
  */
-export function encodeParseResultForWire(pr: ParseResult): SerializedParseResult {
+export function encodeParseResultForWire(
+  pr: ParseResult,
+): SerializedParseResult {
   const wire: SerializedParseResult = {
     source: pr.source,
     tokens: pr.tokens,
@@ -260,7 +287,10 @@ export function encodeParseResultForWire(pr: ParseResult): SerializedParseResult
     diagnostics: pr.diagnostics,
   };
   const bad = findProhibitedValue(wire);
-  if (bad) throw new WireEncodingError(`wire payload contains a prohibited value (${bad.kind}) at ${bad.path}`);
+  if (bad)
+    throw new WireEncodingError(
+      `wire payload contains a prohibited value (${bad.kind}) at ${bad.path}`,
+    );
   return wire;
 }
 

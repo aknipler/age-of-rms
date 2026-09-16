@@ -75,8 +75,16 @@ export type InsertTarget =
 
 export type EditIntent =
   | { kind: "setArgValue"; arg: ArgNode; value: ArgValueInput }
-  | { kind: "addAttribute"; target: AttributeTarget; name: string; value?: ArgValueInput[] }
-  | { kind: "removeNode"; node: AttributeNode | CommandNode | DirectiveNode | IfNode | RandomNode }
+  | {
+      kind: "addAttribute";
+      target: AttributeTarget;
+      name: string;
+      value?: ArgValueInput[];
+    }
+  | {
+      kind: "removeNode";
+      node: AttributeNode | CommandNode | DirectiveNode | IfNode | RandomNode;
+    }
   | { kind: "toggleFlag"; target: AttributeTarget; name: string; on: boolean }
   | { kind: "addCommand"; at: InsertTarget; name: string }
   // Comments are trivia (parser-design Sec.2), not AST nodes, so unlike
@@ -94,7 +102,11 @@ export type EditIntent =
   | { kind: "editComment"; innerSpan: Span; text: string }
   | { kind: "setCondition"; branch: BranchRef; value: string }
   | { kind: "setChance"; branch: BranchRef; value: ArgValueInput }
-  | { kind: "addBranch"; parent: IfNode | RandomNode; branch: "elseif" | "else" | "percent_chance" }
+  | {
+      kind: "addBranch";
+      parent: IfNode | RandomNode;
+      branch: "elseif" | "else" | "percent_chance";
+    }
   | { kind: "removeBranch"; branch: BranchRef }
   // 3.4 follow-up: widened from `node: RawNode` to also accept a def-less
   // CommandNode. Sec.3.3's unknown-name boundary has TWO cases that both carry
@@ -106,7 +118,12 @@ export type EditIntent =
   // computeEdit change was needed, just this type + the UI wiring
   // (previously only RawCard had a Fix button; CommandCard's unknown-name
   // badge had no fix path at all).
-  | { kind: "applySuggestion"; node: RawNode | CommandNode; tokenIndex: number; replacement: string };
+  | {
+      kind: "applySuggestion";
+      node: RawNode | CommandNode;
+      tokenIndex: number;
+      replacement: string;
+    };
 
 /**
  * Thrown for intents the UI is specified to suppress (unclosed containers,

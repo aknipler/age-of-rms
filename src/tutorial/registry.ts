@@ -8,9 +8,16 @@ import { appTourTutorial } from "./content/appTour";
 import { rmsBasicsTutorial } from "./content/rmsBasics";
 import { WHATS_NEW_TOURS } from "./content/whatsNew";
 
-export const TUTORIALS: readonly TutorialDefinition[] = [rmsBasicsTutorial, appTourTutorial, ...WHATS_NEW_TOURS];
+export const TUTORIALS: readonly TutorialDefinition[] = [
+  rmsBasicsTutorial,
+  appTourTutorial,
+  ...WHATS_NEW_TOURS,
+];
 
-export function getTutorial(id: string, tutorials: readonly TutorialDefinition[] = TUTORIALS): TutorialDefinition | undefined {
+export function getTutorial(
+  id: string,
+  tutorials: readonly TutorialDefinition[] = TUTORIALS,
+): TutorialDefinition | undefined {
   return tutorials.find((t) => t.id === id);
 }
 
@@ -44,7 +51,9 @@ function compareVersions(a: string, b: string): number {
  * skipped release still points at the most recent changelog rather than
  * disappearing.
  */
-export function latestFeatureTour(tutorials: readonly TutorialDefinition[] = TUTORIALS): TutorialDefinition | undefined {
+export function latestFeatureTour(
+  tutorials: readonly TutorialDefinition[] = TUTORIALS,
+): TutorialDefinition | undefined {
   let latest: TutorialDefinition | undefined;
   for (const t of tutorials) {
     if (t.kind !== "feature" || !t.version) continue;

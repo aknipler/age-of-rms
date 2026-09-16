@@ -19,7 +19,10 @@ export interface OffsetEdit {
  * range is dropped (rev 4's rule, don't let it dangle and spuriously
  * "expand" whatever now occupies those offsets).
  */
-export function shiftAnchors(anchors: ReadonlySet<number>, edit: OffsetEdit): Set<number> {
+export function shiftAnchors(
+  anchors: ReadonlySet<number>,
+  edit: OffsetEdit,
+): Set<number> {
   const delta = edit.newText.length - (edit.end - edit.start);
   const next = new Set<number>();
   for (const anchor of anchors) {
@@ -30,7 +33,10 @@ export function shiftAnchors(anchors: ReadonlySet<number>, edit: OffsetEdit): Se
 }
 
 /** True iff some anchor offset falls within `span`, the post-reparse "is this card expanded" test. */
-export function isAnchoredWithin(anchors: ReadonlySet<number>, span: Span): boolean {
+export function isAnchoredWithin(
+  anchors: ReadonlySet<number>,
+  span: Span,
+): boolean {
   for (const anchor of anchors) {
     if (anchor >= span.start && anchor < span.end) return true;
   }
@@ -44,7 +50,10 @@ export function isAnchoredWithin(anchors: ReadonlySet<number>, span: Span): bool
  * ordering fix in BreakdownPane: only ever called once the matching
  * parse has actually rendered, never eagerly).
  */
-export function shiftSingleAnchor(anchor: number | null, edit: OffsetEdit): number | null {
+export function shiftSingleAnchor(
+  anchor: number | null,
+  edit: OffsetEdit,
+): number | null {
   if (anchor === null) return null;
   const shifted = shiftAnchors(new Set([anchor]), edit);
   return shifted.size > 0 ? [...shifted][0] : null;
@@ -68,7 +77,10 @@ export function shiftSingleAnchor(anchor: number | null, edit: OffsetEdit): numb
  * with the button never clicked, because the document's own initial content
  * change is an edit at offset 0. Absent stays absent.
  */
-export function shiftCollapsingAnchor(anchor: number | null, edit: OffsetEdit): number | null {
+export function shiftCollapsingAnchor(
+  anchor: number | null,
+  edit: OffsetEdit,
+): number | null {
   if (anchor === null) return null;
   return shiftSingleAnchor(anchor, edit) ?? edit.start;
 }
@@ -96,7 +108,10 @@ export function shiftCollapsingAnchor(anchor: number | null, edit: OffsetEdit): 
  * conservative "drop rather than guess" trade this codebase already makes
  * for the anchor queue itself (see BreakdownPane's resolving effect).
  */
-export function rebaseEdit(edit: OffsetEdit, priorEdits: readonly OffsetEdit[]): OffsetEdit | null {
+export function rebaseEdit(
+  edit: OffsetEdit,
+  priorEdits: readonly OffsetEdit[],
+): OffsetEdit | null {
   let start = edit.start;
   let end = edit.end;
   for (const prior of priorEdits) {
@@ -115,7 +130,10 @@ export function rebaseEdit(edit: OffsetEdit, priorEdits: readonly OffsetEdit[]):
 }
 
 /** Shifts a single point (e.g. a post-edit caret offset) through the same prior-edits chain `rebaseEdit` uses, via repeated `shiftSingleAnchor`. */
-export function shiftPointThroughEdits(point: number, priorEdits: readonly OffsetEdit[]): number {
+export function shiftPointThroughEdits(
+  point: number,
+  priorEdits: readonly OffsetEdit[],
+): number {
   let shifted: number | null = point;
   for (const prior of priorEdits) {
     shifted = shiftSingleAnchor(shifted, prior);

@@ -47,7 +47,9 @@ export const SIDE_PANEL_KEYBOARD_STEP = 16;
 /** Clamps to the panel's own bounds. Non-finite input falls back to the default. */
 export function clampSidePanelWidth(width: number): number {
   if (!Number.isFinite(width)) return DEFAULT_SIDE_PANEL_WIDTH;
-  return Math.round(Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, width)));
+  return Math.round(
+    Math.min(MAX_SIDE_PANEL_WIDTH, Math.max(MIN_SIDE_PANEL_WIDTH, width)),
+  );
 }
 
 /**
@@ -59,10 +61,14 @@ export function clampSidePanelWidth(width: number): number {
  * `outcome.width` is a compile error until `outcome.collapsed` has been
  * narrowed.)
  */
-export type SidePanelDragOutcome = { collapsed: true } | { collapsed: false; width: number };
+export type SidePanelDragOutcome =
+  { collapsed: true } | { collapsed: false; width: number };
 
 export function resolveSidePanelDrag(rawWidth: number): SidePanelDragOutcome {
-  if (Number.isFinite(rawWidth) && rawWidth < MIN_SIDE_PANEL_WIDTH - COLLAPSE_DRAG_MARGIN) {
+  if (
+    Number.isFinite(rawWidth) &&
+    rawWidth < MIN_SIDE_PANEL_WIDTH - COLLAPSE_DRAG_MARGIN
+  ) {
     return { collapsed: true };
   }
   return { collapsed: false, width: clampSidePanelWidth(rawWidth) };

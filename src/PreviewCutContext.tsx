@@ -1,8 +1,17 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  type ReactNode,
+} from "react";
 import type { ParseResult } from "./parser/types";
 import { shiftCollapsingAnchor } from "./breakdown/ephemeralAnchors";
 import { useShiftedAnchor } from "./hooks/useShiftedAnchor";
-import { lineOfOffset, resolveCutOffset } from "./preview/generator/truncateAst";
+import {
+  lineOfOffset,
+  resolveCutOffset,
+} from "./preview/generator/truncateAst";
 
 /**
  * Where Current cuts the script (docs/preview-design.md Sec.5, CREATION_PLAN 4.6).
@@ -74,7 +83,10 @@ export function PreviewCutProvider({
   // caught inside a replaced range collapses to that range's start instead of
   // dropping, because a dropped pin silently reverts Current to following the
   // caret. See its own doc for why it is a function and not a `??` here.
-  const [pinnedOffset, setPinnedOffset] = useShiftedAnchor(source, shiftCollapsingAnchor);
+  const [pinnedOffset, setPinnedOffset] = useShiftedAnchor(
+    source,
+    shiftCollapsingAnchor,
+  );
 
   const lineOffsets = parseResult?.lineOffsets;
   // A pin can outlive the text under it in one way the shift cannot cover:
@@ -88,11 +100,17 @@ export function PreviewCutProvider({
   // withheld: "where would the cut be if there were no caret" IS the pin, so
   // the number printed on the button cannot disagree with the map drawn
   // beside it.
-  const pinOffsetForDisplay = resolveCutOffset(pinnedOffset, null, sourceLength);
+  const pinOffsetForDisplay = resolveCutOffset(
+    pinnedOffset,
+    null,
+    sourceLength,
+  );
 
   const toLine = useCallback(
     (offset: number | null): number | null =>
-      offset === null || lineOffsets === undefined ? null : lineOfOffset(lineOffsets, offset),
+      offset === null || lineOffsets === undefined
+        ? null
+        : lineOfOffset(lineOffsets, offset),
     [lineOffsets],
   );
 
@@ -120,14 +138,25 @@ export function PreviewCutProvider({
       pinCursor,
       unpin,
     }),
-    [cursorOffset, pinOffsetForDisplay, cutOffset, cursorLine, pinnedLine, pinCursor, unpin],
+    [
+      cursorOffset,
+      pinOffsetForDisplay,
+      cutOffset,
+      cursorLine,
+      pinnedLine,
+      pinCursor,
+      unpin,
+    ],
   );
 
-  return <PreviewCutCtx.Provider value={value}>{children}</PreviewCutCtx.Provider>;
+  return (
+    <PreviewCutCtx.Provider value={value}>{children}</PreviewCutCtx.Provider>
+  );
 }
 
 export function usePreviewCut(): PreviewCutValue {
   const ctx = useContext(PreviewCutCtx);
-  if (!ctx) throw new Error("usePreviewCut must be used within PreviewCutProvider");
+  if (!ctx)
+    throw new Error("usePreviewCut must be used within PreviewCutProvider");
   return ctx;
 }

@@ -33,7 +33,9 @@ export function resolveMapDim(
 ): number | null {
   const match = (predefinedLabels ?? []).find(
     (label) =>
-      label.category === "mapSize" && label.mapSize === mapSize && label.dimensions !== undefined,
+      label.category === "mapSize" &&
+      label.mapSize === mapSize &&
+      label.dimensions !== undefined,
   );
   return match?.dimensions ?? null;
 }

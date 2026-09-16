@@ -24,7 +24,10 @@ export interface RulerTick {
  * container's tick" (Sec.3.10) fall out for free, with no separate
  * expand-state check needed here).
  */
-export function ticksForItems(items: readonly Item[], diagnostics: readonly Diagnostic[]): RulerTick[] {
+export function ticksForItems(
+  items: readonly Item[],
+  diagnostics: readonly Diagnostic[],
+): RulerTick[] {
   const ticks: RulerTick[] = [];
   for (const item of items) {
     const severity = maxSeverityWithin(diagnostics, item.span);

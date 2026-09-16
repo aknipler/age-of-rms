@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../../parser/parser";
 import { loadLanguage } from "../../../parser/__tests__/testUtils";
-import { TOOLS_API_VERSION, type ToolContext, type ToolMessage } from "../../../../tools-api/index";
+import {
+  TOOLS_API_VERSION,
+  type ToolContext,
+  type ToolMessage,
+} from "../../../../tools-api/index";
 import { validateManifest } from "../../protocol";
 import {
   auditConstants,
@@ -97,7 +101,10 @@ describe("findUndefinedReferences", () => {
 
 describe("buildConstantsAuditOutput", () => {
   it("says so when the script defines nothing", () => {
-    const blocks = buildConstantsAuditOutput(parse(`<LAND_GENERATION>\n`), true);
+    const blocks = buildConstantsAuditOutput(
+      parse(`<LAND_GENERATION>\n`),
+      true,
+    );
     expect(blocks.some((b) => b.kind === "text")).toBe(true);
   });
 

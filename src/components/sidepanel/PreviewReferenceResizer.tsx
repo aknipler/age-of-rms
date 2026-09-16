@@ -1,7 +1,16 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from "react";
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type RefObject,
+} from "react";
 import { HelpTip } from "../HelpTip";
 import { usePreviewReferenceSplit } from "./PreviewReferenceSplitContext";
-import { MIN_PANE_FRACTION, resolvePreviewReferenceDrag } from "./previewReferenceSplit";
+import {
+  MIN_PANE_FRACTION,
+  resolvePreviewReferenceDrag,
+} from "./previewReferenceSplit";
 import styles from "./PreviewReferenceResizer.module.css";
 
 /** One arrow-key press on the focused separator, in fraction units. Small: the whole range is 0..1, unlike the side panel's pixel-sized step. */
@@ -28,8 +37,11 @@ interface PreviewReferenceResizerProps {
  * here for the whole drag even once the pointer leaves this 10px strip, and
  * without it a fast drag drops the resize partway through.
  */
-export function PreviewReferenceResizer({ containerRef }: PreviewReferenceResizerProps) {
-  const { fraction, setFraction, commitFraction, setCollapsedSide } = usePreviewReferenceSplit();
+export function PreviewReferenceResizer({
+  containerRef,
+}: PreviewReferenceResizerProps) {
+  const { fraction, setFraction, commitFraction, setCollapsedSide } =
+    usePreviewReferenceSplit();
   const [dragging, setDragging] = useState(false);
   // Mirrors `dragging` for the pointermove handler, same reason
   // SidePanelResizer's own draggingRef exists: the collapse path has to stop
@@ -60,7 +72,9 @@ export function PreviewReferenceResizer({ containerRef }: PreviewReferenceResize
     if (container === null) return;
     const rect = container.getBoundingClientRect();
     if (rect.height === 0) return;
-    const outcome = resolvePreviewReferenceDrag((event.clientY - rect.top) / rect.height);
+    const outcome = resolvePreviewReferenceDrag(
+      (event.clientY - rect.top) / rect.height,
+    );
     if (outcome.collapsedSide !== null) {
       // Dragged past the minimum by more than the margin: treat it as a
       // collapse and let go of the pointer, so the user is not still
@@ -93,7 +107,9 @@ export function PreviewReferenceResizer({ containerRef }: PreviewReferenceResize
 
   return (
     <div
-      className={dragging ? `${styles.resizer} ${styles.dragging}` : styles.resizer}
+      className={
+        dragging ? `${styles.resizer} ${styles.dragging}` : styles.resizer
+      }
       role="separator"
       aria-orientation="horizontal"
       aria-label="Resize the split between the map preview and the reference table"
@@ -147,18 +163,27 @@ export function PreviewReferenceResizer({ containerRef }: PreviewReferenceResize
  * back. Always visible, same "a collapse with no way back is a one-way door"
  * reasoning as `SidePanelReopener`.
  */
-export function PreviewReferenceReopener({ side }: { side: "preview" | "reference" }) {
+export function PreviewReferenceReopener({
+  side,
+}: {
+  side: "preview" | "reference";
+}) {
   const { setCollapsedSide } = usePreviewReferenceSplit();
-  const label = side === "preview" ? "Show the map preview" : "Show the reference table";
+  const label =
+    side === "preview" ? "Show the map preview" : "Show the reference table";
   const glyph = side === "preview" ? "▾" : "▴";
   return (
     <div className={styles.reopener}>
       <HelpTip id="sidePanel.previewReferenceReopen">
-        <button type="button" className={styles.collapseButton} aria-label={label} onClick={() => setCollapsedSide(null)}>
+        <button
+          type="button"
+          className={styles.collapseButton}
+          aria-label={label}
+          onClick={() => setCollapsedSide(null)}
+        >
           <span aria-hidden="true">{glyph}</span>
         </button>
       </HelpTip>
     </div>
   );
 }
-

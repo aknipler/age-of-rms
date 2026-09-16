@@ -25,7 +25,12 @@ import { buildLanguageIndex, type LanguageData } from "../parser/language";
 import { generatePreview, type PreviewReferenceData } from "./generator/index";
 import type { ObjectConstant } from "./generator/objects";
 import type { TerrainRestriction } from "./generator/forestTreeSuppression";
-import type { PreviewRequest, PreviewResponse, PreviewResult, PreviewWireResult } from "./generator/types";
+import type {
+  PreviewRequest,
+  PreviewResponse,
+  PreviewResult,
+  PreviewWireResult,
+} from "./generator/types";
 
 // Same double-cast reasoning as parserWorker.ts: resolveJsonModule infers a
 // literal type from the file that doesn't necessarily structurally overlap
@@ -33,7 +38,10 @@ import type { PreviewRequest, PreviewResponse, PreviewResult, PreviewWireResult 
 // always typecheck. `validate:reference` (ajv) is the real guarantee this
 // data is shaped correctly.
 const languageData = languageDataRaw as unknown as LanguageData;
-const gameConstantsParsed = gameConstantsRaw as unknown as { constants: ObjectConstant[]; terrainRestrictions?: TerrainRestriction[] };
+const gameConstantsParsed = gameConstantsRaw as unknown as {
+  constants: ObjectConstant[];
+  terrainRestrictions?: TerrainRestriction[];
+};
 const constants = gameConstantsParsed.constants;
 
 // Built once per worker instance, not per request — refDb never changes
@@ -56,13 +64,39 @@ const refDb: PreviewReferenceData = {
  * `grid` itself is the one field this worker does not relay.
  */
 function toWireResult(result: PreviewResult): PreviewWireResult {
-  const { dim, seedUsed, snapshots, objects, players, reports, failureMarks, notes, landOrigins, resourceTotals } = result;
-  return { dim, seedUsed, snapshots, objects, players, reports, failureMarks, notes, landOrigins, resourceTotals };
+  const {
+    dim,
+    seedUsed,
+    snapshots,
+    objects,
+    players,
+    reports,
+    failureMarks,
+    notes,
+    landOrigins,
+    resourceTotals,
+  } = result;
+  return {
+    dim,
+    seedUsed,
+    snapshots,
+    objects,
+    players,
+    reports,
+    failureMarks,
+    notes,
+    landOrigins,
+    resourceTotals,
+  };
 }
 
 self.onmessage = (event: MessageEvent<PreviewRequest>) => {
   const { id, parse, settings, opts } = event.data;
   const result = generatePreview(parse, refDb, settings, opts);
-  const response: PreviewResponse = { id, ok: true, result: toWireResult(result) };
+  const response: PreviewResponse = {
+    id,
+    ok: true,
+    result: toWireResult(result),
+  };
   self.postMessage(response);
 };

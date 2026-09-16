@@ -24,21 +24,37 @@ interface PreviewNotesProps {
  * canvas (PreviewCanvas draws those) and the rest live here in a drawer with
  * a count badge, so a script with twenty caveats does not bury the map.
  */
-export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesProps) {
-  const [openSection, setOpenSection] = useState<"notes" | "legend" | null>(null);
+export function PreviewNotes({
+  result,
+  palette,
+  terrainsInUse,
+}: PreviewNotesProps) {
+  const [openSection, setOpenSection] = useState<"notes" | "legend" | null>(
+    null,
+  );
 
-  const drawerNotes = result.notes.filter((note) => note.prominence === "drawer");
+  const drawerNotes = result.notes.filter(
+    (note) => note.prominence === "drawer",
+  );
   // Failures are coalesced per command per bucket (generator/placement.ts), so
   // the headline number has to sum `occurrences` rather than count records.
   // A script can genuinely produce a quarter of a million failed placements
   // from a handful of records, and reporting "6 placements failed" for it
   // would be worse than the pre-coalescing wall of text.
   const failureCount = result.reports.reduce(
-    (total, report) => total + report.failures.reduce((n, failure) => n + (failure.occurrences ?? 1), 0),
+    (total, report) =>
+      total +
+      report.failures.reduce((n, failure) => n + (failure.occurrences ?? 1), 0),
     0,
   );
-  const attempted = result.reports.reduce((total, report) => total + report.attempted, 0);
-  const placed = result.reports.reduce((total, report) => total + report.placed, 0);
+  const attempted = result.reports.reduce(
+    (total, report) => total + report.attempted,
+    0,
+  );
+  const placed = result.reports.reduce(
+    (total, report) => total + report.placed,
+    0,
+  );
 
   const toggle = (section: "notes" | "legend") =>
     setOpenSection((current) => (current === section ? null : section));
@@ -47,7 +63,9 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
     <div className={styles.notes}>
       <div className={styles.summaryRow}>
         <HelpTip id="preview.failureCount">
-          <span className={failureCount > 0 ? styles.failureBad : styles.failureOk}>
+          <span
+            className={failureCount > 0 ? styles.failureBad : styles.failureOk}
+          >
             {failureCount === 0
               ? `${placed} placed`
               : `${failureCount} placement${failureCount === 1 ? "" : "s"} failed`}
@@ -89,13 +107,17 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
               <li key={`${failure.bucket}-${index}`} className={styles.note}>
                 <span className={styles.bucket}>{failure.bucket}</span>
                 {(failure.occurrences ?? 1) > 1 && (
-                  <span className={styles.occurrences}>×{failure.occurrences}</span>
+                  <span className={styles.occurrences}>
+                    ×{failure.occurrences}
+                  </span>
                 )}
                 {failure.detail}
               </li>
             ))}
           {drawerNotes.length === 0 && failureCount === 0 && (
-            <li className={styles.note}>Nothing flagged. {attempted} placements attempted.</li>
+            <li className={styles.note}>
+              Nothing flagged. {attempted} placements attempted.
+            </li>
           )}
         </ul>
       )}
@@ -109,10 +131,11 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
           */}
           {result.failureMarks.length > 0 && (
             <p className={styles.legendNote}>
-              A red ▲ marks a land the engine could not place where the script asked, so it sits at
-              the map centre instead. Hover the marker for the detail. Lands that merely grew
-              smaller than they asked for carry no marker. That is the usual outcome of land_percent,
-              and the map is showing their real size.
+              A red ▲ marks a land the engine could not place where the script
+              asked, so it sits at the map centre instead. Hover the marker for
+              the detail. Lands that merely grew smaller than they asked for
+              carry no marker. That is the usual outcome of land_percent, and
+              the map is showing their real size.
             </p>
           )}
           <p className={styles.legendNote}>{COLOR_MODE_NOTES[palette.mode]}</p>
@@ -134,7 +157,9 @@ export function PreviewNotes({ result, palette, terrainsInUse }: PreviewNotesPro
                   */}
                   {source !== palette.mode && (
                     <span className={styles.legendSource}>
-                      {source === "hashed" || source === "unknown" ? "no colour in data" : `${source} colour`}
+                      {source === "hashed" || source === "unknown"
+                        ? "no colour in data"
+                        : `${source} colour`}
                     </span>
                   )}
                 </li>

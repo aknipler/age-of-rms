@@ -5,17 +5,34 @@
 
 import { describe, expect, it } from "vitest";
 import { TOOLS_API_VERSION, type ToolManifest } from "../../../tools-api/index";
-import { ToolHost, inProcessRunner, type RunnerHandle, type ToolRunner } from "../host";
+import {
+  ToolHost,
+  inProcessRunner,
+  type RunnerHandle,
+  type ToolRunner,
+} from "../host";
 import type { RegisteredTool } from "../registry";
 
 function manifest(over: Partial<ToolManifest> = {}): ToolManifest {
-  return { id: "t", name: "T", version: "1.0.0", apiVersion: TOOLS_API_VERSION, description: "d", capabilities: [], ...over };
+  return {
+    id: "t",
+    name: "T",
+    version: "1.0.0",
+    apiVersion: TOOLS_API_VERSION,
+    description: "d",
+    capabilities: [],
+    ...over,
+  };
 }
 
 /** A bare `builtin` RegisteredTool wrapping a report run, host.start()'s new parameter shape (Sec.10). */
 function reportTool(): RegisteredTool {
   const m = manifest();
-  return { kind: "builtin", manifest: m, impl: { manifest: m, run: () => ({ cancel() {} }) } };
+  return {
+    kind: "builtin",
+    manifest: m,
+    impl: { manifest: m, run: () => ({ cancel() {} }) },
+  };
 }
 
 /** A report runner the test holds open, so isBusy() reads "running" until told to finish. */
@@ -32,14 +49,24 @@ function openRunner() {
 describe("PanelState — mount/unmount", () => {
   it("starts unmounted", () => {
     const host = new ToolHost(inProcessRunner);
-    expect(host.getPanelState()).toEqual({ phase: "unmounted", toolId: null, documentId: null, dirty: false });
+    expect(host.getPanelState()).toEqual({
+      phase: "unmounted",
+      toolId: null,
+      documentId: null,
+      dirty: false,
+    });
   });
 
   it("mounts, becoming isBusy()", () => {
     const host = new ToolHost(inProcessRunner);
     const ok = host.mountPanel("land-placement", "/map.rms");
     expect(ok).toBe(true);
-    expect(host.getPanelState()).toEqual({ phase: "mounted", toolId: "land-placement", documentId: "/map.rms", dirty: false });
+    expect(host.getPanelState()).toEqual({
+      phase: "mounted",
+      toolId: "land-placement",
+      documentId: "/map.rms",
+      dirty: false,
+    });
     expect(host.isBusy()).toBe(true);
   });
 
@@ -57,7 +84,12 @@ describe("PanelState — mount/unmount", () => {
     host.mountPanel("land-placement", "/map.rms");
     host.setPanelDirty(true);
     host.unmountPanel();
-    expect(host.getPanelState()).toEqual({ phase: "unmounted", toolId: null, documentId: null, dirty: false });
+    expect(host.getPanelState()).toEqual({
+      phase: "unmounted",
+      toolId: null,
+      documentId: null,
+      dirty: false,
+    });
   });
 
   it("a mounted panel blocks start() the same way a busy report run does", () => {
@@ -139,7 +171,12 @@ describe("PanelState — documentReplaced() (Sec.3.6(c))", () => {
     host.mountPanel("land-placement", "/map.rms");
     host.setPanelDirty(true);
     host.documentReplaced();
-    expect(host.getPanelState()).toEqual({ phase: "unmounted", toolId: null, documentId: null, dirty: false });
+    expect(host.getPanelState()).toEqual({
+      phase: "unmounted",
+      toolId: null,
+      documentId: null,
+      dirty: false,
+    });
   });
 
   it("documentReplaced with no panel mounted still resets RunState as before (no regression)", () => {
@@ -164,8 +201,14 @@ describe("inProcessRunner — arm narrowing (external-tools-design.md Sec.10)", 
   // ToolHost.start()), so landing here with one is a caller bug and must be
   // loud rather than a silent no-op.
   it("throws rather than silently no-op'ing when handed a non-builtin RegisteredTool", () => {
-    const panelTool: RegisteredTool = { kind: "panel", manifest: manifest(), component: null };
-    expect(() => inProcessRunner.start(panelTool, {}, () => {})).toThrow(/panel/);
+    const panelTool: RegisteredTool = {
+      kind: "panel",
+      manifest: manifest(),
+      component: null,
+    };
+    expect(() => inProcessRunner.start(panelTool, {}, () => {})).toThrow(
+      /panel/,
+    );
   });
 });
 

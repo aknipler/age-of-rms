@@ -7,7 +7,12 @@
 // src/breakdown/cards/AttributeRow.tsx:58). The lexer does not fold case, so
 // every comparison here is case-insensitive.
 
-import type { AttributeNode, CommandNode, Item, ParseResult } from "../parser/types";
+import type {
+  AttributeNode,
+  CommandNode,
+  Item,
+  ParseResult,
+} from "../parser/types";
 import { renderArg } from "../breakdown/renderValue";
 
 const OBJECTS_SECTION = "OBJECTS_GENERATION";
@@ -32,11 +37,13 @@ function collectItems(items: readonly Item[]): Item[] {
         if (item.block) out.push(...collectItems(item.block.items));
         break;
       case "if":
-        for (const branch of item.branches) out.push(...collectItems(branch.items));
+        for (const branch of item.branches)
+          out.push(...collectItems(branch.items));
         break;
       case "random":
         out.push(...collectItems(item.preamble));
-        for (const branch of item.branches) out.push(...collectItems(branch.items));
+        for (const branch of item.branches)
+          out.push(...collectItems(branch.items));
         break;
       case "orphanBlock":
         out.push(...collectItems(item.block.items));
@@ -59,16 +66,24 @@ function sectionItems(parse: ParseResult, section: string): Item[] {
   const target = section.toLowerCase();
   const out: Item[] = [];
   for (const node of parse.script.sections) {
-    if (node.name.toLowerCase() === target) out.push(...collectItems(node.items));
+    if (node.name.toLowerCase() === target)
+      out.push(...collectItems(node.items));
   }
   return out;
 }
 
-function commandsNamed(parse: ParseResult, section: string, command: string): CommandNode[] {
+function commandsNamed(
+  parse: ParseResult,
+  section: string,
+  command: string,
+): CommandNode[] {
   const target = command.toLowerCase();
   const out: CommandNode[] = [];
   for (const item of sectionItems(parse, section)) {
-    if (item.kind === "command" && tokenText(parse, item.name).toLowerCase() === target) {
+    if (
+      item.kind === "command" &&
+      tokenText(parse, item.name).toLowerCase() === target
+    ) {
       out.push(item);
     }
   }
@@ -85,22 +100,36 @@ function attributesOf(cmd: CommandNode): AttributeNode[] {
   return out;
 }
 
-function argTexts(parse: ParseResult, node: CommandNode | AttributeNode): string[] {
+function argTexts(
+  parse: ParseResult,
+  node: CommandNode | AttributeNode,
+): string[] {
   return node.args.map((arg) => renderArg(arg, parse.tokens));
 }
 
 /** True when `section` contains a command called `command` (any nesting depth). */
-export function hasCommand(parse: ParseResult | null, section: string, command: string): boolean {
+export function hasCommand(
+  parse: ParseResult | null,
+  section: string,
+  command: string,
+): boolean {
   if (!parse) return false;
   return commandsNamed(parse, section, command).length > 0;
 }
 
 /** As above, but also requires the command's block to contain `attribute`. */
-export function hasCommandWithAttribute(parse: ParseResult | null, section: string, command: string, attribute: string): boolean {
+export function hasCommandWithAttribute(
+  parse: ParseResult | null,
+  section: string,
+  command: string,
+  attribute: string,
+): boolean {
   if (!parse) return false;
   const target = attribute.toLowerCase();
   return commandsNamed(parse, section, command).some((cmd) =>
-    attributesOf(cmd).some((attr) => tokenText(parse, attr.name).toLowerCase() === target),
+    attributesOf(cmd).some(
+      (attr) => tokenText(parse, attr.name).toLowerCase() === target,
+    ),
   );
 }
 
@@ -116,7 +145,9 @@ export function hasCommandWithAttributeWhere(
   const target = attribute.toLowerCase();
   return commandsNamed(parse, section, command).some((cmd) =>
     attributesOf(cmd).some(
-      (attr) => tokenText(parse, attr.name).toLowerCase() === target && test(argTexts(parse, attr)),
+      (attr) =>
+        tokenText(parse, attr.name).toLowerCase() === target &&
+        test(argTexts(parse, attr)),
     ),
   );
 }
@@ -140,26 +171,41 @@ export function hasCommandWhere(
   test: (args: string[]) => boolean,
 ): boolean {
   if (!parse) return false;
-  return commandsNamed(parse, section, command).some((cmd) => test(argTexts(parse, cmd)));
+  return commandsNamed(parse, section, command).some((cmd) =>
+    test(argTexts(parse, cmd)),
+  );
 }
 
 /** How many commands named `command` live in `section`. */
-export function countCommand(parse: ParseResult | null, section: string, command: string): number {
+export function countCommand(
+  parse: ParseResult | null,
+  section: string,
+  command: string,
+): number {
   if (!parse) return 0;
   return commandsNamed(parse, section, command).length;
 }
 
 /** True when any `create_object` in OBJECTS_GENERATION names `objectConstant`. */
-export function hasObject(parse: ParseResult | null, objectConstant: string): boolean {
+export function hasObject(
+  parse: ParseResult | null,
+  objectConstant: string,
+): boolean {
   if (!parse) return false;
   const target = objectConstant.toLowerCase();
   return commandsNamed(parse, OBJECTS_SECTION, CREATE_OBJECT).some(
-    (cmd) => cmd.args.length > 0 && renderArg(cmd.args[0], parse.tokens).toLowerCase() === target,
+    (cmd) =>
+      cmd.args.length > 0 &&
+      renderArg(cmd.args[0], parse.tokens).toLowerCase() === target,
   );
 }
 
 /** hasObject, narrowed to placements whose block carries `attribute`. */
-export function hasObjectWith(parse: ParseResult | null, objectConstant: string, attribute: string): boolean {
+export function hasObjectWith(
+  parse: ParseResult | null,
+  objectConstant: string,
+  attribute: string,
+): boolean {
   if (!parse) return false;
   const target = objectConstant.toLowerCase();
   const attrTarget = attribute.toLowerCase();
@@ -167,7 +213,9 @@ export function hasObjectWith(parse: ParseResult | null, objectConstant: string,
     (cmd) =>
       cmd.args.length > 0 &&
       renderArg(cmd.args[0], parse.tokens).toLowerCase() === target &&
-      attributesOf(cmd).some((attr) => tokenText(parse, attr.name).toLowerCase() === attrTarget),
+      attributesOf(cmd).some(
+        (attr) => tokenText(parse, attr.name).toLowerCase() === attrTarget,
+      ),
   );
 }
 
@@ -192,7 +240,9 @@ export function hasObjectWithAttributeWhere(
       cmd.args.length > 0 &&
       renderArg(cmd.args[0], parse.tokens).toLowerCase() === target &&
       attributesOf(cmd).some(
-        (attr) => tokenText(parse, attr.name).toLowerCase() === attrTarget && test(argTexts(parse, attr)),
+        (attr) =>
+          tokenText(parse, attr.name).toLowerCase() === attrTarget &&
+          test(argTexts(parse, attr)),
       ),
   );
 }
@@ -204,5 +254,7 @@ export function hasObjectWithAttributeWhere(
  */
 export function isEmptyScript(parse: ParseResult | null): boolean {
   if (!parse) return false;
-  return parse.script.sections.length === 0 && parse.script.preamble.length === 0;
+  return (
+    parse.script.sections.length === 0 && parse.script.preamble.length === 0
+  );
 }

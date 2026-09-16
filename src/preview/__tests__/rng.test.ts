@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { COS_TABLE, SINE_SCALE, SINE_TABLE_SIZE, SIN_TABLE } from "../generator/sineTable";
+import {
+  COS_TABLE,
+  SINE_SCALE,
+  SINE_TABLE_SIZE,
+  SIN_TABLE,
+} from "../generator/sineTable";
 import {
   cosAt,
   createSubstream,
@@ -73,7 +78,11 @@ describe("hash32 / substreamSeed", () => {
       earlier();
     }
     const afterEarlierCommands = createSubstream(master, "S1", 5);
-    const drawsAfter = [afterEarlierCommands(), afterEarlierCommands(), afterEarlierCommands()];
+    const drawsAfter = [
+      afterEarlierCommands(),
+      afterEarlierCommands(),
+      afterEarlierCommands(),
+    ];
 
     expect(drawsAfter).toEqual(isolatedDraws);
   });
@@ -174,7 +183,9 @@ describe("sinAt / cosAt", () => {
       const s = SIN_TABLE[i];
       const c = COS_TABLE[i];
       const sumSquares = s * s + c * c;
-      expect(Math.abs(sumSquares - SINE_SCALE * SINE_SCALE)).toBeLessThan(15000);
+      expect(Math.abs(sumSquares - SINE_SCALE * SINE_SCALE)).toBeLessThan(
+        15000,
+      );
     }
   });
 });

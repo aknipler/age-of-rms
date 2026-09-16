@@ -1,10 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import type { OverlayShape } from "../../../tools-api/index";
-import type { PreviewWireResult, StageSnapshot } from "../../preview/generator/types";
+import type {
+  PreviewWireResult,
+  StageSnapshot,
+} from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
-import { createBitmapCanvas, drawPreview } from "../../preview/render/drawPreview";
+import {
+  createBitmapCanvas,
+  drawPreview,
+} from "../../preview/render/drawPreview";
 import { buildTerrainBitmap } from "../../preview/render/terrainBitmap";
 import {
   clampToCanvas,
@@ -120,7 +134,12 @@ export interface OverlayCanvasProps {
    * (the caller's own job) does all the rounding a drag actually wants.
    */
   hitTestDragStart?: (tile: TilePoint) => string | null;
-  onDrag?: (shapeId: string, phase: "move" | "end", percent: { x: number; y: number }, modifiers: OverlayDragModifiers) => void;
+  onDrag?: (
+    shapeId: string,
+    phase: "move" | "end",
+    percent: { x: number; y: number },
+    modifiers: OverlayDragModifiers,
+  ) => void;
   /** The full-fidelity terrain/objects/players/failure-marks layer. Absent draws background + `overlayShapes` only. */
   base?: OverlayCanvasBaseLayer;
   /** Sec.3.4 layer 2, declarative shapes any tool can draw on this canvas. */
@@ -185,7 +204,10 @@ export function OverlayCanvas({
   // a different transform, which is the whole reason drawPreview works this
   // way. `null` when there is no base layer at all.
   const terrain = useMemo(
-    () => (base ? createBitmapCanvas(buildTerrainBitmap(base.snapshot, base.palette)) : null),
+    () =>
+      base
+        ? createBitmapCanvas(buildTerrainBitmap(base.snapshot, base.palette))
+        : null,
     [base],
   );
 
@@ -218,7 +240,9 @@ export function OverlayCanvas({
     const container = containerRef.current;
     if (container === null || userFramedRef.current) return;
     if (container.clientWidth === 0 || container.clientHeight === 0) return;
-    setViewport(fitViewport(dim, container.clientWidth, container.clientHeight));
+    setViewport(
+      fitViewport(dim, container.clientWidth, container.clientHeight),
+    );
     // Depends on `base` too: a fresh generation (same dim, new terrain) should
     // still refit while the user hasn't framed anything yet, matching
     // PreviewCanvas's original dependency on the whole `snapshot` object.
@@ -229,7 +253,9 @@ export function OverlayCanvas({
     if (container === null) return;
     userFramedRef.current = false;
     setPersistedUserFramed(false);
-    setViewport(fitViewport(dim, container.clientWidth, container.clientHeight));
+    setViewport(
+      fitViewport(dim, container.clientWidth, container.clientHeight),
+    );
   }, [dim, setPersistedUserFramed, setViewport]);
 
   // Exports exactly what the canvas is currently showing: this zoom, this
@@ -246,7 +272,9 @@ export function OverlayCanvas({
   const exportPng = useCallback(async () => {
     const canvas = canvasRef.current;
     if (canvas === null) return;
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/png"),
+    );
     if (blob === null) return;
     const target = await save({
       filters: [{ name: "PNG Image", extensions: ["png"] }],
@@ -276,7 +304,15 @@ export function OverlayCanvas({
     // drawPreview composes its projection on top with `transform`.
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     drawPreview(ctx, viewport, {
-      base: base && terrain ? { result: base.result, snapshot: base.snapshot, terrain, hiddenObjects: base.hiddenObjects } : undefined,
+      base:
+        base && terrain
+          ? {
+              result: base.result,
+              snapshot: base.snapshot,
+              terrain,
+              hiddenObjects: base.hiddenObjects,
+            }
+          : undefined,
       overlayShapes,
       highlight,
       selection: selected,
@@ -300,7 +336,12 @@ export function OverlayCanvas({
       setViewport((previous) =>
         previous === null
           ? previous
-          : zoomAt(previous, factor, event.clientX - rect.left, event.clientY - rect.top),
+          : zoomAt(
+              previous,
+              factor,
+              event.clientX - rect.left,
+              event.clientY - rect.top,
+            ),
       );
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -323,7 +364,14 @@ export function OverlayCanvas({
   // selects it the same way it always has.
   const dragRef = useRef<
     | { mode: "pan"; pointerId: number; x: number; y: number; travel: number }
-    | { mode: "shapeCandidate"; pointerId: number; x: number; y: number; travel: number; shapeId: string }
+    | {
+        mode: "shapeCandidate";
+        pointerId: number;
+        x: number;
+        y: number;
+        travel: number;
+        shapeId: string;
+      }
     | { mode: "shapeDrag"; pointerId: number; shapeId: string }
     | null
   >(null);
@@ -333,7 +381,11 @@ export function OverlayCanvas({
       const canvas = canvasRef.current;
       if (canvas === null || viewport === null) return null;
       const rect = canvas.getBoundingClientRect();
-      const point = screenToTile(viewport, clientX - rect.left, clientY - rect.top);
+      const point = screenToTile(
+        viewport,
+        clientX - rect.left,
+        clientY - rect.top,
+      );
       if (!isOnMap(point, dim)) return null;
       return { x: Math.floor(point.x), y: Math.floor(point.y) };
     },
@@ -349,13 +401,19 @@ export function OverlayCanvas({
       const canvas = canvasRef.current;
       if (canvas === null || viewport === null || dim <= 0) return null;
       const rect = canvas.getBoundingClientRect();
-      const point = screenToTile(viewport, clientX - rect.left, clientY - rect.top);
+      const point = screenToTile(
+        viewport,
+        clientX - rect.left,
+        clientY - rect.top,
+      );
       return tileToPercent(point, dim);
     },
     [viewport, dim],
   );
 
-  const modifiersOf = (event: React.PointerEvent<HTMLCanvasElement>): OverlayDragModifiers => ({
+  const modifiersOf = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ): OverlayDragModifiers => ({
     shift: event.shiftKey,
     ctrl: event.ctrlKey,
     alt: event.altKey,
@@ -366,11 +424,25 @@ export function OverlayCanvas({
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     const tile = readTile(event.clientX, event.clientY);
-    const shapeId = tile !== null && hitTestDragStart ? hitTestDragStart(tile) : null;
+    const shapeId =
+      tile !== null && hitTestDragStart ? hitTestDragStart(tile) : null;
     dragRef.current =
       shapeId !== null
-        ? { mode: "shapeCandidate", pointerId: event.pointerId, x: event.clientX, y: event.clientY, travel: 0, shapeId }
-        : { mode: "pan", pointerId: event.pointerId, x: event.clientX, y: event.clientY, travel: 0 };
+        ? {
+            mode: "shapeCandidate",
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            travel: 0,
+            shapeId,
+          }
+        : {
+            mode: "pan",
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            travel: 0,
+          };
   };
 
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -379,9 +451,18 @@ export function OverlayCanvas({
       if (drag.mode === "pan") {
         const dx = event.clientX - drag.x;
         const dy = event.clientY - drag.y;
-        dragRef.current = { ...drag, x: event.clientX, y: event.clientY, travel: drag.travel + Math.abs(dx) + Math.abs(dy) };
+        dragRef.current = {
+          ...drag,
+          x: event.clientX,
+          y: event.clientY,
+          travel: drag.travel + Math.abs(dx) + Math.abs(dy),
+        };
         markUserFramed();
-        setViewport((previous) => (previous === null ? previous : clampToCanvas(panBy(previous, dx, dy), dim)));
+        setViewport((previous) =>
+          previous === null
+            ? previous
+            : clampToCanvas(panBy(previous, dx, dy), dim),
+        );
         return;
       }
       if (drag.mode === "shapeCandidate") {
@@ -389,17 +470,27 @@ export function OverlayCanvas({
         const dy = event.clientY - drag.y;
         const travel = drag.travel + Math.abs(dx) + Math.abs(dy);
         if (travel <= CLICK_SLOP_PX) {
-          dragRef.current = { ...drag, x: event.clientX, y: event.clientY, travel };
+          dragRef.current = {
+            ...drag,
+            x: event.clientX,
+            y: event.clientY,
+            travel,
+          };
           return; // still might resolve to a click
         }
         // Crossed the slop: this gesture is now a shape drag, never a pan.
-        dragRef.current = { mode: "shapeDrag", pointerId: event.pointerId, shapeId: drag.shapeId };
+        dragRef.current = {
+          mode: "shapeDrag",
+          pointerId: event.pointerId,
+          shapeId: drag.shapeId,
+        };
       }
       // mode === "shapeDrag" (either already, or just switched into above).
       const current = dragRef.current;
       const shapeId = current?.mode === "shapeDrag" ? current.shapeId : null;
       const percent = readPercent(event.clientX, event.clientY);
-      if (shapeId !== null && percent !== null && onDrag) onDrag(shapeId, "move", percent, modifiersOf(event));
+      if (shapeId !== null && percent !== null && onDrag)
+        onDrag(shapeId, "move", percent, modifiersOf(event));
       return;
     }
     const point = readTile(event.clientX, event.clientY);
@@ -407,7 +498,10 @@ export function OverlayCanvas({
     onHoverTile(point);
   };
 
-  const endDrag = (event: React.PointerEvent<HTMLCanvasElement>, clicked: boolean) => {
+  const endDrag = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+    clicked: boolean,
+  ) => {
     const drag = dragRef.current;
     if (drag?.pointerId !== event.pointerId) return;
     event.currentTarget.releasePointerCapture(event.pointerId);
@@ -417,8 +511,11 @@ export function OverlayCanvas({
       // A real shape drag was in progress: deliver the final drop and never
       // fall through to a click-select, the drag itself is the completed
       // gesture.
-      const percent = clicked ? readPercent(event.clientX, event.clientY) : null;
-      if (percent !== null && onDrag) onDrag(drag.shapeId, "end", percent, modifiersOf(event));
+      const percent = clicked
+        ? readPercent(event.clientX, event.clientY)
+        : null;
+      if (percent !== null && onDrag)
+        onDrag(drag.shapeId, "end", percent, modifiersOf(event));
       return;
     }
     // A press-and-release that never really moved is a click, whether it
@@ -474,7 +571,11 @@ export function OverlayCanvas({
       <div className={styles.zoomControls}>
         {showExportButton && (
           <HelpTip id="preview.exportPng">
-            <button type="button" className={styles.exportButton} onClick={exportPng}>
+            <button
+              type="button"
+              className={styles.exportButton}
+              onClick={exportPng}
+            >
               Export
             </button>
           </HelpTip>
@@ -489,7 +590,12 @@ export function OverlayCanvas({
               setViewport((previous) =>
                 previous === null
                   ? previous
-                  : zoomAt(previous, 1 / ZOOM_STEP, previous.width / 2, previous.height / 2),
+                  : zoomAt(
+                      previous,
+                      1 / ZOOM_STEP,
+                      previous.width / 2,
+                      previous.height / 2,
+                    ),
               );
             }}
           >
@@ -497,7 +603,12 @@ export function OverlayCanvas({
           </button>
         </HelpTip>
         <HelpTip id="preview.zoomFit">
-          <button type="button" className={styles.zoomButton} aria-label="Fit map" onClick={resetView}>
+          <button
+            type="button"
+            className={styles.zoomButton}
+            aria-label="Fit map"
+            onClick={resetView}
+          >
             ⤢
           </button>
         </HelpTip>
@@ -511,7 +622,12 @@ export function OverlayCanvas({
               setViewport((previous) =>
                 previous === null
                   ? previous
-                  : zoomAt(previous, ZOOM_STEP, previous.width / 2, previous.height / 2),
+                  : zoomAt(
+                      previous,
+                      ZOOM_STEP,
+                      previous.width / 2,
+                      previous.height / 2,
+                    ),
               );
             }}
           >

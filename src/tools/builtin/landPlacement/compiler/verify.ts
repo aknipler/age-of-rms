@@ -45,7 +45,10 @@ export function verifyEmission(
   targets: readonly VerifyTarget[],
   scriptSymbols: ReadonlyMap<string, number>,
   resolveParam: (id: string) => number | undefined = () => undefined,
-  resolveNode: (id: string, field: "x" | "y" | "theta" | "inbound") => number | undefined = () => undefined,
+  resolveNode: (
+    id: string,
+    field: "x" | "y" | "theta" | "inbound",
+  ) => number | undefined = () => undefined,
   /**
    * A DETERMINISTIC value to seed `resolved` with for specific cell names,
    * bypassing `evaluateExpressionTokens` for them entirely, found necessary
@@ -66,7 +69,10 @@ export function verifyEmission(
   const resolved = new Map<string, number>(scriptSymbols);
   for (const cell of emitted) {
     const seeded = paramCellValues.get(cell.name);
-    const value = seeded !== undefined ? seeded : evaluateExpressionTokens(cell.tokens, (n) => resolved.get(n));
+    const value =
+      seeded !== undefined
+        ? seeded
+        : evaluateExpressionTokens(cell.tokens, (n) => resolved.get(n));
     if (value !== undefined) resolved.set(cell.name, value);
   }
 
@@ -76,7 +82,11 @@ export function verifyEmission(
   for (const target of targets) {
     const cell = byName.get(target.name);
     if (cell === undefined) {
-      problems.push({ name: target.name, emittedValue: undefined, directValue: undefined });
+      problems.push({
+        name: target.name,
+        emittedValue: undefined,
+        directValue: undefined,
+      });
       continue;
     }
     const emittedValue = resolved.get(target.name);

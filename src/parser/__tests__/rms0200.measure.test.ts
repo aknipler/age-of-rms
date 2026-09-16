@@ -72,10 +72,13 @@ describe("RMS0200 corpus split (BUG-005 piece 1)", () => {
     const top = [...byText.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
     console.log(`\nfiles: ${files.length}`);
     console.log(`RMS0200 total: ${withSuggestion + without}`);
-    console.log(`  with did-you-mean (keeps behavioural claim): ${withSuggestion}`);
+    console.log(
+      `  with did-you-mean (keeps behavioural claim): ${withSuggestion}`,
+    );
     console.log(`  without (now reports observation only):      ${without}`);
     console.log("top names:");
-    for (const [name, n] of top) console.log(`  ${String(n).padStart(4)}  ${name}`);
+    for (const [name, n] of top)
+      console.log(`  ${String(n).padStart(4)}  ${name}`);
 
     // The RMSTEST_63 population, reported separately because it is a DIFFERENT
     // question from the wording split above. 61/62 produced a model in which an
@@ -89,14 +92,19 @@ describe("RMS0200 corpus split (BUG-005 piece 1)", () => {
     for (const f of files) {
       const parse = parseRms(readFileSync(f, "utf8"), lang);
       for (const item of scriptItems(parse)) {
-        if (item.kind !== "command" || item.def !== undefined || !item.block) continue;
+        if (item.kind !== "command" || item.def !== undefined || !item.block)
+          continue;
         const name = parse.tokens[item.name].text;
         blockOpeners.set(name, (blockOpeners.get(name) ?? 0) + 1);
       }
     }
     const openerTotal = [...blockOpeners.values()].reduce((a, b) => a + b, 0);
-    console.log(`\nunknown commands that OPEN A BLOCK (the RMSTEST_63 population): ${openerTotal}`);
-    for (const [name, n] of [...blockOpeners.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(
+      `\nunknown commands that OPEN A BLOCK (the RMSTEST_63 population): ${openerTotal}`,
+    );
+    for (const [name, n] of [...blockOpeners.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )) {
       console.log(`  ${String(n).padStart(4)}  ${name}`);
     }
 

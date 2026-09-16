@@ -7,8 +7,8 @@ never shipped to users.
 ## Why this exists
 
 The Phase 4.1 verification pass ran nine minimal scripts in DE's editor and read
-the results off screenshots. That worked for every *binary* question ("is the
-gold on the dirt or not") and answered no *numeric* one, because nobody can
+the results off screenshots. That worked for every _binary_ question ("is the
+gold on the dirt or not") and answered no _numeric_ one, because nobody can
 count 829 versus 840 tiles by eye. Those numeric questions are exactly the ones
 `preview-design.md` Sec.15 has been carrying open across three revisions, and
 they are what the `[tune]` constants need in order to stop being guesses.
@@ -50,12 +50,12 @@ which the watcher auto-detects.
 The default run prints terrain, elevation and object histograms. Four flags add
 a reading that a histogram cannot give, each built for a specific open question:
 
-| Flag | Gives | For |
-|---|---|---|
-| `--bbox TERRAIN` | bounding box and per-edge inset | border arithmetic, Sec.4 |
-| `--clusters OBJECT` | object blobs (4-connected) and the gaps between them | group spacing, Sec.6.6 |
-| `--patches TERRAIN` | terrain patches (4-connected) with area, centroid, bbox, circularity | cross-shaped land area, clumping regimes |
-| `--rows TERRAIN\|ELEVATION` | banded row and column histogram plus the mean on each axis | elevation south bias, border fuzziness depth |
+| Flag                        | Gives                                                                | For                                          |
+| --------------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
+| `--bbox TERRAIN`            | bounding box and per-edge inset                                      | border arithmetic, Sec.4                     |
+| `--clusters OBJECT`         | object blobs (4-connected) and the gaps between them                 | group spacing, Sec.6.6                       |
+| `--patches TERRAIN`         | terrain patches (4-connected) with area, centroid, bbox, circularity | cross-shaped land area, clumping regimes     |
+| `--rows TERRAIN\|ELEVATION` | banded row and column histogram plus the mean on each axis           | elevation south bias, border fuzziness depth |
 
 Both use 4-connectivity, and in both cases that encodes how the thing was built
 rather than a preference. An engine-grown terrain clump samples candidates
@@ -103,7 +103,7 @@ occupancy, which is the only constraint on a tight group's fill.
 ## Two traps, both of which look like something else
 
 **The emoji crash.** `AoE2ScenarioParser` prints emoji progress markers. On a
-cp1252 console that raises `UnicodeEncodeError` *during parsing*, which reads as
+cp1252 console that raises `UnicodeEncodeError` _during parsing_, which reads as
 a format incompatibility and is not. Both scripts force UTF-8 stdout at import.
 If you call the library directly, set `PYTHONIOENCODING=utf-8`.
 

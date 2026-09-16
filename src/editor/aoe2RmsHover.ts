@@ -3,7 +3,11 @@ import { load } from "@tauri-apps/plugin-store";
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsDataRaw from "../../reference/data/game-constants.json";
 import docStringsDataRaw from "../../reference/data/doc-strings.json";
-import { HELP_MODE_KEY, HELP_STORE_FILE, isHelpMode } from "../help/helpConstants";
+import {
+  HELP_MODE_KEY,
+  HELP_STORE_FILE,
+  isHelpMode,
+} from "../help/helpConstants";
 
 // Explicit types + a cast, rather than relying on TypeScript's inferred
 // JSON-literal types directly: with a heterogeneous array (some entries
@@ -67,7 +71,12 @@ interface GameConstant {
   descriptiveName: string;
   category: "terrain" | "object";
   deTextureFile: string | null;
-  resourceAmounts?: { food?: number; wood?: number; gold?: number; stone?: number };
+  resourceAmounts?: {
+    food?: number;
+    wood?: number;
+    gold?: number;
+    stone?: number;
+  };
   verified: boolean;
   notes?: string;
 }
@@ -77,7 +86,13 @@ interface GameConstantsData {
 
 interface DocEntry {
   key: string;
-  kind: "command" | "attribute" | "directive" | "controlKeyword" | "constant" | "ui";
+  kind:
+    | "command"
+    | "attribute"
+    | "directive"
+    | "controlKeyword"
+    | "constant"
+    | "ui";
   summary: string;
   details?: string;
   seeAlso?: string[];
@@ -91,11 +106,21 @@ const gameConstantsData = gameConstantsDataRaw as GameConstantsData;
 const docStringsData = docStringsDataRaw as DocStringsData;
 
 const COMMANDS_BY_NAME = new Map(languageData.commands.map((c) => [c.name, c]));
-const ATTRIBUTES_BY_NAME = new Map(languageData.attributes.map((a) => [a.name, a]));
-const DIRECTIVES_BY_NAME = new Map(languageData.directives.map((d) => [d.name, d]));
-const CONTROL_KEYWORDS_BY_NAME = new Map(languageData.controlKeywords.map((k) => [k.name, k]));
-const CONSTANTS_BY_NAME = new Map(gameConstantsData.constants.map((c) => [c.rmsConstant, c]));
-const DOC_STRINGS_BY_KEY = new Map(docStringsData.entries.map((e) => [e.key, e]));
+const ATTRIBUTES_BY_NAME = new Map(
+  languageData.attributes.map((a) => [a.name, a]),
+);
+const DIRECTIVES_BY_NAME = new Map(
+  languageData.directives.map((d) => [d.name, d]),
+);
+const CONTROL_KEYWORDS_BY_NAME = new Map(
+  languageData.controlKeywords.map((k) => [k.name, k]),
+);
+const CONSTANTS_BY_NAME = new Map(
+  gameConstantsData.constants.map((c) => [c.rmsConstant, c]),
+);
+const DOC_STRINGS_BY_KEY = new Map(
+  docStringsData.entries.map((e) => [e.key, e]),
+);
 const SECTION_NAMES = new Set(languageData.sections);
 
 function formatArgument(arg: Argument): string {
@@ -111,7 +136,10 @@ function formatCommandSignature(command: Command): string {
   return command.kind === "block" ? `${head} { ... }` : head;
 }
 
-function formatAttributeSignature(entry: { name: string; arguments?: Argument[] }): string {
+function formatAttributeSignature(entry: {
+  name: string;
+  arguments?: Argument[];
+}): string {
   const args = (entry.arguments ?? []).map(formatArgument).join(" ");
   return args ? `${entry.name} ${args}` : entry.name;
 }
@@ -124,7 +152,9 @@ function formatAttributeSignature(entry: { name: string; arguments?: Argument[] 
 // cautionMessage explicitly rather than relying on the (often internal,
 // maintainer-facing) "notes" field, which is deliberately NOT shown here.
 function collectCautions(args: Argument[] | undefined): string[] {
-  return (args ?? []).filter((a) => a.cautionMessage !== undefined).map((a) => a.cautionMessage as string);
+  return (args ?? [])
+    .filter((a) => a.cautionMessage !== undefined)
+    .map((a) => a.cautionMessage as string);
 }
 
 // Builds the hover popup body: a code-block signature, then the doc
@@ -147,7 +177,9 @@ function buildHoverContents(
     parts.push(`⚠️ **Caution:** ${caution}`);
   }
   if (!verified) {
-    parts.push("_Not yet verified against the official docs — see `reference/data/language.json`._");
+    parts.push(
+      "_Not yet verified against the official docs — see `reference/data/language.json`._",
+    );
   }
   return [{ value: parts.join("\n\n") }];
 }
@@ -170,7 +202,10 @@ export function registerAoe2RmsHoverProvider() {
     // The popup appears once the store read resolves rather than
     // blocking the UI thread.
     async provideHover(model, position) {
-      const store = await load(HELP_STORE_FILE, { autoSave: true, defaults: {} });
+      const store = await load(HELP_STORE_FILE, {
+        autoSave: true,
+        defaults: {},
+      });
       const savedMode = await store.get<string>(HELP_MODE_KEY);
       // Monaco's own hover only has an on/off toggle, not the alt-hover
       // distinction HelpTip has, so it stays visible for both "hover"
@@ -192,7 +227,12 @@ export function registerAoe2RmsHoverProvider() {
         if (directive) {
           const doc = DOC_STRINGS_BY_KEY.get(directive.name);
           return {
-            range: new monaco.Range(position.lineNumber, startColumn - 1, position.lineNumber, endColumn),
+            range: new monaco.Range(
+              position.lineNumber,
+              startColumn - 1,
+              position.lineNumber,
+              endColumn,
+            ),
             contents: buildHoverContents(
               formatAttributeSignature(directive),
               doc?.summary ?? directive.description,
@@ -204,7 +244,12 @@ export function registerAoe2RmsHoverProvider() {
         }
       }
 
-      const range = new monaco.Range(position.lineNumber, startColumn, position.lineNumber, endColumn);
+      const range = new monaco.Range(
+        position.lineNumber,
+        startColumn,
+        position.lineNumber,
+        endColumn,
+      );
 
       const command = COMMANDS_BY_NAME.get(word);
       if (command) {

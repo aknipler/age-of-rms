@@ -1,7 +1,18 @@
 // Pure Sec.3.1 logic: ScriptNode -> the section sub-tab list. Kept free of
 // React so SectionTabs is a thin renderer over this.
-import type { Diagnostic, DiagnosticSeverity, Item, ScriptNode, SectionNode, Span } from "../parser/types";
-import { CANONICAL_SECTION_ORDER, sectionLabel, SECTION_NUMBERS } from "./sectionLabels";
+import type {
+  Diagnostic,
+  DiagnosticSeverity,
+  Item,
+  ScriptNode,
+  SectionNode,
+  Span,
+} from "../parser/types";
+import {
+  CANONICAL_SECTION_ORDER,
+  sectionLabel,
+  SECTION_NUMBERS,
+} from "./sectionLabels";
 
 export interface SectionTab {
   /** Stable id for React keys / active-tab state. "header" | canonical name | raw unknown name. */
@@ -104,14 +115,22 @@ function spanContains(ranges: Span[], span: Span): boolean {
   return ranges.some((r) => span.start >= r.start && span.end <= r.end);
 }
 
-const SEVERITY_RANK: Record<DiagnosticSeverity, number> = { info: 0, warning: 1, error: 2 };
+const SEVERITY_RANK: Record<DiagnosticSeverity, number> = {
+  info: 0,
+  warning: 1,
+  error: 2,
+};
 
 /** Max diagnostic severity over the union of a tab's (possibly disjoint) ranges, or undefined if none apply. */
-export function tabProblemSeverity(tab: SectionTab, diagnostics: Diagnostic[]): DiagnosticSeverity | undefined {
+export function tabProblemSeverity(
+  tab: SectionTab,
+  diagnostics: Diagnostic[],
+): DiagnosticSeverity | undefined {
   let best: DiagnosticSeverity | undefined;
   for (const d of diagnostics) {
     if (!spanContains(tab.ranges, d.span)) continue;
-    if (!best || SEVERITY_RANK[d.severity] > SEVERITY_RANK[best]) best = d.severity;
+    if (!best || SEVERITY_RANK[d.severity] > SEVERITY_RANK[best])
+      best = d.severity;
   }
   return best;
 }

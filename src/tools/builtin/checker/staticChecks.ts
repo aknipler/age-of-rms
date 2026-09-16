@@ -10,9 +10,22 @@
  */
 
 import type { Item, ParseResult, Span } from "../../../parser/types";
-import type { InstantiatedArg, InstantiatedCommand, InstantiatedScript } from "../../../preview/generator/types";
-import { argValue, numAttr, objectEntry } from "../../../preview/generator/objects";
-import { beachTerrainFor, isWaterTerrain, resolveTerrainId, type TerrainConstantForMasks } from "../../../preview/generator/grid";
+import type {
+  InstantiatedArg,
+  InstantiatedCommand,
+  InstantiatedScript,
+} from "../../../preview/generator/types";
+import {
+  argValue,
+  numAttr,
+  objectEntry,
+} from "../../../preview/generator/objects";
+import {
+  beachTerrainFor,
+  isWaterTerrain,
+  resolveTerrainId,
+  type TerrainConstantForMasks,
+} from "../../../preview/generator/grid";
 import { declaredTargetTiles } from "../../../preview/generator/lands";
 import { resolveCliffSettings } from "../../../preview/generator/cliffs";
 import type { PublishedGameConstant } from "../../../../tools-api/index";
@@ -90,7 +103,9 @@ export function buildStaticContext(parse: ParseResult): StaticContext {
   return {
     astConsts,
     actorAreaRawAbstain: rawTexts.some((t) => t.includes("actor_area")),
-    terrainSurfaceRawAbstain: rawTexts.some((t) => t.includes("terrain") || t.includes("#const") || t.includes("<")),
+    terrainSurfaceRawAbstain: rawTexts.some(
+      (t) => t.includes("terrain") || t.includes("#const") || t.includes("<"),
+    ),
   };
 }
 
@@ -120,7 +135,9 @@ function isRndSourced(attr: { args: InstantiatedArg[] } | undefined): boolean {
  * "At N players," prefix, and that prefix was what stopped four identical
  * findings from collapsing into one block.
  */
-export function checkLandOverAllocation(inst: InstantiatedScript): UnstampedFinding[] {
+export function checkLandOverAllocation(
+  inst: InstantiatedScript,
+): UnstampedFinding[] {
   const commands = inst.sections.get("LAND_GENERATION") ?? [];
   const dim = inst.dim;
   const cap = dim * dim;
@@ -140,7 +157,10 @@ export function checkLandOverAllocation(inst: InstantiatedScript): UnstampedFind
       continue;
     }
     sum += raw;
-    if (isRndSourced(cmd.attributes.get("number_of_tiles")?.[0]) || isRndSourced(cmd.attributes.get("land_percent")?.[0])) {
+    if (
+      isRndSourced(cmd.attributes.get("number_of_tiles")?.[0]) ||
+      isRndSourced(cmd.attributes.get("land_percent")?.[0])
+    ) {
       seedDerived = true;
     }
   }
@@ -172,17 +192,33 @@ export function checkLandOverAllocation(inst: InstantiatedScript): UnstampedFind
 // Sec.3.2: undefined actor areas
 // ---------------------------------------------------------------------------
 
-const ACTOR_AREA_REF_ATTRS = ["actor_area_to_place_in", "avoid_actor_area"] as const;
+const ACTOR_AREA_REF_ATTRS = [
+  "actor_area_to_place_in",
+  "avoid_actor_area",
+] as const;
 
-function isCreateActorArea(parse: ParseResult, item: Item): item is Extract<Item, { kind: "command" }> {
-  return item.kind === "command" && astCommandName(parse, item) === "create_actor_area";
+function isCreateActorArea(
+  parse: ParseResult,
+  item: Item,
+): item is Extract<Item, { kind: "command" }> {
+  return (
+    item.kind === "command" &&
+    astCommandName(parse, item) === "create_actor_area"
+  );
 }
-function isActorAreaAttr(parse: ParseResult, item: Item): item is Extract<Item, { kind: "attribute" }> {
-  return item.kind === "attribute" && astAttributeName(parse, item) === "actor_area";
+function isActorAreaAttr(
+  parse: ParseResult,
+  item: Item,
+): item is Extract<Item, { kind: "attribute" }> {
+  return (
+    item.kind === "attribute" && astAttributeName(parse, item) === "actor_area"
+  );
 }
 
 /** Every span S0 actually instantiated a `create_actor_area`/`actor_area` occurrence at, mapped to its resolved numeric id, rule 2's "instantiation's own resolved values", keyed so a specific AST occurrence can be looked up by identity. */
-function instantiatedActorAreaValuesBySpan(inst: InstantiatedScript): Map<number, number> {
+function instantiatedActorAreaValuesBySpan(
+  inst: InstantiatedScript,
+): Map<number, number> {
   const bySpan = new Map<number, number>();
   for (const [, commands] of inst.sections) {
     for (const cmd of commands) {
@@ -213,7 +249,8 @@ function resolveDeclarationId(
   astConsts: AstConstMap,
   instValuesBySpan: ReadonlyMap<number, number>,
 ): DeclarationResolution {
-  if (typeof idArgValue === "number") return { values: new Set([idArgValue]), resolved: true };
+  if (typeof idArgValue === "number")
+    return { values: new Set([idArgValue]), resolved: true };
   if (typeof idArgValue === "string") {
     const set = astConsts.all.get(idArgValue);
     if (set && set.size > 0) return { values: new Set(set), resolved: true };
@@ -223,7 +260,8 @@ function resolveDeclarationId(
   // branch, S0 buys what rule 1's #const-name scan cannot (24hr_Caverns.rms's
   // `actor_area (AA_TC)`).
   const instValue = instValuesBySpan.get(span.start);
-  if (instValue !== undefined) return { values: new Set([instValue]), resolved: true };
+  if (instValue !== undefined)
+    return { values: new Set([instValue]), resolved: true };
   return { values: new Set(), resolved: false };
 }
 
@@ -232,11 +270,18 @@ function collectOrphanBlockAttributes(
   parse: ParseResult,
   names: ReadonlySet<string>,
 ): { attr: Extract<Item, { kind: "attribute" }>; orphanBlockSpan: Span }[] {
-  const out: { attr: Extract<Item, { kind: "attribute" }>; orphanBlockSpan: Span }[] = [];
-  function scan(items: readonly Item[], orphanBlockSpan: Span | undefined): void {
+  const out: {
+    attr: Extract<Item, { kind: "attribute" }>;
+    orphanBlockSpan: Span;
+  }[] = [];
+  function scan(
+    items: readonly Item[],
+    orphanBlockSpan: Span | undefined,
+  ): void {
     for (const item of items) {
       if (item.kind === "attribute") {
-        if (orphanBlockSpan && names.has(astAttributeName(parse, item))) out.push({ attr: item, orphanBlockSpan });
+        if (orphanBlockSpan && names.has(astAttributeName(parse, item)))
+          out.push({ attr: item, orphanBlockSpan });
       } else if (item.kind === "orphanBlock") {
         scan(item.block.items, item.span);
       } else if (item.kind === "if") {
@@ -261,19 +306,31 @@ function collectOrphanBlockAttributes(
  * the instantiation (strict, a reference in an untaken branch cannot fail on
  * this seed), plus shared-block references where S0 reached the block.
  */
-export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ctx: StaticContext): UnstampedFinding[] {
+export function checkActorAreas(
+  inst: InstantiatedScript,
+  parse: ParseResult,
+  ctx: StaticContext,
+): UnstampedFinding[] {
   const instValuesBySpan = instantiatedActorAreaValuesBySpan(inst);
   const declaredIds = new Set<number>();
   let abstained = ctx.actorAreaRawAbstain;
 
   // Declaration side, both forms, every branch (walkItems is generous by construction).
-  const declOccurrences = collectOccurrences(parse, (item) => isCreateActorArea(parse, item) || isActorAreaAttr(parse, item));
+  const declOccurrences = collectOccurrences(
+    parse,
+    (item) => isCreateActorArea(parse, item) || isActorAreaAttr(parse, item),
+  );
   for (const { item } of declOccurrences) {
     let idArgValue: unknown;
     if (isCreateActorArea(parse, item)) idArgValue = item.args[2]?.value;
     else if (isActorAreaAttr(parse, item)) idArgValue = item.args[0]?.value;
     else continue;
-    const { values, resolved } = resolveDeclarationId(idArgValue, item.span, ctx.astConsts, instValuesBySpan);
+    const { values, resolved } = resolveDeclarationId(
+      idArgValue,
+      item.span,
+      ctx.astConsts,
+      instValuesBySpan,
+    );
     if (!resolved) abstained = true;
     for (const v of values) declaredIds.add(v);
   }
@@ -322,7 +379,10 @@ export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ct
   }
 
   // Reference side, shared blocks S0 actually reached.
-  const orphanRefs = collectOrphanBlockAttributes(parse, new Set(ACTOR_AREA_REF_ATTRS));
+  const orphanRefs = collectOrphanBlockAttributes(
+    parse,
+    new Set(ACTOR_AREA_REF_ATTRS),
+  );
   for (const { attr, orphanBlockSpan } of orphanRefs) {
     if (!wasReachedButUnsimulated(inst.notes, orphanBlockSpan)) continue;
     const raw = attr.args[0]?.value;
@@ -352,7 +412,9 @@ export function checkActorAreas(inst: InstantiatedScript, parse: ParseResult, ct
 const CONNECT_COMMAND_PREFIX = "create_connect_";
 
 /** `PublishedGameConstant` already carries every field `TerrainConstantForMasks` reads, this only fixes the `constId?` (optional) vs `constId` (required) seam, WITHOUT dropping `isHybrid`/`isBeach`/`beachTerrain` the way `objectConstantsFromPublished` (previewBridge.ts, built for the Monte Carlo layer's narrower `ObjectConstant` projection) would. */
-function asTerrainConstants(constants: readonly PublishedGameConstant[]): readonly TerrainConstantForMasks[] {
+function asTerrainConstants(
+  constants: readonly PublishedGameConstant[],
+): readonly TerrainConstantForMasks[] {
   return constants.map((c) => ({ ...c, constId: c.constId ?? null }));
 }
 
@@ -369,7 +431,11 @@ function isTerrainProducerItem(parse: ParseResult, item: Item): boolean {
   if (item.kind === "attribute") {
     const name = astAttributeName(parse, item);
     return (
-      name === "base_terrain" || name === "terrain_type" || name === "beach_terrain" || name === "replace_terrain" || name === "default_terrain_replacement"
+      name === "base_terrain" ||
+      name === "terrain_type" ||
+      name === "beach_terrain" ||
+      name === "replace_terrain" ||
+      name === "default_terrain_replacement"
     );
   }
   return false;
@@ -381,7 +447,8 @@ function terrainProducerValues(parse: ParseResult, item: Item): unknown[] {
   }
   if (item.kind === "attribute") {
     const name = astAttributeName(parse, item);
-    if (name === "replace_terrain") return item.args[1] ? [item.args[1].value] : [];
+    if (name === "replace_terrain")
+      return item.args[1] ? [item.args[1].value] : [];
     return item.args[0] ? [item.args[0].value] : [];
   }
   return [];
@@ -426,7 +493,10 @@ export function computeTerrainSurface(
   constants: readonly TerrainConstantForMasks[],
   astConsts: AstConstMap,
 ): TerrainSurface {
-  const symbols = new Map<string, number>([...astConsts.first, ...inst.symbols]);
+  const symbols = new Map<string, number>([
+    ...astConsts.first,
+    ...inst.symbols,
+  ]);
   const surface = new Set<number>();
   let producersTotal = 0;
   let producersUnresolvable = 0;
@@ -449,18 +519,25 @@ export function computeTerrainSurface(
   for (const [, commands] of inst.sections) {
     for (const cmd of commands) {
       if (cmd.name === "base_terrain") add(cmd.args[0]?.value);
-      else if (LAND_COMMAND_NAMES.has(cmd.name)) add(argValue(cmd, "terrain_type", 0));
+      else if (LAND_COMMAND_NAMES.has(cmd.name))
+        add(argValue(cmd, "terrain_type", 0));
       else if (cmd.name === "create_terrain") {
         add(cmd.args[0]?.value);
         add(argValue(cmd, "beach_terrain", 0));
       } else if (cmd.name.startsWith(CONNECT_COMMAND_PREFIX)) {
-        for (const attr of cmd.attributes.get("replace_terrain") ?? []) add(attr.args[1]?.value);
-        add(cmd.attributes.get("default_terrain_replacement")?.[0]?.args[0]?.value);
+        for (const attr of cmd.attributes.get("replace_terrain") ?? [])
+          add(attr.args[1]?.value);
+        add(
+          cmd.attributes.get("default_terrain_replacement")?.[0]?.args[0]
+            ?.value,
+        );
       }
     }
   }
 
-  const producers = collectOccurrences(parse, (item) => isTerrainProducerItem(parse, item));
+  const producers = collectOccurrences(parse, (item) =>
+    isTerrainProducerItem(parse, item),
+  );
   for (const { item, ctx } of producers) {
     const include = ctx.insideRandom || ctx.sharedBlock;
     if (!include) continue;
@@ -472,15 +549,26 @@ export function computeTerrainSurface(
 
 function ignoreTerrainRestrictionsValid(cmd: InstantiatedCommand): boolean {
   if (!cmd.attributes.has("ignore_terrain_restrictions")) return false;
-  return cmd.attributes.has("set_place_for_every_player") || cmd.attributes.has("place_on_specific_land_id");
+  return (
+    cmd.attributes.has("set_place_for_every_player") ||
+    cmd.attributes.has("place_on_specific_land_id")
+  );
 }
 
-function terrainLabel(constants: readonly PublishedGameConstant[], id: number): string {
-  const row = constants.find((c) => c.category === "terrain" && c.constId === id);
+function terrainLabel(
+  constants: readonly PublishedGameConstant[],
+  id: number,
+): string {
+  const row = constants.find(
+    (c) => c.category === "terrain" && c.constId === id,
+  );
   return row?.rmsConstant ?? `terrain ${id}`;
 }
 
-function terrainRow(constants: readonly PublishedGameConstant[], id: number): PublishedGameConstant | undefined {
+function terrainRow(
+  constants: readonly PublishedGameConstant[],
+  id: number,
+): PublishedGameConstant | undefined {
   return constants.find((c) => c.category === "terrain" && c.constId === id);
 }
 
@@ -498,9 +586,14 @@ export interface TerrainCheckOptions {
 }
 
 /** Sec.3.3 + Sec.3.5. One command at a time, so a test can drive it without building a whole InstantiatedScript. */
-export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: InstantiatedScript, opts: TerrainCheckOptions): UnstampedFinding[] {
+export function checkObjectTerrainPlacement(
+  cmd: InstantiatedCommand,
+  inst: InstantiatedScript,
+  opts: TerrainCheckOptions,
+): UnstampedFinding[] {
   if (cmd.name !== "create_object") return [];
-  const typeName = typeof cmd.args[0]?.value === "string" ? cmd.args[0].value : undefined;
+  const typeName =
+    typeof cmd.args[0]?.value === "string" ? cmd.args[0].value : undefined;
   if (typeName === undefined || inst.objectGroups.has(typeName)) return []; // case 3: unresolvable type / create_object_group
 
   const row = objectEntry(typeName, opts.constants, inst.symbols);
@@ -509,8 +602,12 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
   if (ignoreTerrainRestrictionsValid(cmd)) return []; // valid override, the terrain table no longer applies
 
   const terrainRef = argValue(cmd, "terrain_to_place_on", 0);
-  const namedTerrainId = terrainRef !== undefined ? resolveTerrainId(opts.terrainConstants, terrainRef, opts.symbols) : undefined;
-  const namedTerrainUnresolved = terrainRef !== undefined && namedTerrainId === undefined;
+  const namedTerrainId =
+    terrainRef !== undefined
+      ? resolveTerrainId(opts.terrainConstants, terrainRef, opts.symbols)
+      : undefined;
+  const namedTerrainUnresolved =
+    terrainRef !== undefined && namedTerrainId === undefined;
   if (namedTerrainUnresolved) return []; // positive-resolver rule: an unresolvable named terrain reports nothing
 
   const findings: UnstampedFinding[] = [];
@@ -529,7 +626,9 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
         });
       }
     } else if (!opts.surfaceAbstained) {
-      const intersects = [...opts.surface].some((id) => row.allowedTerrains!.includes(id));
+      const intersects = [...opts.surface].some((id) =>
+        row.allowedTerrains!.includes(id),
+      );
       if (!intersects) {
         const verified = row.verified;
         findings.push({
@@ -544,8 +643,13 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
   } else if (row.habitat === "land" || row.habitat === "water") {
     // Tier 2: the coarse habitat class. "shore"/"amphibious"/"any"/undeclared are deliberately not checked (Sec.3.3).
     if (namedTerrainId !== undefined) {
-      const terrainIsWater = isWaterTerrain(opts.terrainConstants, namedTerrainId);
-      const contradiction = (row.habitat === "water" && !terrainIsWater) || (row.habitat === "land" && terrainIsWater);
+      const terrainIsWater = isWaterTerrain(
+        opts.terrainConstants,
+        namedTerrainId,
+      );
+      const contradiction =
+        (row.habitat === "water" && !terrainIsWater) ||
+        (row.habitat === "land" && terrainIsWater);
       if (contradiction) {
         const terrain = terrainRow(opts.constants, namedTerrainId);
         const verified = row.verified && (terrain?.verified ?? false);
@@ -559,11 +663,17 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
       }
     } else if (!opts.surfaceAbstained) {
       const surfaceIds = [...opts.surface];
-      const hasWater = surfaceIds.some((id) => isWaterTerrain(opts.terrainConstants, id));
-      const hasNonWater = surfaceIds.some((id) => !isWaterTerrain(opts.terrainConstants, id));
+      const hasWater = surfaceIds.some((id) =>
+        isWaterTerrain(opts.terrainConstants, id),
+      );
+      const hasNonWater = surfaceIds.some(
+        (id) => !isWaterTerrain(opts.terrainConstants, id),
+      );
       const ok = row.habitat === "water" ? hasWater : hasNonWater;
       if (!ok) {
-        const allSurfaceVerified = surfaceIds.every((id) => terrainRow(opts.constants, id)?.verified ?? false);
+        const allSurfaceVerified = surfaceIds.every(
+          (id) => terrainRow(opts.constants, id)?.verified ?? false,
+        );
         const verified = row.verified && allSurfaceVerified;
         findings.push({
           kind: "terrainImpossible",
@@ -579,10 +689,14 @@ export function checkObjectTerrainPlacement(cmd: InstantiatedCommand, inst: Inst
   return findings;
 }
 
-export function checkAllObjectTerrainPlacements(inst: InstantiatedScript, opts: TerrainCheckOptions): UnstampedFinding[] {
+export function checkAllObjectTerrainPlacements(
+  inst: InstantiatedScript,
+  opts: TerrainCheckOptions,
+): UnstampedFinding[] {
   const findings: UnstampedFinding[] = [];
   for (const [, commands] of inst.sections) {
-    for (const cmd of commands) findings.push(...checkObjectTerrainPlacement(cmd, inst, opts));
+    for (const cmd of commands)
+      findings.push(...checkObjectTerrainPlacement(cmd, inst, opts));
   }
   return findings;
 }
@@ -592,11 +706,14 @@ export function checkAllObjectTerrainPlacements(inst: InstantiatedScript, opts: 
 // ---------------------------------------------------------------------------
 
 /** `objects.ts`'s own `minExceedsMax` comparison, promoted to the static layer so it fires once rather than being rediscovered identically on every Monte Carlo run. */
-export function checkMinExceedsMaxObjects(inst: InstantiatedScript): UnstampedFinding[] {
+export function checkMinExceedsMaxObjects(
+  inst: InstantiatedScript,
+): UnstampedFinding[] {
   const findings: UnstampedFinding[] = [];
   for (const [, commands] of inst.sections) {
     for (const cmd of commands) {
-      if (cmd.name !== "create_object" && cmd.name !== "create_object_group") continue;
+      if (cmd.name !== "create_object" && cmd.name !== "create_object_group")
+        continue;
       const min = numAttr(cmd, "min_distance_to_players", 0, Number.NaN);
       const max = numAttr(cmd, "max_distance_to_players", 0, Number.NaN);
       if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
@@ -614,7 +731,9 @@ export function checkMinExceedsMaxObjects(inst: InstantiatedScript): UnstampedFi
 }
 
 /** `cliffs.ts`'s own `min_number_of_cliffs > max_number_of_cliffs` comparison, promoted the same way, its consequence is worse (the note's own words: "crashes the real game"). */
-export function checkCliffsMinExceedsMax(inst: InstantiatedScript): UnstampedFinding[] {
+export function checkCliffsMinExceedsMax(
+  inst: InstantiatedScript,
+): UnstampedFinding[] {
   const commands = inst.sections.get("CLIFF_GENERATION");
   if (!commands) return [];
   const settings = resolveCliffSettings(commands);
@@ -655,10 +774,18 @@ export function runStaticChecks(
   const census = ctx.terrainSurfaceRawAbstain
     ? undefined
     : computeTerrainSurface(parse, inst, terrainConstants, ctx.astConsts);
-  const unresolvableRatio = census && census.producersTotal > 0 ? census.producersUnresolvable / census.producersTotal : 0;
-  const surfaceAbstained = census === undefined || unresolvableRatio >= UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO;
+  const unresolvableRatio =
+    census && census.producersTotal > 0
+      ? census.producersUnresolvable / census.producersTotal
+      : 0;
+  const surfaceAbstained =
+    census === undefined ||
+    unresolvableRatio >= UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO;
   const surface = surfaceAbstained ? new Set<number>() : census!.surface;
-  const symbols = new Map<string, number>([...ctx.astConsts.first, ...inst.symbols]);
+  const symbols = new Map<string, number>([
+    ...ctx.astConsts.first,
+    ...inst.symbols,
+  ]);
 
   // Every check below emits findings WITHOUT a `playerCount`; this function
   // stamps it once, so a new check cannot ship without one.

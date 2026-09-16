@@ -24,31 +24,58 @@ function role(overrides: Partial<LandRole> = {}): LandRole {
 
 describe("P2 — a perPlayer random parameter pins a player count (Sec.4.4)", () => {
   it("ok when the live count matches what it was emitted for", () => {
-    const params: RandomParam[] = [{ id: "p1", label: "VAR", min: -2, max: 2, perPlayer: true, emittedForPlayerCount: 4 }];
+    const params: RandomParam[] = [
+      {
+        id: "p1",
+        label: "VAR",
+        min: -2,
+        max: 2,
+        perPlayer: true,
+        emittedForPlayerCount: 4,
+      },
+    ];
     expect(checkP2(params, 4).ok).toBe(true);
   });
 
   it("flags a mismatch when the live count has changed since emission", () => {
-    const params: RandomParam[] = [{ id: "p1", label: "VAR", min: -2, max: 2, perPlayer: true, emittedForPlayerCount: 4 }];
+    const params: RandomParam[] = [
+      {
+        id: "p1",
+        label: "VAR",
+        min: -2,
+        max: 2,
+        perPlayer: true,
+        emittedForPlayerCount: 4,
+      },
+    ];
     const result = checkP2(params, 6);
     expect(result.ok).toBe(false);
-    expect(result.mismatches).toEqual([{ paramId: "p1", label: "VAR", emittedFor: 4, livePlayerCount: 6 }]);
+    expect(result.mismatches).toEqual([
+      { paramId: "p1", label: "VAR", emittedFor: 4, livePlayerCount: 6 },
+    ]);
   });
 
   it("ignores a shared (non-perPlayer) param regardless of player count", () => {
-    const params: RandomParam[] = [{ id: "p1", label: "ROT", min: -180, max: 180, perPlayer: false }];
+    const params: RandomParam[] = [
+      { id: "p1", label: "ROT", min: -180, max: 180, perPlayer: false },
+    ];
     expect(checkP2(params, 8).ok).toBe(true);
   });
 
   it("ignores a perPlayer param that has never been emitted yet (no emittedForPlayerCount)", () => {
-    const params: RandomParam[] = [{ id: "p1", label: "VAR", min: -2, max: 2, perPlayer: true }];
+    const params: RandomParam[] = [
+      { id: "p1", label: "VAR", min: -2, max: 2, perPlayer: true },
+    ];
     expect(checkP2(params, 8).ok).toBe(true);
   });
 });
 
 describe("P3 — direct_placement for any player-assigned land (Sec.6.3)", () => {
   it("ok when no role assigns a player at all", () => {
-    const result = checkP3([role({ assignToPlayer: false })], parseRms("<PLAYER_SETUP>\n", lang));
+    const result = checkP3(
+      [role({ assignToPlayer: false })],
+      parseRms("<PLAYER_SETUP>\n", lang),
+    );
     expect(result.ok).toBe(true);
     expect(result.hasPlayerAssignedLand).toBe(false);
   });
@@ -102,6 +129,12 @@ describe("P5 — the fence's @alp-model must parse (Sec.6.1)", () => {
     const source = `/* @alp v1 begin — x.\n   @alp-model {"v":1,"placements":[],"roles":[],"randomParams":[],"groups":[]} */\n/* @alp end */\n`;
     const result = checkP5(parseRms(source, lang));
     expect(result.ok).toBe(true);
-    expect(result.model).toEqual({ v: 1, placements: [], roles: [], randomParams: [], groups: [] });
+    expect(result.model).toEqual({
+      v: 1,
+      placements: [],
+      roles: [],
+      randomParams: [],
+      groups: [],
+    });
   });
 });

@@ -14,7 +14,11 @@ import type { AlpModel } from "../fence";
 import type { LandRole, Placement, ShapeGroup } from "../model";
 import { checkP4, reservedNames } from "../preconditions";
 
-type PolarOffset = { kind: "polar"; r: import("../../../../../tools-api/index").Expr; theta: import("../../../../../tools-api/index").Expr };
+type PolarOffset = {
+  kind: "polar";
+  r: import("../../../../../tools-api/index").Expr;
+  theta: import("../../../../../tools-api/index").Expr;
+};
 
 const ROTATION_PLAYER = 4123;
 const ROTATION_AUX = -47;
@@ -38,8 +42,19 @@ const SCRIPT_SYMBOLS = new Map<string, number>([
 
 /** Bulls_Eyes' 8 lands (acceptance.test.ts's own fixture, reused here, no roles, matching that the hand-written map's acceptance gate is unaffected by this orchestrator). */
 function bullsEyesPlacements(): Placement[] {
-  const player = (id: string, offset: PolarOffset): Placement => ({ id, parent: "center", frame: "radial", label: id, offset });
-  const aux = (id: string, parent: string, baselineDelta: number, varName: string): Placement => ({
+  const player = (id: string, offset: PolarOffset): Placement => ({
+    id,
+    parent: "center",
+    frame: "radial",
+    label: id,
+    offset,
+  });
+  const aux = (
+    id: string,
+    parent: string,
+    baselineDelta: number,
+    varName: string,
+  ): Placement => ({
     id,
     parent,
     frame: "radial",
@@ -47,15 +62,26 @@ function bullsEyesPlacements(): Placement[] {
     offset: {
       kind: "polar",
       r: sym("RADIUS_AUX_LANDS"),
-      theta: baselineDelta === 0 ? add(sym("ROTATION_AUX"), sym(varName)) : add(add(num(baselineDelta), sym("ROTATION_AUX")), sym(varName)),
+      theta:
+        baselineDelta === 0
+          ? add(sym("ROTATION_AUX"), sym(varName))
+          : add(add(num(baselineDelta), sym("ROTATION_AUX")), sym(varName)),
     },
   });
   return [
-    player("P1", { kind: "polar", r: sym("RADIUS_PLAYER_LANDS"), theta: sym("ROTATION_PLAYER") }),
+    player("P1", {
+      kind: "polar",
+      r: sym("RADIUS_PLAYER_LANDS"),
+      theta: sym("ROTATION_PLAYER"),
+    }),
     aux("P1_A1", "P1", 0, "VAR_A1"),
     aux("P1_A2", "P1", -135, "VAR_A2"),
     aux("P1_A3", "P1", 135, "VAR_A3"),
-    player("P2", { kind: "polar", r: sym("RADIUS_PLAYER_LANDS"), theta: add(sym("DIST_BW_PLAYERS"), sym("ROTATION_PLAYER")) }),
+    player("P2", {
+      kind: "polar",
+      r: sym("RADIUS_PLAYER_LANDS"),
+      theta: add(sym("DIST_BW_PLAYERS"), sym("ROTATION_PLAYER")),
+    }),
     aux("P2_A1", "P2", 0, "VAR_A1"),
     aux("P2_A2", "P2", -135, "VAR_A2"),
     aux("P2_A3", "P2", 135, "VAR_A3"),
@@ -63,7 +89,13 @@ function bullsEyesPlacements(): Placement[] {
 }
 
 function bullsEyesModel(): AlpModel {
-  return { v: 1, placements: bullsEyesPlacements(), roles: [], randomParams: [], groups: [] };
+  return {
+    v: 1,
+    placements: bullsEyesPlacements(),
+    roles: [],
+    randomParams: [],
+    groups: [],
+  };
 }
 
 describe("emitAlpModel — Bulls_Eyes-shaped model (acceptance)", () => {
@@ -77,7 +109,16 @@ describe("emitAlpModel — Bulls_Eyes-shaped model (acceptance)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.body.split("\n")).toHaveLength(104);
-    for (const id of ["P1", "P1_A1", "P1_A2", "P1_A3", "P2", "P2_A1", "P2_A2", "P2_A3"]) {
+    for (const id of [
+      "P1",
+      "P1_A1",
+      "P1_A2",
+      "P1_A3",
+      "P2",
+      "P2_A1",
+      "P2_A2",
+      "P2_A3",
+    ]) {
       expect(result.resolved.has(`X_${id}`)).toBe(true);
       expect(result.resolved.has(`Y_${id}`)).toBe(true);
     }
@@ -111,8 +152,24 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
     const model: AlpModel = {
       v: 1,
       placements: [
-        { id: "P1", parent: "center", frame: "radial", label: "P1", role: "player", repeatIndex: 0, offset: { kind: "polar", r: num(26), theta: num(0) } },
-        { id: "P2", parent: "center", frame: "radial", label: "P2", role: "player", repeatIndex: 1, offset: { kind: "polar", r: num(26), theta: num(90) } },
+        {
+          id: "P1",
+          parent: "center",
+          frame: "radial",
+          label: "P1",
+          role: "player",
+          repeatIndex: 0,
+          offset: { kind: "polar", r: num(26), theta: num(0) },
+        },
+        {
+          id: "P2",
+          parent: "center",
+          frame: "radial",
+          label: "P2",
+          role: "player",
+          repeatIndex: 1,
+          offset: { kind: "polar", r: num(26), theta: num(90) },
+        },
       ],
       roles: [role()],
       randomParams: [],
@@ -136,7 +193,15 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
   it("a chain anchor with no role gets no create_land text", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "anchor", parent: "center", frame: "radial", label: "anchor", offset: { kind: "polar", r: num(0), theta: num(0) } }],
+      placements: [
+        {
+          id: "anchor",
+          parent: "center",
+          frame: "radial",
+          label: "anchor",
+          offset: { kind: "polar", r: num(0), theta: num(0) },
+        },
+      ],
       roles: [],
       randomParams: [],
       groups: [],
@@ -150,12 +215,23 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
   it("throws when a placement references a role id absent from model.roles — a real invariant violation, not a user-facing case", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "P1", parent: "center", frame: "radial", label: "P1", role: "ghost", offset: { kind: "polar", r: num(1), theta: num(0) } }],
+      placements: [
+        {
+          id: "P1",
+          parent: "center",
+          frame: "radial",
+          label: "P1",
+          role: "ghost",
+          offset: { kind: "polar", r: num(1), theta: num(0) },
+        },
+      ],
       roles: [],
       randomParams: [],
       groups: [],
     };
-    expect(() => emitAlpModel(model, new NameAllocator(), new Map(), 2)).toThrow(/ghost/);
+    expect(() =>
+      emitAlpModel(model, new NameAllocator(), new Map(), 2),
+    ).toThrow(/ghost/);
   });
 });
 
@@ -165,7 +241,10 @@ describe("emitAlpModel — defensive ShapeGroup fill (Sec.5 item 1)", () => {
       id: "G",
       parent: "center",
       kind: "circle",
-      pattern: [{ id: "P", role: "r1" }, { id: "A", role: "r1" }],
+      pattern: [
+        { id: "P", role: "r1" },
+        { id: "A", role: "r1" },
+      ],
       repeats: 1,
       radius: num(20),
       rotation: num(0),
@@ -185,7 +264,13 @@ describe("emitAlpModel — defensive ShapeGroup fill (Sec.5 item 1)", () => {
     };
     // model.placements is EMPTY, neither member is present, exercising the
     // defensive fill path end to end.
-    const model: AlpModel = { v: 1, placements: [], roles: [role], randomParams: [], groups: [group] };
+    const model: AlpModel = {
+      v: 1,
+      placements: [],
+      roles: [role],
+      randomParams: [],
+      groups: [group],
+    };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 2);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -204,8 +289,16 @@ describe("emitAlpModel — on disagreement, emits nothing and reports the offend
       }),
     }));
     const { emitAlpModel: emitAlpModelMocked } = await import("../emitModel");
-    const result = emitAlpModelMocked(bullsEyesModel(), new NameAllocator({ prefix: "" }), SCRIPT_SYMBOLS, 2);
-    expect(result).toEqual({ ok: false, problems: [{ name: "ALP_X_P1", emittedValue: 10, directValue: 11 }] });
+    const result = emitAlpModelMocked(
+      bullsEyesModel(),
+      new NameAllocator({ prefix: "" }),
+      SCRIPT_SYMBOLS,
+      2,
+    );
+    expect(result).toEqual({
+      ok: false,
+      problems: [{ name: "ALP_X_P1", emittedValue: 10, directValue: 11 }],
+    });
     vi.doUnmock("../compiler/verify");
     vi.resetModules();
   });
@@ -228,20 +321,69 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
 
   it("Sec.4.4's own worked example — ROTATION_AUX shared, VAR_A1 shared — hoists to two #const rnd(...) cells both A-lands reference", () => {
     const placements: Placement[] = [
-      { id: "P1", parent: "center", frame: "radial", label: "P1", role: "player", repeatIndex: 0, offset: { kind: "polar", r: num(26), theta: num(0) } },
-      { id: "P1_A1", parent: "P1", frame: "radial", label: "P1_A1", offset: { kind: "polar", r: num(14), theta: add(sym("ROTATION_AUX_SYM"), param("rot")) } },
-      { id: "P2", parent: "center", frame: "radial", label: "P2", role: "player", repeatIndex: 1, offset: { kind: "polar", r: num(26), theta: num(180) } },
-      { id: "P2_A1", parent: "P2", frame: "radial", label: "P2_A1", offset: { kind: "polar", r: num(14), theta: add(sym("ROTATION_AUX_SYM"), param("rot")) } },
+      {
+        id: "P1",
+        parent: "center",
+        frame: "radial",
+        label: "P1",
+        role: "player",
+        repeatIndex: 0,
+        offset: { kind: "polar", r: num(26), theta: num(0) },
+      },
+      {
+        id: "P1_A1",
+        parent: "P1",
+        frame: "radial",
+        label: "P1_A1",
+        offset: {
+          kind: "polar",
+          r: num(14),
+          theta: add(sym("ROTATION_AUX_SYM"), param("rot")),
+        },
+      },
+      {
+        id: "P2",
+        parent: "center",
+        frame: "radial",
+        label: "P2",
+        role: "player",
+        repeatIndex: 1,
+        offset: { kind: "polar", r: num(26), theta: num(180) },
+      },
+      {
+        id: "P2_A1",
+        parent: "P2",
+        frame: "radial",
+        label: "P2_A1",
+        offset: {
+          kind: "polar",
+          r: num(14),
+          theta: add(sym("ROTATION_AUX_SYM"), param("rot")),
+        },
+      },
     ];
     const model: AlpModel = {
       v: 1,
       placements,
       roles: [role()],
-      randomParams: [{ id: "rot", label: "ROTATION_AUX", min: -180, max: 180, perPlayer: false }],
+      randomParams: [
+        {
+          id: "rot",
+          label: "ROTATION_AUX",
+          min: -180,
+          max: 180,
+          perPlayer: false,
+        },
+      ],
       groups: [],
     };
     const namer = new NameAllocator({ prefix: "" });
-    const result = emitAlpModel(model, namer, new Map([["ROTATION_AUX_SYM", 0]]), 2);
+    const result = emitAlpModel(
+      model,
+      namer,
+      new Map([["ROTATION_AUX_SYM", 0]]),
+      2,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // Exactly one rnd() cell, referenced from both players' aux land.
@@ -252,17 +394,40 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
 
   it("a perPlayer param resolves to a distinct name per owning player, and both players' emitted DEGREES cells reference their own", () => {
     const placements: Placement[] = [
-      { id: "P1", parent: "center", frame: "radial", label: "P1", role: "player", repeatIndex: 0, offset: { kind: "polar", r: num(26), theta: param("jitter") } },
-      { id: "P2", parent: "center", frame: "radial", label: "P2", role: "player", repeatIndex: 1, offset: { kind: "polar", r: num(26), theta: param("jitter") } },
+      {
+        id: "P1",
+        parent: "center",
+        frame: "radial",
+        label: "P1",
+        role: "player",
+        repeatIndex: 0,
+        offset: { kind: "polar", r: num(26), theta: param("jitter") },
+      },
+      {
+        id: "P2",
+        parent: "center",
+        frame: "radial",
+        label: "P2",
+        role: "player",
+        repeatIndex: 1,
+        offset: { kind: "polar", r: num(26), theta: param("jitter") },
+      },
     ];
     const model: AlpModel = {
       v: 1,
       placements,
       roles: [role()],
-      randomParams: [{ id: "jitter", label: "JITTER", min: -5, max: 5, perPlayer: true }],
+      randomParams: [
+        { id: "jitter", label: "JITTER", min: -5, max: 5, perPlayer: true },
+      ],
       groups: [],
     };
-    const result = emitAlpModel(model, new NameAllocator({ prefix: "" }), new Map(), 2);
+    const result = emitAlpModel(
+      model,
+      new NameAllocator({ prefix: "" }),
+      new Map(),
+      2,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.body).toContain("#const PARAM_JITTER_P1 rnd(-5,5)");
@@ -274,40 +439,101 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
   it("a perPlayer param referenced by a node with no player-owning ancestor fails emission — a model error, not a silent P1 fallback (Sec.4.4)", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "neutral", parent: "center", frame: "radial", label: "neutral", offset: { kind: "polar", r: num(10), theta: param("jitter") } }],
+      placements: [
+        {
+          id: "neutral",
+          parent: "center",
+          frame: "radial",
+          label: "neutral",
+          offset: { kind: "polar", r: num(10), theta: param("jitter") },
+        },
+      ],
       roles: [],
-      randomParams: [{ id: "jitter", label: "JITTER", min: -5, max: 5, perPlayer: true }],
+      randomParams: [
+        { id: "jitter", label: "JITTER", min: -5, max: 5, perPlayer: true },
+      ],
       groups: [],
     };
-    const result = emitAlpModel(model, new NameAllocator({ prefix: "" }), new Map(), 2);
+    const result = emitAlpModel(
+      model,
+      new NameAllocator({ prefix: "" }),
+      new Map(),
+      2,
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.problems).toEqual([{ name: "placement:neutral:theta", emittedValue: undefined, directValue: undefined }]);
+    expect(result.problems).toEqual([
+      {
+        name: "placement:neutral:theta",
+        emittedValue: undefined,
+        directValue: undefined,
+      },
+    ]);
   });
 
   it("a perPlayer param referenced from a role field also fails emission — a role has no single owner (decided here, Sec.6.2)", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "P1", parent: "center", frame: "radial", label: "P1", role: "player", repeatIndex: 0, offset: { kind: "polar", r: num(10), theta: num(0) } }],
+      placements: [
+        {
+          id: "P1",
+          parent: "center",
+          frame: "radial",
+          label: "P1",
+          role: "player",
+          repeatIndex: 0,
+          offset: { kind: "polar", r: num(10), theta: num(0) },
+        },
+      ],
       roles: [role({ baseSize: param("jitter") })],
-      randomParams: [{ id: "jitter", label: "JITTER", min: 5, max: 15, perPlayer: true }],
+      randomParams: [
+        { id: "jitter", label: "JITTER", min: 5, max: 15, perPlayer: true },
+      ],
       groups: [],
     };
-    const result = emitAlpModel(model, new NameAllocator({ prefix: "" }), new Map(), 2);
+    const result = emitAlpModel(
+      model,
+      new NameAllocator({ prefix: "" }),
+      new Map(),
+      2,
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.problems).toEqual([{ name: "role:Player:baseSize", emittedValue: undefined, directValue: undefined }]);
+    expect(result.problems).toEqual([
+      {
+        name: "role:Player:baseSize",
+        emittedValue: undefined,
+        directValue: undefined,
+      },
+    ]);
   });
 
   it("a shared param referenced from a role field DOES resolve — no owner ambiguity for perPlayer:false", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "P1", parent: "center", frame: "radial", label: "P1", role: "player", repeatIndex: 0, offset: { kind: "polar", r: num(10), theta: num(0) } }],
+      placements: [
+        {
+          id: "P1",
+          parent: "center",
+          frame: "radial",
+          label: "P1",
+          role: "player",
+          repeatIndex: 0,
+          offset: { kind: "polar", r: num(10), theta: num(0) },
+        },
+      ],
       roles: [role({ baseSize: param("sz") })],
-      randomParams: [{ id: "sz", label: "SIZE", min: 8, max: 12, perPlayer: false }],
+      randomParams: [
+        { id: "sz", label: "SIZE", min: 8, max: 12, perPlayer: false },
+      ],
       groups: [],
     };
-    const result = emitAlpModel(model, new NameAllocator({ prefix: "" }), new Map(), 2);
+    const result = emitAlpModel(
+      model,
+      new NameAllocator({ prefix: "" }),
+      new Map(),
+      2,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.body).toContain("#const PARAM_SIZE rnd(8,12)");
@@ -317,12 +543,25 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
   it("an unknown param id also fails emission rather than crashing", () => {
     const model: AlpModel = {
       v: 1,
-      placements: [{ id: "solo", parent: "center", frame: "radial", label: "solo", offset: { kind: "polar", r: num(10), theta: param("ghost") } }],
+      placements: [
+        {
+          id: "solo",
+          parent: "center",
+          frame: "radial",
+          label: "solo",
+          offset: { kind: "polar", r: num(10), theta: param("ghost") },
+        },
+      ],
       roles: [],
       randomParams: [],
       groups: [],
     };
-    const result = emitAlpModel(model, new NameAllocator({ prefix: "" }), new Map(), 2);
+    const result = emitAlpModel(
+      model,
+      new NameAllocator({ prefix: "" }),
+      new Map(),
+      2,
+    );
     expect(result.ok).toBe(false);
   });
 });
@@ -369,16 +608,33 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
   }
 
   function perPlayerModel(): AlpModel {
-    return { v: 1, placements: [], roles: [perPlayerRole()], randomParams: [], groups: [perPlayerRing()] };
+    return {
+      v: 1,
+      placements: [],
+      roles: [perPlayerRole()],
+      randomParams: [],
+      groups: [perPlayerRing()],
+    };
   }
 
   /** Balanced iff every opening `if` has exactly one closing `endif`. */
-  function ifEndifCounts(text: string): { ifCount: number; endifCount: number } {
-    return { ifCount: (text.match(/^if /gm) ?? []).length, endifCount: (text.match(/^endif$/gm) ?? []).length };
+  function ifEndifCounts(text: string): {
+    ifCount: number;
+    endifCount: number;
+  } {
+    return {
+      ifCount: (text.match(/^if /gm) ?? []).length,
+      endifCount: (text.match(/^endif$/gm) ?? []).length,
+    };
   }
 
   it("emits all 8 lands unconditionally in the body, one prologue of 8 branches, and exactly 7 guarded create_land skeletons", () => {
-    const result = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 3);
+    const result = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      3,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -399,15 +655,27 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
   });
 
   it("emittedNames contains every ALP_AT_LEAST_* and ALP_DEG_* name", () => {
-    const result = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 3);
+    const result = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      3,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    for (let k = 2; k <= 8; k++) expect(result.emittedNames).toContain(`ALP_AT_LEAST_${k}`);
-    for (let p = 1; p <= 8; p++) expect(result.emittedNames).toContain(`ALP_DEG_P${p}`);
+    for (let k = 2; k <= 8; k++)
+      expect(result.emittedNames).toContain(`ALP_AT_LEAST_${k}`);
+    for (let p = 1; p <= 8; p++)
+      expect(result.emittedNames).toContain(`ALP_DEG_P${p}`);
   });
 
   it("resolved carries only the previewed count's own DEG values, never a later branch's", () => {
-    const result = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 3);
+    const result = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      3,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.resolved.get("ALP_DEG_P1")).toBe(0);
@@ -417,8 +685,18 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
   });
 
   it("changing the previewed player count rearranges the resolved positions, never a fixed layout", () => {
-    const at3 = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 3);
-    const at5 = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 5);
+    const at3 = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      3,
+    );
+    const at5 = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      5,
+    );
     expect(at3.ok && at5.ok).toBe(true);
     if (!at3.ok || !at5.ok) return;
     expect(at3.resolved.get("ALP_DEG_P2")).toBe(120);
@@ -427,7 +705,9 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
 
   it("P4 reports no collision on a clean script, and still reports one when a name is genuinely taken", () => {
     const cleanParse = parseRms("<LAND_GENERATION>\n", lang);
-    const namer1 = new NameAllocator({ reserved: reservedNames(cleanParse, lang) });
+    const namer1 = new NameAllocator({
+      reserved: reservedNames(cleanParse, lang),
+    });
     const emission1 = emitAlpModel(perPlayerModel(), namer1, new Map(), 3);
     expect(emission1.ok).toBe(true);
     if (!emission1.ok) return;
@@ -436,19 +716,33 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
     // A script that already defines one of the prologue's own names, checked
     // against an UNSEEDED allocator, the same "manufacture a real collision"
     // shape emitModel.test.ts's own P4 case above uses.
-    const taken = emission1.emittedNames.find((n) => n.startsWith("ALP_DEG_P"))!;
+    const taken = emission1.emittedNames.find((n) =>
+      n.startsWith("ALP_DEG_P"),
+    )!;
     const dirtyParse = parseRms(`#const ${taken} 5\n<LAND_GENERATION>\n`, lang);
-    const emission2 = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 3);
+    const emission2 = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      3,
+    );
     expect(emission2.ok).toBe(true);
     if (!emission2.ok) return;
-    expect(checkP4(emission2.emittedNames, dirtyParse, lang).collisions).toContain(taken);
+    expect(
+      checkP4(emission2.emittedNames, dirtyParse, lang).collisions,
+    ).toContain(taken);
   });
 
   it("a chained aux land is guarded by its parent's own ALP_AT_LEAST_k, not left unguarded (Sec.4.5 composition paragraph)", () => {
     // A role with no `assignToPlayer` (Bulls_Eyes' own aux lands are exactly
     // this shape): `buildLandAttachmentExpectations` requires `repeatIndex`
     // only when `assignToPlayer` is true, and this chained land has none.
-    const auxRole: LandRole = { ...perPlayerRole(), id: "aux", label: "Aux", assignToPlayer: false };
+    const auxRole: LandRole = {
+      ...perPlayerRole(),
+      id: "aux",
+      label: "Aux",
+      assignToPlayer: false,
+    };
     const model: AlpModel = {
       ...perPlayerModel(),
       roles: [perPlayerRole(), auxRole],
@@ -488,14 +782,24 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
     };
     const model: AlpModel = {
       ...perPlayerModel(),
-      randomParams: [{ id: "dist", label: "DIST_BW_PLAYERS", min: 80, max: 280, perPlayer: false }],
+      randomParams: [
+        {
+          id: "dist",
+          label: "DIST_BW_PLAYERS",
+          min: 80,
+          max: 280,
+          perPlayer: false,
+        },
+      ],
       placements: [authoredP2],
     };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 3);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    const lines = result.body.split("\n").filter((l) => l.startsWith("#const ALP_DEG_P2 "));
+    const lines = result.body
+      .split("\n")
+      .filter((l) => l.startsWith("#const ALP_DEG_P2 "));
     // Player 2 exists at every count 2 through 8 — 7 branches — and the SAME
     // rule (a reference to the hoisted param, never a count-dependent number)
     // in every one of them.
@@ -506,23 +810,30 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
     // Untouched siblings still rearrange per count — item 2 must not turn the
     // whole ring rigid because one member has a rule.
     expect(result.body).toContain("#const ALP_DEG_P1 0"); // player 1, every branch
-    const branch5 = result.body.split("elseif 5_PLAYER_GAME")[1].split(/elseif|endif/)[0];
+    const branch5 = result.body
+      .split("elseif 5_PLAYER_GAME")[1]
+      .split(/elseif|endif/)[0];
     expect(branch5).toContain("#const ALP_DEG_P3 144"); // even spacing at 5 players, player 3 (repeat index 2)
 
     // The hoisted rnd cell precedes the prologue that references it
     // (hazard 2), never the other way around.
-    expect(result.body.indexOf("ALP_PARAM_DIST_BW_PLAYERS rnd(80,280)")).toBeLessThan(result.body.indexOf("#const ALP_DEG_P2 "));
+    expect(
+      result.body.indexOf("ALP_PARAM_DIST_BW_PLAYERS rnd(80,280)"),
+    ).toBeLessThan(result.body.indexOf("#const ALP_DEG_P2 "));
   });
 
   it("a perPlayer RandomParam emits 8 draws regardless of the current player-count setting (Sec.5.4/item 3)", () => {
     const model: AlpModel = {
       ...perPlayerModel(),
-      randomParams: [{ id: "jitter", label: "JITTER", min: -2, max: 2, perPlayer: true }],
+      randomParams: [
+        { id: "jitter", label: "JITTER", min: -2, max: 2, perPlayer: true },
+      ],
     };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 3); // previewed at 3, well under 8
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    for (let p = 1; p <= 8; p++) expect(result.body).toContain(`#const ALP_PARAM_JITTER_P${p} rnd(-2,2)`);
+    for (let p = 1; p <= 8; p++)
+      expect(result.body).toContain(`#const ALP_PARAM_JITTER_P${p} rnd(-2,2)`);
   });
 
   // shape-kinds-slice-a-brief.md item 5: a perPlayer group's own member is
@@ -536,19 +847,30 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
   // a second line of defence; since square/triangle/polygon are polar now
   // like everything else, it catches none of them, so this refusal alone
   // stands between a perPlayer square and silently-stamped ring angles.
-  it.each(["line", "arc", "square"] as const)("a perPlayer %s group fails emission with a problem, rather than drawing ring angles over it (now the only guard against it for a perimeter kind)", (kind) => {
-    const model: AlpModel = { ...perPlayerModel(), groups: [{ ...perPlayerRing(), kind }] };
-    const result = emitAlpModel(model, new NameAllocator(), new Map(), 3);
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.problems).toHaveLength(1);
-    expect(result.problems[0].name).toBe("group:ring:perPlayer");
-    expect(result.problems[0].emittedValue).toBeUndefined();
-    expect(result.problems[0].directValue).toBeUndefined();
-  });
+  it.each(["line", "arc", "square"] as const)(
+    "a perPlayer %s group fails emission with a problem, rather than drawing ring angles over it (now the only guard against it for a perimeter kind)",
+    (kind) => {
+      const model: AlpModel = {
+        ...perPlayerModel(),
+        groups: [{ ...perPlayerRing(), kind }],
+      };
+      const result = emitAlpModel(model, new NameAllocator(), new Map(), 3);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.problems).toHaveLength(1);
+      expect(result.problems[0].name).toBe("group:ring:perPlayer");
+      expect(result.problems[0].emittedValue).toBeUndefined();
+      expect(result.problems[0].directValue).toBeUndefined();
+    },
+  );
 
   it("a perPlayer circle (this describe block's own fixture) still emits its prologue unchanged — the refusal is kind-specific, not a blanket regression", () => {
-    const result = emitAlpModel(perPlayerModel(), new NameAllocator(), new Map(), 3);
+    const result = emitAlpModel(
+      perPlayerModel(),
+      new NameAllocator(),
+      new Map(),
+      3,
+    );
     expect(result.ok).toBe(true);
   });
 });
@@ -575,7 +897,10 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
     };
   }
 
-  function perimeterGroup(kind: "square" | "triangle" | "polygon", rotation: import("../../../../../tools-api/index").Expr): ShapeGroup {
+  function perimeterGroup(
+    kind: "square" | "triangle" | "polygon",
+    rotation: import("../../../../../tools-api/index").Expr,
+  ): ShapeGroup {
     return {
       id: "sq",
       parent: "center",
@@ -590,29 +915,64 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
     };
   }
 
-  function perimeterModel(kind: "square" | "triangle" | "polygon", rotation: import("../../../../../tools-api/index").Expr): AlpModel {
-    return { v: 1, placements: [], roles: [perimeterRole()], randomParams: [], groups: [perimeterGroup(kind, rotation)] };
+  function perimeterModel(
+    kind: "square" | "triangle" | "polygon",
+    rotation: import("../../../../../tools-api/index").Expr,
+  ): AlpModel {
+    return {
+      v: 1,
+      placements: [],
+      roles: [perimeterRole()],
+      randomParams: [],
+      groups: [perimeterGroup(kind, rotation)],
+    };
   }
 
-  it.each(["square", "triangle", "polygon"] as const)("a %s with a symbolic rotation emits ok, and its members' DEGREES cells reference it", (kind) => {
-    const result = emitAlpModel(perimeterModel(kind, sym("ROTATION_PLAYER")), new NameAllocator(), SCRIPT_SYMBOLS, 4);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    // The DEGREES cell's own line, not the trig macro's R cell (whose
-    // formula also mentions the DEGREES name as its first operand).
-    const degreesLines = result.body.split("\n").filter((l) => l.startsWith("#const ALP_DEGREES_"));
-    expect(degreesLines).toHaveLength(4); // one per member
-    for (const line of degreesLines) expect(line).toContain("ROTATION_PLAYER");
-  });
+  it.each(["square", "triangle", "polygon"] as const)(
+    "a %s with a symbolic rotation emits ok, and its members' DEGREES cells reference it",
+    (kind) => {
+      const result = emitAlpModel(
+        perimeterModel(kind, sym("ROTATION_PLAYER")),
+        new NameAllocator(),
+        SCRIPT_SYMBOLS,
+        4,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // The DEGREES cell's own line, not the trig macro's R cell (whose
+      // formula also mentions the DEGREES name as its first operand).
+      const degreesLines = result.body
+        .split("\n")
+        .filter((l) => l.startsWith("#const ALP_DEGREES_"));
+      expect(degreesLines).toHaveLength(4); // one per member
+      for (const line of degreesLines)
+        expect(line).toContain("ROTATION_PLAYER");
+    },
+  );
 
   it("a square with a literal rotation still emits normally — the polar representation is unconditional, not a fallback for the symbolic case", () => {
-    const result = emitAlpModel(perimeterModel("square", num(0)), new NameAllocator(), new Map(), 4);
+    const result = emitAlpModel(
+      perimeterModel("square", num(0)),
+      new NameAllocator(),
+      new Map(),
+      4,
+    );
     expect(result.ok).toBe(true);
   });
 
   it("a closed arithmetic rotation (not a bare literal, but resolvable with no symbol table) also emits normally", () => {
-    const closedArithmetic = { k: "bin" as const, op: "+" as const, l: num(30), r: num(60) }; // 90, fully closed
-    const result = emitAlpModel(perimeterModel("square", closedArithmetic), new NameAllocator(), new Map(), 4);
+    const closedArithmetic = {
+      k: "bin" as const,
+      op: "+" as const,
+      l: num(30),
+      r: num(60),
+    }; // 90, fully closed
+    const result = emitAlpModel(
+      perimeterModel("square", closedArithmetic),
+      new NameAllocator(),
+      new Map(),
+      4,
+    );
     expect(result.ok).toBe(true);
   });
 
@@ -631,7 +991,13 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
       label: "child",
       offset: { kind: "polar", r: num(10), theta: num(45) },
     };
-    const model: AlpModel = { v: 1, placements: [child], roles: [perimeterRole()], randomParams: [], groups: [group] };
+    const model: AlpModel = {
+      v: 1,
+      placements: [child],
+      roles: [perimeterRole()],
+      randomParams: [],
+      groups: [group],
+    };
     const result = emitAlpModel(model, new NameAllocator(), new Map(), 4);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -641,7 +1007,9 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
     // cartesian parent) would never do.
     const parentDegreesName = result.quantities.get("sq#0#P")?.degreesName;
     expect(parentDegreesName).toBeDefined();
-    const childDegreesLine = result.body.split("\n").find((l) => l.startsWith("#const ALP_DEGREES_CHILD "));
+    const childDegreesLine = result.body
+      .split("\n")
+      .find((l) => l.startsWith("#const ALP_DEGREES_CHILD "));
     expect(childDegreesLine).toBeDefined();
     expect(childDegreesLine).toContain(parentDegreesName!);
   });

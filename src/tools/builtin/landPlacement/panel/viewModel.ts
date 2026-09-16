@@ -13,7 +13,10 @@ import { walkItems } from "../../../walkItems";
 import { reservedNamesForApply } from "../applyEdits";
 import type { AlpModel } from "../fence";
 import type { EmissionOk } from "../emitModel";
-import { buildLandAttachmentExpectations, checkLandAttachment } from "../landCommand";
+import {
+  buildLandAttachmentExpectations,
+  checkLandAttachment,
+} from "../landCommand";
 import type { Anchor, Placement, ShapeGroup } from "../model";
 
 // ---------------------------------------------------------------------------
@@ -54,12 +57,19 @@ export function buildPlacementTree(model: AlpModel): PlacementTreeNode[] {
   // Anything parented to a non-existent id (excluding "center" itself, which
   // build() already covers) is orphaned. Surface it as its own root rather
   // than lose it from the tree entirely.
-  const orphans = model.placements.filter((p) => p.parent !== "center" && !byId.has(p.parent));
-  return [...roots, ...orphans.map((placement) => ({ placement, depth: 0, children: [] }))];
+  const orphans = model.placements.filter(
+    (p) => p.parent !== "center" && !byId.has(p.parent),
+  );
+  return [
+    ...roots,
+    ...orphans.map((placement) => ({ placement, depth: 0, children: [] })),
+  ];
 }
 
 /** Flattens the tree to a list in display order, what a React list actually renders. */
-export function flattenPlacementTree(nodes: readonly PlacementTreeNode[]): { placement: Placement; depth: number }[] {
+export function flattenPlacementTree(
+  nodes: readonly PlacementTreeNode[],
+): { placement: Placement; depth: number }[] {
   const out: { placement: Placement; depth: number }[] = [];
   const walk = (list: readonly PlacementTreeNode[]) => {
     for (const node of list) {
@@ -76,7 +86,11 @@ export function flattenPlacementTree(nodes: readonly PlacementTreeNode[]): { pla
  * "center" is never a cycle (it is the tree's root, not a placement). A
  * placement naming itself is trivially a cycle without needing the walk.
  */
-export function wouldCreateCycle(model: AlpModel, placementId: string, candidateParent: Anchor): boolean {
+export function wouldCreateCycle(
+  model: AlpModel,
+  placementId: string,
+  candidateParent: Anchor,
+): boolean {
   if (candidateParent === "center") return false;
   if (candidateParent === placementId) return true;
   const byId = new Map(model.placements.map((p) => [p.id, p] as const));
@@ -110,8 +124,13 @@ export interface ShapeGroupLandTotal {
   exact: boolean;
 }
 
-export function shapeGroupLandTotal(group: Pick<ShapeGroup, "pattern" | "repeats" | "perPlayer">): ShapeGroupLandTotal {
-  return { count: group.pattern.length * group.repeats, exact: !group.perPlayer };
+export function shapeGroupLandTotal(
+  group: Pick<ShapeGroup, "pattern" | "repeats" | "perPlayer">,
+): ShapeGroupLandTotal {
+  return {
+    count: group.pattern.length * group.repeats,
+    exact: !group.perPlayer,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -133,17 +152,26 @@ export function shapeGroupLandTotal(group: Pick<ShapeGroup, "pattern" | "repeats
  * anchor `expandShapeGroup` never touched) means every count is fair game,
  * since nothing here restricts it.
  */
-export function validThetaPerCountRange(placement: Pick<Placement, "repeatIndex">, maxPlayerCount: number): number[] {
-  const from = placement.repeatIndex !== undefined ? placement.repeatIndex + 1 : 1;
+export function validThetaPerCountRange(
+  placement: Pick<Placement, "repeatIndex">,
+  maxPlayerCount: number,
+): number[] {
+  const from =
+    placement.repeatIndex !== undefined ? placement.repeatIndex + 1 : 1;
   const counts: number[] = [];
   for (let count = from; count <= maxPlayerCount; count++) counts.push(count);
   return counts;
 }
 
 /** `validThetaPerCountRange`, filtered to the counts `placement` does not already carry an override for — exactly the choices left to offer a "+ add override" control. */
-export function availableThetaPerCountOptions(placement: Pick<Placement, "repeatIndex" | "thetaPerCount">, maxPlayerCount: number): number[] {
+export function availableThetaPerCountOptions(
+  placement: Pick<Placement, "repeatIndex" | "thetaPerCount">,
+  maxPlayerCount: number,
+): number[] {
   const used = new Set(Object.keys(placement.thetaPerCount ?? {}).map(Number));
-  return validThetaPerCountRange(placement, maxPlayerCount).filter((count) => !used.has(count));
+  return validThetaPerCountRange(placement, maxPlayerCount).filter(
+    (count) => !used.has(count),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +217,11 @@ export function numberToExpr(n: number): Expr {
 function findCreateLandCommands(parse: ParseResult): CommandNode[] {
   const out: CommandNode[] = [];
   walkItems(parse, (item) => {
-    if (item.kind === "command" && parse.tokens[item.name]?.text === "create_land") out.push(item);
+    if (
+      item.kind === "command" &&
+      parse.tokens[item.name]?.text === "create_land"
+    )
+      out.push(item);
   });
   return out;
 }
@@ -228,7 +260,9 @@ export function computePlacementAttachment(
       repeatIndex: placement.repeatIndex,
     }).filter((e) => e.attribute === "land_position");
     const attached = commands.some(
-      (land) => checkLandAttachment(land, parse.tokens, positionExpectation).attributes[0]?.attached === true,
+      (land) =>
+        checkLandAttachment(land, parse.tokens, positionExpectation)
+          .attributes[0]?.attached === true,
     );
     out.set(placement.id, attached);
   }
@@ -252,7 +286,11 @@ export function computePlacementAttachment(
 export function firstRawNodeSpan(parse: ParseResult): Span | null {
   let first: Span | null = null;
   walkItems(parse, (item) => {
-    if (item.kind === "raw" && (first === null || item.span.start < first.start)) first = item.span;
+    if (
+      item.kind === "raw" &&
+      (first === null || item.span.start < first.start)
+    )
+      first = item.span;
   });
   return first;
 }
@@ -281,8 +319,14 @@ export function firstRawNodeSpan(parse: ParseResult): Span | null {
  * `null` means there is no successful emission to check, which is not a
  * collision.
  */
-export function checkP4ForPanel(emission: EmissionOk | null, parse: ParseResult, lang: LanguageData): { ok: boolean; collisions: readonly string[] } {
+export function checkP4ForPanel(
+  emission: EmissionOk | null,
+  parse: ParseResult,
+  lang: LanguageData,
+): { ok: boolean; collisions: readonly string[] } {
   const reserved = reservedNamesForApply(parse, lang);
-  const collisions = (emission?.emittedNames ?? []).filter((n) => reserved.has(n));
+  const collisions = (emission?.emittedNames ?? []).filter((n) =>
+    reserved.has(n),
+  );
   return { ok: collisions.length === 0, collisions };
 }

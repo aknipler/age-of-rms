@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { sortKnownSlots, splitAttributeColumns, type AttributeSlot } from "../attributeModel";
+import {
+  sortKnownSlots,
+  splitAttributeColumns,
+  type AttributeSlot,
+} from "../attributeModel";
 import type { AttributeDef } from "../../parser/language";
 import type { AttributeNode } from "../../parser/types";
 
-function def(name: string, overrides: Partial<AttributeDef> = {}): AttributeDef {
+function def(
+  name: string,
+  overrides: Partial<AttributeDef> = {},
+): AttributeDef {
   return { name, verified: true, ...overrides };
 }
 
@@ -14,25 +21,43 @@ function instanceAt(start: number): AttributeNode {
   return { span: { start, end: start + 1 } } as unknown as AttributeNode;
 }
 
-function textSlot(name: string, overrides: Partial<AttributeDef> = {}, instances: AttributeNode[] = []): AttributeSlot {
+function textSlot(
+  name: string,
+  overrides: Partial<AttributeDef> = {},
+  instances: AttributeNode[] = [],
+): AttributeSlot {
   return {
     name,
-    def: def(name, { arguments: [{ name: "value", type: "string" }], ...overrides }),
+    def: def(name, {
+      arguments: [{ name: "value", type: "string" }],
+      ...overrides,
+    }),
     instances,
     isFlag: false,
   };
 }
 
-function numberSlot(name: string, overrides: Partial<AttributeDef> = {}, instances: AttributeNode[] = []): AttributeSlot {
+function numberSlot(
+  name: string,
+  overrides: Partial<AttributeDef> = {},
+  instances: AttributeNode[] = [],
+): AttributeSlot {
   return {
     name,
-    def: def(name, { arguments: [{ name: "value", type: "integer" }], ...overrides }),
+    def: def(name, {
+      arguments: [{ name: "value", type: "integer" }],
+      ...overrides,
+    }),
     instances,
     isFlag: false,
   };
 }
 
-function boolSlot(name: string, overrides: Partial<AttributeDef> = {}, instances: AttributeNode[] = []): AttributeSlot {
+function boolSlot(
+  name: string,
+  overrides: Partial<AttributeDef> = {},
+  instances: AttributeNode[] = [],
+): AttributeSlot {
   return { name, def: def(name, overrides), instances, isFlag: true };
 }
 
@@ -43,7 +68,11 @@ describe("sortKnownSlots", () => {
       textSlot("alpha"),
       boolSlot("mid", { required: true }),
     ];
-    expect(sortKnownSlots(slots, "alphabetical").map((s) => s.name)).toEqual(["alpha", "mid", "zeta"]);
+    expect(sortKnownSlots(slots, "alphabetical").map((s) => s.name)).toEqual([
+      "alpha",
+      "mid",
+      "zeta",
+    ]);
   });
 
   it("required mode groups required first, then text, then number, then boolean, alphabetical within each", () => {
@@ -94,29 +123,47 @@ describe("sortKnownSlots", () => {
     // repeated's first instance (in source order, as buildCommandBreakdown
     // already produces it) is at 50, so it sorts after single at 20 even
     // though it also has an instance earlier at 5 — only instances[0] counts.
-    expect(sortKnownSlots(slots, "fileOrder").map((s) => s.name)).toEqual(["single", "repeated"]);
+    expect(sortKnownSlots(slots, "fileOrder").map((s) => s.name)).toEqual([
+      "single",
+      "repeated",
+    ]);
   });
 
   it("custom mode with no saved order falls back to required order", () => {
     const slots = [boolSlot("b"), textSlot("a", { required: true })];
-    expect(sortKnownSlots(slots, "custom").map((s) => s.name)).toEqual(["a", "b"]);
-    expect(sortKnownSlots(slots, "custom", []).map((s) => s.name)).toEqual(["a", "b"]);
+    expect(sortKnownSlots(slots, "custom").map((s) => s.name)).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(sortKnownSlots(slots, "custom", []).map((s) => s.name)).toEqual([
+      "a",
+      "b",
+    ]);
   });
 
   it("custom mode applies the saved order, appending any unlisted slot in required order", () => {
     const slots = [textSlot("a"), textSlot("b"), textSlot("c"), boolSlot("d")];
-    expect(sortKnownSlots(slots, "custom", ["c", "a"]).map((s) => s.name)).toEqual(["c", "a", "b", "d"]);
+    expect(
+      sortKnownSlots(slots, "custom", ["c", "a"]).map((s) => s.name),
+    ).toEqual(["c", "a", "b", "d"]);
   });
 
   it("custom mode drops stale names from a saved order that no longer exist as slots", () => {
     const slots = [textSlot("a"), textSlot("b")];
-    expect(sortKnownSlots(slots, "custom", ["ghost", "b", "a"]).map((s) => s.name)).toEqual(["b", "a"]);
+    expect(
+      sortKnownSlots(slots, "custom", ["ghost", "b", "a"]).map((s) => s.name),
+    ).toEqual(["b", "a"]);
   });
 });
 
 describe("splitAttributeColumns", () => {
   it("with no override, splits purely by isFlag, preserving relative order in each column", () => {
-    const slots = [textSlot("a"), boolSlot("flag1"), numberSlot("b"), boolSlot("flag2")];
+    const slots = [
+      textSlot("a"),
+      boolSlot("flag1"),
+      numberSlot("b"),
+      boolSlot("flag2"),
+    ];
     const { left, right } = splitAttributeColumns(slots);
     expect(left.map((s) => s.name)).toEqual(["a", "b"]);
     expect(right.map((s) => s.name)).toEqual(["flag1", "flag2"]);

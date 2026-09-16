@@ -13,7 +13,12 @@ import { tokenize } from "../../../parser/lexer";
 import { lineOfOffset } from "../../../parser/lineIndex";
 import type { ParseResult, Span } from "../../../parser/types";
 import { Layout, type LayoutStats } from "./layout";
-import { DEFAULT_FORMAT_OPTIONS, detectLineEnding, resolveIndentUnit, type FormatOptions } from "./options";
+import {
+  DEFAULT_FORMAT_OPTIONS,
+  detectLineEnding,
+  resolveIndentUnit,
+  type FormatOptions,
+} from "./options";
 import { GapWriter, type SourceEdit } from "./writer";
 
 export type { FormatOptions, SourceEdit };
@@ -67,7 +72,10 @@ export interface FormatResult {
  * trivia, never where the boundaries fall. So an identical array of token
  * texts proves no character of content was added, dropped, merged or split.
  */
-function verify(parse: ParseResult, formatted: string): { ok: true; lineOffsets: number[] } | { ok: false; problem: string } {
+function verify(
+  parse: ParseResult,
+  formatted: string,
+): { ok: true; lineOffsets: number[] } | { ok: false; problem: string } {
   const relexed = tokenize(formatted);
   if (relexed.tokens.length !== parse.tokens.length) {
     return {
@@ -103,8 +111,14 @@ function collectChanges(
   limit: number,
 ): { changes: FormatChange[]; changedLines: number } {
   const source = parse.source;
-  const lineText = (offsets: readonly number[], text: string, line: number): string =>
-    text.slice(offsets[line], offsets[line + 1] ?? text.length).replace(/\r?\n$/, "");
+  const lineText = (
+    offsets: readonly number[],
+    text: string,
+    line: number,
+  ): string =>
+    text
+      .slice(offsets[line], offsets[line + 1] ?? text.length)
+      .replace(/\r?\n$/, "");
 
   // Tokens are in source order, so buckets are created in ascending line order
   // and a Map hands them back that way.
@@ -135,7 +149,10 @@ function collectChanges(
     if (changes.length < limit) {
       changes.push({
         line: line + 1,
-        span: { start: parse.lineOffsets[line], end: parse.lineOffsets[line + 1] ?? source.length },
+        span: {
+          start: parse.lineOffsets[line],
+          end: parse.lineOffsets[line + 1] ?? source.length,
+        },
         before,
         after,
       });
@@ -149,12 +166,22 @@ export interface FormatScriptOptions extends Partial<FormatOptions> {
   maxChanges?: number;
 }
 
-export function formatScript(parse: ParseResult, options: FormatScriptOptions = {}): FormatResult {
+export function formatScript(
+  parse: ParseResult,
+  options: FormatScriptOptions = {},
+): FormatResult {
   const opts: FormatOptions = { ...DEFAULT_FORMAT_OPTIONS, ...options };
   const lineEnding = detectLineEnding(parse.source);
-  const indentUnit = resolveIndentUnit(parse.source, parse.tokens, opts.indentStyle);
+  const indentUnit = resolveIndentUnit(
+    parse.source,
+    parse.tokens,
+    opts.indentStyle,
+  );
 
-  const writer = new GapWriter(parse, { eol: lineEnding, intraLineSpacing: opts.intraLineSpacing });
+  const writer = new GapWriter(parse, {
+    eol: lineEnding,
+    intraLineSpacing: opts.intraLineSpacing,
+  });
   const layout = new Layout(parse, opts, writer, indentUnit);
   layout.run();
 
@@ -162,17 +189,41 @@ export function formatScript(parse: ParseResult, options: FormatScriptOptions = 
   const checked = verify(parse, text);
 
   const sourceLines = parse.lineOffsets.length;
-  const base: FormatStats = { ...layout.stats, indentUnit, lineEnding, changedLines: 0, sourceLines, formattedLines: sourceLines };
+  const base: FormatStats = {
+    ...layout.stats,
+    indentUnit,
+    lineEnding,
+    changedLines: 0,
+    sourceLines,
+    formattedLines: sourceLines,
+  };
   if (!checked.ok) {
-    return { text, edits: [], stats: base, verified: false, verifyProblem: checked.problem, changes: [] };
+    return {
+      text,
+      edits: [],
+      stats: base,
+      verified: false,
+      verifyProblem: checked.problem,
+      changes: [],
+    };
   }
 
   const edits = writer.edits();
-  const { changes, changedLines } = collectChanges(parse, text, checked.lineOffsets, writer.tokenStarts(), options.maxChanges ?? 200);
+  const { changes, changedLines } = collectChanges(
+    parse,
+    text,
+    checked.lineOffsets,
+    writer.tokenStarts(),
+    options.maxChanges ?? 200,
+  );
   return {
     text,
     edits,
-    stats: { ...base, changedLines, formattedLines: checked.lineOffsets.length },
+    stats: {
+      ...base,
+      changedLines,
+      formattedLines: checked.lineOffsets.length,
+    },
     verified: true,
     changes,
   };

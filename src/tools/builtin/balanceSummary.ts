@@ -31,7 +31,10 @@ import {
   type ToolParamDef,
   type ToolRunHandle,
 } from "../../../tools-api/index";
-import { objectConstantsFromPublished, runPreviewFromContext } from "../previewBridge";
+import {
+  objectConstantsFromPublished,
+  runPreviewFromContext,
+} from "../previewBridge";
 import {
   DEFAULT_BASE_SEED,
   DEFAULT_PLAYER_COUNTS,
@@ -50,7 +53,10 @@ const PLAYER_COUNT_PARAMS: ToolParamDef = {
   label: "Player counts",
   help: "Which player counts to run the Monte Carlo pass at.",
   default: DEFAULT_PLAYER_COUNTS.map(String),
-  options: DEFAULT_PLAYER_COUNTS.map((n) => ({ value: String(n), label: String(n) })),
+  options: DEFAULT_PLAYER_COUNTS.map((n) => ({
+    value: String(n),
+    label: String(n),
+  })),
   minSelected: 1,
 };
 
@@ -59,8 +65,14 @@ export const balanceSummaryManifest: ToolManifest = {
   name: "Balance Summary",
   version: "1.0.0",
   apiVersion: TOOLS_API_VERSION,
-  description: "Runs generations across a player-count matrix and reports each player's average gold/stone/food/wood and nearest-patch distance, side by side.",
-  capabilities: ["read-source", "read-ast", "read-generation-settings", "read-reference"],
+  description:
+    "Runs generations across a player-count matrix and reports each player's average gold/stone/food/wood and nearest-patch distance, side by side.",
+  capabilities: [
+    "read-source",
+    "read-ast",
+    "read-generation-settings",
+    "read-reference",
+  ],
   // Same reasoning as the consistency checker: the report's own header states
   // the player-count MATRIX it ran, which the pane's single-count echo would
   // both duplicate and mislabel after a live settings change.
@@ -101,7 +113,9 @@ type ResourceKey = (typeof RESOURCE_KEYS)[number];
 function resourceKeyOf(category: string): ResourceKey | undefined {
   if (!category.startsWith("resource-")) return undefined;
   const key = category.slice("resource-".length);
-  return (RESOURCE_KEYS as readonly string[]).includes(key) ? (key as ResourceKey) : undefined;
+  return (RESOURCE_KEYS as readonly string[]).includes(key)
+    ? (key as ResourceKey)
+    : undefined;
 }
 
 /**
@@ -111,7 +125,11 @@ function resourceKeyOf(category: string): ResourceKey | undefined {
  * approximation, not a fact read off the script, which is why the report
  * says so once rather than per row (Sec.9's honesty-surface convention).
  */
-function nearestPlayer(x: number, y: number, players: readonly PlayerMarker[]): number | undefined {
+function nearestPlayer(
+  x: number,
+  y: number,
+  players: readonly PlayerMarker[],
+): number | undefined {
   let best: { player: number; dist: number } | undefined;
   for (const p of players) {
     const dist = Math.hypot(x - p.x, y - p.y);
@@ -135,13 +153,23 @@ interface ResourceCell {
 }
 
 function emptyCell(): ResourceCell {
-  return { runsWithAny: 0, totalAmountSum: 0, nearestDistanceSum: 0, patchCountSum: 0 };
+  return {
+    runsWithAny: 0,
+    totalAmountSum: 0,
+    nearestDistanceSum: 0,
+    patchCountSum: 0,
+  };
 }
 
 /** playerCount -> player -> resource -> cell. */
 type BalanceStats = Map<number, Map<number, Map<ResourceKey, ResourceCell>>>;
 
-function cellFor(stats: BalanceStats, pc: number, player: number, key: ResourceKey): ResourceCell {
+function cellFor(
+  stats: BalanceStats,
+  pc: number,
+  player: number,
+  key: ResourceKey,
+): ResourceCell {
   let byPlayer = stats.get(pc);
   if (!byPlayer) {
     byPlayer = new Map();
@@ -167,10 +195,19 @@ function cellFor(stats: BalanceStats, pc: number, player: number, key: ResourceK
  * own tests (this tool reads the SAME `PreviewResult` shape, but nothing
  * about resource attribution).
  */
-export function foldGeneration(stats: BalanceStats, pc: number, objects: readonly PlacedObject[], players: readonly PlayerMarker[], refDb: PreviewReferenceData): void {
+export function foldGeneration(
+  stats: BalanceStats,
+  pc: number,
+  objects: readonly PlacedObject[],
+  players: readonly PlayerMarker[],
+  refDb: PreviewReferenceData,
+): void {
   const originByPlayer = new Map(players.map((p) => [p.player, p]));
   // Per-run scratch: player -> resource -> running total/nearest/count, folded into `stats` once per player/resource at the end of this function.
-  const perRun = new Map<number, Map<ResourceKey, { total: number; nearest: number; count: number }>>();
+  const perRun = new Map<
+    number,
+    Map<ResourceKey, { total: number; nearest: number; count: number }>
+  >();
 
   for (const obj of objects) {
     const key = resourceKeyOf(obj.category);
@@ -180,7 +217,8 @@ export function foldGeneration(stats: BalanceStats, pc: number, objects: readonl
     const origin = originByPlayer.get(owner);
     if (!origin) continue;
 
-    const amount = objectEntry(obj.objectRef, refDb.constants)?.resourceAmounts?.[key] ?? 0;
+    const amount =
+      objectEntry(obj.objectRef, refDb.constants)?.resourceAmounts?.[key] ?? 0;
     const dist = Math.hypot(obj.x - origin.x, obj.y - origin.y);
 
     let byResource = perRun.get(owner);
@@ -188,7 +226,11 @@ export function foldGeneration(stats: BalanceStats, pc: number, objects: readonl
       byResource = new Map();
       perRun.set(owner, byResource);
     }
-    const running = byResource.get(key) ?? { total: 0, nearest: Infinity, count: 0 };
+    const running = byResource.get(key) ?? {
+      total: 0,
+      nearest: Infinity,
+      count: 0,
+    };
     running.total += amount;
     running.nearest = Math.min(running.nearest, dist);
     running.count++;
@@ -212,22 +254,38 @@ export function foldGeneration(stats: BalanceStats, pc: number, objects: readonl
 // Report
 // ---------------------------------------------------------------------------
 
-const RESOURCE_LABEL: Record<ResourceKey, string> = { gold: "Gold", stone: "Stone", food: "Food", wood: "Wood" };
+const RESOURCE_LABEL: Record<ResourceKey, string> = {
+  gold: "Gold",
+  stone: "Stone",
+  food: "Food",
+  wood: "Wood",
+};
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-function buildPlayerCountSection(pc: number, byPlayer: Map<number, Map<ResourceKey, ResourceCell>>, runsPerPlayerCount: number): OutputBlock[] {
+function buildPlayerCountSection(
+  pc: number,
+  byPlayer: Map<number, Map<ResourceKey, ResourceCell>>,
+  runsPerPlayerCount: number,
+): OutputBlock[] {
   const players = [...byPlayer.keys()].sort((a, b) => a - b);
 
   // A resource with zero occurrences for EVERY player at this count is left
   // out of the table entirely. An all-zero row for every player is not a
   // finding, it is "this script has no stone", which the reader can already
   // tell from the resource's absence.
-  const activeKeys = RESOURCE_KEYS.filter((key) => players.some((p) => (byPlayer.get(p)?.get(key)?.runsWithAny ?? 0) > 0));
+  const activeKeys = RESOURCE_KEYS.filter((key) =>
+    players.some((p) => (byPlayer.get(p)?.get(key)?.runsWithAny ?? 0) > 0),
+  );
   if (activeKeys.length === 0 || players.length === 0) {
-    return [{ kind: "text", text: `${pc} players: no per-player resource patches were placed in any of the ${runsPerPlayerCount} generations.` }];
+    return [
+      {
+        kind: "text",
+        text: `${pc} players: no per-player resource patches were placed in any of the ${runsPerPlayerCount} generations.`,
+      },
+    ];
   }
 
   const rows: string[][] = [];
@@ -235,44 +293,81 @@ function buildPlayerCountSection(pc: number, byPlayer: Map<number, Map<ResourceK
     for (const key of activeKeys) {
       const cell = byPlayer.get(player)?.get(key) ?? emptyCell();
       const avgAmount = Math.round(cell.totalAmountSum / runsPerPlayerCount);
-      const avgNearest = cell.runsWithAny > 0 ? String(round1(cell.nearestDistanceSum / cell.runsWithAny)) : "—";
+      const avgNearest =
+        cell.runsWithAny > 0
+          ? String(round1(cell.nearestDistanceSum / cell.runsWithAny))
+          : "—";
       const avgPatches = round1(cell.patchCountSum / runsPerPlayerCount);
-      rows.push([`Player ${player}`, RESOURCE_LABEL[key], String(avgAmount), avgNearest, String(avgPatches)]);
+      rows.push([
+        `Player ${player}`,
+        RESOURCE_LABEL[key],
+        String(avgAmount),
+        avgNearest,
+        String(avgPatches),
+      ]);
     }
   }
 
   const spreadLines: string[] = [];
   for (const key of activeKeys) {
-    const amounts = players.map((p) => (byPlayer.get(p)?.get(key)?.totalAmountSum ?? 0) / runsPerPlayerCount);
+    const amounts = players.map(
+      (p) =>
+        (byPlayer.get(p)?.get(key)?.totalAmountSum ?? 0) / runsPerPlayerCount,
+    );
     const maxAmount = Math.max(...amounts);
     const minAmount = Math.min(...amounts);
     if (maxAmount === 0) continue; // nothing to compare
     const maxPlayer = players[amounts.indexOf(maxAmount)];
     const minPlayer = players[amounts.indexOf(minAmount)];
     if (maxPlayer === minPlayer) continue; // one player at this count, or a tie across the board
-    const ratio = minAmount > 0 ? ` (${round1(maxAmount / minAmount)}×)` : " (least player averages 0)";
-    spreadLines.push(`${RESOURCE_LABEL[key]}: player ${minPlayer} averages the least at ${Math.round(minAmount)}, player ${maxPlayer} the most at ${Math.round(maxAmount)}${ratio}.`);
+    const ratio =
+      minAmount > 0
+        ? ` (${round1(maxAmount / minAmount)}×)`
+        : " (least player averages 0)";
+    spreadLines.push(
+      `${RESOURCE_LABEL[key]}: player ${minPlayer} averages the least at ${Math.round(minAmount)}, player ${maxPlayer} the most at ${Math.round(maxAmount)}${ratio}.`,
+    );
   }
 
   const blocks: OutputBlock[] = [
     { kind: "heading", text: `${pc} players` },
-    { kind: "table", columns: ["Player", "Resource", "Avg amount", "Avg nearest (tiles)", "Patches/run"], rows },
+    {
+      kind: "table",
+      columns: [
+        "Player",
+        "Resource",
+        "Avg amount",
+        "Avg nearest (tiles)",
+        "Patches/run",
+      ],
+      rows,
+    },
   ];
-  if (spreadLines.length > 0) blocks.push({ kind: "text", text: spreadLines.join("\n") });
+  if (spreadLines.length > 0)
+    blocks.push({ kind: "text", text: spreadLines.join("\n") });
   return blocks;
 }
 
-export function buildBalanceOutput(stats: BalanceStats, selectedCounts: readonly number[], runsPerPlayerCount: number): OutputBlock[] {
+export function buildBalanceOutput(
+  stats: BalanceStats,
+  selectedCounts: readonly number[],
+  runsPerPlayerCount: number,
+): OutputBlock[] {
   const blocks: OutputBlock[] = [
     { kind: "heading", text: "Balance summary" },
     {
       kind: "text",
-      text:
-        "A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance, an approximation, since the script itself does not say whose it is.",
+      text: "A resource the script ties to a player explicitly (set_place_for_every_player, or place_on_specific_land_id on that player's own land) is attributed to that player. Anything else is attributed to its nearest player by distance, an approximation, since the script itself does not say whose it is.",
     },
   ];
   for (const pc of selectedCounts) {
-    blocks.push(...buildPlayerCountSection(pc, stats.get(pc) ?? new Map(), runsPerPlayerCount));
+    blocks.push(
+      ...buildPlayerCountSection(
+        pc,
+        stats.get(pc) ?? new Map(),
+        runsPerPlayerCount,
+      ),
+    );
   }
   return blocks;
 }
@@ -290,24 +385,37 @@ function yieldToEventLoop(): Promise<void> {
 
 function resolvePlayerCounts(raw: unknown): number[] {
   const values = Array.isArray(raw) ? raw : PLAYER_COUNT_PARAMS.default;
-  const counts = (values as unknown[]).map((v) => Number(v)).filter((n) => Number.isFinite(n));
+  const counts = (values as unknown[])
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
   return [...new Set(counts)].sort((a, b) => a - b);
 }
 
-async function runBalanceSummary(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void, isCancelled: () => boolean): Promise<void> {
+async function runBalanceSummary(
+  ctx: ToolContext<ParseResult>,
+  emit: (msg: ToolMessage) => void,
+  isCancelled: () => boolean,
+): Promise<void> {
   const parse = ctx.parseResult;
   if (!parse || !ctx.settings || !ctx.referenceData) {
     emit({
       type: "error",
-      message: "This tool needs the parsed script, generation settings and reference data, which the host did not provide.",
+      message:
+        "This tool needs the parsed script, generation settings and reference data, which the host did not provide.",
       reason: "host-error",
     });
     return;
   }
 
   const selectedCounts = resolvePlayerCounts(ctx.params.playerCounts);
-  const runsPerPlayerCount = typeof ctx.params.runsPerPlayerCount === "number" ? ctx.params.runsPerPlayerCount : DEFAULT_RUNS_PER_PLAYER_COUNT;
-  const baseSeed = typeof ctx.params.baseSeed === "number" ? ctx.params.baseSeed : DEFAULT_BASE_SEED;
+  const runsPerPlayerCount =
+    typeof ctx.params.runsPerPlayerCount === "number"
+      ? ctx.params.runsPerPlayerCount
+      : DEFAULT_RUNS_PER_PLAYER_COUNT;
+  const baseSeed =
+    typeof ctx.params.baseSeed === "number"
+      ? ctx.params.baseSeed
+      : DEFAULT_BASE_SEED;
 
   const refDb: PreviewReferenceData = {
     language: buildLanguageIndex(ctx.referenceData.language),
@@ -322,11 +430,20 @@ async function runBalanceSummary(ctx: ToolContext<ParseResult>, emit: (msg: Tool
     const pc = selectedCounts[i];
     for (let runIndex = 0; runIndex < runsPerPlayerCount; runIndex++) {
       if (isCancelled()) {
-        emit({ type: "error", message: "The run was cancelled.", reason: "cancelled" });
+        emit({
+          type: "error",
+          message: "The run was cancelled.",
+          reason: "cancelled",
+        });
         return;
       }
       const seed = baseSeed + runIndex;
-      const outcome = runPreviewFromContext(ctx, refDb, { seed, collectSnapshots: false }, { playerCount: pc });
+      const outcome = runPreviewFromContext(
+        ctx,
+        refDb,
+        { seed, collectSnapshots: false },
+        { playerCount: pc },
+      );
       if (!outcome.ok) {
         emit({
           type: "error",
@@ -335,27 +452,51 @@ async function runBalanceSummary(ctx: ToolContext<ParseResult>, emit: (msg: Tool
         });
         return;
       }
-      foldGeneration(stats, pc, outcome.result.objects, outcome.result.players, refDb);
+      foldGeneration(
+        stats,
+        pc,
+        outcome.result.objects,
+        outcome.result.players,
+        refDb,
+      );
       completed++;
       emit({
         type: "progress",
-        fraction: totalGenerations > 0 ? completed / totalGenerations : undefined,
+        fraction:
+          totalGenerations > 0 ? completed / totalGenerations : undefined,
         note: `${pc} players, run ${runIndex + 1} of ${runsPerPlayerCount}`,
       });
       await yieldToEventLoop();
     }
 
     if (i < selectedCounts.length - 1) {
-      emit({ type: "partial", output: { blocks: buildBalanceOutput(stats, selectedCounts.slice(0, i + 1), runsPerPlayerCount) } });
+      emit({
+        type: "partial",
+        output: {
+          blocks: buildBalanceOutput(
+            stats,
+            selectedCounts.slice(0, i + 1),
+            runsPerPlayerCount,
+          ),
+        },
+      });
     }
   }
 
-  emit({ type: "result", output: { blocks: buildBalanceOutput(stats, selectedCounts, runsPerPlayerCount) } });
+  emit({
+    type: "result",
+    output: {
+      blocks: buildBalanceOutput(stats, selectedCounts, runsPerPlayerCount),
+    },
+  });
 }
 
 export const balanceSummary: ToolImplementation = {
   manifest: balanceSummaryManifest,
-  run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle {
+  run(
+    ctx: ToolContext<ParseResult>,
+    emit: (msg: ToolMessage) => void,
+  ): ToolRunHandle {
     let cancelled = false;
     runBalanceSummary(ctx, emit, () => cancelled).catch((e: unknown) => {
       emit({ type: "error", message: String(e), reason: "tool-error" });

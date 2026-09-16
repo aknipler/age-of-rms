@@ -1738,9 +1738,7 @@
           "type": "string"
         }
       ],
-      "attributes": [
-        "add_object"
-      ],
+      "attributes": ["add_object"],
       "verified": true,
       "notes": "guide:2013-2040, Game versions: DE only. The old description ('places a themed group of objects as a unit') had it backwards in both halves: nothing is placed here, and members are randomised INDIVIDUALLY, so a group must not mix objects with different resource amounts or gameplay effects. Argument retyped objectConstant -> string, matching #const/#define's own name slots: this is a DEFINITION SITE for a name the author invents (the guide calls it text and allows any characters), not a reference to an existing object constant, so RMS0204's 'use a named object constant' and RMS0205's cross-category check were both aimed at the wrong thing. `string` rather than `otherConstant` on purpose - otherConstant is a numeric slot in instantiate.ts, so a group whose name collided with a #const would resolve to a number and silently stop matching the create_object that referenced it."
     },
@@ -1890,9 +1888,7 @@
           "max": 3
         }
       ],
-      "mutexWith": [
-        "assign_to_player"
-      ],
+      "mutexWith": ["assign_to_player"],
       "description": "Assigns this land by player, color, or team.",
       "verified": true
     },
@@ -1906,9 +1902,7 @@
           "max": 8
         }
       ],
-      "mutexWith": [
-        "assign_to"
-      ],
+      "mutexWith": ["assign_to"],
       "description": "Assigns this land to a specific player number.",
       "verified": true
     },
@@ -1953,9 +1947,7 @@
           "optional": true
         }
       ],
-      "mutexWith": [
-        "place_on_forest_zone"
-      ],
+      "mutexWith": ["place_on_forest_zone"],
       "description": "Keeps placement away from forest zones.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
@@ -2224,7 +2216,10 @@
     {
       "name": "ignore_terrain_restrictions",
       "description": "Bypasses normal terrain-placement rules for this object. Only works alongside set_place_for_every_player or place_on_specific_land_id.",
-      "requiresOneOf": ["set_place_for_every_player", "place_on_specific_land_id"],
+      "requiresOneOf": [
+        "set_place_for_every_player",
+        "place_on_specific_land_id"
+      ],
       "requiresNote": "Without one of them this line does nothing — the objects are still placed, under the terrain restrictions they would have had anyway.",
       "verified": true,
       "notes": "The requirement is guide:2509's own \"Requires:\" line. What an unmet requirement DOES was measured by RMSTEST_42 on 2026-08-11, four runs: the attribute is inert and the command places in full (60 salmon across a flagged and an unflagged command, all in water; 30 flagged olive trees on grass). This corrects a reading held 2026-08-10 to 2026-08-11 that the whole command placed nothing, which was inferred from AK_Namatjira.rms spawning no shore fish — that map's command also names a shallow its fish cannot occupy, so it predicts zero under either model. The flag also does not lift everything it appears to — shore fish and box turtles keep their beach anchor under it and only gain the shallows (2026-08-10 measurement), which is modelled in src/preview/generator/objects.ts rather than here."
@@ -2266,9 +2261,7 @@
           "default": 100
         }
       ],
-      "mutexWith": [
-        "number_of_tiles"
-      ],
+      "mutexWith": ["number_of_tiles"],
       "description": "Share of the map this land should occupy.",
       "verified": true
     },
@@ -2474,9 +2467,7 @@
           "type": "integer"
         }
       ],
-      "mutexWith": [
-        "land_percent"
-      ],
+      "mutexWith": ["land_percent"],
       "description": "Absolute tile count for this land, instead of a percentage.",
       "verified": true
     },
@@ -2508,9 +2499,7 @@
     },
     {
       "name": "place_on_forest_zone",
-      "mutexWith": [
-        "avoid_forest_zone"
-      ],
+      "mutexWith": ["avoid_forest_zone"],
       "description": "Places objects only on, and directly next to, tiles with trees on them (including straggler trees and scenario editor trees).",
       "verified": true,
       "notes": "Boolean flag — takes NO argument, unlike avoid_forest_zone (Distance). Confirmed against the archived guide's own worked examples (`place_on_forest_zone` used bare). Was previously wrongly given an integer `distance` argument, which drew a false RMS0201 warning on every real use."
@@ -2523,9 +2512,7 @@
           "type": "integer"
         }
       ],
-      "mutexWith": [
-        "set_place_for_every_player"
-      ],
+      "mutexWith": ["set_place_for_every_player"],
       "description": "Restricts placement to a land tagged with land_id.",
       "verified": true,
       "notes": "Confirmed via the working create_object example in the source guide: create_object GOLD { place_on_specific_land_id 13 }."
@@ -2615,9 +2602,7 @@
     },
     {
       "name": "set_building_capturable",
-      "mutexWith": [
-        "set_gaia_unconvertible"
-      ],
+      "mutexWith": ["set_gaia_unconvertible"],
       "description": "Allows placed Gaia buildings to be captured.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
@@ -2659,27 +2644,21 @@
     },
     {
       "name": "set_gaia_unconvertible",
-      "mutexWith": [
-        "set_building_capturable"
-      ],
+      "mutexWith": ["set_building_capturable"],
       "description": "Prevents Gaia-owned placed objects from being converted.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
     },
     {
       "name": "set_loose_grouping",
-      "mutexWith": [
-        "set_tight_grouping"
-      ],
+      "mutexWith": ["set_tight_grouping"],
       "description": "Allows more spread between grouped objects.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
     },
     {
       "name": "set_place_for_every_player",
-      "mutexWith": [
-        "place_on_specific_land_id"
-      ],
+      "mutexWith": ["place_on_specific_land_id"],
       "description": "Ensures every player's land gets a copy of this placement.",
       "verified": true,
       "notes": "Behavior confirmed by the official Age of Empires support summary referencing this attribute; exact argument shape not independently verified here."
@@ -2694,9 +2673,7 @@
     },
     {
       "name": "set_scale_by_groups",
-      "mutexWith": [
-        "set_scale_by_size"
-      ],
+      "mutexWith": ["set_scale_by_size"],
       "mutexNote": "Only the last of the two applies, so the earlier line does nothing. To scale a terrain by both, use set_scale_by_groups on its own — it scales the total tile count as well. Elevation has no combined form; do that by hand with conditionals.",
       "description": "Scales number_of_clumps to the map size. The unscaled value refers to a 100x100 map. For terrains (not elevation) it scales the total tile count too.",
       "notes": "mutexNote is guide:1662/1679, which state the co-occurrence consequence outright. That closes parser-design Sec.11 verify item 21 without a game session: the question was whether the pair is really exclusive and which wins, and the guide answers both.",
@@ -2704,55 +2681,41 @@
     },
     {
       "name": "set_scale_by_size",
-      "mutexWith": [
-        "set_scale_by_groups"
-      ],
+      "mutexWith": ["set_scale_by_groups"],
       "mutexNote": "Only the last of the two applies, so the earlier line does nothing. To scale a terrain by both, use set_scale_by_groups on its own — it scales the total tile count as well. Elevation has no combined form; do that by hand with conditionals.",
       "description": "Scales number_of_tiles to the map size. The unscaled value refers to a 100x100 map.",
       "verified": true
     },
     {
       "name": "set_scaling_to_map_size",
-      "mutexWith": [
-        "set_scaling_to_player_number"
-      ],
+      "mutexWith": ["set_scaling_to_player_number"],
       "description": "Scales object count by map size.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
     },
     {
       "name": "set_scaling_to_player_number",
-      "mutexWith": [
-        "set_scaling_to_map_size"
-      ],
+      "mutexWith": ["set_scaling_to_map_size"],
       "description": "Scales object count by number of players.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
     },
     {
       "name": "set_tight_grouping",
-      "mutexWith": [
-        "set_loose_grouping"
-      ],
+      "mutexWith": ["set_loose_grouping"],
       "description": "Places grouped objects on adjacent tiles.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
     },
     {
       "name": "set_zone_by_team",
-      "mutexWith": [
-        "zone",
-        "set_zone_randomly"
-      ],
+      "mutexWith": ["zone", "set_zone_randomly"],
       "description": "Assigns this land's zone automatically by team.",
       "verified": true
     },
     {
       "name": "set_zone_randomly",
-      "mutexWith": [
-        "zone",
-        "set_zone_by_team"
-      ],
+      "mutexWith": ["zone", "set_zone_by_team"],
       "description": "Assigns this land's zone randomly.",
       "verified": true
     },
@@ -2916,10 +2879,7 @@
           "type": "integer"
         }
       ],
-      "mutexWith": [
-        "set_zone_by_team",
-        "set_zone_randomly"
-      ],
+      "mutexWith": ["set_zone_by_team", "set_zone_randomly"],
       "description": "Assigns this land to a numbered zone, used later for terrain/object placement scoping.",
       "verified": true
     }

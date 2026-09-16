@@ -1,4 +1,13 @@
-import type { AttributeNode, CommandNode, DirectiveNode, IfNode, Item, OrphanBlockNode, RandomNode, RawNode } from "../../parser/types";
+import type {
+  AttributeNode,
+  CommandNode,
+  DirectiveNode,
+  IfNode,
+  Item,
+  OrphanBlockNode,
+  RandomNode,
+  RawNode,
+} from "../../parser/types";
 import { cardKindForItem } from "../cardKind";
 import { useBreakdownContext } from "../BreakdownContext";
 import { usePreviewCut } from "../../PreviewCutContext";
@@ -24,7 +33,9 @@ function renderInner(item: Item) {
     case "random":
       return <RandomCard node={item as RandomNode} />;
     case "sharedBlock":
-      return <RawCard node={item as OrphanBlockNode} kindLabel="Shared block" />;
+      return (
+        <RawCard node={item as OrphanBlockNode} kindLabel="Shared block" />
+      );
     case "raw":
       return <RawCard node={item as RawNode} kindLabel="Raw" />;
   }

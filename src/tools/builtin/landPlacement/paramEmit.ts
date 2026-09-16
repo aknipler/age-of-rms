@@ -33,7 +33,10 @@ export interface ParamEmission {
    * fallback (Sec.4.4: "a perPlayer parameter referenced from [an unowned
    * node] is a model error the panel reports").
    */
-  resolveName: (id: string, ownerPlayer: number | undefined) => string | undefined;
+  resolveName: (
+    id: string,
+    ownerPlayer: number | undefined,
+  ) => string | undefined;
   /**
    * A DETERMINISTIC stand-in value per emitted param cell, the midpoint of
    * [min, max], same value for every `_P<n>` variant of one param.
@@ -58,7 +61,10 @@ export interface ParamEmission {
   previewValues: ReadonlyMap<string, number>;
 }
 
-export function emitRandomParams(params: readonly RandomParam[], namer: NameAllocator): ParamEmission {
+export function emitRandomParams(
+  params: readonly RandomParam[],
+  namer: NameAllocator,
+): ParamEmission {
   const cells: EmittedConst[] = [];
   const previewValues = new Map<string, number>();
   const sharedNames = new Map<string, string>();
@@ -89,12 +95,20 @@ export function emitRandomParams(params: readonly RandomParam[], namer: NameAllo
     perPlayerNames.set(p.id, names);
   }
 
-  const resolveName = (id: string, ownerPlayer: number | undefined): string | undefined => {
+  const resolveName = (
+    id: string,
+    ownerPlayer: number | undefined,
+  ): string | undefined => {
     const shared = sharedNames.get(id);
     if (shared !== undefined) return shared;
     const names = perPlayerNames.get(id);
     if (names === undefined) return undefined;
-    if (ownerPlayer === undefined || ownerPlayer < 1 || ownerPlayer > names.length) return undefined;
+    if (
+      ownerPlayer === undefined ||
+      ownerPlayer < 1 ||
+      ownerPlayer > names.length
+    )
+      return undefined;
     return names[ownerPlayer - 1];
   };
 
@@ -108,7 +122,10 @@ export function emitRandomParams(params: readonly RandomParam[], namer: NameAllo
  * matching Sec.5.5's "on disagreement the tool emits nothing" philosophy
  * extended to an unresolvable reference rather than a numeric one.
  */
-export function resolveParamRefs(e: Expr, resolveName: (id: string) => string | undefined): Expr | null {
+export function resolveParamRefs(
+  e: Expr,
+  resolveName: (id: string) => string | undefined,
+): Expr | null {
   switch (e.k) {
     case "num":
     case "inf":

@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { load, type Store } from "@tauri-apps/plugin-store";
 import { APP_SETTINGS_STORE_FILE } from "./nameDisplay";
 
@@ -10,7 +18,10 @@ export const DEFAULT_TAB_SIZE = 4;
 export const DEFAULT_INSERT_SPACES = true;
 
 function isTabSize(value: unknown): value is number {
-  return typeof value === "number" && (TAB_SIZE_OPTIONS as readonly number[]).includes(value);
+  return (
+    typeof value === "number" &&
+    (TAB_SIZE_OPTIONS as readonly number[]).includes(value)
+  );
 }
 
 /**
@@ -32,24 +43,29 @@ const CodeSettingsContext = createContext<CodeSettingsValue | null>(null);
 
 export function CodeSettingsProvider({ children }: { children: ReactNode }) {
   const [tabSize, setTabSizeState] = useState<number>(DEFAULT_TAB_SIZE);
-  const [insertSpaces, setInsertSpacesState] = useState<boolean>(DEFAULT_INSERT_SPACES);
+  const [insertSpaces, setInsertSpacesState] = useState<boolean>(
+    DEFAULT_INSERT_SPACES,
+  );
   const [store, setStore] = useState<Store | null>(null);
 
   // `cancelled` guards a load racing an unmount, see HotkeySettingsContext.tsx
   // for why StrictMode's dev double-invoke makes this necessary.
   useEffect(() => {
     let cancelled = false;
-    load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} }).then(async (loadedStore) => {
-      if (cancelled) return;
-      setStore(loadedStore);
-      const [savedTabSize, savedInsertSpaces] = await Promise.all([
-        loadedStore.get<unknown>(TAB_SIZE_KEY),
-        loadedStore.get<unknown>(INSERT_SPACES_KEY),
-      ]);
-      if (cancelled) return;
-      if (isTabSize(savedTabSize)) setTabSizeState(savedTabSize);
-      if (typeof savedInsertSpaces === "boolean") setInsertSpacesState(savedInsertSpaces);
-    });
+    load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} }).then(
+      async (loadedStore) => {
+        if (cancelled) return;
+        setStore(loadedStore);
+        const [savedTabSize, savedInsertSpaces] = await Promise.all([
+          loadedStore.get<unknown>(TAB_SIZE_KEY),
+          loadedStore.get<unknown>(INSERT_SPACES_KEY),
+        ]);
+        if (cancelled) return;
+        if (isTabSize(savedTabSize)) setTabSizeState(savedTabSize);
+        if (typeof savedInsertSpaces === "boolean")
+          setInsertSpacesState(savedInsertSpaces);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -76,11 +92,18 @@ export function CodeSettingsProvider({ children }: { children: ReactNode }) {
     [tabSize, setTabSize, insertSpaces, setInsertSpaces],
   );
 
-  return <CodeSettingsContext.Provider value={value}>{children}</CodeSettingsContext.Provider>;
+  return (
+    <CodeSettingsContext.Provider value={value}>
+      {children}
+    </CodeSettingsContext.Provider>
+  );
 }
 
 export function useCodeSettings(): CodeSettingsValue {
   const ctx = useContext(CodeSettingsContext);
-  if (!ctx) throw new Error("useCodeSettings must be used within a CodeSettingsProvider");
+  if (!ctx)
+    throw new Error(
+      "useCodeSettings must be used within a CodeSettingsProvider",
+    );
   return ctx;
 }

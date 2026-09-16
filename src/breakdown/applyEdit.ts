@@ -5,12 +5,20 @@
 // which is this function bound to the current ParseResult/lang/pushEdit.
 import { computeEdit } from "./patch/computeEdit";
 import { PatchError, type EditIntent, type EditResult } from "./patch/intents";
-import { rebaseEdit, shiftPointThroughEdits, type OffsetEdit } from "./ephemeralAnchors";
+import {
+  rebaseEdit,
+  shiftPointThroughEdits,
+  type OffsetEdit,
+} from "./ephemeralAnchors";
 import type { ParseResult } from "../parser/types";
 import type { LanguageIndex } from "../parser/language";
 
 /** Structurally matches TextEdit without importing it, keeping useDocument.ts free of a breakdown/ dependency. */
-export type ApplyTextEdit = (edit: { start: number; end: number; newText: string }) => void;
+export type ApplyTextEdit = (edit: {
+  start: number;
+  end: number;
+  newText: string;
+}) => void;
 
 /**
  * Computes the TextEdit for `intent` and pushes it onto the shared Monaco

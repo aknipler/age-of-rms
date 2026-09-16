@@ -66,13 +66,17 @@ function createMockCtx() {
 const viewport = fitViewport(20, 400, 400);
 
 function arcCalls(calls: { method: string; args: unknown[] }[]) {
-  return calls.filter((c) => c.method === "arc").map((c) => c.args as [number, number, number, number, number]);
+  return calls
+    .filter((c) => c.method === "arc")
+    .map((c) => c.args as [number, number, number, number, number]);
 }
 
 describe("drawOverlay (Sec.3.4 layer 2)", () => {
   it("draws a point at its screen position", () => {
     const { ctx, calls } = createMockCtx();
-    const shapes: OverlayShape[] = [{ kind: "point", x: 5, y: 5, role: "primary" }];
+    const shapes: OverlayShape[] = [
+      { kind: "point", x: 5, y: 5, role: "primary" },
+    ];
     drawPreview(ctx, viewport, { overlayShapes: shapes });
     const expected = tileToScreen(viewport, 5, 5);
     const arcs = arcCalls(calls);
@@ -83,7 +87,9 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
 
   it("draws a circle centred on its tile with a positive screen radius", () => {
     const { ctx, calls } = createMockCtx();
-    const shapes: OverlayShape[] = [{ id: "p1", kind: "circle", x: 10, y: 10, rTiles: 2, role: "primary" }];
+    const shapes: OverlayShape[] = [
+      { id: "p1", kind: "circle", x: 10, y: 10, rTiles: 2, role: "primary" },
+    ];
     drawPreview(ctx, viewport, { overlayShapes: shapes });
     const expected = tileToScreen(viewport, 10, 10);
     const arcs = arcCalls(calls);
@@ -96,13 +102,17 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
   it("fills a circle only when shape.fill is set", () => {
     const unfilled = createMockCtx();
     drawPreview(unfilled.ctx, viewport, {
-      overlayShapes: [{ kind: "circle", x: 1, y: 1, rTiles: 1, role: "primary" }],
+      overlayShapes: [
+        { kind: "circle", x: 1, y: 1, rTiles: 1, role: "primary" },
+      ],
     });
     expect(unfilled.calls.filter((c) => c.method === "fill")).toHaveLength(0);
 
     const filled = createMockCtx();
     drawPreview(filled.ctx, viewport, {
-      overlayShapes: [{ kind: "circle", x: 1, y: 1, rTiles: 1, role: "primary", fill: true }],
+      overlayShapes: [
+        { kind: "circle", x: 1, y: 1, rTiles: 1, role: "primary", fill: true },
+      ],
     });
     expect(filled.calls.filter((c) => c.method === "fill")).toHaveLength(1);
   });
@@ -126,13 +136,28 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
   it("dashes a line only when shape.dashed is set", () => {
     const plain = createMockCtx();
     drawPreview(plain.ctx, viewport, {
-      overlayShapes: [{ kind: "line", from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, role: "muted" }],
+      overlayShapes: [
+        {
+          kind: "line",
+          from: { x: 0, y: 0 },
+          to: { x: 1, y: 1 },
+          role: "muted",
+        },
+      ],
     });
     expect(plain.calls.some((c) => c.method === "setLineDash")).toBe(false);
 
     const dashed = createMockCtx();
     drawPreview(dashed.ctx, viewport, {
-      overlayShapes: [{ kind: "line", from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, role: "muted", dashed: true }],
+      overlayShapes: [
+        {
+          kind: "line",
+          from: { x: 0, y: 0 },
+          to: { x: 1, y: 1 },
+          role: "muted",
+          dashed: true,
+        },
+      ],
     });
     expect(dashed.calls.some((c) => c.method === "setLineDash")).toBe(true);
   });
@@ -141,7 +166,15 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
     const open = createMockCtx();
     drawPreview(open.ctx, viewport, {
       overlayShapes: [
-        { kind: "polyline", points: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }], role: "primary" },
+        {
+          kind: "polyline",
+          points: [
+            { x: 0, y: 0 },
+            { x: 2, y: 0 },
+            { x: 2, y: 2 },
+          ],
+          role: "primary",
+        },
       ],
     });
     expect(open.calls.filter((c) => c.method === "moveTo")).toHaveLength(1);
@@ -151,7 +184,16 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
     const closed = createMockCtx();
     drawPreview(closed.ctx, viewport, {
       overlayShapes: [
-        { kind: "polyline", points: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }], role: "primary", closed: true },
+        {
+          kind: "polyline",
+          points: [
+            { x: 0, y: 0 },
+            { x: 2, y: 0 },
+            { x: 2, y: 2 },
+          ],
+          role: "primary",
+          closed: true,
+        },
       ],
     });
     expect(closed.calls.some((c) => c.method === "closePath")).toBe(true);
@@ -160,14 +202,20 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
   it("draws nothing for an empty polyline rather than throwing", () => {
     const { ctx, calls } = createMockCtx();
     expect(() =>
-      drawPreview(ctx, viewport, { overlayShapes: [{ kind: "polyline", points: [], role: "primary" }] }),
+      drawPreview(ctx, viewport, {
+        overlayShapes: [{ kind: "polyline", points: [], role: "primary" }],
+      }),
     ).not.toThrow();
     expect(calls.some((c) => c.method === "moveTo")).toBe(false);
   });
 
   it("draws a label's text at its screen position", () => {
     const { ctx, calls } = createMockCtx();
-    drawPreview(ctx, viewport, { overlayShapes: [{ kind: "label", x: 3, y: 4, text: "P1", role: "primary" }] });
+    drawPreview(ctx, viewport, {
+      overlayShapes: [
+        { kind: "label", x: 3, y: 4, text: "P1", role: "primary" },
+      ],
+    });
     const fillText = calls.find((c) => c.method === "fillText")!.args;
     expect(fillText[0]).toBe("P1");
     const expected = tileToScreen(viewport, 3, 4);
@@ -176,7 +224,11 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
 
   it("draws a handle as a small rect centred on its tile", () => {
     const { ctx, calls } = createMockCtx();
-    drawPreview(ctx, viewport, { overlayShapes: [{ id: "h1", kind: "handle", x: 6, y: 6, role: "secondary" }] });
+    drawPreview(ctx, viewport, {
+      overlayShapes: [
+        { id: "h1", kind: "handle", x: 6, y: 6, role: "secondary" },
+      ],
+    });
     expect(calls.some((c) => c.method === "rect")).toBe(true);
   });
 
@@ -196,7 +248,9 @@ describe("drawOverlay (Sec.3.4 layer 2)", () => {
       { kind: "point", x: 1, y: 1, role: "primary" },
       { kind: "circle", x: 2, y: 2, rTiles: 1, role: "primary" },
     ];
-    expect(() => drawPreview(ctx, viewport, { overlayShapes: shapes })).not.toThrow();
+    expect(() =>
+      drawPreview(ctx, viewport, { overlayShapes: shapes }),
+    ).not.toThrow();
     expect(arcCalls(calls)).toHaveLength(2);
     // No base layer means drawImage (the terrain bitmap) is never called.
     expect(calls.some((c) => c.method === "drawImage")).toBe(false);

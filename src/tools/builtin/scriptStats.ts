@@ -18,7 +18,14 @@
 
 import { lineNumberOfOffset } from "../../parser/lineIndex";
 import type { Item, ParseResult } from "../../parser/types";
-import type { OutputBlock, ToolContext, ToolImplementation, ToolManifest, ToolMessage, ToolRunHandle } from "../../../tools-api/index";
+import type {
+  OutputBlock,
+  ToolContext,
+  ToolImplementation,
+  ToolManifest,
+  ToolMessage,
+  ToolRunHandle,
+} from "../../../tools-api/index";
 import { TOOLS_API_VERSION } from "../../../tools-api/index";
 
 export const scriptStatsManifest: ToolManifest = {
@@ -26,7 +33,8 @@ export const scriptStatsManifest: ToolManifest = {
   name: "Script Statistics",
   version: "1.0.0",
   apiVersion: TOOLS_API_VERSION,
-  description: "Counts commands, attributes, constants and sections in the open script.",
+  description:
+    "Counts commands, attributes, constants and sections in the open script.",
   // read-source is implied by read-ast and the host auto-grants it; declared
   // here anyway because this manifest is what an implementer copies.
   capabilities: ["read-ast", "read-source"],
@@ -51,7 +59,14 @@ interface Counts {
 }
 
 function emptyCounts(): Counts {
-  return { commands: 0, attributes: 0, directives: 0, conditionals: 0, randomBlocks: 0, raw: 0 };
+  return {
+    commands: 0,
+    attributes: 0,
+    directives: 0,
+    conditionals: 0,
+    randomBlocks: 0,
+    raw: 0,
+  };
 }
 
 /**
@@ -61,7 +76,10 @@ function emptyCounts(): Counts {
  * bug here and it is invisible in the output, since a script with no
  * conditionals produces identical numbers either way.
  */
-export function countItems(items: readonly Item[], into: Counts = emptyCounts()): Counts {
+export function countItems(
+  items: readonly Item[],
+  into: Counts = emptyCounts(),
+): Counts {
   for (const item of items) {
     switch (item.kind) {
       case "command":
@@ -94,14 +112,24 @@ export function countItems(items: readonly Item[], into: Counts = emptyCounts())
   return into;
 }
 
-export function buildStatsOutput(parse: ParseResult, listSections: boolean): OutputBlock[] {
+export function buildStatsOutput(
+  parse: ParseResult,
+  listSections: boolean,
+): OutputBlock[] {
   const counts = countItems(parse.script.preamble);
-  for (const section of parse.script.sections) countItems(section.items, counts);
+  for (const section of parse.script.sections)
+    countItems(section.items, counts);
 
-  const consts = parse.symbols.filter((s) => s.directiveKind === "const").length;
-  const defines = parse.symbols.filter((s) => s.directiveKind === "define").length;
+  const consts = parse.symbols.filter(
+    (s) => s.directiveKind === "const",
+  ).length;
+  const defines = parse.symbols.filter(
+    (s) => s.directiveKind === "define",
+  ).length;
   const errors = parse.diagnostics.filter((d) => d.severity === "error").length;
-  const warnings = parse.diagnostics.filter((d) => d.severity === "warning").length;
+  const warnings = parse.diagnostics.filter(
+    (d) => d.severity === "warning",
+  ).length;
 
   const blocks: OutputBlock[] = [
     { kind: "heading", text: "Script statistics" },
@@ -154,7 +182,10 @@ export function buildStatsOutput(parse: ParseResult, listSections: boolean): Out
 
 export const scriptStats: ToolImplementation = {
   manifest: scriptStatsManifest,
-  run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle {
+  run(
+    ctx: ToolContext<ParseResult>,
+    emit: (msg: ToolMessage) => void,
+  ): ToolRunHandle {
     // Returns immediately; everything flows through `emit`. This tool finishes
     // inside one chunk, so it never has to yield, but it still emits a
     // terminal, which is the only thing the host waits for.
@@ -164,11 +195,21 @@ export const scriptStats: ToolImplementation = {
       if (cancelled) return;
       const parse = ctx.parseResult;
       if (!parse) {
-        emit({ type: "error", message: "This tool needs the parsed script, which the host did not provide.", reason: "host-error" });
+        emit({
+          type: "error",
+          message:
+            "This tool needs the parsed script, which the host did not provide.",
+          reason: "host-error",
+        });
         return;
       }
       emit({ type: "progress", fraction: 1, note: "Counting" });
-      emit({ type: "result", output: { blocks: buildStatsOutput(parse, ctx.params.listSections !== false) } });
+      emit({
+        type: "result",
+        output: {
+          blocks: buildStatsOutput(parse, ctx.params.listSections !== false),
+        },
+      });
     });
 
     return {

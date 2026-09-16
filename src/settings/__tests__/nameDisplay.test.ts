@@ -46,7 +46,9 @@ describe("isShortened", () => {
   it("is true exactly when shortenName changes the name", () => {
     for (const name of ["", "GOLD", "SHEEP1", "FORAGE1", "SHORE_FISH"]) {
       for (const enabled of [true, false]) {
-        expect(isShortened(name, enabled)).toBe(shortenName(name, enabled) !== name);
+        expect(isShortened(name, enabled)).toBe(
+          shortenName(name, enabled) !== name,
+        );
       }
     }
   });

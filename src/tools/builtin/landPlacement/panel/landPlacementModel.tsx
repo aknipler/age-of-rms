@@ -12,7 +12,14 @@
 // stays tool-agnostic. The two are wired together at the call site that
 // drives both (ToolsPane.tsx's tool-selection logic).
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { AlpModel } from "../fence";
 
 export const EMPTY_MODEL: AlpModel = Object.freeze({
@@ -46,7 +53,9 @@ export interface LandPlacementModelValue {
   setSelectedId: (id: string | null) => void;
 }
 
-const LandPlacementModelCtx = createContext<LandPlacementModelValue | null>(null);
+const LandPlacementModelCtx = createContext<LandPlacementModelValue | null>(
+  null,
+);
 
 function sameContent(a: AlpModel | null, b: AlpModel | null): boolean {
   if (a === b) return true;
@@ -54,14 +63,23 @@ function sameContent(a: AlpModel | null, b: AlpModel | null): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function LandPlacementModelProvider({ children }: { children: ReactNode }) {
+export function LandPlacementModelProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [model, setModelState] = useState<AlpModel | null>(null);
   const [saved, setSaved] = useState<AlpModel | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const setModel = useCallback((updater: AlpModel | ((prev: AlpModel) => AlpModel)) => {
-    setModelState((prev) => (typeof updater === "function" ? updater(prev ?? EMPTY_MODEL) : updater));
-  }, []);
+  const setModel = useCallback(
+    (updater: AlpModel | ((prev: AlpModel) => AlpModel)) => {
+      setModelState((prev) =>
+        typeof updater === "function" ? updater(prev ?? EMPTY_MODEL) : updater,
+      );
+    },
+    [],
+  );
 
   const load = useCallback((next: AlpModel) => {
     setModelState(next);
@@ -82,15 +100,31 @@ export function LandPlacementModelProvider({ children }: { children: ReactNode }
   const dirty = !sameContent(model, saved);
 
   const value = useMemo(
-    () => ({ model, dirty, setModel, load, markSaved, clear, selectedId, setSelectedId }),
+    () => ({
+      model,
+      dirty,
+      setModel,
+      load,
+      markSaved,
+      clear,
+      selectedId,
+      setSelectedId,
+    }),
     [model, dirty, setModel, load, markSaved, clear, selectedId],
   );
 
-  return <LandPlacementModelCtx.Provider value={value}>{children}</LandPlacementModelCtx.Provider>;
+  return (
+    <LandPlacementModelCtx.Provider value={value}>
+      {children}
+    </LandPlacementModelCtx.Provider>
+  );
 }
 
 export function useLandPlacementModel(): LandPlacementModelValue {
   const ctx = useContext(LandPlacementModelCtx);
-  if (!ctx) throw new Error("useLandPlacementModel must be used within LandPlacementModelProvider");
+  if (!ctx)
+    throw new Error(
+      "useLandPlacementModel must be used within LandPlacementModelProvider",
+    );
   return ctx;
 }

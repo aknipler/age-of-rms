@@ -2,13 +2,13 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-perimeter-symbolic-rotation-escalation.md` **Sec.8.5** (with Sec.5 as the
-question it answers). Read this file for *what to build and in what order*; read the escalation for
-*why*, and treat the escalation and `docs/land-placement-design.md` as authoritative wherever they and
+question it answers). Read this file for _what to build and in what order_; read the escalation for
+_why_, and treat the escalation and `docs/land-placement-design.md` as authoritative wherever they and
 this file disagree.
 
 **Slice A must be built before this one**, for a reason worth stating rather than assuming. B is
 buildable against the cartesian representation too, and would work — the shift is a term inside
-`delta`, which is upstream of both representations. What A buys is *legibility*: under the polar
+`delta`, which is upstream of both representations. What A buys is _legibility_: under the polar
 representation a shifted member's changed distance from the anchor is its own emitted radius, so the
 thing Sec.5 called the design's hard subtlety (moving along a flat side moves you closer to the
 centre) is visible in the panel instead of hidden inside a coefficient pair. Building B first would

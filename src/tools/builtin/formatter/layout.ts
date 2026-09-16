@@ -83,7 +83,12 @@ export class Layout {
     strayTokens: 0,
   };
 
-  constructor(parse: ParseResult, opts: FormatOptions, writer: GapWriter, indentUnit: string) {
+  constructor(
+    parse: ParseResult,
+    opts: FormatOptions,
+    writer: GapWriter,
+    indentUnit: string,
+  ) {
     this.parse = parse;
     this.opts = opts;
     this.writer = writer;
@@ -111,12 +116,18 @@ export class Layout {
   /** Display column of token `i`, or `undefined` if it does not start its line. */
   private startColumn(i: number): number | undefined {
     const offset = this.parse.tokens[i].start;
-    const before = this.parse.source.slice(this.parse.lineOffsets[this.lineOf(offset)], offset);
+    const before = this.parse.source.slice(
+      this.parse.lineOffsets[this.lineOf(offset)],
+      offset,
+    );
     return /^[ \t]*$/.test(before) ? displayWidth(before) : undefined;
   }
 
   private blanksBefore(i: number): number {
-    return Math.min(Math.max(this.writer.breaksBefore(i) - 1, 0), this.opts.maxBlankLines);
+    return Math.min(
+      Math.max(this.writer.breaksBefore(i) - 1, 0),
+      this.opts.maxBlankLines,
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -163,7 +174,11 @@ export class Layout {
    * `mode: "sameLine"` forces attachment to the line in progress, for a comment
    * sitting inside something being laid out on one line.
    */
-  private emitTrivia(limit: number, indent: string, mode: "auto" | "sameLine"): void {
+  private emitTrivia(
+    limit: number,
+    indent: string,
+    mode: "auto" | "sameLine",
+  ): void {
     while (this.cursor < limit) {
       const i = this.cursor;
       const token = this.parse.tokens[i];
@@ -178,13 +193,16 @@ export class Layout {
       const last = this.writer.lastPlaced;
       const trailing =
         mode === "sameLine" ||
-        (last >= 0 && this.lineOf(this.parse.tokens[last].end) === this.lineOf(token.start));
+        (last >= 0 &&
+          this.lineOf(this.parse.tokens[last].end) ===
+            this.lineOf(token.start));
 
       if (trailing) this.writer.placeSameLine(i);
       else this.writer.placeOnLine(i, indent, this.blanksBefore(i));
 
       const newIndent = this.writer.currentIndent;
-      for (let k = i + 1; k <= end; k++) this.writer.placeVerbatim(k, oldIndent, newIndent);
+      for (let k = i + 1; k <= end; k++)
+        this.writer.placeVerbatim(k, oldIndent, newIndent);
       this.cursor = end + 1;
     }
   }
@@ -198,7 +216,11 @@ export class Layout {
   /** Flush pending comments, then put token `i` at the head of a new line. */
   private startLine(i: number, indent: string, atLeastBlank = 0): void {
     this.emitTrivia(i, indent, "auto");
-    this.writer.placeOnLine(i, indent, Math.max(this.blanksBefore(i), atLeastBlank));
+    this.writer.placeOnLine(
+      i,
+      indent,
+      Math.max(this.blanksBefore(i), atLeastBlank),
+    );
     this.cursor = i + 1;
   }
 
@@ -214,7 +236,11 @@ export class Layout {
   }
 
   private sameSourceLineAsPrevious(i: number): boolean {
-    return i > 0 && this.lineOf(this.parse.tokens[i - 1].end) === this.lineOf(this.parse.tokens[i].start);
+    return (
+      i > 0 &&
+      this.lineOf(this.parse.tokens[i - 1].end) ===
+        this.lineOf(this.parse.tokens[i].start)
+    );
   }
 
   /**
@@ -235,8 +261,17 @@ export class Layout {
    * setting, and off for the DIRECT items of an expanded block, where one
    * statement per line IS the shape being asked for.
    */
-  private placeStatement(i: number, indent: string, allowContinuation: boolean): void {
-    if (allowContinuation && this.opts.blockLayout !== "expanded" && this.writer.lastPlaced >= 0 && this.sameSourceLineAsPrevious(i)) {
+  private placeStatement(
+    i: number,
+    indent: string,
+    allowContinuation: boolean,
+  ): void {
+    if (
+      allowContinuation &&
+      this.opts.blockLayout !== "expanded" &&
+      this.writer.lastPlaced >= 0 &&
+      this.sameSourceLineAsPrevious(i)
+    ) {
       this.sameLine(i);
       return;
     }
@@ -255,10 +290,20 @@ export class Layout {
       while (tok < limit) {
         if (this.parse.tokens[tok].isTrivia) {
           const end = this.triviaUnitEnd(tok, limit);
-          entries.push({ kind: "comment", first: tok, last: end, col: this.startColumn(tok) });
+          entries.push({
+            kind: "comment",
+            first: tok,
+            last: end,
+            col: this.startColumn(tok),
+          });
           tok = end + 1;
         } else {
-          entries.push({ kind: "stray", first: tok, last: tok, col: this.startColumn(tok) });
+          entries.push({
+            kind: "stray",
+            first: tok,
+            last: tok,
+            col: this.startColumn(tok),
+          });
           tok++;
         }
       }
@@ -266,7 +311,13 @@ export class Layout {
 
     for (const item of items) {
       fill(item.firstToken);
-      entries.push({ kind: "item", first: item.firstToken, last: item.lastToken, item, col: this.startColumn(item.firstToken) });
+      entries.push({
+        kind: "item",
+        first: item.firstToken,
+        last: item.lastToken,
+        item,
+        col: this.startColumn(item.firstToken),
+      });
       tok = Math.max(tok, item.lastToken + 1);
     }
     fill(endTok);
@@ -282,7 +333,11 @@ export class Layout {
    * any leftover difference in source column is the author's. A line-based
    * version of this rule reads a command's own indented block as a group.
    */
-  private emitEntries(entries: readonly Entry[], level: number, allowContinuation: boolean): void {
+  private emitEntries(
+    entries: readonly Entry[],
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     let i = 0;
     while (i < entries.length) {
       const entry = entries[i];
@@ -290,7 +345,12 @@ export class Layout {
       i++;
 
       const openedAt = entry.col;
-      if (!this.opts.commentGroups || entry.kind !== "comment" || openedAt === undefined) continue;
+      if (
+        !this.opts.commentGroups ||
+        entry.kind !== "comment" ||
+        openedAt === undefined
+      )
+        continue;
 
       let j = i;
       while (j < entries.length) {
@@ -316,7 +376,11 @@ export class Layout {
     }
   }
 
-  private emitEntry(entry: Entry, level: number, allowContinuation: boolean): void {
+  private emitEntry(
+    entry: Entry,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     const indent = this.indent(level);
     if (entry.kind === "comment") {
       this.emitTrivia(entry.last + 1, indent, "auto");
@@ -337,8 +401,17 @@ export class Layout {
    * a shape real scripts use and the block's own layout has nothing to say
    * about it.
    */
-  private emitList(items: readonly Item[], endTok: number, level: number, allowContinuation = true): void {
-    this.emitEntries(this.buildEntries(items, endTok), level, allowContinuation);
+  private emitList(
+    items: readonly Item[],
+    endTok: number,
+    level: number,
+    allowContinuation = true,
+  ): void {
+    this.emitEntries(
+      this.buildEntries(items, endTok),
+      level,
+      allowContinuation,
+    );
     // Trailing comments inside a container belong to the container, so they are
     // flushed at the INNER indent before the caller writes `}` / `endif`.
     this.emitTrivia(endTok, this.indent(level), "auto");
@@ -348,11 +421,19 @@ export class Layout {
   // Items
   // -------------------------------------------------------------------------
 
-  private emitItem(item: Item, level: number, allowContinuation: boolean): void {
+  private emitItem(
+    item: Item,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     switch (item.kind) {
       case "attribute":
       case "directive":
-        this.placeStatement(item.firstToken, this.indent(level), allowContinuation);
+        this.placeStatement(
+          item.firstToken,
+          this.indent(level),
+          allowContinuation,
+        );
         this.runSameLine(this.cursor, item.lastToken);
         break;
       case "command":
@@ -373,7 +454,11 @@ export class Layout {
     }
   }
 
-  private emitCommand(cmd: CommandNode, level: number, allowContinuation: boolean): void {
+  private emitCommand(
+    cmd: CommandNode,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     const indent = this.indent(level);
     if (cmd.block && this.shapeFor(cmd, cmd.block, level) === "inline") {
       this.placeStatement(cmd.firstToken, indent, allowContinuation);
@@ -383,32 +468,61 @@ export class Layout {
     const headerEnd = cmd.block ? cmd.block.open - 1 : cmd.lastToken;
     this.placeStatement(cmd.firstToken, indent, allowContinuation);
     this.runSameLine(this.cursor, headerEnd);
-    if (cmd.block) this.emitBlockExpanded(cmd.block, level, cmd.firstToken, headerEnd);
+    if (cmd.block)
+      this.emitBlockExpanded(cmd.block, level, cmd.firstToken, headerEnd);
   }
 
-  private emitOrphanBlock(node: OrphanBlockNode, level: number, allowContinuation: boolean): void {
+  private emitOrphanBlock(
+    node: OrphanBlockNode,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     if (this.shapeFor(node, node.block, level) === "inline") {
-      this.placeStatement(node.firstToken, this.indent(level), allowContinuation);
+      this.placeStatement(
+        node.firstToken,
+        this.indent(level),
+        allowContinuation,
+      );
       this.runSameLine(this.cursor, node.lastToken);
       return;
     }
     // No header, so `braceStyle: sameLine` has nothing to join: open - 1 < open
     // is the "there is no header" signal `braceOnHeaderLine` reads.
-    this.emitBlockExpanded(node.block, level, node.block.open, node.block.open - 1);
+    this.emitBlockExpanded(
+      node.block,
+      level,
+      node.block.open,
+      node.block.open - 1,
+    );
   }
 
-  private emitBlockExpanded(block: BlockNode, level: number, headerFirst: number, headerEnd: number): void {
+  private emitBlockExpanded(
+    block: BlockNode,
+    level: number,
+    headerFirst: number,
+    headerEnd: number,
+  ): void {
     const indent = this.indent(level);
-    if (this.braceOnHeaderLine(block, headerFirst, headerEnd)) this.sameLine(block.open);
+    if (this.braceOnHeaderLine(block, headerFirst, headerEnd))
+      this.sameLine(block.open);
     else this.startLine(block.open, indent);
 
-    this.emitList(block.items, block.close ?? block.lastToken + 1, level + 1, false);
+    this.emitList(
+      block.items,
+      block.close ?? block.lastToken + 1,
+      level + 1,
+      false,
+    );
     // An unclosed block has no `}` to write, and the formatter never invents
     // one, it is not a fixer.
     if (block.close !== undefined) this.startLine(block.close, indent);
   }
 
-  private braceOnHeaderLine(block: BlockNode, headerFirst: number, headerEnd: number): boolean {
+  private braceOnHeaderLine(
+    block: BlockNode,
+    headerFirst: number,
+    headerEnd: number,
+  ): boolean {
     if (headerEnd < headerFirst) return false;
     switch (this.opts.braceStyle) {
       case "sameLine":
@@ -423,15 +537,26 @@ export class Layout {
         // user just asked to be expanded. With no evidence, fall back to the
         // corpus majority: 4,307 own-line against 1,110 on the header line.
         const close = block.close;
-        if (close === undefined || this.lineOf(this.parse.tokens[block.open].start) === this.lineOf(this.parse.tokens[close].start)) {
+        if (
+          close === undefined ||
+          this.lineOf(this.parse.tokens[block.open].start) ===
+            this.lineOf(this.parse.tokens[close].start)
+        ) {
           return false;
         }
-        return this.lineOf(this.parse.tokens[headerEnd].start) === this.lineOf(this.parse.tokens[block.open].start);
+        return (
+          this.lineOf(this.parse.tokens[headerEnd].start) ===
+          this.lineOf(this.parse.tokens[block.open].start)
+        );
       }
     }
   }
 
-  private emitIf(node: IfNode, level: number, allowContinuation: boolean): void {
+  private emitIf(
+    node: IfNode,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     const indent = this.indent(level);
     const inner = level + (this.opts.indentConditionals ? 1 : 0);
     for (let k = 0; k < node.branches.length; k++) {
@@ -439,27 +564,43 @@ export class Layout {
       // The `if` itself obeys the enclosing list; `elseif`/`else`/`endif` are
       // internal to the construct, so their own line relationship is the one
       // that matters and the enclosing flag has no say.
-      this.placeStatement(branch.keyword, indent, k === 0 ? allowContinuation : true);
-      if (branch.condition !== undefined) this.runSameLine(this.cursor, branch.condition);
-      const next = node.branches[k + 1]?.keyword ?? node.endif ?? node.lastToken + 1;
+      this.placeStatement(
+        branch.keyword,
+        indent,
+        k === 0 ? allowContinuation : true,
+      );
+      if (branch.condition !== undefined)
+        this.runSameLine(this.cursor, branch.condition);
+      const next =
+        node.branches[k + 1]?.keyword ?? node.endif ?? node.lastToken + 1;
       this.emitList(branch.items, next, inner);
     }
     if (node.endif !== undefined) this.placeStatement(node.endif, indent, true);
   }
 
-  private emitRandom(node: RandomNode, level: number, allowContinuation: boolean): void {
+  private emitRandom(
+    node: RandomNode,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
     const indent = this.indent(level);
     const step = this.opts.indentConditionals ? 1 : 0;
     this.placeStatement(node.start, indent, allowContinuation);
 
-    const firstBranch = node.branches[0]?.chanceKeyword ?? node.end ?? node.lastToken + 1;
+    const firstBranch =
+      node.branches[0]?.chanceKeyword ?? node.end ?? node.lastToken + 1;
     this.emitList(node.preamble, firstBranch, level + step);
 
     for (let k = 0; k < node.branches.length; k++) {
       const branch = node.branches[k];
-      this.placeStatement(branch.chanceKeyword, this.indent(level + step), true);
+      this.placeStatement(
+        branch.chanceKeyword,
+        this.indent(level + step),
+        true,
+      );
       if (branch.chance) this.runSameLine(this.cursor, branch.chance.lastToken);
-      const next = node.branches[k + 1]?.chanceKeyword ?? node.end ?? node.lastToken + 1;
+      const next =
+        node.branches[k + 1]?.chanceKeyword ?? node.end ?? node.lastToken + 1;
       this.emitList(branch.items, next, level + step * 2);
     }
     if (node.end !== undefined) this.placeStatement(node.end, indent, true);
@@ -470,8 +611,14 @@ export class Layout {
    * its first line's indent, laying out something we did not understand is how
    * a formatter corrupts a file it should have left alone.
    */
-  private emitRaw(node: RawNode, level: number, allowContinuation: boolean): void {
-    const oldIndent = this.sourceIndent(this.parse.tokens[node.firstToken].start);
+  private emitRaw(
+    node: RawNode,
+    level: number,
+    allowContinuation: boolean,
+  ): void {
+    const oldIndent = this.sourceIndent(
+      this.parse.tokens[node.firstToken].start,
+    );
     this.placeStatement(node.firstToken, this.indent(level), allowContinuation);
     const newIndent = this.writer.currentIndent;
     for (let i = node.firstToken + 1; i <= node.lastToken; i++) {
@@ -486,7 +633,8 @@ export class Layout {
 
   private sourceIsInline(node: CommandNode | OrphanBlockNode): boolean {
     return (
-      this.lineOf(this.parse.tokens[node.firstToken].start) === this.lineOf(this.parse.tokens[node.lastToken].start)
+      this.lineOf(this.parse.tokens[node.firstToken].start) ===
+      this.lineOf(this.parse.tokens[node.lastToken].start)
     );
   }
 
@@ -498,10 +646,14 @@ export class Layout {
    * choose: the interior of a multi-line comment and the interior of a
    * multi-line `RawNode`. Everything else is ours to collapse.
    */
-  private canInline(node: CommandNode | OrphanBlockNode, block: BlockNode): boolean {
+  private canInline(
+    node: CommandNode | OrphanBlockNode,
+    block: BlockNode,
+  ): boolean {
     if (block.close === undefined) return false;
     for (let i = node.firstToken + 1; i <= node.lastToken; i++) {
-      const inCommentInterior = this.parse.tokens[i].isTrivia && this.parse.tokens[i - 1].isTrivia;
+      const inCommentInterior =
+        this.parse.tokens[i].isTrivia && this.parse.tokens[i - 1].isTrivia;
       if (inCommentInterior && this.writer.breaksBefore(i) > 0) return false;
     }
     return !this.hasMultiLineRaw(block.items);
@@ -510,14 +662,20 @@ export class Layout {
   private hasMultiLineRaw(items: readonly Item[]): boolean {
     for (const item of items) {
       if (item.kind === "raw") {
-        if (this.lineOf(item.span.start) !== this.lineOf(this.parse.tokens[item.lastToken].start)) return true;
+        if (
+          this.lineOf(item.span.start) !==
+          this.lineOf(this.parse.tokens[item.lastToken].start)
+        )
+          return true;
       } else if (item.kind === "command") {
         if (item.block && this.hasMultiLineRaw(item.block.items)) return true;
       } else if (item.kind === "if") {
-        for (const b of item.branches) if (this.hasMultiLineRaw(b.items)) return true;
+        for (const b of item.branches)
+          if (this.hasMultiLineRaw(b.items)) return true;
       } else if (item.kind === "random") {
         if (this.hasMultiLineRaw(item.preamble)) return true;
-        for (const b of item.branches) if (this.hasMultiLineRaw(b.items)) return true;
+        for (const b of item.branches)
+          if (this.hasMultiLineRaw(b.items)) return true;
       } else if (item.kind === "orphanBlock") {
         if (this.hasMultiLineRaw(item.block.items)) return true;
       }
@@ -535,12 +693,16 @@ export class Layout {
     return node.def?.name ?? this.parse.tokens[node.name].text;
   }
 
-  private inlineWidth(node: CommandNode | OrphanBlockNode, level: number): number {
+  private inlineWidth(
+    node: CommandNode | OrphanBlockNode,
+    level: number,
+  ): number {
     let width = displayWidth(this.indent(level));
     for (let i = node.firstToken; i <= node.lastToken; i++) {
       if (i > node.firstToken) {
         const gap = this.writer.origGap(i);
-        const keep = this.opts.intraLineSpacing === "preserve" && !/[\r\n]/.test(gap);
+        const keep =
+          this.opts.intraLineSpacing === "preserve" && !/[\r\n]/.test(gap);
         width += keep ? displayWidth(gap) : 1;
       }
       width += displayWidth(this.parse.tokens[i].text);
@@ -548,12 +710,18 @@ export class Layout {
     return width;
   }
 
-  private wantsInline(node: CommandNode | OrphanBlockNode, block: BlockNode, level: number): boolean {
+  private wantsInline(
+    node: CommandNode | OrphanBlockNode,
+    block: BlockNode,
+    level: number,
+  ): boolean {
     const name = this.commandName(node);
     // Expand wins a tie. A manifest cannot express a cross-param constraint, so
     // the rule is documented (options.ts) rather than validated.
-    if (name !== undefined && this.opts.alwaysExpand.includes(name)) return false;
-    if (name !== undefined && this.opts.alwaysInline.includes(name)) return true;
+    if (name !== undefined && this.opts.alwaysExpand.includes(name))
+      return false;
+    if (name !== undefined && this.opts.alwaysInline.includes(name))
+      return true;
 
     switch (this.opts.blockLayout) {
       case "preserve":
@@ -567,12 +735,22 @@ export class Layout {
       case "inline":
         return !this.hasNonAttributeItems(block);
       case "compact":
-        return !this.hasNonAttributeItems(block) && this.inlineWidth(node, level) <= this.opts.inlineMaxWidth;
+        return (
+          !this.hasNonAttributeItems(block) &&
+          this.inlineWidth(node, level) <= this.opts.inlineMaxWidth
+        );
     }
   }
 
-  private shapeFor(node: CommandNode | OrphanBlockNode, block: BlockNode, level: number): BlockShape {
-    const shape: BlockShape = this.canInline(node, block) && this.wantsInline(node, block, level) ? "inline" : "expanded";
+  private shapeFor(
+    node: CommandNode | OrphanBlockNode,
+    block: BlockNode,
+    level: number,
+  ): BlockShape {
+    const shape: BlockShape =
+      this.canInline(node, block) && this.wantsInline(node, block, level)
+        ? "inline"
+        : "expanded";
     const was = this.sourceIsInline(node);
     if (was && shape === "inline") this.stats.inlineKept++;
     else if (!was && shape === "expanded") this.stats.expandedKept++;
@@ -627,7 +805,11 @@ export class Layout {
       case "preserve": {
         let sawEvidence = false;
         for (let i = section.header + 1; i < endTok; i++) {
-          if (this.parse.tokens[i].isTrivia && this.parse.tokens[i - 1].isTrivia) continue;
+          if (
+            this.parse.tokens[i].isTrivia &&
+            this.parse.tokens[i - 1].isTrivia
+          )
+            continue;
           const column = this.startColumn(i);
           if (column === undefined) continue;
           if (column === 0) return 0;
@@ -652,7 +834,10 @@ export class Layout {
     for (let k = 0; k < script.sections.length; k++) {
       const section = script.sections[k];
       const next = script.sections[k + 1]?.header ?? end;
-      const blank = this.opts.blankLineBeforeSections && this.writer.lastPlaced >= 0 ? 1 : 0;
+      const blank =
+        this.opts.blankLineBeforeSections && this.writer.lastPlaced >= 0
+          ? 1
+          : 0;
       // The HEADER is always at column 0. Its body may or may not be, see
       // sectionLevel.
       this.startLine(section.header, "", blank);

@@ -22,7 +22,10 @@ export function TabBar({ activeTab, onSelect }: TabBarProps) {
   return (
     <div className={styles.tabBar} role="tablist">
       {TABS.map((tab) => (
-        <HelpTip key={tab.id} id={`tabBar.${tab.id === "advanced-tools" ? "advancedTools" : tab.id}`}>
+        <HelpTip
+          key={tab.id}
+          id={`tabBar.${tab.id === "advanced-tools" ? "advancedTools" : tab.id}`}
+        >
           <button
             type="button"
             role="tab"

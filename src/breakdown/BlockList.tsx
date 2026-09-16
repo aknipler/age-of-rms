@@ -22,7 +22,13 @@ import styles from "./BlockList.module.css";
  * container). Every call site has that value already, since it's the
  * same one addComment/addCommand need to append there in the first place.
  */
-export function BlockList({ items, trailingBoundary }: { items: Item[]; trailingBoundary?: number }) {
+export function BlockList({
+  items,
+  trailingBoundary,
+}: {
+  items: Item[];
+  trailingBoundary?: number;
+}) {
   const { comments } = useBreakdownContext();
   if (items.length === 0) {
     return <p className={styles.empty}>Nothing here yet.</p>;
@@ -33,7 +39,9 @@ export function BlockList({ items, trailingBoundary }: { items: Item[]; trailing
       {items.map((item, i) => (
         <Fragment key={item.span.start}>
           <ItemCard item={item} />
-          {gaps.get(i)?.map((c) => <CommentCard key={c.start} span={c} />)}
+          {gaps.get(i)?.map((c) => (
+            <CommentCard key={c.start} span={c} />
+          ))}
         </Fragment>
       ))}
     </div>

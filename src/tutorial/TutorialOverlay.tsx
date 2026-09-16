@@ -20,15 +20,21 @@ interface TutorialOverlayProps {
   hasFile: boolean;
   activeTab: TabId;
   /** Powers a step's `autoFill` button, same function CodePane/Advanced Tools push edits through (one `pushEditOperations` call, one undo entry). */
-  applyTextEdits: (edits: readonly { start: number; end: number; newText: string }[]) => void;
+  applyTextEdits: (
+    edits: readonly { start: number; end: number; newText: string }[],
+  ) => void;
 }
 
 function resolveAnchor(anchor: Anchor): HTMLElement | null {
   switch (anchor.kind) {
     case "help":
-      return document.querySelector<HTMLElement>(`[data-help-id="${anchor.id}"]`);
+      return document.querySelector<HTMLElement>(
+        `[data-help-id="${anchor.id}"]`,
+      );
     case "region":
-      return document.querySelector<HTMLElement>(`[data-tutorial-anchor="${anchor.id}"]`);
+      return document.querySelector<HTMLElement>(
+        `[data-tutorial-anchor="${anchor.id}"]`,
+      );
     case "selector":
       return document.querySelector<HTMLElement>(anchor.css);
   }
@@ -40,9 +46,21 @@ interface Placement {
 }
 
 /** tutorial-design.md Sec.5.2, the engine, spotlight geometry and the two callout kinds (a running step, and Sec.11's standalone announcement). */
-export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: TutorialOverlayProps) {
-  const { active, next, back, exit, announcement, showAnnouncementTour, dismissAnnouncement, activeSectionId } =
-    useTutorial();
+export function TutorialOverlay({
+  hasFile,
+  activeTab,
+  applyTextEdits,
+}: TutorialOverlayProps) {
+  const {
+    active,
+    next,
+    back,
+    exit,
+    announcement,
+    showAnnouncementTour,
+    dismissAnnouncement,
+    activeSectionId,
+  } = useTutorial();
   const parseResult = useParsedDocumentContext();
 
   const step = active ? active.definition.steps[active.stepIndex] : null;
@@ -55,7 +73,10 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
     activeSectionId,
     hasFile,
   };
-  const satisfied = step?.completion.kind === "check" ? step.completion.test(stepContext) : false;
+  const satisfied =
+    step?.completion.kind === "check"
+      ? step.completion.test(stepContext)
+      : false;
 
   // Sec.5.5, whether THIS step was already satisfied the moment it became
   // active, computed once per step identity via React's documented
@@ -63,17 +84,27 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
   // key comparison, rather than useEffect. This needs to be settled
   // before the auto-advance effect below reads it on the very first render
   // of a new step).
-  const [arrival, setArrival] = useState<{ key: string; satisfiedOnArrival: boolean } | null>(null);
+  const [arrival, setArrival] = useState<{
+    key: string;
+    satisfiedOnArrival: boolean;
+  } | null>(null);
   if (stepKey && arrival?.key !== stepKey) {
     setArrival({ key: stepKey, satisfiedOnArrival: satisfied });
   }
-  const satisfiedOnArrival = arrival?.key === stepKey ? arrival.satisfiedOnArrival : false;
+  const satisfiedOnArrival =
+    arrival?.key === stepKey ? arrival.satisfiedOnArrival : false;
 
   // Auto-advance only on a TRANSITION to satisfied, never for a step that
   // arrives already done. Running the tutorial against a finished map
   // must read as a reference, not race to the end (Sec.5.5).
   useLayoutEffect(() => {
-    if (!step || step.completion.kind !== "check" || satisfiedOnArrival || !satisfied) return;
+    if (
+      !step ||
+      step.completion.kind !== "check" ||
+      satisfiedOnArrival ||
+      !satisfied
+    )
+      return;
     const timeout = window.setTimeout(() => next(), AUTO_ADVANCE_DELAY_MS);
     return () => window.clearTimeout(timeout);
   }, [step, satisfied, satisfiedOnArrival, next]);
@@ -108,7 +139,10 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
   // transition, including paging back to a step you'd previously moved
   // aside on. "moved aside" describes what you're doing right now, not a
   // preference that should survive leaving the step.
-  const [asideState, setAsideState] = useState<{ key: string | null; aside: boolean }>({
+  const [asideState, setAsideState] = useState<{
+    key: string | null;
+    aside: boolean;
+  }>({
     key: null,
     aside: false,
   });
@@ -135,8 +169,14 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
       const top =
         corner === "top-right"
           ? VIEWPORT_MARGIN_PX
-          : Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
-      const left = Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX);
+          : Math.max(
+              VIEWPORT_MARGIN_PX,
+              window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+            );
+      const left = Math.max(
+        VIEWPORT_MARGIN_PX,
+        window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
+      );
       setPosition({ top, left });
       return;
     }
@@ -165,11 +205,17 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
       if (!nudge) return pos;
       const top = Math.min(
         Math.max(pos.top + (nudge.y ?? 0), VIEWPORT_MARGIN_PX),
-        Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX),
+        Math.max(
+          VIEWPORT_MARGIN_PX,
+          window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+        ),
       );
       const left = Math.min(
         Math.max(pos.left + (nudge.x ?? 0), VIEWPORT_MARGIN_PX),
-        Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX),
+        Math.max(
+          VIEWPORT_MARGIN_PX,
+          window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
+        ),
       );
       return { top, left };
     }
@@ -189,7 +235,13 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
     function overlapsSpotlight(pos: Placement): boolean {
       const right = pos.left + calloutBox.width;
       const bottom = pos.top + calloutBox.height;
-      return rects.some((r) => pos.left < r.right && right > r.left && pos.top < r.bottom && bottom > r.top);
+      return rects.some(
+        (r) =>
+          pos.left < r.right &&
+          right > r.left &&
+          pos.top < r.bottom &&
+          bottom > r.top,
+      );
     }
 
     // Guaranteed clear of everything spotlighted: below the lowest rect
@@ -199,17 +251,29 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
     // re-checking, since "below/above the union of every highlighted rect"
     // cannot overlap any individual one of them by construction.
     function belowSpotlight(): Placement {
-      const maxBottom = rects.length > 0 ? Math.max(...rects.map((r) => r.bottom)) : (anchorBox?.bottom ?? 0);
-      const minTop = rects.length > 0 ? Math.min(...rects.map((r) => r.top)) : (anchorBox?.top ?? 0);
+      const maxBottom =
+        rects.length > 0
+          ? Math.max(...rects.map((r) => r.bottom))
+          : (anchorBox?.bottom ?? 0);
+      const minTop =
+        rects.length > 0
+          ? Math.min(...rects.map((r) => r.top))
+          : (anchorBox?.top ?? 0);
       let top = maxBottom + GAP_PX;
       if (top + calloutBox.height + VIEWPORT_MARGIN_PX > window.innerHeight) {
         const above = minTop - GAP_PX - calloutBox.height;
         top =
           above >= VIEWPORT_MARGIN_PX
             ? above
-            : Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
+            : Math.max(
+                VIEWPORT_MARGIN_PX,
+                window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+              );
       }
-      const left = Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX);
+      const left = Math.max(
+        VIEWPORT_MARGIN_PX,
+        window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
+      );
       return { top, left };
     }
 
@@ -222,8 +286,14 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
     if (!anchorBox) {
       commitPosition(
         applyNudge({
-          top: Math.max(VIEWPORT_MARGIN_PX, (window.innerHeight - calloutBox.height) / 2),
-          left: Math.max(VIEWPORT_MARGIN_PX, (window.innerWidth - calloutBox.width) / 2),
+          top: Math.max(
+            VIEWPORT_MARGIN_PX,
+            (window.innerHeight - calloutBox.height) / 2,
+          ),
+          left: Math.max(
+            VIEWPORT_MARGIN_PX,
+            (window.innerWidth - calloutBox.width) / 2,
+          ),
         }),
       );
       return;
@@ -237,14 +307,22 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
     // being pointer-events: auto, actually blocked clicks into) the very
     // control it was pointing at. Beside sidesteps that whole class rather
     // than special-casing the command picker.
-    const fitsRight = anchorBox.right + GAP_PX + calloutBox.width + VIEWPORT_MARGIN_PX <= window.innerWidth;
-    const fitsLeft = anchorBox.left - GAP_PX - calloutBox.width >= VIEWPORT_MARGIN_PX;
+    const fitsRight =
+      anchorBox.right + GAP_PX + calloutBox.width + VIEWPORT_MARGIN_PX <=
+      window.innerWidth;
+    const fitsLeft =
+      anchorBox.left - GAP_PX - calloutBox.width >= VIEWPORT_MARGIN_PX;
 
     if (fitsRight || fitsLeft) {
-      const left = fitsRight ? anchorBox.right + GAP_PX : anchorBox.left - GAP_PX - calloutBox.width;
+      const left = fitsRight
+        ? anchorBox.right + GAP_PX
+        : anchorBox.left - GAP_PX - calloutBox.width;
       let top = anchorBox.top;
       if (top + calloutBox.height + VIEWPORT_MARGIN_PX > window.innerHeight) {
-        top = Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
+        top = Math.max(
+          VIEWPORT_MARGIN_PX,
+          window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+        );
       }
       commitPosition(applyNudge({ top, left }));
       return;
@@ -266,9 +344,15 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
       top =
         above >= VIEWPORT_MARGIN_PX
           ? above
-          : Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX);
+          : Math.max(
+              VIEWPORT_MARGIN_PX,
+              window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+            );
     }
-    const left = Math.max(VIEWPORT_MARGIN_PX, window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX);
+    const left = Math.max(
+      VIEWPORT_MARGIN_PX,
+      window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
+    );
     commitPosition(applyNudge({ top, left }));
   }, [anchor, extraAnchors, movedAside, step]);
 
@@ -317,7 +401,11 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
 
   if (!showingCallout) return null;
 
-  const positionStyle = position ?? { visibility: "hidden" as const, top: 0, left: 0 };
+  const positionStyle = position ?? {
+    visibility: "hidden" as const,
+    top: 0,
+    left: 0,
+  };
   const calloutStyle = step?.calloutMaxWidthPx
     ? { ...positionStyle, maxWidth: step.calloutMaxWidthPx }
     : positionStyle;
@@ -335,19 +423,45 @@ export function TutorialOverlay({ hasFile, activeTab, applyTextEdits }: Tutorial
               one hole per rect is the only way multiple disjoint cutouts
               compose correctly. */}
           <svg className={styles.dimSvg} aria-hidden="true">
-            <mask id="tutorial-spotlight-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+            <mask
+              id="tutorial-spotlight-mask"
+              maskUnits="userSpaceOnUse"
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+            >
               <rect x="0" y="0" width="100%" height="100%" fill="white" />
               {spotlightRects.map((r, i) => (
-                <rect key={i} x={r.left} y={r.top} width={r.width} height={r.height} fill="black" />
+                <rect
+                  key={i}
+                  x={r.left}
+                  y={r.top}
+                  width={r.width}
+                  height={r.height}
+                  fill="black"
+                />
               ))}
             </mask>
-            <rect x="0" y="0" width="100%" height="100%" className={styles.dimFill} mask="url(#tutorial-spotlight-mask)" />
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              className={styles.dimFill}
+              mask="url(#tutorial-spotlight-mask)"
+            />
           </svg>
           {spotlightRects.map((r, i) => (
             <div
               key={i}
               className={styles.ring}
-              style={{ top: r.top, left: r.left, width: r.width, height: r.height }}
+              style={{
+                top: r.top,
+                left: r.left,
+                width: r.width,
+                height: r.height,
+              }}
             />
           ))}
         </>
@@ -415,7 +529,11 @@ function AnnouncementCallout({
           </button>
         </HelpTip>
         <HelpTip id="tutorial.announcementShowMe">
-          <button type="button" className={`${styles.button} ${styles.primary}`} onClick={onShowMe}>
+          <button
+            type="button"
+            className={`${styles.button} ${styles.primary}`}
+            onClick={onShowMe}
+          >
             Show me
           </button>
         </HelpTip>
@@ -437,7 +555,9 @@ function StepCallout({
   onExit,
   onAutoFill,
 }: {
-  step: NonNullable<ReturnType<typeof useTutorial>["active"]>["definition"]["steps"][number];
+  step: NonNullable<
+    ReturnType<typeof useTutorial>["active"]
+  >["definition"]["steps"][number];
   stepIndex: number;
   total: number;
   tutorialId: string;
@@ -456,7 +576,8 @@ function StepCallout({
   // step shows the Discord invite as a real link, opened the same way
   // TitleBar's DE RMS Guide item is (openUrl into the user's own browser,
   // never a webview with no address bar or back button).
-  const showDiscordLink = tutorialId === "rms-basics" && isLast && RMS_DISCORD_URL !== "";
+  const showDiscordLink =
+    tutorialId === "rms-basics" && isLast && RMS_DISCORD_URL !== "";
 
   function openDiscord() {
     openUrl(RMS_DISCORD_URL).catch((error: unknown) => {
@@ -484,42 +605,68 @@ function StepCallout({
       </div>
       {showDiscordLink && (
         <HelpTip id="tutorial.discordLink">
-          <button type="button" className={styles.discordLink} onClick={openDiscord}>
+          <button
+            type="button"
+            className={styles.discordLink}
+            onClick={openDiscord}
+          >
             Join the RMS Discord ↗
           </button>
         </HelpTip>
       )}
-      {isCheck && !satisfied && step.hint && <p className={styles.hint}>{step.hint}</p>}
+      {isCheck && !satisfied && step.hint && (
+        <p className={styles.hint}>{step.hint}</p>
+      )}
       <div className={styles.controls}>
         <HelpTip id="tutorial.back">
-          <button type="button" className={styles.button} onClick={onBack} disabled={stepIndex === 0}>
+          <button
+            type="button"
+            className={styles.button}
+            onClick={onBack}
+            disabled={stepIndex === 0}
+          >
             Back
           </button>
         </HelpTip>
         <span className={styles.spacer} />
         {step.anchor && !movedAside && (
           <HelpTip id="tutorial.moveAside">
-            <button type="button" className={styles.button} onClick={onMoveAside}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={onMoveAside}
+            >
               Move this out of the way
             </button>
           </HelpTip>
         )}
         {step.autoFill && onAutoFill && !satisfied && (
           <HelpTip id="tutorial.autoFill">
-            <button type="button" className={styles.button} onClick={onAutoFill}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={onAutoFill}
+            >
               {step.autoFill.label}
             </button>
           </HelpTip>
         )}
         {step.bypass && (
-          <HelpTip id="tutorial.bypass" text="Moves on without doing this step. Mechanically the same as Next.">
+          <HelpTip
+            id="tutorial.bypass"
+            text="Moves on without doing this step. Mechanically the same as Next."
+          >
             <button type="button" className={styles.button} onClick={onNext}>
               {step.bypass.label}
             </button>
           </HelpTip>
         )}
         <HelpTip id="tutorial.next">
-          <button type="button" className={`${styles.button} ${styles.primary}`} onClick={onNext}>
+          <button
+            type="button"
+            className={`${styles.button} ${styles.primary}`}
+            onClick={onNext}
+          >
             {isLast ? "Finish" : "Next"}
           </button>
         </HelpTip>

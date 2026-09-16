@@ -144,12 +144,16 @@ const tests = report.numTotalTests;
 const corpusMaps = countRms(MAPS_DIR);
 const localMaps = countRms(LOCAL_CORPUS_DIR);
 const minTests =
-  BASE_TESTS + corpusMaps * TESTS_PER_CORPUS_MAP + localMaps * TESTS_PER_LOCAL_MAP;
+  BASE_TESTS +
+  corpusMaps * TESTS_PER_CORPUS_MAP +
+  localMaps * TESTS_PER_LOCAL_MAP;
 
 const problems = [];
 if (status !== 0) problems.push(`Vitest exited ${status}`);
-if (files < MIN_FILES) problems.push(`only ${files} test files ran, expected at least ${MIN_FILES}`);
-if (tests < minTests) problems.push(`only ${tests} tests ran, expected at least ${minTests}`);
+if (files < MIN_FILES)
+  problems.push(`only ${files} test files ran, expected at least ${MIN_FILES}`);
+if (tests < minTests)
+  problems.push(`only ${tests} tests ran, expected at least ${minTests}`);
 
 if (problems.length > 0) {
   console.error(`\n✗ test floor FAILED — ${problems.join("; ")}.`);
@@ -166,7 +170,11 @@ if (problems.length > 0) {
 }
 
 const corpusNote = `${corpusMaps} maps + ${localMaps} local`;
-console.log(`\n✓ test floor: ${files} files / ${tests} tests (floor ${MIN_FILES}/${minTests}, ${corpusNote})`);
+console.log(
+  `\n✓ test floor: ${files} files / ${tests} tests (floor ${MIN_FILES}/${minTests}, ${corpusNote})`,
+);
 if (files >= MIN_FILES + NUDGE_FILE_SLACK || tests >= minTests + NUDGE_SLACK) {
-  console.log(`  Suite has grown — consider raising the floors in ${"scripts/check-test-floor.mjs"}.`);
+  console.log(
+    `  Suite has grown — consider raising the floors in ${"scripts/check-test-floor.mjs"}.`,
+  );
 }

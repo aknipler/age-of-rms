@@ -48,7 +48,11 @@ export type ThemeTokens = Record<ThemeTokenId, string>;
  */
 export const THEME_TOKEN_GROUPS: ReadonlyArray<{
   label: string;
-  tokens: ReadonlyArray<{ id: ThemeTokenId; label: string; kind: "color" | "text" }>;
+  tokens: ReadonlyArray<{
+    id: ThemeTokenId;
+    label: string;
+    kind: "color" | "text";
+  }>;
 }> = [
   {
     label: "Surfaces",
@@ -81,7 +85,11 @@ export const THEME_TOKEN_GROUPS: ReadonlyArray<{
   {
     label: "Accent",
     tokens: [
-      { id: "accent", label: "Accent (links, selection, primary actions)", kind: "color" },
+      {
+        id: "accent",
+        label: "Accent (links, selection, primary actions)",
+        kind: "color",
+      },
       { id: "accentBgSubtle", label: "Accent tint background", kind: "color" },
     ],
   },
@@ -122,9 +130,8 @@ export const THEME_TOKEN_GROUPS: ReadonlyArray<{
 ];
 
 /** Every token id, derived from the groups so the two can't drift apart. */
-export const THEME_TOKEN_IDS: readonly ThemeTokenId[] = THEME_TOKEN_GROUPS.flatMap((g) =>
-  g.tokens.map((t) => t.id),
-);
+export const THEME_TOKEN_IDS: readonly ThemeTokenId[] =
+  THEME_TOKEN_GROUPS.flatMap((g) => g.tokens.map((t) => t.id));
 
 /** Matches the app's current hardcoded look, so switching this system on changes nothing by default. */
 export const DEFAULT_LIGHT_THEME: ThemeTokens = {
@@ -156,7 +163,8 @@ export const DEFAULT_LIGHT_THEME: ThemeTokens = {
   infoBgSubtle: "rgba(23, 162, 184, 0.06)",
   canvasBg: "#14161a",
   canvasText: "#ffffff",
-  fontMono: "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
+  fontMono:
+    "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
   scrollbarTrack: "#f0f0f0",
   scrollbarThumb: "#b3b3b3",
 };
@@ -190,7 +198,8 @@ export const DEFAULT_DARK_THEME: ThemeTokens = {
   infoBgSubtle: "rgba(77, 192, 214, 0.12)",
   canvasBg: "#14161a",
   canvasText: "#ffffff",
-  fontMono: "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
+  fontMono:
+    "ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
   // "swap the way they currently are" (item 9, UI pass 2026-09-15): a dark
   // grey TRACK with a lighter grey THUMB, the reverse of this theme's own
   // surfaceHover/surfaceActive pair (where the darker tone is the hover
@@ -200,7 +209,10 @@ export const DEFAULT_DARK_THEME: ThemeTokens = {
 };
 
 export type BuiltInThemeId = "light" | "dark";
-export const BUILT_IN_THEMES: Record<BuiltInThemeId, { name: string; tokens: ThemeTokens }> = {
+export const BUILT_IN_THEMES: Record<
+  BuiltInThemeId,
+  { name: string; tokens: ThemeTokens }
+> = {
   light: { name: "Light", tokens: DEFAULT_LIGHT_THEME },
   dark: { name: "Dark", tokens: DEFAULT_DARK_THEME },
 };
@@ -255,8 +267,14 @@ export function applyUiFontScale(scale: number): void {
  * addition must not crash or silently lose the rest of its palette. `fallback`
  * is normally `DEFAULT_LIGHT_THEME`, itself guaranteed complete.
  */
-export function sanitizeThemeTokens(value: unknown, fallback: ThemeTokens): ThemeTokens {
-  const source = typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+export function sanitizeThemeTokens(
+  value: unknown,
+  fallback: ThemeTokens,
+): ThemeTokens {
+  const source =
+    typeof value === "object" && value !== null
+      ? (value as Record<string, unknown>)
+      : {};
   const result = {} as ThemeTokens;
   for (const id of THEME_TOKEN_IDS) {
     const v = source[id];
@@ -274,20 +292,32 @@ export function sanitizeCustomThemes(value: unknown): CustomTheme[] {
     const e = entry as Record<string, unknown>;
     if (typeof e.id !== "string" || e.id.length === 0) continue;
     if (typeof e.name !== "string" || e.name.length === 0) continue;
-    result.push({ id: e.id, name: e.name, tokens: sanitizeThemeTokens(e.tokens, DEFAULT_LIGHT_THEME) });
+    result.push({
+      id: e.id,
+      name: e.name,
+      tokens: sanitizeThemeTokens(e.tokens, DEFAULT_LIGHT_THEME),
+    });
   }
   return result;
 }
 
 /** Resolves an active theme id (built-in or custom) to its saved tokens, falling back to Light for an id that no longer exists (a deleted custom theme, or a corrupted settings.json). */
-export function resolveThemeTokens(id: string, customThemes: readonly CustomTheme[]): ThemeTokens {
+export function resolveThemeTokens(
+  id: string,
+  customThemes: readonly CustomTheme[],
+): ThemeTokens {
   if (isBuiltInThemeId(id)) return BUILT_IN_THEMES[id].tokens;
   return customThemes.find((t) => t.id === id)?.tokens ?? DEFAULT_LIGHT_THEME;
 }
 
-export function resolveThemeName(id: string, customThemes: readonly CustomTheme[]): string {
+export function resolveThemeName(
+  id: string,
+  customThemes: readonly CustomTheme[],
+): string {
   if (isBuiltInThemeId(id)) return BUILT_IN_THEMES[id].name;
-  return customThemes.find((t) => t.id === id)?.name ?? BUILT_IN_THEMES.light.name;
+  return (
+    customThemes.find((t) => t.id === id)?.name ?? BUILT_IN_THEMES.light.name
+  );
 }
 
 function camelToKebab(id: string): string {

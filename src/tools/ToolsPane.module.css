@@ -116,9 +116,15 @@
 }
 
 @keyframes slide {
-  0% { margin-left: 0; }
-  50% { margin-left: 65%; }
-  100% { margin-left: 0; }
+  0% {
+    margin-left: 0;
+  }
+  50% {
+    margin-left: 65%;
+  }
+  100% {
+    margin-left: 0;
+  }
 }
 
 .progressNote {
@@ -185,9 +191,15 @@
   padding: 4px 0 4px 10px;
 }
 
-.error { border-left-color: var(--danger, #d9534f); }
-.warning { border-left-color: var(--warning, #d9a441); }
-.info { border-left-color: var(--accent); }
+.error {
+  border-left-color: var(--danger, #d9534f);
+}
+.warning {
+  border-left-color: var(--warning, #d9a441);
+}
+.info {
+  border-left-color: var(--accent);
+}
 
 .codeRef {
   background: none;

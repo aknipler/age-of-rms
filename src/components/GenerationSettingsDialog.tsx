@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
-import { MAP_SIZES, MAX_PLAYER_COUNT, MIN_PLAYER_COUNT } from "../generationSettings/generationSettingsConstants";
+import {
+  MAP_SIZES,
+  MAX_PLAYER_COUNT,
+  MIN_PLAYER_COUNT,
+} from "../generationSettings/generationSettingsConstants";
 import { HelpTip } from "./HelpTip";
 import { TeamSection } from "./TeamSection";
 import styles from "./dialog.module.css";
@@ -18,8 +22,11 @@ interface GenerationSettingsDialogProps {
 // size + player count feed the status-bar resource totals now
 // (playerCount only) and the approximate
 // preview / consistency checker later (PLAN.md).
-export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogProps) {
-  const { playerCount, setPlayerCount, mapSize, setMapSize } = useGenerationSettings();
+export function GenerationSettingsDialog({
+  onClose,
+}: GenerationSettingsDialogProps) {
+  const { playerCount, setPlayerCount, mapSize, setMapSize } =
+    useGenerationSettings();
 
   // A string draft, not the committed number directly: the field is
   // controlled, so a `value` that always mirrors `playerCount` snaps back on
@@ -37,7 +44,10 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
 
   return (
     <div className={styles.overlay} onMouseDown={onClose}>
-      <div className={`${styles.dialog} ${genStyles.fixedWidth}`} onMouseDown={(event) => event.stopPropagation()}>
+      <div
+        className={`${styles.dialog} ${genStyles.fixedWidth}`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <h2 className={styles.title}>Generation Settings</h2>
 
         {/* An explicit row, not two HelpTip spans left to land side by
@@ -65,7 +75,12 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
                   const raw = event.target.value;
                   setDraft(raw);
                   const next = Number(raw);
-                  if (raw !== "" && Number.isInteger(next) && next >= MIN_PLAYER_COUNT && next <= MAX_PLAYER_COUNT) {
+                  if (
+                    raw !== "" &&
+                    Number.isInteger(next) &&
+                    next >= MIN_PLAYER_COUNT &&
+                    next <= MAX_PLAYER_COUNT
+                  ) {
                     setPlayerCount(next);
                   }
                 }}
@@ -85,7 +100,9 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
               <select
                 id="generation-map-size"
                 value={mapSize}
-                onChange={(event) => setMapSize(event.target.value as (typeof MAP_SIZES)[number])}
+                onChange={(event) =>
+                  setMapSize(event.target.value as (typeof MAP_SIZES)[number])
+                }
               >
                 {MAP_SIZES.map((size) => (
                   <option key={size} value={size}>
@@ -100,7 +117,11 @@ export function GenerationSettingsDialog({ onClose }: GenerationSettingsDialogPr
         <TeamSection />
 
         <div className={styles.actions}>
-          <button type="button" className={styles.closeButton} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={onClose}
+          >
             Close
           </button>
         </div>

@@ -1,5 +1,9 @@
 import { NO_LAYER } from "../../preview/generator/grid";
-import type { FailureMark, PlacedObject, StageSnapshot } from "../../preview/generator/types";
+import type {
+  FailureMark,
+  PlacedObject,
+  StageSnapshot,
+} from "../../preview/generator/types";
 import type { TerrainPalette } from "../../preview/render/palette";
 
 /**
@@ -47,7 +51,10 @@ export type MarksByTile = ReadonlyMap<number, FailureMark[]>;
  * call sites read as though the two arrays were interchangeable. They are not.
  * One is unbounded and the other is bounded by land count.
  */
-export function indexMarksByTile(marks: readonly FailureMark[], dim: number): MarksByTile {
+export function indexMarksByTile(
+  marks: readonly FailureMark[],
+  dim: number,
+): MarksByTile {
   const index = new Map<number, FailureMark[]>();
   for (const mark of marks) {
     const key = mark.y * dim + mark.x;
@@ -65,7 +72,10 @@ export function indexMarksByTile(marks: readonly FailureMark[], dim: number): Ma
  * thousands of objects and the pointer fires continuously, so the scan would
  * be O(objects) per mouse event.
  */
-export function indexObjectsByTile(objects: readonly PlacedObject[], dim: number): ObjectsByTile {
+export function indexObjectsByTile(
+  objects: readonly PlacedObject[],
+  dim: number,
+): ObjectsByTile {
   const index = new Map<number, PlacedObject[]>();
   for (const object of objects) {
     const key = object.y * dim + object.x;
@@ -133,7 +143,12 @@ export function tallyObjects(objects: readonly PlacedObject[]): ObjectTally[] {
     const key = `${object.player ?? "gaia"}:${object.objectRef}`;
     const existing = tallies.get(key);
     if (existing) existing.count += 1;
-    else tallies.set(key, { objectRef: object.objectRef, player: object.player, count: 1 });
+    else
+      tallies.set(key, {
+        objectRef: object.objectRef,
+        player: object.player,
+        count: 1,
+      });
   }
   return [...tallies.values()];
 }

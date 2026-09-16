@@ -110,7 +110,9 @@ export function parseSteamLibraryPaths(vdf: string): string[] {
  * IPC hop into the Rust side, parallelising would trade a rare handful of
  * milliseconds for firing every probe on every machine.
  */
-export async function findDeScriptsFolder(probe: FolderProbe): Promise<string | null> {
+export async function findDeScriptsFolder(
+  probe: FolderProbe,
+): Promise<string | null> {
   for (const candidate of await candidateScriptFolders(probe)) {
     if (await probe.exists(candidate)) return candidate;
   }
@@ -122,7 +124,9 @@ export async function findDeScriptsFolder(probe: FolderProbe): Promise<string | 
  * tests, which is the only way to assert the ORDER, the resolver itself can
  * only ever report the one that won.
  */
-export async function candidateScriptFolders(probe: FolderProbe): Promise<string[]> {
+export async function candidateScriptFolders(
+  probe: FolderProbe,
+): Promise<string[]> {
   const folders: string[] = [];
   const seen = new Set<string>();
   const add = (folder: string) => {
@@ -140,7 +144,8 @@ export async function candidateScriptFolders(probe: FolderProbe): Promise<string
       add(scriptsFolderIn(installFolderIn(library)));
     }
   }
-  for (const install of DIRECT_INSTALL_CANDIDATES) add(scriptsFolderIn(install));
+  for (const install of DIRECT_INSTALL_CANDIDATES)
+    add(scriptsFolderIn(install));
 
   return folders;
 }
@@ -158,9 +163,15 @@ export async function candidateScriptFolders(probe: FolderProbe): Promise<string
  * being unreadable is not an error this feature should surface, it means the
  * probe falls through to the next candidate, which is the whole design.
  */
-async function readSteamLibraries(probe: FolderProbe, steamRoot: string): Promise<string[]> {
+async function readSteamLibraries(
+  probe: FolderProbe,
+  steamRoot: string,
+): Promise<string[]> {
   const libraries: string[] = [];
-  for (const relative of ["steamapps\\libraryfolders.vdf", "config\\libraryfolders.vdf"]) {
+  for (const relative of [
+    "steamapps\\libraryfolders.vdf",
+    "config\\libraryfolders.vdf",
+  ]) {
     const file = `${steamRoot}\\${relative}`;
     try {
       if (!(await probe.exists(file))) continue;

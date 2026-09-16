@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { adaptiveDebounceMs, circlesFromOverlay, hitTestCircles } from "../canvasGeometry";
+import {
+  adaptiveDebounceMs,
+  circlesFromOverlay,
+  hitTestCircles,
+} from "../canvasGeometry";
 
 describe("adaptiveDebounceMs", () => {
   it("starts at the fixed initial guess before any measurement exists", () => {
@@ -37,10 +41,14 @@ describe("circlesFromOverlay / hitTestCircles", () => {
   });
 
   it("returns null when nothing contains the click", () => {
-    expect(hitTestCircles({ x: 50, y: 50 }, [{ id: "P1", x: 0, y: 0, rTiles: 5 }])).toBeNull();
+    expect(
+      hitTestCircles({ x: 50, y: 50 }, [{ id: "P1", x: 0, y: 0, rTiles: 5 }]),
+    ).toBeNull();
   });
 
   it("treats the boundary itself as a hit", () => {
-    expect(hitTestCircles({ x: 5, y: 0 }, [{ id: "P1", x: 0, y: 0, rTiles: 5 }])).toBe("P1");
+    expect(
+      hitTestCircles({ x: 5, y: 0 }, [{ id: "P1", x: 0, y: 0, rTiles: 5 }]),
+    ).toBe("P1");
   });
 });

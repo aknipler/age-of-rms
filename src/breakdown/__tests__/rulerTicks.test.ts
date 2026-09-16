@@ -6,7 +6,11 @@ import { ticksForItems } from "../rulerTicks";
 // get a tick, and what severity" logic (DOM measurement/positioning is
 // intentionally NOT covered here, see DiagnosticsRuler.tsx's own doc
 // comment for why that half can't be pure-tested).
-function diag(severity: Diagnostic["severity"], start: number, end: number): Diagnostic {
+function diag(
+  severity: Diagnostic["severity"],
+  start: number,
+  end: number,
+): Diagnostic {
   return { severity, code: "TEST0000", message: "test", span: { start, end } };
 }
 
@@ -32,8 +36,14 @@ describe("ticksForItems", () => {
 
   it("uses the MAX severity when an item has multiple diagnostics (error > warning > info)", () => {
     const items = [item(0, 10)];
-    const diagnostics = [diag("info", 1, 2), diag("error", 3, 4), diag("warning", 5, 6)];
-    expect(ticksForItems(items, diagnostics)).toEqual([{ anchor: 0, severity: "error" }]);
+    const diagnostics = [
+      diag("info", 1, 2),
+      diag("error", 3, 4),
+      diag("warning", 5, 6),
+    ];
+    expect(ticksForItems(items, diagnostics)).toEqual([
+      { anchor: 0, severity: "error" },
+    ]);
   });
 
   it("does not attribute a diagnostic outside an item's span to that item", () => {
@@ -49,7 +59,9 @@ describe("ticksForItems", () => {
     // with zero extra expand-state-aware logic.
     const items = [item(0, 100)];
     const diagnostics = [diag("error", 40, 45)];
-    expect(ticksForItems(items, diagnostics)).toEqual([{ anchor: 0, severity: "error" }]);
+    expect(ticksForItems(items, diagnostics)).toEqual([
+      { anchor: 0, severity: "error" },
+    ]);
   });
 
   it("returns ticks in item order, one per qualifying item", () => {

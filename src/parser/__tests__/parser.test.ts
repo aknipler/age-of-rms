@@ -6,7 +6,14 @@ import { describe, expect, it } from "vitest";
 
 import { parseRms } from "../parser";
 import type { LanguageData } from "../language";
-import type { CommandNode, IfNode, OrphanBlockNode, ParseResult, RandomNode, RawNode } from "../types";
+import type {
+  CommandNode,
+  IfNode,
+  OrphanBlockNode,
+  ParseResult,
+  RandomNode,
+  RawNode,
+} from "../types";
 import { checkProperties, loadLanguage } from "./testUtils";
 
 const lang = loadLanguage();
@@ -23,7 +30,9 @@ function codes(result: ParseResult): string[] {
 }
 
 function errorCodes(result: ParseResult): string[] {
-  return result.diagnostics.filter((d) => d.severity === "error").map((d) => d.code);
+  return result.diagnostics
+    .filter((d) => d.severity === "error")
+    .map((d) => d.code);
 }
 
 describe("sections and preamble", () => {
@@ -44,7 +53,9 @@ describe("sections and preamble", () => {
   });
 
   it("duplicate same-type sections are legal — no diagnostic (guide line 148)", () => {
-    const r = parse("<ELEVATION_GENERATION>\ncreate_elevation 3 { base_size 4 }\n<ELEVATION_GENERATION>\ncreate_elevation 5 { base_size 2 }");
+    const r = parse(
+      "<ELEVATION_GENERATION>\ncreate_elevation 3 { base_size 4 }\n<ELEVATION_GENERATION>\ncreate_elevation 5 { base_size 2 }",
+    );
     expect(codes(r).filter((c) => c.startsWith("RMS01"))).toEqual([]);
     expect(r.script.sections).toHaveLength(2);
   });
@@ -52,7 +63,9 @@ describe("sections and preamble", () => {
 
 describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   it("parses a block command with attributes", () => {
-    const r = parse("<OBJECTS_GENERATION>\ncreate_object GOLD\n{\n  number_of_objects 4\n  set_gaia_object_only\n}");
+    const r = parse(
+      "<OBJECTS_GENERATION>\ncreate_object GOLD\n{\n  number_of_objects 4\n  set_gaia_object_only\n}",
+    );
     const cmd = r.script.sections[0].items[0] as CommandNode;
     expect(cmd.kind).toBe("command");
     expect(cmd.def?.name).toBe("create_object");
@@ -63,7 +76,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   });
 
   it("dual-use base_terrain: command at section level, attribute in a block — no RMS0207", () => {
-    const r = parse("<LAND_GENERATION>\nbase_terrain WATER\ncreate_land { base_terrain GRASS land_percent 10 }");
+    const r = parse(
+      "<LAND_GENERATION>\nbase_terrain WATER\ncreate_land { base_terrain GRASS land_percent 10 }",
+    );
     expect(codes(r)).not.toContain("RMS0207");
   });
 
@@ -74,14 +89,19 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   });
 
   it("bare numeric IDs are legal in constant slots — no type diagnostic (Sec.2.1)", () => {
-    const r = parse("<OBJECTS_GENERATION>\ncreate_object 32 { number_of_objects 4 }");
+    const r = parse(
+      "<OBJECTS_GENERATION>\ncreate_object 32 { number_of_objects 4 }",
+    );
     expect(codes(r)).not.toContain("RMS0202");
   });
 
   it("float into an integer slot draws NO diagnostic (engine rounds)", () => {
     const r = parse("#const MAPSCALE_MODIFIER 0.9592");
     expect(codes(r)).toEqual([]);
-    expect(r.symbols[0]).toMatchObject({ name: "MAPSCALE_MODIFIER", directiveKind: "const" });
+    expect(r.symbols[0]).toMatchObject({
+      name: "MAPSCALE_MODIFIER",
+      directiveKind: "const",
+    });
   });
 
   it("RMS0212 fires in numeric slots only", () => {
@@ -92,7 +112,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   });
 
   it("RMS0214: rnd split by a space gets the specific message, not a generic mismatch", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles rnd(1, 5) }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles rnd(1, 5) }",
+    );
     expect(codes(r)).toContain("RMS0214");
   });
 
@@ -115,7 +137,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     });
 
     it("a #define'd name also counts as defined (permissive by design)", () => {
-      const r = parse("#define FLAGGY\n<LAND_GENERATION>\ncreate_land { clumping_factor FLAGGY }");
+      const r = parse(
+        "#define FLAGGY\n<LAND_GENERATION>\ncreate_land { clumping_factor FLAGGY }",
+      );
       expect(codes(r)).not.toContain("RMS0202");
     });
 
@@ -127,13 +151,19 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     });
 
     it("a name never defined anywhere still warns", () => {
-      const r = parse("<LAND_GENERATION>\ncreate_land { clumping_factor NEVER_DEFINED }");
+      const r = parse(
+        "<LAND_GENERATION>\ncreate_land { clumping_factor NEVER_DEFINED }",
+      );
       expect(codes(r)).toContain("RMS0202");
-      expect(r.diagnostics.find((d) => d.code === "RMS0202")?.severity).toBe("warning");
+      expect(r.diagnostics.find((d) => d.code === "RMS0202")?.severity).toBe(
+        "warning",
+      );
     });
 
     it("use BEFORE the #const still warns — the engine requires definition higher up (guide L148)", () => {
-      const r = parse("<LAND_GENERATION>\ncreate_land { clumping_factor LATER }\n#const LATER 15");
+      const r = parse(
+        "<LAND_GENERATION>\ncreate_land { clumping_factor LATER }\n#const LATER 15",
+      );
       expect(codes(r)).toContain("RMS0202");
     });
 
@@ -191,13 +221,19 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   });
 
   it("unknown-name runs collapse to ONE diagnostic (OWWC 'number of clumps' fixture)", () => {
-    const r = parse("<ELEVATION_GENERATION>\ncreate_elevation 5 { number of clumps 10000 base_size 4 }");
-    const unknowns = r.diagnostics.filter((d) => d.code === "RMS0200" || d.code === "RMS0215");
+    const r = parse(
+      "<ELEVATION_GENERATION>\ncreate_elevation 5 { number of clumps 10000 base_size 4 }",
+    );
+    const unknowns = r.diagnostics.filter(
+      (d) => d.code === "RMS0200" || d.code === "RMS0215",
+    );
     expect(unknowns).toHaveLength(1);
   });
 
   it("did-you-mean: edit distance (elavation-style typo)", () => {
-    const r = parse("<ELEVATION_GENERATION>\ncreate_elevation 5 { base_sixe 4 }");
+    const r = parse(
+      "<ELEVATION_GENERATION>\ncreate_elevation 5 { base_sixe 4 }",
+    );
     const diag = r.diagnostics.find((d) => d.code === "RMS0200");
     expect(diag?.message).toContain("base_size");
   });
@@ -228,7 +264,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     });
 
     it("with a suggestion: keeps the confident wording, since a near-miss is evidence", () => {
-      const r = parse("<ELEVATION_GENERATION>\ncreate_elevation 5 { base_sixe 4 }");
+      const r = parse(
+        "<ELEVATION_GENERATION>\ncreate_elevation 5 { base_sixe 4 }",
+      );
       const diag = r.diagnostics.find((d) => d.code === "RMS0200");
       expect(diag?.suggestion).toBe("base_size");
       expect(diag?.message).toMatch(ENGINE_CLAIM);
@@ -241,7 +279,8 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   // construct that works, 24hr_Petra.rms has no create_land and no
   // create_player_lands, and its lands generate.
   describe("RMS0200: a #const aliased to a command's token id resolves (BUG-005 piece 2)", () => {
-    const aliased = "#const L 32\n<LAND_GENERATION>\nL { terrain_type SNOW land_percent 15 }";
+    const aliased =
+      "#const L 32\n<LAND_GENERATION>\nL { terrain_type SNOW land_percent 15 }";
 
     it("resolves to the real command and stops warning", () => {
       const r = parse(aliased);
@@ -268,9 +307,13 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
 
     it("does not resolve an id no command claims", () => {
       // 33 was the other arm of RMSTEST_61/62 and made no land in either.
-      const r = parse("#const AX 33\n<LAND_GENERATION>\nAX { terrain_type SNOW }");
+      const r = parse(
+        "#const AX 33\n<LAND_GENERATION>\nAX { terrain_type SNOW }",
+      );
       expect(codes(r)).toContain("RMS0200");
-      expect((r.script.sections[0].items[0] as CommandNode).def).toBeUndefined();
+      expect(
+        (r.script.sections[0].items[0] as CommandNode).def,
+      ).toBeUndefined();
     });
 
     it("cannot shadow a real command name, because no such alias is recordable", () => {
@@ -285,16 +328,22 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       // actually holds. Give the name slot `acceptsKnownName` and this goes red,
       // which is the moment the lookup order starts mattering and someone has
       // to think about it.
-      const r = parse("#const create_elevation 32\n<ELEVATION_GENERATION>\ncreate_elevation 5 { }");
+      const r = parse(
+        "#const create_elevation 32\n<ELEVATION_GENERATION>\ncreate_elevation 5 { }",
+      );
       expect(r.symbols).toHaveLength(0);
       expect(codes(r)).toContain("RMS0201");
-      expect((r.script.sections[0].items[0] as CommandNode).def?.name).toBe("create_elevation");
+      expect((r.script.sections[0].items[0] as CommandNode).def?.name).toBe(
+        "create_elevation",
+      );
     });
 
     it("does not reach backwards: a #const below a use cannot reinterpret it", () => {
       // Single-pass, like the engine. A later definition changing what an
       // earlier line meant would also make the parse order-dependent.
-      const r = parse("<LAND_GENERATION>\nL { terrain_type SNOW }\n#const L 32");
+      const r = parse(
+        "<LAND_GENERATION>\nL { terrain_type SNOW }\n#const L 32",
+      );
       expect(codes(r)).toContain("RMS0200");
     });
 
@@ -302,7 +351,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       // SymbolInfo carries the value's TOKEN, and evaluating it here would be
       // inventing engine behaviour nobody has measured. Same call validate.ts
       // makes for RMS0111's id 69.
-      const r = parse("#const L (30 + 2)\n<LAND_GENERATION>\nL { terrain_type SNOW }");
+      const r = parse(
+        "#const L (30 + 2)\n<LAND_GENERATION>\nL { terrain_type SNOW }",
+      );
       expect(codes(r)).toContain("RMS0200");
     });
 
@@ -312,7 +363,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       // the check gets. `Number` is the trap here, it accepts hex, a leading
       // `+`, surrounding whitespace, and turns "" into 0, so a laxer guard
       // would read 0x20 as 32 and silently render this as create_land.
-      const r = parse("#const L 0x20\n<LAND_GENERATION>\nL { terrain_type SNOW }");
+      const r = parse(
+        "#const L 0x20\n<LAND_GENERATION>\nL { terrain_type SNOW }",
+      );
       expect(codes(r)).toContain("RMS0200");
     });
   });
@@ -324,18 +377,24 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
   // behind. Parked on BUG-005 from BUG-003's triage.
   describe("#const may take a known name as its value (BUG-003's two parked sites)", () => {
     it("consumes the known name as the value and says nothing", () => {
-      const r = parse("#const restricted_terrain_distance max_distance_to_other_zones\n<LAND_GENERATION>\n");
+      const r = parse(
+        "#const restricted_terrain_distance max_distance_to_other_zones\n<LAND_GENERATION>\n",
+      );
       expect(r.diagnostics.filter((d) => d.code === "RMS0201")).toHaveLength(0);
       expect(codes(r)).not.toContain("RMS0207");
       expect(r.symbols[0].name).toBe("restricted_terrain_distance");
-      expect(r.tokens[r.symbols[0].valueToken as number].text).toBe("max_distance_to_other_zones");
+      expect(r.tokens[r.symbols[0].valueToken as number].text).toBe(
+        "max_distance_to_other_zones",
+      );
     });
 
     it("still stops on structure, so a valueless #const cannot eat the file", () => {
       // Only the known-name half of the stop set yields. If the structural half
       // ever followed it, this #const would swallow the section header and the
       // rest of the script would parse as the preamble of a directive.
-      const r = parse("#const SIZE\n<LAND_GENERATION>\ncreate_land { land_percent 5 }");
+      const r = parse(
+        "#const SIZE\n<LAND_GENERATION>\ncreate_land { land_percent 5 }",
+      );
       expect(codes(r)).toContain("RMS0201");
       expect(r.script.sections).toHaveLength(1);
       expect(r.script.sections[0].items).toHaveLength(1);
@@ -345,7 +404,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       // assign_to.target is an otherConstant too, and there a known name really
       // is a mangled line. Deriving the exception from `type` would have taken
       // this with it.
-      const r = parse("<LAND_GENERATION>\ncreate_land { assign_to land_percent 5 }");
+      const r = parse(
+        "<LAND_GENERATION>\ncreate_land { assign_to land_percent 5 }",
+      );
       expect(codes(r)).toContain("RMS0201");
     });
   });
@@ -359,9 +420,11 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     const suggestionFor = (source: string): string | undefined =>
       parse(source).diagnostics.find((d) => d.code === "RMS0200")?.suggestion;
 
-    expect(suggestionFor("<OBJECTS_GENERATION>\ncreate_object GOLD { max_distance_to 5 }")).toBe(
-      "max_distance_to_players",
-    );
+    expect(
+      suggestionFor(
+        "<OBJECTS_GENERATION>\ncreate_object GOLD { max_distance_to 5 }",
+      ),
+    ).toBe("max_distance_to_players");
   });
 
   it("did-you-mean: ranks by what the enclosing command accepts, not by length", () => {
@@ -369,9 +432,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     // min_distance_cliffs (19 chars), which create_object cannot take;
     // min_distance_to_players (23) is the one that belongs here. Length alone
     // would hand over the impossible one.
-    const diag = parse("<OBJECTS_GENERATION>\ncreate_object GOLD { min_distance_ 5 }").diagnostics.find(
-      (d) => d.code === "RMS0200",
-    );
+    const diag = parse(
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { min_distance_ 5 }",
+    ).diagnostics.find((d) => d.code === "RMS0200");
     expect(diag?.suggestion).toBe("min_distance_to_players");
   });
 
@@ -380,9 +443,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     // min_distance_to_players), so it is a known name. It must still never be
     // offered as a fix, a did-you-mean has to point at something that works,
     // or the author is sent to a second dead end.
-    const diag = parse("<OBJECTS_GENERATION>\ncreate_object GOLD { min_distanc 5 }").diagnostics.find(
-      (d) => d.code === "RMS0200",
-    );
+    const diag = parse(
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { min_distanc 5 }",
+    ).diagnostics.find((d) => d.code === "RMS0200");
     expect(diag?.suggestion).not.toBe("min_distance");
   });
 
@@ -408,9 +471,9 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     // "can crash the game", which is the failure CLAUDE.md's reference-data
     // rule exists to catch, a behavioural claim with no observation behind it.
     const message =
-      parse("<LAND_GENERATION>\ncreate_land { left_border -5 }").diagnostics.find(
-        (d) => d.code === "RMS0217",
-      )?.message ?? "";
+      parse(
+        "<LAND_GENERATION>\ncreate_land { left_border -5 }",
+      ).diagnostics.find((d) => d.code === "RMS0217")?.message ?? "";
     expect(message.toLowerCase()).not.toContain("crash");
     expect(message.toLowerCase()).toContain("base_size");
   });
@@ -444,7 +507,13 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
         ],
         verified: false,
       },
-      { name: "next_command", section: "TEST", kind: "standalone", arguments: [{ name: "n", type: "integer" }], verified: true },
+      {
+        name: "next_command",
+        section: "TEST",
+        kind: "standalone",
+        arguments: [{ name: "n", type: "integer" }],
+        verified: true,
+      },
     ],
     attributes: [],
     directives: [],
@@ -476,7 +545,11 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
       // explicit guide prose: "No argument, or a value of 0 imposes no further
       // restrictions" (guide:2719). That sentence is what licenses the flag,
       // not the presence of a `default`, and not how often shipped maps use it.
-      expect(rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { require_path }")).toEqual([]);
+      expect(
+        rms0201(
+          "<CONNECTION_GENERATION>\ncreate_connect_all_players_land { require_path }",
+        ),
+      ).toEqual([]);
     });
 
     it("ai_info_map_type: the three-argument form is legal — SETTLED by a game measurement", () => {
@@ -493,11 +566,15 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
       // test only from a game measurement, never from a recount of shipped
       // maps**. The rule that killed the first attempt is untouched.
 
-      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type ARABIA 0 0")).toEqual([]);
+      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type ARABIA 0 0")).toEqual(
+        [],
+      );
     });
 
     it("ai_info_map_type: the full four-argument form is fine", () => {
-      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type CUSTOM 1 0 0")).toEqual([]);
+      expect(rms0201("<PLAYER_SETUP>\nai_info_map_type CUSTOM 1 0 0")).toEqual(
+        [],
+      );
     });
 
     it("terrain_cost: a missing TerrainType still warns", () => {
@@ -505,7 +582,9 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
       // mechanical "has a default ⇒ optional" sweep would reach this command,
       // but the argument being omitted here is the LEADING `TerrainType`, which
       // guide:1925's signature makes required and gives no default at all.
-      const hits = rms0201("<CONNECTION_GENERATION>\ncreate_connect_all_players_land { terrain_cost 10 }");
+      const hits = rms0201(
+        "<CONNECTION_GENERATION>\ncreate_connect_all_players_land { terrain_cost 10 }",
+      );
       expect(hits).toHaveLength(1);
     });
 
@@ -513,14 +592,18 @@ describe("the data-quality firewall (Sec.6 stop set)", () => {
       // guide:1437's signature is `create_terrain TerrainType { Attributes }`.
       // This one caught our own sample.rms, which had never been read by the
       // parser it predates.
-      expect(rms0201("<TERRAIN_GENERATION>\ncreate_terrain { base_terrain GRASS }")).toHaveLength(1);
+      expect(
+        rms0201("<TERRAIN_GENERATION>\ncreate_terrain { base_terrain GRASS }"),
+      ).toHaveLength(1);
     });
   });
 });
 
 describe("if / random (Sec.5.1 item 3)", () => {
   it("parses if/elseif/else/endif with items per branch", () => {
-    const r = parse("if HUGE_MAP #define BIG\nelseif TINY_MAP #define SMALL\nelse #define MID\nendif");
+    const r = parse(
+      "if HUGE_MAP #define BIG\nelseif TINY_MAP #define SMALL\nelse #define MID\nendif",
+    );
     const node = r.script.preamble[0] as IfNode;
     expect(node.kind).toBe("if");
     expect(node.branches).toHaveLength(3);
@@ -530,7 +613,9 @@ describe("if / random (Sec.5.1 item 3)", () => {
   });
 
   it("random with preamble junk draws RMS0106; branches parse", () => {
-    const r = parse("start_random junk_token percent_chance 50 #define A percent_chance 50 #define B end_random");
+    const r = parse(
+      "start_random junk_token percent_chance 50 #define A percent_chance 50 #define B end_random",
+    );
     const node = r.script.preamble[0] as RandomNode;
     expect(node.preamble.length).toBeGreaterThan(0);
     expect(node.branches).toHaveLength(2);
@@ -538,13 +623,20 @@ describe("if / random (Sec.5.1 item 3)", () => {
   });
 
   it("QS fixture: percent_chance 50 #define 7_RELICS — depth counts random branches, no RMS0212", () => {
-    const r = parse("start_random percent_chance 50 #define 7_RELICS percent_chance 50 end_random");
-    expect(r.symbols[0]).toMatchObject({ name: "7_RELICS", conditionalDepth: 1 });
+    const r = parse(
+      "start_random percent_chance 50 #define 7_RELICS percent_chance 50 end_random",
+    );
+    expect(r.symbols[0]).toMatchObject({
+      name: "7_RELICS",
+      conditionalDepth: 1,
+    });
     expect(codes(r)).not.toContain("RMS0212");
   });
 
   it("nested start_random parses structurally with RMS0213", () => {
-    const r = parse("start_random percent_chance 100 start_random percent_chance 100 #define X end_random end_random");
+    const r = parse(
+      "start_random percent_chance 100 start_random percent_chance 100 #define X end_random end_random",
+    );
     expect(codes(r)).toContain("RMS0213");
     expect(errorCodes(r)).toEqual([]);
   });
@@ -558,8 +650,12 @@ describe("if / random (Sec.5.1 item 3)", () => {
   });
 
   it("percent_chance accepts an expression operand", () => {
-    const r = parse("#const X 30\nstart_random percent_chance (X + 20) #define A end_random");
-    expect(codes(r).filter((c) => c === "RMS0208" || c === "RMS0202")).toEqual([]);
+    const r = parse(
+      "#const X 30\nstart_random percent_chance (X + 20) #define A end_random",
+    );
+    expect(codes(r).filter((c) => c === "RMS0208" || c === "RMS0202")).toEqual(
+      [],
+    );
   });
 });
 
@@ -601,26 +697,35 @@ describe("Sec.5.4: orphan, upgrade, shared blocks", () => {
 
 describe("Sec.5.3 degradation", () => {
   it("endif with a { open inside: ONE RMS0110, forward extension absorbs the trailing }", () => {
-    const r = parse("<LAND_GENERATION>\nif A create_land { terrain_type GRASS endif land_percent 10 }\nbase_terrain WATER");
+    const r = parse(
+      "<LAND_GENERATION>\nif A create_land { terrain_type GRASS endif land_percent 10 }\nbase_terrain WATER",
+    );
     expect(codes(r).filter((c) => c === "RMS0110")).toHaveLength(1);
     expect(codes(r)).not.toContain("RMS0104");
     expect(codes(r)).not.toContain("RMS0106");
-    const raw = r.script.sections[0].items.find((i) => i.kind === "raw") as RawNode;
+    const raw = r.script.sections[0].items.find(
+      (i) => i.kind === "raw",
+    ) as RawNode;
     expect(raw).toBeDefined();
     // Parsing resumes cleanly after the degraded range.
-    const after = r.script.sections[0].items[r.script.sections[0].items.length - 1];
+    const after =
+      r.script.sections[0].items[r.script.sections[0].items.length - 1];
     expect(after.kind).toBe("command");
   });
 
   it("mirror: } with an if open inside the block: ONE RMS0110, trailing endif absorbed", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { terrain_type GRASS if A } endif\nbase_terrain WATER");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS if A } endif\nbase_terrain WATER",
+    );
     expect(codes(r).filter((c) => c === "RMS0110")).toHaveLength(1);
     expect(codes(r)).not.toContain("RMS0104");
     expect(codes(r)).not.toContain("RMS0106");
   });
 
   it("conditional spanning a section header: RMS0110 info, header absorbed, no error", () => {
-    const r = parse("if REGICIDE <PLAYER_SETUP> endif\n<LAND_GENERATION>\nbase_terrain WATER");
+    const r = parse(
+      "if REGICIDE <PLAYER_SETUP> endif\n<LAND_GENERATION>\nbase_terrain WATER",
+    );
     expect(codes(r)).toContain("RMS0110");
     expect(errorCodes(r)).toEqual([]);
     // The absorbed header did not create a section; the later real one did.
@@ -653,7 +758,9 @@ describe("Sec.5.3 degradation", () => {
     });
 
     it("records the kind and the value token, not just the name", () => {
-      const symbol = parse(degraded("#const FOO 5")).symbols.find((s) => s.name === "FOO");
+      const symbol = parse(degraded("#const FOO 5")).symbols.find(
+        (s) => s.name === "FOO",
+      );
       expect(symbol?.directiveKind).toBe("const");
       expect(symbol?.valueToken).toBeDefined();
       // Depth 0, and that is the engine's reading, not a shortcut: the `endif`
@@ -716,7 +823,9 @@ describe("unclosed constructs at EOF (Sec.5.2)", () => {
   });
 
   it("section header while { open → RMS0103 error, block force-closed", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { terrain_type GRASS\n<TERRAIN_GENERATION>\ncreate_terrain DESERT { number_of_clumps 3 }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS\n<TERRAIN_GENERATION>\ncreate_terrain DESERT { number_of_clumps 3 }",
+    );
     expect(errorCodes(r)).toContain("RMS0103");
     expect(r.script.sections).toHaveLength(2);
   });
@@ -724,7 +833,9 @@ describe("unclosed constructs at EOF (Sec.5.2)", () => {
 
 describe("math expressions (Sec.2.2)", () => {
   it("Vanguard fixture: attribute-arg expression, three tokens, no lints", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { set_avoid_player_start_areas (PL_FOREST_MAX_DIST + 1) }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { set_avoid_player_start_areas (PL_FOREST_MAX_DIST + 1) }",
+    );
     expect(codes(r).filter((c) => c.startsWith("RMS02"))).toEqual([]);
     const cmd = r.script.sections[0].items[0] as CommandNode;
     const attr = cmd.block?.items[0];
@@ -739,12 +850,18 @@ describe("math expressions (Sec.2.2)", () => {
   });
 
   it("numeric-first operand (Pa_Site lines 721-722 shape)", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles (24 * SCALE) }");
-    expect(codes(r).filter((c) => c === "RMS0208" || c === "RMS0210")).toEqual([]);
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles (24 * SCALE) }",
+    );
+    expect(codes(r).filter((c) => c === "RMS0208" || c === "RMS0210")).toEqual(
+      [],
+    );
   });
 
   it("unglued operands: ( A + 1 ) draws RMS0210", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles ( A + 1 ) }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles ( A + 1 ) }",
+    );
     expect(codes(r)).toContain("RMS0210");
   });
 
@@ -754,23 +871,31 @@ describe("math expressions (Sec.2.2)", () => {
   });
 
   it("rnd inside an expression draws RMS0210", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles (A + rnd(1,5) + 2) }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles (A + rnd(1,5) + 2) }",
+    );
     expect(codes(r)).toContain("RMS0210");
   });
 
   it("nested paren operand draws RMS0210 (engine drops it silently)", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles (GOLD_COUNT + (5 + 2)) }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles (GOLD_COUNT + (5 + 2)) }",
+    );
     expect(codes(r)).toContain("RMS0210");
   });
 
   it("comment inside an expression draws RMS0210 (guide line 3362)", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles (A + /* why */ 1) }");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles (A + /* why */ 1) }",
+    );
     const lints = r.diagnostics.filter((d) => d.code === "RMS0210");
     expect(lints.some((d) => d.message.includes("Comments"))).toBe(true);
   });
 
   it("unclosed expression: RMS0208 + degraded to raw, block still closes", () => {
-    const r = parse("<LAND_GENERATION>\ncreate_land { number_of_tiles (A + }\nbase_terrain WATER");
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { number_of_tiles (A + }\nbase_terrain WATER",
+    );
     expect(codes(r)).toContain("RMS0208");
     expect(errorCodes(r)).toEqual([]);
   });
@@ -780,7 +905,10 @@ describe("directives, quotes, includes, symbols (Sec.5.2, Sec.7)", () => {
   it("quoted #include_drs path assembles across tokens", () => {
     const r = parse('#include_drs "my maps/some file.rms"');
     expect(r.includes).toHaveLength(1);
-    expect(r.includes[0]).toMatchObject({ path: "my maps/some file.rms", quoted: true });
+    expect(r.includes[0]).toMatchObject({
+      path: "my maps/some file.rms",
+      quoted: true,
+    });
     expect(codes(r)).toEqual([]);
   });
 
@@ -790,7 +918,9 @@ describe("directives, quotes, includes, symbols (Sec.5.2, Sec.7)", () => {
   });
 
   it("unclosed quote → RMS0209, degraded, parse continues", () => {
-    const r = parse('#include_drs "never closed\n<PLAYER_SETUP>\nrandom_placement');
+    const r = parse(
+      '#include_drs "never closed\n<PLAYER_SETUP>\nrandom_placement',
+    );
     expect(codes(r)).toContain("RMS0209");
     expect(r.script.sections).toHaveLength(1);
   });

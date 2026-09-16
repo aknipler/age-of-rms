@@ -33,7 +33,7 @@ editable Placements carrying `nudged`, so this rides machinery that exists and i
 Theta only. Per-count radius is a plausible later want and is not asked for; do not add it
 speculatively.
 
-Emission is a small change to slice A's prologue: branch *n* uses `thetaPerCount[n]` where the
+Emission is a small change to slice A's prologue: branch _n_ uses `thetaPerCount[n]` where the
 member has one, then the member's own theta from slice B, then the even default. Three levels,
 first match wins, and the fallback order should be a named function with its own test rather than
 a chain of `??` at the emit site.
@@ -53,9 +53,9 @@ the reasoning in the build log, and wrap the control in `HelpTip` with a `ui-hel
 
 The one separation guarantee the emission can actually keep.
 
-Player *k* at `even_k + rnd(-j, +j)` keeps every gap at or above `360/n - 2j`. **The tool knows
-*n* inside each branch**, so for a requested minimum separation it can compute the largest safe
-*j* per count, and clamp or warn where the author asks for more than the count allows.
+Player _k_ at `even_k + rnd(-j, +j)` keeps every gap at or above `360/n - 2j`. **The tool knows
+_n_ inside each branch**, so for a requested minimum separation it can compute the largest safe
+_j_ per count, and clamp or warn where the author asks for more than the count allows.
 
 That calculation is pure and belongs in its own module with its own tests, beside `snapping.ts`.
 Give it the count, the requested minimum separation, and the pattern length; get back the safe

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import type { UnsavedAction, UnsavedChoice } from "../components/UnsavedChangesDialog";
+import type {
+  UnsavedAction,
+  UnsavedChoice,
+} from "../components/UnsavedChangesDialog";
 import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { dirname } from "@tauri-apps/api/path";
@@ -42,7 +45,10 @@ const TAURI_PROBE: FolderProbe = { exists, readTextFile };
  */
 async function dialogStartFolder(): Promise<string | undefined> {
   try {
-    const store = await load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} });
+    const store = await load(APP_SETTINGS_STORE_FILE, {
+      autoSave: true,
+      defaults: {},
+    });
     const remembered = await store.get<string>(LAST_SCRIPT_FOLDER_KEY);
     if (remembered && (await exists(remembered))) return remembered;
     return (await findDeScriptsFolder(TAURI_PROBE)) ?? undefined;
@@ -64,7 +70,10 @@ async function dialogStartFolder(): Promise<string | undefined> {
  */
 async function rememberScriptFolder(filePath: string): Promise<void> {
   try {
-    const store = await load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} });
+    const store = await load(APP_SETTINGS_STORE_FILE, {
+      autoSave: true,
+      defaults: {},
+    });
     await store.set(LAST_SCRIPT_FOLDER_KEY, await dirname(filePath));
   } catch {
     // Same reasoning as above, failing to remember must never fail the save.
@@ -83,7 +92,11 @@ async function rememberScriptFolder(filePath: string): Promise<void> {
 // import IS visible to <Editor path=... keepCurrentModel /> in CodePane.tsx;
 // there is no async race to coordinate.
 export const DOCUMENT_MODEL_PATH = "inmemory://model/document.rms";
-const documentModel = monaco.editor.createModel("", "aoe2-rms", monaco.Uri.parse(DOCUMENT_MODEL_PATH));
+const documentModel = monaco.editor.createModel(
+  "",
+  "aoe2-rms",
+  monaco.Uri.parse(DOCUMENT_MODEL_PATH),
+);
 
 /** Exposed so CodePane can bind <Editor> to this exact model (Sec.6.4) and so Breakdown's applyEdit glue can push edits onto it. */
 export function getDocumentModel(): monaco.editor.ITextModel {
@@ -108,7 +121,9 @@ export function getDocumentModel(): monaco.editor.ITextModel {
  * revert the whole streak at once instead of just the last action.
  * Reported by a user as "the undo button sometimes undoes a lot of work."
  */
-function pushOwnUndoEntry(operations: monaco.editor.IIdentifiedSingleEditOperation[]): void {
+function pushOwnUndoEntry(
+  operations: monaco.editor.IIdentifiedSingleEditOperation[],
+): void {
   documentModel.pushStackElement();
   documentModel.pushEditOperations([], operations, () => null);
 }
@@ -121,13 +136,20 @@ function pushOwnUndoEntry(operations: monaco.editor.IIdentifiedSingleEditOperati
  * to land on the same stack everything else does. An edit Ctrl+Z cannot
  * reach is worse than no edit at all.
  */
-function replaceRanges(edits: readonly { start: number; end: number; newText: string }[]): void {
+function replaceRanges(
+  edits: readonly { start: number; end: number; newText: string }[],
+): void {
   if (edits.length === 0) return;
   const operations = edits.map((edit) => {
     const startPos = documentModel.getPositionAt(edit.start);
     const endPos = documentModel.getPositionAt(edit.end);
     return {
-      range: new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column),
+      range: new monaco.Range(
+        startPos.lineNumber,
+        startPos.column,
+        endPos.lineNumber,
+        endPos.column,
+      ),
       text: edit.newText,
       forceMoveMarkers: true,
     };
@@ -243,8 +265,12 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // than something the UI renders. Storing it in state would trigger an
   // extra render for no visual reason. The *action* IS state, because it
   // decides both whether the dialog shows and what its buttons say.
-  const [unsavedAction, setUnsavedAction] = useState<UnsavedAction | null>(null);
-  const unsavedResolverRef = useRef<((choice: UnsavedChoice) => void) | null>(null);
+  const [unsavedAction, setUnsavedAction] = useState<UnsavedAction | null>(
+    null,
+  );
+  const unsavedResolverRef = useRef<((choice: UnsavedChoice) => void) | null>(
+    null,
+  );
 
   const askUnsaved = useCallback(
     (action: UnsavedAction) =>
@@ -269,7 +295,9 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   useEffect(() => {
     const subscription = documentModel.onDidChangeContent(() => {
       setContentState(documentModel.getValue());
-      setIsDirty(documentModel.getAlternativeVersionId() !== savedVersionIdRef.current);
+      setIsDirty(
+        documentModel.getAlternativeVersionId() !== savedVersionIdRef.current,
+      );
     });
     return () => subscription.dispose();
   }, []);
@@ -323,21 +351,24 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     replaceRanges(refresh.edits);
   }, []);
 
-  const writeToPath = useCallback(async (path: string) => {
-    // Before the read below, so the file gets the stamped text rather than
-    // the text as it was a line earlier. pushEditOperations is synchronous,
-    // so getValue() here already includes it.
-    stampHeader(path);
-    await writeTextFile(path, documentModel.getValue());
-    savedVersionIdRef.current = documentModel.getAlternativeVersionId();
-    setFilePath(path);
-    setIsDirty(false);
-    setLastSavedAt(new Date());
-    // Not awaited: the document is saved, the UI should say so now, and
-    // remembering the folder is a background nicety that cannot fail the
-    // save (rememberScriptFolder swallows its own errors).
-    void rememberScriptFolder(path);
-  }, [stampHeader]);
+  const writeToPath = useCallback(
+    async (path: string) => {
+      // Before the read below, so the file gets the stamped text rather than
+      // the text as it was a line earlier. pushEditOperations is synchronous,
+      // so getValue() here already includes it.
+      stampHeader(path);
+      await writeTextFile(path, documentModel.getValue());
+      savedVersionIdRef.current = documentModel.getAlternativeVersionId();
+      setFilePath(path);
+      setIsDirty(false);
+      setLastSavedAt(new Date());
+      // Not awaited: the document is saved, the UI should say so now, and
+      // remembering the folder is a background nicety that cannot fail the
+      // save (rememberScriptFolder swallows its own errors).
+      void rememberScriptFolder(path);
+    },
+    [stampHeader],
+  );
 
   /**
    * The single unsaved-work guard, shared by Open and the window-close
@@ -361,7 +392,10 @@ export function useDocument({ authorName }: UseDocumentOptions) {
       if (choice === "discard") return true;
 
       if (!filePathRef.current) {
-        const target = await save({ filters: RMS_FILTERS, defaultPath: await dialogStartFolder() });
+        const target = await save({
+          filters: RMS_FILTERS,
+          defaultPath: await dialogStartFolder(),
+        });
         if (!target) return false; // backed out of the Save As picker
         await writeToPath(target);
       } else {
@@ -379,7 +413,11 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     // before we touch the model.
     if (!(await ensureSavedBefore("open"))) return;
 
-    const selected = await open({ multiple: false, filters: RMS_FILTERS, defaultPath: await dialogStartFolder() });
+    const selected = await open({
+      multiple: false,
+      filters: RMS_FILTERS,
+      defaultPath: await dialogStartFolder(),
+    });
     if (!selected) return;
     const text = await readTextFile(selected);
     void rememberScriptFolder(selected);
@@ -433,7 +471,10 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     // An open document's own path wins: Save As on a real file means "next to
     // this one, under another name" far more often than it means "somewhere
     // else entirely", and the dialog pre-fills the name from it too.
-    const target = await save({ filters: RMS_FILTERS, defaultPath: filePath ?? (await dialogStartFolder()) });
+    const target = await save({
+      filters: RMS_FILTERS,
+      defaultPath: filePath ?? (await dialogStartFolder()),
+    });
     if (!target) return;
     await writeToPath(target);
   }, [filePath, writeToPath]);
@@ -510,12 +551,20 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // from this hook; it deliberately takes a structurally-typed edit rather
   // than importing src/breakdown/patch/intents.ts's TextEdit, so this hook
   // stays free of any dependency on the breakdown feature.
-  const applyTextEdit = useCallback((edit: { start: number; end: number; newText: string }) => {
-    const startPos = documentModel.getPositionAt(edit.start);
-    const endPos = documentModel.getPositionAt(edit.end);
-    const range = new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column);
-    pushOwnUndoEntry([{ range, text: edit.newText, forceMoveMarkers: true }]);
-  }, []);
+  const applyTextEdit = useCallback(
+    (edit: { start: number; end: number; newText: string }) => {
+      const startPos = documentModel.getPositionAt(edit.start);
+      const endPos = documentModel.getPositionAt(edit.end);
+      const range = new monaco.Range(
+        startPos.lineNumber,
+        startPos.column,
+        endPos.lineNumber,
+        endPos.column,
+      );
+      pushOwnUndoEntry([{ range, text: edit.newText, forceMoveMarkers: true }]);
+    },
+    [],
+  );
 
   // The N-edit form, for the Advanced Tools pane (docs/tools-api-design.md
   // Sec.4.5). It exists because calling applyTextEdit N times, each as its
@@ -530,19 +579,27 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // presenting it as the mechanism invites a later "fix" of the wrong
   // thing. What Monaco does require is non-overlap, which the caller
   // validates (protocol.ts's validateEdits) before reaching here.
-  const applyTextEdits = useCallback((edits: readonly { start: number; end: number; newText: string }[]) => {
-    if (edits.length === 0) return;
-    const operations = edits.map((edit) => {
-      const startPos = documentModel.getPositionAt(edit.start);
-      const endPos = documentModel.getPositionAt(edit.end);
-      return {
-        range: new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column),
-        text: edit.newText,
-        forceMoveMarkers: true,
-      };
-    });
-    pushOwnUndoEntry(operations);
-  }, []);
+  const applyTextEdits = useCallback(
+    (edits: readonly { start: number; end: number; newText: string }[]) => {
+      if (edits.length === 0) return;
+      const operations = edits.map((edit) => {
+        const startPos = documentModel.getPositionAt(edit.start);
+        const endPos = documentModel.getPositionAt(edit.end);
+        return {
+          range: new monaco.Range(
+            startPos.lineNumber,
+            startPos.column,
+            endPos.lineNumber,
+            endPos.column,
+          ),
+          text: edit.newText,
+          forceMoveMarkers: true,
+        };
+      });
+      pushOwnUndoEntry(operations);
+    },
+    [],
+  );
 
   // Sec.6.4's "one undo stack" promise has a reachability gap: the model's
   // undo/redo stack is real and shared, but Ctrl+Z is normally a
@@ -559,7 +616,10 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // double-handling the same keystroke through two paths.
   useEffect(() => {
     function isInsideMonacoEditor(target: EventTarget | null): boolean {
-      return target instanceof HTMLElement && target.closest(".monaco-editor") !== null;
+      return (
+        target instanceof HTMLElement &&
+        target.closest(".monaco-editor") !== null
+      );
     }
     function handleKeyDown(event: KeyboardEvent) {
       const mod = event.ctrlKey || event.metaKey;

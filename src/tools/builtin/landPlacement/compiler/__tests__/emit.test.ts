@@ -9,7 +9,11 @@ import { bin, evalExpr, mul, negE, num, sub, sym } from "../expr";
 import { emitCells, formatConstLine } from "../emit";
 import { NameAllocator } from "../naming";
 
-function compileOne(name: string, expr: Expr, symbols: Record<string, number> = {}) {
+function compileOne(
+  name: string,
+  expr: Expr,
+  symbols: Record<string, number> = {},
+) {
   const namer = new NameAllocator({ prefix: "" });
   const emitted = emitCells([{ name, expr }], namer);
   const resolved = new Map<string, number>(Object.entries(symbols));
@@ -25,7 +29,9 @@ describe("emitCells — Sec.5.3 worked examples", () => {
     // 180 * S - R * R, entered pre-associated: ((180*S) - R) * R
     const e = mul(sub(mul(num(180), sym("S")), sym("R")), sym("R"));
     const { emitted } = compileOne("P", e);
-    expect(emitted.map(formatConstLine)).toEqual(["#const P (180 * S - R * R)"]);
+    expect(emitted.map(formatConstLine)).toEqual([
+      "#const P (180 * S - R * R)",
+    ]);
   });
 
   it("hoists a non-leaf right operand: 180*S - R*R meaning (180*S)-(R*R)", () => {
@@ -53,11 +59,17 @@ describe("emitCells — Sec.5.3 worked examples", () => {
     // A % 360 + 360 % 360 * -1 + 180, Sec.5.4's own R formula shape.
     const e = bin(
       "+",
-      bin("*", bin("%", bin("+", bin("%", sym("A"), num(360)), num(360)), num(360)), num(-1)),
+      bin(
+        "*",
+        bin("%", bin("+", bin("%", sym("A"), num(360)), num(360)), num(360)),
+        num(-1),
+      ),
       num(180),
     );
     const { emitted } = compileOne("R", e);
-    expect(emitted.map(formatConstLine)).toEqual(["#const R (A % 360 + 360 % 360 * -1 + 180)"]);
+    expect(emitted.map(formatConstLine)).toEqual([
+      "#const R (A % 360 + 360 % 360 * -1 + 180)",
+    ]);
   });
 
   it("lowers unary minus to * -1 for a leaf operand", () => {
@@ -90,11 +102,23 @@ describe("emitCells — Sec.5.3 worked examples", () => {
 describe("emitCells — Sec.10.2 property tests", () => {
   it("round-trip exactness: emitted chain evaluates identically to the original tree", () => {
     const cases: { expr: Expr; symbols: Record<string, number> }[] = [
-      { expr: bin("+", sym("A"), bin("*", sym("B"), sym("C"))), symbols: { A: 3, B: 4, C: 5 } },
-      { expr: bin("%", bin("+", sym("A"), num(7)), num(3)), symbols: { A: -11 } },
-      { expr: bin("/", num(9), bin("-", sym("A"), sym("A"))), symbols: { A: 2 } }, // /0 -> 0
+      {
+        expr: bin("+", sym("A"), bin("*", sym("B"), sym("C"))),
+        symbols: { A: 3, B: 4, C: 5 },
+      },
+      {
+        expr: bin("%", bin("+", sym("A"), num(7)), num(3)),
+        symbols: { A: -11 },
+      },
+      {
+        expr: bin("/", num(9), bin("-", sym("A"), sym("A"))),
+        symbols: { A: 2 },
+      }, // /0 -> 0
       { expr: negE(bin("*", sym("A"), sym("B"))), symbols: { A: 3, B: -2 } },
-      { expr: bin("+", bin("+", num(1), num(2)), bin("+", sym("A"), num(3))), symbols: { A: 10 } },
+      {
+        expr: bin("+", bin("+", num(1), num(2)), bin("+", sym("A"), num(3))),
+        symbols: { A: 10 },
+      },
     ];
     for (const { expr, symbols } of cases) {
       const { resolved } = compileOne("TARGET", expr, symbols);
@@ -109,12 +133,19 @@ describe("emitCells — Sec.10.2 property tests", () => {
   it("re-association is safe for float literals too", () => {
     const expr = bin("+", num(0.1), bin("+", num(0.2), sym("A")));
     const { resolved } = compileOne("TARGET", expr, { A: 1 });
-    const direct = evalExpr(expr, { resolveSym: (n) => (n === "A" ? 1 : undefined), resolveParam: () => undefined });
+    const direct = evalExpr(expr, {
+      resolveSym: (n) => (n === "A" ? 1 : undefined),
+      resolveParam: () => undefined,
+    });
     expect(resolved.get("TARGET")).toBe(direct);
   });
 
   it("emit-count monotonicity: RMS-left-spine input emits exactly one line", () => {
-    const e = bin("%", bin("+", bin("%", sym("A"), num(360)), num(360)), num(360));
+    const e = bin(
+      "%",
+      bin("+", bin("%", sym("A"), num(360)), num(360)),
+      num(360),
+    );
     const { emitted } = compileOne("R", e);
     expect(emitted).toHaveLength(1);
   });

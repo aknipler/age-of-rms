@@ -27,12 +27,20 @@ const lang = loadLanguage();
 const language = buildLanguageIndex(lang);
 
 /** Parses `source`, then asserts reconstruction-from-the-wire equals the real in-process defs, node for node. */
-function assertReconstructs(source: string, matcher: "toStrictEqual" | "toEqual" = "toStrictEqual") {
+function assertReconstructs(
+  source: string,
+  matcher: "toStrictEqual" | "toEqual" = "toStrictEqual",
+) {
   const real = parseRms(source, lang);
   const wire = encodeParseResultForWire(real);
 
   const expected = collectScriptDefs(real.script);
-  const actual = reconstructScriptDefs(wire.script, wire.tokens, wire.symbols, language);
+  const actual = reconstructScriptDefs(
+    wire.script,
+    wire.tokens,
+    wire.symbols,
+    language,
+  );
 
   expect(actual.map((d) => d.path)).toEqual(expected.map((d) => d.path));
   expect(actual).toHaveLength(expected.length);
@@ -45,7 +53,13 @@ function assertReconstructs(source: string, matcher: "toStrictEqual" | "toEqual"
 }
 
 describe("fixture (a): plain alias — #const L 32 + L { ... }", () => {
-  const SOURCE = ["<LAND_GENERATION>", "#const L 32", "L {", "  land_percent 20", "}"].join("\n");
+  const SOURCE = [
+    "<LAND_GENERATION>",
+    "#const L 32",
+    "L {",
+    "  land_percent 20",
+    "}",
+  ].join("\n");
 
   it("reconstructs L's def as create_land — item 1's mutant, restated over the whole tree", () => {
     const { expected } = assertReconstructs(SOURCE);
@@ -70,7 +84,13 @@ describe("fixture (b): attribute-name alias at statement level — #const groupi
   // ALSO absent from `attributesByName`, and does so at STATEMENT level
   // (top-level, not inside a block), which is the context this fixture
   // exercises and fixture (a) does not (there `L` sits inside a block already).
-  const SOURCE = ["<LAND_GENERATION>", "#const grouping 32", "grouping {", "  land_percent 20", "}"].join("\n");
+  const SOURCE = [
+    "<LAND_GENERATION>",
+    "#const grouping 32",
+    "grouping {",
+    "  land_percent 20",
+    "}",
+  ].join("\n");
 
   it("resolves the statement-level alias as create_land", () => {
     const { real, expected } = assertReconstructs(SOURCE);
@@ -91,20 +111,44 @@ describe("fixture (c): #define-shadowed #const — first symbol wins whatever it
   // must NOT resolve, even though a later #const for the same name exists. A
   // `Map<name, symbol>` built by iterating and overwriting would keep the
   // LAST symbol instead and wrongly resolve L to create_land here.
-  const SOURCE = ["<LAND_GENERATION>", "#define L", "#const L 32", "L {", "  land_percent 20", "}"].join("\n");
+  const SOURCE = [
+    "<LAND_GENERATION>",
+    "#define L",
+    "#const L 32",
+    "L {",
+    "  land_percent 20",
+    "}",
+  ].join("\n");
 
   it("does NOT resolve L as create_land — the #define shadows the later #const", () => {
     const { real, expected } = assertReconstructs(SOURCE);
     // Unresolved, so the run gets pushed as raw content, not a CommandNode;
     // confirm no command node claims "create_land" anywhere in the tree.
-    const anyCreateLand = expected.some((d) => d.def && "name" in (d.def as object) && (d.def as { name: string }).name === "create_land");
+    const anyCreateLand = expected.some(
+      (d) =>
+        d.def &&
+        "name" in (d.def as object) &&
+        (d.def as { name: string }).name === "create_land",
+    );
     expect(anyCreateLand).toBe(false);
-    expect(real.script.sections[0].items.some((i) => i.kind === "command" && i.def?.name === "create_land")).toBe(false);
+    expect(
+      real.script.sections[0].items.some(
+        (i) => i.kind === "command" && i.def?.name === "create_land",
+      ),
+    ).toBe(false);
   });
 });
 
 describe("fixture (d): alias closing the override window (same input shape, same mutant — override behaviour itself is covered by src/preview/__tests__/instantiate.test.ts's 'ignored once a land command has run' case)", () => {
-  const SOURCE = ["#const L 32", "<LAND_GENERATION>", "L {", "  land_percent 20", "}", "<PLAYER_SETUP>", "override_map_size 300"].join("\n");
+  const SOURCE = [
+    "#const L 32",
+    "<LAND_GENERATION>",
+    "L {",
+    "  land_percent 20",
+    "}",
+    "<PLAYER_SETUP>",
+    "override_map_size 300",
+  ].join("\n");
 
   it("still reconstructs L's def as create_land under this input shape", () => {
     const { expected } = assertReconstructs(SOURCE);
@@ -114,8 +158,12 @@ describe("fixture (d): alias closing the override window (same input shape, same
 });
 
 describe("a real corpus parse — the ordinary (non-aliased) resolution path", () => {
-  const mapNames = readdirSync(join(REPO_ROOT, "test-maps"), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"))
+  const mapNames = readdirSync(join(REPO_ROOT, "test-maps"), {
+    withFileTypes: true,
+  })
+    .filter(
+      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"),
+    )
     .map((entry) => entry.name)
     .sort();
 
@@ -125,7 +173,10 @@ describe("a real corpus parse — the ordinary (non-aliased) resolution path", (
 
   for (const mapName of mapNames) {
     it(`${mapName}: every def reconstructs from tokens+symbols+referenceData.language alone`, () => {
-      const source = readFileSync(join(REPO_ROOT, "test-maps", mapName), "utf8");
+      const source = readFileSync(
+        join(REPO_ROOT, "test-maps", mapName),
+        "utf8",
+      );
       assertReconstructs(source, "toEqual");
     });
   }

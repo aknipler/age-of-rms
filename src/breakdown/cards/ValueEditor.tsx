@@ -42,8 +42,17 @@ interface ValueEditorProps {
 // commits on blur/Enter, Escape reverts, checkbox/combobox specifics are
 // handled by the two branches below (constant combobox uses a native
 // <datalist> so free text is always still accepted, per Sec.3.4).
-export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, helpId, allowSpaces }: ValueEditorProps) {
-  const { gameConstants, parseResult, registerFocusable } = useBreakdownContext();
+export function ValueEditor({
+  text,
+  type,
+  anchorOffset,
+  onCommit,
+  disabled,
+  helpId,
+  allowSpaces,
+}: ValueEditorProps) {
+  const { gameConstants, parseResult, registerFocusable } =
+    useBreakdownContext();
   const [error, setError] = useState<string | null>(null);
 
   const commit = (raw: string, restoreFocusOnEnter: boolean) => {
@@ -64,7 +73,10 @@ export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, help
     onCommit(parseRawValue(raw, type), restoreFocusOnEnter);
   };
 
-  const isConstant = type === "terrainConstant" || type === "objectConstant" || type === "otherConstant";
+  const isConstant =
+    type === "terrainConstant" ||
+    type === "objectConstant" ||
+    type === "otherConstant";
   const listId = isConstant ? `breakdown-values-${type}` : undefined;
 
   const options =
@@ -73,7 +85,9 @@ export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, help
       : type === "objectConstant"
         ? gameConstants.constants.filter((c) => c.category === "object")
         : type === "otherConstant"
-          ? parseResult.symbols.map((s) => s.name).map((name) => ({ rmsConstant: name }))
+          ? parseResult.symbols
+              .map((s) => s.name)
+              .map((name) => ({ rmsConstant: name }))
           : [];
 
   return (
@@ -86,7 +100,11 @@ export function ValueEditor({ text, type, anchorOffset, onCommit, disabled, help
           defaultValue={text}
           disabled={disabled}
           list={listId}
-          className={type === "integer" || type === "percent" ? styles.numberInput : styles.textInput}
+          className={
+            type === "integer" || type === "percent"
+              ? styles.numberInput
+              : styles.textInput
+          }
           onBlur={(e) => commit(e.currentTarget.value, false)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {

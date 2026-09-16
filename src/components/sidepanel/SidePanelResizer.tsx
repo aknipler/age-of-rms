@@ -1,4 +1,10 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from "react";
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type RefObject,
+} from "react";
 import { HelpTip } from "../HelpTip";
 import { useSidePanelLayout } from "./SidePanelLayoutContext";
 import {
@@ -80,7 +86,9 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
     if (!draggingRef.current) return;
     const panel = panelRef.current;
     if (panel === null) return;
-    const outcome = resolveSidePanelDrag(event.clientX - panel.getBoundingClientRect().left);
+    const outcome = resolveSidePanelDrag(
+      event.clientX - panel.getBoundingClientRect().left,
+    );
     if (outcome.collapsed) {
       // Dragged past the minimum by more than the margin: treat it as a
       // collapse and let go of the pointer, so the user is not still dragging
@@ -114,7 +122,9 @@ export function SidePanelResizer({ panelRef }: SidePanelResizerProps) {
 
   return (
     <div
-      className={dragging ? `${styles.resizer} ${styles.dragging}` : styles.resizer}
+      className={
+        dragging ? `${styles.resizer} ${styles.dragging}` : styles.resizer
+      }
       role="separator"
       aria-orientation="vertical"
       aria-label="Resize the map panel"

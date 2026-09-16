@@ -2,7 +2,10 @@ import { Fragment, useMemo, useState } from "react";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import languageDataRaw from "../../../reference/data/language.json";
 import { buildLanguageIndex, type LanguageData } from "../../parser/language";
-import type { GameConstantEntry, GameConstantsData } from "../../breakdown/gameConstants";
+import type {
+  GameConstantEntry,
+  GameConstantsData,
+} from "../../breakdown/gameConstants";
 import { useParsedDocumentContext } from "../../ParsedDocumentContext";
 import { usePreviewResultContext } from "../../PreviewResultContext";
 import { usePreviewView } from "../preview/PreviewViewContext";
@@ -108,22 +111,36 @@ const SHARED_COLUMNS: ConstantColumn[] = [
 // the community table never annotates, mostly carcasses/blood decals). Its
 // own dash reads as "the community table has nothing to say", the same as
 // every other absent community field in this file (isWater, beachTerrain, ...).
-const DESCRIPTION_COLUMN: ConstantColumn = { header: "Description", cell: (c) => c.description ?? "—" };
+const DESCRIPTION_COLUMN: ConstantColumn = {
+  header: "Description",
+  cell: (c) => c.description ?? "—",
+};
 
 const COLUMNS_BY_MODE: Record<ConstantMode, ConstantColumn[]> = {
-  terrain: [...SHARED_COLUMNS, { header: "DE Texture File", cell: (c) => c.deTextureFile ?? "—" }, DESCRIPTION_COLUMN],
+  terrain: [
+    ...SHARED_COLUMNS,
+    { header: "DE Texture File", cell: (c) => c.deTextureFile ?? "—" },
+    DESCRIPTION_COLUMN,
+  ],
   objects: [
     ...SHARED_COLUMNS,
     { header: "Placed On", cell: (c) => c.habitat ?? "—" },
-    { header: "Base Yield", cell: (c) => formatResourceAmounts(c.resourceAmounts) },
+    {
+      header: "Base Yield",
+      cell: (c) => formatResourceAmounts(c.resourceAmounts),
+    },
     DESCRIPTION_COLUMN,
   ],
 };
 
 /** `{ gold: 800 }` -> `800 gold`. Base value, before any script modifier. */
-function formatResourceAmounts(amounts: GameConstantEntry["resourceAmounts"]): string {
+function formatResourceAmounts(
+  amounts: GameConstantEntry["resourceAmounts"],
+): string {
   if (!amounts) return "—";
-  const parts = Object.entries(amounts).map(([resource, amount]) => `${amount} ${resource}`);
+  const parts = Object.entries(amounts).map(
+    ([resource, amount]) => `${amount} ${resource}`,
+  );
   return parts.length > 0 ? parts.join(", ") : "—";
 }
 
@@ -141,24 +158,31 @@ function formatResourceAmounts(amounts: GameConstantEntry["resourceAmounts"]): s
 function PreviewObjectList({ query }: { query: string }) {
   const parse = useParsedDocumentContext();
   const { result } = usePreviewResultContext();
-  const { hiddenObjects, toggleObjectHidden, showAllObjects } = usePreviewView();
+  const { hiddenObjects, toggleObjectHidden, showAllObjects } =
+    usePreviewView();
 
   // Rebuilt only when the script or the generation changes, not on every
   // checkbox click: the AST walk is O(script) and a tick is a re-render.
-  const allRows = useMemo(() => buildObjectInventory(parse, result?.objects ?? []), [parse, result?.objects]);
+  const allRows = useMemo(
+    () => buildObjectInventory(parse, result?.objects ?? []),
+    [parse, result?.objects],
+  );
 
   // Filtering is a separate memo from building, keyed on the query as well, so
   // typing in Find does not re-walk the AST on every keystroke.
   const rows = useMemo(
-    () => allRows.filter((row) => matchesQuery(query, [row.objectRef, row.spawned])),
+    () =>
+      allRows.filter((row) =>
+        matchesQuery(query, [row.objectRef, row.spawned]),
+      ),
     [allRows, query],
   );
 
   if (allRows.length === 0) {
     return (
       <p className={styles.note}>
-        No objects yet. Every create_object in your script gets a row here, along with anything an object
-        group adds.
+        No objects yet. Every create_object in your script gets a row here,
+        along with anything an object group adds.
       </p>
     );
   }
@@ -175,7 +199,11 @@ function PreviewObjectList({ query }: { query: string }) {
           the kind of chore that makes people stop using the control. */}
       {hiddenObjects.size > 0 && (
         <HelpTip id="preview.showAllObjects">
-          <button type="button" className={styles.showAll} onClick={showAllObjects}>
+          <button
+            type="button"
+            className={styles.showAll}
+            onClick={showAllObjects}
+          >
             Show all ({hiddenObjects.size} hidden)
           </button>
         </HelpTip>
@@ -197,7 +225,9 @@ function PreviewObjectList({ query }: { query: string }) {
               {/* Zero is worth spotting rather than reading past: it means the
                 script asked and the generator placed nothing, which is the
                 symptom of a restriction nothing on the map satisfies. */}
-              <td className={row.spawned === 0 ? styles.zeroCount : undefined}>{row.spawned}</td>
+              <td className={row.spawned === 0 ? styles.zeroCount : undefined}>
+                {row.spawned}
+              </td>
               <td>
                 <HelpTip id="preview.objectVisibility">
                   <input
@@ -253,7 +283,9 @@ export function ReferenceTable() {
   // name rather than a boolean per row, so it survives the query changing
   // (search auto-expands on top of this, see `isExpanded` below, without
   // ever collapsing something the user opened by hand).
-  const [expandedCommands, setExpandedCommands] = useState<ReadonlySet<string>>(new Set());
+  const [expandedCommands, setExpandedCommands] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   const { hiddenObjects } = usePreviewView();
   // Something is being withheld from the canvas. Worth saying on the OUTSIDE
   // of this panel, because the effect (objects missing from the map) shows up
@@ -272,31 +304,46 @@ export function ReferenceTable() {
   const constantRows = useMemo(() => {
     if (mode === "commands" || mode === "previewObjects") return [];
     const columns = COLUMNS_BY_MODE[mode];
-    return gameConstants.constants
-      .filter((c) => c.category === CATEGORY_BY_MODE[mode])
-      // `isCorpse` is absent on a row that is not one, so this is a positive
-      // test rather than a default. Applied BEFORE the search filter on
-      // purpose: a hidden row must stay hidden when a query matches it, or
-      // Find silently reintroduces exactly what the toggle is holding back.
-      .filter((c) => showCorpses || !c.isCorpse)
-      .sort((a, b) => {
-        const cmp = compareConstantRowsBy(sortKey, a, b);
-        return sortDirection === "asc" ? cmp : -cmp;
-      })
-      // Search runs the same `cell` functions the renderer does, so it always
-      // covers exactly the columns on screen and nothing else.
-      .filter((c) => matchesQuery(query, columns.map((col) => col.cell(c))));
+    return (
+      gameConstants.constants
+        .filter((c) => c.category === CATEGORY_BY_MODE[mode])
+        // `isCorpse` is absent on a row that is not one, so this is a positive
+        // test rather than a default. Applied BEFORE the search filter on
+        // purpose: a hidden row must stay hidden when a query matches it, or
+        // Find silently reintroduces exactly what the toggle is holding back.
+        .filter((c) => showCorpses || !c.isCorpse)
+        .sort((a, b) => {
+          const cmp = compareConstantRowsBy(sortKey, a, b);
+          return sortDirection === "asc" ? cmp : -cmp;
+        })
+        // Search runs the same `cell` functions the renderer does, so it always
+        // covers exactly the columns on screen and nothing else.
+        .filter((c) =>
+          matchesQuery(
+            query,
+            columns.map((col) => col.cell(c)),
+          ),
+        )
+    );
   }, [mode, query, showCorpses, sortKey, sortDirection]);
 
   // Counted over the whole category rather than over what is on screen, so the
   // label reads the same whatever the search box holds.
   const corpseCount = useMemo(
-    () => (mode === "objects" ? gameConstants.constants.filter((c) => c.category === "object" && c.isCorpse).length : 0),
+    () =>
+      mode === "objects"
+        ? gameConstants.constants.filter(
+            (c) => c.category === "object" && c.isCorpse,
+          ).length
+        : 0,
     [mode],
   );
 
   const commandRows = useMemo(
-    () => (mode === "commands" ? matchingCommandRows(languageData.commands, attributesByName, query) : []),
+    () =>
+      mode === "commands"
+        ? matchingCommandRows(languageData.commands, attributesByName, query)
+        : [],
     [mode, query],
   );
 
@@ -304,11 +351,19 @@ export function ReferenceTable() {
   // non-functional engine strings), nowhere to nest, so they get their own
   // rows rather than being unreachable from Find.
   const orphanAttrRows = useMemo(
-    () => (mode === "commands" ? orphanAttributeRows(languageData.commands, languageData.attributes, query) : []),
+    () =>
+      mode === "commands"
+        ? orphanAttributeRows(
+            languageData.commands,
+            languageData.attributes,
+            query,
+          )
+        : [],
     [mode, query],
   );
 
-  const noCommandResults = commandRows.length === 0 && orphanAttrRows.length === 0;
+  const noCommandResults =
+    commandRows.length === 0 && orphanAttrRows.length === 0;
 
   function toggleExpanded(commandName: string) {
     setExpandedCommands((prev) => {
@@ -320,13 +375,21 @@ export function ReferenceTable() {
   }
 
   return (
-    <div className={`${styles.section} ${objectsHidden ? styles.sectionWarned : ""}`} data-tutorial-anchor="sidePanel.reference">
+    <div
+      className={`${styles.section} ${objectsHidden ? styles.sectionWarned : ""}`}
+      data-tutorial-anchor="sidePanel.reference"
+    >
       <div className={styles.panel}>
         <HelpTip id="breakdown.sidePanel.referenceRadio">
           <div className={styles.radioRow}>
             {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
               <label key={m}>
-                <input type="radio" name="reference-mode" checked={mode === m} onChange={() => setMode(m)} />
+                <input
+                  type="radio"
+                  name="reference-mode"
+                  checked={mode === m}
+                  onChange={() => setMode(m)}
+                />
                 {MODE_LABELS[m]}
                 {m === "previewObjects" && objectsHidden && (
                   <span
@@ -372,19 +435,25 @@ export function ReferenceTable() {
                 <select
                   className={styles.sortSelect}
                   value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as ConstantSortKey)}
+                  onChange={(e) =>
+                    setSortKey(e.target.value as ConstantSortKey)
+                  }
                 >
-                  {(Object.keys(CONSTANT_SORT_LABELS) as ConstantSortKey[]).map((key) => (
-                    <option key={key} value={key}>
-                      {CONSTANT_SORT_LABELS[key]}
-                    </option>
-                  ))}
+                  {(Object.keys(CONSTANT_SORT_LABELS) as ConstantSortKey[]).map(
+                    (key) => (
+                      <option key={key} value={key}>
+                        {CONSTANT_SORT_LABELS[key]}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
               <button
                 type="button"
                 className={styles.sortDirectionButton}
-                onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+                onClick={() =>
+                  setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
+                }
                 aria-label={
                   sortDirection === "asc"
                     ? "Sorted ascending. Click to sort descending."
@@ -400,7 +469,11 @@ export function ReferenceTable() {
         {mode === "objects" && corpseCount > 0 && (
           <HelpTip id="breakdown.sidePanel.referenceCorpses">
             <label className={styles.findRow}>
-              <input type="checkbox" checked={showCorpses} onChange={(e) => setShowCorpses(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={showCorpses}
+                onChange={(e) => setShowCorpses(e.target.checked)}
+              />
               Show {corpseCount} carcasses and decals
             </label>
           </HelpTip>
@@ -458,7 +531,9 @@ export function ReferenceTable() {
                   // open on top of whatever the user last clicked, rather
                   // than making them expand every candidate by hand to see
                   // what's actually relevant.
-                  const expanded = expandedCommands.has(command.name) || (query !== "" && attributes.length > 0);
+                  const expanded =
+                    expandedCommands.has(command.name) ||
+                    (query !== "" && attributes.length > 0);
                   return (
                     <Fragment key={command.name}>
                       <tr>
@@ -475,17 +550,28 @@ export function ReferenceTable() {
                             </button>
                           )}
                           {command.name}
-                          {!command.verified && <span className={styles.unverifiedChip}>unverified</span>}
+                          {!command.verified && (
+                            <span className={styles.unverifiedChip}>
+                              unverified
+                            </span>
+                          )}
                         </td>
                         <td>{command.section}</td>
                         <td>{command.description ?? "—"}</td>
                       </tr>
                       {expanded &&
                         attributes.map((a) => (
-                          <tr key={`${command.name}::${a.name}`} className={styles.attributeRow}>
+                          <tr
+                            key={`${command.name}::${a.name}`}
+                            className={styles.attributeRow}
+                          >
                             <td className={styles.attributeName}>
                               {a.name}
-                              {!a.verified && <span className={styles.unverifiedChip}>unverified</span>}
+                              {!a.verified && (
+                                <span className={styles.unverifiedChip}>
+                                  unverified
+                                </span>
+                              )}
                             </td>
                             <td>—</td>
                             <td>{a.description ?? "—"}</td>
@@ -497,13 +583,19 @@ export function ReferenceTable() {
                 {orphanAttrRows.length > 0 && (
                   <>
                     <tr className={styles.attributeGroupRow}>
-                      <td colSpan={3}>Other attributes (not tied to a specific command)</td>
+                      <td colSpan={3}>
+                        Other attributes (not tied to a specific command)
+                      </td>
                     </tr>
                     {orphanAttrRows.map((a) => (
                       <tr key={a.name} className={styles.attributeRow}>
                         <td className={styles.attributeName}>
                           {a.name}
-                          {!a.verified && <span className={styles.unverifiedChip}>unverified</span>}
+                          {!a.verified && (
+                            <span className={styles.unverifiedChip}>
+                              unverified
+                            </span>
+                          )}
                         </td>
                         <td>—</td>
                         <td>{a.description ?? "—"}</td>
@@ -531,18 +623,24 @@ export function ReferenceTable() {
             query with no hits. */}
         {mode !== "previewObjects" &&
           query !== "" &&
-          (mode === "commands" ? noCommandResults : constantRows.length === 0) && (
-            <p className={styles.note}>Nothing in {MODE_LABELS[mode]} matches “{query}”.</p>
+          (mode === "commands"
+            ? noCommandResults
+            : constantRows.length === 0) && (
+            <p className={styles.note}>
+              Nothing in {MODE_LABELS[mode]} matches “{query}”.
+            </p>
           )}
         {(mode === "terrain" || mode === "objects") && (
           <p className={styles.note}>
-            The common constants, not all of them. A name missing here may still be valid in game.
+            The common constants, not all of them. A name missing here may still
+            be valid in game.
           </p>
         )}
         {mode === "previewObjects" && objectsHidden && (
           <p className={styles.note}>
-            Unticked objects are hidden from the map only. They are still placed, still counted here, and
-            still listed when you click their tile.
+            Unticked objects are hidden from the map only. They are still
+            placed, still counted here, and still listed when you click their
+            tile.
           </p>
         )}
       </div>

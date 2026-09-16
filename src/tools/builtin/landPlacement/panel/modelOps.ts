@@ -34,8 +34,15 @@ export function addRole(model: AlpModel): { model: AlpModel; roleId: string } {
   return { model: { ...model, roles: [...model.roles, role] }, roleId: id };
 }
 
-export function updateRole(model: AlpModel, roleId: string, patch: Partial<LandRole>): AlpModel {
-  return { ...model, roles: model.roles.map((r) => (r.id === roleId ? { ...r, ...patch } : r)) };
+export function updateRole(
+  model: AlpModel,
+  roleId: string,
+  patch: Partial<LandRole>,
+): AlpModel {
+  return {
+    ...model,
+    roles: model.roles.map((r) => (r.id === roleId ? { ...r, ...patch } : r)),
+  };
 }
 
 export function deleteRole(model: AlpModel, roleId: string): AlpModel {
@@ -44,16 +51,29 @@ export function deleteRole(model: AlpModel, roleId: string): AlpModel {
     roles: model.roles.filter((r) => r.id !== roleId),
     // A placement wearing a deleted role becomes a chain anchor rather than
     // a dangling reference. emitAlpModel throws on an unresolvable role id.
-    placements: model.placements.map((p) => (p.role === roleId ? { ...p, role: undefined, repeatIndex: undefined } : p)),
+    placements: model.placements.map((p) =>
+      p.role === roleId ? { ...p, role: undefined, repeatIndex: undefined } : p,
+    ),
     groups: model.groups.map((g) => ({
       ...g,
-      pattern: g.pattern.map((slot) => (slot.role === roleId ? { ...slot, role: model.roles.find((r) => r.id !== roleId)?.id ?? slot.role } : slot)),
+      pattern: g.pattern.map((slot) =>
+        slot.role === roleId
+          ? {
+              ...slot,
+              role: model.roles.find((r) => r.id !== roleId)?.id ?? slot.role,
+            }
+          : slot,
+      ),
     })),
   };
 }
 
 /** A new ring of `repeats` lands wearing `roleId`, at the map centre. Sec.8's "create a ring, set its numbers, see it, Apply". */
-export function addRing(model: AlpModel, roleId: string, parent: Anchor = "center"): { model: AlpModel; groupId: string } {
+export function addRing(
+  model: AlpModel,
+  roleId: string,
+  parent: Anchor = "center",
+): { model: AlpModel; groupId: string } {
   const groupId = freshId("ring");
   const group: ShapeGroup = {
     id: groupId,
@@ -70,7 +90,11 @@ export function addRing(model: AlpModel, roleId: string, parent: Anchor = "cente
   const { placements, members } = expandShapeGroup(group);
   const finished: ShapeGroup = { ...group, members };
   return {
-    model: { ...model, groups: [...model.groups, finished], placements: [...model.placements, ...placements] },
+    model: {
+      ...model,
+      groups: [...model.groups, finished],
+      placements: [...model.placements, ...placements],
+    },
     groupId,
   };
 }
@@ -97,7 +121,19 @@ export function deleteGroup(model: AlpModel, groupId: string): AlpModel {
 export function applyGroupEdit(
   model: AlpModel,
   groupId: string,
-  newGroupPatch: Partial<Pick<ShapeGroup, "pattern" | "repeats" | "radius" | "rotation" | "perPlayer" | "kind" | "sweep" | "sides">>,
+  newGroupPatch: Partial<
+    Pick<
+      ShapeGroup,
+      | "pattern"
+      | "repeats"
+      | "radius"
+      | "rotation"
+      | "perPlayer"
+      | "kind"
+      | "sweep"
+      | "sides"
+    >
+  >,
   parse: ParseResult,
   emission: EmissionOk | null,
 ): { model: AlpModel; report: ReturnType<typeof reExpand>["report"] } | null {
@@ -108,16 +144,35 @@ export function applyGroupEdit(
     const q = emission?.quantities.get(placementId);
     return q ? [q.xName, q.yName] : [];
   };
-  const result = reExpand(oldGroup, newGroup, model.placements, parse, emittedConstantNames);
+  const result = reExpand(
+    oldGroup,
+    newGroup,
+    model.placements,
+    parse,
+    emittedConstantNames,
+  );
   const finishedGroup: ShapeGroup = { ...newGroup, members: result.members };
   return {
-    model: { ...model, groups: model.groups.map((g) => (g.id === groupId ? finishedGroup : g)), placements: result.placements },
+    model: {
+      ...model,
+      groups: model.groups.map((g) => (g.id === groupId ? finishedGroup : g)),
+      placements: result.placements,
+    },
     report: result.report,
   };
 }
 
-export function updatePlacement(model: AlpModel, placementId: string, patch: Partial<Placement>): AlpModel {
-  return { ...model, placements: model.placements.map((p) => (p.id === placementId ? { ...p, ...patch } : p)) };
+export function updatePlacement(
+  model: AlpModel,
+  placementId: string,
+  patch: Partial<Placement>,
+): AlpModel {
+  return {
+    ...model,
+    placements: model.placements.map((p) =>
+      p.id === placementId ? { ...p, ...patch } : p,
+    ),
+  };
 }
 
 /**
@@ -131,12 +186,18 @@ export function updatePlacement(model: AlpModel, placementId: string, patch: Par
  * brief's own acceptance pins the negative directly: "dragging a standalone
  * placement leaves nudged unset."
  */
-export function applyDragToPlacement(model: AlpModel, placementId: string, offset: Placement["offset"]): AlpModel {
+export function applyDragToPlacement(
+  model: AlpModel,
+  placementId: string,
+  offset: Placement["offset"],
+): AlpModel {
   const inGroup = isGroupMember(model, placementId);
   return {
     ...model,
     placements: model.placements.map((p) =>
-      p.id === placementId ? { ...p, offset, ...(inGroup ? { nudged: true } : {}) } : p,
+      p.id === placementId
+        ? { ...p, offset, ...(inGroup ? { nudged: true } : {}) }
+        : p,
     ),
   };
 }
@@ -150,7 +211,12 @@ export function applyDragToPlacement(model: AlpModel, placementId: string, offse
  * overrides" contract rather than leaving an empty-but-present object for a
  * reader to have to treat the same way as absence anyway.
  */
-export function setThetaPerCountOverride(model: AlpModel, placementId: string, count: number, expr: Expr | undefined): AlpModel {
+export function setThetaPerCountOverride(
+  model: AlpModel,
+  placementId: string,
+  count: number,
+  expr: Expr | undefined,
+): AlpModel {
   return {
     ...model,
     placements: model.placements.map((p) => {
@@ -158,26 +224,43 @@ export function setThetaPerCountOverride(model: AlpModel, placementId: string, c
       const next = { ...(p.thetaPerCount ?? {}) };
       if (expr === undefined) delete next[count];
       else next[count] = expr;
-      return { ...p, thetaPerCount: Object.keys(next).length > 0 ? next : undefined };
+      return {
+        ...p,
+        thetaPerCount: Object.keys(next).length > 0 ? next : undefined,
+      };
     }),
   };
 }
 
 /** Standalone placements only (never a group member, leaving/removing a member is a pattern/repeats edit through `applyGroupEdit`). */
-export function addStandalonePlacement(model: AlpModel, roleId: string | undefined, parent: Anchor = "center"): { model: AlpModel; id: string } {
+export function addStandalonePlacement(
+  model: AlpModel,
+  roleId: string | undefined,
+  parent: Anchor = "center",
+): { model: AlpModel; id: string } {
   const id = freshId("land");
   const placement: Placement = {
     id,
     parent,
     frame: "radial",
-    offset: { kind: "polar", r: { k: "num", v: 20 }, theta: { k: "num", v: 0 } },
+    offset: {
+      kind: "polar",
+      r: { k: "num", v: 20 },
+      theta: { k: "num", v: 0 },
+    },
     label: id,
     role: roleId,
   };
-  return { model: { ...model, placements: [...model.placements, placement] }, id };
+  return {
+    model: { ...model, placements: [...model.placements, placement] },
+    id,
+  };
 }
 
-export function deleteStandalonePlacement(model: AlpModel, placementId: string): AlpModel {
+export function deleteStandalonePlacement(
+  model: AlpModel,
+  placementId: string,
+): AlpModel {
   return {
     ...model,
     placements: model.placements
@@ -192,6 +275,9 @@ export function isGroupMember(model: AlpModel, placementId: string): boolean {
   return model.groups.some((g) => g.members.includes(placementId));
 }
 
-export function groupForMember(model: AlpModel, placementId: string): ShapeGroup | undefined {
+export function groupForMember(
+  model: AlpModel,
+  placementId: string,
+): ShapeGroup | undefined {
   return model.groups.find((g) => g.members.includes(placementId));
 }

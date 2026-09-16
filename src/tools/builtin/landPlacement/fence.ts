@@ -68,7 +68,10 @@ const LEXER_WHITESPACE = /[ \t\n\v\f\r]/g;
 
 function escapeModelForComment(model: AlpModel): string {
   const compact = JSON.stringify(model);
-  return compact.replace(LEXER_WHITESPACE, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return compact.replace(
+    LEXER_WHITESPACE,
+    (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 }
 
 function renderFenceText(model: AlpModel, body: string): string {
@@ -90,7 +93,10 @@ function renderFenceText(model: AlpModel, body: string): string {
  * pair is the correct outcome anyway, since Sec.6.1's rule for anything this
  * module cannot read confidently is "no association", not "guess".
  */
-function findMatchingClose(tokens: ParseResult["tokens"], openIdx: number): number | null {
+function findMatchingClose(
+  tokens: ParseResult["tokens"],
+  openIdx: number,
+): number | null {
   if (tokens[openIdx]?.kind !== "commentOpen") return null;
   let depth = 0;
   for (let i = openIdx; i < tokens.length; i++) {
@@ -105,7 +111,12 @@ function findMatchingClose(tokens: ParseResult["tokens"], openIdx: number): numb
 }
 
 /** The comment's own text, `/*` and `*\/` stripped and trimmed. */
-function commentBody(source: string, openIdx: number, closeIdx: number, tokens: ParseResult["tokens"]): string {
+function commentBody(
+  source: string,
+  openIdx: number,
+  closeIdx: number,
+  tokens: ParseResult["tokens"],
+): string {
   return source.slice(tokens[openIdx].end, tokens[closeIdx].start).trim();
 }
 
@@ -211,7 +222,12 @@ export function readFenceModel(parse: ParseResult): AlpModel | null {
  * fence's `#const`s precede every skeleton Apply inserts into it) and passes
  * it explicitly; every other caller keeps the old default unchanged.
  */
-export function buildFenceEdits(parse: ParseResult, model: AlpModel, body: string, insertionOffset?: number): TextEdit[] {
+export function buildFenceEdits(
+  parse: ParseResult,
+  model: AlpModel,
+  body: string,
+  insertionOffset?: number,
+): TextEdit[] {
   const newText = renderFenceText(model, body);
   const loc = locateFence(parse);
   if (loc) {
@@ -223,7 +239,14 @@ export function buildFenceEdits(parse: ParseResult, model: AlpModel, body: strin
   const before = parse.source.slice(0, at);
   const after = parse.source.slice(at);
   const needsLeadingBlankLine = before.length > 0 && !before.endsWith("\n\n");
-  const prefix = before.length === 0 ? "" : before.endsWith("\n") ? (needsLeadingBlankLine ? "\n" : "") : "\n\n";
+  const prefix =
+    before.length === 0
+      ? ""
+      : before.endsWith("\n")
+        ? needsLeadingBlankLine
+          ? "\n"
+          : ""
+        : "\n\n";
   const needsTrailingNewline = after.length > 0 && !after.startsWith("\n");
   const suffix = needsTrailingNewline ? "\n" : "";
   return [{ start: at, end: at, newText: prefix + newText + suffix }];

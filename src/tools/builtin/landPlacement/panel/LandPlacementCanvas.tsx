@@ -28,11 +28,18 @@
 // this brief's §4, "nothing in this environment can render App.tsx".
 
 import { useMemo, useState } from "react";
-import { OverlayCanvas, type OverlayDragModifiers } from "../../../../components/preview/OverlayCanvas";
+import {
+  OverlayCanvas,
+  type OverlayDragModifiers,
+} from "../../../../components/preview/OverlayCanvas";
 import type { MapSize } from "../../../../generationSettings/generationSettingsConstants";
 import type { LanguageData } from "../../../../parser/language";
 import type { ParseResult } from "../../../../parser/types";
-import { createTerrainPalette, DEFAULT_TERRAIN_COLOR_MODE, type TerrainConstant } from "../../../../preview/render/palette";
+import {
+  createTerrainPalette,
+  DEFAULT_TERRAIN_COLOR_MODE,
+  type TerrainConstant,
+} from "../../../../preview/render/palette";
 import type { Viewport } from "../../../../preview/render/projection";
 import { resolveMapDim } from "../../../../preview/generator/mapDimensions";
 import { usePanelPreviewResultContext } from "../../../../PreviewResultContext";
@@ -51,19 +58,35 @@ import {
   resolvedOffsetOf,
   resolvedPercentOf,
 } from "./canvasInteraction";
-import { arcSweepHandlePosition, gizmoHandlePositions, lineEndHandlePosition } from "./gizmoGeometry";
-import { applyDragToPlacement, applyGroupEdit, groupForMember } from "./modelOps";
+import {
+  arcSweepHandlePosition,
+  gizmoHandlePositions,
+  lineEndHandlePosition,
+} from "./gizmoGeometry";
+import {
+  applyDragToPlacement,
+  applyGroupEdit,
+  groupForMember,
+} from "./modelOps";
 import { percentToTile } from "./viewModel";
 import type { EmissionResult } from "../emitModel";
 import type { AlpModel } from "../fence";
 import type { ShapeGroup } from "../model";
-import { circlesFromOverlay, handleGrabRadiusTiles, hitTestCircles, hitTestRim, type TileCircle } from "./canvasGeometry";
+import {
+  circlesFromOverlay,
+  handleGrabRadiusTiles,
+  hitTestCircles,
+  hitTestRim,
+  type TileCircle,
+} from "./canvasGeometry";
 import gameConstantsRaw from "../../../../../reference/data/game-constants.json";
 
 // Same double-cast reasoning as PreviewPane.tsx for the same file: ajv
 // (`npm run validate:reference`) is the real shape guarantee, not a runtime
 // assertion here.
-const terrainConstants = (gameConstantsRaw as unknown as { constants: TerrainConstant[] }).constants;
+const terrainConstants = (
+  gameConstantsRaw as unknown as { constants: TerrainConstant[] }
+).constants;
 
 const RADIUS_HANDLE_ID = (groupId: string) => `${groupId}#radiusHandle`;
 const ROTATION_HANDLE_ID = (groupId: string) => `${groupId}#rotationHandle`;
@@ -100,7 +123,9 @@ export function LandPlacementCanvas({
   const { result: panelPreview } = usePanelPreviewResultContext();
 
   const mapDim = resolveMapDim(mapSize, lang.predefinedLabels ?? []) ?? 0;
-  const selectedGroup: ShapeGroup | undefined = selectedId ? groupForMember(model, selectedId) : undefined;
+  const selectedGroup: ShapeGroup | undefined = selectedId
+    ? groupForMember(model, selectedId)
+    : undefined;
 
   const overlayShapes = useMemo(() => {
     if (!emission || !emission.ok || mapDim === 0) return [];
@@ -129,10 +154,23 @@ export function LandPlacementCanvas({
           selectedGroup.frame,
           frameCtx.parentDegreesResolved,
         );
-        const toTile = (p: { x: number; y: number }) => ({ x: percentToTile(p.x, mapDim), y: percentToTile(p.y, mapDim) });
+        const toTile = (p: { x: number; y: number }) => ({
+          x: percentToTile(p.x, mapDim),
+          y: percentToTile(p.y, mapDim),
+        });
         shapes.push(
-          { id: RADIUS_HANDLE_ID(selectedGroup.id), kind: "handle", ...toTile(radiusHandle), role: "warning" },
-          { id: ROTATION_HANDLE_ID(selectedGroup.id), kind: "handle", ...toTile(rotationHandle), role: "warning" },
+          {
+            id: RADIUS_HANDLE_ID(selectedGroup.id),
+            kind: "handle",
+            ...toTile(radiusHandle),
+            role: "warning",
+          },
+          {
+            id: ROTATION_HANDLE_ID(selectedGroup.id),
+            kind: "handle",
+            ...toTile(rotationHandle),
+            role: "warning",
+          },
         );
         // Item 4: a per-kind third handle, one of the two left of slice 5's
         // item 6 — a perimeter kind (square/triangle/polygon) needs neither,
@@ -140,8 +178,19 @@ export function LandPlacementCanvas({
         // the two handles above already edit (shape-kinds-slice-c-brief.md
         // item 3's own closing argument).
         if (selectedGroup.kind === "line") {
-          const lineEnd = lineEndHandlePosition(frameCtx.anchor, radius, rotation, selectedGroup.frame, frameCtx.parentDegreesResolved);
-          shapes.push({ id: LINE_END_HANDLE_ID(selectedGroup.id), kind: "handle", ...toTile(lineEnd), role: "warning" });
+          const lineEnd = lineEndHandlePosition(
+            frameCtx.anchor,
+            radius,
+            rotation,
+            selectedGroup.frame,
+            frameCtx.parentDegreesResolved,
+          );
+          shapes.push({
+            id: LINE_END_HANDLE_ID(selectedGroup.id),
+            kind: "handle",
+            ...toTile(lineEnd),
+            role: "warning",
+          });
         } else if (selectedGroup.kind === "arc") {
           const sweepPos = arcSweepHandlePosition(
             frameCtx.anchor,
@@ -151,16 +200,27 @@ export function LandPlacementCanvas({
             selectedGroup.frame,
             frameCtx.parentDegreesResolved,
           );
-          shapes.push({ id: ARC_SWEEP_HANDLE_ID(selectedGroup.id), kind: "handle", ...toTile(sweepPos), role: "warning" });
+          shapes.push({
+            id: ARC_SWEEP_HANDLE_ID(selectedGroup.id),
+            kind: "handle",
+            ...toTile(sweepPos),
+            role: "warning",
+          });
         }
       }
     }
     return shapes;
   }, [model, emission, mapDim, selectedId, selectedGroup]);
 
-  const palette = useMemo(() => createTerrainPalette(terrainConstants, DEFAULT_TERRAIN_COLOR_MODE), []);
+  const palette = useMemo(
+    () => createTerrainPalette(terrainConstants, DEFAULT_TERRAIN_COLOR_MODE),
+    [],
+  );
   const snapshot = panelPreview?.snapshots?.at(-1);
-  const base = panelPreview && snapshot ? { result: panelPreview, snapshot, palette } : undefined;
+  const base =
+    panelPreview && snapshot
+      ? { result: panelPreview, snapshot, palette }
+      : undefined;
 
   const dim = snapshot?.dim ?? mapDim;
 
@@ -196,7 +256,8 @@ export function LandPlacementCanvas({
   // Scoped to the selection, the gesture reads the same way the gizmo does,
   // click to select, then grab a handle.
   const rimCircles = useMemo(
-    () => (selectedId === null ? [] : circles.filter((c) => c.id === selectedId)),
+    () =>
+      selectedId === null ? [] : circles.filter((c) => c.id === selectedId),
     [circles, selectedId],
   );
 
@@ -210,12 +271,21 @@ export function LandPlacementCanvas({
     // line should resize the line, not select the land sitting under it.
     const handleHit = hitTestCircles(tile, gizmoHandleCircles);
     if (handleHit !== null) return handleHit;
-    const rimHit = hitTestRim(tile, rimCircles, Math.max(1, handleGrabRadiusTiles(mapDim) * 0.6));
+    const rimHit = hitTestRim(
+      tile,
+      rimCircles,
+      Math.max(1, handleGrabRadiusTiles(mapDim) * 0.6),
+    );
     if (rimHit !== null) return RIM_PREFIX + rimHit;
     return hitTestCircles(tile, circles);
   };
 
-  const handlePlacementDrag = (placementId: string, phase: "move" | "end", percent: { x: number; y: number }, modifiers: OverlayDragModifiers) => {
+  const handlePlacementDrag = (
+    placementId: string,
+    phase: "move" | "end",
+    percent: { x: number; y: number },
+    modifiers: OverlayDragModifiers,
+  ) => {
     if (!emission?.ok) return;
     const placement = model.placements.find((p) => p.id === placementId);
     if (!placement) return;
@@ -229,18 +299,30 @@ export function LandPlacementCanvas({
     // (tile lattice unconditionally, centre/parent-axis magnetically).
     const snapped = modifiers.ctrl
       ? snapToIntegerPercent(percent)
-      : applyDefaultSnapping(percent, buildSnapContext(model, placementId, emission, mapDim));
+      : applyDefaultSnapping(
+          percent,
+          buildSnapContext(model, placementId, emission, mapDim),
+        );
 
     // per-player-escalation.md Sec.7.7: a direct member of a perPlayer ring
     // carries a theta the emitter will override regardless of its own
     // literal shape (slice-b-brief.md item 4) — dragMath.ts cannot see that
     // from the Expr alone, so it is passed in here.
-    const isPerPlayerMember = groupForMember(model, placementId)?.perPlayer === true;
+    const isPerPlayerMember =
+      groupForMember(model, placementId)?.perPlayer === true;
     // shape-kinds-slice-b-brief.md item 2: the placement's own currently
     // resolved offset, so a symbolic r/theta or dx/dy can absorb the drag's
     // delta instead of declining outright.
     const resolvedOffset = resolvedOffsetOf(placement, emission);
-    const outcome = applyDrag(placement, anchor, previousPosition, snapped, parentDegreesResolved, isPerPlayerMember, resolvedOffset);
+    const outcome = applyDrag(
+      placement,
+      anchor,
+      previousPosition,
+      snapped,
+      parentDegreesResolved,
+      isPerPlayerMember,
+      resolvedOffset,
+    );
     if (!outcome.ok) {
       // Sec.7.3: "the handle becomes a read only marker and the panel says
       // why... silently discarding a user's formula... is unacceptable."
@@ -248,22 +330,50 @@ export function LandPlacementCanvas({
       return;
     }
     setDragDecline(null);
-    onModelChange((m) => applyDragToPlacement(m, placementId, outcome.placement.offset));
+    onModelChange((m) =>
+      applyDragToPlacement(m, placementId, outcome.placement.offset),
+    );
     void phase; // both move and end apply the same edit; only the final one matters once released
   };
 
-  const handleRimDrag = (placementId: string, phase: "move" | "end", percent: { x: number; y: number }) => {
+  const handleRimDrag = (
+    placementId: string,
+    phase: "move" | "end",
+    percent: { x: number; y: number },
+  ) => {
     if (phase !== "end" || !emission?.ok || mapDim <= 0) return; // commit on release only, no live preview in this pass
-    const dropTile = { x: Math.floor((percent.x / 100) * mapDim), y: Math.floor((percent.y / 100) * mapDim) };
+    const dropTile = {
+      x: Math.floor((percent.x / 100) * mapDim),
+      y: Math.floor((percent.y / 100) * mapDim),
+    };
     const centreTile = { x: mapDim / 2, y: mapDim / 2 };
-    const onCentre = Math.hypot(dropTile.x - centreTile.x, dropTile.y - centreTile.y) <= handleGrabRadiusTiles(mapDim);
-    const dropTargetId = onCentre ? "center" : circles.some((c) => c.id !== placementId) ? hitTestCircles(dropTile, circles.filter((c) => c.id !== placementId)) : null;
+    const onCentre =
+      Math.hypot(dropTile.x - centreTile.x, dropTile.y - centreTile.y) <=
+      handleGrabRadiusTiles(mapDim);
+    const dropTargetId = onCentre
+      ? "center"
+      : circles.some((c) => c.id !== placementId)
+        ? hitTestCircles(
+            dropTile,
+            circles.filter((c) => c.id !== placementId),
+          )
+        : null;
     if (dropTargetId === null) return; // refused: not over a valid target
-    const result = computeRimDragReparent(model, emission, placementId, dropTargetId, mapDim);
+    const result = computeRimDragReparent(
+      model,
+      emission,
+      placementId,
+      dropTargetId,
+      mapDim,
+    );
     if (result.ok) onModelChange(result.model);
   };
 
-  const handleGizmoDrag = (groupId: string, isRadius: boolean, percent: { x: number; y: number }) => {
+  const handleGizmoDrag = (
+    groupId: string,
+    isRadius: boolean,
+    percent: { x: number; y: number },
+  ) => {
     if (!emission?.ok) return;
     const group = model.groups.find((g) => g.id === groupId);
     if (!group) return;
@@ -279,17 +389,28 @@ export function LandPlacementCanvas({
     // declines to commit, and `dragDecline` renders the reason.
     const edited = isRadius ? group.radius : group.rotation;
     if (evalClosed(edited) === undefined) {
-      setDragDecline(symbolicDeclineReason([isRadius ? "This ring's radius" : "This ring's rotation"]));
+      setDragDecline(
+        symbolicDeclineReason([
+          isRadius ? "This ring's radius" : "This ring's rotation",
+        ]),
+      );
       return;
     }
     setDragDecline(null);
-    const dragged = dragPolar(frameCtx.anchor, percent, group.frame, frameCtx.parentDegreesResolved);
+    const dragged = dragPolar(
+      frameCtx.anchor,
+      percent,
+      group.frame,
+      frameCtx.parentDegreesResolved,
+    );
     // Sec.7.3: "the radius handle keeps the bearing and takes the distance;
     // the rotation handle keeps the distance and takes the bearing" —
     // routed through applyGroupEdit -> reExpand(), NEVER a fresh
     // expandShapeGroup, per that item's own explicit instruction.
     onModelChange((m) => {
-      const patch = isRadius ? { radius: num(dragged.r) } : { rotation: num(dragged.theta) };
+      const patch = isRadius
+        ? { radius: num(dragged.r) }
+        : { rotation: num(dragged.theta) };
       const result = applyGroupEdit(m, groupId, patch, parseResult, emission);
       return result ? result.model : m;
     });
@@ -298,7 +419,10 @@ export function LandPlacementCanvas({
   // Item 3/4: the line's near-end handle. Both `radius` and `rotation` come
   // out of ONE `computeLineEndDrag` call and go into ONE `applyGroupEdit`
   // call — hazard 2's own warning against two edits where one belongs.
-  const handleLineEndDrag = (groupId: string, percent: { x: number; y: number }) => {
+  const handleLineEndDrag = (
+    groupId: string,
+    percent: { x: number; y: number },
+  ) => {
     if (!emission?.ok) return;
     const group = model.groups.find((g) => g.id === groupId);
     if (!group) return;
@@ -311,7 +435,10 @@ export function LandPlacementCanvas({
     }
     setDragDecline(null);
     onModelChange((m) => {
-      const patch = { radius: num(outcome.result.radius), rotation: num(outcome.result.rotation) };
+      const patch = {
+        radius: num(outcome.result.radius),
+        rotation: num(outcome.result.rotation),
+      };
       const result = applyGroupEdit(m, groupId, patch, parseResult, emission);
       return result ? result.model : m;
     });
@@ -320,7 +447,10 @@ export function LandPlacementCanvas({
   // Item 3/4: the arc's sweep handle. `sweep` is a plain number, never an
   // `Expr`, so there is no symbolic field to decline against here (the
   // brief's own point: this handle can never hit that refusal).
-  const handleArcSweepDrag = (groupId: string, percent: { x: number; y: number }) => {
+  const handleArcSweepDrag = (
+    groupId: string,
+    percent: { x: number; y: number },
+  ) => {
     if (!emission?.ok) return;
     const group = model.groups.find((g) => g.id === groupId);
     if (!group) return;
@@ -330,17 +460,33 @@ export function LandPlacementCanvas({
     if (rotation === undefined) return; // no resolved rotation to measure the sweep against
     const sweep = computeArcSweepDrag(group, frameCtx, rotation, percent);
     onModelChange((m) => {
-      const result = applyGroupEdit(m, groupId, { sweep }, parseResult, emission);
+      const result = applyGroupEdit(
+        m,
+        groupId,
+        { sweep },
+        parseResult,
+        emission,
+      );
       return result ? result.model : m;
     });
   };
 
-  const onDrag = (shapeId: string, phase: "move" | "end", percent: { x: number; y: number }, modifiers: OverlayDragModifiers) => {
-    if (selectedGroup && shapeId === RADIUS_HANDLE_ID(selectedGroup.id)) return handleGizmoDrag(selectedGroup.id, true, percent);
-    if (selectedGroup && shapeId === ROTATION_HANDLE_ID(selectedGroup.id)) return handleGizmoDrag(selectedGroup.id, false, percent);
-    if (selectedGroup && shapeId === LINE_END_HANDLE_ID(selectedGroup.id)) return handleLineEndDrag(selectedGroup.id, percent);
-    if (selectedGroup && shapeId === ARC_SWEEP_HANDLE_ID(selectedGroup.id)) return handleArcSweepDrag(selectedGroup.id, percent);
-    if (shapeId.startsWith(RIM_PREFIX)) return handleRimDrag(shapeId.slice(RIM_PREFIX.length), phase, percent);
+  const onDrag = (
+    shapeId: string,
+    phase: "move" | "end",
+    percent: { x: number; y: number },
+    modifiers: OverlayDragModifiers,
+  ) => {
+    if (selectedGroup && shapeId === RADIUS_HANDLE_ID(selectedGroup.id))
+      return handleGizmoDrag(selectedGroup.id, true, percent);
+    if (selectedGroup && shapeId === ROTATION_HANDLE_ID(selectedGroup.id))
+      return handleGizmoDrag(selectedGroup.id, false, percent);
+    if (selectedGroup && shapeId === LINE_END_HANDLE_ID(selectedGroup.id))
+      return handleLineEndDrag(selectedGroup.id, percent);
+    if (selectedGroup && shapeId === ARC_SWEEP_HANDLE_ID(selectedGroup.id))
+      return handleArcSweepDrag(selectedGroup.id, percent);
+    if (shapeId.startsWith(RIM_PREFIX))
+      return handleRimDrag(shapeId.slice(RIM_PREFIX.length), phase, percent);
     return handlePlacementDrag(shapeId, phase, percent, modifiers);
   };
 

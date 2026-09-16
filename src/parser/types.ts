@@ -96,7 +96,12 @@ export interface LexResult {
 // engine actually need; the Token object is always one array lookup away.
 // ---------------------------------------------------------------------------
 
-import type { ArgumentDef, CommandDef, AttributeDef, DirectiveDef } from "./language";
+import type {
+  ArgumentDef,
+  CommandDef,
+  AttributeDef,
+  DirectiveDef,
+} from "./language";
 
 // ---------------------------------------------------------------------------
 // Two DEFAULTED TYPE PARAMETERS, per docs/parser-design.md Sec.4's amendment
@@ -169,12 +174,18 @@ export type ArgValue<N = number> =
   | { expr: { tokens: number[] } } // Sec.2.2, token indices, unevaluated
   | string; // constant/label reference; quoted paths: assembled, quotes stripped
 
-export interface ArgNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface ArgNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   value: ArgValue<N>;
   def?: D["arg"];
 }
 
-export interface CommandNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface CommandNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "command";
   name: number; // token index of the command name
   def?: D["command"]; // undefined = unknown command
@@ -182,21 +193,30 @@ export interface CommandNode<N = number, D extends NoDefs = DefSlots> extends No
   block?: BlockNode<N, D>;
 }
 
-export interface BlockNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface BlockNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "block";
   open: number; // token index of "{"
   close?: number; // token index of "}"; undefined = unclosed
   items: Item<N, D>[];
 }
 
-export interface AttributeNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface AttributeNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "attribute";
   name: number;
   def?: D["attribute"];
   args: ArgNode<N, D>[];
 }
 
-export interface DirectiveNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface DirectiveNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "directive";
   hash: number; // token index of the "#..." token; its text is the directive name
   def?: D["directive"]; // undefined = unknown directive (RMS0206)
@@ -209,7 +229,10 @@ export interface IfBranch<N = number, D extends NoDefs = DefSlots> {
   items: Item<N, D>[];
 }
 
-export interface IfNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface IfNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "if";
   branches: IfBranch<N, D>[];
   endif?: number; // undefined = unclosed (RMS0105)
@@ -221,7 +244,10 @@ export interface RandomBranch<N = number, D extends NoDefs = DefSlots> {
   items: Item<N, D>[];
 }
 
-export interface RandomNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface RandomNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "random";
   start: number; // token index of start_random
   preamble: Item<N, D>[]; // items between start_random and the first percent_chance (RMS0106)
@@ -229,7 +255,10 @@ export interface RandomNode<N = number, D extends NoDefs = DefSlots> extends Nod
   end?: number; // undefined = unclosed (RMS0105)
 }
 
-export interface OrphanBlockNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface OrphanBlockNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "orphanBlock";
   block: BlockNode<N, D>;
 }
@@ -250,7 +279,10 @@ export type Item<N = number, D extends NoDefs = DefSlots> =
   | OrphanBlockNode<N, D>
   | RawNode;
 
-export interface SectionNode<N = number, D extends NoDefs = DefSlots> extends NodeBase {
+export interface SectionNode<
+  N = number,
+  D extends NoDefs = DefSlots,
+> extends NodeBase {
   kind: "section";
   header: number; // token index of the <SECTION_NAME> token
   name: string; // without the angle brackets

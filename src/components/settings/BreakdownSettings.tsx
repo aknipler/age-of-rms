@@ -1,11 +1,17 @@
-import { useBreakdownSettings, type BreakdownDensity } from "../../settings/BreakdownSettingsContext";
+import {
+  useBreakdownSettings,
+  type BreakdownDensity,
+} from "../../settings/BreakdownSettingsContext";
 import type { AttributeOrderMode } from "../../breakdown/attributeModel";
 import { HelpTip } from "../HelpTip";
 import settingsStyles from "./SettingsDialog.module.css";
 import styles from "./BreakdownSettings.module.css";
 
 const ATTRIBUTE_ORDER_OPTIONS: { id: AttributeOrderMode; label: string }[] = [
-  { id: "required", label: "Required first, then text, then number, then boolean" },
+  {
+    id: "required",
+    label: "Required first, then text, then number, then boolean",
+  },
   { id: "alphabetical", label: "Alphabetical" },
   { id: "fileOrder", label: "File order (as written in the code)" },
   { id: "custom", label: "Custom (drag to reorder within each card)" },
@@ -17,7 +23,8 @@ const DENSITY_OPTIONS: { id: BreakdownDensity; label: string }[] = [
 ];
 
 export function BreakdownSettings() {
-  const { attributeOrderMode, setAttributeOrderMode, density, setDensity } = useBreakdownSettings();
+  const { attributeOrderMode, setAttributeOrderMode, density, setDensity } =
+    useBreakdownSettings();
 
   return (
     <>
@@ -29,7 +36,9 @@ export function BreakdownSettings() {
           <select
             className={styles.select}
             value={density}
-            onChange={(event) => setDensity(event.target.value as BreakdownDensity)}
+            onChange={(event) =>
+              setDensity(event.target.value as BreakdownDensity)
+            }
           >
             {DENSITY_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -46,7 +55,9 @@ export function BreakdownSettings() {
           <select
             className={styles.select}
             value={attributeOrderMode}
-            onChange={(event) => setAttributeOrderMode(event.target.value as AttributeOrderMode)}
+            onChange={(event) =>
+              setAttributeOrderMode(event.target.value as AttributeOrderMode)
+            }
           >
             {ATTRIBUTE_ORDER_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>

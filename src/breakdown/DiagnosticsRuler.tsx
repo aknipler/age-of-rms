@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type RefObject,
+} from "react";
 import type { Item, Span } from "../parser/types";
 import { useBreakdownContext } from "./BreakdownContext";
 import { ticksForItems, type RulerTick } from "./rulerTicks";
@@ -31,10 +37,16 @@ interface DiagnosticsRulerProps {
 // function the way there is for Monaco's own ruler over uniform-height
 // lines). Clicking a tick scrolls that card into view and selects it,
 // same as the cross-tab-sync scroll path.
-export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps) {
+export function DiagnosticsRuler({
+  items,
+  containerRef,
+}: DiagnosticsRulerProps) {
   const { diagnostics, expandedAnchors, selectCard } = useBreakdownContext();
   const [ticks, setTicks] = useState<MeasuredTick[]>([]);
-  const [viewport, setViewport] = useState<Viewport>({ topFraction: 0, heightFraction: 1 });
+  const [viewport, setViewport] = useState<Viewport>({
+    topFraction: 0,
+    heightFraction: 1,
+  });
 
   // Recomputes tick screen positions from the CURRENT DOM layout. Kept as
   // one function so both the layout effect (fires after every render
@@ -71,10 +83,13 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
     const containerRect = container.getBoundingClientRect();
     const next: MeasuredTick[] = [];
     for (const candidate of candidates) {
-      const el = container.querySelector<HTMLElement>(`[data-anchor="${candidate.anchor}"]`);
+      const el = container.querySelector<HTMLElement>(
+        `[data-anchor="${candidate.anchor}"]`,
+      );
       if (!el) continue; // shouldn't happen (every top-level item renders one), but degrade quietly rather than throw
       const elRect = el.getBoundingClientRect();
-      const topWithinContent = elRect.top - containerRect.top + container.scrollTop;
+      const topWithinContent =
+        elRect.top - containerRect.top + container.scrollTop;
       // Clamp to [0, 1] before rescaling: the very last item's rect can
       // land a hair past `scrollHeight` from sub-pixel rounding
       // (border/padding rounding differs between getBoundingClientRect's
@@ -82,7 +97,10 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
       // without clamping renders that one tick a few px below .ruler's
       // own box, visually poking into whatever sits below the pane (the
       // StatusBar).
-      const rawFraction = Math.min(1, Math.max(0, topWithinContent / scrollHeight));
+      const rawFraction = Math.min(
+        1,
+        Math.max(0, topWithinContent / scrollHeight),
+      );
       next.push({ ...candidate, topFraction: rawFraction * travelFraction });
     }
     setTicks(next);
@@ -150,7 +168,10 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
     <div className={styles.ruler}>
       <div
         className={styles.viewport}
-        style={{ top: `${viewport.topFraction * 100}%`, height: `${viewport.heightFraction * 100}%` }}
+        style={{
+          top: `${viewport.topFraction * 100}%`,
+          height: `${viewport.heightFraction * 100}%`,
+        }}
       />
       {ticks.map((tick) => (
         // The positioned element MUST be a direct child of `.ruler`.
@@ -164,14 +185,20 @@ export function DiagnosticsRuler({ items, containerRef }: DiagnosticsRulerProps)
         // same spot near the top, regardless of its actual computed
         // fraction. Fix: this outer div carries the position/top, and
         // HelpTip goes INSIDE it, wrapping only the button.
-        <div key={tick.anchor} className={styles.tickWrapper} style={{ top: `${tick.topFraction * 100}%` }}>
+        <div
+          key={tick.anchor}
+          className={styles.tickWrapper}
+          style={{ top: `${tick.topFraction * 100}%` }}
+        >
           <HelpTip id="breakdown.diagnosticsRuler.tick">
             <button
               type="button"
               className={`${styles.tick} ${styles[`severity-${tick.severity}`]}`}
               title={`Jump to this ${tick.severity}`}
               onClick={() => {
-                const el = containerRef.current?.querySelector<HTMLElement>(`[data-anchor="${tick.anchor}"]`);
+                const el = containerRef.current?.querySelector<HTMLElement>(
+                  `[data-anchor="${tick.anchor}"]`,
+                );
                 el?.scrollIntoView({ block: "center" });
                 // selectCard's signature takes a Span and only reads
                 // `.start` (Sec.3.9), a tick only ever has the anchor

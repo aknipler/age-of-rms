@@ -8,7 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import { load, type Store } from "@tauri-apps/plugin-store";
-import { DEFAULT_HELP_MODE, HELP_MODE_KEY, HELP_STORE_FILE, isHelpMode, type HelpMode } from "./helpConstants";
+import {
+  DEFAULT_HELP_MODE,
+  HELP_MODE_KEY,
+  HELP_STORE_FILE,
+  isHelpMode,
+  type HelpMode,
+} from "./helpConstants";
 
 interface HelpSettingsValue {
   mode: HelpMode;
@@ -30,14 +36,16 @@ export function HelpSettingsProvider({ children }: { children: ReactNode }) {
   // also call it independently elsewhere.
   useEffect(() => {
     let cancelled = false;
-    load(HELP_STORE_FILE, { autoSave: true, defaults: {} }).then(async (loadedStore) => {
-      if (cancelled) return;
-      setStore(loadedStore);
-      const saved = await loadedStore.get<HelpMode>(HELP_MODE_KEY);
-      if (!cancelled && isHelpMode(saved)) {
-        setModeState(saved);
-      }
-    });
+    load(HELP_STORE_FILE, { autoSave: true, defaults: {} }).then(
+      async (loadedStore) => {
+        if (cancelled) return;
+        setStore(loadedStore);
+        const saved = await loadedStore.get<HelpMode>(HELP_MODE_KEY);
+        if (!cancelled && isHelpMode(saved)) {
+          setModeState(saved);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -79,13 +87,19 @@ export function HelpSettingsProvider({ children }: { children: ReactNode }) {
     [mode, setMode, altHeld],
   );
 
-  return <HelpSettingsContext.Provider value={value}>{children}</HelpSettingsContext.Provider>;
+  return (
+    <HelpSettingsContext.Provider value={value}>
+      {children}
+    </HelpSettingsContext.Provider>
+  );
 }
 
 export function useHelpSettings(): HelpSettingsValue {
   const ctx = useContext(HelpSettingsContext);
   if (!ctx) {
-    throw new Error("useHelpSettings must be used within a HelpSettingsProvider");
+    throw new Error(
+      "useHelpSettings must be used within a HelpSettingsProvider",
+    );
   }
   return ctx;
 }

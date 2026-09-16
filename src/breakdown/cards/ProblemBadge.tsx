@@ -12,7 +12,9 @@ const SEVERITY_LABEL: Record<DiagnosticSeverity, string> = {
 export function ProblemBadge({ severity }: { severity: DiagnosticSeverity }) {
   return (
     <HelpTip id="breakdown.problemBadge">
-      <span className={`${styles.problemBadge} ${styles[`severity-${severity}`]}`}>
+      <span
+        className={`${styles.problemBadge} ${styles[`severity-${severity}`]}`}
+      >
         {SEVERITY_LABEL[severity]}
       </span>
     </HelpTip>

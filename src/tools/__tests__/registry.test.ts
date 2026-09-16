@@ -6,7 +6,12 @@
 
 import { describe, expect, it } from "vitest";
 import { TOOLS_API_VERSION, type ToolManifest } from "../../../tools-api/index";
-import { checkRegistry, registeredTools, TOOLS, type RegisteredTool } from "../registry";
+import {
+  checkRegistry,
+  registeredTools,
+  TOOLS,
+  type RegisteredTool,
+} from "../registry";
 
 function panelManifest(over: Partial<ToolManifest> = {}): ToolManifest {
   return {
@@ -45,7 +50,11 @@ describe("TOOLS — the live built-in registry", () => {
 
 describe("RegisteredTool — the panel arm (Sec.3.2)", () => {
   it("a panel-kind fixture registers and reaches registeredTools()'s output, alongside the real built-ins and the real panel", () => {
-    const panel: RegisteredTool = { kind: "panel", manifest: panelManifest(), component: null };
+    const panel: RegisteredTool = {
+      kind: "panel",
+      manifest: panelManifest(),
+      component: null,
+    };
     const withPanel = [...TOOLS, panel];
 
     expect(checkRegistry(withPanel)).toEqual({ ok: true, problems: [] });
@@ -57,7 +66,11 @@ describe("RegisteredTool — the panel arm (Sec.3.2)", () => {
   });
 
   it("a malformed panel manifest is rejected the same way a malformed builtin manifest is", () => {
-    const panel: RegisteredTool = { kind: "panel", manifest: panelManifest({ apiVersion: 999 }), component: null };
+    const panel: RegisteredTool = {
+      kind: "panel",
+      manifest: panelManifest({ apiVersion: 999 }),
+      component: null,
+    };
     const check = checkRegistry([panel]);
     expect(check.ok).toBe(false);
     expect(check.problems[0]?.manifestId).toBe("a-fixture-panel");

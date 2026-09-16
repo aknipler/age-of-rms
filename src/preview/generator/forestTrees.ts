@@ -90,7 +90,8 @@ export function computeForestWood(
 
   const terrainsById = new Map<number, ForestTerrainConstant>();
   for (const row of terrainConstants) {
-    if (row.category === "terrain" && row.constId !== null) terrainsById.set(row.constId, row);
+    if (row.category === "terrain" && row.constId !== null)
+      terrainsById.set(row.constId, row);
   }
 
   let totalWood = 0;
@@ -107,7 +108,10 @@ export function computeForestWood(
       remaining *= 1 - slot.density;
       if (suppressed.has(`${terrainId}:${slot.objectId}`)) continue;
       const override = yieldOverrides.get(slot.objectId);
-      const wood = override?.key === "wood" ? override.amount : objectById(slot.objectId, objectConstants)?.resourceAmounts?.wood;
+      const wood =
+        override?.key === "wood"
+          ? override.amount
+          : objectById(slot.objectId, objectConstants)?.resourceAmounts?.wood;
       if (!wood) continue;
       woodPerTile += frac * wood;
     }

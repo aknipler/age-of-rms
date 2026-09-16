@@ -39,7 +39,11 @@ export const NO_LAYER = 0xffff;
  * the tile and stamps its own zone onto it (Sec.6.1's zone rules apply to
  * CLAIMED tiles only; an unclaimed base tile has no zone to speak of).
  */
-export function createTileGrid(dim: number, baseTerrainId: number, baseLayerId = NO_LAYER): TileGrid {
+export function createTileGrid(
+  dim: number,
+  baseTerrainId: number,
+  baseLayerId = NO_LAYER,
+): TileGrid {
   const n = dim * dim;
   return {
     dim,
@@ -118,7 +122,10 @@ export type { BorderBounds } from "./types";
  * here, clamping belongs to whichever stage decides a resulting empty or
  * inverted range is unplaceable, not to this arithmetic.
  */
-export function borderBounds(borders: BorderPercents, dim: number): BorderBounds {
+export function borderBounds(
+  borders: BorderPercents,
+  dim: number,
+): BorderBounds {
   return {
     minX: percentRound((borders.left / 100) * dim),
     maxX: dim - percentRound((borders.right / 100) * dim),
@@ -150,7 +157,10 @@ export const UNREACHABLE = 0xffff;
  * gets called lazily and cached; it does no caching of its own, since the
  * cache's key (stage identity) is a caller concept this module doesn't have.
  */
-export function distanceTransform(grid: TileGrid, terrainId: number): Uint16Array {
+export function distanceTransform(
+  grid: TileGrid,
+  terrainId: number,
+): Uint16Array {
   const { dim, terrain } = grid;
   const n = dim * dim;
   const dist = new Uint16Array(n).fill(UNREACHABLE);
@@ -206,7 +216,10 @@ export function distanceTransform(grid: TileGrid, terrainId: number): Uint16Arra
  * UNREACHABLE for every tile, and the caller treats that as "constraint
  * satisfied" (nothing to be too close to), not "constraint violated".
  */
-export function distanceTransformFromMask(dim: number, mask: Uint8Array): Uint16Array {
+export function distanceTransformFromMask(
+  dim: number,
+  mask: Uint8Array,
+): Uint16Array {
   const n = dim * dim;
   const dist = new Uint16Array(n).fill(UNREACHABLE);
   const queue = new Int32Array(n);
@@ -304,7 +317,8 @@ export function resolveTerrainId(
   symbols?: ReadonlyMap<string, number>,
   aliases?: ReadonlyMap<string, string>,
 ): number | undefined {
-  if (typeof value === "number") return Number.isInteger(value) && value >= 0 ? value : undefined;
+  if (typeof value === "number")
+    return Number.isInteger(value) && value >= 0 ? value : undefined;
   if (typeof value !== "string") return undefined;
   const byName = terrainIdByName(constants, value);
   if (byName !== undefined) return byName;
@@ -327,9 +341,17 @@ export function resolveTerrainId(
   return target === undefined ? undefined : terrainIdByName(constants, target);
 }
 
-function terrainIdByName(constants: readonly TerrainConstantForMasks[], name: string): number | undefined {
+function terrainIdByName(
+  constants: readonly TerrainConstantForMasks[],
+  name: string,
+): number | undefined {
   for (const entry of constants) {
-    if (entry.category === "terrain" && entry.constId !== null && entry.rmsConstant === name) return entry.constId;
+    if (
+      entry.category === "terrain" &&
+      entry.constId !== null &&
+      entry.rmsConstant === name
+    )
+      return entry.constId;
   }
   return undefined;
 }
@@ -367,22 +389,34 @@ interface TerrainFacts {
   isHybrid?: boolean;
 }
 
-function terrainFactIndex(constants: readonly TerrainConstantForMasks[]): ReadonlyMap<number, TerrainFacts> {
+function terrainFactIndex(
+  constants: readonly TerrainConstantForMasks[],
+): ReadonlyMap<number, TerrainFacts> {
   const byId = new Map<number, TerrainFacts>();
   for (const entry of constants) {
     if (entry.category !== "terrain" || entry.constId === null) continue;
     // first-wins, matching palette.ts
     if (!byId.has(entry.constId)) {
-      byId.set(entry.constId, { name: entry.rmsConstant, isWater: entry.isWater, isForest: entry.isForest, isHybrid: entry.isHybrid });
+      byId.set(entry.constId, {
+        name: entry.rmsConstant,
+        isWater: entry.isWater,
+        isForest: entry.isForest,
+        isHybrid: entry.isHybrid,
+      });
     }
   }
   return byId;
 }
 
 /** The flag when the data has one, else the name heuristic, else false. Returns the answer AND whether it had to guess, since the mask's own `usedHeuristic` is a claim about the whole grid. */
-function classify(facts: TerrainFacts | undefined, pattern: RegExp, flag: boolean | undefined): { value: boolean; guessed: boolean } {
+function classify(
+  facts: TerrainFacts | undefined,
+  pattern: RegExp,
+  flag: boolean | undefined,
+): { value: boolean; guessed: boolean } {
   if (flag !== undefined) return { value: flag, guessed: false };
-  if (facts?.name != null && pattern.test(facts.name)) return { value: true, guessed: true };
+  if (facts?.name != null && pattern.test(facts.name))
+    return { value: true, guessed: true };
   return { value: false, guessed: facts !== undefined };
 }
 
@@ -392,11 +426,18 @@ function classify(facts: TerrainFacts | undefined, pattern: RegExp, flag: boolea
  * `base_elevation`'s "doesn't work on water lands" rule (guide:959), which
  * has only the land's declared `terrain_type` to go on.
  */
-export function isWaterTerrain(constants: readonly TerrainConstantForMasks[], terrainId: number | undefined): boolean {
+export function isWaterTerrain(
+  constants: readonly TerrainConstantForMasks[],
+  terrainId: number | undefined,
+): boolean {
   if (terrainId === undefined) return false;
   for (const entry of constants) {
     if (entry.category !== "terrain" || entry.constId !== terrainId) continue;
-    return classify({ name: entry.rmsConstant, isWater: entry.isWater }, WATER_NAME_PATTERN, entry.isWater).value;
+    return classify(
+      { name: entry.rmsConstant, isWater: entry.isWater },
+      WATER_NAME_PATTERN,
+      entry.isWater,
+    ).value;
   }
   return false;
 }
@@ -440,7 +481,10 @@ export const DEPTH_HYBRID = 1;
 export const DEPTH_WATER = 2;
 
 /** The depth of one terrain id, the single-terrain question `waterDepthMask` answers for a whole grid. */
-export function terrainDepth(constants: readonly TerrainConstantForMasks[], terrainId: number | undefined): number {
+export function terrainDepth(
+  constants: readonly TerrainConstantForMasks[],
+  terrainId: number | undefined,
+): number {
   if (terrainId === undefined) return DEPTH_LAND;
   for (const entry of constants) {
     if (entry.category !== "terrain" || entry.constId !== terrainId) continue;
@@ -461,7 +505,10 @@ export function terrainDepth(constants: readonly TerrainConstantForMasks[], terr
  * question directly is what keeps the `shore` habitat from meaning "anything
  * that grows no beach", which would put shore fish in the middle of the ocean.
  */
-export function isBeachTerrain(constants: readonly TerrainConstantForMasks[], terrainId: number | undefined): boolean {
+export function isBeachTerrain(
+  constants: readonly TerrainConstantForMasks[],
+  terrainId: number | undefined,
+): boolean {
   if (terrainId === undefined) return false;
   for (const entry of constants) {
     if (entry.category !== "terrain" || entry.constId !== terrainId) continue;
@@ -478,7 +525,10 @@ export interface DepthMaskResult {
 }
 
 /** `waterMask`'s three-level sibling: the depth of every tile on the grid. */
-export function waterDepthMask(grid: TileGrid, constants: readonly TerrainConstantForMasks[]): DepthMaskResult {
+export function waterDepthMask(
+  grid: TileGrid,
+  constants: readonly TerrainConstantForMasks[],
+): DepthMaskResult {
   const facts = terrainFactIndex(constants);
   const depth = new Uint8Array(grid.dim * grid.dim);
   // Resolved per DISTINCT terrain id, as `waterMask` does: a 200x200 grid is
@@ -534,15 +584,21 @@ export function waterDepthMask(grid: TileGrid, constants: readonly TerrainConsta
  */
 export const DEFAULT_BEACH_TERRAIN = 2; // BEACH
 
-export function beachTerrainFor(constants: readonly TerrainConstantForMasks[], terrainId: number | undefined): number | undefined {
+export function beachTerrainFor(
+  constants: readonly TerrainConstantForMasks[],
+  terrainId: number | undefined,
+): number | undefined {
   if (terrainId === undefined) return undefined;
   for (const entry of constants) {
     if (entry.category !== "terrain" || entry.constId !== terrainId) continue;
     // `null` is a real answer ("this terrain grows no beach") and must not be
     // confused with the field being absent, which is why the check is
     // `!== undefined` rather than a truthiness test, 0 is a terrain id too.
-    if (entry.beachTerrain !== undefined) return entry.beachTerrain ?? undefined;
-    return terrainDepth(constants, terrainId) === DEPTH_WATER ? undefined : DEFAULT_BEACH_TERRAIN;
+    if (entry.beachTerrain !== undefined)
+      return entry.beachTerrain ?? undefined;
+    return terrainDepth(constants, terrainId) === DEPTH_WATER
+      ? undefined
+      : DEFAULT_BEACH_TERRAIN;
   }
   return DEFAULT_BEACH_TERRAIN;
 }
@@ -554,7 +610,10 @@ export interface MaskResult {
 }
 
 /** `isWater` per Sec.4's "water mask", 1 where the tile's terrain is water. */
-export function waterMask(grid: TileGrid, constants: readonly TerrainConstantForMasks[]): MaskResult {
+export function waterMask(
+  grid: TileGrid,
+  constants: readonly TerrainConstantForMasks[],
+): MaskResult {
   const facts = terrainFactIndex(constants);
   const mask = new Uint8Array(grid.dim * grid.dim);
   // Resolved per DISTINCT terrain id, not per tile: a 200x200 grid is 40,000

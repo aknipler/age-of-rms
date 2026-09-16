@@ -19,8 +19,13 @@ import {
  * same way the real plugin does, which is the behaviour `readSteamLibraries`
  * has to survive.
  */
-function fakeDisk(files: Record<string, string>, folders: string[] = []): FolderProbe & { probed: string[] } {
-  const lower = new Map(Object.entries(files).map(([path, body]) => [path.toLowerCase(), body]));
+function fakeDisk(
+  files: Record<string, string>,
+  folders: string[] = [],
+): FolderProbe & { probed: string[] } {
+  const lower = new Map(
+    Object.entries(files).map(([path, body]) => [path.toLowerCase(), body]),
+  );
   const folderSet = new Set(folders.map((f) => f.toLowerCase()));
   const probed: string[] = [];
   return {
@@ -58,7 +63,10 @@ describe("parseSteamLibraryPaths", () => {
 \t\t"path"\t\t"E:\\\\SteamLibrary"
 \t}
 }`;
-    expect(parseSteamLibraryPaths(vdf)).toEqual(["C:\\Program Files (x86)\\Steam", "E:\\SteamLibrary"]);
+    expect(parseSteamLibraryPaths(vdf)).toEqual([
+      "C:\\Program Files (x86)\\Steam",
+      "E:\\SteamLibrary",
+    ]);
   });
 
   it("returns nothing rather than throwing on a file that holds no paths", () => {
@@ -80,7 +88,8 @@ describe("findDeScriptsFolder", () => {
     const onE = scriptsFolderIn(installFolderIn("E:\\SteamLibrary"));
     const disk = fakeDisk(
       {
-        "C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf": '"0"\n{\n"path" "E:\\\\SteamLibrary"\n}\n',
+        "C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf":
+          '"0"\n{\n"path" "E:\\\\SteamLibrary"\n}\n',
       },
       [onE],
     );
@@ -91,7 +100,8 @@ describe("findDeScriptsFolder", () => {
     const onE = scriptsFolderIn(installFolderIn("E:\\SteamLibrary"));
     const disk = fakeDisk(
       {
-        "C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf": '"path" "E:\\\\SteamLibrary"',
+        "C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf":
+          '"path" "E:\\\\SteamLibrary"',
       },
       [DEFAULT_SCRIPTS, onE],
     );
@@ -99,7 +109,9 @@ describe("findDeScriptsFolder", () => {
   });
 
   it("finds the Game Pass install, which is under no Steam library at all", async () => {
-    const xbox = scriptsFolderIn("C:\\XboxGames\\Age of Empires II Definitive Edition\\Content");
+    const xbox = scriptsFolderIn(
+      "C:\\XboxGames\\Age of Empires II Definitive Edition\\Content",
+    );
     expect(await findDeScriptsFolder(fakeDisk({}, [xbox]))).toBe(xbox);
   });
 
@@ -141,7 +153,9 @@ describe("candidateScriptFolders", () => {
   it("puts the Steam roots ahead of the hardcoded fallbacks", async () => {
     const candidates = await candidateScriptFolders(fakeDisk({}));
     expect(candidates[0]).toBe(DEFAULT_SCRIPTS);
-    expect(candidates.at(-1)).toBe(scriptsFolderIn("D:\\Steam\\steamapps\\common\\AoE2DE"));
+    expect(candidates.at(-1)).toBe(
+      scriptsFolderIn("D:\\Steam\\steamapps\\common\\AoE2DE"),
+    );
   });
 
   it("builds the path DE actually reads custom maps from", async () => {
@@ -149,6 +163,8 @@ describe("candidateScriptFolders", () => {
       "C:\\Program Files (x86)\\Steam\\steamapps\\common\\AoE2DE\\resources\\_common\\random-map-scripts",
     );
     // A trailing separator on a library path from the .vdf must not double up.
-    expect(installFolderIn("E:\\SteamLibrary\\")).toBe("E:\\SteamLibrary\\steamapps\\common\\AoE2DE");
+    expect(installFolderIn("E:\\SteamLibrary\\")).toBe(
+      "E:\\SteamLibrary\\steamapps\\common\\AoE2DE",
+    );
   });
 });

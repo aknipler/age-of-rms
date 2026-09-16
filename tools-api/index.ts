@@ -16,9 +16,18 @@
  * and is NOT part of the published .d.ts.
  */
 
-import type { ArgumentDef, AttributeDef, CommandDef, DirectiveDef, LanguageData } from "../src/parser/language";
+import type {
+  ArgumentDef,
+  AttributeDef,
+  CommandDef,
+  DirectiveDef,
+  LanguageData,
+} from "../src/parser/language";
 import type { NoDefs, ParseResult, Span } from "../src/parser/types";
-import type { PublishedGameConstant, PublishedGameConstants } from "./generated/gameConstants";
+import type {
+  PublishedGameConstant,
+  PublishedGameConstants,
+} from "./generated/gameConstants";
 
 export type { Span };
 
@@ -91,7 +100,11 @@ export type SerializedParseResult = ParseResult<WireNumber, NoDefs>;
  * three lines (Sec.4) — this export is in-repo convenience, not the contract.
  */
 export function numeric(value: WireNumber): number {
-  return typeof value === "number" ? value : value.inf === 1 ? Infinity : -Infinity;
+  return typeof value === "number"
+    ? value
+    : value.inf === 1
+      ? Infinity
+      : -Infinity;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +152,9 @@ export type Capability =
  * document, and even without `source`, `tokens[].text` holds every
  * non-whitespace character. Stripping it would be security theater.
  */
-export const IMPLIED_CAPABILITIES: Readonly<Partial<Record<Capability, readonly Capability[]>>> = Object.freeze({
+export const IMPLIED_CAPABILITIES: Readonly<
+  Partial<Record<Capability, readonly Capability[]>>
+> = Object.freeze({
   "read-ast": Object.freeze(["read-source"] as const),
 });
 
@@ -158,7 +173,12 @@ interface ParamBase {
  * submitted as authored.
  */
 export type ToolParamDef =
-  | (ParamBase & { type: "integer"; default: number; min?: number; max?: number })
+  | (ParamBase & {
+      type: "integer";
+      default: number;
+      min?: number;
+      max?: number;
+    })
   | (ParamBase & { type: "boolean"; default: boolean })
   | (ParamBase & { type: "text"; default: string })
   | (ParamBase & { type: "select"; default: string; options: ParamOption[] })
@@ -276,7 +296,9 @@ export interface ToolGenerationSettings {
  * widening of `read-generation-settings`. A tool wanting a fixed seed declares
  * an `integer` param, which the host validates and the output header echoes.
  */
-export interface ToolContext<P extends SerializedParseResult = SerializedParseResult> {
+export interface ToolContext<
+  P extends SerializedParseResult = SerializedParseResult,
+> {
   apiVersion: number;
   /** iff "read-source" */
   source?: string;
@@ -365,8 +387,18 @@ export type OutputBlock =
   | { kind: "text"; text: string }
   | { kind: "keyValue"; rows: [string, string][] }
   /** `rowSpans`, when present, must have exactly `rows.length` entries. */
-  | { kind: "table"; columns: string[]; rows: string[][]; rowSpans?: (Span | null)[] }
-  | { kind: "severity"; level: "info" | "warning" | "error"; text: string; span?: Span }
+  | {
+      kind: "table";
+      columns: string[];
+      rows: string[][];
+      rowSpans?: (Span | null)[];
+    }
+  | {
+      kind: "severity";
+      level: "info" | "warning" | "error";
+      text: string;
+      span?: Span;
+    }
   /** Clickable — jumps the Code tab to span.start via useSharedSelection's anchor. */
   | { kind: "codeRef"; text: string; span: Span }
   /**
@@ -401,9 +433,9 @@ export type OutputBlock =
  * ToolContext<ParseResult>` instead — that is precisely the move
  * `previewBridge.ts` exists to refuse.
  */
-export type HostMessage<P extends SerializedParseResult = SerializedParseResult> =
-  | { type: "run"; context: ToolContext<P> }
-  | { type: "cancel" };
+export type HostMessage<
+  P extends SerializedParseResult = SerializedParseResult,
+> = { type: "run"; context: ToolContext<P> } | { type: "cancel" };
 
 export type ToolMessage =
   /** fraction ∈ [0,1]; omit for indeterminate. */
@@ -424,15 +456,30 @@ export type ToolMessage =
 
 /** Sent BY a tool, asking the host to run a generation or read one back. */
 export type ToolToHost =
-  | { type: "generate"; settings?: { playerCount?: number }; seed?: number; cutOffset?: number }
-  | { type: "sliceRequest"; handle: string; rect: { x: number; y: number; w: number; h: number } }
+  | {
+      type: "generate";
+      settings?: { playerCount?: number };
+      seed?: number;
+      cutOffset?: number;
+    }
+  | {
+      type: "sliceRequest";
+      handle: string;
+      rect: { x: number; y: number; w: number; h: number };
+    }
   /** Early free (Sec.3.8) — an optimisation a well-behaved tool can offer, never a step a correct host waits for. */
   | { type: "release"; handle: string };
 
 /** Sent BY the host, in answer to a `ToolToHost` message. */
 export type HostToTool =
   | { type: "generated"; handle: string; summary: PreviewSummary }
-  | { type: "previewSlice"; handle: string; rect: { x: number; y: number; w: number; h: number }; terrain: number[]; elevation: number[] }
+  | {
+      type: "previewSlice";
+      handle: string;
+      rect: { x: number; y: number; w: number; h: number };
+      terrain: number[];
+      elevation: number[];
+    }
   /** Names the reason — a stale handle, an over-cap rect, a failed generation — never silence and never stale tiles (Sec.3.8). */
   | { type: "generateFailed"; reason: string };
 
@@ -503,7 +550,10 @@ export interface ToolImplementation {
    * for free; a main-thread built-in holds the live object and must treat every
    * field as frozen. Nothing in this contract licenses a tool to mutate it.
    */
-  run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle;
+  run(
+    ctx: ToolContext<ParseResult>,
+    emit: (msg: ToolMessage) => void,
+  ): ToolRunHandle;
 }
 
 // ---------------------------------------------------------------------------
@@ -688,17 +738,67 @@ export interface PreviewSummary {
 }
 
 /** Themed by role, never by hex, so an overlay reads in both app themes. */
-export type OverlayRole = "primary" | "secondary" | "warning" | "error" | "muted";
+export type OverlayRole =
+  "primary" | "secondary" | "warning" | "error" | "muted";
 
 /** TILE coordinates throughout — projection.ts owns the screen transform. */
 export type OverlayShape =
-  | { id?: string; kind: "point"; x: number; y: number; role: OverlayRole; radiusPx?: number }
-  | { id?: string; kind: "circle"; x: number; y: number; rTiles: number; role: OverlayRole; fill?: boolean }
-  | { id?: string; kind: "line"; from: { x: number; y: number }; to: { x: number; y: number }; role: OverlayRole; dashed?: boolean }
-  | { id?: string; kind: "polyline"; points: { x: number; y: number }[]; role: OverlayRole; closed?: boolean }
-  | { id?: string; kind: "label"; x: number; y: number; text: string; role: OverlayRole }
-  | { id: string; kind: "handle"; x: number; y: number; role: OverlayRole; cursor?: "move" | "ew-resize" | "grab" };
+  | {
+      id?: string;
+      kind: "point";
+      x: number;
+      y: number;
+      role: OverlayRole;
+      radiusPx?: number;
+    }
+  | {
+      id?: string;
+      kind: "circle";
+      x: number;
+      y: number;
+      rTiles: number;
+      role: OverlayRole;
+      fill?: boolean;
+    }
+  | {
+      id?: string;
+      kind: "line";
+      from: { x: number; y: number };
+      to: { x: number; y: number };
+      role: OverlayRole;
+      dashed?: boolean;
+    }
+  | {
+      id?: string;
+      kind: "polyline";
+      points: { x: number; y: number }[];
+      role: OverlayRole;
+      closed?: boolean;
+    }
+  | {
+      id?: string;
+      kind: "label";
+      x: number;
+      y: number;
+      text: string;
+      role: OverlayRole;
+    }
+  | {
+      id: string;
+      kind: "handle";
+      x: number;
+      y: number;
+      role: OverlayRole;
+      cursor?: "move" | "ew-resize" | "grab";
+    };
 
 // Re-exported for built-ins that resolve defs in-process. External tools get
 // none of these over the wire and rebuild them from `referenceData.language`.
-export type { ArgumentDef, AttributeDef, CommandDef, DirectiveDef, LanguageData, ParseResult };
+export type {
+  ArgumentDef,
+  AttributeDef,
+  CommandDef,
+  DirectiveDef,
+  LanguageData,
+  ParseResult,
+};

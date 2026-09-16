@@ -88,7 +88,11 @@ export function halfHeightOf(viewport: Viewport): number {
  * zoomAt did until the round-trip tests were pointed at it, drifting the map
  * half a tile per zoom step.
  */
-export function latticeToScreen(viewport: Viewport, x: number, y: number): ScreenPoint {
+export function latticeToScreen(
+  viewport: Viewport,
+  x: number,
+  y: number,
+): ScreenPoint {
   return {
     x: viewport.originX + (x + y) * viewport.halfWidth,
     y: viewport.originY + (y - x) * halfHeightOf(viewport),
@@ -101,7 +105,11 @@ export function latticeToScreen(viewport: Viewport, x: number, y: number): Scree
  * Lattice point (x, y) is the tile's WEST corner and the tile spans to
  * (x+1, y+1), so its centre is half a tile along both axes.
  */
-export function tileToScreen(viewport: Viewport, x: number, y: number): ScreenPoint {
+export function tileToScreen(
+  viewport: Viewport,
+  x: number,
+  y: number,
+): ScreenPoint {
   return latticeToScreen(viewport, x + 0.5, y + 0.5);
 }
 
@@ -122,7 +130,11 @@ export function tileToScreen(viewport: Viewport, x: number, y: number): ScreenPo
  * and the hover read-out reports tile -1. The round-trip test caught exactly
  * that.
  */
-export function screenToTile(viewport: Viewport, screenX: number, screenY: number): TilePoint {
+export function screenToTile(
+  viewport: Viewport,
+  screenX: number,
+  screenY: number,
+): TilePoint {
   const u = (screenX - viewport.originX) / viewport.halfWidth;
   const v = (screenY - viewport.originY) / halfHeightOf(viewport);
   return { x: (u - v) / 2, y: (u + v) / 2 };
@@ -144,7 +156,10 @@ export function isOnMap(point: TilePoint, dim: number): boolean {
  * must not end up in the component"). `0` at `dim <= 0`, matching
  * `snapping.ts`'s own no-op convention for a map with no known size yet.
  */
-export function tileToPercent(point: TilePoint, dim: number): { x: number; y: number } {
+export function tileToPercent(
+  point: TilePoint,
+  dim: number,
+): { x: number; y: number } {
   if (dim <= 0) return { x: 0, y: 0 };
   return { x: (point.x / dim) * 100, y: (point.y / dim) * 100 };
 }
@@ -225,7 +240,11 @@ export function zoomAt(
 }
 
 export function panBy(viewport: Viewport, dx: number, dy: number): Viewport {
-  return { ...viewport, originX: viewport.originX + dx, originY: viewport.originY + dy };
+  return {
+    ...viewport,
+    originX: viewport.originX + dx,
+    originY: viewport.originY + dy,
+  };
 }
 
 /**
@@ -237,9 +256,11 @@ export function clampToCanvas(viewport: Viewport, dim: number): Viewport {
   const margin = Math.min(viewport.width, viewport.height) * 0.25;
   let { originX, originY } = viewport;
   if (bounds.right < margin) originX += margin - bounds.right;
-  if (bounds.left > viewport.width - margin) originX -= bounds.left - (viewport.width - margin);
+  if (bounds.left > viewport.width - margin)
+    originX -= bounds.left - (viewport.width - margin);
   if (bounds.bottom < margin) originY += margin - bounds.bottom;
-  if (bounds.top > viewport.height - margin) originY -= bounds.top - (viewport.height - margin);
+  if (bounds.top > viewport.height - margin)
+    originY -= bounds.top - (viewport.height - margin);
   return originX === viewport.originX && originY === viewport.originY
     ? viewport
     : { ...viewport, originX, originY };

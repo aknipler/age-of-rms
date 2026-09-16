@@ -1,4 +1,10 @@
-import { createContext, useContext, useMemo, type ReactElement, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import type { ParseResult } from "./parser/types";
 import type { PreviewWireResult } from "./preview/generator/types";
 import type { PreviewViewMode } from "./components/preview/PreviewViewContext";
@@ -75,9 +81,18 @@ function createPreviewResultChannel(): {
   Provider: (props: PreviewResultProviderProps) => ReactElement;
   useResultContext: () => PreviewResultContextValue;
 } {
-  const ctx = createContext<PreviewResultContextValue>({ result: null, pending: false });
+  const ctx = createContext<PreviewResultContextValue>({
+    result: null,
+    pending: false,
+  });
 
-  function ChannelProvider({ parseResult, seed, view, cutOffset, children }: PreviewResultProviderProps): ReactElement {
+  function ChannelProvider({
+    parseResult,
+    seed,
+    view,
+    cutOffset,
+    children,
+  }: PreviewResultProviderProps): ReactElement {
     const { playerCount, mapSize, teams } = useGenerationSettings();
 
     /*
@@ -106,7 +121,13 @@ function createPreviewResultChannel(): {
       return truncateAst(parseResult, cutOffset);
     }, [parseResult, view, cutOffset]);
 
-    const { result, pending } = usePreviewResult(generatedFrom, playerCount, mapSize, teams, seed);
+    const { result, pending } = usePreviewResult(
+      generatedFrom,
+      playerCount,
+      mapSize,
+      teams,
+      seed,
+    );
 
     // No useMemo: unlike the old bare-`result` value, this object IS
     // rebuilt every render, but `pending` starts and stops changing exactly

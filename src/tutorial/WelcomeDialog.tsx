@@ -8,7 +8,9 @@ import dialogStyles from "../components/dialog.module.css";
 import styles from "./WelcomeDialog.module.css";
 
 function pickSkipPhrase(): string {
-  return WELCOME_SKIP_PHRASES[Math.floor(Math.random() * WELCOME_SKIP_PHRASES.length)];
+  return WELCOME_SKIP_PHRASES[
+    Math.floor(Math.random() * WELCOME_SKIP_PHRASES.length)
+  ];
 }
 
 interface WelcomeDialogProps {
@@ -46,15 +48,23 @@ export function WelcomeDialog({ tutorials = TUTORIALS }: WelcomeDialogProps) {
 
   return (
     <div className={dialogStyles.overlay} onMouseDown={dismissWelcome}>
-      <div className={dialogStyles.dialog} onMouseDown={(event) => event.stopPropagation()}>
+      <div
+        className={dialogStyles.dialog}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <h2 className={dialogStyles.title}>Welcome to Age of RMS</h2>
         <p className={styles.intro}>
-          A free tool for writing Age of Empires II random map scripts. Where would you like to start?
+          A free tool for writing Age of Empires II random map scripts. Where
+          would you like to start?
         </p>
 
         {rmsBasics && (
           <HelpTip id="welcome.startRms">
-            <button type="button" className={styles.choice} onClick={() => startTutorial(rmsBasics.id)}>
+            <button
+              type="button"
+              className={styles.choice}
+              onClick={() => startTutorial(rmsBasics.id)}
+            >
               <span className={styles.choiceTitle}>{rmsBasics.title}</span>
               <span className={styles.choiceBlurb}>{rmsBasics.blurb}</span>
             </button>
@@ -62,7 +72,11 @@ export function WelcomeDialog({ tutorials = TUTORIALS }: WelcomeDialogProps) {
         )}
         {appTour && (
           <HelpTip id="welcome.startApp">
-            <button type="button" className={styles.choice} onClick={() => startTutorial(appTour.id)}>
+            <button
+              type="button"
+              className={styles.choice}
+              onClick={() => startTutorial(appTour.id)}
+            >
               <span className={styles.choiceTitle}>{appTour.title}</span>
               <span className={styles.choiceBlurb}>{appTour.blurb}</span>
             </button>
@@ -71,13 +85,19 @@ export function WelcomeDialog({ tutorials = TUTORIALS }: WelcomeDialogProps) {
 
         <div className={styles.skipRow}>
           <HelpTip id="welcome.skip">
-            <button type="button" className={styles.skipButton} onClick={dismissWelcome}>
+            <button
+              type="button"
+              className={styles.skipButton}
+              onClick={dismissWelcome}
+            >
               {skipPhrase}
             </button>
           </HelpTip>
         </div>
 
-        <p className={styles.footer}>You can reopen these any time from Help.</p>
+        <p className={styles.footer}>
+          You can reopen these any time from Help.
+        </p>
       </div>
     </div>
   );

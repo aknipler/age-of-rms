@@ -43,7 +43,10 @@ const ToolHostCtx = createContext<ToolHost | null>(null);
  * never read or written by host.ts, so it doesn't belong on the object that
  * owns run lifecycle and panel lifecycle.
  */
-const SelectedToolCtx = createContext<{ selectedId: string; setSelectedId: (id: string) => void } | null>(null);
+const SelectedToolCtx = createContext<{
+  selectedId: string;
+  setSelectedId: (id: string) => void;
+} | null>(null);
 
 export function ToolHostProvider({ children }: { children: ReactNode }) {
   // `useState`'s LAZY INITIALISER, not `useMemo`, same reasoning ToolsPane's
@@ -53,26 +56,41 @@ export function ToolHostProvider({ children }: { children: ReactNode }) {
   const [host] = useState(() => {
     const h = new ToolHost(inProcessRunner);
     const tools = registeredTools();
-    h.registerEditCapable(tools.filter((t) => t.manifest.capabilities.includes("edit-source")).map((t) => t.manifest.id));
+    h.registerEditCapable(
+      tools
+        .filter((t) => t.manifest.capabilities.includes("edit-source"))
+        .map((t) => t.manifest.id),
+    );
     return h;
   });
-  const [selectedId, setSelectedId] = useState<string>(() => registeredTools()[0]?.manifest.id ?? "");
+  const [selectedId, setSelectedId] = useState<string>(
+    () => registeredTools()[0]?.manifest.id ?? "",
+  );
 
   return (
     <ToolHostCtx.Provider value={host}>
-      <SelectedToolCtx.Provider value={{ selectedId, setSelectedId }}>{children}</SelectedToolCtx.Provider>
+      <SelectedToolCtx.Provider value={{ selectedId, setSelectedId }}>
+        {children}
+      </SelectedToolCtx.Provider>
     </ToolHostCtx.Provider>
   );
 }
 
 export function useToolHostContext(): ToolHost {
   const host = useContext(ToolHostCtx);
-  if (host === null) throw new Error("useToolHostContext must be used within a ToolHostProvider");
+  if (host === null)
+    throw new Error(
+      "useToolHostContext must be used within a ToolHostProvider",
+    );
   return host;
 }
 
-export function useSelectedTool(): { selectedId: string; setSelectedId: (id: string) => void } {
+export function useSelectedTool(): {
+  selectedId: string;
+  setSelectedId: (id: string) => void;
+} {
   const ctx = useContext(SelectedToolCtx);
-  if (ctx === null) throw new Error("useSelectedTool must be used within a ToolHostProvider");
+  if (ctx === null)
+    throw new Error("useSelectedTool must be used within a ToolHostProvider");
   return ctx;
 }

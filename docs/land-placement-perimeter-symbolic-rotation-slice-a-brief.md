@@ -3,7 +3,7 @@
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-perimeter-symbolic-rotation-escalation.md` **Sec.8** (the design session's own
 outcome; Sec.0-7 of that file are the question, Sec.8 is the answer and wins wherever they disagree).
-Read this file for *what to build and in what order*; read the escalation for *why*, and treat the
+Read this file for _what to build and in what order_; read the escalation for _why_, and treat the
 escalation and `docs/land-placement-design.md` as authoritative wherever they and this file disagree.
 
 **Nothing else needs building first.** This slice has no dependency on slice B — B depends on A, not
@@ -51,7 +51,11 @@ export interface PerimeterPolar {
   bearingDegrees: number;
 }
 
-export function perimeterPolar(sides: number, memberCount: number, memberIndex: number): PerimeterPolar;
+export function perimeterPolar(
+  sides: number,
+  memberCount: number,
+  memberIndex: number,
+): PerimeterPolar;
 ```
 
 ```
@@ -96,9 +100,18 @@ a reason to lower the floor.
 ### Item 2: `expand.ts` emits polar for all three kinds
 
 ```ts
-function perimeterKindOffset(sides: number, base: Expr, group: ShapeGroup, m: number, n: number): { r: Expr; theta: Expr } {
+function perimeterKindOffset(
+  sides: number,
+  base: Expr,
+  group: ShapeGroup,
+  m: number,
+  n: number,
+): { r: Expr; theta: Expr } {
   const { radiusScale, bearingDegrees } = perimeterPolar(sides, n, m);
-  return { r: mul(base, num(radiusScale)), theta: add(group.rotation, num(bearingDegrees)) };
+  return {
+    r: mul(base, num(radiusScale)),
+    theta: add(group.rotation, num(bearingDegrees)),
+  };
 }
 ```
 
@@ -136,15 +149,15 @@ This is not tidying. Each of these currently tells a reader something the code w
 this project's own rule is that a comment restating a rule the code does not implement is worse than
 no comment.
 
-| Where | What it says now | What it must say |
-|---|---|---|
-| `expand.ts`'s `perimeterKindOffset` comment | a symbolic rotation "does not" work, with `frame.ts` point 1 as the reason | rotation is an ordinary additive term on the member's bearing; the geometry never sees it |
-| `emitModel.ts` (refusal b's comment) | deleted with the refusal | — |
-| `model.ts`, `ShapeGroup.sides` / `PatternSlot.theta` doc comments | perimeter members are cartesian; `slot.theta` is meaningless because these kinds are not angular | see item 2 |
-| `reExpand.ts`'s cartesian branch comment | "a perimeter kind's own delta case" | the branch that serves a standalone user-authored `cartesian` placement — still reachable, no longer reached from group expansion (escalation Sec.8.6) |
-| `panel/LandPlacementHelpDialog.tsx` (~line 98) | "A square, triangle or polygon member ... has no [DEGREES cell]" | they have one now, so a chained child can use a radial frame |
-| `reference/data/ui-help.json`, `landPlacement.shapeKind` | "all three need a plain number in Rotation rather than a formula" | drop that clause; a formula works. Re-run `npm run validate:reference` after editing |
-| `panel/dragMath.ts`'s block comment above `symbolicComponents` | fine as written | optionally note that a perimeter member now reaches the polar absorb path |
+| Where                                                             | What it says now                                                                                 | What it must say                                                                                                                                       |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `expand.ts`'s `perimeterKindOffset` comment                       | a symbolic rotation "does not" work, with `frame.ts` point 1 as the reason                       | rotation is an ordinary additive term on the member's bearing; the geometry never sees it                                                              |
+| `emitModel.ts` (refusal b's comment)                              | deleted with the refusal                                                                         | —                                                                                                                                                      |
+| `model.ts`, `ShapeGroup.sides` / `PatternSlot.theta` doc comments | perimeter members are cartesian; `slot.theta` is meaningless because these kinds are not angular | see item 2                                                                                                                                             |
+| `reExpand.ts`'s cartesian branch comment                          | "a perimeter kind's own delta case"                                                              | the branch that serves a standalone user-authored `cartesian` placement — still reachable, no longer reached from group expansion (escalation Sec.8.6) |
+| `panel/LandPlacementHelpDialog.tsx` (~line 98)                    | "A square, triangle or polygon member ... has no [DEGREES cell]"                                 | they have one now, so a chained child can use a radial frame                                                                                           |
+| `reference/data/ui-help.json`, `landPlacement.shapeKind`          | "all three need a plain number in Rotation rather than a formula"                                | drop that clause; a formula works. Re-run `npm run validate:reference` after editing                                                                   |
+| `panel/dragMath.ts`'s block comment above `symbolicComponents`    | fine as written                                                                                  | optionally note that a perimeter member now reaches the polar absorb path                                                                              |
 
 ### Item 5: tests
 

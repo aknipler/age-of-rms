@@ -38,7 +38,10 @@ import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../parser/__tests__/testUtils";
 
 describe("useDocument.ts routes every model edit through pushOwnUndoEntry", () => {
-  const source = readFileSync(join(REPO_ROOT, "src", "hooks", "useDocument.ts"), "utf8");
+  const source = readFileSync(
+    join(REPO_ROOT, "src", "hooks", "useDocument.ts"),
+    "utf8",
+  );
 
   it("calls pushEditOperations from exactly one place: inside pushOwnUndoEntry itself", () => {
     // If a future edit adds a new model-mutating helper that calls
@@ -49,7 +52,9 @@ describe("useDocument.ts routes every model edit through pushOwnUndoEntry", () =
   });
 
   it("pushOwnUndoEntry closes the previous undo entry immediately before pushing", () => {
-    expect(source).toMatch(/documentModel\.pushStackElement\(\);\s*documentModel\.pushEditOperations\(/);
+    expect(source).toMatch(
+      /documentModel\.pushStackElement\(\);\s*documentModel\.pushEditOperations\(/,
+    );
   });
 
   it("every call site routes through pushOwnUndoEntry: replaceRanges, applyTextEdit, applyTextEdits", () => {
@@ -107,12 +112,20 @@ describe("Monaco's edit-stack coalescing rule (the mechanism behind the bug and 
     stack.pushEditOperations("edit value C");
     expect(stack.entryCount).toBe(1);
     // One undo reverts all three actions at once, exactly the reported symptom.
-    expect(stack.undo()).toEqual(["delete command A", "add attribute B", "edit value C"]);
+    expect(stack.undo()).toEqual([
+      "delete command A",
+      "add attribute B",
+      "edit value C",
+    ]);
   });
 
   it("closing the group before each push (pushOwnUndoEntry's fix) gives each action its own undo entry", () => {
     const stack = new FakeUndoStack();
-    for (const action of ["delete command A", "add attribute B", "edit value C"]) {
+    for (const action of [
+      "delete command A",
+      "add attribute B",
+      "edit value C",
+    ]) {
       stack.pushStackElement();
       stack.pushEditOperations(action);
     }

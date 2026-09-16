@@ -17,7 +17,8 @@ describe("exprToFormulaText — round-trips through parseFormula", () => {
 
   it("a bare number", () => roundTrips(num(5)));
   it("a bare symbol", () => roundTrips(sym("X_P1")));
-  it("left-spine-shaped input needs no parens", () => roundTrips(bin("-", bin("*", num(180), sym("S")), sym("R"))));
+  it("left-spine-shaped input needs no parens", () =>
+    roundTrips(bin("-", bin("*", num(180), sym("S")), sym("R"))));
   it("a right-leaning input DOES need parens to round-trip, and gets them", () => {
     const e = bin("+", sym("X"), bin("*", sym("Y"), sym("Z")));
     expect(exprToFormulaText(e)).toBe("X + Y * Z"); // no parens needed here, * already binds tighter
@@ -56,7 +57,9 @@ describe("computeFormulaFeedback — parsing", () => {
 
 describe("computeFormulaFeedback — evaluation, against the caller's own resolver", () => {
   it("resolves a bare identifier through resolveSym", () => {
-    const fb = computeFormulaFeedback("RADIUS + 5", "test", (name) => (name === "RADIUS" ? 20 : undefined));
+    const fb = computeFormulaFeedback("RADIUS + 5", "test", (name) =>
+      name === "RADIUS" ? 20 : undefined,
+    );
     expect(fb.value).toBe(25);
   });
 
@@ -87,7 +90,11 @@ describe("computeFormulaFeedback — rnd(...) is explicitly unsupported, never s
   });
 
   it("a rnd() buried inside a larger expression is still caught", () => {
-    const fb = computeFormulaFeedback("10 + rnd(-2,2) * 3", "test", () => undefined);
+    const fb = computeFormulaFeedback(
+      "10 + rnd(-2,2) * 3",
+      "test",
+      () => undefined,
+    );
     expect(fb.unsupportedReason).not.toBeNull();
   });
 });

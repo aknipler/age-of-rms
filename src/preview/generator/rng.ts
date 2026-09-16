@@ -87,12 +87,20 @@ function fnv1aString(s: string): number {
  * Also used for S0's own randomisation (start_random rolls, rnd()), keyed by
  * node ordinal instead of command ordinal, with stageId "S0".
  */
-export function substreamSeed(masterSeed: number, stageId: StageId, ordinal: number): number {
+export function substreamSeed(
+  masterSeed: number,
+  stageId: StageId,
+  ordinal: number,
+): number {
   return hash32(masterSeed, fnv1aString(stageId), ordinal);
 }
 
 /** Convenience: substreamSeed() followed by mulberry32(). */
-export function createSubstream(masterSeed: number, stageId: StageId, ordinal: number): Rng {
+export function createSubstream(
+  masterSeed: number,
+  stageId: StageId,
+  ordinal: number,
+): Rng {
   return mulberry32(substreamSeed(masterSeed, stageId, ordinal));
 }
 

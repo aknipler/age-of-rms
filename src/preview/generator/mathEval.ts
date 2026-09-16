@@ -111,7 +111,11 @@ function isOperator(text: string): text is Operator {
  * arithmetic rather than reimplementing it. The two are meant to diverge
  * only in TRAVERSAL, never in what `+ - * / %` compute.
  */
-export function applyOperator(op: Operator, left: number, right: number): number {
+export function applyOperator(
+  op: Operator,
+  left: number,
+  right: number,
+): number {
   switch (op) {
     case "+":
       return left + right;

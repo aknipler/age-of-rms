@@ -3,7 +3,10 @@ import Editor, { type OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { PlaceholderPane } from "./PlaceholderPane";
 import { MapSidePanel } from "./sidepanel/MapSidePanel";
-import { AOE2_RMS_MONACO_THEME, defineAoe2RmsMonacoTheme } from "../editor/monacoTheme";
+import {
+  AOE2_RMS_MONACO_THEME,
+  defineAoe2RmsMonacoTheme,
+} from "../editor/monacoTheme";
 import { diagnosticsToMarkers } from "../editor/diagnosticsToMarkers";
 import { toggleCommandLayoutInRange } from "../editor/formatToggle";
 import { DOCUMENT_MODEL_PATH, getDocumentModel } from "../hooks/useDocument";
@@ -73,7 +76,9 @@ interface CodePaneProps {
    * Advanced Tools' Apply button uses; one `pushEditOperations` call, one
    * undo entry, however many commands `codeToggleLayout` touched at once.
    */
-  applyTextEdits: (edits: readonly { start: number; end: number; newText: string }[]) => void;
+  applyTextEdits: (
+    edits: readonly { start: number; end: number; newText: string }[],
+  ) => void;
   /**
    * Cross-tab-sync follow-up: the Item the shared selection
    * anchor currently resolves to (from App's useSharedSelection), used
@@ -188,25 +193,33 @@ export function CodePane({
   const { tabSize, insertSpaces } = useCodeSettings();
   // Belongs to ONE editor instance and dies with it, so it is a ref that is
   // reset on unmount rather than a value that outlives the mount.
-  const cutDecorationsRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  const cutDecorationsRef =
+    useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
 
   // Extracted so it can run from two places: the effect below (fires on
   // every new source/diagnostics while mounted, e.g. typing) AND
   // handleMount (fires once, right when the editor/monaco refs first
   // become available). Both are needed, see the mount-race note below.
-  const applyMarkers = useCallback((currentSource: string, currentDiagnostics: Diagnostic[]) => {
-    const editor = editorRef.current;
-    const monaco = monacoRef.current;
-    if (!editor || !monaco) return;
-    const model = getDocumentModel();
-    // These diagnostics were computed for `source`. If the user kept
-    // typing during the debounce/parse round-trip, the model may already
-    // be ahead of it, applying markers against a mismatched source
-    // would point squiggles at the wrong characters. Skip and wait for
-    // the next (matching) result instead of showing something wrong.
-    if (model.getValue() !== currentSource) return;
-    monaco.editor.setModelMarkers(model, MARKER_OWNER, diagnosticsToMarkers(model, currentDiagnostics));
-  }, []);
+  const applyMarkers = useCallback(
+    (currentSource: string, currentDiagnostics: Diagnostic[]) => {
+      const editor = editorRef.current;
+      const monaco = monacoRef.current;
+      if (!editor || !monaco) return;
+      const model = getDocumentModel();
+      // These diagnostics were computed for `source`. If the user kept
+      // typing during the debounce/parse round-trip, the model may already
+      // be ahead of it, applying markers against a mismatched source
+      // would point squiggles at the wrong characters. Skip and wait for
+      // the next (matching) result instead of showing something wrong.
+      if (model.getValue() !== currentSource) return;
+      monaco.editor.setModelMarkers(
+        model,
+        MARKER_OWNER,
+        diagnosticsToMarkers(model, currentDiagnostics),
+      );
+    },
+    [],
+  );
 
   /**
    * Dims everything the Current preview is ignoring, from the cut point to
@@ -245,7 +258,12 @@ export function CodePane({
     const end = model.getPositionAt(length);
     collection.set([
       {
-        range: new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column),
+        range: new monaco.Range(
+          start.lineNumber,
+          start.column,
+          end.lineNumber,
+          end.column,
+        ),
         options: { inlineClassName: styles.cutIgnored },
       },
     ]);
@@ -305,7 +323,12 @@ export function CodePane({
       const model = getDocumentModel();
       const startPos = model.getPositionAt(selectedItem.span.start);
       const endPos = model.getPositionAt(selectedItem.span.end);
-      const range = new monaco.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column);
+      const range = new monaco.Range(
+        startPos.lineNumber,
+        startPos.column,
+        endPos.lineNumber,
+        endPos.column,
+      );
       editor.setSelection(range);
       editor.revealRangeInCenter(range);
     }

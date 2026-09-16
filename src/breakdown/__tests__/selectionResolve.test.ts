@@ -47,7 +47,8 @@ describe("selectionResolve", () => {
   });
 
   it("descends into a random-node preamble and branches", () => {
-    const src = "<PLAYER_SETUP>\nstart_random\n  nomad_resources\n  percent_chance 100\n  nomad_resources\nend_random\n";
+    const src =
+      "<PLAYER_SETUP>\nstart_random\n  nomad_resources\n  percent_chance 100\n  nomad_resources\nend_random\n";
     const r = parseRms(src, langData);
     const preambleOffset = src.indexOf("nomad_resources") + 2;
     const foundPreamble = findItemAtOffsetInScript(r.script, preambleOffset);

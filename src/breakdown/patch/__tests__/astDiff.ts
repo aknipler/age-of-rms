@@ -7,7 +7,10 @@
 
 import type { ParseResult } from "../../../parser/types";
 import type { EditIntent, TextEdit } from "../intents";
-import { checkProperties, collectNodes } from "../../../parser/__tests__/testUtils";
+import {
+  checkProperties,
+  collectNodes,
+} from "../../../parser/__tests__/testUtils";
 
 interface NodeKey {
   label: string;
@@ -54,15 +57,28 @@ export interface DiffOptions {
  * editComment needed clause 4 exceptions a plain deletion check can't
  * express).
  */
-export function diffOptionsFor(intent: EditIntent, edit: TextEdit): DiffOptions {
-  if (edit.newText === "") return { deletedRange: { start: edit.start, end: edit.end } };
-  const insertedRange = { start: edit.start, end: edit.start + edit.newText.length };
+export function diffOptionsFor(
+  intent: EditIntent,
+  edit: TextEdit,
+): DiffOptions {
+  if (edit.newText === "")
+    return { deletedRange: { start: edit.start, end: edit.end } };
+  const insertedRange = {
+    start: edit.start,
+    end: edit.start + edit.newText.length,
+  };
   if (intent.kind === "addComment") return { insertedRange };
-  if (intent.kind === "editComment") return { deletedRange: intent.innerSpan, insertedRange };
+  if (intent.kind === "editComment")
+    return { deletedRange: intent.innerSpan, insertedRange };
   return {};
 }
 
-export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: DiffOptions = {}): string[] {
+export function astDiff(
+  a: ParseResult,
+  b: ParseResult,
+  edit: TextEdit,
+  opts: DiffOptions = {},
+): string[] {
   const problems: string[] = [];
   const delta = edit.newText.length - (edit.end - edit.start);
 
@@ -70,12 +86,16 @@ export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: Di
   problems.push(...checkProperties(b).map((p) => `clause5(wellformed): ${p}`));
   const errorCounts = (r: ParseResult) => {
     const m = new Map<string, number>();
-    for (const d of r.diagnostics) if (d.severity === "error") m.set(d.code, (m.get(d.code) ?? 0) + 1);
+    for (const d of r.diagnostics)
+      if (d.severity === "error") m.set(d.code, (m.get(d.code) ?? 0) + 1);
     return m;
   };
   const errA = errorCounts(a);
   for (const [code, n] of errorCounts(b)) {
-    if (n > (errA.get(code) ?? 0)) problems.push(`clause5(errors): new error-severity ${code} in patched parse`);
+    if (n > (errA.get(code) ?? 0))
+      problems.push(
+        `clause5(errors): new error-severity ${code} in patched parse`,
+      );
   }
 
   // Clauses 1-2: pre-edit nodes identical, post-edit nodes translated by delta.
@@ -86,23 +106,44 @@ export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: Di
   // identical key or a same-start stretched key (label match, end shifted).
   const bKeys = nodeKeys(b);
   const bIds = new Set(bKeys.map(keyId));
-  const bByLabelStart = new Set(bKeys.map((k) => `${k.label}@${k.start}-${k.end}`));
+  const bByLabelStart = new Set(
+    bKeys.map((k) => `${k.label}@${k.start}-${k.end}`),
+  );
   for (const k of nodeKeys(a)) {
     if (k.end < edit.start || (k.end === edit.start && bIds.has(keyId(k)))) {
-      if (!bIds.has(keyId(k))) problems.push(`clause1: pre-edit ${k.label}@${k.start} has no identical counterpart`);
+      if (!bIds.has(keyId(k)))
+        problems.push(
+          `clause1: pre-edit ${k.label}@${k.start} has no identical counterpart`,
+        );
     } else if (k.end === edit.start) {
       // Touching container: allow stretch (same start, end absorbed the delta).
       if (!bByLabelStart.has(`${k.label}@${k.start}-${k.end + delta}`)) {
-        problems.push(`clause1b: node ${k.label}@${k.start} ending at the edit neither survived nor stretched by ${delta}`);
+        problems.push(
+          `clause1b: node ${k.label}@${k.start} ending at the edit neither survived nor stretched by ${delta}`,
+        );
       }
     } else if (k.start > edit.end || (k.start === edit.end && delta !== 0)) {
-      const shifted: NodeKey = { ...k, start: k.start + delta, end: k.end + delta };
-      if (!bIds.has(keyId(shifted)) && !bByLabelStart.has(`${k.label}@${k.start}-${k.end + delta}`)) {
-        problems.push(`clause2: post-edit ${k.label}@${k.start} not found shifted by ${delta}`);
+      const shifted: NodeKey = {
+        ...k,
+        start: k.start + delta,
+        end: k.end + delta,
+      };
+      if (
+        !bIds.has(keyId(shifted)) &&
+        !bByLabelStart.has(`${k.label}@${k.start}-${k.end + delta}`)
+      ) {
+        problems.push(
+          `clause2: post-edit ${k.label}@${k.start} not found shifted by ${delta}`,
+        );
       }
     } else if (k.start === edit.end) {
-      if (!bIds.has(keyId(k)) && !bByLabelStart.has(`${k.label}@${k.start + delta}-${k.end + delta}`)) {
-        problems.push(`clause2b: node ${k.label}@${k.start} starting at the edit neither survived nor shifted`);
+      if (
+        !bIds.has(keyId(k)) &&
+        !bByLabelStart.has(`${k.label}@${k.start + delta}-${k.end + delta}`)
+      ) {
+        problems.push(
+          `clause2b: node ${k.label}@${k.start} starting at the edit neither survived nor shifted`,
+        );
       }
     }
     // strictly straddling: governed per-intent (clause 3), checked by the caller.
@@ -119,7 +160,10 @@ export function astDiff(a: ParseResult, b: ParseResult, edit: TextEdit, opts: Di
     .filter((t) => t.isTrivia)
     .filter((t) => !(ins && t.start >= ins.start && t.end <= ins.end))
     .map((t) => t.text);
-  if (surviving.length !== actual.length || surviving.some((t, i) => t !== actual[i])) {
+  if (
+    surviving.length !== actual.length ||
+    surviving.some((t, i) => t !== actual[i])
+  ) {
     problems.push(
       `clause4: trivia sequence changed (expected ${surviving.length} comments/markers, got ${actual.length})`,
     );

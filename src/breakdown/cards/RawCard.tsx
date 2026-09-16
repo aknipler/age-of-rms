@@ -19,7 +19,8 @@ interface RawCardProps {
 // This holds for both v1 (no patch engine yet) and v1.x (these regions
 // stay Code-tab-only even once 3.3/3.4 ship, Sec.1 non-goals).
 export function RawCard({ node, kindLabel }: RawCardProps) {
-  const { source, tokens, diagnostics, applyEdit, isExpanded, toggleExpanded } = useBreakdownContext();
+  const { source, tokens, diagnostics, applyEdit, isExpanded, toggleExpanded } =
+    useBreakdownContext();
   const text = source.slice(node.span.start, node.span.end);
   const nodeDiagnostics = diagnosticsWithin(diagnostics, node.span);
   const worstSeverity = nodeDiagnostics[0]?.severity;
@@ -29,7 +30,10 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
   // same shared expandedAnchors Set as CommentCard.tsx: open by default,
   // toggleExpanded(node.span) here means "explicitly closed".
   const expanded = !isExpanded(node.span);
-  const firstLine = text.split("\n").find((line) => line.trim().length > 0)?.trim();
+  const firstLine = text
+    .split("\n")
+    .find((line) => line.trim().length > 0)
+    ?.trim();
 
   // Sec.3.3's did-you-mean quick-fix, wired to the patch engine in 3.4
   // (Sec.4.1's `applySuggestion` intent, the common typo path and the whole
@@ -89,16 +93,27 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
             </p>
           )}
           <HelpTip id="breakdown.rawCard.editInCode">
-            <button type="button" className={cardStyles.stubButton} title="Switch to the Code tab (wiring arrives with 3.4)" disabled>
+            <button
+              type="button"
+              className={cardStyles.stubButton}
+              title="Switch to the Code tab (wiring arrives with 3.4)"
+              disabled
+            >
               Edit in Code tab
             </button>
           </HelpTip>
           {node.kind === "orphanBlock" && (
             <div className={styles.orphanContents}>
-              <p className={styles.orphanNote}>Contents (read-only, shared-block idiom):</p>
+              <p className={styles.orphanNote}>
+                Contents (read-only, shared-block idiom):
+              </p>
               <BlockList
                 items={node.block.items}
-                trailingBoundary={node.block.close !== undefined ? tokens[node.block.close].start : undefined}
+                trailingBoundary={
+                  node.block.close !== undefined
+                    ? tokens[node.block.close].start
+                    : undefined
+                }
               />
             </div>
           )}

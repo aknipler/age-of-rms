@@ -3,22 +3,42 @@ import { TitleBar } from "./components/TitleBar";
 import { MapHeader } from "./components/MapHeader";
 import { TabBar } from "./components/TabBar";
 import { ToolsPane } from "./tools/ToolsPane";
-import { CodePane, getActiveCodeEditor, getActiveToggleLayoutRunner } from "./components/CodePane";
-import { runEditMenuAction, type EditMenuAction } from "./editor/editMenuActions";
+import {
+  CodePane,
+  getActiveCodeEditor,
+  getActiveToggleLayoutRunner,
+} from "./components/CodePane";
+import {
+  runEditMenuAction,
+  type EditMenuAction,
+} from "./editor/editMenuActions";
 import { BreakdownPane } from "./breakdown/BreakdownPane";
 import { StatusBar } from "./components/StatusBar";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
 import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
-import { AppSettingsProvider, useAppSettings } from "./settings/AppSettingsContext";
+import {
+  AppSettingsProvider,
+  useAppSettings,
+} from "./settings/AppSettingsContext";
 import { ThemeSettingsProvider } from "./settings/ThemeSettingsContext";
-import { HotkeySettingsProvider, useHotkeySettings } from "./settings/HotkeySettingsContext";
+import {
+  HotkeySettingsProvider,
+  useHotkeySettings,
+} from "./settings/HotkeySettingsContext";
 import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
 import { BreakdownSettingsProvider } from "./settings/BreakdownSettingsContext";
 import { CodeSettingsProvider } from "./settings/CodeSettingsContext";
-import { GenerationSettingsProvider, useGenerationSettings } from "./generationSettings/GenerationSettingsContext";
-import { PreviewViewProvider, PreviewViewportProvider, usePreviewView } from "./components/preview/PreviewViewContext";
+import {
+  GenerationSettingsProvider,
+  useGenerationSettings,
+} from "./generationSettings/GenerationSettingsContext";
+import {
+  PreviewViewProvider,
+  PreviewViewportProvider,
+  usePreviewView,
+} from "./components/preview/PreviewViewContext";
 import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
 import { PreviewReferenceSplitProvider } from "./components/sidepanel/PreviewReferenceSplitContext";
 import { UpdatePrompt } from "./components/UpdatePrompt";
@@ -30,7 +50,11 @@ import { useSharedSelection } from "./hooks/useSharedSelection";
 import { useParsedDocument } from "./useParsedDocument";
 import { ParsedDocumentProvider } from "./ParsedDocumentContext";
 import { PreviewCutProvider, usePreviewCut } from "./PreviewCutContext";
-import { PreviewResultProvider, PanelPreviewResultProvider, usePreviewResultContext } from "./PreviewResultContext";
+import {
+  PreviewResultProvider,
+  PanelPreviewResultProvider,
+  usePreviewResultContext,
+} from "./PreviewResultContext";
 import { ToolHostProvider } from "./tools/ToolHostContext";
 import {
   PanelPreviewSeedProvider,
@@ -38,7 +62,11 @@ import {
 } from "./tools/builtin/landPlacement/panel/panelPreviewSeed";
 import { LandPlacementModelProvider } from "./tools/builtin/landPlacement/panel/landPlacementModel";
 import { resolveLandGenerationCutOffset } from "./tools/builtin/landPlacement/cutOffset";
-import { TutorialProvider, useRegisterNavigator, useTutorial } from "./tutorial/TutorialContext";
+import {
+  TutorialProvider,
+  useRegisterNavigator,
+  useTutorial,
+} from "./tutorial/TutorialContext";
 import { TutorialOverlay } from "./tutorial/TutorialOverlay";
 import { WelcomeDialog } from "./tutorial/WelcomeDialog";
 import type { Diagnostic, ParseResult } from "./parser/types";
@@ -73,7 +101,8 @@ function PreviewResultProviders({
   // doesn't rebuild the debounce-restarting object identity Current/Final
   // truncation relies on (see PreviewResultContext.tsx's own note on this).
   const panelCutOffset = useMemo(
-    () => (parseResult === null ? null : resolveLandGenerationCutOffset(parseResult)),
+    () =>
+      parseResult === null ? null : resolveLandGenerationCutOffset(parseResult),
     [parseResult],
   );
 
@@ -88,7 +117,12 @@ function PreviewResultProviders({
           at the end of land generation rather than at the caret, so `view`
           is pinned to "current" (the channel's own flag for "cutOffset
           applies") rather than exposed as a user-facing choice. */}
-      <PanelPreviewResultProvider parseResult={parseResult} seed={panelSeed.seed} view="current" cutOffset={panelCutOffset}>
+      <PanelPreviewResultProvider
+        parseResult={parseResult}
+        seed={panelSeed.seed}
+        view="current"
+        cutOffset={panelCutOffset}
+      >
         {children}
       </PanelPreviewResultProvider>
     </PreviewResultProvider>
@@ -117,7 +151,8 @@ function StatusBarContainer({
   onReportBug: () => void;
 }) {
   const { result, pending } = usePreviewResultContext();
-  const { pinnedOffset, pinnedLine, cursorOffset, cursorLine } = usePreviewCut();
+  const { pinnedOffset, pinnedLine, cursorOffset, cursorLine } =
+    usePreviewCut();
   const { view } = usePreviewView();
 
   // D3: truncation must be visible. The condition is wider than "pinned" —
@@ -126,8 +161,10 @@ function StatusBarContainer({
   // more common case, and needs its own label.
   let cutLabel: string | undefined;
   if (view === "current") {
-    if (pinnedOffset !== null && pinnedLine !== null) cutLabel = `Pinned line ${pinnedLine + 1}`;
-    else if (cursorOffset !== null && cursorLine !== null) cutLabel = `Current line ${cursorLine + 1}`;
+    if (pinnedOffset !== null && pinnedLine !== null)
+      cutLabel = `Pinned line ${pinnedLine + 1}`;
+    else if (cursorOffset !== null && cursorLine !== null)
+      cutLabel = `Current line ${cursorLine + 1}`;
   }
 
   return (
@@ -158,7 +195,10 @@ function AppContent() {
   // actually feed), which reads `openDialog` from the same context directly
   // rather than through a prop passed down from here. This component only
   // needs the other half, to render the dialog itself.
-  const { isDialogOpen: generationSettingsOpen, closeDialog: closeGenerationSettings } = useGenerationSettings();
+  const {
+    isDialogOpen: generationSettingsOpen,
+    closeDialog: closeGenerationSettings,
+  } = useGenerationSettings();
   // tutorial-design.md Sec.5.3, the "appTab" navigator a step's
   // `navigate.tab` drives. Registered here (rather than inside
   // TutorialProvider itself) because setActiveTab only exists below it.
@@ -233,7 +273,16 @@ function AppContent() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hotkeys, recordingId, saveFile, saveFileAs, newFile, openFile, toggleView, reseed]);
+  }, [
+    hotkeys,
+    recordingId,
+    saveFile,
+    saveFileAs,
+    newFile,
+    openFile,
+    toggleView,
+    reseed,
+  ]);
 
   // Undo/Redo act on the shared Monaco model directly, the same target
   // useDocument.ts's own window-level Ctrl+Z/Ctrl+Y listener uses, so the
@@ -437,12 +486,21 @@ function AppContent() {
                 app's chrome rather than over the work — `.app` is a flex
                 column and neither provider renders DOM of its own, so this
                 is layout-neutral. */}
-            <UpdatePrompt state={update.state} onInstall={update.install} onDismiss={update.dismiss} />
-            <StatusBarContainer diagnostics={parsed.diagnostics} onReportBug={reportBug} />
+            <UpdatePrompt
+              state={update.state}
+              onInstall={update.install}
+              onDismiss={update.dismiss}
+            />
+            <StatusBarContainer
+              diagnostics={parsed.diagnostics}
+              onReportBug={reportBug}
+            />
           </PreviewResultProviders>
         </PreviewCutProvider>
       </ParsedDocumentProvider>
-      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsDialog onClose={() => setSettingsOpen(false)} />
+      )}
       {welcomeOpen && <WelcomeDialog />}
       {/* Rendered only while a close-or-open attempt is waiting on the user.
           The hook owns the pending promise; this just collects the answer. */}
@@ -453,7 +511,9 @@ function AppContent() {
           onChoice={doc.resolveUnsavedChoice}
         />
       )}
-      {generationSettingsOpen && <GenerationSettingsDialog onClose={closeGenerationSettings} />}
+      {generationSettingsOpen && (
+        <GenerationSettingsDialog onClose={closeGenerationSettings} />
+      )}
     </div>
   );
 }

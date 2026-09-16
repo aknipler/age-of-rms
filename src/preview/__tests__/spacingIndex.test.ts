@@ -9,7 +9,10 @@
 // cover the cell-boundary cases that hand-written examples always miss.
 
 import { describe, expect, it } from "vitest";
-import { createSpacingIndex, type SpacingMetric } from "../generator/spacingIndex";
+import {
+  createSpacingIndex,
+  type SpacingMetric,
+} from "../generator/spacingIndex";
 
 /** The implementation this module replaced, kept as the oracle. */
 function referenceTooClose(
@@ -23,7 +26,10 @@ function referenceTooClose(
   for (const [px, py] of points) {
     const dx = x - px;
     const dy = y - py;
-    const d = metric === "chebyshev" ? Math.max(Math.abs(dx), Math.abs(dy)) : Math.sqrt(dx * dx + dy * dy);
+    const d =
+      metric === "chebyshev"
+        ? Math.max(Math.abs(dx), Math.abs(dy))
+        : Math.sqrt(dx * dx + dy * dy);
     if (d < distance) return true;
   }
   return false;
@@ -112,9 +118,17 @@ describe("createSpacingIndex", () => {
           // interesting where the 3x3 neighbourhood runs off the grid, and a
           // uniform draw over a 60-wide map almost never lands there.
           const edge = step % 4 === 0;
-          const x = edge ? (step % 8 === 0 ? 0 : dim - 1) : Math.floor(random() * dim);
-          const y = edge ? Math.floor(random() * 6) : Math.floor(random() * dim);
-          expect(index.tooClose(x, y)).toBe(referenceTooClose(points, x, y, distance, metric));
+          const x = edge
+            ? step % 8 === 0
+              ? 0
+              : dim - 1
+            : Math.floor(random() * dim);
+          const y = edge
+            ? Math.floor(random() * 6)
+            : Math.floor(random() * dim);
+          expect(index.tooClose(x, y)).toBe(
+            referenceTooClose(points, x, y, distance, metric),
+          );
           // Add unconditionally, including points that ARE too close. Real
           // callers only add accepted points, but the index must not depend
           // on that for correctness, only for its occupancy bound.

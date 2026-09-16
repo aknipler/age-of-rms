@@ -2,8 +2,8 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-design.md` (rev 3, plus the 2026-08-30 addenda in Sec.4.2 and Sec.4.5, and
-4b's own two amendments to Sec.3.4 and Sec.7.1). Read this file for *what to build and in what
-order*; read the design doc for *why*, and treat it as authoritative wherever the two disagree.
+4b's own two amendments to Sec.3.4 and Sec.7.1). Read this file for _what to build and in what
+order_; read the design doc for _why_, and treat it as authoritative wherever the two disagree.
 
 **Slice 5 is half built.** The session of 2026-09-01 closed `RandomParam` hoisting and the
 formula field, and built snapping and the canvas drag math as pure, tested modules that nothing
@@ -14,18 +14,18 @@ rebuilt.
 
 ## 0. Where the work stands
 
-| | status |
-|---|---|
-| Sec.5 math compiler, Sec.4.2 frame algebra, Sec.10.1 acceptance gate | **built** (slice 1) |
-| `generatePreview` prerequisites, `PanelState`, layers 1 to 3 | **built** (slice 2) |
-| Fence writer, `create_land` skeletons, `ShapeGroup` expansion, `reExpand()`, remaining offsets and frames, P2 to P5 | **built** (slice 3) |
-| The `RegisteredTool` seam, the emission orchestrator, panel Apply, `read-preview-view`, the cut offset, the overlay builder, P1 | **built** (slice 4a) |
-| The preview pipeline per consumer, the shared overlay canvas, the panel lifecycle, the canvas (Sec.7.2), the panel (Sec.8) | **built** (slice 4b) |
-| `RandomParam` hoisting (`paramEmit.ts`), the formula field (`panel/formulaField.ts`) | **built** (slice 5, 2026-09-01) |
-| Snapping (`panel/snapping.ts`), canvas drag math (`panel/dragMath.ts`) | **built as pure modules, wired to nothing** (slice 5, 2026-09-01) |
-| Pointer wiring, `nudged`, snapping wired, gizmo handles, chain by drag, per vertex handles | **this brief** |
-| Naming an existing `RandomParam` from a formula | **§1's escalation**, not a build item |
-| The importer (Sec.6.4, Sec.10.3) | **slice 6, not this one** |
+|                                                                                                                                 | status                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Sec.5 math compiler, Sec.4.2 frame algebra, Sec.10.1 acceptance gate                                                            | **built** (slice 1)                                               |
+| `generatePreview` prerequisites, `PanelState`, layers 1 to 3                                                                    | **built** (slice 2)                                               |
+| Fence writer, `create_land` skeletons, `ShapeGroup` expansion, `reExpand()`, remaining offsets and frames, P2 to P5             | **built** (slice 3)                                               |
+| The `RegisteredTool` seam, the emission orchestrator, panel Apply, `read-preview-view`, the cut offset, the overlay builder, P1 | **built** (slice 4a)                                              |
+| The preview pipeline per consumer, the shared overlay canvas, the panel lifecycle, the canvas (Sec.7.2), the panel (Sec.8)      | **built** (slice 4b)                                              |
+| `RandomParam` hoisting (`paramEmit.ts`), the formula field (`panel/formulaField.ts`)                                            | **built** (slice 5, 2026-09-01)                                   |
+| Snapping (`panel/snapping.ts`), canvas drag math (`panel/dragMath.ts`)                                                          | **built as pure modules, wired to nothing** (slice 5, 2026-09-01) |
+| Pointer wiring, `nudged`, snapping wired, gizmo handles, chain by drag, per vertex handles                                      | **this brief**                                                    |
+| Naming an existing `RandomParam` from a formula                                                                                 | **§1's escalation**, not a build item                             |
+| The importer (Sec.6.4, Sec.10.3)                                                                                                | **slice 6, not this one**                                         |
 
 **Two manual passes are outstanding, and neither is this slice's fault.** 4b's §5 run sheet has
 never been worked through in `npm run tauri dev`, so no person has yet driven the canvas and

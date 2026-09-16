@@ -9,7 +9,13 @@ import {
 } from "react";
 import { load, type Store } from "@tauri-apps/plugin-store";
 import { APP_SETTINGS_STORE_FILE } from "./nameDisplay";
-import { DEFAULT_HOTKEYS, HOTKEY_STORE_KEYS, isHotkey, type Hotkey, type HotkeyId } from "./hotkeys";
+import {
+  DEFAULT_HOTKEYS,
+  HOTKEY_STORE_KEYS,
+  isHotkey,
+  type Hotkey,
+  type HotkeyId,
+} from "./hotkeys";
 
 /**
  * The app's rebindable keyboard shortcuts. Its own context rather than a
@@ -47,7 +53,8 @@ export interface HotkeySettingsValue {
 const HotkeySettingsContext = createContext<HotkeySettingsValue | null>(null);
 
 export function HotkeySettingsProvider({ children }: { children: ReactNode }) {
-  const [hotkeys, setHotkeysState] = useState<Record<HotkeyId, Hotkey>>(DEFAULT_HOTKEYS);
+  const [hotkeys, setHotkeysState] =
+    useState<Record<HotkeyId, Hotkey>>(DEFAULT_HOTKEYS);
   const [store, setStore] = useState<Store | null>(null);
   // Ephemeral, never persisted, reset to null on every launch.
   const [recordingId, setRecordingId] = useState<HotkeyId | null>(null);
@@ -59,17 +66,22 @@ export function HotkeySettingsProvider({ children }: { children: ReactNode }) {
   // key/value file, so there's no benefit to loading them any other way.
   useEffect(() => {
     let cancelled = false;
-    load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} }).then(async (loadedStore) => {
-      if (cancelled) return;
-      setStore(loadedStore);
-      const entries = await Promise.all(
-        (Object.keys(DEFAULT_HOTKEYS) as HotkeyId[]).map(async (id) => {
-          const saved = await loadedStore.get<unknown>(HOTKEY_STORE_KEYS[id]);
-          return [id, isHotkey(saved) ? saved : DEFAULT_HOTKEYS[id]] as const;
-        }),
-      );
-      if (!cancelled) setHotkeysState(Object.fromEntries(entries) as Record<HotkeyId, Hotkey>);
-    });
+    load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} }).then(
+      async (loadedStore) => {
+        if (cancelled) return;
+        setStore(loadedStore);
+        const entries = await Promise.all(
+          (Object.keys(DEFAULT_HOTKEYS) as HotkeyId[]).map(async (id) => {
+            const saved = await loadedStore.get<unknown>(HOTKEY_STORE_KEYS[id]);
+            return [id, isHotkey(saved) ? saved : DEFAULT_HOTKEYS[id]] as const;
+          }),
+        );
+        if (!cancelled)
+          setHotkeysState(
+            Object.fromEntries(entries) as Record<HotkeyId, Hotkey>,
+          );
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -83,18 +95,28 @@ export function HotkeySettingsProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
-  const resetHotkey = useCallback((id: HotkeyId) => setHotkey(id, DEFAULT_HOTKEYS[id]), [setHotkey]);
+  const resetHotkey = useCallback(
+    (id: HotkeyId) => setHotkey(id, DEFAULT_HOTKEYS[id]),
+    [setHotkey],
+  );
 
   const value = useMemo<HotkeySettingsValue>(
     () => ({ hotkeys, setHotkey, resetHotkey, recordingId, setRecordingId }),
     [hotkeys, setHotkey, resetHotkey, recordingId],
   );
 
-  return <HotkeySettingsContext.Provider value={value}>{children}</HotkeySettingsContext.Provider>;
+  return (
+    <HotkeySettingsContext.Provider value={value}>
+      {children}
+    </HotkeySettingsContext.Provider>
+  );
 }
 
 export function useHotkeySettings(): HotkeySettingsValue {
   const ctx = useContext(HotkeySettingsContext);
-  if (!ctx) throw new Error("useHotkeySettings must be used within a HotkeySettingsProvider");
+  if (!ctx)
+    throw new Error(
+      "useHotkeySettings must be used within a HotkeySettingsProvider",
+    );
   return ctx;
 }

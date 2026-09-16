@@ -2,7 +2,7 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-shape-kinds-escalation.md`, closed 2026-09-03 and marked ready for exactly
-this brief. Read this file for *what to build and in what order*; read the escalation for *why*,
+this brief. Read this file for _what to build and in what order_; read the escalation for _why_,
 and treat the escalation and `docs/land-placement-design.md` as authoritative wherever they and
 this file disagree.
 
@@ -92,7 +92,8 @@ handle drags the line's length with no change to `gizmoGeometry.ts`.
 ```ts
 // N = pattern.length * repeats, m = i * pattern.length + j, span = N - 1
 const base: Expr = slot.radius ?? group.radius;
-const r: Expr = span === 0 ? num(0) : divE(mul(base, num(2 * m - span)), num(span));
+const r: Expr =
+  span === 0 ? num(0) : divE(mul(base, num(2 * m - span)), num(span));
 const theta: Expr = add(group.rotation, slot.theta ?? num(0));
 ```
 

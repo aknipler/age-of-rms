@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
@@ -7,7 +14,11 @@ import { PlaceholderPane } from "../components/PlaceholderPane";
 import { BreakdownProvider } from "./BreakdownContext";
 import { applyEditIntent, type ApplyTextEdit } from "./applyEdit";
 import { canDeleteItem } from "./cardKind";
-import { shiftAnchors, isAnchoredWithin, type OffsetEdit } from "./ephemeralAnchors";
+import {
+  shiftAnchors,
+  isAnchoredWithin,
+  type OffsetEdit,
+} from "./ephemeralAnchors";
 import { findItemAtOffset } from "./selectionResolve";
 import { extractComments } from "./comments";
 import type { EditIntent } from "./patch/intents";
@@ -71,17 +82,32 @@ interface BreakdownPaneProps {
 // reparse and re-renders this tree from the new AST. Ephemeral UI state
 // (expansion, focus) is anchored to source offsets (Sec.6.3), owned here so
 // it survives the reparse that replaces `parseResult` on every edit.
-export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, reparseNow, selection }: BreakdownPaneProps) {
-  const tabs = useMemo(() => (parseResult ? buildSectionTabs(parseResult.script) : []), [parseResult]);
+export function BreakdownPane({
+  hasFile,
+  source,
+  parseResult,
+  applyTextEdit,
+  reparseNow,
+  selection,
+}: BreakdownPaneProps) {
+  const tabs = useMemo(
+    () => (parseResult ? buildSectionTabs(parseResult.script) : []),
+    [parseResult],
+  );
   // Comments are pure trivia (see comments.ts), re-derived from the full
   // token stream on every parse, same as `tabs` above.
-  const comments = useMemo(() => (parseResult ? extractComments(parseResult.tokens) : []), [parseResult]);
+  const comments = useMemo(
+    () => (parseResult ? extractComments(parseResult.tokens) : []),
+    [parseResult],
+  );
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
   // Sec.6.3 expansion anchors: a set of source offsets captured at
   // expand-time (a card's span.start). A card renders expanded iff some
   // anchor falls within its current span (isAnchoredWithin).
-  const [expandedAnchors, setExpandedAnchors] = useState<Set<number>>(new Set());
+  const [expandedAnchors, setExpandedAnchors] = useState<Set<number>>(
+    new Set(),
+  );
 
   // Sec.3.9, single-select. As of the post-3.9 cross-tab-sync follow-up,
   // the anchor itself lives in App (useSharedSelection) so it survives
@@ -97,10 +123,13 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   const focusableRef = useRef(new Map<number, HTMLElement>());
   const pendingFocusRef = useRef<number | null>(null);
 
-  const registerFocusable = useCallback((offset: number, el: HTMLElement | null) => {
-    if (el) focusableRef.current.set(offset, el);
-    else focusableRef.current.delete(offset);
-  }, []);
+  const registerFocusable = useCallback(
+    (offset: number, el: HTMLElement | null) => {
+      if (el) focusableRef.current.set(offset, el);
+      else focusableRef.current.delete(offset);
+    },
+    [],
+  );
 
   const requestFocus = useCallback((offset: number) => {
     pendingFocusRef.current = offset;
@@ -121,18 +150,23 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
       // Selects the placeholder text (ValueEditor's default value, or
       // addComment's single placeholder space in CommentCard's textarea)
       // so typing replaces it outright instead of landing next to it.
-      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.select();
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
+        el.select();
     }
     pendingFocusRef.current = null;
   }, [parseResult]);
 
-  const isExpanded = useCallback((span: Span) => isAnchoredWithin(expandedAnchors, span), [expandedAnchors]);
+  const isExpanded = useCallback(
+    (span: Span) => isAnchoredWithin(expandedAnchors, span),
+    [expandedAnchors],
+  );
 
   const toggleExpanded = useCallback((span: Span) => {
     setExpandedAnchors((prev) => {
       const next = new Set(prev);
       if (isAnchoredWithin(prev, span)) {
-        for (const a of prev) if (a >= span.start && a < span.end) next.delete(a);
+        for (const a of prev)
+          if (a >= span.start && a < span.end) next.delete(a);
       } else {
         next.add(span.start);
       }
@@ -158,7 +192,9 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   // prop), so a rapid burst of edits before any reparse lands still
   // queues correctly-ordered shifts rather than computing every one from
   // the same stale baseline.
-  const pendingAnchorShiftsRef = useRef<{ edit: OffsetEdit; expectedSource: string }[]>([]);
+  const pendingAnchorShiftsRef = useRef<
+    { edit: OffsetEdit; expectedSource: string }[]
+  >([]);
   const expectedSourceRef = useRef<string | null>(null);
 
   const applyEdit = useCallback(
@@ -177,13 +213,24 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
       // already-shifted text, which is exactly what corrupted an
       // unrelated command when deleting several cards back-to-back.
       const priorEdits = pendingAnchorShiftsRef.current.map((p) => p.edit);
-      const result = applyEditIntent(parseResult, intent, languageIndex, applyTextEdit, priorEdits);
+      const result = applyEditIntent(
+        parseResult,
+        intent,
+        languageIndex,
+        applyTextEdit,
+        priorEdits,
+      );
       if (result) {
         const baseSource = expectedSourceRef.current ?? source;
         const expectedSource =
-          baseSource.slice(0, result.edit.start) + result.edit.newText + baseSource.slice(result.edit.end);
+          baseSource.slice(0, result.edit.start) +
+          result.edit.newText +
+          baseSource.slice(result.edit.end);
         expectedSourceRef.current = expectedSource;
-        pendingAnchorShiftsRef.current.push({ edit: result.edit, expectedSource });
+        pendingAnchorShiftsRef.current.push({
+          edit: result.edit,
+          expectedSource,
+        });
         // Part B: request an immediate reparse of the exact source we
         // just computed, instead of waiting on the 150ms typing debounce;
         // a card action is one discrete event, nothing to coalesce.
@@ -220,7 +267,12 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hotkeys.breakdownDeleteCard, recordingId, selection.selectedItem, applyEdit]);
+  }, [
+    hotkeys.breakdownDeleteCard,
+    recordingId,
+    selection.selectedItem,
+    applyEdit,
+  ]);
 
   // Resolves queued anchor shifts once their expected source has
   // actually rendered. Walks the queue from the front: if `source`
@@ -328,7 +380,9 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
   }, [activeTabId, parseResult]);
 
   if (!hasFile) {
-    return <PlaceholderPane description="Open an .rms file (File > Open) to see its Breakdown here." />;
+    return (
+      <PlaceholderPane description="Open an .rms file (File > Open) to see its Breakdown here." />
+    );
   }
   if (!parseResult) {
     return <PlaceholderPane description="Parsing…" />;
@@ -336,7 +390,10 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
 
   // Default active tab: Header if present, else the first canonical
   // section, falling back to whatever tab exists.
-  const resolvedActiveId = activeTabId && tabs.some((t) => t.id === activeTabId) ? activeTabId : (tabs[0]?.id ?? null);
+  const resolvedActiveId =
+    activeTabId && tabs.some((t) => t.id === activeTabId)
+      ? activeTabId
+      : (tabs[0]?.id ?? null);
   const activeTab = tabs.find((t) => t.id === resolvedActiveId) ?? null;
 
   return (
@@ -366,7 +423,11 @@ export function BreakdownPane({ hasFile, source, parseResult, applyTextEdit, rep
         <div
           className={styles.main}
           data-tutorial-anchor="breakdown.main"
-          style={density === "compact" ? (COMPACT_DENSITY_STYLE as CSSProperties) : undefined}
+          style={
+            density === "compact"
+              ? (COMPACT_DENSITY_STYLE as CSSProperties)
+              : undefined
+          }
         >
           <SectionTabs
             tabs={tabs}

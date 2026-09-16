@@ -65,7 +65,12 @@ function round6(v: number): number {
  * checked during the design session and is now pinned by a test rather than
  * left as a happy accident (escalation Sec.8.5, slice-b-brief.md item 2).
  */
-export function perimeterPolar(sides: number, memberCount: number, memberIndex: number, shiftPercent = 0): PerimeterPolar {
+export function perimeterPolar(
+  sides: number,
+  memberCount: number,
+  memberIndex: number,
+  shiftPercent = 0,
+): PerimeterPolar {
   const M = sides;
   const N = memberCount;
   const m = memberIndex;

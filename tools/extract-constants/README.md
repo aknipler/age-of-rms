@@ -28,11 +28,11 @@ yield.
 
 Compared before writing any code:
 
-| Option | License | Maintenance (as of this writing) |
-|---|---|---|
+| Option                                      | License  | Maintenance (as of this writing)                                                                                        |
+| ------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
 | **genieutils-py** (SiegeEngineers) — chosen | LGPL-3.0 | Active; explicitly supports current DE format versions (`GV_C20`+ / FileVersion 7.7+); same org as `aoe2techtree`/`mgz` |
-| genie-dat (Node/JS) | LGPL-3.0 | Last commit 2020 — predates a lot of DE format evolution, real risk of silently-wrong output on current DE |
-| genieutils (C++ core) | LGPL-3.0 | Active but lower-level; genieutils-py already wraps it |
+| genie-dat (Node/JS)                         | LGPL-3.0 | Last commit 2020 — predates a lot of DE format evolution, real risk of silently-wrong output on current DE              |
+| genieutils (C++ core)                       | LGPL-3.0 | Active but lower-level; genieutils-py already wraps it                                                                  |
 
 Genieutils-py is a runtime dependency of this
 standalone dev script only — never linked into or shipped with the
@@ -70,16 +70,16 @@ Eight narrow modes exist alongside the full run, each rewriting only its own
 fields (or, for `--roster`/`--misc-constants`, only adding rows). They are
 mutually exclusive, and each takes `--dry-run`.
 
-| mode | writes | section below |
-|---|---|---|
-| `--ids-only` | `constId` only, no dat needed | above |
-| `--colors-only` | `previewColor`, `minimapColor` | The two terrain colours |
-| `--terrain-table` | `terrainRestrictionId`, `allowedTerrains`, `placementSideTerrain`, `habitat` | The terrain restriction table |
-| `--terrain-units` | `autoTreeUnits` on terrain rows, plus the top-level `terrainRestrictions` array | Forest auto-spawn units |
-| `--classes` | `classId`, and the `objectClass` rows | Unit classes |
-| `--storages` | `resourceStorages`, and a refreshed `resourceAmounts` | Resource storage |
-| `--roster` | new `object` rows, one per live gaia unit | The gaia roster |
-| `--misc-constants` | new rows in fourteen name-only categories, no dat needed | The misc-family constants |
+| mode               | writes                                                                          | section below                 |
+| ------------------ | ------------------------------------------------------------------------------- | ----------------------------- |
+| `--ids-only`       | `constId` only, no dat needed                                                   | above                         |
+| `--colors-only`    | `previewColor`, `minimapColor`                                                  | The two terrain colours       |
+| `--terrain-table`  | `terrainRestrictionId`, `allowedTerrains`, `placementSideTerrain`, `habitat`    | The terrain restriction table |
+| `--terrain-units`  | `autoTreeUnits` on terrain rows, plus the top-level `terrainRestrictions` array | Forest auto-spawn units       |
+| `--classes`        | `classId`, and the `objectClass` rows                                           | Unit classes                  |
+| `--storages`       | `resourceStorages`, and a refreshed `resourceAmounts`                           | Resource storage              |
+| `--roster`         | new `object` rows, one per live gaia unit                                       | The gaia roster               |
+| `--misc-constants` | new rows in fourteen name-only categories, no dat needed                        | The misc-family constants     |
 
 Add `--colors-only` to refresh **just** the two terrain colour fields
 and leave every other field, and the rest of each entry's `notes`,
@@ -139,15 +139,15 @@ Terrain entries carry `previewColor` and `minimapColor`, and the preview
 pane toggles between them. They come from different files and answer
 different questions:
 
-| Field | Source | What it is good for |
-|---|---|---|
+| Field          | Source                                                                                               | What it is good for                                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `previewColor` | mean of the opaque texels of `resources/_common/terrain/textures/<deTextureFile>.dds` (needs Pillow) | Per terrain. Snow looks like snow. Terrains sharing a texture file share a colour — `FOREST` and `LEAVES` are both `g_for` |
-| `minimapColor` | `Terrain.colors[0]` from the dat, decoded through `resources/_common/palettes/original.pal` | The game's own colour class. Flat and readable, and it separates `FOREST` from `LEAVES` |
+| `minimapColor` | `Terrain.colors[0]` from the dat, decoded through `resources/_common/palettes/original.pal`          | The game's own colour class. Flat and readable, and it separates `FOREST` from `LEAVES`                                    |
 
 **Read this before "fixing" minimap mode.** `Terrain.colors` holds palette
 indices rather than RGB, which is what the preview spec recorded as "not
 yet decodable". Decoding it is easy — `original.pal` is a plain-text
-JASC-PAL file — and it is *not* the whole answer: across the 131 enabled
+JASC-PAL file — and it is _not_ the whole answer: across the 131 enabled
 terrain records that field takes only **12 distinct values**. It is a
 legacy colour class, so every snow variant genuinely carries grass's
 green. Minimap mode drawing snow as grass is the data faithfully
@@ -174,12 +174,12 @@ The dat stores a per-object `terrain_restriction_id` indexing a per-restriction
 row of allowed terrains — the "terrain table" — and it decides where every
 object may stand. It is now read, and the run that reads it writes four fields:
 
-| field | what it is |
-|---|---|
-| `terrainRestrictionId` | the dat's own `Unit.terrain_restriction`, a key into the game's table |
-| `allowedTerrains` | that row expanded to the terrain ids it permits |
+| field                  | what it is                                                                |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `terrainRestrictionId` | the dat's own `Unit.terrain_restriction`, a key into the game's table     |
+| `allowedTerrains`      | that row expanded to the terrain ids it permits                           |
 | `placementSideTerrain` | the two-slot "must sit beside" requirement, `[-1, -1]` when there is none |
-| `habitat` | our five-value reading of the three above |
+| `habitat`              | our five-value reading of the three above                                 |
 
 ```bash
 python extract_constants.py --terrain-table --dry-run   # report only
@@ -238,12 +238,12 @@ hybrid tripped the test and made all nine fish rows `amphibious`, undoing the
 A distance has no threshold to get wrong, and it separates the cases by a
 margin rather than a hair:
 
-| row | objects | permits | best | runner-up |
-|---|---|---|---|---|
-| 19 (ordinary fish) | 12 | 15 | **water**, differs on 1 | amphibious, 18 |
-| 13 / 3 / 15 (great fish, OYSTERS, TRANSPORT_SHIP) | 21 | 38 | **amphibious**, 5 | water, 24 |
-| 0 (unrestricted, incl. FISH_PLACEHOLDER) | 72 | 131 | **any**, 0 | land, 21 |
-| 7 (most land objects) | 177 | 116 | **land**, 8 | any, 15 |
+| row                                               | objects | permits | best                    | runner-up      |
+| ------------------------------------------------- | ------- | ------- | ----------------------- | -------------- |
+| 19 (ordinary fish)                                | 12      | 15      | **water**, differs on 1 | amphibious, 18 |
+| 13 / 3 / 15 (great fish, OYSTERS, TRANSPORT_SHIP) | 21      | 38      | **amphibious**, 5       | water, 24      |
+| 0 (unrestricted, incl. FISH_PLACEHOLDER)          | 72      | 131     | **any**, 0              | land, 21       |
+| 7 (most land objects)                             | 177     | 116     | **land**, 8             | any, 15        |
 
 The `mismatch` column is the honest half of the answer, so it is written into
 each entry's `notes` and printed worst-first. **The land family fits worst**:
@@ -303,7 +303,7 @@ Two traps, both hit while writing it and both now pinned by a test:
   shattered `EXPORTED FROM THE DATABASE` into 40 one-line sections and cut the
   object namespace from 651 names to 69 — a failure quiet enough to ship,
   because every name it kept was still correct. What it actually does is move
-  every name *below* the comment out of the namespace.
+  every name _below_ the comment out of the namespace.
 - **Titles are decorated with dashed rules** (`/*-----*/`), which carry no
   title and must not reset the section.
 
@@ -350,10 +350,10 @@ mode existed the status bar's resource totals had no way to count it at all
 (the status-bar accuracy pass, `docs/build-log.md`'s 2026-09-02 entry). This
 mode writes two things, one per terrain row and one at the top level:
 
-| field | what it is |
-|---|---|
-| `autoTreeUnits` (terrain rows) | Which unit(s) this terrain auto-spawns and at what density — `Terrain.terrain_unit_id`/`terrain_unit_density`, the first `number_of_terrain_units_used` slots of two fixed-length arrays, in slot order |
-| `terrainRestrictions` (top-level array) | The dat's WHOLE `terrain_restrictions` table, 53 rows, each expanded to the terrain ids it permits |
+| field                                   | what it is                                                                                                                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoTreeUnits` (terrain rows)          | Which unit(s) this terrain auto-spawns and at what density — `Terrain.terrain_unit_id`/`terrain_unit_density`, the first `number_of_terrain_units_used` slots of two fixed-length arrays, in slot order |
+| `terrainRestrictions` (top-level array) | The dat's WHOLE `terrain_restrictions` table, 53 rows, each expanded to the terrain ids it permits                                                                                                      |
 
 **Multi-slot terrains are first-hit-wins.** Seven terrains carry more than one
 slot (`P(slot i) = density_i * product of (1 - density_j) for j < i`), and the
@@ -420,16 +420,16 @@ the same order the terrain table uses.
 
 ### What slot 0 actually holds, measured across the roster
 
-| type | units | meaning | examples |
-|---|---|---|---|
-| 0 | 89 | food | BOARX 340, FORAG 125, DEERX 140 |
-| 1 | 53 | wood | TREETD 125, BUSH 100 |
-| 2 | 3 | stone | STONM 350 |
-| 3 | 7 | gold | GOLDM 800 |
-| 4 | 807 | population | HOUS 5 provides, LEGION -1 consumes |
-| 12 | 533 | decay time | every `*_D` dead-unit record, 300 |
-| 17 | 16 | fish food | FISH1-5 225, FISHS 200, WHAL1 200 |
-| 9, 14, 56, 508, 514 | 11 | unread | SDOC 600, OREMN 400 |
+| type                | units | meaning    | examples                            |
+| ------------------- | ----- | ---------- | ----------------------------------- |
+| 0                   | 89    | food       | BOARX 340, FORAG 125, DEERX 140     |
+| 1                   | 53    | wood       | TREETD 125, BUSH 100                |
+| 2                   | 3     | stone      | STONM 350                           |
+| 3                   | 7     | gold       | GOLDM 800                           |
+| 4                   | 807   | population | HOUS 5 provides, LEGION -1 consumes |
+| 12                  | 533   | decay time | every `*_D` dead-unit record, 300   |
+| 17                  | 16    | fish food  | FISH1-5 225, FISHS 200, WHAL1 200   |
+| 9, 14, 56, 508, 514 | 11    | unread     | SDOC 600, OREMN 400                 |
 
 guide:3599 annotates the attribute as "population support, tree wood amount,
 decay time", which is types 4, 1 and 12. **The guide is describing the slot's
@@ -442,8 +442,8 @@ makes the attribute tractable at all.
 so the extraction dropped the value, read the absence as "the dat reports no
 resource storage", and wrote a `CONTRADICTION` sentence into both entries along
 with `verified: false`. That note has sat in the data since 2026-07-30, and its
-own text guessed the cause correctly: *"suspect this script's Gaia-roster lookup
-before the placeholder"*. The lookup was fine; this table had nowhere to put the
+own text guessed the cause correctly: _"suspect this script's Gaia-roster lookup
+before the placeholder"_. The lookup was fine; this table had nowhere to put the
 type.
 
 Two independent readings confirm 17 is food, on two different numbers:
@@ -495,9 +495,9 @@ and it is the whole of the extraction: 2642 live units, 57 classes.
 
 The run writes both directions.
 
-| field | on | what it is |
-|---|---|---|
-| `classId` | object rows | which class this object is in |
+| field                   | on                     | what it is                         |
+| ----------------------- | ---------------------- | ---------------------------------- |
+| `classId`               | object rows            | which class this object is in      |
 | `classId` + `memberIds` | new `objectClass` rows | the class, and every unit id in it |
 
 `memberIds` covers the **whole roster**, not just the objects that have their
@@ -645,12 +645,12 @@ row wrongly hidden is a unit an author cannot find.
 A field that is a pure function of another field is not data, it is file size.
 The first write came out at 3.5 MB and two fields were 2.4 MB of it.
 
-| left out | why |
-|---|---|
-| `allowedTerrains` | A pure expansion of `terrainRestrictionId`, and the whole roster references only 33 distinct restriction ids. Nothing in `src/` reads it. Run `--terrain-table` when the expansion is wanted. |
-| `deTextureFile: null` | Terrain field, never populated on an object row. |
-| `placementSideTerrain: [-1, -1]` | The "must sit beside" pair, absent on all but three units. |
-| per-row `notes` boilerplate | Replaced by one clause naming the mode and the run date. |
+| left out                         | why                                                                                                                                                                                           |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `allowedTerrains`                | A pure expansion of `terrainRestrictionId`, and the whole roster references only 33 distinct restriction ids. Nothing in `src/` reads it. Run `--terrain-table` when the expansion is wanted. |
+| `deTextureFile: null`            | Terrain field, never populated on an object row.                                                                                                                                              |
+| `placementSideTerrain: [-1, -1]` | The "must sit beside" pair, absent on all but three units.                                                                                                                                    |
+| per-row `notes` boilerplate      | Replaced by one clause naming the mode and the run date.                                                                                                                                      |
 
 The result is 1.33 MB for 2639 new rows, which is roughly 400 bytes each and
 about the floor for a self-describing JSON row.
@@ -788,8 +788,8 @@ names absent from `game-constants.json`, target ~1776 total". The first pass
   requested**: `Effect Constants` (28, effect_amount/effect_percent's own
   first-argument vocabulary — `SET_ATTRIBUTE`, `GAIA_MODIFY_TECH`, ...),
   `Effect Type Constants` (6, `ATTR_DISABLE`/`ATTR_ENABLE`/...), `ModifyTech
-  Constants` (19, `ATTR_SET_TIME`/`ATTR_SET_FOOD_COST`/...), `PlayerData
-  Constants` (1, `DATA_CIV_NAME_ID`), `ResourceAmount Constants` (34,
+Constants` (19, `ATTR_SET_TIME`/`ATTR_SET_FOOD_COST`/...), `PlayerData
+Constants` (1, `DATA_CIV_NAME_ID`), `ResourceAmount Constants` (34,
   `AMOUNT_*`) and `Magic Number Constants` (1, `RANDOM_OBJECT`).
 
 **A second pass (2026-08-30, same day) added all six**, as categories
@@ -842,7 +842,7 @@ found the terrain→texture join crossing two id spaces, `--colors-only`
 fish row, and its raw half (same day) confirmed every restriction id already in
 the file. **The `DatExtraction` caveats below still stand** — none of those runs
 is a test, and none of them runs in CI. Everything independently testable
-without one *is* tested — `test_extract_constants.py` covers the
+without one _is_ tested — `test_extract_constants.py` covers the
 `random_map.def` parser and the JSON merge/formatting logic (including a
 byte-identical round-trip regression test against the real, current
 `game-constants.json`). Run it:
@@ -870,9 +870,9 @@ trusting a real run's output:
 
 ## `resourceAmounts` caveat — base value only
 
-RMS scripts can override an object's resource amount at generation time via 
-effect/resource-delta style commands. What this script (and `game-constants.json`) 
-records is the **unmodified base value from the game's data files** — the number 
+RMS scripts can override an object's resource amount at generation time via
+effect/resource-delta style commands. What this script (and `game-constants.json`)
+records is the **unmodified base value from the game's data files** — the number
 a plain `create_object GOLD` gets before any such script-level modifier.
 `src/parser/resourceTotals.ts` does not currently account
 for those modifiers when computing the status-bar totals — tracked as

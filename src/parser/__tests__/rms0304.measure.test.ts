@@ -16,7 +16,11 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../parser";
-import { validate, type GameConstantsForValidate, type ValidateReferenceDb } from "../validate";
+import {
+  validate,
+  type GameConstantsForValidate,
+  type ValidateReferenceDb,
+} from "../validate";
 import type { Item, SectionNode } from "../types";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
 
@@ -39,7 +43,9 @@ function walk(dir: string): string[] {
  * It walks into conditionals for the same reason validate() does, a command
  * inside `if X` still belongs to the enclosing section.
  */
-function naiveSectionHits(sections: SectionNode[]): { name: string; belongsIn: string; foundIn: string }[] {
+function naiveSectionHits(
+  sections: SectionNode[],
+): { name: string; belongsIn: string; foundIn: string }[] {
   const hits: { name: string; belongsIn: string; foundIn: string }[] = [];
 
   function visit(items: Item[], section: SectionNode): void {
@@ -47,7 +53,11 @@ function naiveSectionHits(sections: SectionNode[]): { name: string; belongsIn: s
       switch (item.kind) {
         case "command":
           if (item.def && item.def.section !== section.name) {
-            hits.push({ name: item.def.name, belongsIn: item.def.section, foundIn: section.name });
+            hits.push({
+              name: item.def.name,
+              belongsIn: item.def.section,
+              foundIn: section.name,
+            });
           }
           if (item.block) visit(item.block.items, section);
           break;
@@ -78,7 +88,10 @@ describe("RMS0304 corpus census (CREATION_PLAN 2.7)", () => {
   it("reports the section-driven count and the shipped count, per command name", () => {
     const lang = loadLanguage();
     const gameConstants = JSON.parse(
-      readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+      readFileSync(
+        join(REPO_ROOT, "reference", "data", "game-constants.json"),
+        "utf8",
+      ),
     ) as GameConstantsForValidate;
     const refDb: ValidateReferenceDb = { language: lang, gameConstants };
     const files = walk(join(REPO_ROOT, "test-maps"));
@@ -95,7 +108,9 @@ describe("RMS0304 corpus census (CREATION_PLAN 2.7)", () => {
 
       for (const hit of naiveSectionHits(result.script.sections)) {
         naiveByName.set(hit.name, (naiveByName.get(hit.name) ?? 0) + 1);
-        naiveSites.push(`  ${label}  ${hit.name} (documented <${hit.belongsIn}>, written in <${hit.foundIn}>)`);
+        naiveSites.push(
+          `  ${label}  ${hit.name} (documented <${hit.belongsIn}>, written in <${hit.foundIn}>)`,
+        );
       }
 
       for (const diagnostic of validate(result, refDb)) {
@@ -111,24 +126,36 @@ describe("RMS0304 corpus census (CREATION_PLAN 2.7)", () => {
       }
     }
 
-    const total = (counts: Map<string, number>) => [...counts.values()].reduce((a, b) => a + b, 0);
+    const total = (counts: Map<string, number>) =>
+      [...counts.values()].reduce((a, b) => a + b, 0);
     const lines: string[] = [];
 
-    lines.push(`\n===== if driven by CommandDef.section (the rejected design): ${total(naiveByName)} =====`);
+    lines.push(
+      `\n===== if driven by CommandDef.section (the rejected design): ${total(naiveByName)} =====`,
+    );
     for (const [name, count] of [...naiveByName].sort((a, b) => b[1] - a[1])) {
       lines.push(`  ${String(count).padStart(3)}  ${name}`);
     }
     lines.push(...naiveSites.slice(0, 60));
-    if (naiveSites.length > 60) lines.push(`  ... and ${naiveSites.length - 60} more`);
+    if (naiveSites.length > 60)
+      lines.push(`  ... and ${naiveSites.length - 60} more`);
 
-    lines.push(`\n===== as shipped, driven by sectionLocked: ${total(shippedByName)} =====`);
-    for (const [name, count] of [...shippedByName].sort((a, b) => b[1] - a[1])) {
+    lines.push(
+      `\n===== as shipped, driven by sectionLocked: ${total(shippedByName)} =====`,
+    );
+    for (const [name, count] of [...shippedByName].sort(
+      (a, b) => b[1] - a[1],
+    )) {
       lines.push(`  ${String(count).padStart(3)}  ${name}`);
     }
     lines.push(...shippedSites);
 
-    const locked = lang.commands.filter((c) => c.sectionLocked).map((c) => `${c.name} → <${c.section}>`);
-    lines.push(`\nsectionLocked commands (${locked.length}): ${locked.join(", ")}`);
+    const locked = lang.commands
+      .filter((c) => c.sectionLocked)
+      .map((c) => `${c.name} → <${c.section}>`);
+    lines.push(
+      `\nsectionLocked commands (${locked.length}): ${locked.join(", ")}`,
+    );
     lines.push(`files walked: ${files.length}`);
     console.log(lines.join("\n"));
 

@@ -30,14 +30,20 @@ import type { Item, ParseResult, Span } from "../parser/types";
  * problem. One implementation, two instances; the alternative was a second
  * copy of the BUG-001 ordering rule maintained by hand.
  */
-export function useSharedSelection(source: string, parseResult: ParseResult | null) {
+export function useSharedSelection(
+  source: string,
+  parseResult: ParseResult | null,
+) {
   // Default shift policy: an anchor caught inside a replaced range is
   // DROPPED (ephemeralAnchors.ts's rev-4 rule), so a selection can't dangle
   // onto whatever text now occupies those offsets.
   const [selectedAnchor, setSelectedAnchor] = useShiftedAnchor(source);
 
   const isSelected = useCallback(
-    (span: Span) => selectedAnchor !== null && selectedAnchor >= span.start && selectedAnchor < span.end,
+    (span: Span) =>
+      selectedAnchor !== null &&
+      selectedAnchor >= span.start &&
+      selectedAnchor < span.end,
     [selectedAnchor],
   );
   // `setSelectedAnchor` is now listed as a dependency where it used to be
@@ -45,17 +51,33 @@ export function useSharedSelection(source: string, parseResult: ParseResult | nu
   // it arrives through a custom hook's return value, where the lint rule can
   // no longer prove that. Listing it costs nothing (a stable value never
   // invalidates the memo) and keeps the rule honest.
-  const selectCard = useCallback((span: Span) => setSelectedAnchor(span.start), [setSelectedAnchor]);
-  const clearSelection = useCallback(() => setSelectedAnchor(null), [setSelectedAnchor]);
+  const selectCard = useCallback(
+    (span: Span) => setSelectedAnchor(span.start),
+    [setSelectedAnchor],
+  );
+  const clearSelection = useCallback(
+    () => setSelectedAnchor(null),
+    [setSelectedAnchor],
+  );
   /** Code tab's cursor-tracking calls this directly with an arbitrary offset (not necessarily a card's span.start). */
-  const setAnchor = useCallback((offset: number | null) => setSelectedAnchor(offset), [setSelectedAnchor]);
+  const setAnchor = useCallback(
+    (offset: number | null) => setSelectedAnchor(offset),
+    [setSelectedAnchor],
+  );
 
   const selectedItem: Item | undefined = useMemo(() => {
     if (selectedAnchor === null || !parseResult) return undefined;
     return findItemAtOffsetInScript(parseResult.script, selectedAnchor);
   }, [selectedAnchor, parseResult]);
 
-  return { selectedAnchor, setAnchor, isSelected, selectCard, clearSelection, selectedItem };
+  return {
+    selectedAnchor,
+    setAnchor,
+    isSelected,
+    selectCard,
+    clearSelection,
+    selectedItem,
+  };
 }
 
 export type SharedSelectionApi = ReturnType<typeof useSharedSelection>;

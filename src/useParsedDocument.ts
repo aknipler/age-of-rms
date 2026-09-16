@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ParserWorker from "./editor/parserWorker?worker";
-import type { ParseRequestMessage, ParseResponseMessage } from "./editor/parserWorker";
+import type {
+  ParseRequestMessage,
+  ParseResponseMessage,
+} from "./editor/parserWorker";
 import type { Diagnostic, ParseResult } from "./parser/types";
 
 // docs/breakdown-design.md Sec.6.2: "one parse, in the worker". This
@@ -81,7 +84,8 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
       const { requestId, diagnostics, parseResult } = event.data;
       const source = sourceByRequestId.get(requestId);
       sourceByRequestId.delete(requestId);
-      if (source === undefined || requestId !== latestRequestIdRef.current) return;
+      if (source === undefined || requestId !== latestRequestIdRef.current)
+        return;
       setState({ source, diagnostics, parseResult });
     };
 
@@ -105,7 +109,10 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
   }, []);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => sendParseRequest(content), DEBOUNCE_MS);
+    const timeoutId = window.setTimeout(
+      () => sendParseRequest(content),
+      DEBOUNCE_MS,
+    );
     return () => window.clearTimeout(timeoutId);
   }, [content, sendParseRequest]);
 

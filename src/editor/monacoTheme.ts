@@ -25,8 +25,10 @@ function relativeLuminance(hex: string): number {
   // throwing, the same "don't crash on user-editable data" reasoning as
   // sanitizeThemeTokens.
   if (!match) return 1;
-  const channel = (offset: number) => parseInt(match[1].slice(offset, offset + 2), 16) / 255;
-  const linearize = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const channel = (offset: number) =>
+    parseInt(match[1].slice(offset, offset + 2), 16) / 255;
+  const linearize = (c: number) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   const [r, g, b] = [0, 2, 4].map((offset) => linearize(channel(offset)));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
@@ -70,7 +72,10 @@ const DARK_SYNTAX_RULES: monacoNs.editor.ITokenThemeRule[] = [
  * `defineTheme` on an already-registered name just updates its data, it
  * doesn't recreate anything.
  */
-export function defineAoe2RmsMonacoTheme(monaco: typeof monacoNs, tokens: ThemeTokens): void {
+export function defineAoe2RmsMonacoTheme(
+  monaco: typeof monacoNs,
+  tokens: ThemeTokens,
+): void {
   const isDark = relativeLuminance(tokens.bg) < 0.5;
   monaco.editor.defineTheme(AOE2_RMS_MONACO_THEME, {
     base: isDark ? "vs-dark" : "vs",
@@ -103,6 +108,8 @@ export function defineAoe2RmsMonacoTheme(monaco: typeof monacoNs, tokens: ThemeT
  * effect below. Needed only so the `theme` prop always names something
  * that exists; the flash between this and the real tokens is imperceptible.
  */
-export function registerAoe2RmsMonacoThemePlaceholder(monaco: typeof monacoNs): void {
+export function registerAoe2RmsMonacoThemePlaceholder(
+  monaco: typeof monacoNs,
+): void {
   defineAoe2RmsMonacoTheme(monaco, DEFAULT_LIGHT_THEME);
 }

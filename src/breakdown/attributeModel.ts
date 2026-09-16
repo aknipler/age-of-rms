@@ -42,7 +42,10 @@ function isFlagDef(def: AttributeDef): boolean {
  * block-kind def and a block. Commands with no def (unknown, block-less)
  * have no slots to derive. Callers should fall back to generic rendering.
  */
-export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex): CommandBreakdown {
+export function buildCommandBreakdown(
+  command: CommandNode,
+  lang: LanguageIndex,
+): CommandBreakdown {
   const attributeNames = command.def?.attributes ?? [];
   const listedNames = new Set(attributeNames);
   const sortedNames = [...attributeNames].sort((a, b) => a.localeCompare(b));
@@ -65,7 +68,12 @@ export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex)
   for (const name of sortedNames) {
     const def = lang.attributesByName.get(name);
     if (!def) continue; // defensive: def.attributes[] referencing an unknown name shouldn't happen (validate:reference catches it)
-    knownSlots.push({ name, def, instances: instancesByName.get(name) ?? [], isFlag: isFlagDef(def) });
+    knownSlots.push({
+      name,
+      def,
+      instances: instancesByName.get(name) ?? [],
+      isFlag: isFlagDef(def),
+    });
   }
 
   const otherContents: Item[] = [...other];
@@ -78,7 +86,8 @@ export function buildCommandBreakdown(command: CommandNode, lang: LanguageIndex)
 }
 
 /** The Breakdown "attribute order" setting's four modes, see BreakdownSettingsContext.tsx. */
-export type AttributeOrderMode = "required" | "alphabetical" | "fileOrder" | "custom";
+export type AttributeOrderMode =
+  "required" | "alphabetical" | "fileOrder" | "custom";
 
 /**
  * text < number < boolean, matching ValueEditor.tsx's own split (numberInput
@@ -110,7 +119,8 @@ function compareRequiredFirst(a: AttributeSlot, b: AttributeSlot): number {
 function compareFileOrder(a: AttributeSlot, b: AttributeSlot): number {
   const aPresent = a.instances.length > 0;
   const bPresent = b.instances.length > 0;
-  if (aPresent && bPresent) return a.instances[0].span.start - b.instances[0].span.start;
+  if (aPresent && bPresent)
+    return a.instances[0].span.start - b.instances[0].span.start;
   if (aPresent !== bPresent) return aPresent ? -1 : 1;
   return compareRequiredFirst(a, b);
 }
@@ -164,7 +174,8 @@ export function splitAttributeColumns(
   rightColumnNames?: readonly string[],
 ): { left: AttributeSlot[]; right: AttributeSlot[] } {
   const rightSet = rightColumnNames ? new Set(rightColumnNames) : null;
-  const isRight = (slot: AttributeSlot) => (rightSet ? rightSet.has(slot.name) : slot.isFlag);
+  const isRight = (slot: AttributeSlot) =>
+    rightSet ? rightSet.has(slot.name) : slot.isFlag;
   return {
     left: slots.filter((slot) => !isRight(slot)),
     right: slots.filter((slot) => isRight(slot)),

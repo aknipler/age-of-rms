@@ -44,7 +44,11 @@ interface TilePos {
   y: number;
 }
 
-function resolveTile(quantity: PlacementQuantity | undefined, resolved: ReadonlyMap<string, number>, dim: number): TilePos | null {
+function resolveTile(
+  quantity: PlacementQuantity | undefined,
+  resolved: ReadonlyMap<string, number>,
+  dim: number,
+): TilePos | null {
   if (!quantity) return null;
   const xPct = resolved.get(quantity.xName);
   const yPct = resolved.get(quantity.yName);
@@ -59,7 +63,14 @@ function resolveTile(quantity: PlacementQuantity | undefined, resolved: Readonly
  * drawn to and from it, but no circle (there is no `base_size` to draw).
  */
 export function buildOverlayShapes(input: OverlayInput): OverlayShape[] {
-  const { model, quantities, resolved, roleNamesByPlacement, mapDim, selectedIds } = input;
+  const {
+    model,
+    quantities,
+    resolved,
+    roleNamesByPlacement,
+    mapDim,
+    selectedIds,
+  } = input;
   const shapes: OverlayShape[] = [];
   const byId = new Map(model.placements.map((p) => [p.id, p] as const));
 
@@ -71,20 +82,35 @@ export function buildOverlayShapes(input: OverlayInput): OverlayShape[] {
     if (roleNames) {
       const baseSize = resolved.get(roleNames.baseSizeName);
       if (baseSize !== undefined) {
-        shapes.push({ id: placement.id, kind: "circle", x: pos.x, y: pos.y, rTiles: baseSize, role: "primary" });
+        shapes.push({
+          id: placement.id,
+          kind: "circle",
+          x: pos.x,
+          y: pos.y,
+          rTiles: baseSize,
+          role: "primary",
+        });
       }
     }
 
     if (placement.parent !== "center") {
       const parentPlacement = byId.get(placement.parent);
-      const parentPos = parentPlacement ? resolveTile(quantities.get(parentPlacement.id), resolved, mapDim) : null;
+      const parentPos = parentPlacement
+        ? resolveTile(quantities.get(parentPlacement.id), resolved, mapDim)
+        : null;
       if (parentPos) {
         shapes.push({ kind: "line", from: parentPos, to: pos, role: "muted" });
       }
     }
 
     if (selectedIds?.has(placement.id)) {
-      shapes.push({ id: placement.id, kind: "handle", x: pos.x, y: pos.y, role: "secondary" });
+      shapes.push({
+        id: placement.id,
+        kind: "handle",
+        x: pos.x,
+        y: pos.y,
+        role: "secondary",
+      });
     }
   }
 

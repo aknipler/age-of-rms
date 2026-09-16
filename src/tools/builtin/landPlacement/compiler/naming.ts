@@ -41,7 +41,10 @@ export class NameAllocator {
    * rather than shadowing (Sec.5.6).
    */
   allocate(base: string, suffix: string): string {
-    const stem = suffix.length > 0 ? `${this.prefix}${base}_${slug(suffix)}` : `${this.prefix}${base}`;
+    const stem =
+      suffix.length > 0
+        ? `${this.prefix}${base}_${slug(suffix)}`
+        : `${this.prefix}${base}`;
     let candidate = stem;
     let n = 2;
     while (this.used.has(candidate)) {

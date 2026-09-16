@@ -22,7 +22,11 @@ export function RandomCard({ node }: { node: RandomNode }) {
         <HelpTip id="breakdown.randomCard">
           <span>Random (start_random / percent_chance)</span>
         </HelpTip>
-        {node.end === undefined && <span className={cardStyles.unknownBadge}>unclosed — finish in Code tab</span>}
+        {node.end === undefined && (
+          <span className={cardStyles.unknownBadge}>
+            unclosed — finish in Code tab
+          </span>
+        )}
         <HelpTip id="breakdown.randomCard.delete">
           <button
             type="button"
@@ -39,7 +43,9 @@ export function RandomCard({ node }: { node: RandomNode }) {
       </div>
       {node.preamble.length > 0 && (
         <div className={styles.branch}>
-          <p className={styles.preambleNote}>Before first percent_chance (RMS0106):</p>
+          <p className={styles.preambleNote}>
+            Before first percent_chance (RMS0106):
+          </p>
           <BlockList
             items={node.preamble}
             trailingBoundary={
@@ -53,16 +59,25 @@ export function RandomCard({ node }: { node: RandomNode }) {
         </div>
       )}
       {node.branches.map((branch, i) => {
-        const chanceText = branch.chance !== undefined ? renderArg(branch.chance, tokens) : "";
-        const anchor = branch.chance !== undefined ? branch.chance.span.start : tokens[branch.chanceKeyword].end;
+        const chanceText =
+          branch.chance !== undefined ? renderArg(branch.chance, tokens) : "";
+        const anchor =
+          branch.chance !== undefined
+            ? branch.chance.span.start
+            : tokens[branch.chanceKeyword].end;
         const isExprChance =
-          branch.chance !== undefined && typeof branch.chance.value === "object" && branch.chance.value !== null && "expr" in branch.chance.value;
+          branch.chance !== undefined &&
+          typeof branch.chance.value === "object" &&
+          branch.chance.value !== null &&
+          "expr" in branch.chance.value;
         return (
           <div key={i} className={styles.branch}>
             <div className={styles.branchHeader}>
               <span className={styles.branchKeyword}>percent_chance</span>
               {isExprChance ? (
-                <span title="Math expression — edit in the Code tab">{chanceText}</span>
+                <span title="Math expression — edit in the Code tab">
+                  {chanceText}
+                </span>
               ) : (
                 <ValueEditor
                   text={chanceText}
@@ -70,7 +85,11 @@ export function RandomCard({ node }: { node: RandomNode }) {
                   anchorOffset={anchor}
                   helpId="breakdown.randomCard.chance"
                   onCommit={(value, restoreFocus) => {
-                    const result = applyEdit({ kind: "setChance", branch: { parent: node, index: i }, value });
+                    const result = applyEdit({
+                      kind: "setChance",
+                      branch: { parent: node, index: i },
+                      value,
+                    });
                     if (result && restoreFocus) requestFocus(result.caret);
                   }}
                 />
@@ -82,7 +101,10 @@ export function RandomCard({ node }: { node: RandomNode }) {
                     className={cardStyles.deleteButton}
                     onClick={(e) => {
                       e.stopPropagation();
-                      applyEdit({ kind: "removeBranch", branch: { parent: node, index: i } });
+                      applyEdit({
+                        kind: "removeBranch",
+                        branch: { parent: node, index: i },
+                      });
                     }}
                     title="Remove this branch"
                   >
@@ -136,7 +158,13 @@ export function RandomCard({ node }: { node: RandomNode }) {
           <button
             type="button"
             className={styles.branchControlButton}
-            onClick={() => applyEdit({ kind: "addBranch", parent: node, branch: "percent_chance" })}
+            onClick={() =>
+              applyEdit({
+                kind: "addBranch",
+                parent: node,
+                branch: "percent_chance",
+              })
+            }
           >
             + percent_chance
           </button>

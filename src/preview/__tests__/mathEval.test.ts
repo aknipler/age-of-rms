@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { evaluateExpressionTokens, roundForIntegerSlot } from "../generator/mathEval";
+import {
+  evaluateExpressionTokens,
+  roundForIntegerSlot,
+} from "../generator/mathEval";
 
 // Mirrors src/parser/__tests__/parser.test.ts's "math expressions (Sec.2.2)"
 // block; that suite asserts the same scripts ASSEMBLE correctly; this one
@@ -7,7 +10,9 @@ import { evaluateExpressionTokens, roundForIntegerSlot } from "../generator/math
 // parser splits each source string on whitespace (parser-design Sec.2.2),
 // not something this test derives independently.
 
-function constants(values: Record<string, number>): (name: string) => number | undefined {
+function constants(
+  values: Record<string, number>,
+): (name: string) => number | undefined {
   return (name) => values[name];
 }
 
@@ -21,12 +26,18 @@ describe("evaluateExpressionTokens", () => {
   });
 
   it("AD4 fixture: (MAPSIZE * MAPSIZE), the #const value-position assembly path", () => {
-    const result = evaluateExpressionTokens(["(MAPSIZE", "*", "MAPSIZE)"], constants({ MAPSIZE: 100 }));
+    const result = evaluateExpressionTokens(
+      ["(MAPSIZE", "*", "MAPSIZE)"],
+      constants({ MAPSIZE: 100 }),
+    );
     expect(result).toBe(10000);
   });
 
   it("numeric-first operand (Pa_Site lines 721-722 shape): (24 * SCALE)", () => {
-    const result = evaluateExpressionTokens(["(24", "*", "SCALE)"], constants({ SCALE: 2 }));
+    const result = evaluateExpressionTokens(
+      ["(24", "*", "SCALE)"],
+      constants({ SCALE: 2 }),
+    );
     expect(result).toBe(48);
   });
 
@@ -52,12 +63,18 @@ describe("evaluateExpressionTokens", () => {
   });
 
   it("an unresolved constant mid-expression is dropped the same way: (5 + UNKNOWN)", () => {
-    const result = evaluateExpressionTokens(["(5", "+", "UNKNOWN)"], constants({}));
+    const result = evaluateExpressionTokens(
+      ["(5", "+", "UNKNOWN)"],
+      constants({}),
+    );
     expect(result).toBe(5);
   });
 
   it("an unresolved FIRST operand makes the whole expression unresolvable: (UNKNOWN + 1)", () => {
-    const result = evaluateExpressionTokens(["(UNKNOWN", "+", "1)"], constants({}));
+    const result = evaluateExpressionTokens(
+      ["(UNKNOWN", "+", "1)"],
+      constants({}),
+    );
     expect(result).toBeUndefined();
   });
 
@@ -69,7 +86,10 @@ describe("evaluateExpressionTokens", () => {
   it("unglued leading paren has no engine-verified reading, so it bails rather than guessing: ( A + 1 )", () => {
     // parser-design Sec.2.2 marks this shape unverified (verify #15) rather
     // than describing engine behaviour for it.
-    const result = evaluateExpressionTokens(["(", "A", "+", "1)"], constants({ A: 1 }));
+    const result = evaluateExpressionTokens(
+      ["(", "A", "+", "1)"],
+      constants({ A: 1 }),
+    );
     expect(result).toBeUndefined();
   });
 
@@ -85,23 +105,33 @@ describe("evaluateExpressionTokens", () => {
   // decision, so a future re-reversal has exactly one place to go.
   it("x % 0 -> the left operand, truncated toward zero (RMSTEST_64)", () => {
     expect(evaluateExpressionTokens(["(7", "%", "0)"], constants({}))).toBe(7);
-    expect(evaluateExpressionTokens(["(-7.5", "%", "0)"], constants({}))).toBe(-7);
+    expect(evaluateExpressionTokens(["(-7.5", "%", "0)"], constants({}))).toBe(
+      -7,
+    );
   });
 
   // The cast is the half RMSTEST_47 never exercised: every arm of that run used
   // integer operands, so it pinned the SIGN and left these free to be wrong.
   it("% casts BOTH operands to int before taking the remainder", () => {
     // JS's native % gives 2.7 / 2.1 here, the fractional part survives.
-    expect(evaluateExpressionTokens(["(5.7", "%", "3)"], constants({}))).toBe(2);
-    expect(evaluateExpressionTokens(["(5", "%", "2.9)"], constants({}))).toBe(1);
+    expect(evaluateExpressionTokens(["(5.7", "%", "3)"], constants({}))).toBe(
+      2,
+    );
+    expect(evaluateExpressionTokens(["(5", "%", "2.9)"], constants({}))).toBe(
+      1,
+    );
   });
 
   // The case the SIN macro rests on: `θ % 360` truncates θ, so R is an integer
   // for ANY input and `(R * 2 + 1) % 2` is always ±1. See
   // docs/land-placement-design.md Sec.5.4.
   it("a divisor larger than the dividend truncates: X % Y == (int)X when |Y| > |X|", () => {
-    expect(evaluateExpressionTokens(["(51.43", "%", "360)"], constants({}))).toBe(51);
-    expect(evaluateExpressionTokens(["(-51.43", "%", "360)"], constants({}))).toBe(-51);
+    expect(
+      evaluateExpressionTokens(["(51.43", "%", "360)"], constants({})),
+    ).toBe(51);
+    expect(
+      evaluateExpressionTokens(["(-51.43", "%", "360)"], constants({})),
+    ).toBe(-51);
   });
 
   // Reachable only because the cast happens FIRST: neither operand is zero.
@@ -109,15 +139,21 @@ describe("evaluateExpressionTokens", () => {
   // one arm whose four candidate readings landed on four different values,
   // which is why the observed 600 was decisive on its own.
   it("a divisor that truncates to zero is a modulo by zero", () => {
-    expect(evaluateExpressionTokens(["(5.7", "%", "0.5)"], constants({}))).toBe(5);
+    expect(evaluateExpressionTokens(["(5.7", "%", "0.5)"], constants({}))).toBe(
+      5,
+    );
   });
 
   // RMSTEST_47's three measured arms, kept as a regression pin: the cast must
   // not disturb the sign rule it was measured alongside.
   it("keeps RMSTEST_47's measured sign rule (sign of the dividend)", () => {
-    expect(evaluateExpressionTokens(["(-7", "%", "2)"], constants({}))).toBe(-1);
+    expect(evaluateExpressionTokens(["(-7", "%", "2)"], constants({}))).toBe(
+      -1,
+    );
     expect(evaluateExpressionTokens(["(7", "%", "-2)"], constants({}))).toBe(1);
-    expect(evaluateExpressionTokens(["(-7", "%", "-2)"], constants({}))).toBe(-1);
+    expect(evaluateExpressionTokens(["(-7", "%", "-2)"], constants({}))).toBe(
+      -1,
+    );
   });
 
   // The old mod() reached `Infinity % 5`, which is NaN, a value
@@ -129,7 +165,10 @@ describe("evaluateExpressionTokens", () => {
   });
 
   it("idiomatic flooring via -inf: (5.9 % -inf) -> 5", () => {
-    const result = evaluateExpressionTokens(["(5.9", "%", "-inf)"], constants({}));
+    const result = evaluateExpressionTokens(
+      ["(5.9", "%", "-inf)"],
+      constants({}),
+    );
     expect(result).toBe(5);
   });
 
@@ -144,23 +183,38 @@ describe("evaluateExpressionTokens", () => {
   it("general % is truncation-toward-zero, not floor, for finite divisors", () => {
     // Truncation (-7/5 truncates to -1, remainder -7 - (-1*5) = -2) gives -2.
     // Floor-mod (floor(-7/5) = -2, remainder -7 - (-2*5) = 3) would give 3.
-    expect(evaluateExpressionTokens(["(-7", "%", "5)"], constants({}))).toBe(-2);
+    expect(evaluateExpressionTokens(["(-7", "%", "5)"], constants({}))).toBe(
+      -2,
+    );
   });
 
   it("floats flow through unrounded", () => {
-    const result = evaluateExpressionTokens(["(1.5", "+", "1.5)"], constants({}));
+    const result = evaluateExpressionTokens(
+      ["(1.5", "+", "1.5)"],
+      constants({}),
+    );
     expect(result).toBe(3);
-    const fractional = evaluateExpressionTokens(["(1.1", "+", "1)"], constants({}));
+    const fractional = evaluateExpressionTokens(
+      ["(1.1", "+", "1)"],
+      constants({}),
+    );
     expect(fractional).toBeCloseTo(2.1);
   });
 
   it("inf is a native value usable directly", () => {
-    expect(evaluateExpressionTokens(["(inf", "-", "1)"], constants({}))).toBe(Infinity);
-    expect(evaluateExpressionTokens(["(-inf", "+", "1)"], constants({}))).toBe(-Infinity);
+    expect(evaluateExpressionTokens(["(inf", "-", "1)"], constants({}))).toBe(
+      Infinity,
+    );
+    expect(evaluateExpressionTokens(["(-inf", "+", "1)"], constants({}))).toBe(
+      -Infinity,
+    );
   });
 
   it("strict left-to-right, no precedence: (2 + 3 * 4) is (2+3)*4, not 2+(3*4)", () => {
-    const result = evaluateExpressionTokens(["(2", "+", "3", "*", "4)"], constants({}));
+    const result = evaluateExpressionTokens(
+      ["(2", "+", "3", "*", "4)"],
+      constants({}),
+    );
     expect(result).toBe(20); // NOT 14
   });
 

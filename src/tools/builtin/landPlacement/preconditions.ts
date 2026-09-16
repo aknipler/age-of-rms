@@ -37,8 +37,12 @@ export function checkP1(parse: ParseResult): P1Result {
     if (item.kind === "raw") rawSpans.push(item.span);
   });
 
-  const rawCoveredChars = rawSpans.reduce((sum, s) => sum + (s.end - s.start), 0);
-  const rawFraction = parse.source.length > 0 ? rawCoveredChars / parse.source.length : 0;
+  const rawCoveredChars = rawSpans.reduce(
+    (sum, s) => sum + (s.end - s.start),
+    0,
+  );
+  const rawFraction =
+    parse.source.length > 0 ? rawCoveredChars / parse.source.length : 0;
 
   let unmanagedLandCount = 0;
   for (const span of rawSpans) {
@@ -56,7 +60,12 @@ export function checkP1(parse: ParseResult): P1Result {
   // "N% of this script is raw text" message at 0.0%/0 commands on any script
   // with a stray unrelated raw node — a true statement about the file and a
   // false alarm about what Land Placement can and cannot manage.
-  return { ok: unmanagedLandCount === 0, rawCoveredChars, rawFraction, unmanagedLandCount };
+  return {
+    ok: unmanagedLandCount === 0,
+    rawCoveredChars,
+    rawFraction,
+    unmanagedLandCount,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -85,12 +94,20 @@ export interface P2Result {
   mismatches: readonly PlayerCountMismatch[];
 }
 
-export function checkP2(params: readonly RandomParam[], livePlayerCount: number): P2Result {
+export function checkP2(
+  params: readonly RandomParam[],
+  livePlayerCount: number,
+): P2Result {
   const mismatches: PlayerCountMismatch[] = [];
   for (const p of params) {
     if (!p.perPlayer || p.emittedForPlayerCount === undefined) continue;
     if (p.emittedForPlayerCount !== livePlayerCount) {
-      mismatches.push({ paramId: p.id, label: p.label, emittedFor: p.emittedForPlayerCount, livePlayerCount });
+      mismatches.push({
+        paramId: p.id,
+        label: p.label,
+        emittedFor: p.emittedForPlayerCount,
+        livePlayerCount,
+      });
     }
   }
   return { ok: mismatches.length === 0, mismatches };
@@ -109,7 +126,9 @@ export function checkP2(params: readonly RandomParam[], livePlayerCount: number)
  * correctness).
  */
 function hasDirectPlacement(parse: ParseResult): boolean {
-  return parse.tokens.some((t) => !t.isTrivia && t.kind === "word" && t.text === "direct_placement");
+  return parse.tokens.some(
+    (t) => !t.isTrivia && t.kind === "word" && t.text === "direct_placement",
+  );
 }
 
 export interface P3Result {
@@ -118,10 +137,17 @@ export interface P3Result {
   directPlacementDeclared: boolean;
 }
 
-export function checkP3(roles: readonly LandRole[], parse: ParseResult): P3Result {
+export function checkP3(
+  roles: readonly LandRole[],
+  parse: ParseResult,
+): P3Result {
   const hasPlayerAssignedLand = roles.some((r) => r.assignToPlayer);
   const directPlacementDeclared = hasDirectPlacement(parse);
-  return { ok: !hasPlayerAssignedLand || directPlacementDeclared, hasPlayerAssignedLand, directPlacementDeclared };
+  return {
+    ok: !hasPlayerAssignedLand || directPlacementDeclared,
+    hasPlayerAssignedLand,
+    directPlacementDeclared,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +162,10 @@ export function checkP3(roles: readonly LandRole[], parse: ParseResult): P3Resul
  * error, which is exactly why this has to be checked BEFORE offering an
  * edit rather than left to be noticed after.
  */
-export function reservedNames(parse: ParseResult, lang: LanguageData): Set<string> {
+export function reservedNames(
+  parse: ParseResult,
+  lang: LanguageData,
+): Set<string> {
   const names = new Set<string>();
   for (const s of parse.symbols) names.add(s.name);
   for (const c of lang.commands) names.add(c.name);
@@ -159,7 +188,11 @@ export interface P4Result {
  * Sec.10.2 item 5), so a non-empty result here means a caller built one
  * without `reservedNames`'s output, not that collision-avoidance failed.
  */
-export function checkP4(candidateNames: readonly string[], parse: ParseResult, lang: LanguageData): P4Result {
+export function checkP4(
+  candidateNames: readonly string[],
+  parse: ParseResult,
+  lang: LanguageData,
+): P4Result {
   const reserved = reservedNames(parse, lang);
   const collisions = candidateNames.filter((n) => reserved.has(n));
   return { ok: collisions.length === 0, collisions };

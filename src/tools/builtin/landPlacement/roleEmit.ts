@@ -53,11 +53,25 @@ export function emitRole(role: LandRole, namer: NameAllocator): RoleEmission {
   const landPercentName = namer.allocate("ROLE_PERCENT", role.label);
 
   const cells: EmittedConst[] = [refCell(terrainName, role.terrain)];
-  cells.push(...emitCells([{ name: baseSizeName, expr: role.baseSize }], namer));
-  cells.push(...emitCells([{ name: baseElevationName, expr: role.baseElevation }], namer));
-  cells.push(...emitCells([{ name: landPercentName, expr: role.landPercent }], namer));
+  cells.push(
+    ...emitCells([{ name: baseSizeName, expr: role.baseSize }], namer),
+  );
+  cells.push(
+    ...emitCells(
+      [{ name: baseElevationName, expr: role.baseElevation }],
+      namer,
+    ),
+  );
+  cells.push(
+    ...emitCells([{ name: landPercentName, expr: role.landPercent }], namer),
+  );
 
-  const names: RoleConstNames = { terrainName, baseSizeName, baseElevationName, landPercentName };
+  const names: RoleConstNames = {
+    terrainName,
+    baseSizeName,
+    baseElevationName,
+    landPercentName,
+  };
   if (role.zone.kind === "fixed") {
     const fixedZoneName = namer.allocate("ROLE_ZONE", role.label);
     cells.push(literalCell(fixedZoneName, role.zone.zone));

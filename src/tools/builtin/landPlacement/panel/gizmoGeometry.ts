@@ -38,7 +38,10 @@ function polarToPercent(
   frame: FrameKind,
   parentDegreesResolved: number | undefined,
 ): PercentPoint {
-  const worldBearing = frame === "absolute" || parentDegreesResolved === undefined ? theta : parentDegreesResolved + 180 + theta;
+  const worldBearing =
+    frame === "absolute" || parentDegreesResolved === undefined
+      ? theta
+      : parentDegreesResolved + 180 + theta;
   const rad = worldBearing * DEG_PER_RAD;
   return { x: anchor.x + r * Math.cos(rad), y: anchor.y + r * Math.sin(rad) };
 }
@@ -69,8 +72,20 @@ export function gizmoHandlePositions(
   parentDegreesResolved: number | undefined,
 ): GizmoHandlePositions {
   return {
-    radiusHandle: polarToPercent(anchor, radius, rotation, frame, parentDegreesResolved),
-    rotationHandle: polarToPercent(anchor, radius * ROTATION_HANDLE_RADIUS_FACTOR, rotation, frame, parentDegreesResolved),
+    radiusHandle: polarToPercent(
+      anchor,
+      radius,
+      rotation,
+      frame,
+      parentDegreesResolved,
+    ),
+    rotationHandle: polarToPercent(
+      anchor,
+      radius * ROTATION_HANDLE_RADIUS_FACTOR,
+      rotation,
+      frame,
+      parentDegreesResolved,
+    ),
   };
 }
 
@@ -98,7 +113,13 @@ export function lineEndHandlePosition(
   frame: FrameKind,
   parentDegreesResolved: number | undefined,
 ): PercentPoint {
-  return polarToPercent(anchor, radius, rotation + 180, frame, parentDegreesResolved);
+  return polarToPercent(
+    anchor,
+    radius,
+    rotation + 180,
+    frame,
+    parentDegreesResolved,
+  );
 }
 
 /**
@@ -114,5 +135,11 @@ export function arcSweepHandlePosition(
   frame: FrameKind,
   parentDegreesResolved: number | undefined,
 ): PercentPoint {
-  return polarToPercent(anchor, radius, rotation + sweep, frame, parentDegreesResolved);
+  return polarToPercent(
+    anchor,
+    radius,
+    rotation + sweep,
+    frame,
+    parentDegreesResolved,
+  );
 }

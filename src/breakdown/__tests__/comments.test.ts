@@ -32,15 +32,20 @@ describe("extractComments", () => {
     const r = parseRms(src, langData);
     const comments = extractComments(r.tokens);
     expect(comments).toHaveLength(1);
-    expect(src.slice(comments[0].start, comments[0].end)).toBe("/* a *//* b */");
+    expect(src.slice(comments[0].start, comments[0].end)).toBe(
+      "/* a *//* b */",
+    );
   });
 
   it("treats a nested comment as one outer span (default nestedComments: true)", () => {
-    const src = "<PLAYER_SETUP>\n/* outer /* inner */ still outer */\nnomad_resources\n";
+    const src =
+      "<PLAYER_SETUP>\n/* outer /* inner */ still outer */\nnomad_resources\n";
     const r = parseRms(src, langData);
     const comments = extractComments(r.tokens);
     expect(comments).toHaveLength(1);
-    expect(src.slice(comments[0].start, comments[0].end)).toBe("/* outer /* inner */ still outer */");
+    expect(src.slice(comments[0].start, comments[0].end)).toBe(
+      "/* outer /* inner */ still outer */",
+    );
   });
 
   it("returns an empty array when there are no comments", () => {

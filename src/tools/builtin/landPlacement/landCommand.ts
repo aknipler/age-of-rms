@@ -32,7 +32,11 @@ export interface LandSkeletonInput {
 }
 
 /** `zone = base + step * repeatIndex` (Sec.4.5), resolved at emit time, since the tool always knows `repeatIndex` by then. */
-function perRepeatZone(base: number, step: number, repeatIndex: number): number {
+function perRepeatZone(
+  base: number,
+  step: number,
+  repeatIndex: number,
+): number {
   return base + step * repeatIndex;
 }
 
@@ -46,29 +50,53 @@ function perRepeatZone(base: number, step: number, repeatIndex: number): number 
  * built for the neighbouring question; use it or extend it rather than
  * writing a second matcher", this is the extension.
  */
-export function buildLandAttachmentExpectations(input: LandSkeletonInput): AttachmentExpectation[] {
+export function buildLandAttachmentExpectations(
+  input: LandSkeletonInput,
+): AttachmentExpectation[] {
   const { role, roleNames, xName, yName, repeatIndex } = input;
   const expectations: AttachmentExpectation[] = [
     { attribute: "terrain_type", expectedArgs: [roleNames.terrainName] },
     { attribute: "base_size", expectedArgs: [roleNames.baseSizeName] },
-    { attribute: "base_elevation", expectedArgs: [roleNames.baseElevationName] },
+    {
+      attribute: "base_elevation",
+      expectedArgs: [roleNames.baseElevationName],
+    },
     { attribute: "land_percent", expectedArgs: [roleNames.landPercentName] },
     { attribute: "land_position", expectedArgs: [xName, yName] },
   ];
 
   if (role.zone.kind === "fixed") {
     if (roleNames.fixedZoneName === undefined) {
-      throw new Error("buildLandAttachmentExpectations: role has a fixed zone but roleNames.fixedZoneName is missing — emitRole and this call disagree");
+      throw new Error(
+        "buildLandAttachmentExpectations: role has a fixed zone but roleNames.fixedZoneName is missing — emitRole and this call disagree",
+      );
     }
-    expectations.push({ attribute: "zone", expectedArgs: [roleNames.fixedZoneName] });
+    expectations.push({
+      attribute: "zone",
+      expectedArgs: [roleNames.fixedZoneName],
+    });
   } else if (role.zone.kind === "perRepeat") {
-    if (repeatIndex === undefined) throw new Error("buildLandAttachmentExpectations: a perRepeat zone needs repeatIndex");
-    expectations.push({ attribute: "zone", expectedArgs: [String(perRepeatZone(role.zone.base, role.zone.step, repeatIndex))] });
+    if (repeatIndex === undefined)
+      throw new Error(
+        "buildLandAttachmentExpectations: a perRepeat zone needs repeatIndex",
+      );
+    expectations.push({
+      attribute: "zone",
+      expectedArgs: [
+        String(perRepeatZone(role.zone.base, role.zone.step, repeatIndex)),
+      ],
+    });
   }
 
   if (role.assignToPlayer) {
-    if (repeatIndex === undefined) throw new Error("buildLandAttachmentExpectations: assignToPlayer needs repeatIndex");
-    expectations.push({ attribute: "assign_to", expectedArgs: ["AT_PLAYER", String(repeatIndex + 1)] });
+    if (repeatIndex === undefined)
+      throw new Error(
+        "buildLandAttachmentExpectations: assignToPlayer needs repeatIndex",
+      );
+    expectations.push({
+      attribute: "assign_to",
+      expectedArgs: ["AT_PLAYER", String(repeatIndex + 1)],
+    });
   }
 
   return expectations;
@@ -140,17 +168,24 @@ export function checkLandAttachment(
 ): LandAttachmentReport {
   const byName = new Map<string, ArgNode[]>();
   for (const item of land.block?.items ?? []) {
-    if (item.kind === "attribute") byName.set(tokens[item.name].text, item.args);
+    if (item.kind === "attribute")
+      byName.set(tokens[item.name].text, item.args);
   }
 
   const attributes: AttributeAttachment[] = expectations.map((exp) => {
     const args = byName.get(exp.attribute);
     if (args === undefined) {
-      return { attribute: exp.attribute, present: false, attached: false, actualArgs: [] };
+      return {
+        attribute: exp.attribute,
+        present: false,
+        attached: false,
+        actualArgs: [],
+      };
     }
     const actualArgs = args.map((a) => argText(a, tokens));
     const attached =
-      actualArgs.length === exp.expectedArgs.length && actualArgs.every((v, i) => v === exp.expectedArgs[i]);
+      actualArgs.length === exp.expectedArgs.length &&
+      actualArgs.every((v, i) => v === exp.expectedArgs[i]);
     return { attribute: exp.attribute, present: true, attached, actualArgs };
   });
 

@@ -16,7 +16,11 @@
 import type { Expr } from "../../../../tools-api/index";
 import { expandShapeGroup } from "./expand";
 import { buildFrame, type PlacementQuantity } from "./frame";
-import { emitRandomParams, computeOwnerPlayers, resolveParamRefs } from "./paramEmit";
+import {
+  emitRandomParams,
+  computeOwnerPlayers,
+  resolveParamRefs,
+} from "./paramEmit";
 import { emitRole } from "./roleEmit";
 import { buildCreateLandSkeleton } from "./landCommand";
 import { emitCells, formatConstLine, type EmittedConst } from "./compiler/emit";
@@ -116,10 +120,20 @@ export function emitAlpModel(
   const paramEmission = emitRandomParams(model.randomParams, namer);
   const paramProblems: VerifyProblem[] = [];
 
-  function resolveExprParams(e: Expr, ownerPlayer: number | undefined, where: string): Expr {
-    const resolved = resolveParamRefs(e, (id) => paramEmission.resolveName(id, ownerPlayer));
+  function resolveExprParams(
+    e: Expr,
+    ownerPlayer: number | undefined,
+    where: string,
+  ): Expr {
+    const resolved = resolveParamRefs(e, (id) =>
+      paramEmission.resolveName(id, ownerPlayer),
+    );
     if (resolved === null) {
-      paramProblems.push({ name: where, emittedValue: undefined, directValue: undefined });
+      paramProblems.push({
+        name: where,
+        emittedValue: undefined,
+        directValue: undefined,
+      });
       return e; // discarded, the whole emission fails once paramProblems is non-empty, below
     }
     return resolved;
@@ -150,7 +164,11 @@ export function emitAlpModel(
     // a-brief.md Sec.8.7 finding 2).
     ...model.groups
       .filter((g) => g.perPlayer && g.kind !== "circle")
-      .map((g) => ({ name: `group:${g.id}:perPlayer`, emittedValue: undefined, directValue: undefined })),
+      .map((g) => ({
+        name: `group:${g.id}:perPlayer`,
+        emittedValue: undefined,
+        directValue: undefined,
+      })),
   ];
   if (kindProblems.length > 0) {
     return { ok: false, problems: kindProblems };
@@ -167,11 +185,27 @@ export function emitAlpModel(
   const resolvedRotationByGroup = new Map<string, Expr>();
   for (const group of model.groups) {
     if (!group.perPlayer) continue;
-    resolvedRotationByGroup.set(group.id, resolveExprParams(group.rotation, undefined, `group:${group.id}:rotation`));
+    resolvedRotationByGroup.set(
+      group.id,
+      resolveExprParams(
+        group.rotation,
+        undefined,
+        `group:${group.id}:rotation`,
+      ),
+    );
   }
-  const prologue = buildPrologue(model.groups, placements, resolvedRotationByGroup, namer, playerCount, resolveExprParams);
+  const prologue = buildPrologue(
+    model.groups,
+    placements,
+    resolvedRotationByGroup,
+    namer,
+    playerCount,
+    resolveExprParams,
+  );
 
-  const roleById = new Map<string, LandRole>(model.roles.map((r) => [r.id, r] as const));
+  const roleById = new Map<string, LandRole>(
+    model.roles.map((r) => [r.id, r] as const),
+  );
   // A role field has no single placement to own it (Sec.6.2: one role, many
   // lands). A `perPlayer` reference there is therefore unresolvable by
   // construction, DECIDED HERE rather than left implicit (same class of gap
@@ -188,9 +222,21 @@ export function emitAlpModel(
   for (const role of model.roles) {
     const resolvedRole: LandRole = {
       ...role,
-      baseSize: resolveExprParams(role.baseSize, undefined, `role:${role.label}:baseSize`),
-      baseElevation: resolveExprParams(role.baseElevation, undefined, `role:${role.label}:baseElevation`),
-      landPercent: resolveExprParams(role.landPercent, undefined, `role:${role.label}:landPercent`),
+      baseSize: resolveExprParams(
+        role.baseSize,
+        undefined,
+        `role:${role.label}:baseSize`,
+      ),
+      baseElevation: resolveExprParams(
+        role.baseElevation,
+        undefined,
+        `role:${role.label}:baseElevation`,
+      ),
+      landPercent: resolveExprParams(
+        role.landPercent,
+        undefined,
+        `role:${role.label}:landPercent`,
+      ),
     };
     const emission = emitRole(resolvedRole, namer);
     roleEmissions.set(role.id, emission);
@@ -212,7 +258,13 @@ export function emitAlpModel(
         offset: {
           kind: "polar",
           r: resolveExprParams(p.offset.r, owner, `placement:${p.label}:r`),
-          theta: thetaOverride ?? resolveExprParams(p.offset.theta, owner, `placement:${p.label}:theta`),
+          theta:
+            thetaOverride ??
+            resolveExprParams(
+              p.offset.theta,
+              owner,
+              `placement:${p.label}:theta`,
+            ),
         },
       };
     }
@@ -275,7 +327,11 @@ export function emitAlpModel(
   // order it always was).
   const paramLines = paramEmission.cells.map(formatConstLine);
   const restLines = [...roleCells, ...frameCells].map(formatConstLine);
-  const body = [...paramLines, ...(prologue.text.length > 0 ? [prologue.text] : []), ...restLines].join("\n");
+  const body = [
+    ...paramLines,
+    ...(prologue.text.length > 0 ? [prologue.text] : []),
+    ...restLines,
+  ].join("\n");
 
   // Step 5: verify, in TWO passes over the same cells. `prologue.liveDegCells`
   // and `prologue.crossCheckDegCells` MUST both precede `frameCells` in
@@ -294,7 +350,12 @@ export function emitAlpModel(
   // `crossCheckDegCells`'s own doc comment in prologue.ts explains. Its own
   // `resolved` output is discarded; only `ok`/`problems` matter here.
   const crossCheck = verifyEmission(
-    [...paramEmission.cells, ...roleCells, ...prologue.crossCheckDegCells, ...frameCells],
+    [
+      ...paramEmission.cells,
+      ...roleCells,
+      ...prologue.crossCheckDegCells,
+      ...frameCells,
+    ],
     frame.cells.map((c) => ({ name: c.name, source: c.expr })),
     scriptSymbols,
     undefined,
@@ -313,7 +374,12 @@ export function emitAlpModel(
   // established by pass 1, this pass exists only to produce the RETURNED
   // `resolved` map.
   const verified = verifyEmission(
-    [...paramEmission.cells, ...roleCells, ...prologue.liveDegCells, ...frameCells],
+    [
+      ...paramEmission.cells,
+      ...roleCells,
+      ...prologue.liveDegCells,
+      ...frameCells,
+    ],
     [],
     scriptSymbols,
     undefined,
@@ -327,13 +393,17 @@ export function emitAlpModel(
     if (placement.role === undefined) continue; // a chain anchor with no land of its own
     const role = roleById.get(placement.role);
     if (!role) {
-      throw new Error(`emitAlpModel: placement "${placement.id}" references role "${placement.role}", which is not in model.roles`);
+      throw new Error(
+        `emitAlpModel: placement "${placement.id}" references role "${placement.role}", which is not in model.roles`,
+      );
     }
     const roleEmission = roleEmissions.get(role.id)!;
     roleNamesByPlacement.set(placement.id, roleEmission.names);
     const quantity = frame.quantities.get(placement.id);
     if (!quantity) {
-      throw new Error(`emitAlpModel: placement "${placement.id}" has no emitted position — buildFrame and this function disagree`);
+      throw new Error(
+        `emitAlpModel: placement "${placement.id}" has no emitted position — buildFrame and this function disagree`,
+      );
     }
     const skeleton = buildCreateLandSkeleton({
       role,
@@ -350,7 +420,11 @@ export function emitAlpModel(
     const guardLabel = prologue.guardLabels.get(placement.id);
     createLandText.set(
       placement.id,
-      guardLabel === undefined ? skeleton : renderConditionalBlock([{ condition: guardLabel, lines: skeleton.split("\n") }]),
+      guardLabel === undefined
+        ? skeleton
+        : renderConditionalBlock([
+            { condition: guardLabel, lines: skeleton.split("\n") },
+          ]),
     );
   }
 
@@ -365,6 +439,9 @@ export function emitAlpModel(
     // AT_LEAST/DEG name across the prologue's own eight branches (P4/Sec.5.6
     // — "what am I about to add", not just what the currently-previewed
     // branch happens to use).
-    emittedNames: [...emittedCells.map((c) => c.name), ...prologue.emittedNames],
+    emittedNames: [
+      ...emittedCells.map((c) => c.name),
+      ...prologue.emittedNames,
+    ],
   };
 }

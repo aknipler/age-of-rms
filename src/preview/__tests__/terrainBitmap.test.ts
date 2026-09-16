@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import type { StageSnapshot } from "../generator/types";
 import { buildTerrainBitmap } from "../render/terrainBitmap";
-import { CLIFF_COLOR, createTerrainPalette, type TerrainConstant } from "../render/palette";
+import {
+  CLIFF_COLOR,
+  createTerrainPalette,
+  type TerrainConstant,
+} from "../render/palette";
 import { NO_LAYER } from "../generator/grid";
 
 const palette = createTerrainPalette(
@@ -12,7 +16,10 @@ const palette = createTerrainPalette(
 const GRASS = 0;
 const WATER = 1;
 
-function snapshot(dim: number, fill: Partial<Omit<StageSnapshot, "stage" | "dim">> = {}): StageSnapshot {
+function snapshot(
+  dim: number,
+  fill: Partial<Omit<StageSnapshot, "stage" | "dim">> = {},
+): StageSnapshot {
   return {
     stage: "S6",
     dim,
@@ -67,7 +74,10 @@ describe("buildTerrainBitmap", () => {
     const dim = 3;
     const elevation = new Uint8Array(dim * dim);
     elevation[1 * dim + 1] = 4; // (1,1) rises above (1,0)
-    const { pixels } = buildTerrainBitmap(snapshot(dim, { elevation }), palette);
+    const { pixels } = buildTerrainBitmap(
+      snapshot(dim, { elevation }),
+      palette,
+    );
     const lit = pixelAt(pixels, dim, 1, 1);
     const shadow = pixelAt(pixels, dim, 1, 2); // (1,2) sits below (1,1)
     const flat = pixelAt(pixels, dim, 0, 0);
@@ -79,7 +89,10 @@ describe("buildTerrainBitmap", () => {
     const dim = 3;
     const elevation = new Uint8Array(dim * dim);
     elevation[0] = 5; // (0,0), which has no neighbour toward the light
-    const { pixels } = buildTerrainBitmap(snapshot(dim, { elevation }), palette);
+    const { pixels } = buildTerrainBitmap(
+      snapshot(dim, { elevation }),
+      palette,
+    );
     const raised = pixelAt(pixels, dim, 0, 0);
     const flat = pixelAt(pixels, dim, 2, 0);
     // Brighter from height alone, but not by the slope term as well.
@@ -94,8 +107,11 @@ describe("buildTerrainBitmap", () => {
     const { pixels } = buildTerrainBitmap(snapshot(dim, { cliff }), palette);
     const cliffPixel = pixelAt(pixels, dim, 1, 1);
     const plain = pixelAt(pixels, dim, 0, 0);
-    const distanceToCliff = Math.abs(cliffPixel.r - CLIFF_COLOR.r) + Math.abs(cliffPixel.g - CLIFF_COLOR.g);
-    const plainDistance = Math.abs(plain.r - CLIFF_COLOR.r) + Math.abs(plain.g - CLIFF_COLOR.g);
+    const distanceToCliff =
+      Math.abs(cliffPixel.r - CLIFF_COLOR.r) +
+      Math.abs(cliffPixel.g - CLIFF_COLOR.g);
+    const plainDistance =
+      Math.abs(plain.r - CLIFF_COLOR.r) + Math.abs(plain.g - CLIFF_COLOR.g);
     expect(distanceToCliff).toBeLessThan(plainDistance);
   });
 
@@ -104,6 +120,8 @@ describe("buildTerrainBitmap", () => {
     const layer = new Uint16Array(dim * dim);
     layer[3] = WATER;
     const { pixels } = buildTerrainBitmap(snapshot(dim, { layer }), palette);
-    expect(pixelAt(pixels, dim, 1, 1)).not.toMatchObject(pixelAt(pixels, dim, 0, 0));
+    expect(pixelAt(pixels, dim, 1, 1)).not.toMatchObject(
+      pixelAt(pixels, dim, 0, 0),
+    );
   });
 });

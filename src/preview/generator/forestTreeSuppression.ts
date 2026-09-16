@@ -20,7 +20,12 @@
 // PURITY (CLAUDE.md hard rule, preview-design Sec.2): no React/Monaco/Tauri
 // imports.
 
-import type { InstantiatedCommand, InstantiatedScript, InstantiatedValue, SimulationNote } from "./types";
+import type {
+  InstantiatedCommand,
+  InstantiatedScript,
+  InstantiatedValue,
+  SimulationNote,
+} from "./types";
 import { objectById, objectEntry, type ObjectConstant } from "./objects";
 import type { YieldOverride, YieldOverrideMap } from "./resourceSummary";
 
@@ -43,10 +48,17 @@ function suppressionKey(terrainId: number, unitId: number): string {
 }
 
 /** Every (unit, terrain) pair the reference data's `autoTreeUnits` tables declare, inverted for a per-unit lookup. */
-function buildAutoTreeIndex(constants: readonly ObjectConstant[]): Map<number, Set<number>> {
+function buildAutoTreeIndex(
+  constants: readonly ObjectConstant[],
+): Map<number, Set<number>> {
   const index = new Map<number, Set<number>>();
   for (const row of constants) {
-    if (row.category !== "terrain" || row.constId === null || !row.autoTreeUnits) continue;
+    if (
+      row.category !== "terrain" ||
+      row.constId === null ||
+      !row.autoTreeUnits
+    )
+      continue;
     for (const slot of row.autoTreeUnits) {
       let terrains = index.get(slot.objectId);
       if (!terrains) {
@@ -68,27 +80,37 @@ interface AttributeIndex {
   terrainIdAttrId: number | undefined;
 }
 
-function buildAttributeIndex(constants: readonly ObjectConstant[]): AttributeIndex {
+function buildAttributeIndex(
+  constants: readonly ObjectConstant[],
+): AttributeIndex {
   const byNameOrId = new Map<string | number, number>();
   const storageSlotByAttrId = new Map<number, number>();
   let terrainIdAttrId: number | undefined;
   for (const row of constants) {
-    if (row.category !== "attribute" || typeof row.constId !== "number") continue;
+    if (row.category !== "attribute" || typeof row.constId !== "number")
+      continue;
     if (row.rmsConstant) byNameOrId.set(row.rmsConstant, row.constId);
     byNameOrId.set(row.constId, row.constId);
     if (row.rmsConstant === "ATTR_TERRAIN_ID") terrainIdAttrId = row.constId;
-    if (typeof row.writesStorageSlot === "number") storageSlotByAttrId.set(row.constId, row.writesStorageSlot);
+    if (typeof row.writesStorageSlot === "number")
+      storageSlotByAttrId.set(row.constId, row.writesStorageSlot);
   }
   return { byNameOrId, storageSlotByAttrId, terrainIdAttrId };
 }
 
-function resolveAttributeId(value: InstantiatedValue, index: AttributeIndex, symbols: ReadonlyMap<string, number>): number | undefined {
+function resolveAttributeId(
+  value: InstantiatedValue,
+  index: AttributeIndex,
+  symbols: ReadonlyMap<string, number>,
+): number | undefined {
   if (typeof value === "number") return index.byNameOrId.get(value) ?? value;
   if (typeof value !== "string") return undefined;
   const direct = index.byNameOrId.get(value);
   if (direct !== undefined) return direct;
   const symbol = symbols.get(value);
-  return symbol === undefined ? undefined : (index.byNameOrId.get(symbol) ?? symbol);
+  return symbol === undefined
+    ? undefined
+    : (index.byNameOrId.get(symbol) ?? symbol);
 }
 
 /**
@@ -111,18 +133,30 @@ function resolveTargetUnitIds(
     const object = objectEntry(value, constants, symbols, aliases);
     if (typeof object?.constId === "number") return [object.constId];
     const symbol = symbols.get(value);
-    return symbol === undefined ? [] : resolveTargetUnitIds(symbol, constants, symbols, aliases);
+    return symbol === undefined
+      ? []
+      : resolveTargetUnitIds(symbol, constants, symbols, aliases);
   }
   if (typeof value !== "number") return [];
   const objectClass = classById(constants, value);
   return objectClass?.memberIds ?? [value];
 }
 
-function classByName(constants: readonly ObjectConstant[], name: string): ObjectConstant | undefined {
-  return constants.find((c) => c.category === "objectClass" && c.rmsConstant === name);
+function classByName(
+  constants: readonly ObjectConstant[],
+  name: string,
+): ObjectConstant | undefined {
+  return constants.find(
+    (c) => c.category === "objectClass" && c.rmsConstant === name,
+  );
 }
-function classById(constants: readonly ObjectConstant[], id: number): ObjectConstant | undefined {
-  return constants.find((c) => c.category === "objectClass" && c.constId === id);
+function classById(
+  constants: readonly ObjectConstant[],
+  id: number,
+): ObjectConstant | undefined {
+  return constants.find(
+    (c) => c.category === "objectClass" && c.constId === id,
+  );
 }
 
 function isEffectAmount(cmd: InstantiatedCommand): boolean {
@@ -136,7 +170,12 @@ export function scanAutoTreeEffects(
 ): AutoTreeSuppressionResult {
   const autoTreeIndex = buildAutoTreeIndex(constants);
   const attributeIndex = buildAttributeIndex(constants);
-  const permittedByRestriction = new Map(terrainRestrictions.map((r) => [r.restrictionId, new Set(r.permittedTerrainIds)]));
+  const permittedByRestriction = new Map(
+    terrainRestrictions.map((r) => [
+      r.restrictionId,
+      new Set(r.permittedTerrainIds),
+    ]),
+  );
 
   const suppressed = new Set<string>();
   const yieldOverrides = new Map<number, YieldOverride>();
@@ -149,12 +188,21 @@ export function scanAutoTreeEffects(
       if (!targetArg || !attributeArg || !amountArg) continue;
       if (typeof amountArg.value !== "number") continue; // an unresolved amount cannot move a total, see D10's header
 
-      const attributeId = resolveAttributeId(attributeArg.value, attributeIndex, instantiated.symbols);
+      const attributeId = resolveAttributeId(
+        attributeArg.value,
+        attributeIndex,
+        instantiated.symbols,
+      );
       if (attributeId === undefined) continue;
 
       if (attributeId === attributeIndex.terrainIdAttrId) {
         const permitted = permittedByRestriction.get(amountArg.value);
-        const units = resolveTargetUnitIds(targetArg.value, constants, instantiated.symbols, instantiated.aliases);
+        const units = resolveTargetUnitIds(
+          targetArg.value,
+          constants,
+          instantiated.symbols,
+          instantiated.aliases,
+        );
         for (const unitId of units) {
           const terrains = autoTreeIndex.get(unitId);
           if (terrains) {
@@ -163,7 +211,8 @@ export function scanAutoTreeEffects(
             // rule), so it is left alone rather than guessed suppressed.
             if (!permitted) continue;
             for (const terrainId of terrains) {
-              if (!permitted.has(terrainId)) suppressed.add(suppressionKey(terrainId, unitId));
+              if (!permitted.has(terrainId))
+                suppressed.add(suppressionKey(terrainId, unitId));
             }
           } else if (!note) {
             const unit = objectById(unitId, constants);
@@ -182,14 +231,22 @@ export function scanAutoTreeEffects(
 
       const slotIndex = attributeIndex.storageSlotByAttrId.get(attributeId);
       if (slotIndex === undefined) continue;
-      const units = resolveTargetUnitIds(targetArg.value, constants, instantiated.symbols, instantiated.aliases);
+      const units = resolveTargetUnitIds(
+        targetArg.value,
+        constants,
+        instantiated.symbols,
+        instantiated.aliases,
+      );
       for (const unitId of units) {
         const unit = objectById(unitId, constants);
         const slot = unit?.resourceStorages?.[slotIndex];
         // No `resource` means the slot holds population or a decay timer,
         // which no resource total this module computes ever reads.
         if (!slot?.resource) continue;
-        yieldOverrides.set(unitId, { key: slot.resource, amount: amountArg.value });
+        yieldOverrides.set(unitId, {
+          key: slot.resource,
+          amount: amountArg.value,
+        });
       }
     }
   }

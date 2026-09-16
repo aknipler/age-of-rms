@@ -9,7 +9,9 @@ import {
   type Hotkey,
 } from "../hotkeys";
 
-function keydown(init: Partial<KeyboardEventInit> & { key: string }): KeyboardEvent {
+function keydown(
+  init: Partial<KeyboardEventInit> & { key: string },
+): KeyboardEvent {
   return new KeyboardEvent("keydown", init);
 }
 
@@ -19,13 +21,21 @@ describe("formatHotkey", () => {
   });
 
   it("orders modifiers Ctrl, Alt, Shift ahead of the key", () => {
-    expect(formatHotkey({ key: "s", ctrl: true, alt: true, shift: true })).toBe("Ctrl+Alt+Shift+S");
+    expect(formatHotkey({ key: "s", ctrl: true, alt: true, shift: true })).toBe(
+      "Ctrl+Alt+Shift+S",
+    );
   });
 
   it("gives named keys a readable label", () => {
-    expect(formatHotkey({ key: "f5", ctrl: false, alt: false, shift: false })).toBe("F5");
-    expect(formatHotkey({ key: "arrowleft", ctrl: true, alt: false, shift: false })).toBe("Ctrl+←");
-    expect(formatHotkey({ key: "escape", ctrl: true, alt: false, shift: false })).toBe("Ctrl+Esc");
+    expect(
+      formatHotkey({ key: "f5", ctrl: false, alt: false, shift: false }),
+    ).toBe("F5");
+    expect(
+      formatHotkey({ key: "arrowleft", ctrl: true, alt: false, shift: false }),
+    ).toBe("Ctrl+←");
+    expect(
+      formatHotkey({ key: "escape", ctrl: true, alt: false, shift: false }),
+    ).toBe("Ctrl+Esc");
   });
 });
 
@@ -37,7 +47,9 @@ describe("matchesHotkey", () => {
 
   it("is case-insensitive on the base key, since Shift changes KeyboardEvent.key's case", () => {
     const event = keydown({ key: "S", ctrlKey: true, shiftKey: true });
-    expect(matchesHotkey(event, { key: "s", ctrl: true, shift: true, alt: false })).toBe(true);
+    expect(
+      matchesHotkey(event, { key: "s", ctrl: true, shift: true, alt: false }),
+    ).toBe(true);
   });
 
   it("rejects a press missing a required modifier", () => {
@@ -54,17 +66,29 @@ describe("matchesHotkey", () => {
 describe("hotkeyFromEvent", () => {
   it("captures Ctrl+letter", () => {
     const event = keydown({ key: "b", ctrlKey: true });
-    expect(hotkeyFromEvent(event)).toEqual({ key: "b", ctrl: true, shift: false, alt: false });
+    expect(hotkeyFromEvent(event)).toEqual({
+      key: "b",
+      ctrl: true,
+      shift: false,
+      alt: false,
+    });
   });
 
   it("captures Alt-only combinations too", () => {
     const event = keydown({ key: "b", altKey: true });
-    expect(hotkeyFromEvent(event)).toEqual({ key: "b", ctrl: false, shift: false, alt: true });
+    expect(hotkeyFromEvent(event)).toEqual({
+      key: "b",
+      ctrl: false,
+      shift: false,
+      alt: true,
+    });
   });
 
   it("declines a bare modifier press", () => {
     for (const key of ["Control", "Shift", "Alt", "Meta"]) {
-      expect(hotkeyFromEvent(keydown({ key, ctrlKey: key === "Control" }))).toBeNull();
+      expect(
+        hotkeyFromEvent(keydown({ key, ctrlKey: key === "Control" })),
+      ).toBeNull();
     }
   });
 
@@ -76,14 +100,39 @@ describe("hotkeyFromEvent", () => {
 
 describe("hotkeysEqual", () => {
   it("is true for two separately-built identical bindings", () => {
-    expect(hotkeysEqual({ key: "s", ctrl: true, shift: false, alt: false }, DEFAULT_SAVE_HOTKEY)).toBe(true);
+    expect(
+      hotkeysEqual(
+        { key: "s", ctrl: true, shift: false, alt: false },
+        DEFAULT_SAVE_HOTKEY,
+      ),
+    ).toBe(true);
   });
 
   it("is false when any single field differs", () => {
-    expect(hotkeysEqual({ key: "b", ctrl: true, shift: false, alt: false }, DEFAULT_SAVE_HOTKEY)).toBe(false);
-    expect(hotkeysEqual({ key: "s", ctrl: false, shift: false, alt: false }, DEFAULT_SAVE_HOTKEY)).toBe(false);
-    expect(hotkeysEqual({ key: "s", ctrl: true, shift: true, alt: false }, DEFAULT_SAVE_HOTKEY)).toBe(false);
-    expect(hotkeysEqual({ key: "s", ctrl: true, shift: false, alt: true }, DEFAULT_SAVE_HOTKEY)).toBe(false);
+    expect(
+      hotkeysEqual(
+        { key: "b", ctrl: true, shift: false, alt: false },
+        DEFAULT_SAVE_HOTKEY,
+      ),
+    ).toBe(false);
+    expect(
+      hotkeysEqual(
+        { key: "s", ctrl: false, shift: false, alt: false },
+        DEFAULT_SAVE_HOTKEY,
+      ),
+    ).toBe(false);
+    expect(
+      hotkeysEqual(
+        { key: "s", ctrl: true, shift: true, alt: false },
+        DEFAULT_SAVE_HOTKEY,
+      ),
+    ).toBe(false);
+    expect(
+      hotkeysEqual(
+        { key: "s", ctrl: true, shift: false, alt: true },
+        DEFAULT_SAVE_HOTKEY,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -98,6 +147,8 @@ describe("isHotkey", () => {
     expect(isHotkey(undefined)).toBe(false);
     expect(isHotkey("Ctrl+S")).toBe(false);
     expect(isHotkey({ key: "s", ctrl: true })).toBe(false);
-    expect(isHotkey({ key: "", ctrl: true, shift: false, alt: false })).toBe(false);
+    expect(isHotkey({ key: "", ctrl: true, shift: false, alt: false })).toBe(
+      false,
+    );
   });
 });

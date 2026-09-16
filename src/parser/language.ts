@@ -14,7 +14,11 @@ export type ArgumentType =
   | "objectConstant"
   | "otherConstant";
 
-export const NUMERIC_ARGUMENT_TYPES: ReadonlySet<ArgumentType> = new Set(["integer", "percent", "flag"]);
+export const NUMERIC_ARGUMENT_TYPES: ReadonlySet<ArgumentType> = new Set([
+  "integer",
+  "percent",
+  "flag",
+]);
 
 export interface ArgumentDef {
   name: string;
@@ -261,8 +265,13 @@ export function buildLanguageIndex(data: LanguageData): LanguageIndex {
   for (const a of data.attributes) attributesByName.set(a.name, a);
   const directivesByName = new Map<string, DirectiveDef>();
   for (const d of data.directives) directivesByName.set(d.name, d);
-  const controlKeywords = new Set<string>(data.controlKeywords.map((k) => k.name));
-  const knownNames = new Set<string>([...commandsByName.keys(), ...attributesByName.keys()]);
+  const controlKeywords = new Set<string>(
+    data.controlKeywords.map((k) => k.name),
+  );
+  const knownNames = new Set<string>([
+    ...commandsByName.keys(),
+    ...attributesByName.keys(),
+  ]);
   // First writer wins, so a duplicate id cannot silently change which command a
   // map renders as depending on array order. `validate:reference` rejects the
   // duplicate outright; this is the belt to that braces, since the index is

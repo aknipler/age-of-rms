@@ -26,7 +26,12 @@ import { buildLanguageIndex } from "../../parser/language";
 import type { CommandNode } from "../../parser/types";
 import { numeric, type ToolMessage } from "../../../tools-api/index";
 import { validateToolMessage } from "../protocol";
-import { encodeArgValue, encodeParseResultForWire, findProhibitedValue, WireEncodingError } from "../wireCodec";
+import {
+  encodeArgValue,
+  encodeParseResultForWire,
+  findProhibitedValue,
+  WireEncodingError,
+} from "../wireCodec";
 import { reconstructAliasedCommand } from "../defReconstruction";
 
 const lang = loadLanguage();
@@ -40,10 +45,27 @@ describe("(a) ToolMessage kinds round-trip through real JSON unchanged", () => {
   const fixtures: Record<string, ToolMessage> = {
     progress: { type: "progress", fraction: 0.5, note: "halfway" },
     "progress (indeterminate)": { type: "progress" },
-    partial: { type: "partial", output: { blocks: [{ kind: "heading", text: "Partial" }, { kind: "text", text: "still running" }] } },
+    partial: {
+      type: "partial",
+      output: {
+        blocks: [
+          { kind: "heading", text: "Partial" },
+          { kind: "text", text: "still running" },
+        ],
+      },
+    },
     result: {
       type: "result",
-      output: { blocks: [{ kind: "table", columns: ["a", "b"], rows: [["1", "2"]], rowSpans: [{ start: 0, end: 1 }] }] },
+      output: {
+        blocks: [
+          {
+            kind: "table",
+            columns: ["a", "b"],
+            rows: [["1", "2"]],
+            rowSpans: [{ start: 0, end: 1 }],
+          },
+        ],
+      },
       edits: [{ start: 0, end: 3, newText: "xyz" }],
     },
     error: { type: "error", message: "boom", reason: "tool-error" },
@@ -85,7 +107,9 @@ describe("(a) an AST containing inf/-inf and an infinite rnd bound", () => {
   function landPercentArgs() {
     const parsed = parseRms(SOURCE, lang);
     const encoded = encodeParseResultForWire(parsed);
-    const commands = encoded.script.sections[0].items.filter((i): i is CommandNode<never, never> => i.kind === "command");
+    const commands = encoded.script.sections[0].items.filter(
+      (i): i is CommandNode<never, never> => i.kind === "command",
+    );
     return commands.map((c) => {
       const attr = c.block!.items.find((i) => i.kind === "attribute")!;
       return (attr as { args: { value: unknown }[] }).args[0].value;
@@ -108,8 +132,13 @@ describe("(a) an AST containing inf/-inf and an infinite rnd bound", () => {
 
     // def is not merely typed away, it is ABSENT from the wire payload, the
     // 41%-of-payload saving Sec.4.2 exists for.
-    const firstCommand = encoded.script.sections[0].items[0] as CommandNode<never, never>;
-    expect(Object.prototype.hasOwnProperty.call(firstCommand, "def")).toBe(false);
+    const firstCommand = encoded.script.sections[0].items[0] as CommandNode<
+      never,
+      never
+    >;
+    expect(Object.prototype.hasOwnProperty.call(firstCommand, "def")).toBe(
+      false,
+    );
   });
 
   it("decodes back to the original Infinity/-Infinity through numeric()", () => {
@@ -123,19 +152,36 @@ describe("(a) an AST containing inf/-inf and an infinite rnd bound", () => {
 });
 
 describe("(a) aliased-command fixture — a consumer holding only the wire form still reaches create_land", () => {
-  const SOURCE = ["<LAND_GENERATION>", "#const L 32", "L {", "  land_percent 20", "}"].join("\n");
+  const SOURCE = [
+    "<LAND_GENERATION>",
+    "#const L 32",
+    "L {",
+    "  land_percent 20",
+    "}",
+  ].join("\n");
 
   it("strips L's def from the wire, and reconstruction from tokens+symbols+referenceData.language recovers create_land", () => {
     const parsed = parseRms(SOURCE, lang);
-    const realCommand = parsed.script.sections[0].items.find((i): i is CommandNode => i.kind === "command")!;
+    const realCommand = parsed.script.sections[0].items.find(
+      (i): i is CommandNode => i.kind === "command",
+    )!;
     expect(realCommand.def?.name).toBe("create_land");
 
     const encoded = encodeParseResultForWire(parsed);
-    const wireCommand = encoded.script.sections[0].items.find((i) => i.kind === "command")!;
-    expect(Object.prototype.hasOwnProperty.call(wireCommand, "def")).toBe(false);
+    const wireCommand = encoded.script.sections[0].items.find(
+      (i) => i.kind === "command",
+    )!;
+    expect(Object.prototype.hasOwnProperty.call(wireCommand, "def")).toBe(
+      false,
+    );
 
     const roundTripped = JSON.parse(JSON.stringify(encoded)) as typeof encoded;
-    const recovered = reconstructAliasedCommand("L", roundTripped.symbols, roundTripped.tokens, language);
+    const recovered = reconstructAliasedCommand(
+      "L",
+      roundTripped.symbols,
+      roundTripped.tokens,
+      language,
+    );
     // THE MUTANT: delete the `?? reconstructAliasedCommand(...)` fallback from
     // defReconstruction.ts's command-def resolution (or delete
     // `Parser.aliasedCommand`'s own fallback in parser.ts) and this goes red,
@@ -148,23 +194,37 @@ describe("(a) aliased-command fixture — a consumer holding only the wire form 
 
 describe("(a) values the serializer must reject before they ever reach the wire", () => {
   it("rejects an array containing undefined", () => {
-    expect(findProhibitedValue([1, undefined, 3])).toEqual({ path: "$[1]", kind: "undefined as an array element" });
+    expect(findProhibitedValue([1, undefined, 3])).toEqual({
+      path: "$[1]",
+      kind: "undefined as an array element",
+    });
   });
 
   it("rejects a Map anywhere in the tree", () => {
-    expect(findProhibitedValue({ nested: { m: new Map([["a", 1]]) } })).toEqual({ path: "$.nested.m", kind: "Map" });
+    expect(findProhibitedValue({ nested: { m: new Map([["a", 1]]) } })).toEqual(
+      { path: "$.nested.m", kind: "Map" },
+    );
   });
 
   it("rejects a Set anywhere in the tree", () => {
-    expect(findProhibitedValue({ s: new Set([1, 2]) })).toEqual({ path: "$.s", kind: "Set" });
+    expect(findProhibitedValue({ s: new Set([1, 2]) })).toEqual({
+      path: "$.s",
+      kind: "Set",
+    });
   });
 
   it("rejects NaN", () => {
-    expect(findProhibitedValue({ v: NaN })).toEqual({ path: "$.v", kind: "NaN" });
+    expect(findProhibitedValue({ v: NaN })).toEqual({
+      path: "$.v",
+      kind: "NaN",
+    });
   });
 
   it("rejects a bare ±Infinity outside the sentinel", () => {
-    expect(findProhibitedValue({ v: Infinity })).toEqual({ path: "$.v", kind: "±Infinity outside the sentinel" });
+    expect(findProhibitedValue({ v: Infinity })).toEqual({
+      path: "$.v",
+      kind: "±Infinity outside the sentinel",
+    });
   });
 
   it("tolerates an undefined-VALUED KEY on a plain object — Sec.1's explicit carve-out", () => {
@@ -172,7 +232,9 @@ describe("(a) values the serializer must reject before they ever reach the wire"
   });
 
   it("passes a clean tree", () => {
-    expect(findProhibitedValue({ a: 1, b: [1, 2, 3], c: { d: "x" } })).toBeNull();
+    expect(
+      findProhibitedValue({ a: 1, b: [1, 2, 3], c: { d: "x" } }),
+    ).toBeNull();
   });
 
   it("encodeArgValue throws WireEncodingError on NaN rather than silently encoding it", () => {
@@ -190,8 +252,12 @@ describe("(a) values the serializer must reject before they ever reach the wire"
 // ---------------------------------------------------------------------------
 
 describe("(b) corpus: encode -> real JSON round trip is lossless, and the wire is clean", () => {
-  const mapNames = readdirSync(join(REPO_ROOT, "test-maps"), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"))
+  const mapNames = readdirSync(join(REPO_ROOT, "test-maps"), {
+    withFileTypes: true,
+  })
+    .filter(
+      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"),
+    )
     .map((entry) => entry.name)
     .sort();
 
@@ -203,7 +269,10 @@ describe("(b) corpus: encode -> real JSON round trip is lossless, and the wire i
 
   for (const mapName of mapNames) {
     it(`${mapName}: encode round-trips through JSON and stays clean of every prohibited kind`, () => {
-      const source = readFileSync(join(REPO_ROOT, "test-maps", mapName), "utf8");
+      const source = readFileSync(
+        join(REPO_ROOT, "test-maps", mapName),
+        "utf8",
+      );
       const parsed = parseRms(source, lang);
       const encoded = encodeParseResultForWire(parsed);
       const roundTripped = JSON.parse(JSON.stringify(encoded));

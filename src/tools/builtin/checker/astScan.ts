@@ -31,7 +31,8 @@ export function scanAstConsts(parse: ParseResult): AstConstMap {
   const all = new Map<string, Set<number>>();
   const first = new Map<string, number>();
   for (const symbol of parse.symbols) {
-    if (symbol.directiveKind !== "const" || symbol.valueToken === undefined) continue;
+    if (symbol.directiveKind !== "const" || symbol.valueToken === undefined)
+      continue;
     const text = parse.tokens[symbol.valueToken].text;
     const value = Number(text);
     if (!Number.isFinite(value)) continue; // an expression/name value, rule 1 does not evaluate those (rule 2's S0 union does, for taken branches)
@@ -56,7 +57,8 @@ export function scanAstConsts(parse: ParseResult): AstConstMap {
 export function rawNodeTexts(parse: ParseResult): string[] {
   const out: string[] = [];
   walkItems(parse, (item) => {
-    if (item.kind === "raw") out.push(parse.source.slice(item.span.start, item.span.end));
+    if (item.kind === "raw")
+      out.push(parse.source.slice(item.span.start, item.span.end));
   });
   return out;
 }
@@ -77,7 +79,10 @@ export interface AstOccurrence {
 }
 
 /** Every item of a given predicate, over the whole AST, generous by construction (see `walkItems`'s own header). */
-export function collectOccurrences(parse: ParseResult, predicate: (item: Item) => boolean): AstOccurrence[] {
+export function collectOccurrences(
+  parse: ParseResult,
+  predicate: (item: Item) => boolean,
+): AstOccurrence[] {
   const out: AstOccurrence[] = [];
   walkItems(parse, (item, ctx) => {
     if (predicate(item)) out.push({ item, ctx });
@@ -97,12 +102,18 @@ export function tokenText(parse: ParseResult, idx: number): string {
  * `#const`-alias resolution (BUG-013's fix), so this needs no separate alias
  * handling.
  */
-export function astCommandName(parse: ParseResult, item: Extract<Item, { kind: "command" }>): string {
+export function astCommandName(
+  parse: ParseResult,
+  item: Extract<Item, { kind: "command" }>,
+): string {
   return item.def?.name ?? tokenText(parse, item.name);
 }
 
 /** `tokens[node.name].text` for an attribute, attribute names are never aliased (Sec.4.3's own scoping: the alias path is commands only). */
-export function astAttributeName(parse: ParseResult, item: Extract<Item, { kind: "attribute" }>): string {
+export function astAttributeName(
+  parse: ParseResult,
+  item: Extract<Item, { kind: "attribute" }>,
+): string {
   return tokenText(parse, item.name);
 }
 
@@ -114,6 +125,9 @@ export function astAttributeName(parse: ParseResult, item: Extract<Item, { kind:
  * shared block be treated as "S0 reached it" without re-simulating branch
  * selection.
  */
-export function wasReachedButUnsimulated(notes: readonly { key: string }[], span: Span): boolean {
+export function wasReachedButUnsimulated(
+  notes: readonly { key: string }[],
+  span: Span,
+): boolean {
   return notes.some((n) => n.key === `unsimulated:${span.start}-${span.end}`);
 }

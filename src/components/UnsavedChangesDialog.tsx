@@ -24,7 +24,10 @@ export type UnsavedAction = "close" | "open" | "new";
  * written. That's the point, it makes the type system enforce the thing a
  * human would otherwise forget.
  */
-const LABELS: Record<UnsavedAction, { save: string; discard: string; question: string }> = {
+const LABELS: Record<
+  UnsavedAction,
+  { save: string; discard: string; question: string }
+> = {
   close: {
     save: "Save and Close",
     discard: "Exit Without Saving",
@@ -67,7 +70,11 @@ interface UnsavedChangesDialogProps {
  * `"cancel"`: the action is abandoned and nothing is saved or discarded.
  * That is the safe default; the only ways to lose work are explicit clicks.
  */
-export function UnsavedChangesDialog({ action, mapName, onChoice }: UnsavedChangesDialogProps) {
+export function UnsavedChangesDialog({
+  action,
+  mapName,
+  onChoice,
+}: UnsavedChangesDialogProps) {
   const labels = LABELS[action];
 
   // `useRef` holds a mutable value that survives re-renders WITHOUT causing
@@ -134,12 +141,17 @@ export function UnsavedChangesDialog({ action, mapName, onChoice }: UnsavedChang
         </div>
 
         <p className={styles.message}>
-          <span className={styles.fileName}>{mapName}</span> has unsaved changes. {labels.question}
+          <span className={styles.fileName}>{mapName}</span> has unsaved
+          changes. {labels.question}
         </p>
 
         <div className={styles.actions}>
           <HelpTip id="unsavedChanges.save">
-            <button type="button" className={`${styles.button} ${styles.primary}`} onClick={() => decide("save")}>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.primary}`}
+              onClick={() => decide("save")}
+            >
               {labels.save}
             </button>
           </HelpTip>
@@ -153,7 +165,11 @@ export function UnsavedChangesDialog({ action, mapName, onChoice }: UnsavedChang
             </button>
           </HelpTip>
           <HelpTip id="unsavedChanges.cancel">
-            <button type="button" className={styles.button} onClick={() => decide("cancel")}>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => decide("cancel")}
+            >
               Cancel
             </button>
           </HelpTip>

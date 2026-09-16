@@ -26,7 +26,12 @@ import {
   validateManifest,
   validateToolMessage,
 } from "../protocol";
-import { ToolHost, type RunnerHandle, type ToolRunner, type Timers } from "../host";
+import {
+  ToolHost,
+  type RunnerHandle,
+  type ToolRunner,
+  type Timers,
+} from "../host";
 import { checkRegistry, type RegisteredTool } from "../registry";
 
 // --- a controllable clock, so the deadlines are tested rather than waited on --
@@ -59,7 +64,15 @@ function fakeTimers() {
 }
 
 function manifest(over: Partial<ToolManifest> = {}): ToolManifest {
-  return { id: "t", name: "T", version: "1.0.0", apiVersion: TOOLS_API_VERSION, description: "d", capabilities: [], ...over };
+  return {
+    id: "t",
+    name: "T",
+    version: "1.0.0",
+    apiVersion: TOOLS_API_VERSION,
+    description: "d",
+    capabilities: [],
+    ...over,
+  };
 }
 
 /** A runner the test drives by hand, including one that refuses to cancel. */
@@ -72,7 +85,8 @@ function scriptedRunner(opts: { honourCancel?: boolean } = {}) {
       emit = onMessage;
       return {
         cancel() {
-          if (honourCancel) emit?.({ type: "error", message: "stopped", reason: "cancelled" });
+          if (honourCancel)
+            emit?.({ type: "error", message: "stopped", reason: "cancelled" });
         },
         kill() {
           killed = true;
@@ -80,16 +94,30 @@ function scriptedRunner(opts: { honourCancel?: boolean } = {}) {
       };
     },
   };
-  return { runner, send: (m: ToolMessage | unknown) => emit?.(m), wasKilled: () => killed };
+  return {
+    runner,
+    send: (m: ToolMessage | unknown) => emit?.(m),
+    wasKilled: () => killed,
+  };
 }
 
-const toolImpl: ToolImplementation = { manifest: manifest(), run: () => ({ cancel() {} }) };
+const toolImpl: ToolImplementation = {
+  manifest: manifest(),
+  run: () => ({ cancel() {} }),
+};
 // host.start() takes a RegisteredTool, not a bare ToolImplementation (external-tools-design.md Sec.10).
-const tool: RegisteredTool = { kind: "builtin", manifest: toolImpl.manifest, impl: toolImpl };
+const tool: RegisteredTool = {
+  kind: "builtin",
+  manifest: toolImpl.manifest,
+  impl: toolImpl,
+};
 
 describe("inbound message validation (Sec.4.2)", () => {
   it("rejects invalid JSON", () => {
-    expect(parseInboundLine("{not json")).toEqual({ ok: false, problem: "inbound line is not valid JSON" });
+    expect(parseInboundLine("{not json")).toEqual({
+      ok: false,
+      problem: "inbound line is not valid JSON",
+    });
   });
 
   it("rejects valid JSON that is not a ToolMessage", () => {
@@ -100,13 +128,18 @@ describe("inbound message validation (Sec.4.2)", () => {
   it("rejects an out-of-enum severity level", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "severity", level: "catastrophe", text: "x" }] },
+      output: {
+        blocks: [{ kind: "severity", level: "catastrophe", text: "x" }],
+      },
     });
     expect(r.ok).toBe(false);
   });
 
   it("rejects a table whose rows are not strings", () => {
-    const r = validateToolMessage({ type: "partial", output: { blocks: [{ kind: "table", columns: ["a"], rows: [[1, 2]] }] } });
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "table", columns: ["a"], rows: [[1, 2]] }] },
+    });
     expect(r.ok).toBe(false);
   });
 
@@ -115,7 +148,16 @@ describe("inbound message validation (Sec.4.2)", () => {
   it("rejects a table whose rowSpans length does not match rows length", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "table", columns: ["a"], rows: [["1"], ["2"]], rowSpans: [{ start: 0, end: 1 }] }] },
+      output: {
+        blocks: [
+          {
+            kind: "table",
+            columns: ["a"],
+            rows: [["1"], ["2"]],
+            rowSpans: [{ start: 0, end: 1 }],
+          },
+        ],
+      },
     });
     expect(r.ok).toBe(false);
     if (r.ok) return;
@@ -125,7 +167,16 @@ describe("inbound message validation (Sec.4.2)", () => {
   it("accepts a rowSpans entry that is null, which means the row has nowhere to jump", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "table", columns: ["a"], rows: [["1"], ["2"]], rowSpans: [{ start: 0, end: 1 }, null] }] },
+      output: {
+        blocks: [
+          {
+            kind: "table",
+            columns: ["a"],
+            rows: [["1"], ["2"]],
+            rowSpans: [{ start: 0, end: 1 }, null],
+          },
+        ],
+      },
     });
     expect(r.ok).toBe(true);
   });
@@ -139,7 +190,9 @@ describe("inbound message validation (Sec.4.2)", () => {
 
   it("does not trust the discriminant", () => {
     expect(validateToolMessage({ type: "result" }).ok).toBe(false);
-    expect(validateToolMessage({ type: "progress", fraction: 5 }).ok).toBe(false);
+    expect(validateToolMessage({ type: "progress", fraction: 5 }).ok).toBe(
+      false,
+    );
   });
 });
 
@@ -149,18 +202,35 @@ describe("mapOverlay validation (land-placement-design.md Sec.3.4 layer 2, Sec.3
       { kind: "point", x: 1, y: 1, role: "primary" },
       { kind: "circle", x: 2, y: 2, rTiles: 3, role: "secondary" },
       { kind: "line", from: { x: 0, y: 0 }, to: { x: 5, y: 5 }, role: "muted" },
-      { kind: "polyline", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], role: "warning" },
+      {
+        kind: "polyline",
+        points: [
+          { x: 0, y: 0 },
+          { x: 1, y: 1 },
+        ],
+        role: "warning",
+      },
       { kind: "label", x: 3, y: 3, text: "hi", role: "error" },
       { id: "h1", kind: "handle", x: 4, y: 4, role: "primary" },
     ];
-    const r = validateToolMessage({ type: "partial", output: { blocks: [{ kind: "mapOverlay", shapes }] } });
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "mapOverlay", shapes }] },
+    });
     expect(r.ok).toBe(true);
   });
 
   it("rejects an out-of-enum role", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "point", x: 1, y: 1, role: "rainbow" }] }] },
+      output: {
+        blocks: [
+          {
+            kind: "mapOverlay",
+            shapes: [{ kind: "point", x: 1, y: 1, role: "rainbow" }],
+          },
+        ],
+      },
     });
     expect(r.ok).toBe(false);
   });
@@ -168,7 +238,14 @@ describe("mapOverlay validation (land-placement-design.md Sec.3.4 layer 2, Sec.3
   it("rejects a handle shape with no id — the type says required, JSON cannot enforce it", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "handle", x: 1, y: 1, role: "primary" }] }] },
+      output: {
+        blocks: [
+          {
+            kind: "mapOverlay",
+            shapes: [{ kind: "handle", x: 1, y: 1, role: "primary" }],
+          },
+        ],
+      },
     });
     expect(r.ok).toBe(false);
   });
@@ -176,7 +253,14 @@ describe("mapOverlay validation (land-placement-design.md Sec.3.4 layer 2, Sec.3
   it("rejects a shape with a non-numeric x/y", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "point", x: "1", y: 1, role: "primary" }] }] },
+      output: {
+        blocks: [
+          {
+            kind: "mapOverlay",
+            shapes: [{ kind: "point", x: "1", y: 1, role: "primary" }],
+          },
+        ],
+      },
     });
     expect(r.ok).toBe(false);
   });
@@ -184,25 +268,43 @@ describe("mapOverlay validation (land-placement-design.md Sec.3.4 layer 2, Sec.3
   it("does not trust the discriminant on an unknown shape kind", () => {
     const r = validateToolMessage({
       type: "partial",
-      output: { blocks: [{ kind: "mapOverlay", shapes: [{ kind: "star", x: 1, y: 1, role: "primary" }] }] },
+      output: {
+        blocks: [
+          {
+            kind: "mapOverlay",
+            shapes: [{ kind: "star", x: 1, y: 1, role: "primary" }],
+          },
+        ],
+      },
     });
     expect(r.ok).toBe(false);
   });
 
   it("accepts a block over the shape cap — that is overlayShapesToRender's job, not validation's", () => {
-    const shapes: OverlayShape[] = Array.from({ length: LIMITS.maxOverlayShapesPerBlock + 1 }, (_, i) => ({
-      kind: "point" as const,
-      x: i,
-      y: i,
-      role: "primary" as const,
-    }));
-    const r = validateToolMessage({ type: "partial", output: { blocks: [{ kind: "mapOverlay", shapes }] } });
+    const shapes: OverlayShape[] = Array.from(
+      { length: LIMITS.maxOverlayShapesPerBlock + 1 },
+      (_, i) => ({
+        kind: "point" as const,
+        x: i,
+        y: i,
+        role: "primary" as const,
+      }),
+    );
+    const r = validateToolMessage({
+      type: "partial",
+      output: { blocks: [{ kind: "mapOverlay", shapes }] },
+    });
     expect(r.ok).toBe(true);
   });
 });
 
 describe("overlayShapesToRender (Sec.3.7)", () => {
-  const shape = (x: number): OverlayShape => ({ kind: "point", x, y: 0, role: "primary" });
+  const shape = (x: number): OverlayShape => ({
+    kind: "point",
+    x,
+    y: 0,
+    role: "primary",
+  });
 
   it("passes an under-cap block through unchanged, with hidden: 0", () => {
     const shapes = [shape(1), shape(2)];
@@ -210,7 +312,10 @@ describe("overlayShapesToRender (Sec.3.7)", () => {
   });
 
   it("truncates an over-cap block and reports how many were hidden — never rejects", () => {
-    const shapes = Array.from({ length: LIMITS.maxOverlayShapesPerBlock + 5 }, (_, i) => shape(i));
+    const shapes = Array.from(
+      { length: LIMITS.maxOverlayShapesPerBlock + 5 },
+      (_, i) => shape(i),
+    );
     const { shapes: rendered, hidden } = overlayShapesToRender(shapes);
     expect(rendered).toHaveLength(LIMITS.maxOverlayShapesPerBlock);
     expect(hidden).toBe(5);
@@ -223,18 +328,38 @@ describe("overlayShapesToRender (Sec.3.7)", () => {
 
 describe("edit validation (Sec.4.5)", () => {
   it("rejects the WHOLE set when one edit overlaps", () => {
-    const r = validateEdits([{ start: 0, end: 5, newText: "a" }, { start: 3, end: 9, newText: "b" }], 100);
+    const r = validateEdits(
+      [
+        { start: 0, end: 5, newText: "a" },
+        { start: 3, end: 9, newText: "b" },
+      ],
+      100,
+    );
     expect(r.ok).toBe(false);
   });
 
   it("rejects malformed bounds", () => {
-    expect(validateEdits([{ start: 9, end: 2, newText: "" }], 100).ok).toBe(false);
-    expect(validateEdits([{ start: -1, end: 2, newText: "" }], 100).ok).toBe(false);
-    expect(validateEdits([{ start: 0, end: 500, newText: "" }], 100).ok).toBe(false);
+    expect(validateEdits([{ start: 9, end: 2, newText: "" }], 100).ok).toBe(
+      false,
+    );
+    expect(validateEdits([{ start: -1, end: 2, newText: "" }], 100).ok).toBe(
+      false,
+    );
+    expect(validateEdits([{ start: 0, end: 500, newText: "" }], 100).ok).toBe(
+      false,
+    );
   });
 
   it("accepts disjoint edits given out of order, because ordering is not the mechanism", () => {
-    expect(validateEdits([{ start: 10, end: 12, newText: "b" }, { start: 0, end: 5, newText: "a" }], 100).ok).toBe(true);
+    expect(
+      validateEdits(
+        [
+          { start: 10, end: 12, newText: "b" },
+          { start: 0, end: 5, newText: "a" },
+        ],
+        100,
+      ).ok,
+    ).toBe(true);
   });
 });
 
@@ -248,7 +373,16 @@ describe("manifest registration (Sec.5)", () => {
   it("rejects a multiSelect whose default violates its own minSelected", () => {
     const problems = validateManifest(
       manifest({
-        params: [{ key: "p", type: "multiSelect", label: "P", default: [], options: [{ value: "a", label: "A" }], minSelected: 1 }],
+        params: [
+          {
+            key: "p",
+            type: "multiSelect",
+            label: "P",
+            default: [],
+            options: [{ value: "a", label: "A" }],
+            minSelected: 1,
+          },
+        ],
       }),
     );
     expect(problems).toHaveLength(1);
@@ -257,13 +391,31 @@ describe("manifest registration (Sec.5)", () => {
 
   it("rejects a select default that is not one of its own options", () => {
     const problems = validateManifest(
-      manifest({ params: [{ key: "p", type: "select", label: "P", default: "z", options: [{ value: "a", label: "A" }] }] }),
+      manifest({
+        params: [
+          {
+            key: "p",
+            type: "select",
+            label: "P",
+            default: "z",
+            options: [{ value: "a", label: "A" }],
+          },
+        ],
+      }),
     );
     expect(problems).toHaveLength(1);
   });
 
   it("rejects an integer default outside its own min/max", () => {
-    expect(validateManifest(manifest({ params: [{ key: "p", type: "integer", label: "P", default: 0, min: 1 }] }))).toHaveLength(1);
+    expect(
+      validateManifest(
+        manifest({
+          params: [
+            { key: "p", type: "integer", label: "P", default: 0, min: 1 },
+          ],
+        }),
+      ),
+    ).toHaveLength(1);
   });
 
   it("passes the real registry", () => {
@@ -273,13 +425,30 @@ describe("manifest registration (Sec.5)", () => {
 
 describe("run-time param validation (Sec.5)", () => {
   it("clamps an integer into its declared range", () => {
-    const defs = [{ key: "n", type: "integer" as const, label: "N", default: 10, min: 1, max: 100 }];
+    const defs = [
+      {
+        key: "n",
+        type: "integer" as const,
+        label: "N",
+        default: 10,
+        min: 1,
+        max: 100,
+      },
+    ];
     expect(resolveParams(defs, { n: 5000 }).params.n).toBe(100);
     expect(resolveParams(defs, { n: -3 }).params.n).toBe(1);
   });
 
   it("falls back to the default for a value outside a select's options", () => {
-    const defs = [{ key: "s", type: "select" as const, label: "S", default: "a", options: [{ value: "a", label: "A" }] }];
+    const defs = [
+      {
+        key: "s",
+        type: "select" as const,
+        label: "S",
+        default: "a",
+        options: [{ value: "a", label: "A" }],
+      },
+    ];
     expect(resolveParams(defs, { s: "nope" }).params.s).toBe("a");
   });
 
@@ -287,13 +456,28 @@ describe("run-time param validation (Sec.5)", () => {
   // selection, and the parameter that motivated multiSelect is meaningless empty.
   it("reports an empty multiSelect against its minSelected", () => {
     const defs = [
-      { key: "m", type: "multiSelect" as const, label: "M", default: ["2"], options: [{ value: "2", label: "2" }], minSelected: 1 },
+      {
+        key: "m",
+        type: "multiSelect" as const,
+        label: "M",
+        default: ["2"],
+        options: [{ value: "2", label: "2" }],
+        minSelected: 1,
+      },
     ];
     expect(resolveParams(defs, { m: [] }).problems).toHaveLength(1);
   });
 
   it("drops submitted values that are not options at all", () => {
-    const defs = [{ key: "m", type: "multiSelect" as const, label: "M", default: [], options: [{ value: "2", label: "2" }] }];
+    const defs = [
+      {
+        key: "m",
+        type: "multiSelect" as const,
+        label: "M",
+        default: [],
+        options: [{ value: "2", label: "2" }],
+      },
+    ];
     expect(resolveParams(defs, { m: ["2", "999"] }).params.m).toEqual(["2"]);
   });
 });
@@ -315,7 +499,10 @@ describe("lifecycle (Sec.9 item 3)", () => {
     host.start(tool, {}, "src");
     send({ type: "progress", fraction: 0.5 });
     expect(host.getState().progress?.fraction).toBe(0.5);
-    send({ type: "result", output: { blocks: [{ kind: "text", text: "done" }] } });
+    send({
+      type: "result",
+      output: { blocks: [{ kind: "text", text: "done" }] },
+    });
     expect(host.getState().phase).toBe("done");
     expect(host.getState().output?.blocks).toHaveLength(1);
   });
@@ -324,9 +511,18 @@ describe("lifecycle (Sec.9 item 3)", () => {
     const { runner, send } = scriptedRunner();
     const host = new ToolHost(runner, fakeTimers().timers);
     host.start(tool, {}, "src");
-    send({ type: "result", output: { blocks: [{ kind: "text", text: "first" }] } });
-    send({ type: "partial", output: { blocks: [{ kind: "text", text: "late" }] } });
-    expect(host.getState().output?.blocks[0]).toEqual({ kind: "text", text: "first" });
+    send({
+      type: "result",
+      output: { blocks: [{ kind: "text", text: "first" }] },
+    });
+    send({
+      type: "partial",
+      output: { blocks: [{ kind: "text", text: "late" }] },
+    });
+    expect(host.getState().output?.blocks[0]).toEqual({
+      kind: "text",
+      text: "first",
+    });
   });
 
   it("synthesizes an error from a synchronous throw in run()", () => {
@@ -344,7 +540,12 @@ describe("lifecycle (Sec.9 item 3)", () => {
     const { runner, send } = scriptedRunner();
     const host = new ToolHost(runner, fakeTimers().timers);
     host.start(tool, {}, "src");
-    send({ type: "partial", output: { blocks: [{ kind: "severity", level: "catastrophe", text: "x" }] } });
+    send({
+      type: "partial",
+      output: {
+        blocks: [{ kind: "severity", level: "catastrophe", text: "x" }],
+      },
+    });
     expect(host.getState().error?.reason).toBe("protocol");
     expect(host.getState().output).toBeNull();
   });
@@ -492,10 +693,19 @@ describe("stale-run message rejection (Sec.4.4)", () => {
     const b = scriptedRunner();
     const hostB = new ToolHost(b.runner, clock.timers);
     hostB.start(tool, {}, "src");
-    b.send({ type: "partial", output: { blocks: [{ kind: "text", text: "B" }] } });
-    a.send({ type: "partial", output: { blocks: [{ kind: "text", text: "A (late)" }] } });
+    b.send({
+      type: "partial",
+      output: { blocks: [{ kind: "text", text: "B" }] },
+    });
+    a.send({
+      type: "partial",
+      output: { blocks: [{ kind: "text", text: "A (late)" }] },
+    });
 
-    expect(hostB.getState().output?.blocks[0]).toEqual({ kind: "text", text: "B" });
+    expect(hostB.getState().output?.blocks[0]).toEqual({
+      kind: "text",
+      text: "B",
+    });
   });
 });
 
@@ -505,7 +715,11 @@ describe("capability enforcement on the result path (Sec.9 item 6)", () => {
     const host = new ToolHost(runner, fakeTimers().timers);
     host.registerEditCapable([]); // this tool did not declare it
     host.start(tool, {}, "src");
-    send({ type: "result", output: { blocks: [] }, edits: [{ start: 0, end: 1, newText: "x" }] });
+    send({
+      type: "result",
+      output: { blocks: [] },
+      edits: [{ start: 0, end: 1, newText: "x" }],
+    });
     expect(host.getState().edits).toBeNull();
     expect(host.getState().log.join(" ")).toContain("edit-source");
   });
@@ -515,7 +729,11 @@ describe("capability enforcement on the result path (Sec.9 item 6)", () => {
     const host = new ToolHost(runner, fakeTimers().timers);
     host.registerEditCapable(["t"]);
     host.start(tool, {}, "src");
-    send({ type: "result", output: { blocks: [] }, edits: [{ start: 0, end: 1, newText: "x" }] });
+    send({
+      type: "result",
+      output: { blocks: [] },
+      edits: [{ start: 0, end: 1, newText: "x" }],
+    });
     expect(host.getState().edits).toHaveLength(1);
   });
 });
@@ -526,7 +744,11 @@ describe("staleness and document replace (Sec.4.3, Sec.9 item 8)", () => {
     const host = new ToolHost(runner, fakeTimers().timers);
     host.start(tool, {}, "original");
     host.registerEditCapable(["t"]);
-    send({ type: "result", output: { blocks: [] }, edits: [{ start: 0, end: 1, newText: "x" }] });
+    send({
+      type: "result",
+      output: { blocks: [] },
+      edits: [{ start: 0, end: 1, newText: "x" }],
+    });
     expect(host.canApply("original")).toBe(true);
     expect(host.canApply("edited since")).toBe(false);
   });
@@ -538,7 +760,11 @@ describe("staleness and document replace (Sec.4.3, Sec.9 item 8)", () => {
     const host = new ToolHost(runner, fakeTimers().timers);
     host.registerEditCapable(["t"]);
     host.start(tool, {}, "original");
-    send({ type: "result", output: { blocks: [] }, edits: [{ start: 0, end: 1, newText: "x" }] });
+    send({
+      type: "result",
+      output: { blocks: [] },
+      edits: [{ start: 0, end: 1, newText: "x" }],
+    });
     expect(host.canApply("changed")).toBe(false);
     expect(host.canApply("original")).toBe(true);
   });
@@ -598,7 +824,10 @@ describe("settings snapshot (BUG-014)", () => {
     const { runner } = scriptedRunner();
     const host = new ToolHost(runner, fakeTimers().timers);
     host.start(tool, {}, "src", runner, { playerCount: 4, mapSize: "tiny" });
-    expect(host.getState().settingsSnapshot).toEqual({ playerCount: 4, mapSize: "tiny" });
+    expect(host.getState().settingsSnapshot).toEqual({
+      playerCount: 4,
+      mapSize: "tiny",
+    });
   });
 
   it("defaults to null when the caller supplies no settings", () => {
@@ -617,13 +846,19 @@ describe("settings snapshot (BUG-014)", () => {
     // Calling start() again for a NEW run (after this one finished) with
     // different settings must not reach back and mutate the first snapshot,
     // there is nothing left holding a reference to it once state moved on.
-    expect(host.getState().settingsSnapshot).toEqual({ playerCount: 2, mapSize: "medium" });
+    expect(host.getState().settingsSnapshot).toEqual({
+      playerCount: 2,
+      mapSize: "medium",
+    });
   });
 });
 
 describe("render caps (Sec.4.2)", () => {
   it("shows the first N rows and reports how many are hidden", () => {
-    const rows = Array.from({ length: LIMITS.maxTableRowsRendered + 25 }, (_, i) => [String(i)]);
+    const rows = Array.from(
+      { length: LIMITS.maxTableRowsRendered + 25 },
+      (_, i) => [String(i)],
+    );
     const { rows: shown, hidden } = tableRowsToRender(rows);
     expect(shown).toHaveLength(LIMITS.maxTableRowsRendered);
     expect(hidden).toBe(25);
@@ -644,14 +879,23 @@ describe("outbound context size cap (Sec.4.2 rule 2)", () => {
 
   it("rejects a context one byte over the cap", () => {
     const s = "x".repeat(LIMITS.maxOutboundRunBytes - 1);
-    expect(checkOutboundContextSize(s)).toContain(`${LIMITS.maxOutboundRunBytes + 1} bytes`);
+    expect(checkOutboundContextSize(s)).toContain(
+      `${LIMITS.maxOutboundRunBytes + 1} bytes`,
+    );
   });
 
   it("refuses an oversized context host-side, naming the script, before the runner ever starts", () => {
     const start = vi.fn();
     const runner: ToolRunner = { start };
     const host = new ToolHost(runner, fakeTimers().timers);
-    host.start(tool, "x".repeat(LIMITS.maxOutboundRunBytes), "src", runner, null, "Pa_Site_v1.1.rms");
+    host.start(
+      tool,
+      "x".repeat(LIMITS.maxOutboundRunBytes),
+      "src",
+      runner,
+      null,
+      "Pa_Site_v1.1.rms",
+    );
     expect(host.getState().phase).toBe("done");
     expect(host.getState().error?.reason).toBe("host-error");
     expect(host.getState().error?.message).toContain("Pa_Site_v1.1.rms");
@@ -673,17 +917,25 @@ describe("scriptStats exemplar (Sec.9 item 9)", () => {
     const { loadLanguage } = await import("../../parser/__tests__/testUtils");
     const { inProcessRunner } = await import("../host");
     const lang = loadLanguage();
-    const source = "<LAND_GENERATION>\n  base_terrain GRASS\n  create_land { land_percent 20 }\n";
+    const source =
+      "<LAND_GENERATION>\n  base_terrain GRASS\n  create_land { land_percent 20 }\n";
     const host = new ToolHost(inProcessRunner, fakeTimers().timers);
     const seen: string[] = [];
     host.subscribe((s) => seen.push(s.phase));
     host.start(
       { kind: "builtin", manifest: scriptStats.manifest, impl: scriptStats },
-      { apiVersion: TOOLS_API_VERSION, parseResult: parseRms(source, lang), params: {} },
+      {
+        apiVersion: TOOLS_API_VERSION,
+        parseResult: parseRms(source, lang),
+        params: {},
+      },
       source,
     );
     await vi.waitFor(() => expect(host.getState().phase).toBe("done"));
     expect(host.getState().error).toBeNull();
-    expect(host.getState().output?.blocks[0]).toEqual({ kind: "heading", text: "Script statistics" });
+    expect(host.getState().output?.blocks[0]).toEqual({
+      kind: "heading",
+      text: "Script statistics",
+    });
   });
 });

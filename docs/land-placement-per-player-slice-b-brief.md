@@ -2,7 +2,7 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-per-player-escalation.md` (rev 5), section 5 in particular. Read this file
-for *what to build and in what order*; read the design for *why*.
+for _what to build and in what order_; read the design for _why_.
 
 **Slice A must be built and green before this starts.**
 

@@ -25,7 +25,12 @@ export type { ResourceKey };
 // players (D6), not an uncertainty band.
 // ---------------------------------------------------------------------------
 
-export const RESOURCE_KEYS: readonly ResourceKey[] = ["food", "wood", "gold", "stone"];
+export const RESOURCE_KEYS: readonly ResourceKey[] = [
+  "food",
+  "wood",
+  "gold",
+  "stone",
+];
 
 export type ResourceAmounts = Record<ResourceKey, number>;
 
@@ -65,9 +70,15 @@ function exactRange(amounts: ResourceAmounts): ResourceRange {
 }
 
 /** The yield a placed instance of this unit actually carries in THIS generation: the override where the script set one, the row's own resourceAmounts otherwise. */
-function effectiveAmounts(constant: ObjectConstant | undefined, overrides: YieldOverrideMap): Partial<ResourceAmounts> | undefined {
+function effectiveAmounts(
+  constant: ObjectConstant | undefined,
+  overrides: YieldOverrideMap,
+): Partial<ResourceAmounts> | undefined {
   if (!constant?.resourceAmounts) return undefined;
-  const override = typeof constant.constId === "number" ? overrides.get(constant.constId) : undefined;
+  const override =
+    typeof constant.constId === "number"
+      ? overrides.get(constant.constId)
+      : undefined;
   if (!override) return constant.resourceAmounts;
   return { ...constant.resourceAmounts, [override.key]: override.amount };
 }
@@ -106,7 +117,10 @@ export function computeResourceSummary(
 ): ResourceTotals {
   // Owner bucket: the player number, or "neutral" for a gaia/unowned placement.
   type OwnerKey = number | "neutral";
-  const counts = new Map<string, { objectRef: string; owner: OwnerKey; count: number }>();
+  const counts = new Map<
+    string,
+    { objectRef: string; owner: OwnerKey; count: number }
+  >();
   for (const obj of objects) {
     const owner: OwnerKey = obj.player ?? "neutral";
     const key = `${obj.objectRef}::${owner}`;
@@ -153,8 +167,20 @@ export function computeResourceSummary(
     playerAmounts.length === 0
       ? exactRange(zeroAmounts())
       : {
-          min: RESOURCE_KEYS.reduce((acc, key) => ({ ...acc, [key]: Math.min(...playerAmounts.map((a) => a[key])) }), zeroAmounts()),
-          max: RESOURCE_KEYS.reduce((acc, key) => ({ ...acc, [key]: Math.max(...playerAmounts.map((a) => a[key])) }), zeroAmounts()),
+          min: RESOURCE_KEYS.reduce(
+            (acc, key) => ({
+              ...acc,
+              [key]: Math.min(...playerAmounts.map((a) => a[key])),
+            }),
+            zeroAmounts(),
+          ),
+          max: RESOURCE_KEYS.reduce(
+            (acc, key) => ({
+              ...acc,
+              [key]: Math.max(...playerAmounts.map((a) => a[key])),
+            }),
+            zeroAmounts(),
+          ),
         };
 
   return { total: exactRange(total), player, neutral: exactRange(neutral) };

@@ -47,7 +47,10 @@ const RMSCHECK_DIR = join(MAPS_DIR, "rms-check");
 const refDb: ValidateReferenceDb = {
   language: lang,
   gameConstants: JSON.parse(
-    readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
   ) as GameConstantsForValidate,
 };
 
@@ -80,9 +83,18 @@ function listRms(dir: string): string[] {
 
 const allMaps = [
   ...listRms(MAPS_DIR).map((name) => ({ name, path: join(MAPS_DIR, name) })),
-  ...listRms(LOCAL_DIR).map((name) => ({ name: `local/${name}`, path: join(LOCAL_DIR, name) })),
-  ...listRms(BROKEN_DIR).map((name) => ({ name: `broken/${name}`, path: join(BROKEN_DIR, name) })),
-  ...listRms(RMSCHECK_DIR).map((name) => ({ name: `rms-check/${name}`, path: join(RMSCHECK_DIR, name) })),
+  ...listRms(LOCAL_DIR).map((name) => ({
+    name: `local/${name}`,
+    path: join(LOCAL_DIR, name),
+  })),
+  ...listRms(BROKEN_DIR).map((name) => ({
+    name: `broken/${name}`,
+    path: join(BROKEN_DIR, name),
+  })),
+  ...listRms(RMSCHECK_DIR).map((name) => ({
+    name: `rms-check/${name}`,
+    path: join(RMSCHECK_DIR, name),
+  })),
 ];
 
 describe("corpus: no-throw + coverage + span fidelity (every file)", () => {
@@ -147,8 +159,12 @@ describe("corpus: validate() zero-error gate (triaged allowlist)", () => {
   for (const map of present) {
     it(map.name, () => {
       const source = readFileSync(map.path, "utf8");
-      const errors = validate(parseRms(source, lang), refDb).filter((d) => d.severity === "error");
-      expect(errors.map((e) => `${e.code} @${e.span.start}: ${e.message}`)).toEqual([]);
+      const errors = validate(parseRms(source, lang), refDb).filter(
+        (d) => d.severity === "error",
+      );
+      expect(
+        errors.map((e) => `${e.code} @${e.span.start}: ${e.message}`),
+      ).toEqual([]);
     });
   }
 });
@@ -176,7 +192,8 @@ describe("corpus: benchmark sanity (Vanguard, ~50k tokens)", () => {
     const SMALL_REPS = 20;
     const s0 = performance.now();
     let smallTokens = 0;
-    for (let i = 0; i < SMALL_REPS; i += 1) smallTokens = parseRms(small, lang).tokens.length;
+    for (let i = 0; i < SMALL_REPS; i += 1)
+      smallTokens = parseRms(small, lang).tokens.length;
     const perTokenSmall = (performance.now() - s0) / (SMALL_REPS * smallTokens);
 
     const t0 = performance.now();
@@ -214,7 +231,9 @@ describe("corpus: a word valued 69 inside a comment truncates the file (Sec.2.1 
   const ALIASES = commentOpenAliases(refDb.gameConstants.constants);
 
   const liveTokens = (src: string, aliases?: ReadonlySet<string>) =>
-    parseRms(src, lang, { commentOpenAliases: aliases }).tokens.filter((t) => !t.isTrivia).length;
+    parseRms(src, lang, { commentOpenAliases: aliases }).tokens.filter(
+      (t) => !t.isTrivia,
+    ).length;
 
   const affected = allMaps.filter((m) => {
     const src = readFileSync(m.path, "utf8");

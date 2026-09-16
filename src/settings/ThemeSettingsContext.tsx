@@ -67,7 +67,9 @@ export interface ThemeSettingsValue {
 const ThemeSettingsContext = createContext<ThemeSettingsValue | null>(null);
 
 export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
-  const [activeThemeId, setActiveThemeIdState] = useState(DEFAULT_ACTIVE_THEME_ID);
+  const [activeThemeId, setActiveThemeIdState] = useState(
+    DEFAULT_ACTIVE_THEME_ID,
+  );
   const [customThemes, setCustomThemesState] = useState<CustomTheme[]>([]);
   const [draftTokens, setDraftTokens] = useState<ThemeTokens>(() =>
     resolveThemeTokens(DEFAULT_ACTIVE_THEME_ID, []),
@@ -80,24 +82,34 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
   // double-invoke makes this necessary rather than defensive.
   useEffect(() => {
     let cancelled = false;
-    load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} }).then(async (loadedStore) => {
-      if (cancelled) return;
-      setStore(loadedStore);
-      const savedThemesRaw = await loadedStore.get<unknown>(THEME_STORE_KEYS.customThemes);
-      const savedThemes = sanitizeCustomThemes(savedThemesRaw);
-      const savedActiveRaw = await loadedStore.get<unknown>(THEME_STORE_KEYS.activeThemeId);
-      const savedActive =
-        typeof savedActiveRaw === "string" &&
-        (isBuiltInThemeId(savedActiveRaw) || savedThemes.some((t) => t.id === savedActiveRaw))
-          ? savedActiveRaw
-          : DEFAULT_ACTIVE_THEME_ID;
-      const savedScaleRaw = await loadedStore.get<unknown>(THEME_STORE_KEYS.uiFontScale);
-      if (cancelled) return;
-      setCustomThemesState(savedThemes);
-      setActiveThemeIdState(savedActive);
-      setDraftTokens(resolveThemeTokens(savedActive, savedThemes));
-      if (savedScaleRaw !== undefined) setUiFontScaleState(sanitizeUiFontScale(savedScaleRaw));
-    });
+    load(APP_SETTINGS_STORE_FILE, { autoSave: true, defaults: {} }).then(
+      async (loadedStore) => {
+        if (cancelled) return;
+        setStore(loadedStore);
+        const savedThemesRaw = await loadedStore.get<unknown>(
+          THEME_STORE_KEYS.customThemes,
+        );
+        const savedThemes = sanitizeCustomThemes(savedThemesRaw);
+        const savedActiveRaw = await loadedStore.get<unknown>(
+          THEME_STORE_KEYS.activeThemeId,
+        );
+        const savedActive =
+          typeof savedActiveRaw === "string" &&
+          (isBuiltInThemeId(savedActiveRaw) ||
+            savedThemes.some((t) => t.id === savedActiveRaw))
+            ? savedActiveRaw
+            : DEFAULT_ACTIVE_THEME_ID;
+        const savedScaleRaw = await loadedStore.get<unknown>(
+          THEME_STORE_KEYS.uiFontScale,
+        );
+        if (cancelled) return;
+        setCustomThemesState(savedThemes);
+        setActiveThemeIdState(savedActive);
+        setDraftTokens(resolveThemeTokens(savedActive, savedThemes));
+        if (savedScaleRaw !== undefined)
+          setUiFontScaleState(sanitizeUiFontScale(savedScaleRaw));
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -145,7 +157,11 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
     (name: string) => {
       const trimmed = name.trim();
       if (trimmed.length === 0) return;
-      const next: CustomTheme = { id: generateThemeId(), name: trimmed, tokens: draftTokens };
+      const next: CustomTheme = {
+        id: generateThemeId(),
+        name: trimmed,
+        tokens: draftTokens,
+      };
       const nextThemes = [...customThemes, next];
       setCustomThemesState(nextThemes);
       void store?.set(THEME_STORE_KEYS.customThemes, nextThemes);
@@ -158,7 +174,9 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
 
   const updateActiveTheme = useCallback(() => {
     if (isBuiltInThemeId(activeThemeId)) return;
-    const nextThemes = customThemes.map((t) => (t.id === activeThemeId ? { ...t, tokens: draftTokens } : t));
+    const nextThemes = customThemes.map((t) =>
+      t.id === activeThemeId ? { ...t, tokens: draftTokens } : t,
+    );
     setCustomThemesState(nextThemes);
     void store?.set(THEME_STORE_KEYS.customThemes, nextThemes);
   }, [activeThemeId, customThemes, draftTokens, store]);
@@ -167,7 +185,9 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
     (id: string, name: string) => {
       const trimmed = name.trim();
       if (trimmed.length === 0) return;
-      const nextThemes = customThemes.map((t) => (t.id === id ? { ...t, name: trimmed } : t));
+      const nextThemes = customThemes.map((t) =>
+        t.id === id ? { ...t, name: trimmed } : t,
+      );
       setCustomThemesState(nextThemes);
       void store?.set(THEME_STORE_KEYS.customThemes, nextThemes);
     },
@@ -183,7 +203,10 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
       // draftTokens pointed at a theme that no longer exists in the list.
       if (id === activeThemeId) {
         setActiveThemeIdState(DEFAULT_ACTIVE_THEME_ID);
-        void store?.set(THEME_STORE_KEYS.activeThemeId, DEFAULT_ACTIVE_THEME_ID);
+        void store?.set(
+          THEME_STORE_KEYS.activeThemeId,
+          DEFAULT_ACTIVE_THEME_ID,
+        );
         setDraftTokens(resolveThemeTokens(DEFAULT_ACTIVE_THEME_ID, nextThemes));
       }
     },
@@ -191,7 +214,11 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
   );
 
   const isDirty = useMemo(
-    () => !themeTokensEqual(draftTokens, resolveThemeTokens(activeThemeId, customThemes)),
+    () =>
+      !themeTokensEqual(
+        draftTokens,
+        resolveThemeTokens(activeThemeId, customThemes),
+      ),
     [draftTokens, activeThemeId, customThemes],
   );
 
@@ -229,11 +256,18 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <ThemeSettingsContext.Provider value={value}>{children}</ThemeSettingsContext.Provider>;
+  return (
+    <ThemeSettingsContext.Provider value={value}>
+      {children}
+    </ThemeSettingsContext.Provider>
+  );
 }
 
 export function useThemeSettings(): ThemeSettingsValue {
   const ctx = useContext(ThemeSettingsContext);
-  if (!ctx) throw new Error("useThemeSettings must be used within a ThemeSettingsProvider");
+  if (!ctx)
+    throw new Error(
+      "useThemeSettings must be used within a ThemeSettingsProvider",
+    );
   return ctx;
 }

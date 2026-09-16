@@ -83,8 +83,16 @@ const BUILTINS: readonly ToolImplementation[] = Object.freeze([
  * mount path at all.
  */
 export const TOOLS: readonly RegisteredTool[] = Object.freeze([
-  ...BUILTINS.map((impl) => ({ kind: "builtin" as const, manifest: impl.manifest, impl })),
-  { kind: "panel" as const, manifest: landPlacementManifest, component: LandPlacementPanel },
+  ...BUILTINS.map((impl) => ({
+    kind: "builtin" as const,
+    manifest: impl.manifest,
+    impl,
+  })),
+  {
+    kind: "panel" as const,
+    manifest: landPlacementManifest,
+    component: LandPlacementPanel,
+  },
 ]);
 
 /**
@@ -102,7 +110,10 @@ export const TOOLS: readonly RegisteredTool[] = Object.freeze([
  * worker exists at all. `"balance-summary"` runs the identical per-generation
  * cost (`generatePreview`, same run-count range) for the same reason.
  */
-export const WORKER_RUNTIME_TOOL_IDS: ReadonlySet<string> = new Set(["consistency-checker", "balance-summary"]);
+export const WORKER_RUNTIME_TOOL_IDS: ReadonlySet<string> = new Set([
+  "consistency-checker",
+  "balance-summary",
+]);
 
 export interface RegistryCheck {
   ok: boolean;
@@ -115,14 +126,19 @@ export interface RegistryCheck {
  * (external-tools-design.md Sec.10), every arm carries a `manifest` at the
  * top level, so validation reads it identically regardless of `kind`.
  */
-export function checkRegistry(tools: readonly RegisteredTool[] = TOOLS): RegistryCheck {
+export function checkRegistry(
+  tools: readonly RegisteredTool[] = TOOLS,
+): RegistryCheck {
   const problems: ManifestProblem[] = [];
   const seenIds = new Set<string>();
 
   for (const tool of tools) {
     problems.push(...validateManifest(tool.manifest));
     if (seenIds.has(tool.manifest.id)) {
-      problems.push({ manifestId: tool.manifest.id, message: "duplicate tool id in the registry" });
+      problems.push({
+        manifestId: tool.manifest.id,
+        message: "duplicate tool id in the registry",
+      });
     }
     seenIds.add(tool.manifest.id);
   }
@@ -134,11 +150,16 @@ export function checkRegistry(tools: readonly RegisteredTool[] = TOOLS): Registr
  * over `.manifest` alone, so a `panel`-kind entry reaches it exactly like a
  * `builtin` one). Anything failing registration is dropped, loudly.
  */
-export function registeredTools(tools: readonly RegisteredTool[] = TOOLS): readonly RegisteredTool[] {
+export function registeredTools(
+  tools: readonly RegisteredTool[] = TOOLS,
+): readonly RegisteredTool[] {
   return tools.filter((tool) => {
     const problems = validateManifest(tool.manifest);
     if (problems.length > 0) {
-      console.error(`Tool "${tool.manifest.id}" failed registration and will not be offered:`, problems.map((p) => p.message));
+      console.error(
+        `Tool "${tool.manifest.id}" failed registration and will not be offered:`,
+        problems.map((p) => p.message),
+      );
       return false;
     }
     return true;

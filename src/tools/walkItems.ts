@@ -25,14 +25,25 @@
  * re-derived.
  */
 
-import type { IfBranch, Item, ParseResult, RandomBranch } from "../parser/types";
+import type {
+  IfBranch,
+  Item,
+  ParseResult,
+  RandomBranch,
+} from "../parser/types";
 
 /**
  * The construct an item sits directly inside. `"top"` covers both the
  * script's preamble and a section's own top level, callers that care about
  * the difference already have the section from `parse.script.sections`.
  */
-export type EnclosingKind = "top" | "commandBlock" | "ifBranch" | "randomPreamble" | "randomBranch" | "orphanBlock";
+export type EnclosingKind =
+  | "top"
+  | "commandBlock"
+  | "ifBranch"
+  | "randomPreamble"
+  | "randomBranch"
+  | "orphanBlock";
 
 export interface WalkContext {
   /**
@@ -66,28 +77,74 @@ export interface WalkContext {
 
 export type ItemVisitor = (item: Item, ctx: WalkContext) => void;
 
-function walkList(items: readonly Item[], ctx: WalkContext, visit: ItemVisitor): void {
+function walkList(
+  items: readonly Item[],
+  ctx: WalkContext,
+  visit: ItemVisitor,
+): void {
   for (const item of items) {
     visit(item, ctx);
     switch (item.kind) {
       case "command":
         if (item.block) {
-          walkList(item.block.items, { sharedBlock: ctx.sharedBlock, insideRandom: ctx.insideRandom, enclosing: "commandBlock" }, visit);
+          walkList(
+            item.block.items,
+            {
+              sharedBlock: ctx.sharedBlock,
+              insideRandom: ctx.insideRandom,
+              enclosing: "commandBlock",
+            },
+            visit,
+          );
         }
         break;
       case "if":
         for (const branch of item.branches) {
-          walkList(branch.items, { sharedBlock: ctx.sharedBlock, insideRandom: ctx.insideRandom, enclosing: "ifBranch", branch }, visit);
+          walkList(
+            branch.items,
+            {
+              sharedBlock: ctx.sharedBlock,
+              insideRandom: ctx.insideRandom,
+              enclosing: "ifBranch",
+              branch,
+            },
+            visit,
+          );
         }
         break;
       case "random":
-        walkList(item.preamble, { sharedBlock: ctx.sharedBlock, insideRandom: true, enclosing: "randomPreamble" }, visit);
+        walkList(
+          item.preamble,
+          {
+            sharedBlock: ctx.sharedBlock,
+            insideRandom: true,
+            enclosing: "randomPreamble",
+          },
+          visit,
+        );
         for (const branch of item.branches) {
-          walkList(branch.items, { sharedBlock: ctx.sharedBlock, insideRandom: true, enclosing: "randomBranch", branch }, visit);
+          walkList(
+            branch.items,
+            {
+              sharedBlock: ctx.sharedBlock,
+              insideRandom: true,
+              enclosing: "randomBranch",
+              branch,
+            },
+            visit,
+          );
         }
         break;
       case "orphanBlock":
-        walkList(item.block.items, { sharedBlock: true, insideRandom: ctx.insideRandom, enclosing: "orphanBlock" }, visit);
+        walkList(
+          item.block.items,
+          {
+            sharedBlock: true,
+            insideRandom: ctx.insideRandom,
+            enclosing: "orphanBlock",
+          },
+          visit,
+        );
         break;
       case "attribute":
       case "directive":
@@ -99,8 +156,16 @@ function walkList(items: readonly Item[], ctx: WalkContext, visit: ItemVisitor):
 
 /** Visits every item in `parse.script.preamble` and every section, recursively, generous over both branch kinds and shared blocks, see the file header for why. */
 export function walkItems(parse: ParseResult, visit: ItemVisitor): void {
-  walkList(parse.script.preamble, { sharedBlock: false, insideRandom: false, enclosing: "top" }, visit);
+  walkList(
+    parse.script.preamble,
+    { sharedBlock: false, insideRandom: false, enclosing: "top" },
+    visit,
+  );
   for (const section of parse.script.sections) {
-    walkList(section.items, { sharedBlock: false, insideRandom: false, enclosing: "top" }, visit);
+    walkList(
+      section.items,
+      { sharedBlock: false, insideRandom: false, enclosing: "top" },
+      visit,
+    );
   }
 }

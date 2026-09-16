@@ -23,7 +23,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../../../parser/__tests__/testUtils";
-import { applyOperator, evaluateExpressionTokens } from "../../../../preview/generator/mathEval";
+import {
+  applyOperator,
+  evaluateExpressionTokens,
+} from "../../../../preview/generator/mathEval";
 import type { Expr } from "../../../../../tools-api/index";
 import { add, cosFromTheta, num, sinFromTheta, sym } from "../compiler/expr";
 import { emitCells, formatConstLine } from "../compiler/emit";
@@ -69,7 +72,12 @@ function buildPlacements(): Placement[] {
   // baselineDelta is A1/A2/A3's fixed offset from A1's baseline (0, -135,
   // +135, Sec.4.2's own worked example), folded with ROTATION_AUX/VAR_An by
   // the backend's re-association+integer-fold, not by this constructor.
-  const aux = (id: string, parent: string, baselineDelta: number, varName: string): Placement => ({
+  const aux = (
+    id: string,
+    parent: string,
+    baselineDelta: number,
+    varName: string,
+  ): Placement => ({
     id,
     parent,
     frame: "radial",
@@ -77,12 +85,19 @@ function buildPlacements(): Placement[] {
     offset: {
       kind: "polar",
       r: sym("RADIUS_AUX_LANDS"),
-      theta: baselineDelta === 0 ? add(sym("ROTATION_AUX"), sym(varName)) : add(add(num(baselineDelta), sym("ROTATION_AUX")), sym(varName)),
+      theta:
+        baselineDelta === 0
+          ? add(sym("ROTATION_AUX"), sym(varName))
+          : add(add(num(baselineDelta), sym("ROTATION_AUX")), sym(varName)),
     },
   });
 
   return [
-    player("P1", { kind: "polar", r: sym("RADIUS_PLAYER_LANDS"), theta: sym("ROTATION_PLAYER") }),
+    player("P1", {
+      kind: "polar",
+      r: sym("RADIUS_PLAYER_LANDS"),
+      theta: sym("ROTATION_PLAYER"),
+    }),
     aux("P1_A1", "P1", 0, "VAR_A1"),
     aux("P1_A2", "P1", -135, "VAR_A2"),
     aux("P1_A3", "P1", 135, "VAR_A3"),
@@ -104,8 +119,13 @@ function extractHandWrittenLines(): string[] {
   // Sec.1: "104 are the placement block", from "Player 1 land" through the
   // last aux land, before the OBJECT CONSTANTS section starts.
   const start = lines.findIndex((l) => l.includes("/* Player 1 land */"));
-  const end = lines.findIndex((l) => l.includes("/* **************************** OBJECT CONSTANTS"));
-  if (start === -1 || end === -1) throw new Error("Bulls_Eyes.rms: block markers not found — has the fixture moved?");
+  const end = lines.findIndex((l) =>
+    l.includes("/* **************************** OBJECT CONSTANTS"),
+  );
+  if (start === -1 || end === -1)
+    throw new Error(
+      "Bulls_Eyes.rms: block markers not found — has the fixture moved?",
+    );
   return lines
     .slice(start, end)
     .map((l) => l.trim())
@@ -114,7 +134,9 @@ function extractHandWrittenLines(): string[] {
 
 /** Sec.5.5 step 1+2: seed with the script's own symbols, then read the
  *  emitted #const chain back exactly as the engine will, in emission order. */
-function resolveEmitted(emitted: readonly ReturnType<typeof emitCells>[number][]): Map<string, number> {
+function resolveEmitted(
+  emitted: readonly ReturnType<typeof emitCells>[number][],
+): Map<string, number> {
   const resolved = new Map(SCRIPT_SYMBOLS);
   for (const cell of emitted) {
     const v = evaluateExpressionTokens(cell.tokens, (n) => resolved.get(n));
@@ -154,13 +176,34 @@ describe("Advanced Land Placement — acceptance gate (Sec.10.1)", () => {
     // cosFromTheta) and the operator cast rules (applyOperator), per Sec.5.5.
     const degreesP1 = ROTATION_PLAYER;
     const degreesP2 = applyOperator("+", DIST_BW_PLAYERS, ROTATION_PLAYER);
-    const childDegrees = (parentDegrees: number, baselineDelta: number, varValue: number): number => {
-      const theta = applyOperator("+", applyOperator("+", baselineDelta, ROTATION_AUX), varValue);
+    const childDegrees = (
+      parentDegrees: number,
+      baselineDelta: number,
+      varValue: number,
+    ): number => {
+      const theta = applyOperator(
+        "+",
+        applyOperator("+", baselineDelta, ROTATION_AUX),
+        varValue,
+      );
       return applyOperator("+", applyOperator("+", parentDegrees, 180), theta);
     };
-    const coord = (degrees: number, r: number, anchorX: number, anchorY: number) => ({
-      x: applyOperator("+", applyOperator("*", r, cosFromTheta(degrees)), anchorX),
-      y: applyOperator("+", applyOperator("*", r, sinFromTheta(degrees)), anchorY),
+    const coord = (
+      degrees: number,
+      r: number,
+      anchorX: number,
+      anchorY: number,
+    ) => ({
+      x: applyOperator(
+        "+",
+        applyOperator("*", r, cosFromTheta(degrees)),
+        anchorX,
+      ),
+      y: applyOperator(
+        "+",
+        applyOperator("*", r, sinFromTheta(degrees)),
+        anchorY,
+      ),
     });
 
     const p1 = coord(degreesP1, RADIUS_PLAYER_LANDS, 50, 50);
@@ -191,11 +234,21 @@ describe("Advanced Land Placement — acceptance gate (Sec.10.1)", () => {
 
   it("lands 8 of 8 lands on the same tile at Normal (200x200)", () => {
     const dim = 200;
-    const toTile = (pct: number): number => Math.max(0, Math.min(dim - 1, Math.round((pct / 100) * dim)));
+    const toTile = (pct: number): number =>
+      Math.max(0, Math.min(dim - 1, Math.round((pct / 100) * dim)));
 
     const resolved = resolveEmitted(emitted);
 
-    for (const id of ["P1", "P1_A1", "P1_A2", "P1_A3", "P2", "P2_A1", "P2_A2", "P2_A3"]) {
+    for (const id of [
+      "P1",
+      "P1_A1",
+      "P1_A2",
+      "P1_A3",
+      "P2",
+      "P2_A1",
+      "P2_A2",
+      "P2_A3",
+    ]) {
       expect(resolved.has(`X_${id}`)).toBe(true);
       expect(resolved.has(`Y_${id}`)).toBe(true);
       // Both are computable percents; the "same tile" property is just that

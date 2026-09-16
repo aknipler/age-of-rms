@@ -21,7 +21,13 @@
 import type { Expr } from "../../../../tools-api/index";
 import { MAX_PLAYER_COUNT } from "../../../generationSettings/generationSettingsConstants";
 import { add, exprEquals, num, sym } from "./compiler/expr";
-import { emitCells, formatConstLine, formatDefineLine, type EmittedConst, type NamedCell } from "./compiler/emit";
+import {
+  emitCells,
+  formatConstLine,
+  formatDefineLine,
+  type EmittedConst,
+  type NamedCell,
+} from "./compiler/emit";
 import type { NameAllocator } from "./compiler/naming";
 import type { Placement, ShapeGroup } from "./model";
 
@@ -39,8 +45,11 @@ export interface ConditionalBranch {
  * item 6's single-branch `create_land` guard, so the two hazards (an
  * unbalanced ladder, an unbalanced single guard) are the same guarantee.
  */
-export function renderConditionalBlock(branches: readonly ConditionalBranch[]): string {
-  if (branches.length === 0) throw new Error("renderConditionalBlock: at least one branch is required");
+export function renderConditionalBlock(
+  branches: readonly ConditionalBranch[],
+): string {
+  if (branches.length === 0)
+    throw new Error("renderConditionalBlock: at least one branch is required");
   const lines: string[] = [];
   branches.forEach((branch, i) => {
     lines.push(`${i === 0 ? "if" : "elseif"} ${branch.condition}`);
@@ -60,7 +69,12 @@ export function renderConditionalBlock(branches: readonly ConditionalBranch[]): 
  * asked of the same arithmetic, not a reason to touch the function that
  * bakes the model's own literal.
  */
-function evenAngleOffsetDegrees(playerIndex: number, slotIndex: number, patternLength: number, count: number): number {
+function evenAngleOffsetDegrees(
+  playerIndex: number,
+  slotIndex: number,
+  patternLength: number,
+  count: number,
+): number {
   const n = patternLength * count;
   const repeatTerm = count > 0 ? (360 / count) * playerIndex : 0;
   const slotTerm = n > 0 ? (360 / n) * slotIndex : 0;
@@ -68,7 +82,11 @@ function evenAngleOffsetDegrees(playerIndex: number, slotIndex: number, patternL
 }
 
 /** `expandShapeGroup`'s own id scheme (`${group.id}#${i}#${slot.id}`), matched here so a member's id can be looked up without re-deriving it. */
-function memberId(group: ShapeGroup, playerIndex: number, slotId: string): string {
+function memberId(
+  group: ShapeGroup,
+  playerIndex: number,
+  slotId: string,
+): string {
   return `${group.id}#${playerIndex}#${slotId}`;
 }
 
@@ -149,12 +167,14 @@ function computeGuardLabels(
     seen.add(id);
     const playerIndex = groupMemberPlayerIndex.get(id);
     if (playerIndex !== undefined) {
-      const guard = playerIndex + 1 > 1 ? atLeastNames.get(playerIndex + 1) : undefined;
+      const guard =
+        playerIndex + 1 > 1 ? atLeastNames.get(playerIndex + 1) : undefined;
       cache.set(id, guard);
       return guard;
     }
     const p = byId.get(id);
-    const guard = !p || p.parent === "center" ? undefined : guardOf(p.parent, seen);
+    const guard =
+      !p || p.parent === "center" ? undefined : guardOf(p.parent, seen);
     cache.set(id, guard);
     return guard;
   }
@@ -164,7 +184,10 @@ function computeGuardLabels(
   // present in `placements` (the caller's list may be a chain-only sample,
   // as in this module's own unit tests), since `groupMemberPlayerIndex`
   // already knows its player index independent of that list.
-  const ids = new Set<string>([...placements.map((p) => p.id), ...groupMemberPlayerIndex.keys()]);
+  const ids = new Set<string>([
+    ...placements.map((p) => p.id),
+    ...groupMemberPlayerIndex.keys(),
+  ]);
   const out = new Map<string, string | undefined>();
   for (const id of ids) out.set(id, guardOf(id, new Set()));
   return out;
@@ -200,11 +223,22 @@ export function buildPrologue(
   resolvedRotationByGroup: ReadonlyMap<string, Expr>,
   namer: NameAllocator,
   playerCount: number,
-  resolveExprParams: (e: Expr, ownerPlayer: number | undefined, where: string) => Expr,
+  resolveExprParams: (
+    e: Expr,
+    ownerPlayer: number | undefined,
+    where: string,
+  ) => Expr,
 ): PrologueResult {
   const perPlayerGroups = groups.filter((g) => g.perPlayer);
   if (perPlayerGroups.length === 0) {
-    return { text: "", emittedNames: [], thetaOverrides: new Map(), guardLabels: new Map(), liveDegCells: [], crossCheckDegCells: [] };
+    return {
+      text: "",
+      emittedNames: [],
+      thetaOverrides: new Map(),
+      guardLabels: new Map(),
+      liveDegCells: [],
+      crossCheckDegCells: [],
+    };
   }
 
   // AT_LEAST_2..MAX_PLAYER_COUNT, ONE set shared by every group: "at least k
@@ -237,7 +271,11 @@ export function buildPrologue(
     }
   }
 
-  const guardLabels = computeGuardLabels(placements, groupMemberPlayerIndex, atLeastNames);
+  const guardLabels = computeGuardLabels(
+    placements,
+    groupMemberPlayerIndex,
+    atLeastNames,
+  );
 
   // slice-b-brief.md item 2, the whole slice: a member's OWN theta wins over
   // the even default wherever it carries a rule (Sec.5 — "the prologue
@@ -265,10 +303,22 @@ export function buildPrologue(
         const id = memberId(group, i, slot.id);
         const placement = placementById.get(id);
         if (!placement || placement.offset.kind !== "polar") continue; // defensive, matches this module's own degNameByMemberId loop above
-        const evenDefault = add(group.rotation, num(evenAngleOffsetDegrees(i, j, patternLength, group.repeats)));
-        const hasRule = placement.nudged === true || !exprEquals(placement.offset.theta, evenDefault);
+        const evenDefault = add(
+          group.rotation,
+          num(evenAngleOffsetDegrees(i, j, patternLength, group.repeats)),
+        );
+        const hasRule =
+          placement.nudged === true ||
+          !exprEquals(placement.offset.theta, evenDefault);
         if (!hasRule) continue;
-        ruleExprByMemberId.set(id, resolveExprParams(placement.offset.theta, i + 1, `group:${group.id}:member:${id}:theta`));
+        ruleExprByMemberId.set(
+          id,
+          resolveExprParams(
+            placement.offset.theta,
+            i + 1,
+            `group:${group.id}:member:${id}:theta`,
+          ),
+        );
       }
     }
   }
@@ -290,9 +340,18 @@ export function buildPrologue(
         const placement = placementById.get(id);
         if (!placement?.thetaPerCount) continue;
         const resolved = new Map<number, Expr>();
-        for (const [countText, expr] of Object.entries(placement.thetaPerCount)) {
+        for (const [countText, expr] of Object.entries(
+          placement.thetaPerCount,
+        )) {
           const count = Number(countText);
-          resolved.set(count, resolveExprParams(expr, i + 1, `group:${group.id}:member:${id}:thetaPerCount:${count}`));
+          resolved.set(
+            count,
+            resolveExprParams(
+              expr,
+              i + 1,
+              `group:${group.id}:member:${id}:thetaPerCount:${count}`,
+            ),
+          );
         }
         thetaPerCountByMemberId.set(id, resolved);
       }
@@ -310,7 +369,8 @@ export function buildPrologue(
   let crossCheckDegCells: EmittedConst[] = [];
   for (let count = 1; count <= MAX_PLAYER_COUNT; count++) {
     const lines: string[] = [];
-    for (let k = 2; k <= count; k++) lines.push(formatDefineLine({ name: atLeastNames.get(k)! }));
+    for (let k = 2; k <= count; k++)
+      lines.push(formatDefineLine({ name: atLeastNames.get(k)! }));
 
     // Angles are per land per branch (item 3), never one shared step: a
     // shared `ALP_STEP` accumulates rounding drift across a repeat and
@@ -326,8 +386,16 @@ export function buildPrologue(
           const id = memberId(group, i, slot.id);
           const name = degNameByMemberId.get(id);
           if (name === undefined) continue; // group.repeats shrank out from under this index, defensively skipped
-          const evenDefault = add(rotation, num(evenAngleOffsetDegrees(i, j, patternLength, count)));
-          const expr = resolveMemberAngle(count, thetaPerCountByMemberId.get(id), ruleExprByMemberId.get(id), evenDefault);
+          const evenDefault = add(
+            rotation,
+            num(evenAngleOffsetDegrees(i, j, patternLength, count)),
+          );
+          const expr = resolveMemberAngle(
+            count,
+            thetaPerCountByMemberId.get(id),
+            ruleExprByMemberId.get(id),
+            evenDefault,
+          );
           targets.push({ name, expr });
         }
       }

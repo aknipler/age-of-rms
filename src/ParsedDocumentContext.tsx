@@ -34,7 +34,11 @@ export function ParsedDocumentProvider({
   // arrives). Wrapping it would add a dependency array to keep in sync for
   // no benefit, the same reasoning PreviewViewportProvider gives for
   // skipping its own memoisation.
-  return <ParsedDocumentCtx.Provider value={parseResult}>{children}</ParsedDocumentCtx.Provider>;
+  return (
+    <ParsedDocumentCtx.Provider value={parseResult}>
+      {children}
+    </ParsedDocumentCtx.Provider>
+  );
 }
 
 /** null both before the first parse response arrives and outside a ParsedDocumentProvider's initial render gap. Callers must handle it, same as ParsedDocumentState.parseResult already requires. */

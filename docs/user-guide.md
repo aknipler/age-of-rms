@@ -64,13 +64,13 @@ until you click it.
 
 The tools shipped today:
 
-| Tool | What it does |
-|---|---|
-| **Script Statistics** | Counts commands, attributes, constants and sections in the open script. |
+| Tool                               | What it does                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Script Statistics**              | Counts commands, attributes, constants and sections in the open script.                                                                                                                                                                                                                                                                                       |
 | **Generation Consistency Checker** | The flagship tool. Static checks (undefined actor areas, terrain the engine's own table refuses, land over-allocation, contradictory conditions) plus a Monte Carlo pass across a player-count matrix, reporting spawn rates, worst player count and failure reasons per command — the closest thing to "will this actually place?" without opening the game. |
-| **Constants Usage** | Lists every `#const`/`#define`, where it's defined, and flags names defined but never used again, or used but never defined. |
-| **Balance Summary** | Runs generations across a player-count matrix and reports each player's average gold/stone/food/wood and nearest-patch distance, side by side — useful for spotting a lopsided map. |
-| **Script Formatter** | Re-lays out indentation, line breaks and blank lines. Preserves each command block's existing one-line-or-expanded shape by default, and — this is the guarantee that makes it safe to run — it never changes a single token, only the whitespace between them. |
+| **Constants Usage**                | Lists every `#const`/`#define`, where it's defined, and flags names defined but never used again, or used but never defined.                                                                                                                                                                                                                                  |
+| **Balance Summary**                | Runs generations across a player-count matrix and reports each player's average gold/stone/food/wood and nearest-patch distance, side by side — useful for spotting a lopsided map.                                                                                                                                                                           |
+| **Script Formatter**               | Re-lays out indentation, line breaks and blank lines. Preserves each command block's existing one-line-or-expanded shape by default, and — this is the guarantee that makes it safe to run — it never changes a single token, only the whitespace between them.                                                                                               |
 
 A table row or note with a span next to it is clickable and jumps the Code
 tab straight to that line.
@@ -107,17 +107,17 @@ with one hand on the left side of the keyboard (so your mouse hand never has
 to move) — the one exception is Open, which keeps the OS-conventional
 `Ctrl+O`.
 
-| Action | Default hotkey |
-|---|---|
-| Save | `Ctrl+S` |
-| Save As | `Ctrl+Shift+S` |
-| New File | `Ctrl+N` |
-| Open File | `Ctrl+O` |
-| Toggle Preview Current/Final | `Ctrl+Alt+V` |
-| Re-roll Preview seed | `Ctrl+Alt+R` |
-| Delete selected Breakdown card | `Ctrl+Alt+D` |
-| Add command (in Breakdown) | `Ctrl+Alt+A` |
-| Toggle command layout (in Code) | `Ctrl+Alt+F` |
+| Action                          | Default hotkey |
+| ------------------------------- | -------------- |
+| Save                            | `Ctrl+S`       |
+| Save As                         | `Ctrl+Shift+S` |
+| New File                        | `Ctrl+N`       |
+| Open File                       | `Ctrl+O`       |
+| Toggle Preview Current/Final    | `Ctrl+Alt+V`   |
+| Re-roll Preview seed            | `Ctrl+Alt+R`   |
+| Delete selected Breakdown card  | `Ctrl+Alt+D`   |
+| Add command (in Breakdown)      | `Ctrl+Alt+A`   |
+| Toggle command layout (in Code) | `Ctrl+Alt+F`   |
 
 ## Theming
 

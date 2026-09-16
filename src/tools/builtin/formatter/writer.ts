@@ -64,7 +64,9 @@ export class GapWriter {
     this.parse = parse;
     this.source = parse.source;
     this.opts = opts;
-    this.gaps = new Array<string | undefined>(parse.tokens.length + 1).fill(undefined);
+    this.gaps = new Array<string | undefined>(parse.tokens.length + 1).fill(
+      undefined,
+    );
   }
 
   /** The indent of the output line in progress, what a verbatim run shifts to. */
@@ -94,12 +96,22 @@ export class GapWriter {
 
   private write(i: number, text: string): void {
     if (i <= this.last) {
-      throw new Error(`formatter: token ${i} placed out of order (last was ${this.last})`);
+      throw new Error(
+        `formatter: token ${i} placed out of order (last was ${this.last})`,
+      );
     }
     // Only the byte-order mark may legally abut its neighbour: the lexer emits
     // it as its own token at offset 0 and the next token can start at 1.
     // Anywhere else an empty gap MERGES two tokens, which is the invariant.
-    if (text === "" && this.last >= 0 && !(this.last === 0 && this.parse.tokens[0].isTrivia && this.origGap(i) === "")) {
+    if (
+      text === "" &&
+      this.last >= 0 &&
+      !(
+        this.last === 0 &&
+        this.parse.tokens[0].isTrivia &&
+        this.origGap(i) === ""
+      )
+    ) {
       text = " ";
     }
     this.gaps[i] = text;
@@ -156,14 +168,21 @@ export class GapWriter {
     while ((match = breakPattern.exec(orig)) !== null) {
       out += orig.slice(cursor, match.index).replace(/[ \t]+$/, "");
       const ws = match[0].replace(/^\r?\n/, "");
-      out += this.opts.eol + (ws.startsWith(oldIndent) ? newIndent + ws.slice(oldIndent.length) : ws);
+      out +=
+        this.opts.eol +
+        (ws.startsWith(oldIndent)
+          ? newIndent + ws.slice(oldIndent.length)
+          : ws);
       cursor = match.index + match[0].length;
     }
     out += orig.slice(cursor);
     this.write(i, out);
     // The line in progress is now the comment's last line.
     const lastBreak = out.lastIndexOf("\n");
-    this.lineIndent = lastBreak < 0 ? this.lineIndent : /^[ \t]*/.exec(out.slice(lastBreak + 1))![0];
+    this.lineIndent =
+      lastBreak < 0
+        ? this.lineIndent
+        : /^[ \t]*/.exec(out.slice(lastBreak + 1))![0];
   }
 
   /**
@@ -183,7 +202,8 @@ export class GapWriter {
     let offset = 0;
     for (let i = 0; i < tokens.length; i++) {
       const gap = this.gaps[i];
-      if (gap === undefined) throw new Error(`formatter: token ${i} was never placed`);
+      if (gap === undefined)
+        throw new Error(`formatter: token ${i} was never placed`);
       offset += gap.length;
       this.starts[i] = offset;
       offset += tokens[i].text.length;
@@ -227,8 +247,10 @@ export class GapWriter {
       const start = from === 0 ? 0 : tokens[from - 1].end;
       const end = to < tokens.length ? tokens[to].start : this.source.length;
       let text = this.gaps[from]!;
-      for (let i = from; i < to; i++) text += tokens[i].text + this.gaps[i + 1]!;
-      if (this.source.slice(start, end) !== text) out.push({ start, end, newText: text });
+      for (let i = from; i < to; i++)
+        text += tokens[i].text + this.gaps[i + 1]!;
+      if (this.source.slice(start, end) !== text)
+        out.push({ start, end, newText: text });
       from = -1;
       to = -1;
     };

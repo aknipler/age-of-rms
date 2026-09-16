@@ -61,7 +61,10 @@ export const MIN_PLAYER_COUNT = 2;
 export const MAX_PLAYER_COUNT = 8;
 
 export function isMapSize(value: unknown): value is MapSize {
-  return typeof value === "string" && (MAP_SIZES as readonly string[]).includes(value);
+  return (
+    typeof value === "string" &&
+    (MAP_SIZES as readonly string[]).includes(value)
+  );
 }
 
 export function isPlayerCount(value: unknown): value is number {
@@ -102,11 +105,20 @@ export const DEFAULT_TEAMS: readonly TeamNumber[] = Object.freeze(
 );
 
 export function isTeamNumber(value: unknown): value is TeamNumber {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_TEAM;
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= MAX_TEAM
+  );
 }
 
 export function isTeams(value: unknown): value is TeamNumber[] {
-  return Array.isArray(value) && value.length === TEAM_SLOTS && value.every(isTeamNumber);
+  return (
+    Array.isArray(value) &&
+    value.length === TEAM_SLOTS &&
+    value.every(isTeamNumber)
+  );
 }
 
 export interface TeamPreset {
@@ -134,12 +146,14 @@ export const TEAM_PRESETS: readonly TeamPreset[] = Object.freeze([
   { id: "ffa", label: "FFA", playerCount: null, teams: DEFAULT_TEAMS },
 ] satisfies readonly TeamPreset[]);
 
-export function findTeamPreset(id: string | null | undefined): TeamPreset | undefined {
+export function findTeamPreset(
+  id: string | null | undefined,
+): TeamPreset | undefined {
   return id ? TEAM_PRESETS.find((preset) => preset.id === id) : undefined;
 }
 
 /** Left click advances, right click reverses; both wrap through - 1 2 3 4. */
 export function cycleTeam(current: TeamNumber, step: 1 | -1): TeamNumber {
   const size = MAX_TEAM + 1;
-  return (((current + step) % size) + size) % size as TeamNumber;
+  return ((((current + step) % size) + size) % size) as TeamNumber;
 }

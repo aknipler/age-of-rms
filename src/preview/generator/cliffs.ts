@@ -41,7 +41,13 @@ import {
   waterMask,
   type TerrainConstantForMasks,
 } from "./grid";
-import { intersectCandidates, ok, fail, pushFailure, type AttributedPredicate } from "./placement";
+import {
+  intersectCandidates,
+  ok,
+  fail,
+  pushFailure,
+  type AttributedPredicate,
+} from "./placement";
 
 // ---------------------------------------------------------------------------
 // [tune] / guide-value constants
@@ -83,13 +89,19 @@ const DIRECTIONS: ReadonlyArray<{ dx: number; dy: number }> = [
 // spec (Sec.3 rule 10; Sec.6.1's "only the final circle_radius applies").
 // ---------------------------------------------------------------------------
 
-function lastByName(commands: readonly InstantiatedCommand[], name: string): InstantiatedCommand | undefined {
+function lastByName(
+  commands: readonly InstantiatedCommand[],
+  name: string,
+): InstantiatedCommand | undefined {
   let found: InstantiatedCommand | undefined;
   for (const cmd of commands) if (cmd.name === name) found = cmd;
   return found;
 }
 
-function numArg(cmd: InstantiatedCommand | undefined, fallback: number): number {
+function numArg(
+  cmd: InstantiatedCommand | undefined,
+  fallback: number,
+): number {
   const v: InstantiatedValue = cmd?.args[0]?.value;
   return typeof v === "number" ? v : fallback;
 }
@@ -109,7 +121,9 @@ export interface CliffSettings {
 }
 
 /** Folds every standalone CLIFF_GENERATION command into one settings record, defaults per Sec.6.3/language.json. */
-export function resolveCliffSettings(commands: readonly InstantiatedCommand[]): CliffSettings {
+export function resolveCliffSettings(
+  commands: readonly InstantiatedCommand[],
+): CliffSettings {
   const minCliffsCmd = lastByName(commands, "min_number_of_cliffs");
   const maxCliffsCmd = lastByName(commands, "max_number_of_cliffs");
   const minLengthCmd = lastByName(commands, "min_length_of_cliff");
@@ -124,8 +138,14 @@ export function resolveCliffSettings(commands: readonly InstantiatedCommand[]): 
     minLength: numArg(minLengthCmd, DEFAULT_MIN_LENGTH),
     maxLength: numArg(maxLengthCmd, DEFAULT_MAX_LENGTH),
     curliness: numArg(curlinessCmd, DEFAULT_CURLINESS),
-    minDistanceCliffs: numArg(minDistanceCliffsCmd, DEFAULT_MIN_DISTANCE_CLIFFS),
-    minTerrainDistance: numArg(minTerrainDistanceCmd, DEFAULT_MIN_TERRAIN_DISTANCE),
+    minDistanceCliffs: numArg(
+      minDistanceCliffsCmd,
+      DEFAULT_MIN_DISTANCE_CLIFFS,
+    ),
+    minTerrainDistance: numArg(
+      minTerrainDistanceCmd,
+      DEFAULT_MIN_TERRAIN_DISTANCE,
+    ),
     minCliffsCmd,
     maxCliffsCmd,
     minLengthCmd,
@@ -168,15 +188,27 @@ export function eligibleCliffStartTiles(
         for (const origin of origins) {
           const dx = x - origin.x;
           const dy = y - origin.y;
-          if (dx * dx + dy * dy < LAND_ORIGIN_MIN_DISTANCE * LAND_ORIGIN_MIN_DISTANCE) return false;
+          if (
+            dx * dx + dy * dy <
+            LAND_ORIGIN_MIN_DISTANCE * LAND_ORIGIN_MIN_DISTANCE
+          )
+            return false;
         }
         return true;
       },
     },
     { bucket: "noValidTiles", test: (i) => water[i] === 0 },
     { bucket: "noValidTiles", test: (i) => slope[i] === 0 },
-    { bucket: "spacingConflict", test: (i) => cliffDistance[i] === UNREACHABLE || cliffDistance[i] >= minCliffSpacing },
-    { bucket: "spacingConflict", test: (i) => waterDistance[i] === UNREACHABLE || waterDistance[i] >= minWaterSpacing },
+    {
+      bucket: "spacingConflict",
+      test: (i) =>
+        cliffDistance[i] === UNREACHABLE || cliffDistance[i] >= minCliffSpacing,
+    },
+    {
+      bucket: "spacingConflict",
+      test: (i) =>
+        waterDistance[i] === UNREACHABLE || waterDistance[i] >= minWaterSpacing,
+    },
   ];
 
   const result = intersectCandidates(scratch, n, predicates);
@@ -214,14 +246,26 @@ export function eligibleCliffStartTiles(
 // start-tile-only, matching where Sec.6.3's prose literally places them.
 // ---------------------------------------------------------------------------
 
-function canPlaceCliffTile(grid: TileGrid, water: Uint8Array, x: number, y: number): boolean {
+function canPlaceCliffTile(
+  grid: TileGrid,
+  water: Uint8Array,
+  x: number,
+  y: number,
+): boolean {
   const { dim } = grid;
   if (x < 0 || x >= dim || y < 0 || y >= dim) return false;
   const i = tileIndex(grid, x, y);
   return grid.cliff[i] === 0 && water[i] === 0;
 }
 
-export function walkCliff(grid: TileGrid, water: Uint8Array, start: number, len: number, curliness: number, rng: Rng): void {
+export function walkCliff(
+  grid: TileGrid,
+  water: Uint8Array,
+  start: number,
+  len: number,
+  curliness: number,
+  rng: Rng,
+): void {
   const { dim } = grid;
   let x = start % dim;
   let y = (start - x) / dim;
@@ -284,7 +328,13 @@ export function applyCliffs(
   let ordinal = 0;
   const nextSubstream = (): Rng => createSubstream(masterSeed, "S3", ordinal++);
 
-  const zeroCliffReport = (): CommandReport => ({ commandSpan, stage: "S3", attempted: 0, placed: 0, failures: [] });
+  const zeroCliffReport = (): CommandReport => ({
+    commandSpan,
+    stage: "S3",
+    attempted: 0,
+    placed: 0,
+    failures: [],
+  });
 
   if (settings.minCliffs > settings.maxCliffs) {
     const span = settings.maxCliffsCmd?.span ?? settings.minCliffsCmd?.span;
@@ -325,7 +375,11 @@ export function applyCliffs(
   }
 
   const countRng = nextSubstream();
-  const count = nextInt(countRng, settings.minCliffs, Math.max(settings.minCliffs, settings.maxCliffs - 1));
+  const count = nextInt(
+    countRng,
+    settings.minCliffs,
+    Math.max(settings.minCliffs, settings.maxCliffs - 1),
+  );
 
   const { mask: water } = waterMask(grid, constants);
   const waterDistance = distanceTransformFromMask(grid.dim, water);
@@ -338,9 +392,22 @@ export function applyCliffs(
 
   for (let c = 0; c < count; c++) {
     const cliffDistance = distanceTransformFromMask(grid.dim, grid.cliff);
-    const candidateResult = eligibleCliffStartTiles(grid, origins, water, slope, cliffDistance, waterDistance, minCliffSpacing, minWaterSpacing);
+    const candidateResult = eligibleCliffStartTiles(
+      grid,
+      origins,
+      water,
+      slope,
+      cliffDistance,
+      waterDistance,
+      minCliffSpacing,
+      minWaterSpacing,
+    );
     if (!candidateResult.ok) {
-      pushFailure(failures, { ...candidateResult.failure, commandSpan, entity: `cliff ${c + 1}` });
+      pushFailure(failures, {
+        ...candidateResult.failure,
+        commandSpan,
+        entity: `cliff ${c + 1}`,
+      });
       continue;
     }
 
@@ -349,7 +416,11 @@ export function applyCliffs(
     const start = candidates[nextInt(pickRng, 0, candidates.length - 1)];
 
     const lengthRng = nextSubstream();
-    const len = nextInt(lengthRng, settings.minLength, Math.max(settings.minLength, settings.maxLength));
+    const len = nextInt(
+      lengthRng,
+      settings.minLength,
+      Math.max(settings.minLength, settings.maxLength),
+    );
     if (len < MIN_LENGTH_FOR_CLIFFS_TO_APPEAR) continue; // this draw yields nothing, see the note above
 
     const walkRng = nextSubstream();
@@ -357,5 +428,8 @@ export function applyCliffs(
     placed++;
   }
 
-  return { reports: [{ commandSpan, stage: "S3", attempted: count, placed, failures }], notes };
+  return {
+    reports: [{ commandSpan, stage: "S3", attempted: count, placed, failures }],
+    notes,
+  };
 }

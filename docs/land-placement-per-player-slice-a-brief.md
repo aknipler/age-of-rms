@@ -2,8 +2,8 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-per-player-escalation.md` (rev 5), which Sec.12 Q10 of
-`docs/land-placement-design.md` points to. Read this file for *what to build and in what order*;
-read the design for *why*, and treat the design as authoritative wherever the two disagree.
+`docs/land-placement-design.md` points to. Read this file for _what to build and in what order_;
+read the design for _why_, and treat the design as authoritative wherever the two disagree.
 
 **Slice A delivers the whole user-facing ask on its own.** A ring can be marked per-player, and
 the emitted script then produces one repeat per player who is actually in the game, arranged
@@ -108,7 +108,7 @@ create_land { ... }
 endif
 ```
 
-A land belonging to player *k*, **or chained to a land belonging to player *k***, is guarded by
+A land belonging to player _k_, **or chained to a land belonging to player _k_**, is guarded by
 `ALP_AT_LEAST_k`. A land belonging to no player is not guarded. Player 1 needs no guard.
 
 **Emit the conditional structure from a structure that cannot unbalance**, never by string

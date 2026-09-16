@@ -26,7 +26,11 @@ function group(overrides: Partial<ShapeGroup> = {}): ShapeGroup {
     id: "G",
     parent: "center",
     kind: "circle",
-    pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }, { id: "B", role: "role-B" }],
+    pattern: [
+      { id: "P", role: "role-P" },
+      { id: "A", role: "role-A" },
+      { id: "B", role: "role-B" },
+    ],
     repeats: 3,
     radius: num(26),
     rotation: num(0),
@@ -48,9 +52,22 @@ const noNames = () => [] as readonly string[];
 describe("reExpand — matching and the ordering it depends on", () => {
   it("reorder: [P, A, B] -> [P, B, A] keeps every land in place, matched by (repeatIndex, slotId) not by position", () => {
     const { group: oldGroup, placements } = seed(group());
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }, { id: "B", role: "role-B" }, { id: "A", role: "role-A" }] };
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [
+        { id: "P", role: "role-P" },
+        { id: "B", role: "role-B" },
+        { id: "A", role: "role-A" },
+      ],
+    };
 
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
 
     // Same 9 ids, just recomputed offsets (nothing nudged), the reorder
     // moved the ANGLE FORMULA'S j-index, not the land identities.
@@ -65,10 +82,21 @@ describe("reExpand — matching and the ordering it depends on", () => {
     const { group: oldGroup, placements } = seed(group());
     const newGroup: ShapeGroup = {
       ...oldGroup,
-      pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }, { id: "X", role: "role-X" }, { id: "B", role: "role-B" }],
+      pattern: [
+        { id: "P", role: "role-P" },
+        { id: "A", role: "role-A" },
+        { id: "X", role: "role-X" },
+        { id: "B", role: "role-B" },
+      ],
     };
 
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.recomputedIds).toHaveLength(9); // the 3 original slots x 3 repeats
     expect(result.report.addedIds).toHaveLength(3); // the new X slot x 3 repeats
@@ -79,12 +107,26 @@ describe("reExpand — matching and the ordering it depends on", () => {
 
   it("slot deletion: [P, A, B] -> [P, B] releases or deletes A's members, and reports which", () => {
     const { group: oldGroup, placements } = seed(group());
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }, { id: "B", role: "role-B" }] };
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [
+        { id: "P", role: "role-P" },
+        { id: "B", role: "role-B" },
+      ],
+    };
 
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.recomputedIds).toHaveLength(6); // P and B across 3 repeats
-    expect(result.report.deletedIds.length + result.report.releasedIds.length).toBe(3); // the 3 A members
+    expect(
+      result.report.deletedIds.length + result.report.releasedIds.length,
+    ).toBe(3); // the 3 A members
     expect(result.members).toHaveLength(6);
   });
 });
@@ -93,7 +135,13 @@ describe("reExpand — repeats up/down", () => {
   it("repeats up (3 -> 4) adds a whole new repeat's worth of members", () => {
     const { group: oldGroup, placements } = seed(group());
     const newGroup: ShapeGroup = { ...oldGroup, repeats: 4 };
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
     expect(result.report.addedIds).toHaveLength(3);
     expect(result.report.recomputedIds).toHaveLength(9);
     expect(result.members).toHaveLength(12);
@@ -102,8 +150,16 @@ describe("reExpand — repeats up/down", () => {
   it("repeats down (3 -> 2) leaves the third repeat's members to release-or-delete", () => {
     const { group: oldGroup, placements } = seed(group());
     const newGroup: ShapeGroup = { ...oldGroup, repeats: 2 };
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
-    expect(result.report.deletedIds.length + result.report.releasedIds.length).toBe(3);
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
+    expect(
+      result.report.deletedIds.length + result.report.releasedIds.length,
+    ).toBe(3);
     expect(result.members).toHaveLength(6);
   });
 
@@ -116,12 +172,26 @@ describe("reExpand — repeats up/down", () => {
     // collide with). Release is the branch consequence 1 is actually about:
     // stale, customised data still sitting on the map.
     const p2Id = g0.members[2 * 3 + 0]; // repeat 2, slot P (pattern length 3)
-    const nudgedP0 = p0.map((p) => (p.id === p2Id ? { ...p, nudged: true } : p));
+    const nudgedP0 = p0.map((p) =>
+      p.id === p2Id ? { ...p, nudged: true } : p,
+    );
 
-    const shrunk = reExpand(g0, { ...g0, repeats: 2 }, nudgedP0, parse, noNames);
+    const shrunk = reExpand(
+      g0,
+      { ...g0, repeats: 2 },
+      nudgedP0,
+      parse,
+      noNames,
+    );
     expect(shrunk.report.releasedIds).toEqual([p2Id]);
 
-    const grown = reExpand({ ...g0, repeats: 2, members: shrunk.members }, g0, shrunk.placements, parse, noNames);
+    const grown = reExpand(
+      { ...g0, repeats: 2, members: shrunk.members },
+      g0,
+      shrunk.placements,
+      parse,
+      noNames,
+    );
 
     // The released placement is untouched and still on the map...
     const stillThere = grown.placements.find((p) => p.id === p2Id);
@@ -133,7 +203,9 @@ describe("reExpand — repeats up/down", () => {
     // keys"), so growth must not silently merge the two.
     expect(grown.report.addedIds).toHaveLength(3);
     expect(grown.report.addedIds).not.toContain(p2Id);
-    const fresh = grown.placements.find((p) => grown.report.addedIds.includes(p.id) && p.label.endsWith("_2_P"));
+    const fresh = grown.placements.find(
+      (p) => grown.report.addedIds.includes(p.id) && p.label.endsWith("_2_P"),
+    );
     expect(fresh).toBeDefined();
     expect(fresh!.nudged).toBeFalsy();
   });
@@ -144,7 +216,15 @@ describe("reExpand — the delta case (nudged, matched key)", () => {
     const { group: oldGroup, placements } = seed(group({ rotation: num(0) }));
     // Nudge P's repeat-0 offset: base is (r=26, theta=0); user dragged it to (r=30, theta=10).
     const pId = oldGroup.members[0]; // repeat 0, slot P (repeat-major, pattern order)
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "polar" as const, r: num(30), theta: num(10) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "polar" as const, r: num(30), theta: num(10) },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, rotation: num(90) }; // whole ring rotates 90 degrees
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -162,7 +242,17 @@ describe("reExpand — the delta case (nudged, matched key)", () => {
     const { group: oldGroup, placements } = seed(group());
     const pId = oldGroup.members[0];
     const nudged = placements.map((p) =>
-      p.id === pId ? { ...p, offset: { kind: "polar" as const, r: num(26), theta: sym("SOME_CUSTOM_CONST") }, nudged: true } : p,
+      p.id === pId
+        ? {
+            ...p,
+            offset: {
+              kind: "polar" as const,
+              r: num(26),
+              theta: sym("SOME_CUSTOM_CONST"),
+            },
+            nudged: true,
+          }
+        : p,
     );
 
     const newGroup: ShapeGroup = { ...oldGroup, rotation: num(90) };
@@ -180,7 +270,15 @@ describe("reExpand — a kind change (shape-kinds-slice-a-brief.md item 2: circl
   it("circle -> line keeps a nudged member on the delta branch and recomputes the rest", () => {
     const { group: oldGroup, placements } = seed(group({ rotation: num(0) }));
     const pId = oldGroup.members[0]; // repeat 0, slot P
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "polar" as const, r: num(30), theta: num(10) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "polar" as const, r: num(30), theta: num(10) },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, kind: "line" };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -201,12 +299,38 @@ describe("reExpand — a kind change (shape-kinds-slice-a-brief.md item 2: circl
 
 describe("reExpand — release vs delete (Sec.4.5's condition 3)", () => {
   it("releases (does not delete) a departing member that still has a child chained off it", () => {
-    const { group: oldGroup, placements } = seed(group({ repeats: 1, pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }] }));
+    const { group: oldGroup, placements } = seed(
+      group({
+        repeats: 1,
+        pattern: [
+          { id: "P", role: "role-P" },
+          { id: "A", role: "role-A" },
+        ],
+      }),
+    );
     const aId = oldGroup.members[1]; // repeat 0, slot A
-    const withChild: Placement[] = [...placements, { id: "child-of-a", parent: aId, frame: "radial", offset: { kind: "polar", r: num(5), theta: num(0) }, label: "child" }];
+    const withChild: Placement[] = [
+      ...placements,
+      {
+        id: "child-of-a",
+        parent: aId,
+        frame: "radial",
+        offset: { kind: "polar", r: num(5), theta: num(0) },
+        label: "child",
+      },
+    ];
 
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }] };
-    const result = reExpand(oldGroup, newGroup, withChild, emptyParse(), noNames);
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P" }],
+    };
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      withChild,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.releasedIds).toEqual([aId]);
     expect(result.report.deletedIds).toEqual([]);
@@ -216,12 +340,31 @@ describe("reExpand — release vs delete (Sec.4.5's condition 3)", () => {
   });
 
   it("releases (does not delete) a departing member that is itself nudged", () => {
-    const { group: oldGroup, placements } = seed(group({ repeats: 1, pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }] }));
+    const { group: oldGroup, placements } = seed(
+      group({
+        repeats: 1,
+        pattern: [
+          { id: "P", role: "role-P" },
+          { id: "A", role: "role-A" },
+        ],
+      }),
+    );
     const aId = oldGroup.members[1];
-    const withNudge = placements.map((p) => (p.id === aId ? { ...p, nudged: true } : p));
+    const withNudge = placements.map((p) =>
+      p.id === aId ? { ...p, nudged: true } : p,
+    );
 
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }] };
-    const result = reExpand(oldGroup, newGroup, withNudge, emptyParse(), noNames);
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P" }],
+    };
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      withNudge,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.releasedIds).toEqual([aId]);
     expect(result.report.deletedIds).toEqual([]);
@@ -229,27 +372,59 @@ describe("reExpand — release vs delete (Sec.4.5's condition 3)", () => {
   });
 
   it("releases (does not delete) a departing member whose constants are still referenced OUTSIDE the fence", () => {
-    const { group: oldGroup, placements } = seed(group({ repeats: 1, pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }] }));
+    const { group: oldGroup, placements } = seed(
+      group({
+        repeats: 1,
+        pattern: [
+          { id: "P", role: "role-P" },
+          { id: "A", role: "role-A" },
+        ],
+      }),
+    );
     const aId = oldGroup.members[1];
     // auditConstants only tracks USES of a name it has also seen DEFINED
     // (constantsAuditor.ts's byName.get(...)?.useSpans), so the fixture needs
     // a definition too, standing in for the tool's own emitted #const,
     // exactly as if a previous Apply had already written it.
-    const parse = emptyParse(`#const ALP_X_A 1\n#const ALP_Y_A 1\ncreate_land\n{\nland_position ALP_X_A ALP_Y_A\n}\n`);
+    const parse = emptyParse(
+      `#const ALP_X_A 1\n#const ALP_Y_A 1\ncreate_land\n{\nland_position ALP_X_A ALP_Y_A\n}\n`,
+    );
 
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }] };
-    const result = reExpand(oldGroup, newGroup, placements, parse, (id) => (id === aId ? ["ALP_X_A", "ALP_Y_A"] : []));
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P" }],
+    };
+    const result = reExpand(oldGroup, newGroup, placements, parse, (id) =>
+      id === aId ? ["ALP_X_A", "ALP_Y_A"] : [],
+    );
 
     expect(result.report.releasedIds).toEqual([aId]);
     expect(result.report.deletedIds).toEqual([]);
   });
 
   it("deletes a departing member with no child, no nudge, and no reference outside the fence", () => {
-    const { group: oldGroup, placements } = seed(group({ repeats: 1, pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }] }));
+    const { group: oldGroup, placements } = seed(
+      group({
+        repeats: 1,
+        pattern: [
+          { id: "P", role: "role-P" },
+          { id: "A", role: "role-A" },
+        ],
+      }),
+    );
     const aId = oldGroup.members[1];
 
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }] };
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P" }],
+    };
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.deletedIds).toEqual([aId]);
     expect(result.report.releasedIds).toEqual([]);
@@ -257,13 +432,26 @@ describe("reExpand — release vs delete (Sec.4.5's condition 3)", () => {
   });
 
   it("a use of the constants INSIDE the fence does not block deletion (the circularity Sec.4.5 warns against)", () => {
-    const { group: oldGroup, placements } = seed(group({ repeats: 1, pattern: [{ id: "P", role: "role-P" }, { id: "A", role: "role-A" }] }));
+    const { group: oldGroup, placements } = seed(
+      group({
+        repeats: 1,
+        pattern: [
+          { id: "P", role: "role-P" },
+          { id: "A", role: "role-A" },
+        ],
+      }),
+    );
     const aId = oldGroup.members[1];
     const source = `/* @alp v1 begin — x.\n   @alp-model {"v":1,"placements":[],"roles":[],"randomParams":[],"groups":[]} */\n#const ALP_X_A 1\ncreate_land\n{\nland_position ALP_X_A ALP_X_A\n}\n/* @alp end */\n`;
     const parse = emptyParse(source);
 
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P" }] };
-    const result = reExpand(oldGroup, newGroup, placements, parse, (id) => (id === aId ? ["ALP_X_A"] : []));
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P" }],
+    };
+    const result = reExpand(oldGroup, newGroup, placements, parse, (id) =>
+      id === aId ? ["ALP_X_A"] : [],
+    );
 
     // The only use of ALP_X_A is INSIDE the fence (the create_land the tool
     // itself just wrote there), that must not count against deletion.
@@ -279,7 +467,12 @@ describe("reExpand — release vs delete (Sec.4.5's condition 3)", () => {
 // `ShapeGroup`.
 describe("reExpand — the cartesian delta branch (a standalone cartesian placement, not a perimeter kind)", () => {
   function squareGroup(overrides: Partial<ShapeGroup> = {}): ShapeGroup {
-    return group({ kind: "square", pattern: [{ id: "P", role: "role-P" }], repeats: 4, ...overrides });
+    return group({
+      kind: "square",
+      pattern: [{ id: "P", role: "role-P" }],
+      repeats: 4,
+      ...overrides,
+    });
   }
 
   it("a repeat-count edit on a square with a member STILL carrying a stale cartesian nudge (a model saved before this slice) reports positionDetached, not a delta — hazard 3's accepted migration consequence", () => {
@@ -287,7 +480,15 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
     const pId = oldGroup.members[0];
     // A pre-slice-A save: the member's offset is still cartesian, though a
     // fresh expansion of ANY group now produces polar (item 2).
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "cartesian" as const, dx: num(5), dy: num(-3) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "cartesian" as const, dx: num(5), dy: num(-3) },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, repeats: 8 };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -298,7 +499,11 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
     expect(result.report.deltaAppliedIds).toEqual([]);
     expect(result.report.addedIds).toHaveLength(4); // 8 - 4 new members
     const untouched = result.placements.find((p) => p.id === pId)!;
-    expect(untouched.offset).toEqual({ kind: "cartesian", dx: num(5), dy: num(-3) });
+    expect(untouched.offset).toEqual({
+      kind: "cartesian",
+      dx: num(5),
+      dy: num(-3),
+    });
   });
 
   // Sec.8.6's ripple: since every kind is polar now, a KIND change (circle
@@ -311,7 +516,15 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
   it("a circle-to-square kind change on a nudged (fully-numeric) polar member now takes the ordinary polar delta branch — every kind is polar, so this is no longer a MIXED pair", () => {
     const { group: oldGroup, placements } = seed(group()); // kind: "circle"
     const pId = oldGroup.members[0];
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "polar" as const, r: num(30), theta: num(10) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "polar" as const, r: num(30), theta: num(10) },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, kind: "square" };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -325,14 +538,26 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
     // — a delta of (+4, +10), reapplied onto the fresh square base (member
     // 0 of 9, at square's own M=4).
     const { radiusScale, bearingDegrees } = perimeterPolar(4, 9, 0);
-    expect(evalExpr(updated.offset.r, closed)).toBeCloseTo(26 * radiusScale + 4, 5);
-    expect(evalExpr(updated.offset.theta, closed)).toBeCloseTo(bearingDegrees + 10, 5);
+    expect(evalExpr(updated.offset.r, closed)).toBeCloseTo(
+      26 * radiusScale + 4,
+      5,
+    );
+    expect(evalExpr(updated.offset.theta, closed)).toBeCloseTo(
+      bearingDegrees + 10,
+      5,
+    );
   });
 
   it("an UNnudged member across a repeat-count edit recomputes wholesale, same as the polar branch", () => {
     const { group: oldGroup, placements } = seed(squareGroup());
     const newGroup: ShapeGroup = { ...oldGroup, repeats: 8 };
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.recomputedIds).toHaveLength(4);
     expect(result.report.positionDetachedIds).toEqual([]);
@@ -341,7 +566,19 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
   it("a stale hand-typed formula-shaped cartesian nudge is never rewritten — reported position-detached (a MIXED pair against the now-polar fresh side, same outcome the non-numeric guard used to produce on its own)", () => {
     const { group: oldGroup, placements } = seed(squareGroup());
     const pId = oldGroup.members[0];
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "cartesian" as const, dx: sym("SOME_CONST"), dy: num(0) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: {
+              kind: "cartesian" as const,
+              dx: sym("SOME_CONST"),
+              dy: num(0),
+            },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, repeats: 8 };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -349,7 +586,8 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
     expect(result.report.positionDetachedIds).toEqual([pId]);
     expect(result.report.deltaAppliedIds).toEqual([]);
     const untouched = result.placements.find((p) => p.id === pId)!;
-    if (untouched.offset.kind !== "cartesian") throw new Error("expected cartesian");
+    if (untouched.offset.kind !== "cartesian")
+      throw new Error("expected cartesian");
     expect(untouched.offset.dx).toEqual(sym("SOME_CONST"));
   });
 });
@@ -363,7 +601,13 @@ describe("reExpand — the cartesian delta branch (a standalone cartesian placem
 // pre-slice-A cartesian nudge, which detaches instead (hazard 3).
 describe("reExpand — a sides change on a polygon (shape-kinds-slice-c-brief.md item 1, updated for perimeter-symbolic-rotation-slice-a-brief.md item 2)", () => {
   function polygonGroup(overrides: Partial<ShapeGroup> = {}): ShapeGroup {
-    return group({ kind: "polygon", sides: 5, pattern: [{ id: "P", role: "role-P" }], repeats: 4, ...overrides });
+    return group({
+      kind: "polygon",
+      sides: 5,
+      pattern: [{ id: "P", role: "role-P" }],
+      repeats: 4,
+      ...overrides,
+    });
   }
 
   it("keeps a nudged (polar) member on the ordinary delta branch and recomputes the rest", () => {
@@ -371,7 +615,15 @@ describe("reExpand — a sides change on a polygon (shape-kinds-slice-c-brief.md
     const pId = oldGroup.members[0];
     // A nudge made AFTER this slice: the member's offset is polar, exactly
     // what a real drag (dragMath.ts's own absorb path) would produce.
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "polar" as const, r: num(20), theta: num(7) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "polar" as const, r: num(20), theta: num(7) },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, sides: 8 };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -387,7 +639,15 @@ describe("reExpand — a sides change on a polygon (shape-kinds-slice-c-brief.md
   it("a STALE cartesian-shaped nudge (a model saved before this slice) reports positionDetached instead — hazard 3's accepted migration consequence, the same as square's own case", () => {
     const { group: oldGroup, placements } = seed(polygonGroup());
     const pId = oldGroup.members[0];
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "cartesian" as const, dx: num(5), dy: num(-3) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "cartesian" as const, dx: num(5), dy: num(-3) },
+            nudged: true,
+          }
+        : p,
+    );
 
     const newGroup: ShapeGroup = { ...oldGroup, sides: 8 };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
@@ -395,7 +655,11 @@ describe("reExpand — a sides change on a polygon (shape-kinds-slice-c-brief.md
     expect(result.report.positionDetachedIds).toEqual([pId]);
     expect(result.report.deltaAppliedIds).toEqual([]);
     const untouched = result.placements.find((p) => p.id === pId)!;
-    expect(untouched.offset).toEqual({ kind: "cartesian", dx: num(5), dy: num(-3) });
+    expect(untouched.offset).toEqual({
+      kind: "cartesian",
+      dx: num(5),
+      dy: num(-3),
+    });
   });
 });
 
@@ -409,30 +673,60 @@ describe("reExpand — a sides change on a polygon (shape-kinds-slice-c-brief.md
 // from.
 describe("reExpand — PatternSlot.perimeterShift (perimeter-symbolic-rotation-slice-b-brief.md item 4)", () => {
   function squareGroup(overrides: Partial<ShapeGroup> = {}): ShapeGroup {
-    return group({ kind: "square", pattern: [{ id: "P", role: "role-P" }], repeats: 4, ...overrides });
+    return group({
+      kind: "square",
+      pattern: [{ id: "P", role: "role-P" }],
+      repeats: 4,
+      ...overrides,
+    });
   }
 
   it("changing a slot's shift is a group edit: a NON-nudged member follows it, recomputed wholesale from the shifted base", () => {
     const { group: oldGroup, placements } = seed(squareGroup());
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P", perimeterShift: 6.25 }] };
-    const result = reExpand(oldGroup, newGroup, placements, emptyParse(), noNames);
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P", perimeterShift: 6.25 }],
+    };
+    const result = reExpand(
+      oldGroup,
+      newGroup,
+      placements,
+      emptyParse(),
+      noNames,
+    );
 
     expect(result.report.recomputedIds).toHaveLength(4);
     expect(result.report.deltaAppliedIds).toEqual([]);
     expect(result.report.positionDetachedIds).toEqual([]);
-    const updated = result.placements.find((p) => p.id === oldGroup.members[0])!;
+    const updated = result.placements.find(
+      (p) => p.id === oldGroup.members[0],
+    )!;
     if (updated.offset.kind !== "polar") throw new Error("expected polar");
     const { radiusScale, bearingDegrees } = perimeterPolar(4, 4, 0, 6.25);
     expect(evalExpr(updated.offset.r, closed)).toBeCloseTo(26 * radiusScale, 5);
-    expect(evalExpr(updated.offset.theta, closed)).toBeCloseTo(bearingDegrees, 5);
+    expect(evalExpr(updated.offset.theta, closed)).toBeCloseTo(
+      bearingDegrees,
+      5,
+    );
   });
 
   it("a NUDGED member takes the ordinary polar delta branch and keeps its own offset delta — the shift only moves the BASE the delta is measured against", () => {
     const { group: oldGroup, placements } = seed(squareGroup());
     const pId = oldGroup.members[0];
-    const nudged = placements.map((p) => (p.id === pId ? { ...p, offset: { kind: "polar" as const, r: num(20), theta: num(7) }, nudged: true } : p));
+    const nudged = placements.map((p) =>
+      p.id === pId
+        ? {
+            ...p,
+            offset: { kind: "polar" as const, r: num(20), theta: num(7) },
+            nudged: true,
+          }
+        : p,
+    );
 
-    const newGroup: ShapeGroup = { ...oldGroup, pattern: [{ id: "P", role: "role-P", perimeterShift: 6.25 }] };
+    const newGroup: ShapeGroup = {
+      ...oldGroup,
+      pattern: [{ id: "P", role: "role-P", perimeterShift: 6.25 }],
+    };
     const result = reExpand(oldGroup, newGroup, nudged, emptyParse(), noNames);
 
     expect(result.report.deltaAppliedIds).toEqual([pId]);
@@ -448,7 +742,13 @@ describe("reExpand — PatternSlot.perimeterShift (perimeter-symbolic-rotation-s
     const freshBase = perimeterPolar(4, 4, 0, 6.25);
     const deltaR = 20 - 26 * oldBase.radiusScale;
     const deltaTheta = 7 - oldBase.bearingDegrees;
-    expect(evalExpr(updated.offset.r, closed)).toBeCloseTo(26 * freshBase.radiusScale + deltaR, 5);
-    expect(evalExpr(updated.offset.theta, closed)).toBeCloseTo(freshBase.bearingDegrees + deltaTheta, 5);
+    expect(evalExpr(updated.offset.r, closed)).toBeCloseTo(
+      26 * freshBase.radiusScale + deltaR,
+      5,
+    );
+    expect(evalExpr(updated.offset.theta, closed)).toBeCloseTo(
+      freshBase.bearingDegrees + deltaTheta,
+      5,
+    );
   });
 });

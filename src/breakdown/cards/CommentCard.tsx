@@ -20,7 +20,8 @@ interface CommentCardProps {
 // `trailingBoundary` is given, via src/breakdown/comments.ts); this
 // component just renders and edits one.
 export function CommentCard({ span }: CommentCardProps) {
-  const { source, applyEdit, registerFocusable, isExpanded, toggleExpanded } = useBreakdownContext();
+  const { source, applyEdit, registerFocusable, isExpanded, toggleExpanded } =
+    useBreakdownContext();
   const innerStart = span.start + 2; // past "/*"
   const innerEnd = span.end - 2; // before "*/"
   const inner = source.slice(innerStart, innerEnd);
@@ -64,7 +65,11 @@ export function CommentCard({ span }: CommentCardProps) {
       return;
     }
     setError(null);
-    applyEdit({ kind: "editComment", innerSpan: { start: innerStart, end: innerEnd }, text: raw });
+    applyEdit({
+      kind: "editComment",
+      innerSpan: { start: innerStart, end: innerEnd },
+      text: raw,
+    });
   };
 
   // Open by default (see the `expanded` comment above for why this differs
@@ -96,7 +101,9 @@ export function CommentCard({ span }: CommentCardProps) {
           {expanded ? "−" : "+"}
         </button>
       </HelpTip>
-      {!expanded && <span className={styles.summary}>{firstLine || "(empty)"}</span>}
+      {!expanded && (
+        <span className={styles.summary}>{firstLine || "(empty)"}</span>
+      )}
     </div>
   );
 
@@ -107,7 +114,9 @@ export function CommentCard({ span }: CommentCardProps) {
         {expanded && (
           <div className={styles.body}>
             <HelpTip id="breakdown.commentCard.nested">
-              <pre className={styles.text}>{source.slice(span.start, span.end)}</pre>
+              <pre className={styles.text}>
+                {source.slice(span.start, span.end)}
+              </pre>
             </HelpTip>
           </div>
         )}

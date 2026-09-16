@@ -29,7 +29,14 @@
 // calls this twice, not here"), so `generatePreview` still takes one parse
 // and knows nothing about Current.
 
-import type { IfBranch, Item, ParseResult, RandomBranch, SectionNode, Token } from "../../parser/types";
+import type {
+  IfBranch,
+  Item,
+  ParseResult,
+  RandomBranch,
+  SectionNode,
+  Token,
+} from "../../parser/types";
 
 /**
  * Re-exported, not defined here. It moved to `src/parser/lineIndex.ts` when
@@ -175,14 +182,22 @@ function truncateItem(item: Item, ctx: CutContext): Item {
     case "command": {
       if (item.block === undefined) return item;
       const items = truncateItems(item.block.items, ctx);
-      return items === item.block.items ? item : { ...item, block: { ...item.block, items } };
+      return items === item.block.items
+        ? item
+        : { ...item, block: { ...item.block, items } };
     }
     case "orphanBlock": {
       const items = truncateItems(item.block.items, ctx);
-      return items === item.block.items ? item : { ...item, block: { ...item.block, items } };
+      return items === item.block.items
+        ? item
+        : { ...item, block: { ...item.block, items } };
     }
     case "if": {
-      const branches = truncateBranches<IfBranch>(item.branches, (branch) => branch.keyword, ctx);
+      const branches = truncateBranches<IfBranch>(
+        item.branches,
+        (branch) => branch.keyword,
+        ctx,
+      );
       return branches === item.branches ? item : { ...item, branches };
     }
     case "random": {
@@ -225,7 +240,10 @@ function truncateItem(item: Item, ctx: CutContext): Item {
  * on the parse's reference, so a cut below the end of the script produces no
  * second generation at all rather than an identical one.
  */
-export function truncateAst(parse: ParseResult, cutOffset: number): ParseResult {
+export function truncateAst(
+  parse: ParseResult,
+  cutOffset: number,
+): ParseResult {
   const ctx: CutContext = { cut: cutOffset, tokens: parse.tokens };
 
   const preamble = truncateItems(parse.script.preamble, ctx);

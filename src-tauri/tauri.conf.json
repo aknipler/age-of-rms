@@ -44,7 +44,9 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE2QjlDQkRCQjM1NUY1NDkKUldSSjlWV3oyOHU1RmxwV25JdFZzeHJ1cnRiMHQxWnh0MDBOVEoxL0Q1NHFEMTR5TnB1NmpzOUoK",
-      "endpoints": ["https://github.com/aknipler/age-of-rms/releases/latest/download/latest.json"]
+      "endpoints": [
+        "https://github.com/aknipler/age-of-rms/releases/latest/download/latest.json"
+      ]
     }
   }
 }

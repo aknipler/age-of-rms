@@ -33,8 +33,20 @@
  */
 
 import { lineOfOffset } from "../parser/lineIndex";
-import type { CommandNode, IfNode, Item, OrphanBlockNode, ParseResult, RandomNode, Span } from "../parser/types";
-import { DEFAULT_FORMAT_OPTIONS, formatScript, type SourceEdit } from "../tools/builtin/formatter/index";
+import type {
+  CommandNode,
+  IfNode,
+  Item,
+  OrphanBlockNode,
+  ParseResult,
+  RandomNode,
+  Span,
+} from "../parser/types";
+import {
+  DEFAULT_FORMAT_OPTIONS,
+  formatScript,
+  type SourceEdit,
+} from "../tools/builtin/formatter/index";
 
 export interface ToggleLayoutResult {
   edits: SourceEdit[];
@@ -62,13 +74,15 @@ function collectCommandNodes(items: readonly Item[], out: CommandNode[]): void {
         break;
       case "if": {
         const node = item as IfNode;
-        for (const branch of node.branches) collectCommandNodes(branch.items, out);
+        for (const branch of node.branches)
+          collectCommandNodes(branch.items, out);
         break;
       }
       case "random": {
         const node = item as RandomNode;
         collectCommandNodes(node.preamble, out);
-        for (const branch of node.branches) collectCommandNodes(branch.items, out);
+        for (const branch of node.branches)
+          collectCommandNodes(branch.items, out);
         break;
       }
       case "orphanBlock":
@@ -85,13 +99,15 @@ function collectCommandNodes(items: readonly Item[], out: CommandNode[]): void {
 function allCommandNodes(parse: ParseResult): CommandNode[] {
   const out: CommandNode[] = [];
   collectCommandNodes(parse.script.preamble, out);
-  for (const section of parse.script.sections) collectCommandNodes(section.items, out);
+  for (const section of parse.script.sections)
+    collectCommandNodes(section.items, out);
   return out;
 }
 
 /** Half-open overlap for a real selection; point containment for a collapsed cursor (`range.start === range.end`), so clicking inside a command with no drag still resolves to it. */
 function overlaps(span: Span, range: Span): boolean {
-  if (range.start === range.end) return range.start >= span.start && range.start <= span.end;
+  if (range.start === range.end)
+    return range.start >= span.start && range.start <= span.end;
   return span.start < range.end && span.end > range.start;
 }
 
@@ -114,7 +130,11 @@ function trimmedEdit(original: string, formatted: string): SourceEdit | null {
   while (prefix < maxCommon && original[prefix] === formatted[prefix]) prefix++;
   let suffix = 0;
   const maxSuffix = maxCommon - prefix;
-  while (suffix < maxSuffix && original[original.length - 1 - suffix] === formatted[formatted.length - 1 - suffix]) {
+  while (
+    suffix < maxSuffix &&
+    original[original.length - 1 - suffix] ===
+      formatted[formatted.length - 1 - suffix]
+  ) {
     suffix++;
   }
   return {
@@ -152,8 +172,15 @@ function resolvedName(parse: ParseResult, node: CommandNode): string {
  * `pushEditOperations` call safe.
  */
 function targetedNodes(parse: ParseResult, range: Span): CommandNode[] {
-  const candidates = allCommandNodes(parse).filter((node) => overlaps(node.span, range));
-  return candidates.filter((node) => !candidates.some((other) => other !== node && contains(other.span, node.span)));
+  const candidates = allCommandNodes(parse).filter((node) =>
+    overlaps(node.span, range),
+  );
+  return candidates.filter(
+    (node) =>
+      !candidates.some(
+        (other) => other !== node && contains(other.span, node.span),
+      ),
+  );
 }
 
 /**
@@ -163,8 +190,13 @@ function targetedNodes(parse: ParseResult, range: Span): CommandNode[] {
  * command it sits inside, matching how the rest of the app treats a
  * collapsed selection as "the thing under the caret."
  */
-export function toggleCommandLayoutInRange(parse: ParseResult, range: Span): ToggleLayoutResult {
-  const nodes = targetedNodes(parse, range).sort((a, b) => a.span.start - b.span.start);
+export function toggleCommandLayoutInRange(
+  parse: ParseResult,
+  range: Span,
+): ToggleLayoutResult {
+  const nodes = targetedNodes(parse, range).sort(
+    (a, b) => a.span.start - b.span.start,
+  );
   const edits: SourceEdit[] = [];
   let toggledCount = 0;
   let skippedCount = 0;

@@ -77,14 +77,20 @@ export function SidePanelLayoutProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    load(SIDE_PANEL_STORE_FILE, { autoSave: true, defaults: {} }).then(async (loadedStore) => {
-      if (cancelled) return;
-      setStore(loadedStore);
-      const savedWidth = await loadedStore.get<unknown>(SIDE_PANEL_WIDTH_KEY);
-      if (!cancelled && isSidePanelWidth(savedWidth)) setWidthState(savedWidth);
-      const savedCollapsed = await loadedStore.get<unknown>(SIDE_PANEL_COLLAPSED_KEY);
-      if (!cancelled && typeof savedCollapsed === "boolean") setCollapsedState(savedCollapsed);
-    });
+    load(SIDE_PANEL_STORE_FILE, { autoSave: true, defaults: {} }).then(
+      async (loadedStore) => {
+        if (cancelled) return;
+        setStore(loadedStore);
+        const savedWidth = await loadedStore.get<unknown>(SIDE_PANEL_WIDTH_KEY);
+        if (!cancelled && isSidePanelWidth(savedWidth))
+          setWidthState(savedWidth);
+        const savedCollapsed = await loadedStore.get<unknown>(
+          SIDE_PANEL_COLLAPSED_KEY,
+        );
+        if (!cancelled && typeof savedCollapsed === "boolean")
+          setCollapsedState(savedCollapsed);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -114,11 +120,18 @@ export function SidePanelLayoutProvider({ children }: { children: ReactNode }) {
     [width, collapsed, setWidth, commitWidth, setCollapsed],
   );
 
-  return <SidePanelLayoutContext.Provider value={value}>{children}</SidePanelLayoutContext.Provider>;
+  return (
+    <SidePanelLayoutContext.Provider value={value}>
+      {children}
+    </SidePanelLayoutContext.Provider>
+  );
 }
 
 export function useSidePanelLayout(): SidePanelLayoutValue {
   const ctx = useContext(SidePanelLayoutContext);
-  if (!ctx) throw new Error("useSidePanelLayout must be used within a SidePanelLayoutProvider");
+  if (!ctx)
+    throw new Error(
+      "useSidePanelLayout must be used within a SidePanelLayoutProvider",
+    );
   return ctx;
 }

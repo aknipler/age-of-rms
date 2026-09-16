@@ -2,7 +2,11 @@
 // All inference reads the source via token spans; nothing is guessed.
 
 import type { ParseResult } from "../../parser/types";
-import type { ArgumentDef, AttributeDef, CommandDef } from "../../parser/language";
+import type {
+  ArgumentDef,
+  AttributeDef,
+  CommandDef,
+} from "../../parser/language";
 import { NUMERIC_ARGUMENT_TYPES } from "../../parser/language";
 import type { ArgValueInput } from "./intents";
 
@@ -56,7 +60,9 @@ export function inferStyle(
     // any consecutive pair of items (spec Sec.4.3).
     onOwnLines = /\n/.test(src.slice(openerEnd, itemSpans[0].start));
     for (let i = 1; !onOwnLines && i < itemSpans.length; i++) {
-      onOwnLines = /\n/.test(src.slice(itemSpans[i - 1].end, itemSpans[i].start));
+      onOwnLines = /\n/.test(
+        src.slice(itemSpans[i - 1].end, itemSpans[i].start),
+      );
     }
   } else if (closerStart !== undefined) {
     onOwnLines = /\n/.test(src.slice(openerEnd, closerStart));
@@ -65,7 +71,9 @@ export function inferStyle(
   }
 
   let indentUnit: string;
-  const firstOwnLineItem = itemSpans.find((s) => lineStartOf(src, s.start) > openerEnd);
+  const firstOwnLineItem = itemSpans.find(
+    (s) => lineStartOf(src, s.start) > openerEnd,
+  );
   if (firstOwnLineItem) {
     indentUnit = lineIndentOf(src, firstOwnLineItem.start);
   } else {
@@ -116,18 +124,26 @@ export function renderNamed(
   const defs = argDefs ?? [];
   for (let i = 0; i < defs.length; i++) {
     const supplied = values?.[i];
-    const text = supplied !== undefined ? renderValue(supplied) : placeholderFor(defs[i]);
+    const text =
+      supplied !== undefined ? renderValue(supplied) : placeholderFor(defs[i]);
     if (i === 0) caretOffset = parts.join(" ").length + 1;
     parts.push(text);
   }
   return { text: parts.join(" "), caretOffset };
 }
 
-export function renderAttribute(def: AttributeDef | undefined, name: string, values?: ArgValueInput[]): Rendered {
+export function renderAttribute(
+  def: AttributeDef | undefined,
+  name: string,
+  values?: ArgValueInput[],
+): Rendered {
   return renderNamed(name, def?.arguments, values);
 }
 
-export function renderCommand(def: CommandDef | undefined, name: string): Rendered {
+export function renderCommand(
+  def: CommandDef | undefined,
+  name: string,
+): Rendered {
   // Bare command (no braces) even for block-kind defs: legal RMS; the block
   // is synthesized by the first addAttribute (Sec.4.6), one brace-adding path.
   return renderNamed(name, def?.arguments, undefined);

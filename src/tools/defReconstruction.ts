@@ -35,8 +35,20 @@
  */
 
 import type { LanguageIndex } from "../parser/language";
-import type { AttributeDef, ArgumentDef, CommandDef, DirectiveDef } from "../parser/language";
-import type { ArgNode, Item, NoDefs, ScriptNode, SymbolInfo, Token } from "../parser/types";
+import type {
+  AttributeDef,
+  ArgumentDef,
+  CommandDef,
+  DirectiveDef,
+} from "../parser/language";
+import type {
+  ArgNode,
+  Item,
+  NoDefs,
+  ScriptNode,
+  SymbolInfo,
+  Token,
+} from "../parser/types";
 
 /**
  * Mirrors `Parser.aliasedCommand` exactly: walk `symbols` IN SOURCE ORDER and
@@ -56,7 +68,8 @@ export function reconstructAliasedCommand(
   if (language.commandsByTokenId.size === 0) return undefined;
   for (const symbol of symbols) {
     if (symbol.name !== name) continue;
-    if (symbol.directiveKind !== "const" || symbol.valueToken === undefined) return undefined;
+    if (symbol.directiveKind !== "const" || symbol.valueToken === undefined)
+      return undefined;
     const text = tokens[symbol.valueToken]?.text ?? "";
     if (!/^\d+$/.test(text)) return undefined;
     return language.commandsByTokenId.get(Number(text));
@@ -64,11 +77,22 @@ export function reconstructAliasedCommand(
   return undefined;
 }
 
-function reconstructCommandDef(nameTokenText: string, symbols: readonly SymbolInfo[], tokens: readonly Token[], language: LanguageIndex): CommandDef | undefined {
-  return language.commandsByName.get(nameTokenText) ?? reconstructAliasedCommand(nameTokenText, symbols, tokens, language);
+function reconstructCommandDef(
+  nameTokenText: string,
+  symbols: readonly SymbolInfo[],
+  tokens: readonly Token[],
+  language: LanguageIndex,
+): CommandDef | undefined {
+  return (
+    language.commandsByName.get(nameTokenText) ??
+    reconstructAliasedCommand(nameTokenText, symbols, tokens, language)
+  );
 }
 
-function argDefAt(parentArgs: readonly ArgumentDef[] | undefined, index: number): ArgumentDef | undefined {
+function argDefAt(
+  parentArgs: readonly ArgumentDef[] | undefined,
+  index: number,
+): ArgumentDef | undefined {
   if (!parentArgs || parentArgs.length === 0) return undefined;
   return parentArgs[Math.min(index, parentArgs.length - 1)];
 }
@@ -100,18 +124,32 @@ export function reconstructScriptDefs(
     return tokens[tokenIdx]?.text ?? "";
   }
 
-  function visitArgs(args: readonly ArgNode<unknown, NoDefs>[], parentArgs: readonly ArgumentDef[] | undefined, path: string): void {
-    args.forEach((_, i) => out.push({ path: `${path}.args[${i}]`, def: argDefAt(parentArgs, i) }));
+  function visitArgs(
+    args: readonly ArgNode<unknown, NoDefs>[],
+    parentArgs: readonly ArgumentDef[] | undefined,
+    path: string,
+  ): void {
+    args.forEach((_, i) =>
+      out.push({ path: `${path}.args[${i}]`, def: argDefAt(parentArgs, i) }),
+    );
   }
 
-  function visitItems(items: readonly Item<unknown, NoDefs>[], path: string): void {
+  function visitItems(
+    items: readonly Item<unknown, NoDefs>[],
+    path: string,
+  ): void {
     items.forEach((item, i) => visitItem(item, `${path}[${i}]`));
   }
 
   function visitItem(item: Item<unknown, NoDefs>, path: string): void {
     switch (item.kind) {
       case "command": {
-        const def = reconstructCommandDef(nameText(item.name), symbols, tokens, language);
+        const def = reconstructCommandDef(
+          nameText(item.name),
+          symbols,
+          tokens,
+          language,
+        );
         out.push({ path, def });
         visitArgs(item.args, def?.arguments, path);
         if (item.block) visitItems(item.block.items, `${path}.block`);
@@ -130,11 +168,15 @@ export function reconstructScriptDefs(
         return;
       }
       case "if":
-        item.branches.forEach((b, bi) => visitItems(b.items, `${path}.branch[${bi}]`));
+        item.branches.forEach((b, bi) =>
+          visitItems(b.items, `${path}.branch[${bi}]`),
+        );
         return;
       case "random":
         visitItems(item.preamble, `${path}.preamble`);
-        item.branches.forEach((b, bi) => visitItems(b.items, `${path}.branch[${bi}]`));
+        item.branches.forEach((b, bi) =>
+          visitItems(b.items, `${path}.branch[${bi}]`),
+        );
         return;
       case "orphanBlock":
         visitItems(item.block.items, `${path}.orphanBlock`);
@@ -145,7 +187,9 @@ export function reconstructScriptDefs(
   }
 
   visitItems(script.preamble, "preamble");
-  script.sections.forEach((section, si) => visitItems(section.items, `section[${si}]`));
+  script.sections.forEach((section, si) =>
+    visitItems(section.items, `section[${si}]`),
+  );
 
   return out;
 }
@@ -159,7 +203,9 @@ export function collectScriptDefs(script: ScriptNode): ReconstructedDef[] {
   const out: ReconstructedDef[] = [];
 
   function visitArgs(args: readonly ArgNode[], path: string): void {
-    args.forEach((arg, i) => out.push({ path: `${path}.args[${i}]`, def: arg.def }));
+    args.forEach((arg, i) =>
+      out.push({ path: `${path}.args[${i}]`, def: arg.def }),
+    );
   }
 
   function visitItems(items: readonly Item[], path: string): void {
@@ -182,11 +228,15 @@ export function collectScriptDefs(script: ScriptNode): ReconstructedDef[] {
         visitArgs(item.args, path);
         return;
       case "if":
-        item.branches.forEach((b, bi) => visitItems(b.items, `${path}.branch[${bi}]`));
+        item.branches.forEach((b, bi) =>
+          visitItems(b.items, `${path}.branch[${bi}]`),
+        );
         return;
       case "random":
         visitItems(item.preamble, `${path}.preamble`);
-        item.branches.forEach((b, bi) => visitItems(b.items, `${path}.branch[${bi}]`));
+        item.branches.forEach((b, bi) =>
+          visitItems(b.items, `${path}.branch[${bi}]`),
+        );
         return;
       case "orphanBlock":
         visitItems(item.block.items, `${path}.orphanBlock`);
@@ -197,7 +247,9 @@ export function collectScriptDefs(script: ScriptNode): ReconstructedDef[] {
   }
 
   visitItems(script.preamble, "preamble");
-  script.sections.forEach((section, si) => visitItems(section.items, `section[${si}]`));
+  script.sections.forEach((section, si) =>
+    visitItems(section.items, `section[${si}]`),
+  );
 
   return out;
 }

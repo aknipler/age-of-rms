@@ -8,7 +8,10 @@ import { namedEntryHelpText } from "../helpText";
 import { maxSeverityWithin, diagnosticsWithin } from "../diagnosticsForSpan";
 import { ValueEditor } from "./ValueEditor";
 import { HelpTip } from "../../components/HelpTip";
-import { DiagnosticPopup, useDiagnosticHover } from "../../components/DiagnosticTooltip";
+import {
+  DiagnosticPopup,
+  useDiagnosticHover,
+} from "../../components/DiagnosticTooltip";
 import styles from "./AttributeRow.module.css";
 
 interface InstanceValueProps {
@@ -21,13 +24,21 @@ interface InstanceValueProps {
 // blur/Enter. Wired to the same-value-source-order intent regardless of
 // whether this arg belongs to a listed attribute, an unlisted one (Other
 // contents), or a positional command argument (reused by CommandCard).
-export function AttributeValueEditor({ arg, type, helpId }: InstanceValueProps) {
+export function AttributeValueEditor({
+  arg,
+  type,
+  helpId,
+}: InstanceValueProps) {
   const { tokens, applyEdit, requestFocus } = useBreakdownContext();
   const text = renderArg(arg, tokens);
-  const isExpr = typeof arg.value === "object" && arg.value !== null && "expr" in arg.value;
+  const isExpr =
+    typeof arg.value === "object" && arg.value !== null && "expr" in arg.value;
   if (isExpr) {
     return (
-      <span className={styles.constantPill} title="Math expression — edit in the Code tab">
+      <span
+        className={styles.constantPill}
+        title="Math expression — edit in the Code tab"
+      >
         {text}
       </span>
     );
@@ -53,7 +64,13 @@ export function AttributeValueEditor({ arg, type, helpId }: InstanceValueProps) 
 }
 
 /** Exported for OtherContentsRow.tsx, a known-but-unlisted attribute (Sec.3.3(c)) renders as this same typed row, just with no repeatable/badge framing. */
-export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; helpId: string }) {
+export function AttributeInstanceRow({
+  node,
+  helpId,
+}: {
+  node: AttributeNode;
+  helpId: string;
+}) {
   const { tokens, applyEdit, diagnostics } = useBreakdownContext();
   const name = tokens[node.name].text;
   const defArgs = node.def?.arguments ?? [];
@@ -65,7 +82,11 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
   // header badge, just scoped to this one node instead of the whole
   // command) makes that immediate.
   const severity = maxSeverityWithin(diagnostics, node.span);
-  const rowMessage = severity ? diagnosticsWithin(diagnostics, node.span).map((d) => d.message).join("\n") : undefined;
+  const rowMessage = severity
+    ? diagnosticsWithin(diagnostics, node.span)
+        .map((d) => d.message)
+        .join("\n")
+    : undefined;
   // Custom-positioned popup instead of a native `title`, see
   // DiagnosticTooltip.tsx: a browser tooltip can't be repositioned, so it
   // was free to land on top of a HelpTip popup opened by something
@@ -87,7 +108,11 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
       {...(severity ? diagHover.handlers : {})}
     >
       {severity && diagHover.hovering && (
-        <DiagnosticPopup message={rowMessage!} severity={severity} side={diagHover.side} />
+        <DiagnosticPopup
+          message={rowMessage!}
+          severity={severity}
+          side={diagHover.side}
+        />
       )}
       {/* .labelSlot (not .label) carries the fixed column width, see its
           CSS comment. It's the actual flex item; HelpTip's own wrapper
@@ -95,7 +120,10 @@ export function AttributeInstanceRow({ node, helpId }: { node: AttributeNode; he
           whether HelpTip renders a wrapper (help mode on) or a bare
           fragment (off). */}
       <span className={styles.labelSlot}>
-        <HelpTip id="breakdown.attributeRow.name" text={namedEntryHelpText(name, node.def?.description)}>
+        <HelpTip
+          id="breakdown.attributeRow.name"
+          text={namedEntryHelpText(name, node.def?.description)}
+        >
           <span className={styles.label}>{name}</span>
         </HelpTip>
       </span>
@@ -163,7 +191,11 @@ interface AttributeRowProps {
  */
 export function AttributeRow({ slot, target }: AttributeRowProps) {
   const { applyEdit, requestFocus } = useBreakdownContext();
-  const helpKind = slot.isFlag ? "flag" : slot.instances.length > 1 ? "repeatable" : "value";
+  const helpKind = slot.isFlag
+    ? "flag"
+    : slot.instances.length > 1
+      ? "repeatable"
+      : "value";
   const helpId = `breakdown.attributeRow.${helpKind}`;
 
   if (slot.instances.length === 0) {
@@ -171,10 +203,21 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
     const addAbsent = () => {
       let result;
       if (slot.isFlag) {
-        result = applyEdit({ kind: "toggleFlag", target, name: slot.name, on: true });
+        result = applyEdit({
+          kind: "toggleFlag",
+          target,
+          name: slot.name,
+          on: true,
+        });
       } else {
-        const value = firstArgDefault !== undefined ? [firstArgDefault] : undefined;
-        result = applyEdit({ kind: "addAttribute", target, name: slot.name, value });
+        const value =
+          firstArgDefault !== undefined ? [firstArgDefault] : undefined;
+        result = applyEdit({
+          kind: "addAttribute",
+          target,
+          name: slot.name,
+          value,
+        });
       }
       if (result) requestFocus(result.caret);
     };
@@ -212,12 +255,19 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
       // attribute twice over.
       <div className={`${styles.row} ${styles.absentRow}`} onClick={addAbsent}>
         <span className={styles.labelSlot}>
-          <HelpTip id="breakdown.attributeRow.absent" text={namedEntryHelpText(slot.name, slot.def.description)}>
-            <span className={`${styles.label} ${styles.absentDim}`}>{slot.name}</span>
+          <HelpTip
+            id="breakdown.attributeRow.absent"
+            text={namedEntryHelpText(slot.name, slot.def.description)}
+          >
+            <span className={`${styles.label} ${styles.absentDim}`}>
+              {slot.name}
+            </span>
           </HelpTip>
         </span>
         <span className={`${styles.absentValue} ${styles.absentDim}`}>
-          {firstArgDefault !== undefined ? String(firstArgDefault) : "click to add"}
+          {firstArgDefault !== undefined
+            ? String(firstArgDefault)
+            : "click to add"}
         </span>
         <button
           type="button"
@@ -235,17 +285,26 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
   }
 
   const canAddAnother =
-    slot.def.repeatable && (slot.def.maxRepeats === undefined || slot.instances.length < slot.def.maxRepeats);
+    slot.def.repeatable &&
+    (slot.def.maxRepeats === undefined ||
+      slot.instances.length < slot.def.maxRepeats);
 
   return (
     <div className={styles.slot}>
       {slot.instances.map((node) => (
-        <AttributeInstanceRow key={node.span.start} node={node} helpId={helpId} />
+        <AttributeInstanceRow
+          key={node.span.start}
+          node={node}
+          helpId={helpId}
+        />
       ))}
       {slot.instances.length > 1 && (
         <p className={styles.groundTruthNote}>
-          {slot.instances.length} instances present in the source — each is edited/deleted independently
-          {slot.def.repeatable ? "." : " (not flagged repeatable in reference data, but shown per source ground truth)."}
+          {slot.instances.length} instances present in the source — each is
+          edited/deleted independently
+          {slot.def.repeatable
+            ? "."
+            : " (not flagged repeatable in reference data, but shown per source ground truth)."}
         </p>
       )}
       {canAddAnother && (
@@ -255,8 +314,14 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
             className={styles.addAnotherButton}
             onClick={() => {
               const firstArgDefault = slot.def.arguments?.[0]?.default;
-              const value = firstArgDefault !== undefined ? [firstArgDefault] : undefined;
-              const result = applyEdit({ kind: "addAttribute", target, name: slot.name, value });
+              const value =
+                firstArgDefault !== undefined ? [firstArgDefault] : undefined;
+              const result = applyEdit({
+                kind: "addAttribute",
+                target,
+                name: slot.name,
+                value,
+              });
               if (result) requestFocus(result.caret);
             }}
           >

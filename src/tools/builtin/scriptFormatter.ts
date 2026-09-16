@@ -26,7 +26,12 @@ import type {
   ToolRunHandle,
 } from "../../../tools-api/index";
 import { TOOLS_API_VERSION } from "../../../tools-api/index";
-import { formatScript, type FormatChange, type FormatOptions, type FormatResult } from "./formatter/index";
+import {
+  formatScript,
+  type FormatChange,
+  type FormatOptions,
+  type FormatResult,
+} from "./formatter/index";
 
 // Same double-cast reasoning as ToolsPane.tsx and src/preview/worker.ts for the
 // same file: resolveJsonModule infers a literal type that does not structurally
@@ -182,36 +187,84 @@ export const scriptFormatterManifest: ToolManifest = {
  * union and TypeScript cannot know which arm arrived. This is a narrowing
  * problem, not a trust problem.
  */
-function pickString<T extends string>(params: Record<string, ParamValue>, key: string, allowed: readonly T[], fallback: T): T {
+function pickString<T extends string>(
+  params: Record<string, ParamValue>,
+  key: string,
+  allowed: readonly T[],
+  fallback: T,
+): T {
   const value = params[key];
-  return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
+  return typeof value === "string" &&
+    (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
 }
 
-function pickBoolean(params: Record<string, ParamValue>, key: string, fallback: boolean): boolean {
+function pickBoolean(
+  params: Record<string, ParamValue>,
+  key: string,
+  fallback: boolean,
+): boolean {
   const value = params[key];
   return typeof value === "boolean" ? value : fallback;
 }
 
-function pickInteger(params: Record<string, ParamValue>, key: string, fallback: number): number {
+function pickInteger(
+  params: Record<string, ParamValue>,
+  key: string,
+  fallback: number,
+): number {
   const value = params[key];
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function pickStrings(params: Record<string, ParamValue>, key: string): string[] {
+function pickStrings(
+  params: Record<string, ParamValue>,
+  key: string,
+): string[] {
   const value = params[key];
-  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string")
+    : [];
 }
 
-export function optionsFromParams(params: Record<string, ParamValue>): Partial<FormatOptions> {
+export function optionsFromParams(
+  params: Record<string, ParamValue>,
+): Partial<FormatOptions> {
   return {
-    blockLayout: pickString(params, "blockLayout", ["preserve", "expanded", "inline", "compact"] as const, "preserve"),
+    blockLayout: pickString(
+      params,
+      "blockLayout",
+      ["preserve", "expanded", "inline", "compact"] as const,
+      "preserve",
+    ),
     inlineMaxWidth: pickInteger(params, "inlineMaxWidth", 100),
-    indentStyle: pickString(params, "indentStyle", ["preserve", "tab", "2 spaces", "4 spaces"] as const, "preserve"),
-    sectionIndent: pickString(params, "sectionIndent", ["preserve", "flat", "indented"] as const, "preserve"),
-    braceStyle: pickString(params, "braceStyle", ["preserve", "ownLine", "sameLine"] as const, "preserve"),
+    indentStyle: pickString(
+      params,
+      "indentStyle",
+      ["preserve", "tab", "2 spaces", "4 spaces"] as const,
+      "preserve",
+    ),
+    sectionIndent: pickString(
+      params,
+      "sectionIndent",
+      ["preserve", "flat", "indented"] as const,
+      "preserve",
+    ),
+    braceStyle: pickString(
+      params,
+      "braceStyle",
+      ["preserve", "ownLine", "sameLine"] as const,
+      "preserve",
+    ),
     indentConditionals: pickBoolean(params, "indentConditionals", true),
     commentGroups: pickBoolean(params, "commentGroups", true),
-    intraLineSpacing: pickString(params, "intraLineSpacing", ["preserve", "collapse"] as const, "preserve"),
+    intraLineSpacing: pickString(
+      params,
+      "intraLineSpacing",
+      ["preserve", "collapse"] as const,
+      "preserve",
+    ),
     maxBlankLines: pickInteger(params, "maxBlankLines", 1),
     alwaysExpand: pickStrings(params, "alwaysExpand"),
     alwaysInline: pickStrings(params, "alwaysInline"),
@@ -247,11 +300,15 @@ function previewText(changes: readonly FormatChange[], total: number): string {
     for (const after of change.after) lines.push(`+ ${after}`);
     lines.push("");
   }
-  if (total > shown.length) lines.push(`… and ${total - shown.length} more changed lines.`);
+  if (total > shown.length)
+    lines.push(`… and ${total - shown.length} more changed lines.`);
   return lines.join("\n").trimEnd();
 }
 
-export function buildFormatterOutput(parse: ParseResult, result: FormatResult): OutputBlock[] {
+export function buildFormatterOutput(
+  parse: ParseResult,
+  result: FormatResult,
+): OutputBlock[] {
   const blocks: OutputBlock[] = [{ kind: "heading", text: "Script formatter" }];
   const stats = result.stats;
 
@@ -272,7 +329,10 @@ export function buildFormatterOutput(parse: ParseResult, result: FormatResult): 
     kind: "keyValue",
     rows: [
       ["Indent", describeIndent(stats.indentUnit)],
-      ["Line endings", stats.lineEnding === "\r\n" ? "CRLF (kept)" : "LF (kept)"],
+      [
+        "Line endings",
+        stats.lineEnding === "\r\n" ? "CRLF (kept)" : "LF (kept)",
+      ],
       ["Blocks left on one line", String(stats.inlineKept)],
       ["Blocks left expanded", String(stats.expandedKept)],
       ["Blocks put on one line", String(stats.madeInline)],
@@ -288,7 +348,9 @@ export function buildFormatterOutput(parse: ParseResult, result: FormatResult): 
     ],
   });
 
-  const parseErrors = parse.diagnostics.filter((d) => d.severity === "error").length;
+  const parseErrors = parse.diagnostics.filter(
+    (d) => d.severity === "error",
+  ).length;
   if (parseErrors > 0) {
     blocks.push({
       kind: "severity",
@@ -309,7 +371,10 @@ export function buildFormatterOutput(parse: ParseResult, result: FormatResult): 
   }
 
   if (result.edits.length === 0) {
-    blocks.push({ kind: "text", text: "Nothing to change. This script already matches these settings." });
+    blocks.push({
+      kind: "text",
+      text: "Nothing to change. This script already matches these settings.",
+    });
     return blocks;
   }
 
@@ -334,7 +399,10 @@ export function buildFormatterOutput(parse: ParseResult, result: FormatResult): 
     return blocks;
   }
 
-  blocks.push({ kind: "text", text: previewText(result.changes, stats.changedLines) });
+  blocks.push({
+    kind: "text",
+    text: previewText(result.changes, stats.changedLines),
+  });
 
   const rows = result.changes.slice(0, TABLE_ROWS);
   blocks.push({
@@ -361,19 +429,30 @@ export function buildFormatterOutput(parse: ParseResult, result: FormatResult): 
 
 export const scriptFormatter: ToolImplementation = {
   manifest: scriptFormatterManifest,
-  run(ctx: ToolContext<ParseResult>, emit: (msg: ToolMessage) => void): ToolRunHandle {
+  run(
+    ctx: ToolContext<ParseResult>,
+    emit: (msg: ToolMessage) => void,
+  ): ToolRunHandle {
     let cancelled = false;
 
     queueMicrotask(() => {
       if (cancelled) return;
       const parse = ctx.parseResult;
       if (!parse) {
-        emit({ type: "error", message: "This tool needs the parsed script, which the host did not provide.", reason: "host-error" });
+        emit({
+          type: "error",
+          message:
+            "This tool needs the parsed script, which the host did not provide.",
+          reason: "host-error",
+        });
         return;
       }
       emit({ type: "progress", fraction: 1, note: "Formatting" });
 
-      const result = formatScript(parse, { ...optionsFromParams(ctx.params), maxChanges: TABLE_ROWS });
+      const result = formatScript(parse, {
+        ...optionsFromParams(ctx.params),
+        maxChanges: TABLE_ROWS,
+      });
       const output = { blocks: buildFormatterOutput(parse, result) };
       // No `edits` key at all when there is nothing to apply: an empty array
       // would light up an Apply button that does nothing.

@@ -13,6 +13,9 @@ export default defineConfig({
     // would otherwise catch it like any other `*.test.ts` file, so it is
     // excluded here explicitly rather than relying on the separate config
     // file to keep it out.
-    exclude: [...configDefaults.exclude, "src/tools/__tests__/consistencyChecker.measure.test.ts"],
+    exclude: [
+      ...configDefaults.exclude,
+      "src/tools/__tests__/consistencyChecker.measure.test.ts",
+    ],
   },
 });

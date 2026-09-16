@@ -47,7 +47,11 @@ export interface RunnerHandle {
  * (Sec.3.2: a panel does not go through `ToolHost.start()` at all).
  */
 export interface ToolRunner {
-  start(tool: RegisteredTool, contextJson: unknown, onMessage: (raw: unknown) => void): RunnerHandle;
+  start(
+    tool: RegisteredTool,
+    contextJson: unknown,
+    onMessage: (raw: unknown) => void,
+  ): RunnerHandle;
 }
 
 export type RunPhase = "idle" | "running" | "cancelling" | "done";
@@ -185,7 +189,11 @@ export class ToolHost {
    * benefit."
    */
   isBusy(): boolean {
-    return this.state.phase === "running" || this.state.phase === "cancelling" || this.panel.phase === "mounted";
+    return (
+      this.state.phase === "running" ||
+      this.state.phase === "cancelling" ||
+      this.panel.phase === "mounted"
+    );
   }
 
   // -------------------------------------------------------------------
@@ -273,9 +281,18 @@ export class ToolHost {
     settingsSnapshot: { playerCount: number; mapSize: string } | null = null,
     scriptName: string | null = null,
   ): void {
-    if (this.isBusy()) throw new Error("A tool run is already active; cancel it first (one run at a time, app-wide).");
+    if (this.isBusy())
+      throw new Error(
+        "A tool run is already active; cancel it first (one run at a time, app-wide).",
+      );
 
-    this.state = { ...IDLE, phase: "running", toolId: tool.manifest.id, snapshot, settingsSnapshot };
+    this.state = {
+      ...IDLE,
+      phase: "running",
+      toolId: tool.manifest.id,
+      snapshot,
+      settingsSnapshot,
+    };
     for (const fn of this.listeners) fn(this.state);
 
     // Sec.4.2 rule 2: an oversized outbound context is a host-side error
@@ -285,7 +302,13 @@ export class ToolHost {
     const sizeProblem = checkOutboundContextSize(contextJson);
     if (sizeProblem) {
       const label = scriptName ?? "the open script";
-      this.set({ phase: "done", error: { message: `Cannot run this tool on ${label}: ${sizeProblem}.`, reason: "host-error" } });
+      this.set({
+        phase: "done",
+        error: {
+          message: `Cannot run this tool on ${label}: ${sizeProblem}.`,
+          reason: "host-error",
+        },
+      });
       return;
     }
 
@@ -294,13 +317,25 @@ export class ToolHost {
       // A synchronous throw from `run` is caught here and synthesized into an
       // `error` terminal, same as a crash, a tool that dies on its first line
       // must not look different from one that dies later.
-      handle = runner.start(tool, contextJson, (raw) => this.onMessage(handle, raw));
+      handle = runner.start(tool, contextJson, (raw) =>
+        this.onMessage(handle, raw),
+      );
     } catch (e) {
-      this.set({ phase: "done", error: { message: String(e), reason: "tool-error" } });
+      this.set({
+        phase: "done",
+        error: { message: String(e), reason: "tool-error" },
+      });
       return;
     }
 
-    this.active = { handle, toolId: tool.manifest.id, snapshot, cancelTimer: null, watchdogTimer: null, terminated: false };
+    this.active = {
+      handle,
+      toolId: tool.manifest.id,
+      snapshot,
+      cancelTimer: null,
+      watchdogTimer: null,
+      terminated: false,
+    };
     this.armWatchdog();
   }
 
@@ -354,7 +389,10 @@ export class ToolHost {
       // Grace expired. The two terminals are DISTINCT on purpose: collapsing
       // them throws away the only signal that a tool is misbehaving, so the user
       // cannot tell whether their Cancel worked or the host had to SIGKILL.
-      this.terminate("The tool did not stop when asked and was killed.", "killed");
+      this.terminate(
+        "The tool did not stop when asked and was killed.",
+        "killed",
+      );
     }, DEADLINES.cancelGraceMs);
   }
 
@@ -397,8 +435,13 @@ export class ToolHost {
 
     const checked = validateToolMessage(raw);
     if (!checked.ok) {
-      this.set({ log: [...this.state.log, `Protocol error: ${checked.problem}`] });
-      this.finish(run, { message: `The tool sent something this host could not read: ${checked.problem}`, reason: "protocol" });
+      this.set({
+        log: [...this.state.log, `Protocol error: ${checked.problem}`],
+      });
+      this.finish(run, {
+        message: `The tool sent something this host could not read: ${checked.problem}`,
+        reason: "protocol",
+      });
       return;
     }
 
@@ -426,7 +469,12 @@ export class ToolHost {
         this.set({
           output: msg.output,
           edits: dropped ? null : (msg.edits ?? null),
-          log: dropped ? [...this.state.log, "This tool proposed edits without declaring edit-source; they were dropped."] : this.state.log,
+          log: dropped
+            ? [
+                ...this.state.log,
+                "This tool proposed edits without declaring edit-source; they were dropped.",
+              ]
+            : this.state.log,
         });
         this.finish(run, null);
         break;
@@ -445,10 +493,16 @@ export class ToolHost {
   }
 
   private currentToolMayEdit(): boolean {
-    return this.state.toolId !== null && this.editCapableToolIds.has(this.state.toolId);
+    return (
+      this.state.toolId !== null &&
+      this.editCapableToolIds.has(this.state.toolId)
+    );
   }
 
-  private finish(run: ActiveRun, error: { message: string; reason: ErrorReason } | null): void {
+  private finish(
+    run: ActiveRun,
+    error: { message: string; reason: ErrorReason } | null,
+  ): void {
     run.terminated = true;
     this.clearTimers(run);
     this.active = null;
@@ -476,7 +530,10 @@ export class ToolHost {
       this.reset();
       return;
     }
-    this.terminate("The open document was replaced while this tool was running.", "cancelled");
+    this.terminate(
+      "The open document was replaced while this tool was running.",
+      "cancelled",
+    );
     this.reset();
   }
 
@@ -545,7 +602,11 @@ export class ToolHost {
    * exists for Breakdown's in-flight anchors and is NOT for this.)
    */
   canApply(currentText: string): boolean {
-    return this.state.edits !== null && this.state.edits.length > 0 && currentText === this.state.snapshot;
+    return (
+      this.state.edits !== null &&
+      this.state.edits.length > 0 &&
+      currentText === this.state.snapshot
+    );
   }
 }
 
@@ -557,7 +618,9 @@ export const inProcessRunner: ToolRunner = {
     // all (Sec.3.2), so landing here with one is a caller bug, not a
     // recoverable case, and it must THROW rather than silently no-op.
     if (tool.kind !== "builtin") {
-      throw new Error(`inProcessRunner: cannot run a "${tool.kind}" tool ("${tool.manifest.id}") — only "builtin" has a run()`);
+      throw new Error(
+        `inProcessRunner: cannot run a "${tool.kind}" tool ("${tool.manifest.id}") — only "builtin" has a run()`,
+      );
     }
     let dead = false;
     const handle = tool.impl.run(contextJson as never, (msg) => {

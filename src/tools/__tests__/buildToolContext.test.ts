@@ -11,13 +11,22 @@ import { buildToolContext } from "../buildToolContext";
 const lang = loadLanguage();
 const gameConstants = { objects: [], terrains: [] } as never;
 
-function baseInput(capabilities: import("../../../tools-api/index").Capability[]) {
-  const parseResult = parseRms("<LAND_GENERATION>\ncreate_land { land_percent 20 }\n", lang);
+function baseInput(
+  capabilities: import("../../../tools-api/index").Capability[],
+) {
+  const parseResult = parseRms(
+    "<LAND_GENERATION>\ncreate_land { land_percent 20 }\n",
+    lang,
+  );
   return {
     capabilities,
     params: {},
     parseResult,
-    generation: { playerCount: 4, mapSize: "Tiny" as const, teams: [1, 1, 2, 2, 0, 0, 0, 0] },
+    generation: {
+      playerCount: 4,
+      mapSize: "Tiny" as const,
+      teams: [1, 1, 2, 2, 0, 0, 0, 0],
+    },
     lang,
     gameConstants,
     previewView: { seed: 42, cutOffset: 17 as number | null },
@@ -69,6 +78,9 @@ describe("buildToolContext", () => {
   it("read-preview-view passes a null cutOffset through unchanged (Final, or no pin)", () => {
     const input = baseInput(["read-preview-view"]);
     input.previewView = { seed: 42, cutOffset: null };
-    expect(buildToolContext(input).previewView).toEqual({ seed: 42, cutOffset: null });
+    expect(buildToolContext(input).previewView).toEqual({
+      seed: 42,
+      cutOffset: null,
+    });
   });
 });

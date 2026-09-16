@@ -52,7 +52,9 @@ export function buildEnvironmentBlock(facts: BugReportFacts): string {
     lines.push("Diagnostics: none (no parse yet)");
   } else {
     const { errors, warnings, infos } = facts.diagnostics;
-    lines.push(`Diagnostics: ${errors} errors, ${warnings} warnings, ${infos} info`);
+    lines.push(
+      `Diagnostics: ${errors} errors, ${warnings} warnings, ${infos} info`,
+    );
   }
 
   return lines.join("\n");

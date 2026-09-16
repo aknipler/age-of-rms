@@ -1,6 +1,13 @@
 import type * as Monaco from "monaco-editor";
 
-export type EditMenuAction = "cut" | "copy" | "paste" | "find" | "selectAll" | "findReplace" | "toggleComment";
+export type EditMenuAction =
+  | "cut"
+  | "copy"
+  | "paste"
+  | "find"
+  | "selectAll"
+  | "findReplace"
+  | "toggleComment";
 
 // Monaco's own built-in action ids. Going through `getAction(...).run()`
 // rather than `document.execCommand` is what makes Cut/Copy/Paste behave
@@ -26,7 +33,10 @@ const ACTION_IDS: Record<EditMenuAction, string> = {
 };
 
 /** Focuses the editor (so the action has something to act on) and runs it. */
-export function runEditMenuAction(editor: Monaco.editor.IStandaloneCodeEditor, action: EditMenuAction): void {
+export function runEditMenuAction(
+  editor: Monaco.editor.IStandaloneCodeEditor,
+  action: EditMenuAction,
+): void {
   editor.focus();
   void editor.getAction(ACTION_IDS[action])?.run();
 }

@@ -14,7 +14,12 @@
 // stateless singleton, and dispatches on `toolId`, a plain string that
 // crosses the boundary fine.
 
-import type { ToolContext, ToolImplementation, ToolMessage, ToolRunHandle } from "../../tools-api/index";
+import type {
+  ToolContext,
+  ToolImplementation,
+  ToolMessage,
+  ToolRunHandle,
+} from "../../tools-api/index";
 import type { ParseResult } from "../parser/types";
 import { consistencyChecker } from "./builtin/consistencyChecker";
 import { balanceSummary } from "./builtin/balanceSummary";
@@ -28,7 +33,9 @@ import { balanceSummary } from "./builtin/balanceSummary";
  * message doesn't: which tool to dispatch to. Exported so `workerRunner.ts`
  * constructs exactly this shape rather than a hand-rolled equivalent.
  */
-export type CheckerWorkerRequest = { type: "run"; toolId: string; context: ToolContext<ParseResult> } | { type: "cancel" };
+export type CheckerWorkerRequest =
+  | { type: "run"; toolId: string; context: ToolContext<ParseResult> }
+  | { type: "cancel" };
 
 /** Registered alongside `registry.ts`'s `TOOLS` array and `WORKER_RUNTIME_TOOL_IDS`. */
 const TOOLS: Readonly<Record<string, ToolImplementation>> = Object.freeze({
@@ -48,7 +55,11 @@ self.onmessage = (event: MessageEvent<CheckerWorkerRequest>) => {
 
   const tool = TOOLS[msg.toolId];
   if (!tool) {
-    const error: ToolMessage = { type: "error", message: `No worker-runtime tool registered for id "${msg.toolId}".`, reason: "host-error" };
+    const error: ToolMessage = {
+      type: "error",
+      message: `No worker-runtime tool registered for id "${msg.toolId}".`,
+      reason: "host-error",
+    };
     self.postMessage(error);
     return;
   }

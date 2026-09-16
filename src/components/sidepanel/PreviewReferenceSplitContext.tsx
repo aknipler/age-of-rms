@@ -54,11 +54,17 @@ export interface PreviewReferenceSplitValue {
   setCollapsedSide: (side: PreviewReferenceCollapsedSide) => void;
 }
 
-const PreviewReferenceSplitContext = createContext<PreviewReferenceSplitValue | null>(null);
+const PreviewReferenceSplitContext =
+  createContext<PreviewReferenceSplitValue | null>(null);
 
-export function PreviewReferenceSplitProvider({ children }: { children: ReactNode }) {
+export function PreviewReferenceSplitProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [fraction, setFractionState] = useState(DEFAULT_PREVIEW_FRACTION);
-  const [collapsedSide, setCollapsedSideState] = useState<PreviewReferenceCollapsedSide>(null);
+  const [collapsedSide, setCollapsedSideState] =
+    useState<PreviewReferenceCollapsedSide>(null);
   const [store, setStore] = useState<Store | null>(null);
   // Same stale-closure fix as SidePanelLayoutContext's own widthRef: commitFraction
   // takes no argument, so it has to read the CURRENT fraction at the moment
@@ -69,16 +75,21 @@ export function PreviewReferenceSplitProvider({ children }: { children: ReactNod
 
   useEffect(() => {
     let cancelled = false;
-    load(SPLIT_STORE_FILE, { autoSave: true, defaults: {} }).then(async (loadedStore) => {
-      if (cancelled) return;
-      setStore(loadedStore);
-      const savedFraction = await loadedStore.get<unknown>(PREVIEW_FRACTION_KEY);
-      if (!cancelled && isPreviewFraction(savedFraction)) setFractionState(savedFraction);
-      const savedCollapsedSide = await loadedStore.get<unknown>(COLLAPSED_SIDE_KEY);
-      if (!cancelled && isPreviewReferenceCollapsedSide(savedCollapsedSide)) {
-        setCollapsedSideState(savedCollapsedSide);
-      }
-    });
+    load(SPLIT_STORE_FILE, { autoSave: true, defaults: {} }).then(
+      async (loadedStore) => {
+        if (cancelled) return;
+        setStore(loadedStore);
+        const savedFraction =
+          await loadedStore.get<unknown>(PREVIEW_FRACTION_KEY);
+        if (!cancelled && isPreviewFraction(savedFraction))
+          setFractionState(savedFraction);
+        const savedCollapsedSide =
+          await loadedStore.get<unknown>(COLLAPSED_SIDE_KEY);
+        if (!cancelled && isPreviewReferenceCollapsedSide(savedCollapsedSide)) {
+          setCollapsedSideState(savedCollapsedSide);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -104,15 +115,28 @@ export function PreviewReferenceSplitProvider({ children }: { children: ReactNod
   // re-renders on every keystroke, and an unmemoised object would hand every
   // consumer a new identity each time.
   const value = useMemo<PreviewReferenceSplitValue>(
-    () => ({ fraction, collapsedSide, setFraction, commitFraction, setCollapsedSide }),
+    () => ({
+      fraction,
+      collapsedSide,
+      setFraction,
+      commitFraction,
+      setCollapsedSide,
+    }),
     [fraction, collapsedSide, setFraction, commitFraction, setCollapsedSide],
   );
 
-  return <PreviewReferenceSplitContext.Provider value={value}>{children}</PreviewReferenceSplitContext.Provider>;
+  return (
+    <PreviewReferenceSplitContext.Provider value={value}>
+      {children}
+    </PreviewReferenceSplitContext.Provider>
+  );
 }
 
 export function usePreviewReferenceSplit(): PreviewReferenceSplitValue {
   const ctx = useContext(PreviewReferenceSplitContext);
-  if (!ctx) throw new Error("usePreviewReferenceSplit must be used within a PreviewReferenceSplitProvider");
+  if (!ctx)
+    throw new Error(
+      "usePreviewReferenceSplit must be used within a PreviewReferenceSplitProvider",
+    );
   return ctx;
 }

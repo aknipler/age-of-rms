@@ -25,7 +25,11 @@ export function ConditionalCard({ node }: { node: IfNode }) {
         <HelpTip id="breakdown.conditionalCard">
           <span>Conditional (if / elseif / else)</span>
         </HelpTip>
-        {node.endif === undefined && <span className={cardStyles.unknownBadge}>unclosed — finish in Code tab</span>}
+        {node.endif === undefined && (
+          <span className={cardStyles.unknownBadge}>
+            unclosed — finish in Code tab
+          </span>
+        )}
         <HelpTip id="breakdown.conditionalCard.delete">
           <button
             type="button"
@@ -42,12 +46,18 @@ export function ConditionalCard({ node }: { node: IfNode }) {
       </div>
       {node.branches.map((branch, i) => {
         const isElse = tokens[branch.keyword].text === "else";
-        const conditionText = branch.condition !== undefined ? tokens[branch.condition].text : "";
-        const anchor = branch.condition !== undefined ? tokens[branch.condition].start : tokens[branch.keyword].end;
+        const conditionText =
+          branch.condition !== undefined ? tokens[branch.condition].text : "";
+        const anchor =
+          branch.condition !== undefined
+            ? tokens[branch.condition].start
+            : tokens[branch.keyword].end;
         return (
           <div key={i} className={styles.branch}>
             <div className={styles.branchHeader}>
-              <span className={styles.branchKeyword}>{tokens[branch.keyword].text}</span>
+              <span className={styles.branchKeyword}>
+                {tokens[branch.keyword].text}
+              </span>
               {!isElse && (
                 <ValueEditor
                   text={conditionText}
@@ -56,7 +66,11 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                   helpId="breakdown.conditionalCard.condition"
                   onCommit={(value, restoreFocus) => {
                     if (typeof value !== "string") return;
-                    const result = applyEdit({ kind: "setCondition", branch: { parent: node, index: i }, value });
+                    const result = applyEdit({
+                      kind: "setCondition",
+                      branch: { parent: node, index: i },
+                      value,
+                    });
                     if (result && restoreFocus) requestFocus(result.caret);
                   }}
                 />
@@ -68,7 +82,10 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                     className={cardStyles.deleteButton}
                     onClick={(e) => {
                       e.stopPropagation();
-                      applyEdit({ kind: "removeBranch", branch: { parent: node, index: i } });
+                      applyEdit({
+                        kind: "removeBranch",
+                        branch: { parent: node, index: i },
+                      });
                     }}
                     title="Remove this branch"
                   >
@@ -125,7 +142,9 @@ export function ConditionalCard({ node }: { node: IfNode }) {
           <button
             type="button"
             className={styles.branchControlButton}
-            onClick={() => applyEdit({ kind: "addBranch", parent: node, branch: "elseif" })}
+            onClick={() =>
+              applyEdit({ kind: "addBranch", parent: node, branch: "elseif" })
+            }
           >
             + elseif
           </button>
@@ -133,7 +152,9 @@ export function ConditionalCard({ node }: { node: IfNode }) {
             type="button"
             className={styles.branchControlButton}
             disabled={hasElse}
-            onClick={() => applyEdit({ kind: "addBranch", parent: node, branch: "else" })}
+            onClick={() =>
+              applyEdit({ kind: "addBranch", parent: node, branch: "else" })
+            }
           >
             + else
           </button>

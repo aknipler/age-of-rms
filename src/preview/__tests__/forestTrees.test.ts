@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { computeForestWood, type ForestTerrainConstant } from "../generator/forestTrees";
+import {
+  computeForestWood,
+  type ForestTerrainConstant,
+} from "../generator/forestTrees";
 import type { ObjectConstant } from "../generator/objects";
 import type { TileGrid } from "../generator/types";
 
@@ -17,7 +20,8 @@ const OAK_TREE_UNIT = 349;
 
 function grid(dim: number, terrainIds: readonly number[]): TileGrid {
   const terrain = new Uint16Array(dim * dim);
-  for (let i = 0; i < terrain.length; i++) terrain[i] = terrainIds[i % terrainIds.length];
+  for (let i = 0; i < terrain.length; i++)
+    terrain[i] = terrainIds[i % terrainIds.length];
   return {
     dim,
     terrain,
@@ -32,8 +36,18 @@ function grid(dim: number, terrainIds: readonly number[]): TileGrid {
 
 const terrainConstants: ForestTerrainConstant[] = [
   { constId: GRASS, category: "terrain" },
-  { constId: FOREST, category: "terrain", isForest: true, autoTreeUnits: [{ objectId: FOREST_TREE_UNIT, density: 1 }] },
-  { constId: PINE, category: "terrain", isForest: true, autoTreeUnits: [{ objectId: PINE_TREE_UNIT, density: 1 }] },
+  {
+    constId: FOREST,
+    category: "terrain",
+    isForest: true,
+    autoTreeUnits: [{ objectId: FOREST_TREE_UNIT, density: 1 }],
+  },
+  {
+    constId: PINE,
+    category: "terrain",
+    isForest: true,
+    autoTreeUnits: [{ objectId: PINE_TREE_UNIT, density: 1 }],
+  },
   {
     constId: OAK_BUSH,
     category: "terrain",
@@ -48,21 +62,62 @@ const terrainConstants: ForestTerrainConstant[] = [
 ];
 
 const objectConstants: ObjectConstant[] = [
-  { constId: FOREST_TREE_UNIT, rmsConstant: "FOREST_TREE", category: "object", resourceAmounts: { wood: 100 } },
-  { constId: PINE_TREE_UNIT, rmsConstant: "PINETREE", category: "object", resourceAmounts: { wood: 100 } },
-  { constId: BUSH_A_UNIT, rmsConstant: null, category: "object", resourceAmounts: { wood: 100 } },
-  { constId: AFRICAN_BUSH_UNIT, rmsConstant: "DLC_AFRICANBUSH", category: "object", resourceAmounts: { wood: 100 } },
-  { constId: OAK_TREE_UNIT, rmsConstant: "OAKTREE", category: "object", resourceAmounts: { wood: 100 } },
+  {
+    constId: FOREST_TREE_UNIT,
+    rmsConstant: "FOREST_TREE",
+    category: "object",
+    resourceAmounts: { wood: 100 },
+  },
+  {
+    constId: PINE_TREE_UNIT,
+    rmsConstant: "PINETREE",
+    category: "object",
+    resourceAmounts: { wood: 100 },
+  },
+  {
+    constId: BUSH_A_UNIT,
+    rmsConstant: null,
+    category: "object",
+    resourceAmounts: { wood: 100 },
+  },
+  {
+    constId: AFRICAN_BUSH_UNIT,
+    rmsConstant: "DLC_AFRICANBUSH",
+    category: "object",
+    resourceAmounts: { wood: 100 },
+  },
+  {
+    constId: OAK_TREE_UNIT,
+    rmsConstant: "OAKTREE",
+    category: "object",
+    resourceAmounts: { wood: 100 },
+  },
 ];
 
 describe("computeForestWood", () => {
   it("is zero on a grid with no forest terrain", () => {
-    expect(computeForestWood(grid(4, [GRASS]), terrainConstants, objectConstants, new Set(), new Map())).toBe(0);
+    expect(
+      computeForestWood(
+        grid(4, [GRASS]),
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        new Map(),
+      ),
+    ).toBe(0);
   });
 
   it("sums density * unit wood over a uniform single-slot forest terrain", () => {
     const g = grid(4, [PINE]); // 16 tiles, density 1, 100 wood
-    expect(computeForestWood(g, terrainConstants, objectConstants, new Set(), new Map())).toBe(1600);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        new Map(),
+      ),
+    ).toBe(1600);
   });
 
   it("cascades a multi-slot terrain first-hit-wins, not an additive sum over every slot", () => {
@@ -71,7 +126,15 @@ describe("computeForestWood", () => {
     // because the last slot's density is 1 (a guaranteed catch-all). Wood:
     // 0.2*100 + 0.24*100 + 0.56*100 = 100, not the naive additive 150.
     const g = grid(1, [OAK_BUSH]);
-    expect(computeForestWood(g, terrainConstants, objectConstants, new Set(), new Map())).toBe(100);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        new Map(),
+      ),
+    ).toBe(100);
   });
 
   it("leaves a fraction of a tile's expected wood unclaimed when no slot's density reaches 1", () => {
@@ -91,7 +154,9 @@ describe("computeForestWood", () => {
       },
     ];
     const g = grid(1, [OAK_BUSH]);
-    expect(computeForestWood(g, short, objectConstants, new Set(), new Map())).toBe(44);
+    expect(
+      computeForestWood(g, short, objectConstants, new Set(), new Map()),
+    ).toBe(44);
   });
 
   it("a suppressed earlier slot still consumes its own share of remaining, rather than handing it to the next slot", () => {
@@ -102,34 +167,86 @@ describe("computeForestWood", () => {
     // yield" rather than "the species never gets a turn".
     const g = grid(1, [OAK_BUSH]);
     const suppressed = new Set([`${OAK_BUSH}:${BUSH_A_UNIT}`]);
-    expect(computeForestWood(g, terrainConstants, objectConstants, suppressed, new Map())).toBe(80);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        suppressed,
+        new Map(),
+      ),
+    ).toBe(80);
   });
 
   it("sums across a mixed grid, one terrain at a time", () => {
     const g = grid(2, [FOREST, GRASS, GRASS, PINE]); // 1 FOREST tile (100) + 1 PINE tile (100), 2 GRASS tiles (0)
-    expect(computeForestWood(g, terrainConstants, objectConstants, new Set(), new Map())).toBe(200);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        new Map(),
+      ),
+    ).toBe(200);
   });
 
   it("skips a suppressed (terrain, unit) pair", () => {
     const g = grid(1, [FOREST]);
     const suppressed = new Set([`${FOREST}:${FOREST_TREE_UNIT}`]);
-    expect(computeForestWood(g, terrainConstants, objectConstants, suppressed, new Map())).toBe(0);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        suppressed,
+        new Map(),
+      ),
+    ).toBe(0);
   });
 
   it("applies a D10 yield override instead of the base wood value", () => {
     const g = grid(1, [FOREST]);
-    const overrides = new Map([[FOREST_TREE_UNIT, { key: "wood" as const, amount: 400 }]]);
-    expect(computeForestWood(g, terrainConstants, objectConstants, new Set(), overrides)).toBe(400);
+    const overrides = new Map([
+      [FOREST_TREE_UNIT, { key: "wood" as const, amount: 400 }],
+    ]);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        overrides,
+      ),
+    ).toBe(400);
   });
 
   it("ignores a yield override for a different resource", () => {
     const g = grid(1, [FOREST]);
-    const overrides = new Map([[FOREST_TREE_UNIT, { key: "gold" as const, amount: 400 }]]);
-    expect(computeForestWood(g, terrainConstants, objectConstants, new Set(), overrides)).toBe(100);
+    const overrides = new Map([
+      [FOREST_TREE_UNIT, { key: "gold" as const, amount: 400 }],
+    ]);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        overrides,
+      ),
+    ).toBe(100);
   });
 
   it("falls back to Ash's 100-wood/100%-density default for an isForest terrain the extraction has not reached", () => {
     const g = grid(3, [UNMEASURED_FOREST]); // 9 tiles * 100
-    expect(computeForestWood(g, terrainConstants, objectConstants, new Set(), new Map())).toBe(900);
+    expect(
+      computeForestWood(
+        g,
+        terrainConstants,
+        objectConstants,
+        new Set(),
+        new Map(),
+      ),
+    ).toBe(900);
   });
 });

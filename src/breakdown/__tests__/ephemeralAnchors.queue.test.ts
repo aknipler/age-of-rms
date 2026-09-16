@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { shiftAnchors, isAnchoredWithin, type OffsetEdit } from "../ephemeralAnchors";
+import {
+  shiftAnchors,
+  isAnchoredWithin,
+  type OffsetEdit,
+} from "../ephemeralAnchors";
 
 // docs/known-issues.md BUG-001, Part A. Mirrors the queue-resolution
 // logic added to BreakdownPane.tsx (pendingAnchorShiftsRef /
@@ -18,7 +22,8 @@ function queueEdit(
   edit: OffsetEdit,
 ): void {
   const base = expectedSourceRef.current ?? baseSource;
-  const expectedSource = base.slice(0, edit.start) + edit.newText + base.slice(edit.end);
+  const expectedSource =
+    base.slice(0, edit.start) + edit.newText + base.slice(edit.end);
   expectedSourceRef.current = expectedSource;
   pending.push({ edit, expectedSource });
 }
@@ -29,7 +34,9 @@ function resolve(
   renderedSource: string,
   anchors: ReadonlySet<number>,
 ): { anchors: Set<number>; remaining: Pending[] } {
-  const matchedUpTo = pending.findIndex((p) => p.expectedSource === renderedSource);
+  const matchedUpTo = pending.findIndex(
+    (p) => p.expectedSource === renderedSource,
+  );
   if (matchedUpTo === -1) {
     expectedSourceRef.current = null;
     return { anchors: new Set(anchors), remaining: [] };
@@ -62,8 +69,14 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     expect(pending.length).toBe(1);
 
     // The matching post-edit source renders.
-    const postEditSource = source.slice(0, edit.start) + edit.newText + source.slice(edit.end); // "BBBB CCCC"
-    const resolved = resolve(pending, expectedSourceRef, postEditSource, anchors);
+    const postEditSource =
+      source.slice(0, edit.start) + edit.newText + source.slice(edit.end); // "BBBB CCCC"
+    const resolved = resolve(
+      pending,
+      expectedSourceRef,
+      postEditSource,
+      anchors,
+    );
     expect(resolved.remaining.length).toBe(0);
     // Anchor shifted by Δ=-5 now that the AST it applies to has caught up.
     expect(resolved.anchors.has(5)).toBe(true);
@@ -77,13 +90,21 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     const expectedSourceRef = { current: null as string | null };
 
     // Edit 1: delete "AAAA " (offsets 0-5, Δ=-5) -> expected "BBBB CCCC".
-    queueEdit(pending, expectedSourceRef, source, { start: 0, end: 5, newText: "" });
+    queueEdit(pending, expectedSourceRef, source, {
+      start: 0,
+      end: 5,
+      newText: "",
+    });
     // Edit 2 fires before edit 1's reparse lands, so its offsets are
     // expressed in edit 1's *expected* (not-yet-rendered) coordinate
     // space: "BBBB CCCC" -> replace "BBBB" (offsets 0-4) with "ZZ". This
     // is the point of chaining off expectedSourceRef instead of the
     // (still stale) `source` prop.
-    queueEdit(pending, expectedSourceRef, source, { start: 0, end: 4, newText: "ZZ" });
+    queueEdit(pending, expectedSourceRef, source, {
+      start: 0,
+      end: 4,
+      newText: "ZZ",
+    });
 
     // Only the FINAL combined source ever actually renders, the
     // requestId dedup in useParsedDocument means edit 1's own
@@ -102,12 +123,21 @@ describe("BUG-001 Part A — anchor shift queue sequencing", () => {
     const anchors = new Set([5]);
     const pending: Pending[] = [];
     const expectedSourceRef = { current: null as string | null };
-    queueEdit(pending, expectedSourceRef, source, { start: 0, end: 4, newText: "X" });
+    queueEdit(pending, expectedSourceRef, source, {
+      start: 0,
+      end: 4,
+      newText: "X",
+    });
 
     // Something totally unrelated changed the document (e.g. manual
     // Code-tab typing racing a Breakdown edit), the queue must not hang
     // forever waiting for a source that will never render.
-    const result = resolve(pending, expectedSourceRef, "totally different text", anchors);
+    const result = resolve(
+      pending,
+      expectedSourceRef,
+      "totally different text",
+      anchors,
+    );
     expect(result.remaining.length).toBe(0);
     expect(expectedSourceRef.current).toBeNull();
   });

@@ -53,7 +53,13 @@ function isSpanOrNull(v: unknown): v is Span | null {
   return v === null || isSpan(v);
 }
 
-const OVERLAY_ROLES = new Set<OverlayRole>(["primary", "secondary", "warning", "error", "muted"]);
+const OVERLAY_ROLES = new Set<OverlayRole>([
+  "primary",
+  "secondary",
+  "warning",
+  "error",
+  "muted",
+]);
 function isOverlayRole(v: unknown): v is OverlayRole {
   return typeof v === "string" && OVERLAY_ROLES.has(v as OverlayRole);
 }
@@ -65,7 +71,9 @@ function isOverlayRole(v: unknown): v is OverlayRole {
  * the record could have (radiusPx, rTiles, cursor, ...), reporting them as
  * nonexistent even though the runtime object still carries them.
  */
-function isTilePoint(v: unknown): v is Record<string, unknown> & { x: number; y: number } {
+function isTilePoint(
+  v: unknown,
+): v is Record<string, unknown> & { x: number; y: number } {
   return isRecord(v) && isFiniteNumber(v.x) && isFiniteNumber(v.y);
 }
 
@@ -76,37 +84,57 @@ function isTilePoint(v: unknown): v is Record<string, unknown> & { x: number; y:
  */
 function checkOverlayShape(shape: unknown, index: number): string | null {
   if (!isRecord(shape)) return `shape ${index} is not an object`;
-  if (shape.id !== undefined && typeof shape.id !== "string") return `shape ${index} has a non-string id`;
-  if (!isOverlayRole(shape.role)) return `shape ${index} has an out-of-enum role`;
+  if (shape.id !== undefined && typeof shape.id !== "string")
+    return `shape ${index} has a non-string id`;
+  if (!isOverlayRole(shape.role))
+    return `shape ${index} has an out-of-enum role`;
   switch (shape.kind) {
     case "point":
-      if (!isTilePoint(shape)) return `shape ${index} (point) has non-numeric x/y`;
-      if (shape.radiusPx !== undefined && !isFiniteNumber(shape.radiusPx)) return `shape ${index} (point) has a non-numeric radiusPx`;
+      if (!isTilePoint(shape))
+        return `shape ${index} (point) has non-numeric x/y`;
+      if (shape.radiusPx !== undefined && !isFiniteNumber(shape.radiusPx))
+        return `shape ${index} (point) has a non-numeric radiusPx`;
       return null;
     case "circle":
-      if (!isTilePoint(shape)) return `shape ${index} (circle) has non-numeric x/y`;
-      if (!isFiniteNumber(shape.rTiles)) return `shape ${index} (circle) has a non-numeric rTiles`;
-      if (shape.fill !== undefined && typeof shape.fill !== "boolean") return `shape ${index} (circle) has a non-boolean fill`;
+      if (!isTilePoint(shape))
+        return `shape ${index} (circle) has non-numeric x/y`;
+      if (!isFiniteNumber(shape.rTiles))
+        return `shape ${index} (circle) has a non-numeric rTiles`;
+      if (shape.fill !== undefined && typeof shape.fill !== "boolean")
+        return `shape ${index} (circle) has a non-boolean fill`;
       return null;
     case "line":
-      if (!isTilePoint(shape.from)) return `shape ${index} (line) has a malformed 'from'`;
-      if (!isTilePoint(shape.to)) return `shape ${index} (line) has a malformed 'to'`;
-      if (shape.dashed !== undefined && typeof shape.dashed !== "boolean") return `shape ${index} (line) has a non-boolean dashed`;
+      if (!isTilePoint(shape.from))
+        return `shape ${index} (line) has a malformed 'from'`;
+      if (!isTilePoint(shape.to))
+        return `shape ${index} (line) has a malformed 'to'`;
+      if (shape.dashed !== undefined && typeof shape.dashed !== "boolean")
+        return `shape ${index} (line) has a non-boolean dashed`;
       return null;
     case "polyline":
       if (!Array.isArray(shape.points) || !shape.points.every(isTilePoint)) {
         return `shape ${index} (polyline) has a non-tile-point in points`;
       }
-      if (shape.closed !== undefined && typeof shape.closed !== "boolean") return `shape ${index} (polyline) has a non-boolean closed`;
+      if (shape.closed !== undefined && typeof shape.closed !== "boolean")
+        return `shape ${index} (polyline) has a non-boolean closed`;
       return null;
     case "label":
-      if (!isTilePoint(shape)) return `shape ${index} (label) has non-numeric x/y`;
-      if (typeof shape.text !== "string") return `shape ${index} (label) has no text`;
+      if (!isTilePoint(shape))
+        return `shape ${index} (label) has non-numeric x/y`;
+      if (typeof shape.text !== "string")
+        return `shape ${index} (label) has no text`;
       return null;
     case "handle":
-      if (typeof shape.id !== "string") return `shape ${index} (handle) has no id`;
-      if (!isTilePoint(shape)) return `shape ${index} (handle) has non-numeric x/y`;
-      if (shape.cursor !== undefined && shape.cursor !== "move" && shape.cursor !== "ew-resize" && shape.cursor !== "grab") {
+      if (typeof shape.id !== "string")
+        return `shape ${index} (handle) has no id`;
+      if (!isTilePoint(shape))
+        return `shape ${index} (handle) has non-numeric x/y`;
+      if (
+        shape.cursor !== undefined &&
+        shape.cursor !== "move" &&
+        shape.cursor !== "ew-resize" &&
+        shape.cursor !== "grab"
+      ) {
         return `shape ${index} (handle) has an out-of-enum cursor`;
       }
       return null;
@@ -140,10 +168,15 @@ export function validateManifest(manifest: ToolManifest): ManifestProblem[] {
 
   // Must REJECT, not warn, otherwise v1.1 tools will depend on leniency.
   if (manifest.apiVersion !== TOOLS_API_VERSION) {
-    fail(`declares apiVersion ${manifest.apiVersion}; this host implements ${TOOLS_API_VERSION}`);
+    fail(
+      `declares apiVersion ${manifest.apiVersion}; this host implements ${TOOLS_API_VERSION}`,
+    );
   }
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) fail(`id must be kebab-case`);
-  if (manifest.ownsSettingsHeader !== undefined && typeof manifest.ownsSettingsHeader !== "boolean") {
+  if (
+    manifest.ownsSettingsHeader !== undefined &&
+    typeof manifest.ownsSettingsHeader !== "boolean"
+  ) {
     fail(`ownsSettingsHeader must be a boolean when present`);
   }
 
@@ -155,29 +188,48 @@ export function validateManifest(manifest: ToolManifest): ManifestProblem[] {
     switch (param.type) {
       case "integer": {
         if (param.min !== undefined && param.default < param.min) {
-          fail(`param "${param.key}" default ${param.default} is below its own min ${param.min}`);
+          fail(
+            `param "${param.key}" default ${param.default} is below its own min ${param.min}`,
+          );
         }
         if (param.max !== undefined && param.default > param.max) {
-          fail(`param "${param.key}" default ${param.default} is above its own max ${param.max}`);
+          fail(
+            `param "${param.key}" default ${param.default} is above its own max ${param.max}`,
+          );
         }
         break;
       }
       case "select": {
         if (!param.options.some((o) => o.value === param.default)) {
-          fail(`param "${param.key}" default "${param.default}" is not one of its own options`);
+          fail(
+            `param "${param.key}" default "${param.default}" is not one of its own options`,
+          );
         }
         break;
       }
       case "multiSelect": {
         const values = new Set(param.options.map((o) => o.value));
         for (const d of param.default) {
-          if (!values.has(d)) fail(`param "${param.key}" default "${d}" is not one of its own options`);
+          if (!values.has(d))
+            fail(
+              `param "${param.key}" default "${d}" is not one of its own options`,
+            );
         }
-        if (param.minSelected !== undefined && param.default.length < param.minSelected) {
-          fail(`param "${param.key}" default selects ${param.default.length}, below its own minSelected ${param.minSelected}`);
+        if (
+          param.minSelected !== undefined &&
+          param.default.length < param.minSelected
+        ) {
+          fail(
+            `param "${param.key}" default selects ${param.default.length}, below its own minSelected ${param.minSelected}`,
+          );
         }
-        if (param.maxSelected !== undefined && param.default.length > param.maxSelected) {
-          fail(`param "${param.key}" default selects ${param.default.length}, above its own maxSelected ${param.maxSelected}`);
+        if (
+          param.maxSelected !== undefined &&
+          param.default.length > param.maxSelected
+        ) {
+          fail(
+            `param "${param.key}" default selects ${param.default.length}, above its own maxSelected ${param.maxSelected}`,
+          );
         }
         break;
       }
@@ -216,7 +268,10 @@ export function resolveParams(
     switch (def.type) {
       case "integer": {
         let n = isFiniteNumber(raw) ? Math.trunc(raw) : def.default;
-        if (!isFiniteNumber(raw)) problems.push(`"${def.label}" was not a number; using ${def.default}`);
+        if (!isFiniteNumber(raw))
+          problems.push(
+            `"${def.label}" was not a number; using ${def.default}`,
+          );
         if (def.min !== undefined && n < def.min) n = def.min;
         if (def.max !== undefined && n > def.max) n = def.max;
         params[def.key] = n;
@@ -229,19 +284,29 @@ export function resolveParams(
         params[def.key] = typeof raw === "string" ? raw : def.default;
         break;
       case "select": {
-        const ok = typeof raw === "string" && def.options.some((o) => o.value === raw);
-        if (!ok && raw !== undefined) problems.push(`"${def.label}" was not one of its options; using the default`);
+        const ok =
+          typeof raw === "string" && def.options.some((o) => o.value === raw);
+        if (!ok && raw !== undefined)
+          problems.push(
+            `"${def.label}" was not one of its options; using the default`,
+          );
         params[def.key] = ok ? (raw as string) : def.default;
         break;
       }
       case "multiSelect": {
         const values = new Set(def.options.map((o) => o.value));
-        const picked = isStringArray(raw) ? raw.filter((v) => values.has(v)) : [...def.default];
+        const picked = isStringArray(raw)
+          ? raw.filter((v) => values.has(v))
+          : [...def.default];
         if (def.minSelected !== undefined && picked.length < def.minSelected) {
-          problems.push(`"${def.label}" needs at least ${def.minSelected} selected`);
+          problems.push(
+            `"${def.label}" needs at least ${def.minSelected} selected`,
+          );
         }
         if (def.maxSelected !== undefined && picked.length > def.maxSelected) {
-          problems.push(`"${def.label}" allows at most ${def.maxSelected} selected`);
+          problems.push(
+            `"${def.label}" allows at most ${def.maxSelected} selected`,
+          );
         }
         params[def.key] = picked;
         break;
@@ -260,9 +325,13 @@ export function paramsAreSubmittable(
     if (def.type !== "multiSelect") continue;
     const values = new Set(def.options.map((o) => o.value));
     const raw = submitted[def.key];
-    const picked = isStringArray(raw) ? raw.filter((v) => values.has(v)) : [...def.default];
-    if (def.minSelected !== undefined && picked.length < def.minSelected) return false;
-    if (def.maxSelected !== undefined && picked.length > def.maxSelected) return false;
+    const picked = isStringArray(raw)
+      ? raw.filter((v) => values.has(v))
+      : [...def.default];
+    if (def.minSelected !== undefined && picked.length < def.minSelected)
+      return false;
+    if (def.maxSelected !== undefined && picked.length > def.maxSelected)
+      return false;
   }
   return true;
 }
@@ -271,7 +340,8 @@ export function paramsAreSubmittable(
 // Inbound message validation (Sec.4.2)
 // ---------------------------------------------------------------------------
 
-export type MessageCheck = { ok: true; message: ToolMessage } | { ok: false; problem: string };
+export type MessageCheck =
+  { ok: true; message: ToolMessage } | { ok: false; problem: string };
 
 function checkOutputBlock(block: unknown, index: number): string | null {
   if (!isRecord(block)) return `block ${index} is not an object`;
@@ -279,49 +349,70 @@ function checkOutputBlock(block: unknown, index: number): string | null {
   switch (block.kind) {
     case "heading":
     case "text":
-      if (typeof block.text !== "string") return `${where} (${block.kind}) has no text`;
-      if (block.text.length > LIMITS.maxTextLengthPerBlock) return `${where} exceeds the ${LIMITS.maxTextLengthPerBlock}-character block cap`;
+      if (typeof block.text !== "string")
+        return `${where} (${block.kind}) has no text`;
+      if (block.text.length > LIMITS.maxTextLengthPerBlock)
+        return `${where} exceeds the ${LIMITS.maxTextLengthPerBlock}-character block cap`;
       return null;
     case "keyValue":
       if (!Array.isArray(block.rows)) return `${where} (keyValue) has no rows`;
       for (const row of block.rows) {
-        if (!Array.isArray(row) || row.length !== 2 || row.some((c) => typeof c !== "string")) {
+        if (
+          !Array.isArray(row) ||
+          row.length !== 2 ||
+          row.some((c) => typeof c !== "string")
+        ) {
           return `${where} (keyValue) has a row that is not a [string, string] pair`;
         }
       }
       return null;
     case "table": {
-      if (!isStringArray(block.columns)) return `${where} (table) columns must be strings`;
+      if (!isStringArray(block.columns))
+        return `${where} (table) columns must be strings`;
       if (!Array.isArray(block.rows)) return `${where} (table) has no rows`;
       for (const row of block.rows) {
-        if (!isStringArray(row)) return `${where} (table) has a row whose cells are not all strings`;
+        if (!isStringArray(row))
+          return `${where} (table) has a row whose cells are not all strings`;
       }
       // The only OutputBlock field with a cross-field invariant, and it would
       // otherwise ship unvalidated: Sec.2 declares it and delegates the check
       // here.
       if (block.rowSpans !== undefined) {
-        if (!Array.isArray(block.rowSpans)) return `${where} (table) rowSpans must be an array`;
+        if (!Array.isArray(block.rowSpans))
+          return `${where} (table) rowSpans must be an array`;
         if (block.rowSpans.length !== block.rows.length) {
           return `${where} (table) has ${block.rowSpans.length} rowSpans for ${block.rows.length} rows`;
         }
-        if (!block.rowSpans.every(isSpanOrNull)) return `${where} (table) has a rowSpan that is neither a Span nor null`;
+        if (!block.rowSpans.every(isSpanOrNull))
+          return `${where} (table) has a rowSpan that is neither a Span nor null`;
       }
       return null;
     }
     case "severity":
-      if (block.level !== "info" && block.level !== "warning" && block.level !== "error") {
+      if (
+        block.level !== "info" &&
+        block.level !== "warning" &&
+        block.level !== "error"
+      ) {
         return `${where} (severity) has an out-of-enum level`;
       }
-      if (typeof block.text !== "string") return `${where} (severity) has no text`;
-      if (block.span !== undefined && !isSpan(block.span)) return `${where} (severity) has a malformed span`;
+      if (typeof block.text !== "string")
+        return `${where} (severity) has no text`;
+      if (block.span !== undefined && !isSpan(block.span))
+        return `${where} (severity) has a malformed span`;
       return null;
     case "codeRef":
-      if (typeof block.text !== "string") return `${where} (codeRef) has no text`;
+      if (typeof block.text !== "string")
+        return `${where} (codeRef) has no text`;
       if (!isSpan(block.span)) return `${where} (codeRef) has a malformed span`;
       return null;
     case "mapOverlay": {
-      if (!Array.isArray(block.shapes)) return `${where} (mapOverlay) has no shapes`;
-      if (block.interactive !== undefined && typeof block.interactive !== "boolean") {
+      if (!Array.isArray(block.shapes))
+        return `${where} (mapOverlay) has no shapes`;
+      if (
+        block.interactive !== undefined &&
+        typeof block.interactive !== "boolean"
+      ) {
         return `${where} (mapOverlay) has a non-boolean interactive`;
       }
       // Sec.3.7: over-cap TRUNCATES rather than rejects, so this checks each
@@ -358,7 +449,8 @@ function checkEdits(edits: unknown): string | null {
   if (!Array.isArray(edits)) return "edits is not an array";
   for (const edit of edits) {
     if (!isRecord(edit)) return "an edit is not an object";
-    if (!isFiniteNumber(edit.start) || !isFiniteNumber(edit.end)) return "an edit has non-numeric bounds";
+    if (!isFiniteNumber(edit.start) || !isFiniteNumber(edit.end))
+      return "an edit has non-numeric bounds";
     if (typeof edit.newText !== "string") return "an edit has no newText";
   }
   return null;
@@ -369,15 +461,24 @@ export function validateToolMessage(raw: unknown): MessageCheck {
   if (!isRecord(raw)) return { ok: false, problem: "message is not an object" };
   switch (raw.type) {
     case "progress": {
-      if (raw.fraction !== undefined && (!isFiniteNumber(raw.fraction) || raw.fraction < 0 || raw.fraction > 1)) {
-        return { ok: false, problem: "progress.fraction must be a number in [0,1]" };
+      if (
+        raw.fraction !== undefined &&
+        (!isFiniteNumber(raw.fraction) || raw.fraction < 0 || raw.fraction > 1)
+      ) {
+        return {
+          ok: false,
+          problem: "progress.fraction must be a number in [0,1]",
+        };
       }
-      if (raw.note !== undefined && typeof raw.note !== "string") return { ok: false, problem: "progress.note must be a string" };
+      if (raw.note !== undefined && typeof raw.note !== "string")
+        return { ok: false, problem: "progress.note must be a string" };
       return { ok: true, message: raw as ToolMessage };
     }
     case "partial": {
       const problem = checkOutput(raw.output);
-      return problem ? { ok: false, problem } : { ok: true, message: raw as ToolMessage };
+      return problem
+        ? { ok: false, problem }
+        : { ok: true, message: raw as ToolMessage };
     }
     case "result": {
       const problem = checkOutput(raw.output);
@@ -389,15 +490,26 @@ export function validateToolMessage(raw: unknown): MessageCheck {
       return { ok: true, message: raw as ToolMessage };
     }
     case "error": {
-      if (typeof raw.message !== "string") return { ok: false, problem: "error.message must be a string" };
-      const reasons = ["tool-error", "cancelled", "killed", "unresponsive", "protocol", "host-error"];
+      if (typeof raw.message !== "string")
+        return { ok: false, problem: "error.message must be a string" };
+      const reasons = [
+        "tool-error",
+        "cancelled",
+        "killed",
+        "unresponsive",
+        "protocol",
+        "host-error",
+      ];
       if (typeof raw.reason !== "string" || !reasons.includes(raw.reason)) {
         return { ok: false, problem: "error.reason is out of enum" };
       }
       return { ok: true, message: raw as ToolMessage };
     }
     default:
-      return { ok: false, problem: `unknown message type ${JSON.stringify(raw.type)}` };
+      return {
+        ok: false,
+        problem: `unknown message type ${JSON.stringify(raw.type)}`,
+      };
   }
 }
 
@@ -406,7 +518,10 @@ export function parseInboundLine(line: string): MessageCheck {
   // The cap is checked on the RAW line: a single 500 MB NDJSON line OOMs the
   // host before any render-side cap can help.
   if (line.length > LIMITS.maxInboundLineBytes) {
-    return { ok: false, problem: `inbound line exceeds the ${LIMITS.maxInboundLineBytes}-byte cap` };
+    return {
+      ok: false,
+      problem: `inbound line exceeds the ${LIMITS.maxInboundLineBytes}-byte cap`,
+    };
   }
   let parsed: unknown;
   try {
@@ -447,19 +562,34 @@ export type EditCheck = { ok: true } | { ok: false; problem: string };
  * handles ordering itself. What Monaco does require is NON-OVERLAP, which is
  * what this checks.
  */
-export function validateEdits(edits: readonly TextEdit[], snapshotLength: number): EditCheck {
+export function validateEdits(
+  edits: readonly TextEdit[],
+  snapshotLength: number,
+): EditCheck {
   for (const e of edits) {
-    if (!Number.isInteger(e.start) || !Number.isInteger(e.end)) return { ok: false, problem: "an edit has non-integer bounds" };
-    if (e.start < 0 || e.end < 0) return { ok: false, problem: "an edit has a negative offset" };
-    if (e.start > e.end) return { ok: false, problem: `an edit has start ${e.start} after end ${e.end}` };
+    if (!Number.isInteger(e.start) || !Number.isInteger(e.end))
+      return { ok: false, problem: "an edit has non-integer bounds" };
+    if (e.start < 0 || e.end < 0)
+      return { ok: false, problem: "an edit has a negative offset" };
+    if (e.start > e.end)
+      return {
+        ok: false,
+        problem: `an edit has start ${e.start} after end ${e.end}`,
+      };
     if (e.end > snapshotLength) {
-      return { ok: false, problem: `an edit ends at ${e.end}, past the ${snapshotLength}-character document` };
+      return {
+        ok: false,
+        problem: `an edit ends at ${e.end}, past the ${snapshotLength}-character document`,
+      };
     }
   }
   const sorted = [...edits].sort((a, b) => a.start - b.start);
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i].start < sorted[i - 1].end) {
-      return { ok: false, problem: `edits overlap at offset ${sorted[i].start}` };
+      return {
+        ok: false,
+        problem: `edits overlap at offset ${sorted[i].start}`,
+      };
     }
   }
   return { ok: true };
@@ -470,16 +600,24 @@ export function validateEdits(edits: readonly TextEdit[], snapshotLength: number
 // ---------------------------------------------------------------------------
 
 /** read-ast implies read-source; the consent dialog collapses them into one line. */
-export function effectiveCapabilities(declared: readonly Capability[]): Set<Capability> {
+export function effectiveCapabilities(
+  declared: readonly Capability[],
+): Set<Capability> {
   const set = new Set<Capability>(declared);
   if (set.has("read-ast")) set.add("read-source");
   return set;
 }
 
 /** Rendered rows are capped; the pane says "showing first N of M" rather than truncating silently. */
-export function tableRowsToRender(rows: readonly string[][]): { rows: readonly string[][]; hidden: number } {
+export function tableRowsToRender(rows: readonly string[][]): {
+  rows: readonly string[][];
+  hidden: number;
+} {
   if (rows.length <= LIMITS.maxTableRowsRendered) return { rows, hidden: 0 };
-  return { rows: rows.slice(0, LIMITS.maxTableRowsRendered), hidden: rows.length - LIMITS.maxTableRowsRendered };
+  return {
+    rows: rows.slice(0, LIMITS.maxTableRowsRendered),
+    hidden: rows.length - LIMITS.maxTableRowsRendered,
+  };
 }
 
 /**
@@ -490,9 +628,16 @@ export function tableRowsToRender(rows: readonly string[][]): { rows: readonly s
  * lesson `consistency-checker-design.md`'s first human read of its output
  * paid for).
  */
-export function overlayShapesToRender(shapes: readonly OverlayShape[]): { shapes: readonly OverlayShape[]; hidden: number } {
-  if (shapes.length <= LIMITS.maxOverlayShapesPerBlock) return { shapes, hidden: 0 };
-  return { shapes: shapes.slice(0, LIMITS.maxOverlayShapesPerBlock), hidden: shapes.length - LIMITS.maxOverlayShapesPerBlock };
+export function overlayShapesToRender(shapes: readonly OverlayShape[]): {
+  shapes: readonly OverlayShape[];
+  hidden: number;
+} {
+  if (shapes.length <= LIMITS.maxOverlayShapesPerBlock)
+    return { shapes, hidden: 0 };
+  return {
+    shapes: shapes.slice(0, LIMITS.maxOverlayShapesPerBlock),
+    hidden: shapes.length - LIMITS.maxOverlayShapesPerBlock,
+  };
 }
 
 export type { OutputBlock, ToolOutput };

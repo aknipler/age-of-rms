@@ -2,7 +2,7 @@
 
 **This is a work brief for one session, not a design document.** The design is
 `docs/land-placement-shape-kinds-escalation.md` §3(a) and §5, plus `docs/land-placement-design.md`
-Sec.7.3 for the handles. Read this file for *what to build and in what order*; read those for *why*,
+Sec.7.3 for the handles. Read this file for _what to build and in what order_; read those for _why_,
 and treat them as authoritative wherever they and this file disagree.
 
 **Slice B must be built before this one, and C is the small one.** B's `perimeterOffset` is already

@@ -94,7 +94,9 @@ if (languageData) {
         if (attributeNames.has(other)) continue;
         hadError = true;
         attrRefsOk = false;
-        console.error(`✗ language.json: attribute "${attribute.name}" ${field} references unknown attribute "${other}"`);
+        console.error(
+          `✗ language.json: attribute "${attribute.name}" ${field} references unknown attribute "${other}"`,
+        );
       }
     }
   }
@@ -102,7 +104,9 @@ if (languageData) {
     console.log("✓ language.json: all command→attribute references resolve");
   }
   if (attrRefsOk) {
-    console.log("✓ language.json: all mutexWith / requiresOneOf references resolve");
+    console.log(
+      "✓ language.json: all mutexWith / requiresOneOf references resolve",
+    );
   }
 
   // `tokenId` uniqueness. The parser resolves an aliased `#const` by asking
@@ -137,7 +141,9 @@ if (languageData) {
     }
   }
   if (tokenIdsOk) {
-    console.log(`✓ language.json: ${commandsByTokenId.size} command tokenId(s), unique and each citing a run`);
+    console.log(
+      `✓ language.json: ${commandsByTokenId.size} command tokenId(s), unique and each citing a run`,
+    );
   }
 
   // Internal consistency: a numeric `default` must satisfy the `min`/`max` the
@@ -171,7 +177,9 @@ if (languageData) {
     }
   }
   if (rangesOk) {
-    console.log("✓ language.json: every declared default falls inside its declared range");
+    console.log(
+      "✓ language.json: every declared default falls inside its declared range",
+    );
   }
 
   checkMapSizeJoin(languageData);
@@ -199,7 +207,9 @@ for (const { data } of FILES) {
       if (MOJIBAKE.test(node)) {
         hadError = true;
         encodingOk = false;
-        console.error(`✗ ${data}: double-encoded text at ${trail} — "${node.slice(0, 60)}..."`);
+        console.error(
+          `✗ ${data}: double-encoded text at ${trail} — "${node.slice(0, 60)}..."`,
+        );
       }
     } else if (Array.isArray(node)) {
       node.forEach((v, i) => walk(v, `${trail}[${i}]`));
@@ -213,8 +223,6 @@ if (encodingOk) {
   console.log("✓ reference data: no double-encoded text");
 }
 
-
-
 // Unit classes, both directions. `classId` on an object row and `memberIds`
 // on an objectClass row are two views of one read, so they cannot drift on
 // their own — but a hand edit to either, or a half-finished extraction run,
@@ -224,7 +232,9 @@ if (encodingOk) {
 if (gameConstantsData) {
   const rows = gameConstantsData.constants;
   const classRows = rows.filter((c) => c.category === "objectClass");
-  const membersByClass = new Map(classRows.map((c) => [c.classId, new Set(c.memberIds ?? [])]));
+  const membersByClass = new Map(
+    classRows.map((c) => [c.classId, new Set(c.memberIds ?? [])]),
+  );
   let classesOk = true;
   for (const row of classRows) {
     // constId is classId + 900 by definition — the offset is the whole reason
@@ -239,12 +249,19 @@ if (gameConstantsData) {
     }
   }
   for (const row of rows) {
-    if (row.category !== "object" || row.classId === undefined || row.constId === null) continue;
+    if (
+      row.category !== "object" ||
+      row.classId === undefined ||
+      row.constId === null
+    )
+      continue;
     const members = membersByClass.get(row.classId);
     if (members === undefined) {
       hadError = true;
       classesOk = false;
-      console.error(`✗ game-constants.json: object "${row.rmsConstant}" is in class ${row.classId}, which has no objectClass row`);
+      console.error(
+        `✗ game-constants.json: object "${row.rmsConstant}" is in class ${row.classId}, which has no objectClass row`,
+      );
     } else if (!members.has(row.constId)) {
       hadError = true;
       classesOk = false;
@@ -254,7 +271,9 @@ if (gameConstantsData) {
     }
   }
   if (classesOk && classRows.length > 0) {
-    console.log(`✓ game-constants.json: ${classRows.length} objectClass rows, constId offset and memberIds agree with every classId`);
+    console.log(
+      `✓ game-constants.json: ${classRows.length} objectClass rows, constId offset and memberIds agree with every classId`,
+    );
   }
 }
 
@@ -270,11 +289,18 @@ if (gameConstantsData) {
 if (gameConstantsData) {
   const rows = gameConstantsData.constants;
   const objectsById = new Map(
-    rows.filter((c) => c.category === "object" && c.constId !== null).map((c) => [c.constId, c]),
+    rows
+      .filter((c) => c.category === "object" && c.constId !== null)
+      .map((c) => [c.constId, c]),
   );
   let treeProseOk = true;
   for (const row of rows) {
-    if (row.category !== "terrain" || !row.autoTreeUnits || row.autoTreeUnits.length !== 1) continue;
+    if (
+      row.category !== "terrain" ||
+      !row.autoTreeUnits ||
+      row.autoTreeUnits.length !== 1
+    )
+      continue;
     const description = row.description ?? "";
     const densityMatch = description.match(/(\d+(?:\.\d+)?)%\s*tree density/);
     const woodMatch = description.match(/(\d+(?:\.\d+)?)\s*wood per tree/);
@@ -304,7 +330,9 @@ if (gameConstantsData) {
     }
   }
   if (treeProseOk) {
-    console.log("✓ game-constants.json: autoTreeUnits density/wood agrees with description prose everywhere both are stated");
+    console.log(
+      "✓ game-constants.json: autoTreeUnits density/wood agrees with description prose everywhere both are stated",
+    );
   }
 }
 
@@ -331,8 +359,13 @@ function checkMapSizeJoin(languageData) {
   let sizes;
   try {
     const source = readFileSync(path.join(repoRoot, sourcePath), "utf-8");
-    const block = source.match(/export const MAP_SIZES = \[([\s\S]*?)\] as const;/);
-    if (!block) throw new Error("could not find the `export const MAP_SIZES = [...] as const;` declaration");
+    const block = source.match(
+      /export const MAP_SIZES = \[([\s\S]*?)\] as const;/,
+    );
+    if (!block)
+      throw new Error(
+        "could not find the `export const MAP_SIZES = [...] as const;` declaration",
+      );
     sizes = [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
     if (sizes.length === 0) throw new Error("MAP_SIZES parsed as empty");
   } catch (error) {
@@ -361,20 +394,30 @@ function checkMapSizeJoin(languageData) {
     if (labels.length === 0) {
       // A size the picker offers that no label claims. The preview would resolve
       // its dimension to undefined and scale the whole map off it.
-      fail(`MAP_SIZES has "${size}" but no language.json mapSize label carries mapSize: "${size}"`);
+      fail(
+        `MAP_SIZES has "${size}" but no language.json mapSize label carries mapSize: "${size}"`,
+      );
       continue;
     }
     const missing = labels.filter((l) => typeof l.dimensions !== "number");
     for (const label of missing) {
-      fail(`language.json: "${label.name}" claims mapSize "${size}" but declares no dimensions`);
+      fail(
+        `language.json: "${label.name}" claims mapSize "${size}" but declares no dimensions`,
+      );
     }
-    const dims = new Set(labels.filter((l) => typeof l.dimensions === "number").map((l) => l.dimensions));
+    const dims = new Set(
+      labels
+        .filter((l) => typeof l.dimensions === "number")
+        .map((l) => l.dimensions),
+    );
     if (dims.size > 1) {
       // The legacy and modern names for one app size must agree on the number.
       // If they disagree, the join has two answers and which one a consumer
       // gets depends on iteration order.
       const detail = labels.map((l) => `${l.name}=${l.dimensions}`).join(", ");
-      fail(`language.json: mapSize "${size}" resolves to conflicting dimensions (${detail})`);
+      fail(
+        `language.json: mapSize "${size}" resolves to conflicting dimensions (${detail})`,
+      );
     }
     if (dims.size === 1) resolved.push({ size, dim: [...dims][0] });
   }
@@ -404,7 +447,9 @@ function checkMapSizeJoin(languageData) {
 
   if (ok) {
     const summary = resolved.map((r) => `${r.size} ${r.dim}`).join(", ");
-    console.log(`✓ MAP_SIZES ⟷ predefinedLabels: ${resolved.length} sizes resolve, ascending (${summary})`);
+    console.log(
+      `✓ MAP_SIZES ⟷ predefinedLabels: ${resolved.length} sizes resolve, ascending (${summary})`,
+    );
   }
 }
 

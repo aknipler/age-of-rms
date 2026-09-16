@@ -65,10 +65,15 @@ export type PreviewReferenceDragOutcome =
  * `MIN_PANE_FRACTION`, so either pane is exactly as easy to close as the
  * other.
  */
-export function resolvePreviewReferenceDrag(rawFraction: number): PreviewReferenceDragOutcome {
-  if (!Number.isFinite(rawFraction)) return { collapsedSide: null, fraction: DEFAULT_PREVIEW_FRACTION };
-  if (rawFraction < MIN_PANE_FRACTION - COLLAPSE_DRAG_MARGIN) return { collapsedSide: "preview" };
-  if (rawFraction > 1 - MIN_PANE_FRACTION + COLLAPSE_DRAG_MARGIN) return { collapsedSide: "reference" };
+export function resolvePreviewReferenceDrag(
+  rawFraction: number,
+): PreviewReferenceDragOutcome {
+  if (!Number.isFinite(rawFraction))
+    return { collapsedSide: null, fraction: DEFAULT_PREVIEW_FRACTION };
+  if (rawFraction < MIN_PANE_FRACTION - COLLAPSE_DRAG_MARGIN)
+    return { collapsedSide: "preview" };
+  if (rawFraction > 1 - MIN_PANE_FRACTION + COLLAPSE_DRAG_MARGIN)
+    return { collapsedSide: "reference" };
   return { collapsedSide: null, fraction: clampPreviewFraction(rawFraction) };
 }
 
@@ -85,6 +90,8 @@ export function isPreviewFraction(value: unknown): value is number {
 export type PreviewReferenceCollapsedSide = "preview" | "reference" | null;
 
 /** Guards the persisted collapsed side. `null` is a real, storable state here (both panes shown), unlike the side panel's plain boolean. */
-export function isPreviewReferenceCollapsedSide(value: unknown): value is PreviewReferenceCollapsedSide {
+export function isPreviewReferenceCollapsedSide(
+  value: unknown,
+): value is PreviewReferenceCollapsedSide {
   return value === "preview" || value === "reference" || value === null;
 }

@@ -1,5 +1,11 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { Diagnostic, Item, ParseResult, Span, Token } from "../parser/types";
+import type {
+  Diagnostic,
+  Item,
+  ParseResult,
+  Span,
+  Token,
+} from "../parser/types";
 import type { LanguageIndex } from "../parser/language";
 import type { GameConstantsData } from "./gameConstants";
 import type { EditIntent, EditResult } from "./patch/intents";
@@ -74,12 +80,17 @@ export function BreakdownProvider({
   value: BreakdownContextValue;
   children: ReactNode;
 }) {
-  return <BreakdownCtx.Provider value={value}>{children}</BreakdownCtx.Provider>;
+  return (
+    <BreakdownCtx.Provider value={value}>{children}</BreakdownCtx.Provider>
+  );
 }
 
 /** Every card component reads shared read-only context this way rather than threading tokens/lang through every prop list. */
 export function useBreakdownContext(): BreakdownContextValue {
   const ctx = useContext(BreakdownCtx);
-  if (!ctx) throw new Error("useBreakdownContext must be used within BreakdownProvider");
+  if (!ctx)
+    throw new Error(
+      "useBreakdownContext must be used within BreakdownProvider",
+    );
   return ctx;
 }

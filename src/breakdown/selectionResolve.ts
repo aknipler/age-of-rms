@@ -18,7 +18,10 @@ import type { Item, RandomNode, ScriptNode } from "../parser/types";
  * command, never something inside its block, because descent stops at
  * the command node, it doesn't recurse into `command.block.items`.
  */
-export function findItemAtOffset(items: readonly Item[], offset: number): Item | undefined {
+export function findItemAtOffset(
+  items: readonly Item[],
+  offset: number,
+): Item | undefined {
   for (const item of items) {
     if (offset < item.span.start || offset >= item.span.end) continue;
     if (item.kind === "if") {
@@ -44,7 +47,10 @@ export function findItemAtOffset(items: readonly Item[], offset: number): Item |
 }
 
 /** Same resolution, starting from the whole script (preamble + every section), used when the caller doesn't already know which tab's items to search. */
-export function findItemAtOffsetInScript(script: ScriptNode, offset: number): Item | undefined {
+export function findItemAtOffsetInScript(
+  script: ScriptNode,
+  offset: number,
+): Item | undefined {
   const inPreamble = findItemAtOffset(script.preamble, offset);
   if (inPreamble) return inPreamble;
   for (const section of script.sections) {

@@ -40,7 +40,10 @@ export function extractComments(tokens: readonly Token[]): Span[] {
   }
   if (depth > 0 && start !== -1) {
     const lastToken = tokens[tokens.length - 1];
-    comments.push({ start, end: lastToken ? Math.max(lastToken.end, start) : start });
+    comments.push({
+      start,
+      end: lastToken ? Math.max(lastToken.end, start) : start,
+    });
   }
   return comments;
 }
@@ -71,12 +74,16 @@ export function commentsBetweenItems(
   for (let i = 0; i < items.length - 1; i++) {
     const gapStart = items[i].span.end;
     const gapEnd = items[i + 1].span.start;
-    const inGap = allComments.filter((c) => c.start >= gapStart && c.end <= gapEnd);
+    const inGap = allComments.filter(
+      (c) => c.start >= gapStart && c.end <= gapEnd,
+    );
     if (inGap.length > 0) byIndex.set(i, inGap);
   }
   if (boundaryEnd !== undefined && items.length > 0) {
     const gapStart = items[items.length - 1].span.end;
-    const trailing = allComments.filter((c) => c.start >= gapStart && c.end <= boundaryEnd);
+    const trailing = allComments.filter(
+      (c) => c.start >= gapStart && c.end <= boundaryEnd,
+    );
     if (trailing.length > 0) byIndex.set(items.length - 1, trailing);
   }
   return byIndex;

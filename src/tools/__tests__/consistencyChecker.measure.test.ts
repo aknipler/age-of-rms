@@ -97,13 +97,26 @@ import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../parser/parser";
-import { buildLanguageIndex, type LanguageData, type LanguageIndex } from "../../parser/language";
+import {
+  buildLanguageIndex,
+  type LanguageData,
+  type LanguageIndex,
+} from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import type { ParseResult } from "../../parser/types";
-import { generatePreview, type PreviewReferenceData } from "../../preview/generator/index";
+import {
+  generatePreview,
+  type PreviewReferenceData,
+} from "../../preview/generator/index";
 import { instantiateScript } from "../../preview/generator/instantiate";
 import type { ObjectConstant } from "../../preview/generator/objects";
-import type { CommandReport, InstantiatedScript, PlacementFailure, PreviewResult, SimulationNote } from "../../preview/generator/types";
+import type {
+  CommandReport,
+  InstantiatedScript,
+  PlacementFailure,
+  PreviewResult,
+  SimulationNote,
+} from "../../preview/generator/types";
 import type { TerrainConstantForMasks } from "../../preview/generator/grid";
 import { DEFAULT_TEAMS } from "../../generationSettings/generationSettingsConstants";
 import { MonteCarloAggregate } from "../builtin/checker/aggregate";
@@ -131,7 +144,9 @@ const DRIFT_SEEDS = [1, 2, 3, 4, 5] as const;
 /** Top-level `test-maps/*.rms` only. `readdirSync` without `recursive` already excludes `broken/` and `local/`, which is the point (see header trap 1). */
 function listTopLevelMaps(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"))
+    .filter(
+      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".rms"),
+    )
     .map((entry) => entry.name)
     .sort();
 }
@@ -139,7 +154,10 @@ function listTopLevelMaps(dir: string): string[] {
 /** `git ls-files test-maps`, restricted to top-level entries (nested paths like `broken/BCC2-Rekawa.rms` are a different fixture, not one of "the 32", see header trap 1). Returns null if git is unavailable, so the caller can degrade gracefully rather than crash a reporter over a missing tool. */
 function getTrackedTopLevelMaps(): Set<string> | null {
   try {
-    const out = execSync("git ls-files test-maps", { cwd: REPO_ROOT, encoding: "utf8" });
+    const out = execSync("git ls-files test-maps", {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
     const tracked = new Set<string>();
     for (const rawLine of out.split(/\r?\n/)) {
       const line = rawLine.trim().replace(/\\/g, "/");
@@ -150,7 +168,9 @@ function getTrackedTopLevelMaps(): Set<string> | null {
     }
     return tracked;
   } catch (err) {
-    console.warn(`[measure] git ls-files unavailable — tracked-only column will be empty. ${String(err)}`);
+    console.warn(
+      `[measure] git ls-files unavailable — tracked-only column will be empty. ${String(err)}`,
+    );
     return null;
   }
 }
@@ -193,21 +213,32 @@ function cellState(cell: RowCell | undefined): CellState {
 }
 
 /** Sums `occurrences ?? 1` per bucket, see the file header's counting-convention note. */
-function bucketSums(failures: readonly PlacementFailure[]): Map<string, number> {
+function bucketSums(
+  failures: readonly PlacementFailure[],
+): Map<string, number> {
   const sums = new Map<string, number>();
   for (const failure of failures) {
-    sums.set(failure.bucket, (sums.get(failure.bucket) ?? 0) + (failure.occurrences ?? 1));
+    sums.set(
+      failure.bucket,
+      (sums.get(failure.bucket) ?? 0) + (failure.occurrences ?? 1),
+    );
   }
   return sums;
 }
 
-function bucketSetsEqual(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+function bucketSetsEqual(
+  a: ReadonlySet<string>,
+  b: ReadonlySet<string>,
+): boolean {
   if (a.size !== b.size) return false;
   for (const value of a) if (!b.has(value)) return false;
   return true;
 }
 
-function bucketCountsEqual(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): boolean {
+function bucketCountsEqual(
+  a: ReadonlyMap<string, number>,
+  b: ReadonlyMap<string, number>,
+): boolean {
   if (a.size !== b.size) return false;
   for (const [key, value] of a) if (b.get(key) !== value) return false;
   return true;
@@ -224,7 +255,11 @@ interface SweepA {
   generationErrors: string[];
 }
 
-function runSweepA(mapNames: readonly string[], lang: LanguageData, refDb: PreviewReferenceData): SweepA {
+function runSweepA(
+  mapNames: readonly string[],
+  lang: LanguageData,
+  refDb: PreviewReferenceData,
+): SweepA {
   const rows = new Map<string, Row>();
   const reportsByCount = new Map<PlayerCount, MapReport[]>();
   for (const pc of PLAYER_COUNTS) reportsByCount.set(pc, []);
@@ -250,19 +285,32 @@ function runSweepA(mapNames: readonly string[], lang: LanguageData, refDb: Previ
           { seed: 1, collectSnapshots: false },
         );
       } catch (err) {
-        generationErrors.push(`${mapName} @ ${pc}p seed 1: generatePreview failed — ${String(err)}`);
+        generationErrors.push(
+          `${mapName} @ ${pc}p seed 1: generatePreview failed — ${String(err)}`,
+        );
         continue;
       }
       const bucket = reportsByCount.get(pc);
-      if (bucket) for (const report of result.reports) bucket.push({ map: mapName, report });
+      if (bucket)
+        for (const report of result.reports)
+          bucket.push({ map: mapName, report });
       for (const report of result.reports) {
         const key = rowKey(mapName, report.stage, spanKeyOf(report));
         let row = rows.get(key);
         if (!row) {
-          row = { map: mapName, stage: report.stage, spanKey: spanKeyOf(report), cells: new Map() };
+          row = {
+            map: mapName,
+            stage: report.stage,
+            spanKey: spanKeyOf(report),
+            cells: new Map(),
+          };
           rows.set(key, row);
         }
-        row.cells.set(pc, { attempted: report.attempted, placed: report.placed, failures: report.failures });
+        row.cells.set(pc, {
+          attempted: report.attempted,
+          placed: report.placed,
+          failures: report.failures,
+        });
       }
       if (pc === 4) notesByMapAt4p.set(mapName, result.notes);
     }
@@ -280,7 +328,11 @@ interface SweepB {
   generationErrors: string[];
 }
 
-function runSweepB(mapNames: readonly string[], lang: LanguageData, refDb: PreviewReferenceData): SweepB {
+function runSweepB(
+  mapNames: readonly string[],
+  lang: LanguageData,
+  refDb: PreviewReferenceData,
+): SweepB {
   const seedSetByKey = new Map<string, Set<number>>();
   const mapByKey = new Map<string, string>();
   const generationErrors: string[] = [];
@@ -304,7 +356,9 @@ function runSweepB(mapNames: readonly string[], lang: LanguageData, refDb: Previ
           { seed, collectSnapshots: false },
         );
       } catch (err) {
-        generationErrors.push(`${mapName} @ 4p seed ${seed}: generatePreview failed — ${String(err)}`);
+        generationErrors.push(
+          `${mapName} @ 4p seed ${seed}: generatePreview failed — ${String(err)}`,
+        );
         continue;
       }
       for (const report of result.reports) {
@@ -326,13 +380,19 @@ function runSweepB(mapNames: readonly string[], lang: LanguageData, refDb: Previ
 // Filters. Derive the tracked-only column from already-collected data
 // ---------------------------------------------------------------------------
 
-function filterRows(rows: ReadonlyMap<string, Row>, pred: (map: string) => boolean): Map<string, Row> {
+function filterRows(
+  rows: ReadonlyMap<string, Row>,
+  pred: (map: string) => boolean,
+): Map<string, Row> {
   const out = new Map<string, Row>();
   for (const [key, row] of rows) if (pred(row.map)) out.set(key, row);
   return out;
 }
 
-function filterReports(reports: readonly MapReport[], pred: (map: string) => boolean): MapReport[] {
+function filterReports(
+  reports: readonly MapReport[],
+  pred: (map: string) => boolean,
+): MapReport[] {
   return reports.filter((r) => pred(r.map));
 }
 
@@ -349,7 +409,10 @@ function filterSeedData(
   seedSetByKey: ReadonlyMap<string, ReadonlySet<number>>,
   mapByKey: ReadonlyMap<string, string>,
   pred: (map: string) => boolean,
-): { seedSetByKey: Map<string, ReadonlySet<number>>; mapByKey: Map<string, string> } {
+): {
+  seedSetByKey: Map<string, ReadonlySet<number>>;
+  mapByKey: Map<string, string>;
+} {
   const outSeeds = new Map<string, ReadonlySet<number>>();
   const outMap = new Map<string, string>();
   for (const [key, seedSet] of seedSetByKey) {
@@ -387,7 +450,8 @@ function computeSection1(reports: readonly MapReport[]): Section1Result {
       bucketless++;
     } else {
       const bucketsHere = new Set(report.failures.map((f) => f.bucket));
-      for (const bucket of bucketsHere) byBucket.set(bucket, (byBucket.get(bucket) ?? 0) + 1);
+      for (const bucket of bucketsHere)
+        byBucket.set(bucket, (byBucket.get(bucket) ?? 0) + 1);
     }
   }
   return {
@@ -442,7 +506,9 @@ function computeSection2(rows: ReadonlyMap<string, Row>): Section2Result {
 
     // The naive fold Sec.4.2 forbids: `row.get(pc)?.attempted ?? 0`, treating
     // an absent count as though it had attempted (and failed at) nothing.
-    const naiveAttempted = PLAYER_COUNTS.map((pc) => row.cells.get(pc)?.attempted ?? 0);
+    const naiveAttempted = PLAYER_COUNTS.map(
+      (pc) => row.cells.get(pc)?.attempted ?? 0,
+    );
     if (naiveAttempted.every((a) => a === 0)) naiveZeroEverywhere++;
     else if (naiveAttempted.every((a) => a > 0)) naiveNeverZero++;
     else naiveZeroAtSome++;
@@ -454,7 +520,11 @@ function computeSection2(rows: ReadonlyMap<string, Row>): Section2Result {
     zeroAtSome,
     neverZero,
     absentZeroAnomaly,
-    naive: { zeroEverywhere: naiveZeroEverywhere, zeroAtSome: naiveZeroAtSome, neverZero: naiveNeverZero },
+    naive: {
+      zeroEverywhere: naiveZeroEverywhere,
+      zeroAtSome: naiveZeroAtSome,
+      neverZero: naiveNeverZero,
+    },
   };
 }
 
@@ -535,7 +605,8 @@ function computeSection4(
     } else {
       partial++;
       const map = mapByKey.get(key);
-      if (map !== undefined) partialByMap.set(map, (partialByMap.get(map) ?? 0) + 1);
+      if (map !== undefined)
+        partialByMap.set(map, (partialByMap.get(map) ?? 0) + 1);
     }
   }
 
@@ -604,7 +675,8 @@ function computeSection5(rows: ReadonlyMap<string, Row>): Section5Result {
     for (const pc of present) {
       const cell = row.cells.get(pc);
       if (!cell) continue;
-      const rate = cell.attempted === 0 ? Infinity : cell.placed / cell.attempted;
+      const rate =
+        cell.attempted === 0 ? Infinity : cell.placed / cell.attempted;
       if (rate < worstRate) {
         worstRate = rate;
         worstPc = pc; // strict `<` only, so the first (lowest) count wins ties
@@ -648,7 +720,13 @@ function computeSection5(rows: ReadonlyMap<string, Row>): Section5Result {
     if (unionBuckets.size === 0) continue; // no failure anywhere in the matrix for this row
     numericWithFailure++;
 
-    if (!bucketSetsEqual(new Set(worstBuckets.keys()), new Set(unionBuckets.keys()))) setDiffers++;
+    if (
+      !bucketSetsEqual(
+        new Set(worstBuckets.keys()),
+        new Set(unionBuckets.keys()),
+      )
+    )
+      setDiffers++;
     if (!bucketCountsEqual(worstBuckets, unionBuckets)) countsDiffer++;
 
     const worstRecordCount = worstCell.failures.length;
@@ -671,12 +749,15 @@ function computeSection5(rows: ReadonlyMap<string, Row>): Section5Result {
 
     if (unionRecordCount > worstCell.attempted) {
       unionExceedsAttempted++;
-      if (exampleKeys.length < 5) exampleKeys.push(`${row.map} :: ${row.stage} @ ${row.spanKey}`);
+      if (exampleKeys.length < 5)
+        exampleKeys.push(`${row.map} :: ${row.stage} @ ${row.spanKey}`);
     }
     if (unionOccurrences > worstCell.attempted) {
       unionExceedsAttemptedOccurrences++;
       if (exampleKeysOccurrences.length < 5) {
-        exampleKeysOccurrences.push(`${row.map} :: ${row.stage} @ ${row.spanKey} (attempted ${worstCell.attempted}, union ${unionOccurrences})`);
+        exampleKeysOccurrences.push(
+          `${row.map} :: ${row.stage} @ ${row.spanKey} (attempted ${worstCell.attempted}, union ${unionOccurrences})`,
+        );
       }
     }
   }
@@ -718,14 +799,20 @@ function familyOf(key: string): string {
   return idx === -1 ? key : key.slice(0, idx);
 }
 
-function computeSection6(notesByMap: ReadonlyMap<string, readonly SimulationNote[]>): Section6Result {
+function computeSection6(
+  notesByMap: ReadonlyMap<string, readonly SimulationNote[]>,
+): Section6Result {
   let everyHasSpan = 0;
   let noneHasSpan = 0;
   let mixed = 0;
   const spanlessMaps = new Set<string>();
   const spanlessFamilies = new Map<string, number>();
   let totalGroups = 0;
-  const perMapRanking: { map: string; distinctTexts: number; totalNotes: number }[] = [];
+  const perMapRanking: {
+    map: string;
+    distinctTexts: number;
+    totalNotes: number;
+  }[] = [];
 
   for (const [map, notes] of notesByMap) {
     const byText = new Map<string, SimulationNote[]>();
@@ -748,7 +835,11 @@ function computeSection6(notesByMap: ReadonlyMap<string, readonly SimulationNote
         mixed++;
       }
     }
-    perMapRanking.push({ map, distinctTexts: byText.size, totalNotes: notes.length });
+    perMapRanking.push({
+      map,
+      distinctTexts: byText.size,
+      totalNotes: notes.length,
+    });
   }
 
   perMapRanking.sort((a, b) => b.distinctTexts - a.distinctTexts);
@@ -816,9 +907,12 @@ function computeSection7(rows: ReadonlyMap<string, Row>): Section7Result {
     if (tiedPcs.length < 2) continue;
     tiedRows++;
 
-    if (tiedPcs.some((pc) => row.cells.get(pc)!.failures.length > 0)) tiedWithFailure++;
+    if (tiedPcs.some((pc) => row.cells.get(pc)!.failures.length > 0))
+      tiedWithFailure++;
 
-    const bucketMapsAtTied = tiedPcs.map((pc) => bucketSums(row.cells.get(pc)!.failures));
+    const bucketMapsAtTied = tiedPcs.map((pc) =>
+      bucketSums(row.cells.get(pc)!.failures),
+    );
     const firstSet = new Set(bucketMapsAtTied[0].keys());
     let setDiffer = false;
     let countDiffer = false;
@@ -830,7 +924,13 @@ function computeSection7(rows: ReadonlyMap<string, Row>): Section7Result {
     if (countDiffer) countsDiffer++;
   }
 
-  return { qualifyingRows, tiedRows, tiedWithFailure, setDiffers, countsDiffer };
+  return {
+    qualifyingRows,
+    tiedRows,
+    tiedWithFailure,
+    setDiffers,
+    countsDiffer,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -842,7 +942,9 @@ function computeSection7(rows: ReadonlyMap<string, Row>): Section7Result {
 // ---------------------------------------------------------------------------
 
 /** `PublishedGameConstant` -> `TerrainConstantForMasks`: the same conversion `staticChecks.ts`'s own (unexported) `asTerrainConstants` performs, duplicated here because this reporter calls `computeTerrainSurface` directly rather than through `runStaticChecks`. */
-function asTerrainConstants(constants: readonly PublishedGameConstant[]): readonly TerrainConstantForMasks[] {
+function asTerrainConstants(
+  constants: readonly PublishedGameConstant[],
+): readonly TerrainConstantForMasks[] {
   return constants.map((c) => ({ ...c, constId: c.constId ?? null }));
 }
 
@@ -879,12 +981,21 @@ function runStaticCensus(
     let ratioInst: InstantiatedScript | undefined;
     try {
       for (const pc of PLAYER_COUNTS) {
-        const inst = instantiateScript(parse, language, { playerCount: pc, mapSize: "Normal", teams: DEFAULT_TEAMS }, 1);
+        const inst = instantiateScript(
+          parse,
+          language,
+          { playerCount: pc, mapSize: "Normal", teams: DEFAULT_TEAMS },
+          1,
+        );
         if (pc === 4) ratioInst = inst;
-        findings.push(...runStaticChecks(inst, parse, publishedConstants, staticCtx, pc));
+        findings.push(
+          ...runStaticChecks(inst, parse, publishedConstants, staticCtx, pc),
+        );
       }
     } catch (err) {
-      generationErrors.push(`${mapName}: static checks failed — ${String(err)}`);
+      generationErrors.push(
+        `${mapName}: static checks failed — ${String(err)}`,
+      );
       continue;
     }
     if (!ratioInst) continue;
@@ -896,18 +1007,37 @@ function runStaticCensus(
     // where this document's other figures are taken").
     const census = staticCtx.terrainSurfaceRawAbstain
       ? undefined
-      : computeTerrainSurface(parse, ratioInst, terrainConstants, staticCtx.astConsts);
+      : computeTerrainSurface(
+          parse,
+          ratioInst,
+          terrainConstants,
+          staticCtx.astConsts,
+        );
     const producersTotal = census?.producersTotal ?? 0;
     const producersUnresolvable = census?.producersUnresolvable ?? 0;
-    const unresolvableRatio = census && census.producersTotal > 0 ? census.producersUnresolvable / census.producersTotal : 0;
-    const surfaceAbstained = census === undefined || unresolvableRatio >= UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO;
+    const unresolvableRatio =
+      census && census.producersTotal > 0
+        ? census.producersUnresolvable / census.producersTotal
+        : 0;
+    const surfaceAbstained =
+      census === undefined ||
+      unresolvableRatio >= UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO;
 
     // +1 for the `keyValue` summary header every real run of the tool emits
     // first (`buildOutput` in consistencyChecker.ts). `buildStaticFindingBlocks`
     // covers only the static-finding blocks themselves.
-    const blocks = 1 + buildStaticFindingBlocks(findings, [...PLAYER_COUNTS], parse.lineOffsets).length;
+    const blocks =
+      1 +
+      buildStaticFindingBlocks(findings, [...PLAYER_COUNTS], parse.lineOffsets)
+        .length;
 
-    results.push({ map: mapName, blocks, producersTotal, producersUnresolvable, surfaceAbstained });
+    results.push({
+      map: mapName,
+      blocks,
+      producersTotal,
+      producersUnresolvable,
+      surfaceAbstained,
+    });
   }
 
   return { results, generationErrors };
@@ -930,7 +1060,11 @@ interface SweepC {
   generationErrors: string[];
 }
 
-function runSweepC(mapNames: readonly string[], lang: LanguageData, refDb: PreviewReferenceData): SweepC {
+function runSweepC(
+  mapNames: readonly string[],
+  lang: LanguageData,
+  refDb: PreviewReferenceData,
+): SweepC {
   const rows = new Map<string, SweepCRow>();
   const generationErrors: string[] = [];
 
@@ -947,9 +1081,16 @@ function runSweepC(mapNames: readonly string[], lang: LanguageData, refDb: Previ
       for (const seed of DRIFT_SEEDS) {
         let result: PreviewResult;
         try {
-          result = generatePreview(parse, refDb, { playerCount: pc, mapSize: "Normal", teams: DEFAULT_TEAMS }, { seed, collectSnapshots: false });
+          result = generatePreview(
+            parse,
+            refDb,
+            { playerCount: pc, mapSize: "Normal", teams: DEFAULT_TEAMS },
+            { seed, collectSnapshots: false },
+          );
         } catch (err) {
-          generationErrors.push(`${mapName} @ ${pc}p seed ${seed}: generatePreview failed — ${String(err)}`);
+          generationErrors.push(
+            `${mapName} @ ${pc}p seed ${seed}: generatePreview failed — ${String(err)}`,
+          );
           continue;
         }
         for (const report of result.reports) {
@@ -972,7 +1113,10 @@ function runSweepC(mapNames: readonly string[], lang: LanguageData, refDb: Previ
   return { rows, generationErrors };
 }
 
-function filterSweepCRows(rows: ReadonlyMap<string, SweepCRow>, pred: (map: string) => boolean): Map<string, SweepCRow> {
+function filterSweepCRows(
+  rows: ReadonlyMap<string, SweepCRow>,
+  pred: (map: string) => boolean,
+): Map<string, SweepCRow> {
   const out = new Map<string, SweepCRow>();
   for (const [key, row] of rows) if (pred(row.map)) out.set(key, row);
   return out;
@@ -988,7 +1132,10 @@ interface Section10Result {
   flippedFromAbsent: number;
 }
 
-function computeSection10(sweepCRows: ReadonlyMap<string, SweepCRow>, sweepARows: ReadonlyMap<string, Row>): Section10Result {
+function computeSection10(
+  sweepCRows: ReadonlyMap<string, SweepCRow>,
+  sweepARows: ReadonlyMap<string, Row>,
+): Section10Result {
   let crossCountAbsent = 0;
   let withinBatchPartial = 0;
   let flippedFromAbsent = 0;
@@ -1024,7 +1171,12 @@ function computeSection10(sweepCRows: ReadonlyMap<string, SweepCRow>, sweepARows
     }
   }
 
-  return { totalRows: sweepCRows.size, crossCountAbsent, withinBatchPartial, flippedFromAbsent };
+  return {
+    totalRows: sweepCRows.size,
+    crossCountAbsent,
+    withinBatchPartial,
+    flippedFromAbsent,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1067,9 +1219,16 @@ function runNoteCensusAtDefaults(
         const seed = 1 + runIndex;
         let result: PreviewResult;
         try {
-          result = generatePreview(parse, refDb, { playerCount: pc, mapSize: "Normal", teams: DEFAULT_TEAMS }, { seed, collectSnapshots: false });
+          result = generatePreview(
+            parse,
+            refDb,
+            { playerCount: pc, mapSize: "Normal", teams: DEFAULT_TEAMS },
+            { seed, collectSnapshots: false },
+          );
         } catch (err) {
-          generationErrors.push(`${mapName} @ ${pc}p seed ${seed}: generatePreview failed — ${String(err)}`);
+          generationErrors.push(
+            `${mapName} @ ${pc}p seed ${seed}: generatePreview failed — ${String(err)}`,
+          );
           continue;
         }
         aggregate.addGeneration(pc, result.reports, result.notes);
@@ -1079,8 +1238,14 @@ function runNoteCensusAtDefaults(
     const groups = aggregate.noteGroups();
     // Mirrors `buildNotesBlocks`: one `severity` block per group, plus one
     // `table` when the group carries at least one span.
-    const blocks = groups.reduce((sum, g) => sum + 1 + (g.spans.length > 0 ? 1 : 0), 0);
-    const largestTableRows = groups.reduce((max, g) => Math.max(max, g.spans.length), 0);
+    const blocks = groups.reduce(
+      (sum, g) => sum + 1 + (g.spans.length > 0 ? 1 : 0),
+      0,
+    );
+    const largestTableRows = groups.reduce(
+      (max, g) => Math.max(max, g.spans.length),
+      0,
+    );
     results.push({ map: mapName, blocks, largestTableRows });
   }
 
@@ -1121,7 +1286,13 @@ function makePinner(): {
       entries.push({ label, expected, actual, ok: expected === actual });
     },
     pinMin(label, minExpected, actual) {
-      entries.push({ label, expected: minExpected, actual, ok: actual >= minExpected, minOnly: true });
+      entries.push({
+        label,
+        expected: minExpected,
+        actual,
+        ok: actual >= minExpected,
+        minOnly: true,
+      });
     },
     entries,
   };
@@ -1139,426 +1310,654 @@ function pinLine(p: PinEntry): string {
 // ---------------------------------------------------------------------------
 
 describe("Consistency checker corpus census (CREATION_PLAN 5.2, docs/consistency-checker-design.md rev 14)", () => {
-  it(
-    "sweeps sections 1-6 (2/4/6/8 @ seed 1, 4p @ seeds 1-5), 7 (tie-break, reused), 8/9 (static, no generation), 10 (2/4/6/8 @ seeds 1-5) and 11 (2/4/6/8 @ the default 15 seeds/count), diffs the pinned figures, and writes consistency-census.json",
-    () => {
-      const lang = loadLanguage();
-      const language: LanguageIndex = buildLanguageIndex(lang);
-      const rawConstants = JSON.parse(
-        readFileSync(join(REPO_ROOT, "reference", "data", "game-constants.json"), "utf8"),
-      ) as { constants: ObjectConstant[] };
-      const refDb: PreviewReferenceData = { language, constants: rawConstants.constants };
-      // Sections 8/9 need the richer `PublishedGameConstant` shape (`verified`,
-      // `allowedTerrains`, ...) that `runStaticChecks`/`computeTerrainSurface`
-      // read, the same JSON, read through the wider generated type rather
-      // than the narrower `ObjectConstant` projection `generatePreview` uses.
-      const publishedConstants = rawConstants.constants as unknown as PublishedGameConstant[];
-      const terrainConstants = asTerrainConstants(publishedConstants);
+  it("sweeps sections 1-6 (2/4/6/8 @ seed 1, 4p @ seeds 1-5), 7 (tie-break, reused), 8/9 (static, no generation), 10 (2/4/6/8 @ seeds 1-5) and 11 (2/4/6/8 @ the default 15 seeds/count), diffs the pinned figures, and writes consistency-census.json", () => {
+    const lang = loadLanguage();
+    const language: LanguageIndex = buildLanguageIndex(lang);
+    const rawConstants = JSON.parse(
+      readFileSync(
+        join(REPO_ROOT, "reference", "data", "game-constants.json"),
+        "utf8",
+      ),
+    ) as { constants: ObjectConstant[] };
+    const refDb: PreviewReferenceData = {
+      language,
+      constants: rawConstants.constants,
+    };
+    // Sections 8/9 need the richer `PublishedGameConstant` shape (`verified`,
+    // `allowedTerrains`, ...) that `runStaticChecks`/`computeTerrainSurface`
+    // read, the same JSON, read through the wider generated type rather
+    // than the narrower `ObjectConstant` projection `generatePreview` uses.
+    const publishedConstants =
+      rawConstants.constants as unknown as PublishedGameConstant[];
+    const terrainConstants = asTerrainConstants(publishedConstants);
 
-      const allMaps = listTopLevelMaps(MAPS_DIR);
-      const trackedSet = getTrackedTopLevelMaps();
-      const trackedPred = (m: string): boolean => trackedSet?.has(m) ?? false;
-      const trackedMaps = trackedSet ? allMaps.filter((m) => trackedSet.has(m)) : [];
+    const allMaps = listTopLevelMaps(MAPS_DIR);
+    const trackedSet = getTrackedTopLevelMaps();
+    const trackedPred = (m: string): boolean => trackedSet?.has(m) ?? false;
+    const trackedMaps = trackedSet
+      ? allMaps.filter((m) => trackedSet.has(m))
+      : [];
 
-      const sweepA = runSweepA(allMaps, lang, refDb);
-      const sweepB = runSweepB(allMaps, lang, refDb);
+    const sweepA = runSweepA(allMaps, lang, refDb);
+    const sweepB = runSweepB(allMaps, lang, refDb);
 
-      const { pin, pinMin, entries: pins } = makePinner();
-      const lines: string[] = [];
-      lines.push("===== Consistency checker corpus census =====");
-      lines.push(`maps on disk (test-maps/*.rms, top-level): ${allMaps.length}`);
-      lines.push(
-        trackedSet
-          ? `tracked-only maps (git ls-files, top-level): ${trackedMaps.length}`
-          : "tracked-only maps: UNAVAILABLE (git ls-files failed) — tracked column will read 0 throughout",
-      );
-      lines.push(`player counts swept (seed 1): ${PLAYER_COUNTS.join(", ")}`);
-      lines.push(`seeds swept at 4 players: ${DRIFT_SEEDS.join(", ")}`);
-      if (sweepA.generationErrors.length > 0) {
-        lines.push(`sweep A errors (${sweepA.generationErrors.length}):`);
-        for (const e of sweepA.generationErrors) lines.push(`  ${e}`);
-      }
-      if (sweepB.generationErrors.length > 0) {
-        lines.push(`sweep B errors (${sweepB.generationErrors.length}):`);
-        for (const e of sweepB.generationErrors) lines.push(`  ${e}`);
-      }
+    const { pin, pinMin, entries: pins } = makePinner();
+    const lines: string[] = [];
+    lines.push("===== Consistency checker corpus census =====");
+    lines.push(`maps on disk (test-maps/*.rms, top-level): ${allMaps.length}`);
+    lines.push(
+      trackedSet
+        ? `tracked-only maps (git ls-files, top-level): ${trackedMaps.length}`
+        : "tracked-only maps: UNAVAILABLE (git ls-files failed) — tracked column will read 0 throughout",
+    );
+    lines.push(`player counts swept (seed 1): ${PLAYER_COUNTS.join(", ")}`);
+    lines.push(`seeds swept at 4 players: ${DRIFT_SEEDS.join(", ")}`);
+    if (sweepA.generationErrors.length > 0) {
+      lines.push(`sweep A errors (${sweepA.generationErrors.length}):`);
+      for (const e of sweepA.generationErrors) lines.push(`  ${e}`);
+    }
+    if (sweepB.generationErrors.length > 0) {
+      lines.push(`sweep B errors (${sweepB.generationErrors.length}):`);
+      for (const e of sweepB.generationErrors) lines.push(`  ${e}`);
+    }
 
-      // ---- Section 1 ----
-      lines.push("\n----- Section 1: zero-attempt census per player count -----");
-      const section1All = new Map<PlayerCount, Section1Result>();
-      const section1Tracked = new Map<PlayerCount, Section1Result>();
-      for (const pc of PLAYER_COUNTS) {
-        const allReports = sweepA.reportsByCount.get(pc) ?? [];
-        const s1All = computeSection1(allReports);
-        const s1Tracked = computeSection1(filterReports(allReports, trackedPred));
-        section1All.set(pc, s1All);
-        section1Tracked.set(pc, s1Tracked);
-        lines.push(
-          `@${pc}p ALL: ${s1All.totalReports} reports scanned, ${s1All.zeroAttempt} zero-attempt on ${s1All.mapsWithZero}/${allMaps.length} maps, ${s1All.bucketless} bucketless`,
-        );
-        lines.push(`  stage split: ${JSON.stringify(s1All.byStage)}`);
-        lines.push(`  bucket split: ${JSON.stringify(s1All.byBucket)}`);
-        lines.push(
-          `@${pc}p TRACKED: ${s1Tracked.totalReports} reports scanned, ${s1Tracked.zeroAttempt} zero-attempt on ${s1Tracked.mapsWithZero}/${trackedMaps.length} maps, ${s1Tracked.bucketless} bucketless`,
-        );
-      }
-      const s1_2p = section1All.get(2);
-      const s1_4p = section1All.get(4);
-      const s1_6p = section1All.get(6);
-      const s1_8p = section1All.get(8);
-      if (s1_4p) {
-        pin("Sec1 @4p total reports", 8095, s1_4p.totalReports);
-        pin("Sec1 @4p zero-attempt", 467, s1_4p.zeroAttempt);
-        pin("Sec1 @4p maps with zero-attempt", 30, s1_4p.mapsWithZero);
-        pin("Sec1 @4p stage S6", 462, s1_4p.byStage.S6 ?? 0);
-        pin("Sec1 @4p stage S5", 4, s1_4p.byStage.S5 ?? 0);
-        pin("Sec1 @4p stage S2", 1, s1_4p.byStage.S2 ?? 0);
-        pin("Sec1 @4p bucket actorAreaMissing", 242, s1_4p.byBucket.actorAreaMissing ?? 0);
-        pin("Sec1 @4p bucket landMissing", 203, s1_4p.byBucket.landMissing ?? 0);
-        pin("Sec1 @4p bucket gaiaOnlyRequired", 17, s1_4p.byBucket.gaiaOnlyRequired ?? 0);
-        pin("Sec1 @4p bucketless", 5, s1_4p.bucketless);
-      }
-      if (s1_2p) {
-        pin("Sec1 @2p total reports", 8125, s1_2p.totalReports);
-        pin("Sec1 @2p zero-attempt", 402, s1_2p.zeroAttempt);
-        pin("Sec1 @2p maps with zero-attempt", 29, s1_2p.mapsWithZero);
-        pin("Sec1 @2p bucket actorAreaMissing", 251, s1_2p.byBucket.actorAreaMissing ?? 0);
-        pin("Sec1 @2p bucket landMissing", 128, s1_2p.byBucket.landMissing ?? 0);
-        pin("Sec1 @2p bucket gaiaOnlyRequired", 20, s1_2p.byBucket.gaiaOnlyRequired ?? 0);
-        pin("Sec1 @2p bucketless", 3, s1_2p.bucketless);
-      }
-      if (s1_6p) {
-        pin("Sec1 @6p total reports", 8142, s1_6p.totalReports);
-        pin("Sec1 @6p zero-attempt", 467, s1_6p.zeroAttempt);
-      }
-      if (s1_8p) {
-        pin("Sec1 @8p total reports", 8161, s1_8p.totalReports);
-        pin("Sec1 @8p zero-attempt", 467, s1_8p.zeroAttempt);
-      }
+    // ---- Section 1 ----
+    lines.push("\n----- Section 1: zero-attempt census per player count -----");
+    const section1All = new Map<PlayerCount, Section1Result>();
+    const section1Tracked = new Map<PlayerCount, Section1Result>();
+    for (const pc of PLAYER_COUNTS) {
+      const allReports = sweepA.reportsByCount.get(pc) ?? [];
+      const s1All = computeSection1(allReports);
+      const s1Tracked = computeSection1(filterReports(allReports, trackedPred));
+      section1All.set(pc, s1All);
+      section1Tracked.set(pc, s1Tracked);
+      lines.push(
+        `@${pc}p ALL: ${s1All.totalReports} reports scanned, ${s1All.zeroAttempt} zero-attempt on ${s1All.mapsWithZero}/${allMaps.length} maps, ${s1All.bucketless} bucketless`,
+      );
+      lines.push(`  stage split: ${JSON.stringify(s1All.byStage)}`);
+      lines.push(`  bucket split: ${JSON.stringify(s1All.byBucket)}`);
+      lines.push(
+        `@${pc}p TRACKED: ${s1Tracked.totalReports} reports scanned, ${s1Tracked.zeroAttempt} zero-attempt on ${s1Tracked.mapsWithZero}/${trackedMaps.length} maps, ${s1Tracked.bucketless} bucketless`,
+      );
+    }
+    const s1_2p = section1All.get(2);
+    const s1_4p = section1All.get(4);
+    const s1_6p = section1All.get(6);
+    const s1_8p = section1All.get(8);
+    if (s1_4p) {
+      pin("Sec1 @4p total reports", 8095, s1_4p.totalReports);
+      pin("Sec1 @4p zero-attempt", 467, s1_4p.zeroAttempt);
+      pin("Sec1 @4p maps with zero-attempt", 30, s1_4p.mapsWithZero);
+      pin("Sec1 @4p stage S6", 462, s1_4p.byStage.S6 ?? 0);
+      pin("Sec1 @4p stage S5", 4, s1_4p.byStage.S5 ?? 0);
+      pin("Sec1 @4p stage S2", 1, s1_4p.byStage.S2 ?? 0);
+      pin(
+        "Sec1 @4p bucket actorAreaMissing",
+        242,
+        s1_4p.byBucket.actorAreaMissing ?? 0,
+      );
+      pin("Sec1 @4p bucket landMissing", 203, s1_4p.byBucket.landMissing ?? 0);
+      pin(
+        "Sec1 @4p bucket gaiaOnlyRequired",
+        17,
+        s1_4p.byBucket.gaiaOnlyRequired ?? 0,
+      );
+      pin("Sec1 @4p bucketless", 5, s1_4p.bucketless);
+    }
+    if (s1_2p) {
+      pin("Sec1 @2p total reports", 8125, s1_2p.totalReports);
+      pin("Sec1 @2p zero-attempt", 402, s1_2p.zeroAttempt);
+      pin("Sec1 @2p maps with zero-attempt", 29, s1_2p.mapsWithZero);
+      pin(
+        "Sec1 @2p bucket actorAreaMissing",
+        251,
+        s1_2p.byBucket.actorAreaMissing ?? 0,
+      );
+      pin("Sec1 @2p bucket landMissing", 128, s1_2p.byBucket.landMissing ?? 0);
+      pin(
+        "Sec1 @2p bucket gaiaOnlyRequired",
+        20,
+        s1_2p.byBucket.gaiaOnlyRequired ?? 0,
+      );
+      pin("Sec1 @2p bucketless", 3, s1_2p.bucketless);
+    }
+    if (s1_6p) {
+      pin("Sec1 @6p total reports", 8142, s1_6p.totalReports);
+      pin("Sec1 @6p zero-attempt", 467, s1_6p.zeroAttempt);
+    }
+    if (s1_8p) {
+      pin("Sec1 @8p total reports", 8161, s1_8p.totalReports);
+      pin("Sec1 @8p zero-attempt", 467, s1_8p.zeroAttempt);
+    }
 
-      // ---- Section 2 ----
-      lines.push("\n----- Section 2: matrix row census (correct rule vs naive `?? 0` contrast) -----");
-      const section2All = computeSection2(sweepA.rows);
-      const section2Tracked = computeSection2(filterRows(sweepA.rows, trackedPred));
-      lines.push(
-        `ALL: ${section2All.totalRows} rows keyed; zero-everywhere ${section2All.zeroEverywhere}, zero-at-some ${section2All.zeroAtSome}, never-zero ${section2All.neverZero} (absent+zero anomaly: ${section2All.absentZeroAnomaly})`,
-      );
-      lines.push(
-        `ALL naive fold CONTRAST (absent treated as attempted 0): zero-everywhere ${section2All.naive.zeroEverywhere}, zero-at-some ${section2All.naive.zeroAtSome}, never-zero ${section2All.naive.neverZero}`,
-      );
-      lines.push(
-        `TRACKED: ${section2Tracked.totalRows} rows keyed; zero-everywhere ${section2Tracked.zeroEverywhere}, zero-at-some ${section2Tracked.zeroAtSome}, never-zero ${section2Tracked.neverZero}`,
-      );
-      pin("Sec2 total rows", 8358, section2All.totalRows);
-      pin("Sec2 zero-everywhere", 402, section2All.zeroEverywhere);
-      pin("Sec2 zero-at-some", 65, section2All.zeroAtSome);
-      pin("Sec2 never-zero", 7891, section2All.neverZero);
-      pin("Sec2 naive zero-at-some", 417, section2All.naive.zeroAtSome);
-      pin("Sec2 naive never-zero", 7539, section2All.naive.neverZero);
+    // ---- Section 2 ----
+    lines.push(
+      "\n----- Section 2: matrix row census (correct rule vs naive `?? 0` contrast) -----",
+    );
+    const section2All = computeSection2(sweepA.rows);
+    const section2Tracked = computeSection2(
+      filterRows(sweepA.rows, trackedPred),
+    );
+    lines.push(
+      `ALL: ${section2All.totalRows} rows keyed; zero-everywhere ${section2All.zeroEverywhere}, zero-at-some ${section2All.zeroAtSome}, never-zero ${section2All.neverZero} (absent+zero anomaly: ${section2All.absentZeroAnomaly})`,
+    );
+    lines.push(
+      `ALL naive fold CONTRAST (absent treated as attempted 0): zero-everywhere ${section2All.naive.zeroEverywhere}, zero-at-some ${section2All.naive.zeroAtSome}, never-zero ${section2All.naive.neverZero}`,
+    );
+    lines.push(
+      `TRACKED: ${section2Tracked.totalRows} rows keyed; zero-everywhere ${section2Tracked.zeroEverywhere}, zero-at-some ${section2Tracked.zeroAtSome}, never-zero ${section2Tracked.neverZero}`,
+    );
+    pin("Sec2 total rows", 8358, section2All.totalRows);
+    pin("Sec2 zero-everywhere", 402, section2All.zeroEverywhere);
+    pin("Sec2 zero-at-some", 65, section2All.zeroAtSome);
+    pin("Sec2 never-zero", 7891, section2All.neverZero);
+    pin("Sec2 naive zero-at-some", 417, section2All.naive.zeroAtSome);
+    pin("Sec2 naive never-zero", 7539, section2All.naive.neverZero);
 
-      // ---- Section 3 ----
-      lines.push("\n----- Section 3: presence census -----");
-      const section3All = computeSection3(sweepA.rows);
-      const section3Tracked = computeSection3(filterRows(sweepA.rows, trackedPred));
-      lines.push(
-        `ALL: present-at-all-four ${section3All.presentAllFour}, partial ${section3All.partial} (rated-everywhere-present ${section3All.partialRatedEverywhere}, carrying a zero cell ${section3All.partialWithZeroCell})`,
+    // ---- Section 3 ----
+    lines.push("\n----- Section 3: presence census -----");
+    const section3All = computeSection3(sweepA.rows);
+    const section3Tracked = computeSection3(
+      filterRows(sweepA.rows, trackedPred),
+    );
+    lines.push(
+      `ALL: present-at-all-four ${section3All.presentAllFour}, partial ${section3All.partial} (rated-everywhere-present ${section3All.partialRatedEverywhere}, carrying a zero cell ${section3All.partialWithZeroCell})`,
+    );
+    lines.push(
+      `ALL pattern histogram: ${JSON.stringify(section3All.patternHistogram)}`,
+    );
+    lines.push(
+      `ALL partial rows per map: ${JSON.stringify(section3All.partialByMap)}`,
+    );
+    lines.push(
+      `TRACKED: present-at-all-four ${section3Tracked.presentAllFour}, partial ${section3Tracked.partial} (rated-everywhere-present ${section3Tracked.partialRatedEverywhere}, carrying a zero cell ${section3Tracked.partialWithZeroCell})`,
+    );
+    pin("Sec3 present at all four", 8006, section3All.presentAllFour);
+    pin("Sec3 partial", 352, section3All.partial);
+    pin(
+      "Sec3 partial rated everywhere present",
+      352,
+      section3All.partialRatedEverywhere,
+    );
+    pin(
+      "Sec3 partial carrying a zero cell",
+      0,
+      section3All.partialWithZeroCell,
+    );
+    const patternPins: [string, number][] = [
+      ["--P-", 86],
+      ["P---", 85],
+      ["---P", 71],
+      ["PP-P", 34],
+      ["-PPP", 29],
+      ["-P--", 26],
+      ["--PP", 21],
+    ];
+    for (const [pattern, expected] of patternPins) {
+      pin(
+        `Sec3 pattern ${pattern}`,
+        expected,
+        section3All.patternHistogram[pattern] ?? 0,
       );
-      lines.push(`ALL pattern histogram: ${JSON.stringify(section3All.patternHistogram)}`);
-      lines.push(`ALL partial rows per map: ${JSON.stringify(section3All.partialByMap)}`);
-      lines.push(
-        `TRACKED: present-at-all-four ${section3Tracked.presentAllFour}, partial ${section3Tracked.partial} (rated-everywhere-present ${section3Tracked.partialRatedEverywhere}, carrying a zero cell ${section3Tracked.partialWithZeroCell})`,
-      );
-      pin("Sec3 present at all four", 8006, section3All.presentAllFour);
-      pin("Sec3 partial", 352, section3All.partial);
-      pin("Sec3 partial rated everywhere present", 352, section3All.partialRatedEverywhere);
-      pin("Sec3 partial carrying a zero cell", 0, section3All.partialWithZeroCell);
-      const patternPins: [string, number][] = [
-        ["--P-", 86],
-        ["P---", 85],
-        ["---P", 71],
-        ["PP-P", 34],
-        ["-PPP", 29],
-        ["-P--", 26],
-        ["--PP", 21],
-      ];
-      for (const [pattern, expected] of patternPins) {
-        pin(`Sec3 pattern ${pattern}`, expected, section3All.patternHistogram[pattern] ?? 0);
-      }
-      const partialByMapAll = Object.fromEntries(section3All.partialByMap);
-      const partialByMapPins: [string, number][] = [
-        ["Menindee_AUS_v2.3.rms", 86],
-        ["TL Cape of Storms.rms", 78],
-        ["OWWC1Tewaipounamu-edited-v1.2.rms", 68],
-        ["AK_Namatjira.rms", 54],
-        ["TL Black Forest.rms", 20],
-        ["TL Frontline.rms", 20],
-        ["24hr_Blind Valley.rms", 12],
-        ["W4 - Immersion.rms", 7],
-        ["AK_Hourglass_v2.0.rms", 4],
-        ["AK_Six_Points_v1.4.rms", 2],
-        ["24hr_Battle Lines 1.0.rms", 1],
-      ];
-      for (const [map, expected] of partialByMapPins) {
-        pin(`Sec3 partial rows on ${map}`, expected, partialByMapAll[map] ?? 0);
-      }
+    }
+    const partialByMapAll = Object.fromEntries(section3All.partialByMap);
+    const partialByMapPins: [string, number][] = [
+      ["Menindee_AUS_v2.3.rms", 86],
+      ["TL Cape of Storms.rms", 78],
+      ["OWWC1Tewaipounamu-edited-v1.2.rms", 68],
+      ["AK_Namatjira.rms", 54],
+      ["TL Black Forest.rms", 20],
+      ["TL Frontline.rms", 20],
+      ["24hr_Blind Valley.rms", 12],
+      ["W4 - Immersion.rms", 7],
+      ["AK_Hourglass_v2.0.rms", 4],
+      ["AK_Six_Points_v1.4.rms", 2],
+      ["24hr_Battle Lines 1.0.rms", 1],
+    ];
+    for (const [map, expected] of partialByMapPins) {
+      pin(`Sec3 partial rows on ${map}`, expected, partialByMapAll[map] ?? 0);
+    }
 
-      // ---- Section 4 (sweep B) ----
-      lines.push("\n----- Section 4: within-batch presence drift (4p, seeds 1-5) -----");
-      const section4All = computeSection4(sweepB.seedSetByKey, sweepB.mapByKey);
-      const filteredB = filterSeedData(sweepB.seedSetByKey, sweepB.mapByKey, trackedPred);
-      const section4Tracked = computeSection4(filteredB.seedSetByKey, filteredB.mapByKey);
-      lines.push(
-        `ALL: ${section4All.totalRows} rows keyed; in all 5 runs ${section4All.inAllFive}, partial ${section4All.partial}, maps affected ${section4All.mapsAffected}/${allMaps.length}`,
-      );
-      lines.push(`ALL histogram (runsContaining -> row count): ${JSON.stringify(section4All.histogram)}`);
-      lines.push(`ALL partial rows per map: ${JSON.stringify(section4All.partialByMap)}`);
-      lines.push(
-        `TRACKED: ${section4Tracked.totalRows} rows keyed; in all 5 runs ${section4Tracked.inAllFive}, partial ${section4Tracked.partial}, maps affected ${section4Tracked.mapsAffected}/${trackedMaps.length}`,
-      );
-      pin("Sec4 total rows", 8231, section4All.totalRows);
-      pin("Sec4 in all five runs", 8024, section4All.inAllFive);
-      pin("Sec4 partial", 207, section4All.partial);
-      pin("Sec4 histogram[1]", 142, section4All.histogram[1] ?? 0);
-      pin("Sec4 histogram[2]", 23, section4All.histogram[2] ?? 0);
-      pin("Sec4 histogram[3]", 6, section4All.histogram[3] ?? 0);
-      pin("Sec4 histogram[4]", 36, section4All.histogram[4] ?? 0);
-      pin("Sec4 histogram[5]", 8024, section4All.histogram[5] ?? 0);
-      pin("Sec4 maps affected", 11, section4All.mapsAffected);
+    // ---- Section 4 (sweep B) ----
+    lines.push(
+      "\n----- Section 4: within-batch presence drift (4p, seeds 1-5) -----",
+    );
+    const section4All = computeSection4(sweepB.seedSetByKey, sweepB.mapByKey);
+    const filteredB = filterSeedData(
+      sweepB.seedSetByKey,
+      sweepB.mapByKey,
+      trackedPred,
+    );
+    const section4Tracked = computeSection4(
+      filteredB.seedSetByKey,
+      filteredB.mapByKey,
+    );
+    lines.push(
+      `ALL: ${section4All.totalRows} rows keyed; in all 5 runs ${section4All.inAllFive}, partial ${section4All.partial}, maps affected ${section4All.mapsAffected}/${allMaps.length}`,
+    );
+    lines.push(
+      `ALL histogram (runsContaining -> row count): ${JSON.stringify(section4All.histogram)}`,
+    );
+    lines.push(
+      `ALL partial rows per map: ${JSON.stringify(section4All.partialByMap)}`,
+    );
+    lines.push(
+      `TRACKED: ${section4Tracked.totalRows} rows keyed; in all 5 runs ${section4Tracked.inAllFive}, partial ${section4Tracked.partial}, maps affected ${section4Tracked.mapsAffected}/${trackedMaps.length}`,
+    );
+    pin("Sec4 total rows", 8231, section4All.totalRows);
+    pin("Sec4 in all five runs", 8024, section4All.inAllFive);
+    pin("Sec4 partial", 207, section4All.partial);
+    pin("Sec4 histogram[1]", 142, section4All.histogram[1] ?? 0);
+    pin("Sec4 histogram[2]", 23, section4All.histogram[2] ?? 0);
+    pin("Sec4 histogram[3]", 6, section4All.histogram[3] ?? 0);
+    pin("Sec4 histogram[4]", 36, section4All.histogram[4] ?? 0);
+    pin("Sec4 histogram[5]", 8024, section4All.histogram[5] ?? 0);
+    pin("Sec4 maps affected", 11, section4All.mapsAffected);
 
-      // ---- Section 5 ----
-      lines.push("\n----- Section 5: bucket domain under the corrected three-state worst-count rule -----");
-      const section5All = computeSection5(sweepA.rows);
-      const section5Tracked = computeSection5(filterRows(sweepA.rows, trackedPred));
+    // ---- Section 5 ----
+    lines.push(
+      "\n----- Section 5: bucket domain under the corrected three-state worst-count rule -----",
+    );
+    const section5All = computeSection5(sweepA.rows);
+    const section5Tracked = computeSection5(
+      filterRows(sweepA.rows, trackedPred),
+    );
+    lines.push(
+      `ALL: numeric-rate rows ${section5All.numericRateRows}, marker rows ${section5All.markerRows} (of ${section2All.totalRows} total)`,
+    );
+    lines.push(
+      `ALL: of the numeric-rate rows, ${section5All.numericWithFailure} carry a failure anywhere; set differs ${section5All.setDiffers}, counts differ ${section5All.countsDiffer}`,
+    );
+    lines.push(
+      `ALL [RECORDS]: summed failure records — worst-count-only ${section5All.sumWorstCountFailures} vs matrix-union ${section5All.sumUnionFailures}; union exceeds worst-count attempted on ${section5All.unionExceedsAttempted} rows`,
+      `ALL [OCCURRENCES — the unit the cell prints, and the load-bearing one]: summed occurrences — worst-count-only ${section5All.sumWorstCountOccurrences} vs matrix-union ${section5All.sumUnionOccurrences}; union exceeds worst-count attempted on ${section5All.unionExceedsAttemptedOccurrences} rows`,
+      `ALL occurrence examples: ${section5All.exampleKeysOccurrences.join(" | ")}`,
+    );
+    lines.push(
+      `ALL example union-exceeds-attempted keys: ${section5All.exampleKeys.join(" | ")}`,
+    );
+    lines.push(
+      `TRACKED: numeric-rate rows ${section5Tracked.numericRateRows}, marker rows ${section5Tracked.markerRows}; numeric-with-failure ${section5Tracked.numericWithFailure}, union exceeds attempted on ${section5Tracked.unionExceedsAttempted} rows`,
+    );
+    pin("Sec5 numeric-rate rows", 7891, section5All.numericRateRows);
+    pin("Sec5 marker rows", 467, section5All.markerRows);
+    pin(
+      "Sec5 numeric rows with a failure",
+      2498,
+      section5All.numericWithFailure,
+    );
+    pin("Sec5 bucket set differs", 191, section5All.setDiffers);
+    pin("Sec5 bucket counts differ", 2306, section5All.countsDiffer);
+    pin(
+      "Sec5 union exceeds worst-count attempted [records]",
+      462,
+      section5All.unionExceedsAttempted,
+    );
+    pin(
+      "Sec5 union exceeds worst-count attempted [OCCURRENCES]",
+      803,
+      section5All.unionExceedsAttemptedOccurrences,
+    );
+    pin(
+      "Sec5 summed worst-count occurrences",
+      2026194,
+      section5All.sumWorstCountOccurrences,
+    );
+    pin(
+      "Sec5 summed matrix-union occurrences",
+      8105519,
+      section5All.sumUnionOccurrences,
+    );
+    pin(
+      "Sec5 summed worst-count failures",
+      2833,
+      section5All.sumWorstCountFailures,
+    );
+    pin(
+      "Sec5 summed matrix-union failures",
+      10647,
+      section5All.sumUnionFailures,
+    );
+    if (section2All.neverZero !== section5All.numericRateRows) {
       lines.push(
-        `ALL: numeric-rate rows ${section5All.numericRateRows}, marker rows ${section5All.markerRows} (of ${section2All.totalRows} total)`,
+        `INTERNAL CHECK FAILED: Sec2 never-zero (${section2All.neverZero}) should equal Sec5 numeric-rate rows (${section5All.numericRateRows}) — same predicate, computed twice.`,
       );
-      lines.push(
-        `ALL: of the numeric-rate rows, ${section5All.numericWithFailure} carry a failure anywhere; set differs ${section5All.setDiffers}, counts differ ${section5All.countsDiffer}`,
-      );
-      lines.push(
-        `ALL [RECORDS]: summed failure records — worst-count-only ${section5All.sumWorstCountFailures} vs matrix-union ${section5All.sumUnionFailures}; union exceeds worst-count attempted on ${section5All.unionExceedsAttempted} rows`,
-        `ALL [OCCURRENCES — the unit the cell prints, and the load-bearing one]: summed occurrences — worst-count-only ${section5All.sumWorstCountOccurrences} vs matrix-union ${section5All.sumUnionOccurrences}; union exceeds worst-count attempted on ${section5All.unionExceedsAttemptedOccurrences} rows`,
-        `ALL occurrence examples: ${section5All.exampleKeysOccurrences.join(" | ")}`,
-      );
-      lines.push(`ALL example union-exceeds-attempted keys: ${section5All.exampleKeys.join(" | ")}`);
-      lines.push(
-        `TRACKED: numeric-rate rows ${section5Tracked.numericRateRows}, marker rows ${section5Tracked.markerRows}; numeric-with-failure ${section5Tracked.numericWithFailure}, union exceeds attempted on ${section5Tracked.unionExceedsAttempted} rows`,
-      );
-      pin("Sec5 numeric-rate rows", 7891, section5All.numericRateRows);
-      pin("Sec5 marker rows", 467, section5All.markerRows);
-      pin("Sec5 numeric rows with a failure", 2498, section5All.numericWithFailure);
-      pin("Sec5 bucket set differs", 191, section5All.setDiffers);
-      pin("Sec5 bucket counts differ", 2306, section5All.countsDiffer);
-      pin("Sec5 union exceeds worst-count attempted [records]", 462, section5All.unionExceedsAttempted);
-      pin("Sec5 union exceeds worst-count attempted [OCCURRENCES]", 803, section5All.unionExceedsAttemptedOccurrences);
-      pin("Sec5 summed worst-count occurrences", 2026194, section5All.sumWorstCountOccurrences);
-      pin("Sec5 summed matrix-union occurrences", 8105519, section5All.sumUnionOccurrences);
-      pin("Sec5 summed worst-count failures", 2833, section5All.sumWorstCountFailures);
-      pin("Sec5 summed matrix-union failures", 10647, section5All.sumUnionFailures);
-      if (section2All.neverZero !== section5All.numericRateRows) {
-        lines.push(
-          `INTERNAL CHECK FAILED: Sec2 never-zero (${section2All.neverZero}) should equal Sec5 numeric-rate rows (${section5All.numericRateRows}) — same predicate, computed twice.`,
-        );
-      }
+    }
 
-      // ---- Section 6 ----
-      lines.push("\n----- Section 6: note census (4 players) -----");
-      const section6All = computeSection6(sweepA.notesByMapAt4p);
-      const section6Tracked = computeSection6(filterNotes(sweepA.notesByMapAt4p, trackedPred));
-      lines.push(
-        `ALL: ${section6All.totalGroups} same-text groups; every-note-has-span ${section6All.everyHasSpan}, spanless ${section6All.noneHasSpan} on ${section6All.spanlessMapsCount} maps, mixed ${section6All.mixed}`,
+    // ---- Section 6 ----
+    lines.push("\n----- Section 6: note census (4 players) -----");
+    const section6All = computeSection6(sweepA.notesByMapAt4p);
+    const section6Tracked = computeSection6(
+      filterNotes(sweepA.notesByMapAt4p, trackedPred),
+    );
+    lines.push(
+      `ALL: ${section6All.totalGroups} same-text groups; every-note-has-span ${section6All.everyHasSpan}, spanless ${section6All.noneHasSpan} on ${section6All.spanlessMapsCount} maps, mixed ${section6All.mixed}`,
+    );
+    lines.push(
+      `ALL spanless families: ${JSON.stringify(section6All.spanlessFamilies)}`,
+    );
+    lines.push(
+      `ALL distinct-text ranking (top 10): ${section6All.perMapRanking
+        .slice(0, 10)
+        .map((r) => `${r.map} ${r.distinctTexts} texts / ${r.totalNotes} notes`)
+        .join("; ")}`,
+    );
+    lines.push(
+      `TRACKED: ${section6Tracked.totalGroups} same-text groups; spanless ${section6Tracked.noneHasSpan} on ${section6Tracked.spanlessMapsCount} maps, mixed ${section6Tracked.mixed}`,
+    );
+    pin("Sec6 same-text groups", 338, section6All.totalGroups);
+    pin("Sec6 spanless groups", 29, section6All.noneHasSpan);
+    pin("Sec6 spanless maps", 24, section6All.spanlessMapsCount);
+    pin("Sec6 mixed groups", 0, section6All.mixed);
+    pin(
+      "Sec6 family automaticBeach",
+      18,
+      section6All.spanlessFamilies.automaticBeach ?? 0,
+    );
+    pin("Sec6 family includes", 6, section6All.spanlessFamilies.includes ?? 0);
+    pin(
+      "Sec6 family landOverwrittenBeforeGrowth",
+      4,
+      section6All.spanlessFamilies.landOverwrittenBeforeGrowth ?? 0,
+    );
+    pin("Sec6 family teams", 1, section6All.spanlessFamilies.teams ?? 0);
+    const distinctTextPins: [string, number, number][] = [
+      ["24hr_Petra.rms", 30, 99],
+      ["AK_Namatjira.rms", 24, 138],
+      ["24hr_Caverns.rms", 23, 105],
+      ["AD4 - Pag - v1.2.rms", 23, 48],
+      ["Chaotic_Straitv0.99.rms", 21, 83],
+      ["QS_Three_Bays_v1.1.rms", 17, 132],
+    ];
+    for (const [map, expectedTexts, expectedNotes] of distinctTextPins) {
+      const entry = section6All.perMapRanking.find((r) => r.map === map);
+      pin(
+        `Sec6 ${map} distinct texts`,
+        expectedTexts,
+        entry?.distinctTexts ?? -1,
       );
-      lines.push(`ALL spanless families: ${JSON.stringify(section6All.spanlessFamilies)}`);
-      lines.push(
-        `ALL distinct-text ranking (top 10): ${section6All.perMapRanking
-          .slice(0, 10)
-          .map((r) => `${r.map} ${r.distinctTexts} texts / ${r.totalNotes} notes`)
-          .join("; ")}`,
-      );
-      lines.push(
-        `TRACKED: ${section6Tracked.totalGroups} same-text groups; spanless ${section6Tracked.noneHasSpan} on ${section6Tracked.spanlessMapsCount} maps, mixed ${section6Tracked.mixed}`,
-      );
-      pin("Sec6 same-text groups", 338, section6All.totalGroups);
-      pin("Sec6 spanless groups", 29, section6All.noneHasSpan);
-      pin("Sec6 spanless maps", 24, section6All.spanlessMapsCount);
-      pin("Sec6 mixed groups", 0, section6All.mixed);
-      pin("Sec6 family automaticBeach", 18, section6All.spanlessFamilies.automaticBeach ?? 0);
-      pin("Sec6 family includes", 6, section6All.spanlessFamilies.includes ?? 0);
-      pin("Sec6 family landOverwrittenBeforeGrowth", 4, section6All.spanlessFamilies.landOverwrittenBeforeGrowth ?? 0);
-      pin("Sec6 family teams", 1, section6All.spanlessFamilies.teams ?? 0);
-      const distinctTextPins: [string, number, number][] = [
-        ["24hr_Petra.rms", 30, 99],
-        ["AK_Namatjira.rms", 24, 138],
-        ["24hr_Caverns.rms", 23, 105],
-        ["AD4 - Pag - v1.2.rms", 23, 48],
-        ["Chaotic_Straitv0.99.rms", 21, 83],
-        ["QS_Three_Bays_v1.1.rms", 17, 132],
-      ];
-      for (const [map, expectedTexts, expectedNotes] of distinctTextPins) {
-        const entry = section6All.perMapRanking.find((r) => r.map === map);
-        pin(`Sec6 ${map} distinct texts`, expectedTexts, entry?.distinctTexts ?? -1);
-        pin(`Sec6 ${map} total notes`, expectedNotes, entry?.totalNotes ?? -1);
-      }
+      pin(`Sec6 ${map} total notes`, expectedNotes, entry?.totalNotes ?? -1);
+    }
 
-      // ---- Section 7 ----
-      lines.push("\n----- Section 7: tie-break census (Sec.5.1's 'worst' as a minimum over usually more than one count) -----");
-      const section7All = computeSection7(sweepA.rows);
-      const section7Tracked = computeSection7(filterRows(sweepA.rows, trackedPred));
-      lines.push(
-        `ALL: ${section7All.qualifyingRows} rows with >=2 rated counts and no zero-attempt cell; ${section7All.tiedRows} tied at the minimum (${section7All.tiedWithFailure} carry a failure at a tied count); bucket set differs on ${section7All.setDiffers}, counts differ on ${section7All.countsDiffer}`,
-      );
-      lines.push(
-        `TRACKED: ${section7Tracked.qualifyingRows} qualifying; ${section7Tracked.tiedRows} tied; set differs ${section7Tracked.setDiffers}, counts differ ${section7Tracked.countsDiffer}`,
-      );
-      pin("Sec7 qualifying rows", 7623, section7All.qualifyingRows);
-      pin("Sec7 tied at minimum", 7313, section7All.tiedRows);
-      pin("Sec7 tied at minimum (tracked)", 2041, section7Tracked.tiedRows);
-      pin("Sec7 tied rows carrying a failure", 2022, section7All.tiedWithFailure);
-      pin("Sec7 bucket set differs among tied counts", 146, section7All.setDiffers);
-      pin("Sec7 bucket set differs (tracked)", 10, section7Tracked.setDiffers);
-      pin("Sec7 bucket counts differ among tied counts", 250, section7All.countsDiffer);
-      pin("Sec7 bucket counts differ (tracked)", 29, section7Tracked.countsDiffer);
+    // ---- Section 7 ----
+    lines.push(
+      "\n----- Section 7: tie-break census (Sec.5.1's 'worst' as a minimum over usually more than one count) -----",
+    );
+    const section7All = computeSection7(sweepA.rows);
+    const section7Tracked = computeSection7(
+      filterRows(sweepA.rows, trackedPred),
+    );
+    lines.push(
+      `ALL: ${section7All.qualifyingRows} rows with >=2 rated counts and no zero-attempt cell; ${section7All.tiedRows} tied at the minimum (${section7All.tiedWithFailure} carry a failure at a tied count); bucket set differs on ${section7All.setDiffers}, counts differ on ${section7All.countsDiffer}`,
+    );
+    lines.push(
+      `TRACKED: ${section7Tracked.qualifyingRows} qualifying; ${section7Tracked.tiedRows} tied; set differs ${section7Tracked.setDiffers}, counts differ ${section7Tracked.countsDiffer}`,
+    );
+    pin("Sec7 qualifying rows", 7623, section7All.qualifyingRows);
+    pin("Sec7 tied at minimum", 7313, section7All.tiedRows);
+    pin("Sec7 tied at minimum (tracked)", 2041, section7Tracked.tiedRows);
+    pin("Sec7 tied rows carrying a failure", 2022, section7All.tiedWithFailure);
+    pin(
+      "Sec7 bucket set differs among tied counts",
+      146,
+      section7All.setDiffers,
+    );
+    pin("Sec7 bucket set differs (tracked)", 10, section7Tracked.setDiffers);
+    pin(
+      "Sec7 bucket counts differ among tied counts",
+      250,
+      section7All.countsDiffer,
+    );
+    pin(
+      "Sec7 bucket counts differ (tracked)",
+      29,
+      section7Tracked.countsDiffer,
+    );
 
-      // ---- Sections 8/9 (static census, no generation) ----
-      lines.push("\n----- Section 8: static block count per map vs LIMITS.maxBlocksPerOutput -----");
-      const staticCensus = runStaticCensus(allMaps, lang, language, publishedConstants, terrainConstants);
-      const staticResultsTracked = staticCensus.results.filter((r) => trackedPred(r.map));
-      const overCapAll = staticCensus.results.filter((r) => r.blocks > LIMITS.maxBlocksPerOutput).length;
-      const staticRanking = [...staticCensus.results].sort((a, b) => b.blocks - a.blocks);
-      if (staticCensus.generationErrors.length > 0) {
-        lines.push(`static census errors (${staticCensus.generationErrors.length}):`);
-        for (const e of staticCensus.generationErrors) lines.push(`  ${e}`);
-      }
+    // ---- Sections 8/9 (static census, no generation) ----
+    lines.push(
+      "\n----- Section 8: static block count per map vs LIMITS.maxBlocksPerOutput -----",
+    );
+    const staticCensus = runStaticCensus(
+      allMaps,
+      lang,
+      language,
+      publishedConstants,
+      terrainConstants,
+    );
+    const staticResultsTracked = staticCensus.results.filter((r) =>
+      trackedPred(r.map),
+    );
+    const overCapAll = staticCensus.results.filter(
+      (r) => r.blocks > LIMITS.maxBlocksPerOutput,
+    ).length;
+    const staticRanking = [...staticCensus.results].sort(
+      (a, b) => b.blocks - a.blocks,
+    );
+    if (staticCensus.generationErrors.length > 0) {
       lines.push(
-        `ALL: ${staticCensus.results.length} maps checked; block-count ranking (top 5): ${staticRanking
-          .slice(0, 5)
-          .map((r) => `${r.map} ${r.blocks}`)
-          .join("; ")}; ${overCapAll} of ${staticCensus.results.length} exceed maxBlocksPerOutput (${LIMITS.maxBlocksPerOutput})`,
+        `static census errors (${staticCensus.generationErrors.length}):`,
       );
-      lines.push(`TRACKED: ${staticResultsTracked.length} maps checked`);
-      const paSiteStatic = staticCensus.results.find((r) => r.map === "Pa_Site_v1.1.rms");
-      if (paSiteStatic) pin("Sec8 Pa_Site static blocks", 6, paSiteStatic.blocks);
-      pin("Sec8 maps exceeding maxBlocksPerOutput", 0, overCapAll);
+      for (const e of staticCensus.generationErrors) lines.push(`  ${e}`);
+    }
+    lines.push(
+      `ALL: ${staticCensus.results.length} maps checked; block-count ranking (top 5): ${staticRanking
+        .slice(0, 5)
+        .map((r) => `${r.map} ${r.blocks}`)
+        .join(
+          "; ",
+        )}; ${overCapAll} of ${staticCensus.results.length} exceed maxBlocksPerOutput (${LIMITS.maxBlocksPerOutput})`,
+    );
+    lines.push(`TRACKED: ${staticResultsTracked.length} maps checked`);
+    const paSiteStatic = staticCensus.results.find(
+      (r) => r.map === "Pa_Site_v1.1.rms",
+    );
+    if (paSiteStatic) pin("Sec8 Pa_Site static blocks", 6, paSiteStatic.blocks);
+    pin("Sec8 maps exceeding maxBlocksPerOutput", 0, overCapAll);
 
-      lines.push("\n----- Section 9: per-map unresolvable-producer ratio (Sec.3.3 clause 2, replacing the interim 1/3) -----");
-      const abstainingAll = staticCensus.results.filter((r) => r.surfaceAbstained);
-      const battleLines = staticCensus.results.find((r) => r.map === "24hr_Battle Lines 1.0.rms");
-      const blackForest = staticCensus.results.find((r) => r.map === "TL Black Forest.rms");
-      const grandBara = staticCensus.results.find((r) => r.map === "TL Grand Bara.rms");
-      lines.push(
-        `ALL: ${abstainingAll.length}/${staticCensus.results.length} maps abstain (ratio >= ${UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO.toFixed(3)})`,
+    lines.push(
+      "\n----- Section 9: per-map unresolvable-producer ratio (Sec.3.3 clause 2, replacing the interim 1/3) -----",
+    );
+    const abstainingAll = staticCensus.results.filter(
+      (r) => r.surfaceAbstained,
+    );
+    const battleLines = staticCensus.results.find(
+      (r) => r.map === "24hr_Battle Lines 1.0.rms",
+    );
+    const blackForest = staticCensus.results.find(
+      (r) => r.map === "TL Black Forest.rms",
+    );
+    const grandBara = staticCensus.results.find(
+      (r) => r.map === "TL Grand Bara.rms",
+    );
+    lines.push(
+      `ALL: ${abstainingAll.length}/${staticCensus.results.length} maps abstain (ratio >= ${UNRESOLVABLE_PRODUCER_ABSTAIN_RATIO.toFixed(3)})`,
+    );
+    lines.push(
+      `  anchors — ${battleLines ? `${battleLines.map} ${battleLines.producersUnresolvable}/${battleLines.producersTotal}` : "not found"}; ${blackForest ? `${blackForest.map} ${blackForest.producersUnresolvable}/${blackForest.producersTotal}` : "not found"}; ${grandBara ? `${grandBara.map} ${grandBara.producersUnresolvable}/${grandBara.producersTotal}` : "not found"}`,
+    );
+    pin("Sec9 abstaining maps", 3, abstainingAll.length);
+    if (battleLines)
+      pin(
+        "Sec9 24hr_Battle Lines unresolvable producers",
+        29,
+        battleLines.producersUnresolvable,
       );
-      lines.push(
-        `  anchors — ${battleLines ? `${battleLines.map} ${battleLines.producersUnresolvable}/${battleLines.producersTotal}` : "not found"}; ${blackForest ? `${blackForest.map} ${blackForest.producersUnresolvable}/${blackForest.producersTotal}` : "not found"}; ${grandBara ? `${grandBara.map} ${grandBara.producersUnresolvable}/${grandBara.producersTotal}` : "not found"}`,
+    if (battleLines)
+      pin(
+        "Sec9 24hr_Battle Lines total producers",
+        40,
+        battleLines.producersTotal,
       );
-      pin("Sec9 abstaining maps", 3, abstainingAll.length);
-      if (battleLines) pin("Sec9 24hr_Battle Lines unresolvable producers", 29, battleLines.producersUnresolvable);
-      if (battleLines) pin("Sec9 24hr_Battle Lines total producers", 40, battleLines.producersTotal);
-      if (blackForest) pin("Sec9 TL Black Forest unresolvable producers", 48, blackForest.producersUnresolvable);
-      if (blackForest) pin("Sec9 TL Black Forest total producers", 89, blackForest.producersTotal);
-      if (grandBara) pin("Sec9 TL Grand Bara unresolvable producers", 1, grandBara.producersUnresolvable);
-      if (grandBara) pin("Sec9 TL Grand Bara total producers", 12, grandBara.producersTotal);
-
-      // ---- Section 10 (sweep C) ----
-      lines.push("\n----- Section 10: presence and drift, swept together (2/4/6/8 x seeds 1-5) -----");
-      const sweepC = runSweepC(allMaps, lang, refDb);
-      const section10All = computeSection10(sweepC.rows, sweepA.rows);
-      const filteredCRows = filterSweepCRows(sweepC.rows, trackedPred);
-      const filteredASweepRows = filterRows(sweepA.rows, trackedPred);
-      const section10Tracked = computeSection10(filteredCRows, filteredASweepRows);
-      if (sweepC.generationErrors.length > 0) {
-        lines.push(`sweep C errors (${sweepC.generationErrors.length}):`);
-        for (const e of sweepC.generationErrors) lines.push(`  ${e}`);
-      }
-      lines.push(
-        `ALL: ${section10All.totalRows} rows keyed (union of 5 seeds); absent at some count ${section10All.crossCountAbsent}; within-batch partial (row,count) pairs ${section10All.withinBatchPartial}; flipped from seed-1-absent to union-present ${section10All.flippedFromAbsent}`,
+    if (blackForest)
+      pin(
+        "Sec9 TL Black Forest unresolvable producers",
+        48,
+        blackForest.producersUnresolvable,
       );
-      lines.push(
-        `TRACKED: ${section10Tracked.totalRows} rows keyed; absent at some count ${section10Tracked.crossCountAbsent}; within-batch partial pairs ${section10Tracked.withinBatchPartial}`,
+    if (blackForest)
+      pin(
+        "Sec9 TL Black Forest total producers",
+        89,
+        blackForest.producersTotal,
       );
-      pin("Sec10 total rows (union of 5 seeds)", 8511, section10All.totalRows);
-      pin("Sec10 absent at some count", 373, section10All.crossCountAbsent);
-      pin("Sec10 absent at some count (tracked)", 149, section10Tracked.crossCountAbsent);
-      // `pinMin` per the design doc's own convention for these figures, a
-      // measured floor over the 5-seed sample, not an exact invariant (see
-      // `makePinner`'s doc comment).
-      pinMin("Sec10 within-batch partial pairs", 240, section10All.withinBatchPartial);
-      pinMin("Sec10 within-batch partial pairs (tracked)", 145, section10Tracked.withinBatchPartial);
-      pin("Sec10 flipped from seed-1-absent to union-present (control)", 0, section10All.flippedFromAbsent);
-
-      // ---- Section 11 (sweep D) ----
-      lines.push("\n----- Section 11: note census at the DEFAULT run count (2/4/6/8 x 15 seeds/map) -----");
-      const noteCensus = runNoteCensusAtDefaults(allMaps, lang, refDb);
-      const noteResultsTracked = noteCensus.results.filter((r) => trackedPred(r.map));
-      const noteRanking = [...noteCensus.results].sort((a, b) => b.blocks - a.blocks);
-      if (noteCensus.generationErrors.length > 0) {
-        lines.push(`note census errors (${noteCensus.generationErrors.length}):`);
-        for (const e of noteCensus.generationErrors) lines.push(`  ${e}`);
-      }
-      lines.push(
-        `ALL note-block ranking (top 5): ${noteRanking
-          .slice(0, 5)
-          .map((r) => `${r.map} ${r.blocks}`)
-          .join("; ")}`,
+    if (grandBara)
+      pin(
+        "Sec9 TL Grand Bara unresolvable producers",
+        1,
+        grandBara.producersUnresolvable,
       );
-      lines.push(`TRACKED maps checked: ${noteResultsTracked.length}`);
-      const petra = noteCensus.results.find((r) => r.map === "24hr_Petra.rms");
-      const namatjira = noteCensus.results.find((r) => r.map === "AK_Namatjira.rms");
-      const paSiteNotes = noteCensus.results.find((r) => r.map === "Pa_Site_v1.1.rms");
-      if (petra) pin("Sec11 24hr_Petra note blocks", 65, petra.blocks);
-      if (namatjira) pin("Sec11 AK_Namatjira note blocks", 58, namatjira.blocks);
-      if (namatjira) pin("Sec11 AK_Namatjira largest table rows", 77, namatjira.largestTableRows);
-      if (paSiteNotes) pin("Sec11 Pa_Site largest table rows", 134, paSiteNotes.largestTableRows);
+    if (grandBara)
+      pin("Sec9 TL Grand Bara total producers", 12, grandBara.producersTotal);
 
-      // ---- Pin summary ----
-      const driftCount = pins.filter((p) => !p.ok).length;
-      lines.push(`\n----- Pinned-figure diff (${pins.length} checks) -----`);
-      for (const p of pins) lines.push(pinLine(p));
-      lines.push(`\n${driftCount === 0 ? "ALL PINNED FIGURES REPRODUCE" : `DRIFT COUNT: ${driftCount} of ${pins.length}`}`);
+    // ---- Section 10 (sweep C) ----
+    lines.push(
+      "\n----- Section 10: presence and drift, swept together (2/4/6/8 x seeds 1-5) -----",
+    );
+    const sweepC = runSweepC(allMaps, lang, refDb);
+    const section10All = computeSection10(sweepC.rows, sweepA.rows);
+    const filteredCRows = filterSweepCRows(sweepC.rows, trackedPred);
+    const filteredASweepRows = filterRows(sweepA.rows, trackedPred);
+    const section10Tracked = computeSection10(
+      filteredCRows,
+      filteredASweepRows,
+    );
+    if (sweepC.generationErrors.length > 0) {
+      lines.push(`sweep C errors (${sweepC.generationErrors.length}):`);
+      for (const e of sweepC.generationErrors) lines.push(`  ${e}`);
+    }
+    lines.push(
+      `ALL: ${section10All.totalRows} rows keyed (union of 5 seeds); absent at some count ${section10All.crossCountAbsent}; within-batch partial (row,count) pairs ${section10All.withinBatchPartial}; flipped from seed-1-absent to union-present ${section10All.flippedFromAbsent}`,
+    );
+    lines.push(
+      `TRACKED: ${section10Tracked.totalRows} rows keyed; absent at some count ${section10Tracked.crossCountAbsent}; within-batch partial pairs ${section10Tracked.withinBatchPartial}`,
+    );
+    pin("Sec10 total rows (union of 5 seeds)", 8511, section10All.totalRows);
+    pin("Sec10 absent at some count", 373, section10All.crossCountAbsent);
+    pin(
+      "Sec10 absent at some count (tracked)",
+      149,
+      section10Tracked.crossCountAbsent,
+    );
+    // `pinMin` per the design doc's own convention for these figures, a
+    // measured floor over the 5-seed sample, not an exact invariant (see
+    // `makePinner`'s doc comment).
+    pinMin(
+      "Sec10 within-batch partial pairs",
+      240,
+      section10All.withinBatchPartial,
+    );
+    pinMin(
+      "Sec10 within-batch partial pairs (tracked)",
+      145,
+      section10Tracked.withinBatchPartial,
+    );
+    pin(
+      "Sec10 flipped from seed-1-absent to union-present (control)",
+      0,
+      section10All.flippedFromAbsent,
+    );
 
-      console.log(lines.join("\n"));
+    // ---- Section 11 (sweep D) ----
+    lines.push(
+      "\n----- Section 11: note census at the DEFAULT run count (2/4/6/8 x 15 seeds/map) -----",
+    );
+    const noteCensus = runNoteCensusAtDefaults(allMaps, lang, refDb);
+    const noteResultsTracked = noteCensus.results.filter((r) =>
+      trackedPred(r.map),
+    );
+    const noteRanking = [...noteCensus.results].sort(
+      (a, b) => b.blocks - a.blocks,
+    );
+    if (noteCensus.generationErrors.length > 0) {
+      lines.push(`note census errors (${noteCensus.generationErrors.length}):`);
+      for (const e of noteCensus.generationErrors) lines.push(`  ${e}`);
+    }
+    lines.push(
+      `ALL note-block ranking (top 5): ${noteRanking
+        .slice(0, 5)
+        .map((r) => `${r.map} ${r.blocks}`)
+        .join("; ")}`,
+    );
+    lines.push(`TRACKED maps checked: ${noteResultsTracked.length}`);
+    const petra = noteCensus.results.find((r) => r.map === "24hr_Petra.rms");
+    const namatjira = noteCensus.results.find(
+      (r) => r.map === "AK_Namatjira.rms",
+    );
+    const paSiteNotes = noteCensus.results.find(
+      (r) => r.map === "Pa_Site_v1.1.rms",
+    );
+    if (petra) pin("Sec11 24hr_Petra note blocks", 65, petra.blocks);
+    if (namatjira) pin("Sec11 AK_Namatjira note blocks", 58, namatjira.blocks);
+    if (namatjira)
+      pin(
+        "Sec11 AK_Namatjira largest table rows",
+        77,
+        namatjira.largestTableRows,
+      );
+    if (paSiteNotes)
+      pin(
+        "Sec11 Pa_Site largest table rows",
+        134,
+        paSiteNotes.largestTableRows,
+      );
 
-      const fullReport = {
-        generatedAt: new Date().toISOString(),
-        mapsOnDisk: allMaps.length,
-        mapsTracked: trackedSet ? trackedMaps.length : null,
-        gitAvailable: trackedSet !== null,
-        playerCounts: PLAYER_COUNTS,
-        driftSeeds: DRIFT_SEEDS,
-        generationErrors: {
-          sweepA: sweepA.generationErrors,
-          sweepB: sweepB.generationErrors,
-          staticCensus: staticCensus.generationErrors,
-          sweepC: sweepC.generationErrors,
-          noteCensus: noteCensus.generationErrors,
-        },
-        section1: {
-          all: Object.fromEntries(section1All),
-          tracked: Object.fromEntries(section1Tracked),
-        },
-        section2: { all: section2All, tracked: section2Tracked },
-        section3: { all: section3All, tracked: section3Tracked },
-        section4: { all: section4All, tracked: section4Tracked },
-        section5: { all: section5All, tracked: section5Tracked },
-        section6: { all: section6All, tracked: section6Tracked },
-        section7: { all: section7All, tracked: section7Tracked },
-        section8: { all: staticCensus.results, tracked: staticResultsTracked, overCapAll },
-        section9: { all: abstainingAll.map((r) => r.map), totalMapsAll: staticCensus.results.length },
-        section10: { all: section10All, tracked: section10Tracked },
-        section11: { all: noteCensus.results, tracked: noteResultsTracked },
-        pins,
-        driftCount,
-      };
-      writeFileSync(OUTPUT_PATH, JSON.stringify(fullReport, null, 2), "utf8");
+    // ---- Pin summary ----
+    const driftCount = pins.filter((p) => !p.ok).length;
+    lines.push(`\n----- Pinned-figure diff (${pins.length} checks) -----`);
+    for (const p of pins) lines.push(pinLine(p));
+    lines.push(
+      `\n${driftCount === 0 ? "ALL PINNED FIGURES REPRODUCE" : `DRIFT COUNT: ${driftCount} of ${pins.length}`}`,
+    );
 
-      // Reporter, not a gate: this suite must never fail on drift. The
-      // assertions below are a sanity floor only, proof the harness actually
-      // ran and produced the checks it claims to, never a verdict on whether
-      // the corpus matches history (that verdict is the printed drift count,
-      // read by a person).
-      expect(allMaps.length).toBeGreaterThan(0);
-      expect(pins.length).toBe(116);
-    },
-    172_800_000,
-  );
+    console.log(lines.join("\n"));
+
+    const fullReport = {
+      generatedAt: new Date().toISOString(),
+      mapsOnDisk: allMaps.length,
+      mapsTracked: trackedSet ? trackedMaps.length : null,
+      gitAvailable: trackedSet !== null,
+      playerCounts: PLAYER_COUNTS,
+      driftSeeds: DRIFT_SEEDS,
+      generationErrors: {
+        sweepA: sweepA.generationErrors,
+        sweepB: sweepB.generationErrors,
+        staticCensus: staticCensus.generationErrors,
+        sweepC: sweepC.generationErrors,
+        noteCensus: noteCensus.generationErrors,
+      },
+      section1: {
+        all: Object.fromEntries(section1All),
+        tracked: Object.fromEntries(section1Tracked),
+      },
+      section2: { all: section2All, tracked: section2Tracked },
+      section3: { all: section3All, tracked: section3Tracked },
+      section4: { all: section4All, tracked: section4Tracked },
+      section5: { all: section5All, tracked: section5Tracked },
+      section6: { all: section6All, tracked: section6Tracked },
+      section7: { all: section7All, tracked: section7Tracked },
+      section8: {
+        all: staticCensus.results,
+        tracked: staticResultsTracked,
+        overCapAll,
+      },
+      section9: {
+        all: abstainingAll.map((r) => r.map),
+        totalMapsAll: staticCensus.results.length,
+      },
+      section10: { all: section10All, tracked: section10Tracked },
+      section11: { all: noteCensus.results, tracked: noteResultsTracked },
+      pins,
+      driftCount,
+    };
+    writeFileSync(OUTPUT_PATH, JSON.stringify(fullReport, null, 2), "utf8");
+
+    // Reporter, not a gate: this suite must never fail on drift. The
+    // assertions below are a sanity floor only, proof the harness actually
+    // ran and produced the checks it claims to, never a verdict on whether
+    // the corpus matches history (that verdict is the printed drift count,
+    // read by a person).
+    expect(allMaps.length).toBeGreaterThan(0);
+    expect(pins.length).toBe(116);
+  }, 172_800_000);
 });

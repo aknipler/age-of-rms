@@ -1,8 +1,8 @@
 # Land Placement, shape kinds slice B brief: the cartesian machinery and `square`
 
 **This is a work brief for one session, not a design document.** The design is
-`docs/land-placement-shape-kinds-escalation.md` §3(a), §3(b) and §6. Read this file for *what to
-build and in what order*; read the escalation for *why*, and treat the escalation and
+`docs/land-placement-shape-kinds-escalation.md` §3(a), §3(b) and §6. Read this file for _what to
+build and in what order_; read the escalation for _why_, and treat the escalation and
 `docs/land-placement-design.md` as authoritative wherever they and this file disagree.
 
 **Slice A (`line` and `arc`) must be built before this one.** B is where a group member stops being
@@ -95,9 +95,17 @@ One pure function, no model types, its own test file.
 
 ```ts
 /** Coefficients to multiply the group's radius Expr by, giving a member's cartesian offset from the anchor. */
-export interface PerimeterCoefficients { cx: number; cy: number }
+export interface PerimeterCoefficients {
+  cx: number;
+  cy: number;
+}
 
-export function perimeterOffset(sides: number, memberCount: number, memberIndex: number, rotationDegrees: number): PerimeterCoefficients
+export function perimeterOffset(
+  sides: number,
+  memberCount: number,
+  memberIndex: number,
+  rotationDegrees: number,
+): PerimeterCoefficients;
 ```
 
 ```

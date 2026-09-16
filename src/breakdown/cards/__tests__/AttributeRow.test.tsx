@@ -9,7 +9,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AttributeRow } from "../AttributeRow";
-import { BreakdownProvider, type BreakdownContextValue } from "../../BreakdownContext";
+import {
+  BreakdownProvider,
+  type BreakdownContextValue,
+} from "../../BreakdownContext";
 import { HelpSettingsProvider } from "../../../help/HelpSettingsContext";
 import type { AttributeSlot } from "../../attributeModel";
 import type { CommandNode } from "../../../parser/types";
@@ -33,7 +36,11 @@ afterEach(cleanup);
 // edge case.
 const slot: AttributeSlot = {
   name: "terrain_type",
-  def: { name: "terrain_type", arguments: [{ name: "terrain", type: "terrainConstant" }], verified: true },
+  def: {
+    name: "terrain_type",
+    arguments: [{ name: "terrain", type: "terrainConstant" }],
+    verified: true,
+  },
   instances: [],
   isFlag: false,
 };
@@ -54,15 +61,26 @@ function renderRow(applyEdit: BreakdownContextValue["applyEdit"]) {
 
 describe("AttributeRow — absent slot (the 'click to add' row)", () => {
   it("clicking the row itself (not just the + button) adds the attribute", () => {
-    const applyEdit = vi.fn(() => ({ edit: { start: 0, end: 0, newText: "" }, caret: 0 }));
+    const applyEdit = vi.fn(() => ({
+      edit: { start: 0, end: 0, newText: "" },
+      caret: 0,
+    }));
     renderRow(applyEdit);
     fireEvent.click(screen.getByText("click to add"));
     expect(applyEdit).toHaveBeenCalledTimes(1);
-    expect(applyEdit).toHaveBeenCalledWith({ kind: "addAttribute", target: {}, name: "terrain_type", value: undefined });
+    expect(applyEdit).toHaveBeenCalledWith({
+      kind: "addAttribute",
+      target: {},
+      name: "terrain_type",
+      value: undefined,
+    });
   });
 
   it("clicking the + button adds it exactly once, not twice (bubble into the row must be stopped)", () => {
-    const applyEdit = vi.fn(() => ({ edit: { start: 0, end: 0, newText: "" }, caret: 0 }));
+    const applyEdit = vi.fn(() => ({
+      edit: { start: 0, end: 0, newText: "" },
+      caret: 0,
+    }));
     renderRow(applyEdit);
     fireEvent.click(screen.getByTitle("Add"));
     expect(applyEdit).toHaveBeenCalledTimes(1);
