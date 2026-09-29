@@ -90,4 +90,54 @@ const whatsNew050: TutorialDefinition = {
   ],
 };
 
-export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [whatsNew050];
+const whatsNew060: TutorialDefinition = {
+  id: "whats-new-0.6.0",
+  kind: "feature",
+  title: "What's new in 0.6",
+  blurb:
+    "Object templates, cards you can move and duplicate, Hide Unused Attributes, cards that open when added, and preview fixes.",
+  version: "0.6.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.6",
+      body: [
+        "The Objects tab has an Add template button with ready-made blocks for player objects, player resources and water resources, with a live preview of the text before you insert it.",
+        "Cards can now be moved up and down, duplicated, and wrapped in if or random control flow. New cards open and scroll into view when you add them, and a collapsed card shows its attributes as buttons you can click to jump straight to that field.",
+        "Hide Unused Attributes (in Breakdown settings) shows only the attributes a command actually uses, with a search bar to add the rest. #const and #define are now offered in the Add command picker, and the Header tab is always there.",
+        "In the preview, #const values are no longer rounded, so rings draw as rings, and connections now reach the town centre.",
+      ],
+      completion: { kind: "manual" },
+    },
+    {
+      id: "open-a-file",
+      title: "Open a map to see it",
+      anchor: { kind: "help", id: "titleBar.file" },
+      calloutNudge: { x: 300 },
+      navigate: { tab: "breakdown" },
+      body: [
+        "The rest of this tour points at controls that need a script open. Open one of your own maps, or File ▸ New then File ▸ Save works too.",
+      ],
+      completion: {
+        kind: "check",
+        test: (ctx) => ctx.hasFile,
+      },
+      hint: "Waiting on a file. File ▸ Open, or File ▸ New then File ▸ Save.",
+    },
+    {
+      id: "add-template",
+      title: "Add a template",
+      anchor: { kind: "help", id: "breakdown.addTemplate" },
+      navigate: { section: "OBJECTS_GENERATION" },
+      body: [
+        "Pick a canned block of create_object commands, check the preview of exactly what will be inserted, then press Insert.",
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
+export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
+  whatsNew050,
+  whatsNew060,
+];
