@@ -28,6 +28,8 @@ interface PreviewCanvasProps {
    * seed keystroke and colour-mode click for a value it does not use.
    */
   hiddenObjects: ReadonlySet<string>;
+  /** The settings' player count for the badge's "200×200, 6 players" line; see `OverlayCanvasProps.playerCount` for why it is not read off `result`. */
+  playerCount: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export function PreviewCanvas({
   selected,
   onTileClick,
   hiddenObjects,
+  playerCount,
 }: PreviewCanvasProps) {
   // Held above the tab switch (PreviewViewContext.tsx) so zoom/pan survive
   // Breakdown <-> Code instead of resetting to "fit" on every remount.
@@ -65,6 +68,7 @@ export function PreviewCanvas({
       base={{ result, snapshot, palette, hiddenObjects }}
       helpTipId="preview.canvas"
       showApproximateBadge
+      playerCount={playerCount}
       showExportButton
     />
   );

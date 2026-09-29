@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import type { ArgNode, CommandNode, Diagnostic } from "../../parser/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ArgNode,
+  AttributeNode,
+  CommandNode,
+  Diagnostic,
+} from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { useBreakdownSettings } from "../../settings/BreakdownSettingsContext";
 import {
@@ -13,11 +18,15 @@ import { renderArgs } from "../renderValue";
 import { diagnosticsWithin, maxSeverityWithin } from "../diagnosticsForSpan";
 import { argumentHelpText } from "../helpText";
 import { HelpTip } from "../../components/HelpTip";
+import { TrashIcon } from "../../components/TrashIcon";
 import {
   DiagnosticPopup,
   useDiagnosticHover,
 } from "../../components/DiagnosticTooltip";
 import { AttributeRow, AttributeValueEditor } from "./AttributeRow";
+import { AttributeSearch } from "./AttributeSearch";
+import { partitionSlots, snapshotVisibleNames } from "../hideUnused";
+import { SummaryAttributes } from "./SummaryAttributes";
 import { OtherContentsRow } from "./OtherContentsRow";
 import { ProblemBadge } from "./ProblemBadge";
 import cardStyles from "./cards.module.css";
@@ -67,11 +76,7 @@ function AttributeSlotRow({
     >
       {draggable && (
         <HelpTip id="breakdown.commandCard.attributeDragHandle">
-          <span
-            className={styles.dragHandle}
-            title="Drag to reorder"
-            aria-hidden="true"
-          >
+          <span className={styles.dragHandle} aria-hidden="true">
             ⠿
           </span>
         </HelpTip>
@@ -161,17 +166,26 @@ interface CommandCardProps {
 // rather than local state, so it survives a reparse triggered by an edit
 // elsewhere in the document.
 export function CommandCard({ command }: CommandCardProps) {
-  const { tokens, lang, diagnostics, applyEdit, isExpanded, toggleExpanded } =
-    useBreakdownContext();
+  const {
+    tokens,
+    lang,
+    diagnostics,
+    applyEdit,
+    isExpanded,
+    toggleExpanded,
+    collapseFromStrip,
+  } = useBreakdownContext();
   const {
     attributeOrderMode,
     customAttributeOrder,
     setCustomAttributeOrderFor,
     density,
+    hideUnused,
+    hideUnusedExceptions,
   } = useBreakdownSettings();
   const expanded = isExpanded(command.span);
   const name = tokens[command.name].text;
-  const severity = maxSeverityWithin(diagnostics, command.span);
+  const cardDiagnostics = diagnosticsWithin(diagnostics, command.span);
   const known = command.def !== undefined;
   // Sec.3.3's unknown-name boundary has two cases with a did-you-mean
   // Diagnostic.suggestion: a bare RawNode (RawCard's Fix button, wired in
@@ -179,20 +193,23 @@ export function CommandCard({ command }: CommandCardProps) {
   // Both got the same suggestion field from unknownName(), but only
   // RawCard's fix path got wired originally; this closes that gap.
   const suggestion = !known
-    ? diagnosticsWithin(diagnostics, command.span).find((d) => d.suggestion)
-        ?.suggestion
+    ? cardDiagnostics.find((d) => d.suggestion)?.suggestion
     : undefined;
 
   const posArgsText = renderArgs(command.args, tokens);
-  let preview = "";
-  if (command.block) {
-    const attrs = command.block.items
-      .filter((i) => i.kind === "attribute")
-      .slice(0, 3);
-    preview = attrs
-      .map((a) => `${tokens[a.name].text} ${renderArgs(a.args, tokens)}`.trim())
-      .join(" · ");
-  }
+  // Every attribute in source order, rendered by SummaryAttributes as
+  // clickable entries (beta feedback 2026-09-17) rather than one joined
+  // string. No cap here: .summary's own overflow/ellipsis CSS (below,
+  // originally built to stop a long attribute preview pushing the delete
+  // button off the card) truncates the row visually once it runs out of
+  // width, so a command with many attributes just fades into "…" instead
+  // of arbitrarily hiding whichever attributes happen to sit past a fixed
+  // count-based cutoff.
+  const summaryAttrs: AttributeNode[] = command.block
+    ? command.block.items.filter(
+        (i): i is AttributeNode => i.kind === "attribute",
+      )
+    : [];
 
   // known-but-block-less (a block-kind command written bare, e.g.
   // `create_terrain FOREST` with no `{ }` at all) still gets the full
@@ -266,10 +283,32 @@ export function CommandCard({ command }: CommandCardProps) {
   // drag move a slot to the OTHER column (draftRightColumn, falling back to
   // whatever's already saved); every other mode always uses the plain
   // isFlag split, since there's no drag to override it with there.
+  // Hide Unused (Sec.3.3.1, hideUnused.ts). The snapshot is a useMemo whose
+  // dependencies are exactly the moments the rule says to re-decide: the
+  // card opening, the switch turning on, the exclusion list changing, or
+  // the card being re-keyed by an edit above it. Between those moments
+  // the memo holds the names from the render it was taken in, which is
+  // what "decided on opening" means in React terms. Present slots are
+  // read live by partitionSlots, so an attribute added through the
+  // search bar shows at once while an unticked flag stays until reopen.
+  const visibleSnapshot = useMemo(
+    () =>
+      hideUnused && expanded
+        ? snapshotVisibleNames(orderedSlots, hideUnusedExceptions)
+        : null,
+    // orderedSlots deliberately left out: it changes on every reparse and
+    // re-reading it would defeat the snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hideUnused, expanded, hideUnusedExceptions, command.span.start],
+  );
+  const { shown: visibleSlots, hidden: hiddenSlots } = visibleSnapshot
+    ? partitionSlots(displayedSlots, visibleSnapshot)
+    : { shown: displayedSlots, hidden: [] };
+
   const compactColumns =
     density === "compact"
       ? splitAttributeColumns(
-          displayedSlots,
+          visibleSlots,
           attributeOrderMode === "custom"
             ? (draftRightColumn ?? persistedCustomOrder?.rightColumn)
             : undefined,
@@ -304,7 +343,7 @@ export function CommandCard({ command }: CommandCardProps) {
         if (!draggedSlot) return;
         if (from.col === toCol && from.index === toIndex) return;
 
-        const withoutDragged = displayedSlots
+        const withoutDragged = visibleSlots
           .map((s) => s.name)
           .filter((n) => n !== draggedSlot.name);
         const neighborName = (toCol === "left" ? left : right)[toIndex]?.name;
@@ -366,7 +405,7 @@ export function CommandCard({ command }: CommandCardProps) {
 
     return (
       <>
-        {displayedSlots.map((slot, index) => (
+        {visibleSlots.map((slot, index) => (
           <AttributeSlotRow
             key={slot.name}
             slot={slot}
@@ -379,7 +418,12 @@ export function CommandCard({ command }: CommandCardProps) {
               const from = dragFromFlat.current;
               dragFromFlat.current = null;
               if (from === null || from === index) return;
-              const next = [...displayedSlots];
+              // Indices are into visibleSlots (what is rendered), which
+              // is displayedSlots minus whatever Hide Unused filtered out.
+              // Hidden names are not in the draft and fall to the end by
+              // displayedSlots' own unmatched rule, which is fine, they
+              // are not on screen to have an order.
+              const next = [...visibleSlots];
               const [moved] = next.splice(from, 1);
               next.splice(index, 0, moved);
               setDraftOrder(next.map((s) => s.name));
@@ -391,7 +435,30 @@ export function CommandCard({ command }: CommandCardProps) {
   }
 
   return (
-    <div className={cardStyles.card}>
+    <div className={`${cardStyles.card} ${styles.card}`}>
+      {/* The collapse strip (beta feedback 2026-09-17). The whole left
+          edge of an open card closes it, so a long attribute list can be
+          closed from the bottom without scrolling back up to the toggle.
+          collapseFromStrip also parks the collapsed card at the top of
+          the list and remembers where the viewport was, see
+          BreakdownPane. Absolutely positioned over the card's own
+          padding, so it takes no layout room and the body below it is
+          unchanged. */}
+      {expanded && (
+        <span className={styles.stripSlot}>
+          <HelpTip id="breakdown.commandCard.collapseStrip">
+            <button
+              type="button"
+              className={styles.collapseStrip}
+              aria-label="Collapse this card"
+              onClick={(e) => {
+                e.stopPropagation();
+                collapseFromStrip(command.span);
+              }}
+            />
+          </HelpTip>
+        </span>
+      )}
       <div className={styles.header}>
         <HelpTip id="breakdown.commandCard.expand">
           <button
@@ -403,16 +470,48 @@ export function CommandCard({ command }: CommandCardProps) {
             {expanded ? "−" : "+"}
           </button>
         </HelpTip>
-        <HelpTip id="breakdown.commandCard.summary">
-          <span className={styles.summary}>
-            {name}
-            {posArgsText ? ` ${posArgsText}` : ""}
-            {preview ? ` · ${preview}` : ""}
-            {!known && (
-              <span className={cardStyles.unknownBadge}>unknown name</span>
-            )}
-          </span>
-        </HelpTip>
+        {/* .summarySlot, not .summary, is the flex item here. HelpTip
+            renders its own inline-block wrapper span with no className
+            prop, so the shrink-to-fit rules have to reach it from outside
+            (CommandPicker.module.css's .listSlot does the same). Without
+            this a long attribute preview grew the row and pushed the
+            delete button off the card (beta feedback 2026-09-17). */}
+        <span className={styles.summarySlot}>
+          <HelpTip id="breakdown.commandCard.summary">
+            <span className={styles.summary}>
+              {/* A real element, not a bare text node. .summary is a flex
+                  row (see its CSS comment for why), and a flex container
+                  wraps loose text children in an anonymous box it cannot be
+                  targeted with `flex-shrink: 0`, letting the browser squash
+                  the command name instead of clipping the overflow at the
+                  end where it belongs. */}
+              <span className={styles.summaryLabel}>
+                {name}
+                {posArgsText ? ` ${posArgsText}` : ""}
+              </span>
+              {/* Deliberately not gated on summaryAttrs.length > 0: a flag
+                  clicked from this very summary line removes it from the
+                  source at once (see SummaryAttributes.tsx) and stays
+                  struck through as an undo affordance for
+                  GHOST_LIFETIME_MS. If this were the LAST attribute shown,
+                  summaryAttrs drops to 0 the moment the reparse lands
+                  (near-instant, addCommand's reparseNow bypasses the
+                  normal 150ms debounce), and gating on length here would
+                  unmount SummaryAttributes mid-ghost, discarding its
+                  local ghost state before the timer ever fires — the
+                  strike-through flashes for one frame instead of holding
+                  for 30s. SummaryAttributes itself renders nothing when it
+                  has neither attrs nor ghosts, so this costs nothing when
+                  there is genuinely nothing to show. */}
+              {!expanded && (
+                <SummaryAttributes command={command} attrs={summaryAttrs} />
+              )}
+              {!known && (
+                <span className={cardStyles.unknownBadge}>unknown name</span>
+              )}
+            </span>
+          </HelpTip>
+        </span>
         {suggestion && (
           <HelpTip id="breakdown.commandCard.fix">
             <button
@@ -426,32 +525,37 @@ export function CommandCard({ command }: CommandCardProps) {
                   replacement: suggestion,
                 })
               }
-              title={`Replace with "${suggestion}"`}
             >
               Fix: {suggestion}
             </button>
           </HelpTip>
         )}
-        {severity && <ProblemBadge severity={severity} />}
-        <HelpTip id="breakdown.commandCard.delete">
-          <button
-            type="button"
-            className={cardStyles.deleteButton}
-            onClick={(e) => {
-              // Deleting a card must never change selection by itself. Only
-              // deleting the card that IS currently selected should clear it
-              // (via the existing anchor-drop rule). Without stopPropagation
-              // this click bubbles to ItemCard's wrapper, which would select
-              // THIS card an instant before removing it, stealing selection
-              // away from whatever else was actually selected.
-              e.stopPropagation();
-              applyEdit({ kind: "removeNode", node: command });
-            }}
-            title="Delete"
-          >
-            trash
-          </button>
-        </HelpTip>
+        {cardDiagnostics.length > 0 && (
+          <ProblemBadge diagnostics={cardDiagnostics} />
+        )}
+        {/* Pinned to the right edge and never shrunk, whatever the summary
+            does. */}
+        <span className={styles.deleteSlot}>
+          <HelpTip id="breakdown.commandCard.delete">
+            <button
+              type="button"
+              className={cardStyles.deleteButton}
+              onClick={(e) => {
+                // Deleting a card must never change selection by itself. Only
+                // deleting the card that IS currently selected should clear it
+                // (via the existing anchor-drop rule). Without stopPropagation
+                // this click bubbles to ItemCard's wrapper, which would select
+                // THIS card an instant before removing it, stealing selection
+                // away from whatever else was actually selected.
+                e.stopPropagation();
+                applyEdit({ kind: "removeNode", node: command });
+              }}
+              aria-label="Delete"
+            >
+              <TrashIcon />
+            </button>
+          </HelpTip>
+        </span>
       </div>
 
       {expanded && (
@@ -516,7 +620,18 @@ export function CommandCard({ command }: CommandCardProps) {
                   </HelpTip>
                 </span>
               </div>
+              {visibleSnapshot && (
+                <AttributeSearch
+                  hidden={hiddenSlots}
+                  attributeTarget={attributeTarget}
+                />
+              )}
               {renderAttributesBody()}
+              {visibleSnapshot && hiddenSlots.length > 0 && (
+                <p className={styles.hiddenCount}>
+                  {hiddenSlots.length} unused hidden
+                </p>
+              )}
             </section>
           )}
 

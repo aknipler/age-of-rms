@@ -1,0 +1,121 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  create_terrain DIRT2
+  {
+    base_terrain GRASS
+    land_percent 15
+    number_of_clumps 6
+  }
+
+  create_terrain SNOW
+  {
+    base_terrain GRASS
+    land_percent 15
+    number_of_clumps 6
+  }
+
+  create_terrain DESERT
+  {
+    base_terrain GRASS
+    land_percent 15
+    number_of_clumps 6
+    spacing_to_other_terrain_types 2
+    spacing_to_specific_terrain SNOW 10
+  }
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_78 - when a create_terrain command declares BOTH
+spacing_to_other_terrain_types AND spacing_to_specific_terrain against one
+of the terrains that generic rule already covers, are the two enforced as
+independent minimums, or does one silently override the other?
+Feeds: docs/known-issues.md BUG-016 (the RMSTEST_66/70-74 investigation
+noted, without settling it, that Venn.rms combines the two attributes on
+the same command and that RMSTEST_31 - the only existing measurement of
+spacing_to_other_terrain_types - never exercised that combination),
+docs/preview-design.md Sec.6.4, src/preview/generator/terrains.ts
+================================================================================
+
+THE QUESTION
+RMSTEST_31 measured spacing_to_other_terrain_types alone (against cliff
+units, not another terrain) and confirmed it as a plain minimum distance.
+It never ran alongside spacing_to_specific_terrain on the same command.
+Venn.rms does exactly that, repeatedly (e.g. line ~912: "spacing_to_
+other_terrain_types 2 spacing_to_specific_terrain LAYER_FOREST_SPARSE 8"),
+and nothing has confirmed the two compose the obvious way - a generic
+floor against every foreign terrain, tightened to a larger, terrain-
+specific floor against the one named. This is the same SHAPE of question
+as the base_terrain/base_layer conjunction bug (Sec.6.4, closed
+2026-08-11): two guide-documented spacing rules on one command, and no
+guarantee the engine treats them as simply composing rather than one
+silently winning.
+
+METHOD
+Three terrains on one map. DIRT2 and SNOW are generated first with no
+spacing rules of their own, so they compete freely for space and end up
+genuinely adjacent to each other in places. DESERT generates last, with
+BOTH attributes: spacing_to_other_terrain_types 2 (a loose generic floor,
+satisfied by hugging DIRT2) and spacing_to_specific_terrain SNOW 10 (a
+much tighter, SNOW-specific floor). If both are enforced independently,
+DESERT should come to rest close against DIRT2 (within ~2 tiles) while
+staying at least ~10 tiles from every SNOW tile.
+
+PREDICTIONS, AND WHAT EACH ONE LOOKS LIKE IN THE PROBE OUTPUT
+  BOTH ENFORCED INDEPENDENTLY (documented reading) -> min distance
+    DESERT-to-DIRT2 is small (around 2, RMSTEST_31-style "at or above the
+    declared value"); min distance DESERT-to-SNOW is large (around 10,
+    clearly bigger than the DIRT2 figure).
+  spacing_to_specific_terrain IS IGNORED WHEN THE GENERIC RULE IS ALSO
+    PRESENT -> both minimum distances come out around 2 - DESERT sits as
+    close to SNOW as it does to DIRT2, ignoring the tighter 10-tile rule
+    entirely.
+  spacing_to_other_terrain_types IS IGNORED WHEN A SPECIFIC OVERRIDE NAMES
+    ONE OF THE SAME TERRAINS -> DESERT keeps ~10 tiles from SNOW but sits
+    with NO enforced minimum from DIRT2 at all (distance 0 or 1, patches
+    touching), since the generic rule silently drops out once a specific
+    one exists.
+  THE LARGER VALUE APPLIES TO EVERY FOREIGN TERRAIN -> both minimum
+    distances come out around 10.
+  THE SMALLER VALUE APPLIES TO EVERY FOREIGN TERRAIN -> both minimum
+    distances come out around 2, but with SNOW's occasional accidental
+    near-misses at DIRT2-like distances rather than a clean, unenforced
+    read the way "specific ignored" would look.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. THREE RUNS.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches DIRT2
+  python probe_scenario.py "<scenario>" --patches SNOW
+  python probe_scenario.py "<scenario>" --patches DESERT
+  For every DESERT patch, compute the minimum tile-to-tile distance to the
+  nearest DIRT2 patch and, separately, to the nearest SNOW patch - patch
+  bounding boxes are a fast first pass, and if any two overlap the answer
+  for that pair is already 0/touching (CLAUDE.md's own bbox-vs-true-
+  distance rule from the BUG-016 correction applies here too: if the
+  bounding boxes merely CROSS without the patches actually touching,
+  re-check with the true minimum before concluding anything). Two clearly
+  different numbers (small against DIRT2, large against SNOW) is the
+  independent-minimums reading; anything else, read against the four
+  alternative predictions above.
+================================================================================
+*/

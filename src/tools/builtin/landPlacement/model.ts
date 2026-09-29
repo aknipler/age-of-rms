@@ -51,8 +51,8 @@ export interface Placement {
   /**
    * The same undocumented-but-decided gap, for the OTHER thing a role's
    * per-instance attributes need (Sec.4.5: `ZonePolicy.perRepeat`,
-   * `assignToPlayer`), `expandShapeGroup` sets this to the member's own `i`;
-   * a standalone Placement using a `perRepeat`/`assignToPlayer` role (again,
+   * `PlayerSlot.perRepeat`), `expandShapeGroup` sets this to the member's own `i`;
+   * a standalone Placement using a `perRepeat` role (again,
    * Bulls_Eyes' P1/P2) sets it directly. 0-based, matching
    * `LandSkeletonInput.repeatIndex` (landCommand.ts) exactly, since this is
    * where that field's value comes from for a group member.
@@ -70,6 +70,46 @@ export interface Placement {
    * was not asked for (slice-c-brief.md hazard 4).
    */
   thetaPerCount?: Record<number, Expr>;
+  /**
+   * Per-attribute deviation from this placement's role (role-attributes-
+   * escalation.md Sec.5, Q11). Absent, or an absent key, means the role's
+   * own value is used. Every key holds a value in the SAME domain as the
+   * role field it shadows, so an override can never change an attribute's
+   * kind, and it REPLACES the role's value rather than composing with it
+   * (Sec.5.3: there is no delta between two arms of a union, and a field
+   * that means two things depending on context is the failure mode this
+   * feature keeps naming).
+   *
+   * `thetaPerCount`'s shape rather than `nudged`'s, for a mechanical
+   * reason: a `Placement` has no `terrain` or `baseSize` field for the
+   * deviation to live in, so the override has to carry the value itself.
+   * Structural (`Partial<Omit<LandRole, …>>`) rather than a hand-written
+   * second interface, so the override set cannot drift from the role's own
+   * fields when a later session adds one.
+   */
+  roleOverrides?: RoleOverrides;
+}
+
+export type RoleOverrides = Partial<Omit<LandRole, "id" | "label">>;
+
+/**
+ * The role a placement ACTUALLY wears: the role's fields with this
+ * placement's overrides laid over them, key by key. The one place the
+ * replacement rule is spelled out; emission, the attachment predicate and
+ * the panel all read this rather than merging by hand.
+ */
+export function effectiveRole(
+  role: LandRole,
+  overrides: RoleOverrides | undefined,
+): LandRole {
+  if (overrides === undefined) return role;
+  // `Object.entries` loses the key/value pairing TypeScript would need to
+  // type this loop, so it is spelled out as a filtered spread instead: only
+  // defined keys are laid over the role.
+  const defined = Object.fromEntries(
+    Object.entries(overrides).filter(([, v]) => v !== undefined),
+  ) as RoleOverrides;
+  return { ...role, ...defined };
 }
 
 export interface RandomParam {
@@ -103,20 +143,192 @@ export interface LandRole {
   terrain: Ref;
   baseSize: Expr;
   baseElevation: Expr;
-  landPercent: Expr;
+  /**
+   * `land_percent` OR `number_of_tiles`, never both (role-attributes-
+   * escalation.md Sec.4.1). A discriminated union rather than two optional
+   * fields, because `language.json` marks the pair `mutexWith` and
+   * `validate.ts` raises RMS0307 on a block carrying both; two fields could
+   * emit a create_land the app's own parser then flags. The union makes the
+   * illegal pair unrepresentable, the same move `ZonePolicy` already makes
+   * for the zone mutex.
+   */
+  extent: LandExtent;
   zone: ZonePolicy;
-  assignToPlayer: boolean; // true → assign_to AT_PLAYER <repeat index>
+  /** `assign_to_player` OR `assign_to`, the other `mutexWith` pair, same reasoning (Sec.4.2). */
+  assign: AssignPolicy;
+
+  // --- The optional attributes (role-attributes-escalation.md Sec.2). ------
+  // Every one an `Expr` under Sec.4.3's rule: the tool never consumes the
+  // value, it writes a `#const` the engine reads. ABSENT MEANS THE ATTRIBUTE
+  // IS NOT WRITTEN, which is not the same map as writing the documented
+  // default (`border_fuzziness` defaults to 20, `clumping_factor` to 8, so a
+  // role that wrote 0 for "leave it alone" would reshape every land). Same
+  // trap `grid.layer` fell into when 0 doubled as GRASS (Sec.4.5).
+  // Four border fields rather than one record, so a per-land override
+  // (Sec.5) stays per attribute; `Partial<>` does not recurse.
+  leftBorder?: Expr;
+  rightBorder?: Expr;
+  topBorder?: Expr;
+  bottomBorder?: Expr;
+  borderFuzziness?: Expr;
+  clumpingFactor?: Expr;
+  otherZoneAvoidanceDistance?: Expr;
+  landConformity?: Expr;
+  /**
+   * Emitted LAST in the skeleton, after the assign attribute, because
+   * guide:1145 says `land_id` "must be used after assign_to_player /
+   * assign_to since they will reset the ID" (Sec.4.6). landCommand.ts owns
+   * that ordering; this comment is here so a reader of the model knows the
+   * field is order-sensitive.
+   */
+  landId?: Expr;
+  /** `set_circular_base`, a flag: shared by presence in the skeleton, no constant to emit (Sec.4.4). */
+  circularBase?: boolean;
 }
+
+/**
+ * The optional VALUED attributes, one table read by `roleEmit.ts` (which
+ * constant to allocate), `landCommand.ts` (which attribute to write it
+ * under) and `emitModel.ts` (which `Expr` to resolve), so the three cannot
+ * drift apart the way three hand-written lists would (the repo's own
+ * "two independently-hand-written lists staying in sync" lesson,
+ * landCommand.ts). In emission order. `land_id` is in the table for the
+ * constant and the resolution, and `landCommand.ts` places it after the
+ * assign attribute rather than in table order (Sec.4.6).
+ */
+export const ROLE_OPTIONAL_ATTRIBUTES = [
+  { field: "leftBorder", attribute: "left_border", stem: "ROLE_LEFT_BORDER" },
+  {
+    field: "rightBorder",
+    attribute: "right_border",
+    stem: "ROLE_RIGHT_BORDER",
+  },
+  { field: "topBorder", attribute: "top_border", stem: "ROLE_TOP_BORDER" },
+  {
+    field: "bottomBorder",
+    attribute: "bottom_border",
+    stem: "ROLE_BOTTOM_BORDER",
+  },
+  {
+    field: "borderFuzziness",
+    attribute: "border_fuzziness",
+    stem: "ROLE_FUZZINESS",
+  },
+  {
+    field: "clumpingFactor",
+    attribute: "clumping_factor",
+    stem: "ROLE_CLUMPING",
+  },
+  {
+    field: "otherZoneAvoidanceDistance",
+    attribute: "other_zone_avoidance_distance",
+    stem: "ROLE_ZONE_AVOIDANCE",
+  },
+  {
+    field: "landConformity",
+    attribute: "land_conformity",
+    stem: "ROLE_CONFORMITY",
+  },
+  { field: "landId", attribute: "land_id", stem: "ROLE_LAND_ID" },
+] as const satisfies readonly {
+  field: keyof LandRole;
+  attribute: string;
+  stem: string;
+}[];
+
+export type RoleOptionalField =
+  (typeof ROLE_OPTIONAL_ATTRIBUTES)[number]["field"];
+
+export type LandExtent =
+  { kind: "percent"; value: Expr } | { kind: "tiles"; value: Expr };
+
+/**
+ * A per-instance player number. `perRepeat` resolves at emit time from the
+ * placement's repeat index and is written as a literal (Sec.6.2's per-repeat
+ * exception); `fixed` is an `Expr` emitted as a role constant, like a fixed
+ * zone, because the tool never consumes it and a fixed value is not
+ * per-repeat, so the ownership split says it is a reference. The corpus
+ * writes a `#const` there (`CoastalForest.rms`, `assign_to AT_COLOR
+ * L1_COLOUR 0 0`), which a plain number could not round-trip.
+ */
+export type PlayerSlot =
+  | { kind: "fixed"; value: Expr }
+  | { kind: "perRepeat"; base: number; step: number }; // number = base + step * repeatIndex
+
+export type AssignTarget = "AT_PLAYER" | "AT_COLOR" | "AT_TEAM";
+
+export type AssignPolicy =
+  | { kind: "none" }
+  | { kind: "player"; number: PlayerSlot } // assign_to_player N
+  | {
+      kind: "assignTo"; // assign_to TARGET N MODE FLAGS, four arguments, never two (Sec.9)
+      target: AssignTarget;
+      number: PlayerSlot;
+      /** `language.json` declares -1..0; a literal domain rather than `number` because it is a choice, not a quantity (Sec.4.3). */
+      mode: -1 | 0;
+      /** 0..3, same reasoning. */
+      flags: 0 | 1 | 2 | 3;
+    };
 
 export type ZonePolicy =
   | { kind: "none" }
   | { kind: "fixed"; zone: number }
-  | { kind: "perRepeat"; base: number; step: number }; // zone = base + step * repeatIndex
+  | { kind: "perRepeat"; base: number; step: number } // zone = base + step * repeatIndex
+  | { kind: "random" }; // set_zone_randomly, a flag with no argument
+
+/** Today's `assignToPlayer: true`, spelled in the new shape: `assign_to AT_PLAYER <repeatIndex + 1> 0 0`. */
+export const ASSIGN_TO_PLAYER_PER_REPEAT: AssignPolicy = {
+  kind: "assignTo",
+  target: "AT_PLAYER",
+  number: { kind: "perRepeat", base: 1, step: 1 },
+  mode: 0,
+  flags: 0,
+};
+
+/**
+ * True when a role's lands belong to a player in the engine's sense (Sec.6.3,
+ * P3): any assignment at all, since the guide's "lands belonging to players
+ * will be in a circle and land_position will be ignored, unless
+ * direct_placement" is about ownership, not about which spelling assigned it.
+ */
+export function isPlayerAssigned(assign: AssignPolicy): boolean {
+  return assign.kind !== "none";
+}
+
+/**
+ * One chained child, authored once on a `PatternSlot` and expanded onto
+ * every member that slot produces (composite-pattern-escalation.md Sec.5,
+ * Q12). The offset is in the MEMBER's own frame, so `radial` means Sec.4.2's
+ * angle ABC measured at that member. Depth 1 by measurement rather than
+ * taste (Sec.5.3: the corpus's deepest chain is 1, in one map); a template
+ * cannot carry templates, and a deeper chain stays reachable by parenting a
+ * standalone `Placement` to an expanded chain child.
+ */
+export interface ChainTemplate {
+  /** Stable; with (repeatIndex, slotId) this is the merge key. */
+  id: string;
+  role: string; // LandRole id
+  /** The stem of the expanded children's labels. */
+  label: string;
+  frame: FrameKind;
+  offset: Placement["offset"];
+}
 
 export interface PatternSlot {
   /** Stable; with the repeat index this is Sec.4.5's merge key for re-expansion. */
   id: string;
-  role: string; // LandRole id
+  /**
+   * LandRole id. Absent means the slot's members are points only, emitted as
+   * coordinates with no `create_land`, the same as a standalone Placement
+   * with no role (decided 2026-09-28). A points-only ring is a set of
+   * anchors that other lands can be parented to or chained off, with no
+   * land sitting on the shape itself. `expandShapeGroup` copies this onto
+   * each member unchanged, so an absent slot role is an absent member role,
+   * which the emitter already reads as a chain anchor.
+   */
+  role?: string;
+  /** Absent or empty means this slot's members have no templated children (Q12). */
+  chain?: ChainTemplate[];
   /**
    * Angular position within the ring; default even. Ignored for a
    * perimeter kind (`square`, `triangle`, `polygon`) — NOT because those
@@ -154,6 +366,12 @@ export interface PatternSlot {
   perimeterShift?: number;
 }
 
+export interface GroupJitter {
+  /** A `perPlayer` RandomParam id, drawn `rnd(-amount, amount)`. */
+  param: string;
+  unit: "deg" | "percent";
+}
+
 export interface ShapeGroup {
   id: string;
   parent: Anchor;
@@ -169,6 +387,17 @@ export interface ShapeGroup {
   // invariant of the model rather than a rendering convenience.
   members: string[]; // pattern.length × repeats Placements
   /**
+   * Expanded chain children (Q12), ordered repeat-major, then pattern
+   * order, then template order; length exactly
+   * `repeats × Σ(slot.chain?.length ?? 0)`. Kept SEPARATE from `members` so
+   * `memberKeyAt`'s positional key derivation is untouched (composite-
+   * pattern-escalation.md Sec.5.1), and OPTIONAL so a fence written before
+   * this field existed reads back unchanged: absent and empty mean the same
+   * thing everywhere, and a model with no templates is byte-identical to
+   * one written before the feature (its Sec.9's regression gate).
+   */
+  chainMembers?: string[];
+  /**
    * One repeat per player, resolved at runtime (per-player-escalation.md
    * Sec.8.1). `repeats` is held at MAX_PLAYER_COUNT while this is set, so
    * `expandShapeGroup`, `memberKeyAt` and `reExpand`'s merge rule keep
@@ -178,6 +407,29 @@ export interface ShapeGroup {
    * guard instead of the fixed literal `expandShapeGroup` bakes.
    */
   perPlayer: boolean;
+  /**
+   * Random jitter added to each player's EVEN DEFAULT angle, per-player
+   * rings only (per-player-escalation.md Sec.11, built 2026-09-28).
+   * `buildPrologue` adds it inside every count's branch. A member with an
+   * authored angle or a per-count override is left alone, since those
+   * already say exactly where the member goes.
+   *
+   * A group field rather than a `rnd(...)` typed into a member's angle,
+   * because an authored angle REPLACES the even default
+   * (`resolveMemberAngle`, first match wins). Typed into a member, the draw
+   * would pin that member to its 8-player position at every count.
+   *
+   * `param` names a `perPlayer` RandomParam, so each player gets their own
+   * draw and a player's slots move together. `deg` adds the draw in
+   * degrees. `percent` scales it by the even gap at each count,
+   * `draw * gap / 100`, so one percentage is equally safe at every count.
+   * On an arc the gap is `sweep / (N - 1)`, and a branch with one member
+   * gets no draw (land-placement-per-player-any-kind-escalation.md Sec.5.2).
+   * The emitter refuses the field on a ring that is not per-player, or
+   * when the param is not per-player, because every member would then
+   * share one draw and the result would be a rotation, not jitter.
+   */
+  jitter?: GroupJitter;
   /**
    * Angular span for `kind: "arc"` ONLY, degrees, default 180. Ignored by
    * every other kind. A plain number rather than an `Expr` because it is

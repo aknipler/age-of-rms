@@ -21,15 +21,25 @@
 // its own `playerNumber - 10`). This is guide/community-sourced, not
 // confirmed in-game the way this project's RMSTEST_* runs confirm other
 // facts, worth an actual RMSTEST if this command's exact behaviour ever
-// matters for something load-bearing. `preview-design.md` Sec.6.5 itself
-// still has the wrong reading and should be corrected to match.
+// matters for something load-bearing. `preview-design.md` Sec.6.5 carries
+// the corrected reading since 2026-08-06.
 //
-// PATHFINDING: ONE multi-source Dijkstra per SOURCE land, with a binary
+// PATHFINDING: ONE multi-goal Dijkstra per SOURCE land, with a binary
 // heap (Sec.11), yielding the cheapest path to every one of that source's
-// targets from a single search (`findConnectionPaths`). Multi-source
-// because every tile of the source land starts at cost 0, multi-goal
-// because a target is reached at whichever of its tiles the search closes
-// first. A pair-at-a-time A* ran C(L,2) searches where this runs L, which
+// targets from a single search (`findConnectionPaths`). A connection runs
+// between land ORIGINS, "along a path between the origins of lands"
+// (guide:1730, restated per command at guide:1759/1774/1792), so the
+// search is seeded from the source land's origin tile alone and a target
+// counts as reached only when its origin tile closes. An earlier version
+// seeded EVERY tile of the source land at cost 0 and accepted the first
+// tile of a target land the search closed, which joins the two lands'
+// nearest edges: on the tutorial's Golden Hill every road stopped 24 to 36
+// tiles short of the TC, one land radius, while in game the road runs up
+// to it. The origin is where the TC sits (`max_distance_to_players 0` in
+// objects.ts is a band around the same `LandOrigin.x/y`), so the path has
+// to cross the player's own land to get there, and its paint goes over
+// that land's terrain like any other tile's. A pair-at-a-time A* ran
+// C(L,2) searches where this runs L, which
 // on ~25 lands is 12x fewer (Sec.15 item 22). There is no heuristic: A*'s
 // admissibility guarantee covers only the FIRST goal popped out of a goal
 // set, so a heuristic aimed at the nearest remaining target would return
@@ -285,6 +295,27 @@ export class MinHeap {
 // ---------------------------------------------------------------------------
 
 /**
+ * The tile index of each land's origin, the endpoint every connection to or
+ * from that land uses. Index matches `origins`. `-1` for an origin off the
+ * grid, which lands.ts clamps against, so today it cannot happen; kept as a
+ * guard because the guide records the engine CRASHING on exactly that case
+ * (guide:818, a `land_position` outside the map "will crash the game if
+ * your map uses <CONNECTION_GENERATION>"), and the preview's answer to a
+ * crash is a `connectionBlocked` failure, never a throw.
+ */
+export function landOriginTiles(
+  grid: TileGrid,
+  origins: readonly LandOrigin[],
+): number[] {
+  const { dim } = grid;
+  return origins.map((o) =>
+    o.x >= 0 && o.x < dim && o.y >= 0 && o.y < dim
+      ? tileIndex(grid, o.x, o.y)
+      : -1,
+  );
+}
+
+/**
  * Which lands can possibly reach which, under ONE command's cost table.
  *
  * Batching the searches per source land is only a saving when a search can
@@ -296,28 +327,26 @@ export class MinHeap {
  *
  * So the unreachable pairs are answered before any search runs, by flooding
  * the passable tiles once per command into connected components and asking
- * whether the two lands share one. That is the same question the exhausted
- * search was answering, at O(dim^2) for the whole command rather than per
- * pair. Two sets per land, because a land is not symmetric in this:
- *
- * - `target[l]`, components of l's OWN passable tiles. A search enters a
- *   target land by relaxing into one of its tiles, so an impassable land is
- *   unreachable however close it sits.
- * - `source[l]`, components l can set off INTO, which is `target[l]` plus
- *   the components of every passable tile ADJACENT to l. Source tiles are
- *   seeded at cost 0 whatever their own terrain costs, so a land made of
- *   impassable terrain still departs normally.
+ * whether the two lands' ORIGIN tiles share one. That is the same question
+ * the exhausted search was answering, at O(dim^2) for the whole command
+ * rather than per pair. One component per land, `-1` when its origin tile
+ * is impassable (or off the grid): the guide reads a cost-0 terrain under
+ * a land origin as "the connections to that land will not be generated at
+ * all" (guide:1937), which makes departing and arriving the same test.
+ * The earlier per-tile model needed two sets per land because a land
+ * seeded from all its tiles could DEPART over impassable terrain while
+ * only being ARRIVED AT through passable tiles; with a single origin tile
+ * at both ends that asymmetry has nothing left to describe.
  */
 export interface ConnectivityIndex {
-  source: Array<Set<number>>;
-  target: Array<Set<number>>;
+  component: Int32Array;
 }
 
 export function buildConnectivityIndex(
   grid: TileGrid,
   terrainOf: Uint16Array,
   costOf: (terrainId: number) => number,
-  landCount: number,
+  originTiles: readonly number[],
 ): ConnectivityIndex {
   const { dim } = grid;
   const n = dim * dim;
@@ -343,24 +372,11 @@ export function buildConnectivityIndex(
   }
 
   const index: ConnectivityIndex = {
-    source: Array.from({ length: landCount }, () => new Set<number>()),
-    target: Array.from({ length: landCount }, () => new Set<number>()),
+    component: new Int32Array(originTiles.length).fill(-1),
   };
-  for (let i = 0; i < n; i++) {
-    const land = grid.landId[i];
-    if (land < 0 || land >= landCount) continue;
-    const own = component[i];
-    if (own !== -1) {
-      index.target[land].add(own);
-      index.source[land].add(own);
-    }
-    const x = i % dim;
-    const y = (i - x) / dim;
-    if (x > 0) addNeighbor(index.source[land], i - 1);
-    if (x < dim - 1) addNeighbor(index.source[land], i + 1);
-    if (y > 0) addNeighbor(index.source[land], i - dim);
-    if (y < dim - 1) addNeighbor(index.source[land], i + dim);
-  }
+  originTiles.forEach((tile, land) => {
+    if (tile >= 0 && tile < n) index.component[land] = component[tile];
+  });
   return index;
 
   function visit(tile: number, id: number, top: number): number {
@@ -368,11 +384,6 @@ export function buildConnectivityIndex(
     component[tile] = id;
     stack[top++] = tile;
     return top;
-  }
-
-  function addNeighbor(into: Set<number>, tile: number): void {
-    const c = component[tile];
-    if (c !== -1) into.add(c);
   }
 }
 
@@ -382,14 +393,10 @@ export function landsCanConnect(
   source: number,
   target: number,
 ): boolean {
-  const from = index.source[source];
-  const to = index.target[target];
+  const from = index.component[source];
+  const to = index.component[target];
   if (from === undefined || to === undefined) return false;
-  const [small, large] = from.size <= to.size ? [from, to] : [to, from];
-  for (const component of small) {
-    if (large.has(component)) return true;
-  }
-  return false;
+  return from !== -1 && from === to;
 }
 
 /**
@@ -434,84 +441,87 @@ export function createPathScratch(dim: number): PathScratch {
   };
 }
 
-/** Tile indices owned by each land, so a search does not rescan the grid to find its own start set. Index matches `origins`. */
-function landTiles(grid: TileGrid, landCount: number): number[][] {
-  const tiles: number[][] = Array.from({ length: landCount }, () => []);
-  for (let i = 0; i < grid.landId.length; i++) {
-    const land = grid.landId[i];
-    if (land >= 0 && land < landCount) tiles[land].push(i);
-  }
-  return tiles;
-}
-
 /**
- * Multi-source, multi-goal Dijkstra: every tile of `sourceLand` starts at
- * cost 0, and each land in `targetLands` is reached at whichever of its
- * tiles the search closes first, which under Dijkstra is its cheapest.
- * Returns one path per target that was reached, keyed by land index, as
- * tile indices from source to target inclusive. A target simply ABSENT
- * from the returned map has no route, "impassable moat of cost-0 terrain,
- * or unreachable land" (Sec.6.5), which this treats identically: both
- * exhaust the open set without ever closing a tile of that land.
+ * Single-source, multi-goal Dijkstra from `sourceLand`'s ORIGIN tile to the
+ * ORIGIN tile of each land in `targetLands` (`originTiles` is indexed by
+ * land, see `landOriginTiles`). Returns one path per target that was
+ * reached, keyed by land index, as tile indices from origin to origin
+ * inclusive. A target simply ABSENT from the returned map has no route,
+ * "impassable moat of cost-0 terrain, or unreachable land" (Sec.6.5),
+ * which this treats identically: both exhaust the open set without ever
+ * closing that origin tile. A source whose own origin is impassable
+ * reaches nothing (guide:1937), the same answer the connectivity index
+ * gives before this is ever called.
  *
  * One search answers every pair sharing a source, which is the whole point
- * (Sec.15 item 22). The search still expands THROUGH a target's tiles
+ * (Sec.15 item 22). The search still expands THROUGH a target's origin
  * after recording it, since a further target may lie beyond it, the
  * per-pair version did the same, having never looked at any land but its
  * own target. It stops early once every target is accounted for, so a
  * source whose targets are all nearby does not pay for the far side of the
  * map; only an unreachable target forces the full component.
+ *
+ * The goal test is on the TILE, not on `grid.landId`: two lands may share
+ * an origin tile (two `land_position 50 50`), and a land's origin can lie
+ * under another land's tiles after growth, so "which land is this tile"
+ * is not the question. A `Map<tile, land[]>` answers it in O(1) per pop.
  */
 export function findConnectionPaths(
   grid: TileGrid,
   terrainOf: Uint16Array,
   costOf: (terrainId: number) => number,
+  originTiles: readonly number[],
   sourceLand: number,
   targetLands: readonly number[],
   scratch: PathScratch = createPathScratch(grid.dim),
-  sourceTiles?: readonly number[],
 ): Map<number, number[]> {
   const paths = new Map<number, number[]>();
-  const wanted = new Set(targetLands);
-  wanted.delete(sourceLand);
-  if (wanted.size === 0) return paths;
-
   const { dim } = grid;
   const n = dim * dim;
+  const start = originTiles[sourceLand] ?? -1;
+  if (start < 0 || start >= n || costOf(terrainOf[start]) <= 0) return paths;
+
+  const goalsByTile = new Map<number, number[]>();
+  let wanted = 0;
+  for (const land of targetLands) {
+    if (land === sourceLand) continue;
+    const tile = originTiles[land] ?? -1;
+    if (tile < 0 || tile >= n) continue;
+    const list = goalsByTile.get(tile);
+    if (list) {
+      if (list.includes(land)) continue;
+      list.push(land);
+    } else goalsByTile.set(tile, [land]);
+    wanted++;
+  }
+  if (wanted === 0) return paths;
+
   const { gScore, gStamp, cameFrom, closedStamp, heap } = scratch;
   const gen = ++scratch.generation;
   heap.clear();
-
-  // Seeded from a prebuilt tile list when the caller has one. Without it this
-  // is an O(dim^2) scan per search.
-  if (sourceTiles !== undefined) {
-    for (const i of sourceTiles) seed(i);
-  } else {
-    for (let i = 0; i < n; i++) {
-      if (grid.landId[i] === sourceLand) seed(i);
-    }
-  }
+  seed(start);
 
   while (heap.size > 0) {
     const current = heap.pop()!;
     if (closedStamp[current] === gen) continue;
     closedStamp[current] = gen;
 
-    const land = grid.landId[current];
-    if (land >= 0 && wanted.has(land)) {
+    const goals = goalsByTile.get(current);
+    if (goals !== undefined) {
       const path: number[] = [];
       let t: number = current;
       // `cameFrom` needs no stamp of its own: every tile on this chain was
       // written during THIS search (a tile only enters the heap when its
-      // gScore is written, and the source tiles terminate the chain at -1).
+      // gScore is written, and the source tile terminates the chain at -1).
       while (t !== -1) {
         path.push(t);
         t = cameFrom[t];
       }
       path.reverse();
-      paths.set(land, path);
-      wanted.delete(land);
-      if (wanted.size === 0) break;
+      for (const land of goals) paths.set(land, path);
+      wanted -= goals.length;
+      goalsByTile.delete(current);
+      if (wanted === 0) break;
     }
 
     const x = current % dim;
@@ -847,6 +857,10 @@ export function applyConnections(
   let sawTeamsCommand = false;
   // One set of working arrays for every search this stage runs, see PathScratch.
   const pathScratch = createPathScratch(grid.dim);
+  // Every connection this stage draws starts and ends on an origin tile, and
+  // origins are fixed before S5 begins, so this is computed once for the
+  // stage rather than per command.
+  const originTiles = landOriginTiles(grid, origins);
 
   for (const cmd of commands) {
     if (cmd.name === "accumulate_connections") {
@@ -917,13 +931,6 @@ export function applyConnections(
     const coverage = createPaintCoverage(grid.dim); // per command, like `terrainOf` and for the same reason, see PaintCoverage
     let placed = 0;
 
-    // Both rebuilt per command, not per pair, and not hoisted above the
-    // command loop either: an earlier connection paints terrain, and under
-    // `accumulate_connections` a later command is supposed to see it. Land
-    // OWNERSHIP does not change during S5, but keeping the two together
-    // makes that a local fact rather than something to re-derive later.
-    const tilesByLand = landTiles(grid, origins.length);
-
     // One search per distinct SOURCE land rather than one per pair. The
     // searches all run first, against the one frozen `terrainOf` above, and
     // the painting then walks `pairs` in its original order, so the RNG
@@ -937,13 +944,16 @@ export function applyConnections(
     }
     // Pairs with no route at all are answered from the component flood
     // rather than by a search that exhausts its component to find out, see
-    // ConnectivityIndex. They still report `connectionBlocked` below, from
-    // the same "absent from the map" branch a failed search produces.
+    // ConnectivityIndex. The flood is rebuilt per command, not hoisted: under
+    // `accumulate_connections` a later command's `terrainOf` includes what
+    // earlier commands painted, and the cost table is per command anyway.
+    // They still report `connectionBlocked` below, from the same "absent
+    // from the map" branch a failed search produces.
     const connectivity = buildConnectivityIndex(
       grid,
       terrainOf,
       costOf,
-      origins.length,
+      originTiles,
     );
     const pathsBySource = new Map<number, Map<number, number[]>>();
     for (const [source, targets] of targetsBySource) {
@@ -957,10 +967,10 @@ export function applyConnections(
           grid,
           terrainOf,
           costOf,
+          originTiles,
           source,
           reachable,
           pathScratch,
-          tilesByLand[source],
         ),
       );
     }
@@ -974,7 +984,7 @@ export function applyConnections(
           stage: "S5",
           entity: `connection ${landLabel(origins, a)}-${landLabel(origins, b)}`,
           detail:
-            "No passable route exists between these two lands' regions, so this connection was not produced.",
+            "No passable route exists between these two lands' origins, so this connection was not produced.",
         });
         continue;
       }

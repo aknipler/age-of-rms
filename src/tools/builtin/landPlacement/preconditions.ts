@@ -1,12 +1,19 @@
-// Sec.9: P1-P5 as pure predicates, returning structured results. The panel
-// strip that DISPLAYS them (warnings, one-click fixes) is slice 4b, this
-// module is only the functions.
+// Sec.9: P1-P6 as pure predicates, returning structured results, plus the
+// one-click fixes for P3 and P6 as pure `TextEdit` builders. The panel strip
+// only DISPLAYS them; every decision about what to insert and where is here,
+// so it is testable without a DOM (role-attributes-escalation.md Sec.8).
 
 import type { LanguageData } from "../../../parser/language";
 import type { ParseResult } from "../../../parser/types";
+import type { TextEdit } from "../../../../tools-api/index";
 import { walkItems } from "../../walkItems";
 import { readFenceModel, type AlpModel } from "./fence";
-import type { LandRole, RandomParam } from "./model";
+import {
+  isPlayerAssigned,
+  type LandRole,
+  type Placement,
+  type RandomParam,
+} from "./model";
 
 // ---------------------------------------------------------------------------
 // P1, the RawNode-covered fraction of the file, and the lands inside it the
@@ -141,7 +148,7 @@ export function checkP3(
   roles: readonly LandRole[],
   parse: ParseResult,
 ): P3Result {
-  const hasPlayerAssignedLand = roles.some((r) => r.assignToPlayer);
+  const hasPlayerAssignedLand = roles.some((r) => isPlayerAssigned(r.assign));
   const directPlacementDeclared = hasDirectPlacement(parse);
   return {
     ok: !hasPlayerAssignedLand || directPlacementDeclared,
@@ -210,4 +217,126 @@ export interface P5Result {
 export function checkP5(parse: ParseResult): P5Result {
   const model = readFenceModel(parse);
   return { ok: model !== null, model };
+}
+
+// ---------------------------------------------------------------------------
+// P6, `<ELEVATION_GENERATION>` must exist when any emitted land carries a
+// `base_elevation` (role-attributes-escalation.md Sec.8).
+// ---------------------------------------------------------------------------
+
+/**
+ * `language.json` carries `requiresSection: "ELEVATION_GENERATION"` on
+ * `base_elevation` (measured in game 2026-07-30, RMS0311): without the
+ * section the map generates and looks right while every slope silently
+ * does nothing. `buildLandAttachmentExpectations` writes `base_elevation`
+ * into EVERY skeleton unconditionally, so the tool can trip the app's own
+ * error diagnostic on a script the user never prepared for it. The section
+ * may be completely empty; presence is all the engine needs.
+ */
+export interface P6Result {
+  ok: boolean;
+  /** True when at least one placement wears a role, so at least one skeleton will carry `base_elevation`. */
+  needsSection: boolean;
+  sectionDeclared: boolean;
+}
+
+const ELEVATION_SECTION = "ELEVATION_GENERATION";
+
+export function checkP6(
+  placements: readonly Placement[],
+  parse: ParseResult,
+): P6Result {
+  const needsSection = placements.some((p) => p.role !== undefined);
+  const sectionDeclared = parse.script.sections.some(
+    (sec) => sec.name === ELEVATION_SECTION,
+  );
+  return {
+    ok: !needsSection || sectionDeclared,
+    needsSection,
+    sectionDeclared,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// One-click fixes. Pure edit builders; the panel applies what they return.
+// ---------------------------------------------------------------------------
+
+/** Offset just past the end of the line that contains `offset` (after its newline), or the document end. */
+function endOfLine(source: string, offset: number): number {
+  const nl = source.indexOf("\n", offset);
+  return nl === -1 ? source.length : nl + 1;
+}
+
+/**
+ * P6's fix: insert an empty `<ELEVATION_GENERATION>` section. Placed right
+ * after the LAST `<LAND_GENERATION>` section's content (which is where the
+ * guide's own ordering puts it, and where the user will look for it), or at
+ * the document end when there is no land section at all. Sections are
+ * order-independent to the engine; this is about legibility.
+ */
+export function buildElevationSectionFix(parse: ParseResult): TextEdit[] {
+  const { source } = parse;
+  const lands = parse.script.sections.filter(
+    (sec) => sec.name === "LAND_GENERATION",
+  );
+  const last = lands[lands.length - 1];
+  const at = last === undefined ? source.length : last.span.end;
+  const before = source.slice(0, at);
+  const prefix =
+    before.length === 0
+      ? ""
+      : before.endsWith("\n\n")
+        ? ""
+        : before.endsWith("\n")
+          ? "\n"
+          : "\n\n";
+  const after = source.slice(at);
+  const suffix = after.length === 0 || after.startsWith("\n") ? "\n" : "\n\n";
+  return [
+    { start: at, end: at, newText: `${prefix}<${ELEVATION_SECTION}>${suffix}` },
+  ];
+}
+
+/**
+ * P3's fix: declare `direct_placement`. Goes on its own line right under the
+ * first `<PLAYER_SETUP>` header. With no such section, a new one is opened
+ * just before the first section header (so `#const`s in the preamble stay
+ * where they are), or at the end of a section-less document.
+ */
+export function buildDirectPlacementFix(parse: ParseResult): TextEdit[] {
+  const { source, tokens } = parse;
+  const setup = parse.script.sections.find(
+    (sec) => sec.name === "PLAYER_SETUP",
+  );
+  if (setup !== undefined) {
+    const at = endOfLine(source, tokens[setup.header].end);
+    // The header may be the last thing in the file with no newline after
+    // it; `endOfLine` then returns the document end, so open the line first.
+    const needsBreak = at === source.length && !source.endsWith("\n");
+    return [
+      {
+        start: at,
+        end: at,
+        newText: `${needsBreak ? "\n" : ""}direct_placement\n`,
+      },
+    ];
+  }
+  const first = parse.script.sections[0];
+  const at = first === undefined ? source.length : tokens[first.header].start;
+  const before = source.slice(0, at);
+  const prefix =
+    before.length === 0
+      ? ""
+      : before.endsWith("\n\n")
+        ? ""
+        : before.endsWith("\n")
+          ? "\n"
+          : "\n\n";
+  return [
+    {
+      start: at,
+      end: at,
+      newText: `${prefix}<PLAYER_SETUP>\ndirect_placement\n\n`,
+    },
+  ];
 }

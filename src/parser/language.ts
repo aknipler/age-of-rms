@@ -20,6 +20,13 @@ export const NUMERIC_ARGUMENT_TYPES: ReadonlySet<ArgumentType> = new Set([
   "flag",
 ]);
 
+/** Slots that take a name (a terrain, an object, a script's own #const). Breakdown inserts these bare, see intents.ts's addAttribute.bare. */
+export const CONSTANT_ARGUMENT_TYPES: ReadonlySet<ArgumentType> = new Set([
+  "terrainConstant",
+  "objectConstant",
+  "otherConstant",
+]);
+
 export interface ArgumentDef {
   name: string;
   type: ArgumentType;
@@ -28,6 +35,8 @@ export interface ArgumentDef {
   default?: number | string;
   description?: string;
   optional?: boolean; // schema action item (spec Sec.13), honored if present
+  /** A word Breakdown shows before this argument's field ("with" before replace_terrain's second terrain). Presentation only. */
+  leadIn?: string;
   variadic?: boolean; // schema action item, honored if present
   // Advisory range, distinct from min: a value below cautionBelow is still
   // valid RMS (no min violation), but is worth flagging live, e.g. a

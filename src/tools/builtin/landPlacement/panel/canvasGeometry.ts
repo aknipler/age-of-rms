@@ -31,14 +31,30 @@ export interface TileCircle {
   rTiles: number;
 }
 
-/** Only `circle` shapes carrying an `id` are hit-testable. A chain-edge `line` or a `label` is not something a click can select. */
+/**
+ * Only `circle` and `point` shapes carrying an `id` are hit-testable. A
+ * chain-edge `line` or a `label` is not something a click can select. A
+ * point has no size of its own in tile space (drawOverlay.ts draws it at a
+ * fixed screen size), so it takes `pointGrabTiles`, the same envelope a
+ * handle gets (`handleGrabRadiusTiles`). Required rather than optional, so
+ * the one caller cannot forget it and silently make every point unclickable.
+ */
 export function circlesFromOverlay(
   shapes: readonly OverlayShape[],
+  pointGrabTiles: number,
 ): TileCircle[] {
   const out: TileCircle[] = [];
   for (const shape of shapes) {
-    if (shape.kind === "circle" && shape.id !== undefined) {
+    if (shape.id === undefined) continue;
+    if (shape.kind === "circle") {
       out.push({ id: shape.id, x: shape.x, y: shape.y, rTiles: shape.rTiles });
+    } else if (shape.kind === "point") {
+      out.push({
+        id: shape.id,
+        x: shape.x,
+        y: shape.y,
+        rTiles: pointGrabTiles,
+      });
     }
   }
   return out;

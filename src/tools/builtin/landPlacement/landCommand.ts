@@ -4,7 +4,7 @@
 // THE OWNERSHIP SPLIT (Sec.6.2). Everything this module writes into a
 // `create_land` is a REFERENCE to a constant inside the tool's own fence,
 // never a literal, with exactly one named exception: a PER-REPEAT value
-// (a `perRepeat` zone, `assign_to AT_PLAYER n`) varies per instance, so a
+// (a `perRepeat` zone, a `perRepeat` player number) varies per instance, so a
 // shared role constant is the wrong shape for it and it is written as a
 // plain literal instead. From the moment a land is created, the tool owns
 // only what is inside the fence; the `create_land` block itself belongs to
@@ -13,7 +13,11 @@
 // without any id the tool would otherwise have to maintain.
 
 import type { ArgNode, CommandNode, Token } from "../../../parser/types";
-import type { LandRole } from "./model";
+import {
+  ROLE_OPTIONAL_ATTRIBUTES,
+  type LandRole,
+  type PlayerSlot,
+} from "./model";
 import type { RoleConstNames } from "./roleEmit";
 
 export interface LandSkeletonInput {
@@ -23,21 +27,48 @@ export interface LandSkeletonInput {
   xName: string;
   yName: string;
   /**
-   * 0-based. Needed only when `role.zone.kind === "perRepeat"` or
-   * `role.assignToPlayer` is true, both are per-instance (Sec.4.5) and
-   * resolved here, at emit time, rather than left as further arithmetic in
-   * the script.
+   * 0-based. Needed only when `role.zone.kind === "perRepeat"` or the assign
+   * policy's number is a `perRepeat` slot, both are per-instance (Sec.4.5)
+   * and resolved here, at emit time, rather than left as further arithmetic
+   * in the script.
    */
   repeatIndex?: number;
 }
 
-/** `zone = base + step * repeatIndex` (Sec.4.5), resolved at emit time, since the tool always knows `repeatIndex` by then. */
-function perRepeatZone(
+/** `base + step * repeatIndex` (Sec.4.5), resolved at emit time, since the tool always knows `repeatIndex` by then. Zones and player numbers alike. */
+function perRepeatValue(
   base: number,
   step: number,
   repeatIndex: number,
 ): number {
   return base + step * repeatIndex;
+}
+
+/**
+ * The argument text for an assign policy's player number: a literal for a
+ * `perRepeat` slot (Sec.6.2's per-repeat exception) and the role constant's
+ * NAME for a `fixed` one, which `emitRole` allocated as
+ * `fixedAssignNumberName` (role-attributes-escalation.md Sec.4.2 rev 1).
+ */
+function playerSlotArg(
+  slot: PlayerSlot,
+  roleNames: RoleConstNames,
+  repeatIndex: number | undefined,
+  what: string,
+): string {
+  if (slot.kind === "perRepeat") {
+    if (repeatIndex === undefined)
+      throw new Error(
+        `buildLandAttachmentExpectations: a perRepeat ${what} needs repeatIndex`,
+      );
+    return String(perRepeatValue(slot.base, slot.step, repeatIndex));
+  }
+  if (roleNames.fixedAssignNumberName === undefined) {
+    throw new Error(
+      `buildLandAttachmentExpectations: role has a fixed ${what} but roleNames.fixedAssignNumberName is missing — emitRole and this call disagree`,
+    );
+  }
+  return roleNames.fixedAssignNumberName;
 }
 
 /**
@@ -61,9 +92,27 @@ export function buildLandAttachmentExpectations(
       attribute: "base_elevation",
       expectedArgs: [roleNames.baseElevationName],
     },
-    { attribute: "land_percent", expectedArgs: [roleNames.landPercentName] },
+    {
+      // Which of the mutex pair is written rides on the union's discriminant
+      // (Sec.4.1), so a role can never emit both.
+      attribute:
+        roleNames.extentKind === "percent" ? "land_percent" : "number_of_tiles",
+      expectedArgs: [roleNames.extentName],
+    },
     { attribute: "land_position", expectedArgs: [xName, yName] },
   ];
+
+  // The optional valued attributes, in table order, EXCEPT `land_id`, which
+  // goes last (below). A field the role does not set emits nothing at all.
+  for (const { field, attribute } of ROLE_OPTIONAL_ATTRIBUTES) {
+    if (field === "landId") continue;
+    const name = roleNames.optional[field];
+    if (name === undefined) continue;
+    expectations.push({ attribute, expectedArgs: [name] });
+  }
+  if (role.circularBase === true) {
+    expectations.push({ attribute: "set_circular_base", expectedArgs: [] });
+  }
 
   if (role.zone.kind === "fixed") {
     if (roleNames.fixedZoneName === undefined) {
@@ -83,20 +132,58 @@ export function buildLandAttachmentExpectations(
     expectations.push({
       attribute: "zone",
       expectedArgs: [
-        String(perRepeatZone(role.zone.base, role.zone.step, repeatIndex)),
+        String(perRepeatValue(role.zone.base, role.zone.step, repeatIndex)),
+      ],
+    });
+  } else if (role.zone.kind === "random") {
+    // A flag: present with no arguments means attached, absent means
+    // detached, through the same comparison as every valued attribute
+    // (role-attributes-escalation.md Sec.4.4).
+    expectations.push({ attribute: "set_zone_randomly", expectedArgs: [] });
+  }
+
+  if (role.assign.kind === "player") {
+    expectations.push({
+      attribute: "assign_to_player",
+      expectedArgs: [
+        playerSlotArg(
+          role.assign.number,
+          roleNames,
+          repeatIndex,
+          "player number",
+        ),
+      ],
+    });
+  } else if (role.assign.kind === "assignTo") {
+    // FOUR arguments. `language.json` declares `assign_to` with four, none
+    // optional, and the parser raises RMS0201 on fewer; this tool shipped
+    // two for a while and its own output tripped that diagnostic
+    // (role-attributes-escalation.md Sec.9). `emitModel.test.ts` runs
+    // `validate()` over a rendered fence plus skeleton to keep it at four.
+    expectations.push({
+      attribute: "assign_to",
+      expectedArgs: [
+        role.assign.target,
+        playerSlotArg(
+          role.assign.number,
+          roleNames,
+          repeatIndex,
+          "assign_to number",
+        ),
+        String(role.assign.mode),
+        String(role.assign.flags),
       ],
     });
   }
 
-  if (role.assignToPlayer) {
-    if (repeatIndex === undefined)
-      throw new Error(
-        "buildLandAttachmentExpectations: assignToPlayer needs repeatIndex",
-      );
-    expectations.push({
-      attribute: "assign_to",
-      expectedArgs: ["AT_PLAYER", String(repeatIndex + 1)],
-    });
+  // `land_id` LAST, after the assign attribute. guide:1145: "Must be used
+  // after assign_to_player / assign_to since they will reset the ID." This
+  // is invisible in the emitted text and a tidy-minded reorder of this
+  // function would silently break it, which is why landCommand.test.ts pins
+  // the position by name (role-attributes-escalation.md Sec.4.6).
+  const landIdName = roleNames.optional.landId;
+  if (landIdName !== undefined) {
+    expectations.push({ attribute: "land_id", expectedArgs: [landIdName] });
   }
 
   return expectations;
@@ -105,7 +192,8 @@ export function buildLandAttachmentExpectations(
 export function buildCreateLandSkeleton(input: LandSkeletonInput): string {
   const lines: string[] = ["create_land", "{"];
   for (const exp of buildLandAttachmentExpectations(input)) {
-    lines.push(`${exp.attribute} ${exp.expectedArgs.join(" ")}`);
+    // A flag has no arguments and must not carry a trailing space.
+    lines.push([exp.attribute, ...exp.expectedArgs].join(" "));
   }
   lines.push("}");
   return lines.join("\n");

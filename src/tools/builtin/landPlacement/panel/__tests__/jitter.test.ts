@@ -6,7 +6,7 @@
 // proves least." See this file's own mutation log at the bottom.
 
 import { describe, expect, it } from "vitest";
-import { computeSafeJitterDegrees } from "../jitter";
+import { computeJitterAmount, computeSafeJitterDegrees } from "../jitter";
 
 describe("computeSafeJitterDegrees — the brief's own worked example", () => {
   it("8 players, minimum 40, leaves exactly 2.5 degrees of jitter", () => {
@@ -109,3 +109,61 @@ describe("computeSafeJitterDegrees — patternLength scales the population, not 
 // this file. The "infinitesimally impossible" test below was added because
 // of that gap, not in anticipation of it, and it is the only test in this
 // file whose reason for existing is a mutant that got past everything else.
+
+// per-player-escalation.md Sec.11: the amount the "Add jitter" button
+// writes. One draw serves every count, so the bound is taken where the even
+// gap is smallest, 8 players, never at the count being previewed.
+describe("computeJitterAmount — the whole-number bound the button writes", () => {
+  it("degrees: 8 players, one slot, minimum 40 is floor(2.5) = 2", () => {
+    expect(computeJitterAmount("deg", 8, 1, 40)).toEqual({
+      ok: true,
+      amount: 2,
+    });
+  });
+
+  it("percent: the same request is floor(50 * (1 - 40 / 45)) = floor(5.56) = 5", () => {
+    expect(computeJitterAmount("percent", 8, 1, 40)).toEqual({
+      ok: true,
+      amount: 5,
+    });
+  });
+
+  it("no minimum allows half the gap either way, 22 degrees or 50 percent", () => {
+    expect(computeJitterAmount("deg", 8, 1, 0)).toEqual({
+      ok: true,
+      amount: 22,
+    });
+    expect(computeJitterAmount("percent", 8, 1, 0)).toEqual({
+      ok: true,
+      amount: 50,
+    });
+  });
+
+  it("is computed at the count it is given, and 8 is tighter than 4", () => {
+    // The panel always passes MAX_PLAYER_COUNT. At 4 players the same
+    // minimum would allow 25 degrees, which at 8 players would let two
+    // neighbours meet, so asking at the previewed count would be unsafe.
+    expect(computeJitterAmount("deg", 4, 1, 40)).toEqual({
+      ok: true,
+      amount: 25,
+    });
+    expect(computeJitterAmount("deg", 8, 1, 40)).toEqual({
+      ok: true,
+      amount: 2,
+    });
+  });
+
+  it("refuses a bound under one whole step instead of writing rnd(0,0)", () => {
+    const r = computeJitterAmount("deg", 8, 1, 44); // exact bound 0.5
+    expect(r.ok).toBe(false);
+    // The same request in percent still has room, 50 * (1 / 45) = 1.1.
+    expect(computeJitterAmount("percent", 8, 1, 44)).toEqual({
+      ok: true,
+      amount: 1,
+    });
+  });
+
+  it("passes the separation refusal through unchanged", () => {
+    expect(computeJitterAmount("percent", 8, 1, 50).ok).toBe(false);
+  });
+});

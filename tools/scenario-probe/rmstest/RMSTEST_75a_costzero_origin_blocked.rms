@@ -1,0 +1,122 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type GRASS
+    base_size 4
+    number_of_tiles 300
+    zone 2
+    land_position 20 20
+  }
+  create_land
+  {
+    terrain_type DIRT
+    base_size 4
+    number_of_tiles 300
+    zone 3
+    land_position 80 50
+  }
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 4
+    number_of_tiles 300
+    zone 4
+    land_position 20 80
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  create_connect_all_lands
+  {
+    replace_terrain GRASS ROAD
+    replace_terrain GRASS2 ROAD
+    terrain_cost DIRT 0
+  }
+
+/*
+================================================================================
+RMSTEST_75a - does a cost-0 terrain under a land's origin block EVERY
+connection touching that land, not just the one the guide's own worked
+example happens to describe?
+Feeds: docs/known-issues.md BUG-029, preview-design.md Sec.6.5
+(src/preview/generator/connections.ts:520, "Departing and arriving are the
+same test, the origin tile's own passability")
+Paired with RMSTEST_75b, its control.
+================================================================================
+
+THE QUESTION
+guide:1937 - "A cost of 0 will prevent the connection generation from
+running through that terrain. If a land origin is on such a terrain, or
+such a terrain MUST be crossed, then the connections to that land will not
+be generated at all." The shipped model treats this as symmetric - a
+land's own origin-tile passability governs both departing FROM it and
+arriving AT it, because both are now modelled as the same multi-source
+Dijkstra closing a goal tile (Sec.6.5). That symmetry has never been run
+against the real engine; the withdrawn per-tile model had it asymmetric
+(depart from anywhere the land's tiles touched, arrive only through the
+land's own passable tiles), so an implementation bug of exactly that shape
+is not a remote worry.
+
+THREE LANDS, ONE COMMAND. A and C are ordinary GRASS/GRASS2 lands, far
+apart, with nothing between them. B sits between neither of them
+geometrically (it is off to the side at land_position 80 50, while A and C
+both sit at x=20) and its entire body is DIRT - the only DIRT on the map.
+create_connect_all_lands connects ALL THREE PAIRS (A-B, B-C, A-C).
+terrain_cost DIRT 0 makes B's whole body - origin included, since a land's
+origin is one of the tiles it owns - impassable.
+
+PREDICTIONS
+  BLOCKED, BOTH DIRECTIONS (guide's claim holds) -> exactly one road forms,
+    A-C. No ROAD tile ever comes within a tile or two of B's DIRT patch,
+    from either side of it.
+  BLOCKED ONE WAY ONLY (the withdrawn model's asymmetry survived the
+    rewrite as a latent bug) -> a road reaches B from one of A or C but not
+    the other - e.g. A's search (seeded at A, B as one of its goals) closes
+    B's origin despite the 0 cost, while C's own search never does, or vice
+    versa. Distinguishable from "blocked both ways" only by checking BOTH
+    of B's potential neighbours, not just one - which is the whole reason
+    this script uses three lands and not two.
+  NOT BLOCKED AT ALL -> three separate roads, one for every pair, and DIRT
+    sits directly on at least one of them.
+
+B is placed off the A-C line on purpose, so a road that only ever runs
+between A and C - and never approaches B - cannot be mistaken for one that
+grazes B by geometric accident.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. THREE RUNS.
+Three rather than two: A* has no reason to be non-deterministic here (no
+randomness in the search itself), but land growth is, and RMSTEST_51's
+"regenerate between saves" lesson means the read should survive more than
+one export before it is trusted.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --bbox DIRT
+  python probe_scenario.py "<scenario>" --patches ROAD
+  python probe_scenario.py "<scenario>" --patches GRASS
+  python probe_scenario.py "<scenario>" --patches GRASS2
+  Compare every ROAD patch's bounding box against DIRT's. A gap of at least
+  a couple of tiles on every side, on every run, is "blocked". Any ROAD
+  patch whose bbox touches or overlaps DIRT's is "not blocked" from that
+  side - note WHICH side (nearer A or nearer C) so the direction question
+  is actually answered rather than just the total-block one.
+================================================================================
+*/

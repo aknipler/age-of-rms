@@ -17,7 +17,7 @@ import type { ParseResult } from "../../../parser/types";
 import { auditConstants } from "../constantsAuditor";
 import { add, evalClosed, num, sub } from "./compiler/expr";
 import type { Expr } from "../../../../tools-api/index";
-import { expandShapeGroup, memberKeyAt } from "./expand";
+import { chainMemberKeyAt, expandShapeGroup, memberKeyAt } from "./expand";
 import { locateFence } from "./fence";
 import type { Placement, ShapeGroup } from "./model";
 
@@ -35,6 +35,25 @@ function keyedIds(group: ShapeGroup): Map<string, string> {
   const out = new Map<string, string>();
   for (let k = 0; k < group.members.length; k++) {
     out.set(keyText(memberKeyAt(k, group.pattern)), group.members[k]);
+  }
+  return out;
+}
+
+/** The three-part chain key as text; distinct from any member key by its third part. */
+function chainKeyText(k: {
+  repeatIndex: number;
+  slotId: string;
+  templateId: string;
+}): string {
+  return `${k.repeatIndex}:${k.slotId}:${k.templateId}`;
+}
+
+/** `oldGroup.chainMembers[k]`'s key, the same positional derivation over the three-part key (Q12). */
+function keyedChainIds(group: ShapeGroup): Map<string, string> {
+  const out = new Map<string, string>();
+  const chain = group.chainMembers ?? [];
+  for (let k = 0; k < chain.length; k++) {
+    out.set(chainKeyText(chainMemberKeyAt(k, group.pattern)), chain[k]);
   }
   return out;
 }
@@ -114,6 +133,8 @@ export interface ReExpandResult {
   placements: Placement[];
   /** What `ShapeGroup.members` should be set to. */
   members: string[];
+  /** What `ShapeGroup.chainMembers` should be set to (Q12); empty when no slot carries a template. */
+  chainMembers: string[];
   report: ReExpandReport;
 }
 
@@ -185,30 +206,66 @@ export function reExpand(
   const nextMembers: string[] = [];
   const newKeysSeen = new Set<string>();
 
-  for (let k = 0; k < fresh.members.length; k++) {
-    const key = memberKeyAt(k, newGroup.pattern);
-    const kt = keyText(key);
+  /**
+   * One key's merge, shared by the member pass and the chain pass. `parent`
+   * is the parent to write on the surviving or fresh placement: for a
+   * member it is the fresh expansion's own (the group's anchor), for a chain
+   * child it is its member's ACTUAL post-merge id, which is why this is a
+   * parameter rather than read off `freshPlacement` (composite-pattern-
+   * escalation.md Sec.5.2 rev 1: `reExpand` renames a fresh member whose
+   * deterministic id a released placement still holds, and keeps an old id
+   * on a matched key, so a child keeping the deterministic id would hang
+   * off the wrong land).
+   */
+  function mergeKey(
+    kt: string,
+    freshPlacement: Placement,
+    oldId: string | undefined,
+    oldBase: Placement | undefined,
+    parent: string,
+    members: string[],
+  ): void {
     newKeysSeen.add(kt);
-    const freshPlacement = freshById.get(fresh.members[k])!;
-    const oldId = oldKeyed.get(kt);
-    const oldPlacement = oldId !== undefined ? byId.get(oldId) : undefined;
+    const matched = oldId !== undefined ? byId.get(oldId) : undefined;
 
-    if (oldPlacement === undefined) {
+    if (matched === undefined) {
       // Brand new. Nothing in G_old occupied this key. Disambiguate against
       // a same-keyed RELEASED placement that may still be sitting in the
       // document (see freshId's own doc comment).
       const id = freshId(freshPlacement.id, new Set(nextPlacements.keys()));
-      const placement: Placement = { ...freshPlacement, id };
+      const placement: Placement = { ...freshPlacement, id, parent };
       nextPlacements.set(id, placement);
-      nextMembers.push(id);
+      members.push(id);
       report.addedIds.push(id);
-      continue;
+      return;
     }
 
     // A matched key ALWAYS keeps the OLD placement's id. Sec.4.5 never
     // mentions renaming a surviving member, and the fence's constant names
     // (Sec.6.2: "the constant name is the link") are keyed off it.
-    nextMembers.push(oldPlacement.id);
+    members.push(matched.id);
+
+    // A member's ROLE is a fact about its slot (or template), and its PARENT
+    // for a chain child a fact about the merge, never user edits on the
+    // placement, so both follow G_new on every matched key whatever happens
+    // to the offset below (a nudged, even position-detached, member still
+    // changes role when its slot does). Written into `nextPlacements` here
+    // so the position branches that return without writing still carry it.
+    //
+    // FRAME is the same kind of fact. The land editor hides Frame for a
+    // member, so it only ever comes from the group or the template. It used
+    // to be left out here, so a chain template's Frame select, and now a
+    // shape's, changed nothing for lands that already existed. REPEAT INDEX
+    // is the key's own `i`. `deleteRole` used to clear it on members, and
+    // nothing restored it, so this also heals a model saved in that state.
+    const oldPlacement: Placement = {
+      ...matched,
+      role: freshPlacement.role,
+      parent,
+      frame: freshPlacement.frame,
+      repeatIndex: freshPlacement.repeatIndex,
+    };
+    nextPlacements.set(oldPlacement.id, oldPlacement);
 
     if (!oldPlacement.nudged) {
       // Recompute wholesale, the branch that has to survive a SYMBOLIC
@@ -219,7 +276,7 @@ export function reExpand(
         offset: freshPlacement.offset,
       });
       report.recomputedIds.push(oldPlacement.id);
-      continue;
+      return;
     }
 
     if (
@@ -231,15 +288,14 @@ export function reExpand(
         !isFullyNumericLiteral(oldPlacement.offset.theta)
       ) {
         report.positionDetachedIds.push(oldPlacement.id);
-        continue;
+        return;
       }
-      const oldBase = oldBaseByKey.get(kt);
       if (oldBase === undefined || oldBase.offset.kind !== "polar") {
         // Should be unreachable, G_old's own expansion always produces a
         // polar member for every key in its own pattern, but fail safe
         // rather than crash on a model invariant this module does not own.
         report.positionDetachedIds.push(oldPlacement.id);
-        continue;
+        return;
       }
       const r = deltaComponent(
         oldPlacement.offset.r,
@@ -256,7 +312,7 @@ export function reExpand(
         offset: { kind: "polar", r, theta },
       });
       report.deltaAppliedIds.push(oldPlacement.id);
-      continue;
+      return;
     }
 
     if (
@@ -271,20 +327,20 @@ export function reExpand(
       // escalation Sec.8.3: every kind is polar now, square/triangle/
       // polygon included) — this branch serves a standalone user-authored
       // `cartesian` placement, still a real, reachable case outside any
-      // `ShapeGroup`, and a model saved before this slice whose nudged
-      // perimeter member still carries the old cartesian shape (hazard 3:
-      // that pair hits the MIXED branch below instead, deliberately).
+      // `ShapeGroup`, a chain TEMPLATE authored cartesian (Q12), and a model
+      // saved before this slice whose nudged perimeter member still carries
+      // the old cartesian shape (hazard 3: that pair hits the MIXED branch
+      // below instead, deliberately).
       if (
         !isFullyNumericLiteral(oldPlacement.offset.dx) ||
         !isFullyNumericLiteral(oldPlacement.offset.dy)
       ) {
         report.positionDetachedIds.push(oldPlacement.id);
-        continue;
+        return;
       }
-      const oldBase = oldBaseByKey.get(kt);
       if (oldBase === undefined || oldBase.offset.kind !== "cartesian") {
         report.positionDetachedIds.push(oldPlacement.id);
-        continue;
+        return;
       }
       const dx = deltaComponent(
         oldPlacement.offset.dx,
@@ -301,7 +357,7 @@ export function reExpand(
         offset: { kind: "cartesian", dx, dy },
       });
       report.deltaAppliedIds.push(oldPlacement.id);
-      continue;
+      return;
     }
 
     // A MIXED pair (a kind change from a polar shape to a perimeter one, or
@@ -315,31 +371,100 @@ export function reExpand(
     report.positionDetachedIds.push(oldPlacement.id);
   }
 
-  // Departing keys: present in G_old, absent from G_new.
-  for (const [kt, oldId] of oldKeyed) {
-    if (newKeysSeen.has(kt)) continue;
-    const oldPlacement = byId.get(oldId);
-    if (oldPlacement === undefined) continue; // already gone from the document
+  /** The departure rule for one key set (Sec.4.5's three release conditions), shared by both passes. */
+  function departKeys(oldKeyedIds: ReadonlyMap<string, string>): void {
+    for (const [kt, oldId] of oldKeyedIds) {
+      if (newKeysSeen.has(kt)) continue;
+      const oldPlacement = byId.get(oldId);
+      if (oldPlacement === undefined) continue; // already gone from the document
 
-    const hasChild = placements.some((p) => p.parent === oldId);
-    const names = emittedConstantNames(oldId);
-    const referenced = isReferencedOutsideFence(parse, names);
-    const deletable = !hasChild && !oldPlacement.nudged && !referenced;
+      // Against `nextPlacements`, not `placements`: the chain pass departs
+      // first, so a member whose only children were its own templated
+      // chain (already deleted above) is deletable too, rather than being
+      // released on the strength of children that no longer exist.
+      const hasChild = [...nextPlacements.values()].some(
+        (p) => p.parent === oldId,
+      );
+      const names = emittedConstantNames(oldId);
+      const referenced = isReferencedOutsideFence(parse, names);
+      const deletable = !hasChild && !oldPlacement.nudged && !referenced;
 
-    if (deletable) {
-      nextPlacements.delete(oldId);
-      report.deletedIds.push(oldId);
-    } else {
-      // Released: the placement is left completely untouched, simply no
-      // longer listed as a member of this group (Sec.4.5: "keeping its
-      // parent, label, children and its last per-repeat literals").
-      report.releasedIds.push(oldId);
+      if (deletable) {
+        nextPlacements.delete(oldId);
+        report.deletedIds.push(oldId);
+      } else {
+        // Released: the placement is left completely untouched, simply no
+        // longer listed as a member of this group (Sec.4.5: "keeping its
+        // parent, label, children and its last per-repeat literals").
+        report.releasedIds.push(oldId);
+      }
     }
   }
+
+  // Pass 1: the members.
+  for (let k = 0; k < fresh.members.length; k++) {
+    const kt = keyText(memberKeyAt(k, newGroup.pattern));
+    const freshPlacement = freshById.get(fresh.members[k])!;
+    mergeKey(
+      kt,
+      freshPlacement,
+      oldKeyed.get(kt),
+      oldBaseByKey.get(kt),
+      freshPlacement.parent,
+      nextMembers,
+    );
+  }
+
+  // Pass 2 (Q12): the chain children, over the three-part key. A child's
+  // base offset is its TEMPLATE's (Sec.5.4), and its parent is the member
+  // at (i, j) as pass 1 actually named it, read off `nextMembers` by the
+  // member's own positional index, never the deterministic id.
+  const nextChainMembers: string[] = [];
+  const oldChainKeyed = keyedChainIds(oldGroup);
+  const oldChainBaseByKey = new Map<string, Placement>();
+  for (let idx = 0; idx < oldFresh.chainPlacements.length; idx++) {
+    oldChainBaseByKey.set(
+      chainKeyText(chainMemberKeyAt(idx, oldGroup.pattern)),
+      oldFresh.chainPlacements[idx],
+    );
+  }
+  const freshChainById = new Map(
+    fresh.chainPlacements.map((p) => [p.id, p] as const),
+  );
+  const patternLength = newGroup.pattern.length;
+  for (let k = 0; k < fresh.chainMembers.length; k++) {
+    const key = chainMemberKeyAt(k, newGroup.pattern);
+    const kt = chainKeyText(key);
+    const slotIndex = newGroup.pattern.findIndex((s) => s.id === key.slotId);
+    const memberIndex = key.repeatIndex * patternLength + slotIndex;
+    const parent = nextMembers[memberIndex];
+    if (parent === undefined)
+      throw new Error(
+        "reExpand: a chain child's member has no post-merge id, the two passes disagree about the pattern",
+      );
+    mergeKey(
+      kt,
+      freshChainById.get(fresh.chainMembers[k])!,
+      oldChainKeyed.get(kt),
+      oldChainBaseByKey.get(kt),
+      parent,
+      nextChainMembers,
+    );
+  }
+
+  // Departing keys: present in G_old, absent from G_new. Members and chain
+  // children have disjoint key texts (a chain key carries a third part), so
+  // one `newKeysSeen` set serves both. Children FIRST (composite-pattern-
+  // escalation.md Sec.5.4: "releases or deletes the children first, by the
+  // same rules"), so a departing member's own deletability is judged after
+  // its templated children have gone.
+  departKeys(oldChainKeyed);
+  departKeys(oldKeyed);
 
   return {
     placements: [...nextPlacements.values()],
     members: nextMembers,
+    chainMembers: nextChainMembers,
     report,
   };
 }

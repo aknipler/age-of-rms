@@ -7,13 +7,14 @@ import { parseRms } from "../../../parser/parser";
 import { buildLanguageIndex } from "../../../parser/language";
 import type {
   CommandNode,
+  DirectiveNode,
   IfNode,
   RandomNode,
   RawNode,
   ParseResult,
 } from "../../../parser/types";
 import { loadLanguage } from "../../../parser/__tests__/testUtils";
-import { applyEdit, computeEdit } from "../computeEdit";
+import { applyEdit, applyEditResult, computeEdit } from "../computeEdit";
 import { PatchError, type EditIntent } from "../intents";
 import { astDiff, diffOptionsFor } from "./astDiff";
 import { extractComments } from "../../comments";
@@ -173,6 +174,66 @@ describe("addAttribute / toggleFlag (Sec.4.6)", () => {
     expect(cmd.block?.items).toHaveLength(1);
   });
 
+  // Sec.4.3 amendment (2026-09-17): constant-typed slots insert bare and
+  // appendArg supplies the value once the user has typed one.
+  it("addAttribute bare inserts the name alone, parsed as a known attribute with no args", () => {
+    const src =
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT\n{\n\tnumber_of_clumps 5\n}";
+    const a = parse(src);
+    const { out, b, caret } = run(src, {
+      kind: "addAttribute",
+      target: firstCmd(a).block!,
+      name: "terrain_type",
+      bare: true,
+    });
+    expect(out).toBe(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT\n{\n\tnumber_of_clumps 5\n\tterrain_type\n}",
+    );
+    const attr = firstCmd(b).block!.items[1];
+    expect(attr.kind).toBe("attribute");
+    expect((attr as CommandNode).args).toHaveLength(0);
+    expect((attr as CommandNode).def?.name).toBe("terrain_type");
+    // The caret sits at the end of the name, where AttributeRow registers
+    // the missing-argument editor.
+    expect(caret).toBe(out.indexOf("terrain_type") + "terrain_type".length);
+    // A warning nudges the user to fill it, never an error, and the closing
+    // brace was not swallowed as the argument.
+    expect(b.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(b.diagnostics.some((d) => d.code === "RMS0201")).toBe(true);
+  });
+
+  it("appendArg fills a missing trailing argument in place", () => {
+    const src =
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT\n{\n\tterrain_type\n\tnumber_of_clumps 5\n}";
+    const a = parse(src);
+    const node = firstCmd(a).block!.items[0] as never;
+    const { out, b } = run(src, { kind: "appendArg", node, value: "FOREST" });
+    expect(out).toBe(
+      "<TERRAIN_GENERATION>\ncreate_terrain DIRT\n{\n\tterrain_type FOREST\n\tnumber_of_clumps 5\n}",
+    );
+    expect(b.diagnostics.filter((d) => d.code === "RMS0201")).toEqual([]);
+  });
+
+  it("appendArg at a later index pads the skipped slots with their placeholders", () => {
+    // replace_terrain is bare; the user filled the SECOND field first.
+    const src =
+      "<CONNECTION_GENERATION>\ncreate_connect_all_players_land\n{\n\treplace_terrain\n}";
+    const a = parse(src);
+    const node = firstCmd(a).block!.items[0] as never;
+    const { out, b, caret } = run(src, {
+      kind: "appendArg",
+      node,
+      index: 1,
+      value: "GRASS",
+    });
+    expect(out).toBe(
+      "<CONNECTION_GENERATION>\ncreate_connect_all_players_land\n{\n\treplace_terrain TODO GRASS\n}",
+    );
+    expect(caret).toBe(out.indexOf("GRASS"));
+    const attr = firstCmd(b).block!.items[0] as CommandNode;
+    expect(attr.args).toHaveLength(2);
+  });
+
   it("toggleFlag on inserts the bare flag; off removes it", () => {
     const src = "<LAND_GENERATION>\ncreate_land { land_percent 30 }";
     const a = parse(src);
@@ -232,7 +293,7 @@ describe("addCommand + placeholders (Sec.4.3/Sec.4.5, rev 4 pins)", () => {
     expect(out).toBe("#const FOO 5\nrandom_placement\n<PLAYER_SETUP>");
   });
 
-  it("in:preamble on an empty preamble inserts at offset 0 (not reachable from the UI today — see SectionView.tsx)", () => {
+  it("in:preamble on an empty preamble inserts at offset 0 (the always-present Header tab, sectionTabsModel.ts)", () => {
     const src = "<PLAYER_SETUP>";
     const { out } = run(src, {
       kind: "addCommand",
@@ -240,6 +301,31 @@ describe("addCommand + placeholders (Sec.4.3/Sec.4.5, rev 4 pins)", () => {
       name: "random_placement",
     });
     expect(out).toBe("random_placement\n<PLAYER_SETUP>");
+  });
+
+  it("addCommand with a directive name renders name + placeholders and parses as a directive anywhere", () => {
+    // Directives share addCommand (computeEdit.ts). #const declares two
+    // arguments (name, value) so both get a placeholder, and #define one.
+    const src =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+    const a = parse(src);
+    const { out, b } = run(src, {
+      kind: "addCommand",
+      at: { in: "section", section: a.script.sections[0] },
+      name: "#const",
+    });
+    expect(out).toContain("#const TODO TODO");
+    const items = b.script.sections[0].items;
+    expect(items).toHaveLength(2);
+    expect(items[1].kind).toBe("directive");
+    expect(b.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+    const { out: out2 } = run(src, {
+      kind: "addCommand",
+      at: { in: "section", section: a.script.sections[0] },
+      name: "#define",
+    });
+    expect(out2).toContain("#define TODO");
   });
 
   it("in:preamble with 2+ existing items reads onOwnLines from a real consecutive pair", () => {
@@ -252,6 +338,45 @@ describe("addCommand + placeholders (Sec.4.3/Sec.4.5, rev 4 pins)", () => {
     expect(out).toBe(
       "#const FOO 5\n#const BAR 6\nrandom_placement\n<PLAYER_SETUP>",
     );
+  });
+
+  // A bare `#const NAME` immediately before a structural stop (a section
+  // header here) parses as a legitimately CLOSED 1-arg directive — its
+  // acceptsKnownName value slot never got a token, because the section
+  // header halts consumption regardless (parser-design Sec.2.1 item 4).
+  // But `stopSetAt` is newline-agnostic, so an item inserted right after
+  // this directive would have its own name token consumed as the
+  // directive's value on reparse, even landing on its own physical line
+  // ahead of the section header. insertAfterItem refuses rather than
+  // corrupt (see its own comment).
+  it("insert after a valueless #const refuses instead of letting it swallow the new item", () => {
+    const src =
+      "<PLAYER_SETUP>\n#const SIZE\n<LAND_GENERATION>\ncreate_object GOLD";
+    const a = parse(src);
+    const bareConst = a.script.sections[0].items[0] as DirectiveNode;
+    expect(bareConst.args).toHaveLength(1); // closed at 1 arg, not corrupted yet
+    expect(() =>
+      computeEdit(
+        a,
+        { kind: "addCommand", at: { after: bareConst }, name: "create_stone" },
+        lang,
+      ),
+    ).toThrow(PatchError);
+  });
+
+  it("insert after a #const whose value slot is already filled is unaffected", () => {
+    const src = "<PLAYER_SETUP>\n#const SIZE 32\ncreate_object GOLD";
+    const a = parse(src);
+    const filledConst = a.script.sections[0].items[0];
+    const { out, b } = run(src, {
+      kind: "addCommand",
+      at: { after: filledConst },
+      name: "create_stone",
+    });
+    expect(out).toBe(
+      "<PLAYER_SETUP>\n#const SIZE 32\ncreate_stone\ncreate_object GOLD",
+    );
+    expect(b.script.sections[0].items).toHaveLength(3);
   });
 });
 
@@ -298,6 +423,39 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
     });
     expect(out).toBe("<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_land\n");
   });
+
+  // The header comment scriptHeader.ts stamps on a new script is trivia with
+  // no AST node, so the file reads as empty to the anchors above. It used
+  // to get the new section inserted ABOVE it (beta feedback 2026-09-17).
+  it("a file holding only a leading comment gets the tag on the line after it", () => {
+    const src = "/* File: x.rms */\n";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "PLAYER_SETUP" },
+      name: "random_placement",
+    });
+    expect(out).toBe("/* File: x.rms */\n<PLAYER_SETUP>\nrandom_placement\n");
+  });
+
+  it("a leading comment with no trailing newline still lands below it", () => {
+    const src = "/* File: x.rms */";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "PLAYER_SETUP" },
+      name: "random_placement",
+    });
+    expect(out).toBe("/* File: x.rms */\n<PLAYER_SETUP>\nrandom_placement\n");
+  });
+
+  it("in:preamble on an empty preamble also lands below a leading comment", () => {
+    const src = "/* File: x.rms */\n<PLAYER_SETUP>";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "preamble" },
+      name: "#define",
+    });
+    expect(out).toBe("/* File: x.rms */\n#define TODO\n<PLAYER_SETUP>");
+  });
 });
 
 // astDiff's clause 4 now knows addComment/editComment legitimately touch
@@ -337,6 +495,212 @@ describe("addComment (reuses addCommand's own InsertTarget resolution)", () => {
     const comments = extractComments(parseRms(out, langData).tokens);
     expect(comments).toHaveLength(1);
     expect(comments[0].start).toBe(caret);
+  });
+});
+
+describe("insertText (Object Templates, docs/object-templates-brief.md)", () => {
+  // A tab-per-level canonical block, same shape templates.ts produces:
+  // a header comment, then a create_object at indent 0 with one
+  // indent-1 attribute, then a second command.
+  const block =
+    "/* Standard player objects */\ncreate_object TOWN_CENTER\n{\n\tset_place_for_every_player\n}\n\ncreate_object SCOUT\n{\n\tset_place_for_every_player\n}";
+  const caretOffset = "/* Standard player objects */\n".length;
+
+  it("inserts a whole multi-command block and lands the caret on the first command", () => {
+    const src =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+    const a = parse(src);
+    const { out, caret, b } = run(src, {
+      kind: "insertText",
+      at: { in: "section", section: a.script.sections[0] },
+      text: block,
+      caretOffset,
+    });
+    expect(out).toContain("create_object TOWN_CENTER");
+    expect(out).toContain("create_object SCOUT");
+    expect(out.slice(caret)).toMatch(/^create_object TOWN_CENTER/);
+    const items = b.script.sections[0].items;
+    expect(items).toHaveLength(3);
+    expect(items[1].kind).toBe("command");
+    expect(items[2].kind).toBe("command");
+    expect(b.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+  });
+
+  it("matches a space-indented file's own step, not the block's own tabs", () => {
+    const src =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD\n{\n  number_of_objects 4\n}";
+    const a = parse(src);
+    const { out } = run(src, {
+      kind: "insertText",
+      at: { in: "section", section: a.script.sections[0] },
+      text: block,
+      caretOffset,
+    });
+    expect(out).toContain("{\n  set_place_for_every_player\n}");
+    expect(out).not.toContain("\tset_place_for_every_player");
+  });
+
+  it("inserts after a selected item, like addComment/addCommand", () => {
+    const src =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+    const a = parse(src);
+    const anchor = a.script.sections[0].items[0];
+    const { b } = run(src, {
+      kind: "insertText",
+      at: { after: anchor },
+      text: block,
+      caretOffset,
+    });
+    expect(b.script.sections[0].items).toHaveLength(3);
+  });
+
+  it("embedded comments survive as real comment trivia (clause 4, addComment's own exception)", () => {
+    const src =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+    const a = parse(src);
+    const { out } = run(src, {
+      kind: "insertText",
+      at: { in: "section", section: a.script.sections[0] },
+      text: block,
+      caretOffset,
+    });
+    const comments = extractComments(parseRms(out, langData).tokens);
+    expect(comments).toHaveLength(1);
+  });
+
+  // 2026-09-28, the object player forests template. setupText becomes a
+  // companion edit, so these go through applyEditResult (both edits, one
+  // step) rather than run()'s single-edit applyEdit.
+  describe("setupText companion", () => {
+    const setup =
+      "#const MAKE_FOREST_TERRAIN 1639\neffect_amount SET_ATTRIBUTE MAKE_FOREST_TERRAIN ATTR_HITPOINTS 0";
+
+    it("appends to the end of PLAYER_SETUP and keeps the caret on the main block", () => {
+      const src =
+        "<PLAYER_SETUP>\nrandom_placement\n<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+      const a = parse(src);
+      const result = computeEdit(
+        a,
+        {
+          kind: "insertText",
+          at: { in: "section", section: a.script.sections[1] },
+          text: block,
+          caretOffset,
+          setupText: setup,
+        },
+        lang,
+      );
+      expect(result.companion).toBeDefined();
+      const out = applyEditResult(src, result);
+      expect(out).toBe(
+        "<PLAYER_SETUP>\nrandom_placement\n" +
+          setup +
+          "\n<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }\n" +
+          block,
+      );
+      // The companion sits above the main insert, so the caret has to
+      // have moved down by its length. Dropping that shift fails here.
+      expect(out.slice(result.caret)).toMatch(/^create_object TOWN_CENTER/);
+      const b = parse(out);
+      expect(b.script.sections[0].items).toHaveLength(3);
+      expect(b.script.sections[1].items).toHaveLength(3);
+      expect(b.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    });
+
+    it("goes to the preamble when the file has no PLAYER_SETUP", () => {
+      const src =
+        "#const X 1\n<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+      const a = parse(src);
+      const result = computeEdit(
+        a,
+        {
+          kind: "insertText",
+          at: { in: "section", section: a.script.sections[0] },
+          text: block,
+          caretOffset,
+          setupText: setup,
+        },
+        lang,
+      );
+      const out = applyEditResult(src, result);
+      expect(
+        out.startsWith("#const X 1\n" + setup + "\n<OBJECTS_GENERATION>"),
+      ).toBe(true);
+      expect(out.slice(result.caret)).toMatch(/^create_object TOWN_CENTER/);
+      expect(parse(out).script.preamble).toHaveLength(3);
+    });
+
+    it("uses the last PLAYER_SETUP when the file has two", () => {
+      const src =
+        "<PLAYER_SETUP>\nrandom_placement\n<PLAYER_SETUP>\nnomad_resources\n<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+      const a = parse(src);
+      const result = computeEdit(
+        a,
+        {
+          kind: "insertText",
+          at: { in: "section", section: a.script.sections[2] },
+          text: block,
+          caretOffset,
+          setupText: setup,
+        },
+        lang,
+      );
+      const out = applyEditResult(src, result);
+      expect(out).toContain(
+        "nomad_resources\n" + setup + "\n<OBJECTS_GENERATION>",
+      );
+      expect(out.slice(result.caret)).toMatch(/^create_object TOWN_CENTER/);
+    });
+
+    // No sections and nothing in the preamble. The preamble insert and the
+    // new OBJECTS_GENERATION section start at the same offset, which used
+    // to throw and leave the dialog inserting nothing.
+    for (const src of ["", "/* just a comment */\n"]) {
+      it(`merges both inserts, setup first, in a file with no sections (${JSON.stringify(src)})`, () => {
+        const a = parse(src);
+        const result = computeEdit(
+          a,
+          {
+            kind: "insertText",
+            at: { in: "newSection", name: "OBJECTS_GENERATION" },
+            text: block,
+            caretOffset,
+            setupText: setup,
+          },
+          lang,
+        );
+        expect(result.companion).toBeUndefined();
+        const out = applyEditResult(src, result);
+        expect(out.indexOf(setup)).toBeGreaterThan(-1);
+        expect(out.indexOf(setup)).toBeLessThan(
+          out.indexOf("<OBJECTS_GENERATION>"),
+        );
+        expect(out.slice(result.caret)).toMatch(/^create_object TOWN_CENTER/);
+        const b = parse(out);
+        expect(b.script.preamble).toHaveLength(2);
+        expect(b.script.sections.map((s) => s.name)).toEqual([
+          "OBJECTS_GENERATION",
+        ]);
+        expect(b.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+      });
+    }
+
+    it("leaves companion unset without setupText", () => {
+      const src =
+        "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+      const a = parse(src);
+      const result = computeEdit(
+        a,
+        {
+          kind: "insertText",
+          at: { in: "section", section: a.script.sections[0] },
+          text: block,
+          caretOffset,
+        },
+        lang,
+      );
+      expect(result.companion).toBeUndefined();
+    });
   });
 });
 

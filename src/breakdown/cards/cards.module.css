@@ -16,6 +16,14 @@
   font-size: 0.85rem;
 }
 
+.problemBadgeWrapper {
+  /* DiagnosticTooltip.tsx's popup anchors to this (position: absolute,
+     top/bottom: 100%), needs this to be its containing block, same
+     reasoning as AttributeRow.module.css's .row. */
+  position: relative;
+  display: inline-block;
+}
+
 .problemBadge {
   border-radius: 999px;
   padding: 0.05rem 0.55rem;
@@ -43,6 +51,11 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-left: 0.4rem;
+  /* A sibling of CommandCard.module.css's .summaryLabel/entry spans inside
+     the now-flex .summary row. Keeps it whole rather than letting it wrap
+     or shrink, same reasoning as .summaryLabel. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .deleteButton,
@@ -53,6 +66,17 @@
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.1rem 0.5rem;
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.deleteButton:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .fixButton {

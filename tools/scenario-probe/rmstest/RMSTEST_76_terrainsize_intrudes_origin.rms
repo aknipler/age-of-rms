@@ -1,0 +1,111 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type GRASS3
+    base_size 6
+    number_of_tiles 600
+    zone 2
+    land_position 30 50
+  }
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 4
+    number_of_tiles 300
+    zone 3
+    land_position 80 50
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  create_connect_all_lands
+  {
+    replace_terrain GRASS ROAD
+    replace_terrain GRASS2 ROAD
+    replace_terrain GRASS3 ROAD
+    terrain_size GRASS 5 0
+    terrain_size GRASS2 5 0
+    terrain_size GRASS3 5 0
+  }
+
+/*
+================================================================================
+RMSTEST_76 - does the road's terrain_size disc paint over the player's own
+land right up to the origin tile, or does the engine stop it at the land's
+edge the way the pre-2026-09-17 nearest-edge model assumed?
+Feeds: docs/known-issues.md BUG-029, preview-design.md Sec.6.5
+(src/preview/generator/connections.ts - origin-to-origin pathing, landed
+2026-09-17 to fix roads stopping one land radius short of every TC)
+================================================================================
+
+THE QUESTION
+The 2026-09-17 fix moved connection endpoints from "nearest passable tile
+on the land's edge" to "the land's own origin tile", on guide wording and
+one in-game observation that a road visibly reaches the TC on Golden Hill.
+That fix's OWN consequence has not itself been measured: if the path now
+runs all the way to the origin, and terrain_size's disc is centred on every
+tile the path crosses (including the tiles nearest the origin), the disc
+should paint a circle of radius 5 around the origin too - INSIDE the
+land's own body, not just on the open ground between lands. Nothing has
+confirmed the disc actually reaches that far rather than being clipped at
+the land's boundary by some mechanism this project has not modelled.
+
+METHOD
+One land (GRASS3, the "player" land, land_position 30 50 on a Normal map)
+connected to a second, ordinary land far to its east. Both the background
+GRASS and GRASS3 itself are declared replaceable, and terrain_size is
+declared for all three terrains at a flat, deterministic radius 5 with
+zero variance - no randomness to blur the geometric read. If the disc is
+clipped at the land edge, ROAD should approach GRASS3's patch and stop at
+its boundary. If it is not clipped, ROAD should appear WELL INSIDE where
+GRASS3's own patch would otherwise be - a visible bite out of the land,
+centred on its origin.
+
+WHERE THE ORIGIN TILE ACTUALLY IS
+land_position 30 50 on a Normal (200-tile) map, converted per Sec.4's
+border-corrected percent-to-tile rule, lands close to tile (60, 100) -
+confirm this against the scenario's own reported origin/patch centroid
+before reading the radius-5 disc against it, since Sec.4's asymmetric
+rounding on the high edges is a small but real correction.
+
+PREDICTIONS
+  INTRUDES (matches the origin-to-origin model as built) -> ROAD tiles
+    appear within a ~5-tile radius of GRASS3's origin, i.e. GRASS3's own
+    patch shows a visible notch or hole centred there, and GRASS3's total
+    tile count comes in measurably below what land generation alone would
+    produce (compare against the land's declared number_of_tiles plus the
+    usual small growth overshoot).
+  STOPS AT THE EDGE -> ROAD approaches GRASS3's patch and the two bounding
+    boxes touch or come close, but no ROAD tile sits more than a tile or
+    so inside where GRASS3's boundary was before the connection ran.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. TWO RUNS.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches GRASS3
+  python probe_scenario.py "<scenario>" --patches ROAD
+  Read GRASS3's own patch centroid as the origin proxy, then check every
+  ROAD patch's bounding box and nearest tile against it. A ROAD tile
+  within ~5 tiles of that centroid, sitting inside GRASS3's own former
+  footprint, is the intrusion reading.
+================================================================================
+*/

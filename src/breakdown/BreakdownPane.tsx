@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,16 +13,28 @@ import { buildLanguageIndex, type LanguageData } from "../parser/language";
 import type { ParseResult, Span } from "../parser/types";
 import { PlaceholderPane } from "../components/PlaceholderPane";
 import { BreakdownProvider } from "./BreakdownContext";
-import { applyEditIntent, type ApplyTextEdit } from "./applyEdit";
-import { canDeleteItem } from "./cardKind";
+import { applyEditIntent, type ApplyTextEdits } from "./applyEdit";
+import { canDeleteItem, canRearrangeItem } from "./cardKind";
+import { editsOf } from "./patch/computeEdit";
+import { siblingMoveTarget } from "./selectionResolve";
 import {
   shiftAnchors,
   isAnchoredWithin,
   type OffsetEdit,
 } from "./ephemeralAnchors";
 import { findItemAtOffset } from "./selectionResolve";
+import {
+  rememberCollapse,
+  restoreTarget,
+  type CollapseMemory,
+} from "./scrollMemory";
 import { extractComments } from "./comments";
-import type { EditIntent } from "./patch/intents";
+import type {
+  DraggableCard,
+  EditIntent,
+  InsertTarget,
+  RearrangeableNode,
+} from "./patch/intents";
 import type { SharedSelectionApi } from "../hooks/useSharedSelection";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
@@ -63,8 +76,8 @@ interface BreakdownPaneProps {
   hasFile: boolean;
   source: string;
   parseResult: ParseResult | null;
-  /** From useDocument (Sec.6.4), pushes a TextEdit onto the shared Monaco model. */
-  applyTextEdit: ApplyTextEdit;
+  /** From useDocument (Sec.6.4), pushes one intent's TextEdits onto the shared Monaco model as one undo entry. */
+  applyTextEdits: ApplyTextEdits;
   /** From useParsedDocument (Sec.6.2), BUG-001 Part B, bypasses the debounce for a programmatic edit's reparse. */
   reparseNow: (source: string) => void;
   /**
@@ -86,7 +99,7 @@ export function BreakdownPane({
   hasFile,
   source,
   parseResult,
-  applyTextEdit,
+  applyTextEdits,
   reparseNow,
   selection,
 }: BreakdownPaneProps) {
@@ -154,25 +167,110 @@ export function BreakdownPane({
         el.select();
     }
     pendingFocusRef.current = null;
-  }, [parseResult]);
+    // expandedAnchors is a dependency too: a summary-line click (Sec.3.3,
+    // beta feedback 2026-09-17) expands the card and asks for focus on an
+    // editor that only mounts once the body renders, with no reparse in
+    // between.
+  }, [parseResult, expandedAnchors]);
 
   const isExpanded = useCallback(
     (span: Span) => isAnchoredWithin(expandedAnchors, span),
     [expandedAnchors],
   );
 
-  const toggleExpanded = useCallback((span: Span) => {
-    setExpandedAnchors((prev) => {
-      const next = new Set(prev);
-      if (isAnchoredWithin(prev, span)) {
-        for (const a of prev)
-          if (a >= span.start && a < span.end) next.delete(a);
-      } else {
-        next.add(span.start);
+  // Collapse-strip scroll memory, keyed by the card's span.start at collapse
+  // time. A ref, not state: nothing renders from it, it is read back inside
+  // event handlers and effects only. Entries go stale the moment an edit
+  // shifts offsets, which is fine, a stale key simply never matches and the
+  // reopen leaves the viewport alone (scrollMemory.ts's own null answer).
+  const collapseMemoryRef = useRef(new Map<number, CollapseMemory>());
+  // Scroll work that has to wait for the next paint (the card has to be
+  // collapsed or expanded in the DOM before its offsetTop means anything).
+  const pendingScrollWorkRef = useRef<(() => void) | null>(null);
+
+  const scrollContainerOf = (el: Element): HTMLElement | null =>
+    el.closest<HTMLElement>("[data-breakdown-scroll]");
+
+  const toggleExpanded = useCallback(
+    (span: Span) => {
+      // Reopen half of the collapse strip's memory: decide BEFORE the state
+      // update whether this is a reopen we remember, then restore after
+      // the expanded body has rendered.
+      const memory = collapseMemoryRef.current.get(span.start);
+      const wasExpanded = isAnchoredWithin(expandedAnchors, span);
+      if (memory && !wasExpanded) {
+        collapseMemoryRef.current.delete(span.start);
+        pendingScrollWorkRef.current = () => {
+          const el = document.querySelector<HTMLElement>(
+            `[data-anchor="${span.start}"]`,
+          );
+          const container = el && scrollContainerOf(el);
+          if (!el || !container) return;
+          const target = restoreTarget(
+            memory,
+            container.scrollTop,
+            el.offsetTop,
+          );
+          if (target !== null) container.scrollTop = target;
+        };
       }
+      setExpandedAnchors((prev) => {
+        const next = new Set(prev);
+        if (isAnchoredWithin(prev, span)) {
+          for (const a of prev)
+            if (a >= span.start && a < span.end) next.delete(a);
+        } else {
+          next.add(span.start);
+        }
+        return next;
+      });
+    },
+    [expandedAnchors],
+  );
+
+  const expandCard = useCallback((span: Span) => {
+    setExpandedAnchors((prev) => {
+      if (isAnchoredWithin(prev, span)) return prev;
+      const next = new Set(prev);
+      next.add(span.start);
       return next;
     });
   }, []);
+
+  const collapseFromStrip = useCallback((span: Span) => {
+    const el = document.querySelector<HTMLElement>(
+      `[data-anchor="${span.start}"]`,
+    );
+    const container = el && scrollContainerOf(el);
+    if (el && container) {
+      const memory = rememberCollapse(container.scrollTop, el.offsetTop);
+      collapseMemoryRef.current.set(span.start, memory);
+      pendingScrollWorkRef.current = () => {
+        // The card is collapsed now, so its offsetTop is the collapsed
+        // card's. Park it at the top of the list and record where that
+        // left scrollTop (the browser clamps at the end of the list, so
+        // read it back rather than assuming).
+        container.scrollTop = el.offsetTop;
+        memory.settledScrollTop = container.scrollTop;
+      };
+    }
+    setExpandedAnchors((prev) => {
+      if (!isAnchoredWithin(prev, span)) return prev;
+      const next = new Set(prev);
+      for (const a of prev) if (a >= span.start && a < span.end) next.delete(a);
+      return next;
+    });
+  }, []);
+
+  // Runs the queued scroll work once the expansion change has painted.
+  // useLayoutEffect rather than useEffect so the scroll lands before the
+  // frame is shown, no flash of the wrong position.
+  useLayoutEffect(() => {
+    const work = pendingScrollWorkRef.current;
+    if (!work) return;
+    pendingScrollWorkRef.current = null;
+    work();
+  }, [expandedAnchors]);
 
   // BUG-001 (docs/known-issues.md), Part A: don't shift expandedAnchors
   // eagerly. expandedAnchors used to shift synchronously with the edit
@@ -192,8 +290,17 @@ export function BreakdownPane({
   // prop), so a rapid burst of edits before any reparse lands still
   // queues correctly-ordered shifts rather than computing every one from
   // the same stale baseline.
+  // Declared here (above the resolve effect that writes it) rather than
+  // beside the mount-sync effect that first used it: revealAfterEdit's
+  // scroll shares it.
+  const pendingScrollAnchorRef = useRef<number | null>(null);
   const pendingAnchorShiftsRef = useRef<
-    { edit: OffsetEdit; expectedSource: string }[]
+    {
+      edit: OffsetEdit;
+      expectedSource: string;
+      /** revealAfterEdit's request, an offset in expectedSource's coordinates, applied once the shift lands. */
+      reveal?: { offset: number; scroll: boolean; expand: boolean };
+    }[]
   >([]);
   const expectedSourceRef = useRef<string | null>(null);
 
@@ -217,20 +324,28 @@ export function BreakdownPane({
         parseResult,
         intent,
         languageIndex,
-        applyTextEdit,
+        applyTextEdits,
         priorEdits,
       );
       if (result) {
-        const baseSource = expectedSourceRef.current ?? source;
-        const expectedSource =
-          baseSource.slice(0, result.edit.start) +
-          result.edit.newText +
-          baseSource.slice(result.edit.end);
+        // One queue entry per edit, highest offset first (editsOf's
+        // order). A moveNode carries two edits in the same original
+        // coordinates; applying the higher one first leaves the lower
+        // one's offsets untouched, so each entry's `edit` is valid against
+        // the source the entry before it produced, which is what
+        // shiftAnchors and rebaseEdit both assume when they walk the queue.
+        // The intermediate expectedSource (after only the first half) will
+        // never render, and the resolving effect below already copes with
+        // a superseded intermediate entry.
+        let expectedSource = expectedSourceRef.current ?? source;
+        for (const edit of editsOf(result)) {
+          expectedSource =
+            expectedSource.slice(0, edit.start) +
+            edit.newText +
+            expectedSource.slice(edit.end);
+          pendingAnchorShiftsRef.current.push({ edit, expectedSource });
+        }
         expectedSourceRef.current = expectedSource;
-        pendingAnchorShiftsRef.current.push({
-          edit: result.edit,
-          expectedSource,
-        });
         // Part B: request an immediate reparse of the exact source we
         // just computed, instead of waiting on the 150ms typing debounce;
         // a card action is one discrete event, nothing to coalesce.
@@ -240,39 +355,11 @@ export function BreakdownPane({
       }
       return result;
     },
-    [parseResult, applyTextEdit, source, reparseNow],
+    [parseResult, applyTextEdits, source, reparseNow],
   );
 
-  // Breakdown's own delete-selected-card hotkey. Scoped to this component
-  // rather than App.tsx's global listener (see AppContent's own comment on
-  // why) because it needs `applyEdit` and the current selection, both of
-  // which only exist while this pane is mounted, so the effect's own
-  // mount lifetime IS the "only while Breakdown is the active tab" guard,
-  // no extra check needed. `canDeleteItem` mirrors exactly the set of card
-  // kinds that already carry their own Delete button (cardKind.ts), the
-  // hotkey is a shortcut for that button, not a new capability, so a
-  // selection nothing else can delete (a stray attribute, a shared block,
-  // a raw node) is silently a no-op rather than acting on a different node
-  // the user didn't click.
   const { hotkeys, recordingId } = useHotkeySettings();
   const { density } = useBreakdownSettings();
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (recordingId !== null) return;
-      if (!matchesHotkey(event, hotkeys.breakdownDeleteCard)) return;
-      const item = selection.selectedItem;
-      if (!item || !canDeleteItem(item)) return;
-      event.preventDefault();
-      applyEdit({ kind: "removeNode", node: item });
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    hotkeys.breakdownDeleteCard,
-    recordingId,
-    selection.selectedItem,
-    applyEdit,
-  ]);
 
   // Resolves queued anchor shifts once their expected source has
   // actually rendered. Walks the queue from the front: if `source`
@@ -301,12 +388,160 @@ export function BreakdownPane({
     if (pendingAnchorShiftsRef.current.length === 0) {
       expectedSourceRef.current = null;
     }
+    // A reveal rides on the LAST applied entry, so its offset is read
+    // against the source now rendering, never re-shifted. Expanding is
+    // one more anchor in the same commit as the shifts (the offset lands
+    // inside the new card's span, which is all isAnchoredWithin needs).
+    const reveal = toApply[toApply.length - 1]?.reveal;
     setExpandedAnchors((prev) => {
       let next = prev;
       for (const { edit } of toApply) next = shiftAnchors(next, edit);
+      if (reveal?.expand) {
+        next = new Set(next);
+        next.add(reveal.offset);
+      }
       return next;
     });
-  }, [source]);
+    if (reveal?.scroll) {
+      // The card's data-anchor is its span.start, which the caret is
+      // usually inside rather than at, so resolve the item first. A
+      // comment is not an item, its card carries the raw offset instead.
+      let anchor = reveal.offset;
+      for (const tab of tabs) {
+        const item = findItemAtOffset(tab.items, reveal.offset);
+        if (item) {
+          anchor = item.span.start;
+          break;
+        }
+      }
+      if (reveal.expand) {
+        // The setExpandedAnchors above lands in a LATER commit (it's a
+        // state update, not a DOM mutation yet), so scrolling right now
+        // would measure the card still in its collapsed height and land
+        // wrong once it expands. Queue it as pending layout work instead,
+        // same as toggleExpanded/collapseFromStrip above, so it runs
+        // after the expanded card's real height is in the DOM.
+        pendingScrollWorkRef.current = () => {
+          const el = document.querySelector<HTMLElement>(
+            `[data-anchor="${anchor}"]`,
+          );
+          el?.scrollIntoView({ block: "center" });
+        };
+      } else {
+        // Nothing else changes this card's DOM for this reveal (a new
+        // comment is already open), so scrolling immediately is safe.
+        pendingScrollAnchorRef.current = anchor;
+      }
+    }
+  }, [source, tabs]);
+
+  const revealAfterEdit = useCallback(
+    (offset: number, scroll: boolean, expand = true) => {
+      const pending = pendingAnchorShiftsRef.current;
+      const last = pending[pending.length - 1];
+      if (last) last.reveal = { offset, scroll, expand };
+    },
+    [],
+  );
+
+  // Move a card somewhere else, or copy it below itself (2026-09-18).
+  // Shared by the hotkeys below, the card's right-click menu
+  // (CardMenu.tsx) and dragging (cardDrag.tsx), which is why both live
+  // here beside applyEdit rather than in any one consumer. After the
+  // edit the card is selected and keeps its expansion at its new
+  // position. Both of those anchors sit inside the removed range and
+  // would otherwise be dropped (the rev-4 rule), so they are
+  // re-established once the parse lands, through the same pending queue
+  // every other post-edit reveal rides on and the selection hook's own
+  // equivalent (useShiftedAnchor's setAfterPending).
+  const moveItem = useCallback(
+    (item: DraggableCard, to: InsertTarget) => {
+      const wasExpanded = isAnchoredWithin(expandedAnchors, item.span);
+      const result = applyEdit({ kind: "moveNode", node: item, to });
+      if (result) {
+        revealAfterEdit(result.caret, true, wasExpanded);
+        selection.selectAfterEdit(result.caret);
+      }
+    },
+    [selection, applyEdit, expandedAnchors, revealAfterEdit],
+  );
+  const duplicateItem = useCallback(
+    (item: RearrangeableNode) => {
+      const result = applyEdit({ kind: "duplicateNode", node: item });
+      if (result) {
+        // The copy opens if the original was open, and takes the selection
+        // so a second Duplicate stacks copies downward.
+        revealAfterEdit(
+          result.caret,
+          true,
+          isAnchoredWithin(expandedAnchors, item.span),
+        );
+        selection.selectAfterEdit(result.caret);
+      }
+    },
+    [selection, applyEdit, expandedAnchors, revealAfterEdit],
+  );
+  const rearrangeSelected = useCallback(
+    (action: "up" | "down" | "duplicate") => {
+      const item = selection.selectedItem;
+      if (!item || !canRearrangeItem(item) || !parseResult) return;
+      if (action === "duplicate") {
+        duplicateItem(item);
+        return;
+      }
+      const to = siblingMoveTarget(parseResult.script, item, action);
+      if (to) moveItem(item, to);
+    },
+    [selection.selectedItem, parseResult, moveItem, duplicateItem],
+  );
+
+  // Breakdown's own card hotkeys (delete, and since 2026-09-18 move up,
+  // move down and duplicate). Scoped to this component rather than
+  // App.tsx's global listener (see AppContent's own comment on why)
+  // because they need `applyEdit` and the current selection, both of
+  // which only exist while this pane is mounted, so the effect's own
+  // mount lifetime IS the "only while Breakdown is the active tab" guard,
+  // no extra check needed. `canDeleteItem`/`canRearrangeItem` mirror
+  // exactly the set of card kinds that already carry their own Delete
+  // button (cardKind.ts), each hotkey is a shortcut for a button or menu
+  // entry, not a new capability, so a selection nothing else can act on
+  // (a stray attribute, a shared block, a raw node) is silently a no-op
+  // rather than acting on a different node the user didn't click.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      if (matchesHotkey(event, hotkeys.breakdownDeleteCard)) {
+        const item = selection.selectedItem;
+        if (!item || !canDeleteItem(item)) return;
+        event.preventDefault();
+        applyEdit({ kind: "removeNode", node: item });
+        return;
+      }
+      // The rearranging hotkeys share this listener and the same
+      // selection guard. Each is a shortcut for a card-menu entry.
+      const action = matchesHotkey(event, hotkeys.breakdownMoveCardUp)
+        ? "up"
+        : matchesHotkey(event, hotkeys.breakdownMoveCardDown)
+          ? "down"
+          : matchesHotkey(event, hotkeys.breakdownDuplicateCard)
+            ? "duplicate"
+            : null;
+      if (action === null) return;
+      event.preventDefault();
+      rearrangeSelected(action);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    hotkeys.breakdownDeleteCard,
+    hotkeys.breakdownMoveCardUp,
+    hotkeys.breakdownMoveCardDown,
+    hotkeys.breakdownDuplicateCard,
+    recordingId,
+    selection.selectedItem,
+    applyEdit,
+    rearrangeSelected,
+  ]);
 
   // Tab switch clears selection (Sec.3.9, the selected card is no longer
   // on screen, and an off-screen insert anchor is exactly the surprise
@@ -349,7 +584,6 @@ export function BreakdownPane({
   // isn't already selected right at its opening character, which is
   // exactly why the scroll previously landed nowhere (selection itself
   // still worked because isSelected does a range check, not exact match).
-  const pendingScrollAnchorRef = useRef<number | null>(null);
   const didMountSyncRef = useRef(false);
   useEffect(() => {
     if (didMountSyncRef.current) return;
@@ -408,6 +642,9 @@ export function BreakdownPane({
         applyEdit,
         isExpanded,
         toggleExpanded,
+        expandCard,
+        collapseFromStrip,
+        revealAfterEdit,
         requestFocus,
         registerFocusable,
         isSelected: selection.isSelected,
@@ -416,6 +653,8 @@ export function BreakdownPane({
         selectedItem: selection.selectedItem,
         comments,
         expandedAnchors,
+        moveItem,
+        duplicateItem,
       }}
     >
       <div className={styles.pane}>

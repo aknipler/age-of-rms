@@ -2526,7 +2526,8 @@
         },
         {
           "name": "to",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "leadIn": "with"
         }
       ],
       "description": "Replaces one terrain with another along the connection path.",

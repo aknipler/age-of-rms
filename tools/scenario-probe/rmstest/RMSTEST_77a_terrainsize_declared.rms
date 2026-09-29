@@ -1,0 +1,114 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 3
+    number_of_tiles 150
+    zone 2
+    land_position 15 50
+  }
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 3
+    number_of_tiles 150
+    zone 3
+    land_position 85 50
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  create_connect_all_lands
+  {
+    replace_terrain GRASS ROAD
+    terrain_size GRASS 1 0
+  }
+
+/*
+================================================================================
+RMSTEST_77a - is the guide-sourced "no terrain_size entry -> radius 1,
+variance 0" default real, or does the undeclared default carry hidden
+variance the doc has never measured?
+Feeds: docs/preview-design.md Sec.6.5 line ~524 (Sec.15 item cited there as
+"32", which COLLIDES with the already-closed detached-seed item 32 - see
+the doc-update note this run's write-up carries), tools/scenario-probe
+README Batch 16 (RMSTEST_70's undeclared-terrain_size DIRT causeway
+fragmenting into small/single-tile patches in two of its three runs)
+Paired with RMSTEST_77b, whose only difference is dropping the
+"terrain_size GRASS 1 0" line entirely.
+================================================================================
+
+THE QUESTION
+guide:1958/1960 give radius 1 and variance 0 as the terrain_size defaults,
+and Sec.6.5 has modelled undeclared terrain_size that way since rev 3. It
+has never been run against the real engine. RMSTEST_70, written for an
+unrelated question (does a beach pass run after S5), noticed in passing
+that its own undeclared-terrain_size DIRT causeway came out fragmented -
+dozens of small/single-tile patches - in two of its three runs, which a
+deterministic 1-tile disc on every path tile should not produce at all: a
+straight or near-straight path painted with a constant 1-tile radius and
+zero variance should read as ONE contiguous patch (or very close to it),
+not many.
+
+Per guide:1965, real variance CAN produce exactly this shape: "if variance
+is larger than radius, it can reduce the radius to a negative value, in
+which case no terrain will be replaced around these specific locations" -
+i.e. an occasional skipped tile along the path, which is indistinguishable
+from a gap in a --patches read. If the undeclared default genuinely
+carries variance greater than 0, gaps like RMSTEST_70's are exactly what
+the rule predicts; if it does not, something else fragmented that causeway
+and the "radius 1, variance 0" default stands unexplained rather than
+refuted.
+
+METHOD
+Two lands, land_position pinned on opposite sides of a Normal map so the
+connecting path is short, direct and geometrically simple - nothing else
+on the map to paint or replace terrain, so every ROAD tile comes from this
+one command. This script (a) DECLARES terrain_size GRASS 1 0 explicitly,
+stating in RMS what Sec.6.5 currently only assumes as the undeclared
+default. If the assumed default is correct, this script and its twin
+(77b, which omits the line) should read identically - same patch count,
+same shape, same fragmentation (none, ideally).
+
+PREDICTIONS
+  ONE CONTIGUOUS ROAD PATCH (or very close to it - a handful of pieces at
+    most, matching ordinary A* step noise, not the dozens RMSTEST_70 saw)
+    -> radius 1, variance 0 produces a clean, mostly unbroken path, which
+    is the baseline 77b needs to match for the assumed default to be
+    confirmed rather than merely unrefuted.
+  MULTIPLE SMALL / SINGLE-TILE PATCHES -> even an EXPLICIT variance-0
+    declaration fragments, which would mean the fragmentation RMSTEST_70
+    saw has nothing to do with terrain_size's variance at all (a different
+    mechanism entirely, e.g. the causeway's own path not being contiguous,
+    or replace_terrain interacting with something else) - and this script
+    existing is what would catch that alternative explanation.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. THREE RUNS, matching 77b.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches ROAD
+  Read the patch COUNT first, then each patch's area and circularity. One
+  patch (or a handful of large, elongated ones) is the clean reading; many
+  small patches is fragmentation. Compare directly against 77b's own read
+  on the same three run numbers.
+================================================================================
+*/

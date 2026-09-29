@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SectionTab } from "./sectionTabsModel";
 import { BlockList } from "./BlockList";
-import { CommandPicker } from "./CommandPicker";
+import { CommandPicker, intentForPick } from "./CommandPicker";
+import { CardDragProvider } from "./cardDrag";
 import { DiagnosticsRuler } from "./DiagnosticsRuler";
 import { useBreakdownContext } from "./BreakdownContext";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
+import { useBreakdownSettings } from "../settings/BreakdownSettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
 import { HelpTip } from "../components/HelpTip";
+import { TemplateDialog } from "./templates/TemplateDialog";
+import { FOREST_MAKER_CONST, templatesFor } from "./templates/templates";
+import { definesSymbol, playerLandTerrain } from "./templates/scriptContext";
 import styles from "./SectionView.module.css";
 
 interface SectionViewProps {
@@ -41,10 +46,34 @@ export function SectionView({ tab }: SectionViewProps) {
     parseResult,
     applyEdit,
     requestFocus,
+    revealAfterEdit,
     selectedItem,
     clearSelection,
+    gameConstants,
   } = useBreakdownContext();
+  const { scrollToAddedCard } = useBreakdownSettings();
+  // Every Add path lands here (beta feedback 2026-09-17): the new card
+  // opens right away so its attributes can be filled in, scrolled into
+  // view unless the setting says otherwise, and focused on its first
+  // value. Order matters, revealAfterEdit attaches to the pending edit
+  // applyEdit just queued.
+  const revealNew = (result: { caret: number } | null, expand = true) => {
+    if (!result) return;
+    revealAfterEdit(result.caret, scrollToAddedCard, expand);
+    requestFocus(result.caret);
+  };
   const [pickerOpen, setPickerOpen] = useState(false);
+  // docs/object-templates-brief.md: Add Template shows on the tabs that
+  // have templates of their own, Objects and (since the terrain player
+  // forests template, 2026-09-28) Terrain. Own boolean rather than
+  // reusing pickerOpen, the two aren't mutually exclusive in the UI (the
+  // command picker is section-scoped chrome; this is a full dialog).
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const templateSection =
+    (tab.id === "OBJECTS_GENERATION" || tab.id === "TERRAIN_GENERATION") &&
+    templatesFor(tab.id).length > 0
+      ? tab.id
+      : undefined;
   const targetSection = tab.sections[tab.sections.length - 1];
   // Sec.3.10, the diagnostics ruler measures/queries against this exact
   // scroll container (offsetTop of each top-level card's data-anchor
@@ -123,8 +152,9 @@ export function SectionView({ tab }: SectionViewProps) {
         onClick={clearSelection}
         ref={scrollContainerRef}
         data-tutorial-anchor="breakdown.cardList"
+        data-breakdown-scroll
       >
-        <div className={styles.addWrapper}>
+        <div className={styles.addWrapper} data-sticky-header>
           {/* .buttonRow puts Add Command and Add Comment on one row, each
               sized to its own content (2026-09-15) rather than stretched
               to fill half the row each. */}
@@ -185,12 +215,35 @@ export function SectionView({ tab }: SectionViewProps) {
                     kind: "addComment",
                     at: insertTarget,
                   });
-                  if (result) requestFocus(result.caret);
+                  // A comment starts open (CommentCard's inverted anchor
+                  // sense), so scroll only.
+                  revealNew(result, false);
                 }}
               >
                 + Add comment
               </button>
             </HelpTip>
+            {templateSection && (
+              <HelpTip
+                id="breakdown.addTemplate"
+                text={
+                  insertTarget ? undefined : "Nothing to add a template to yet"
+                }
+                dismissOnInteract
+              >
+                <button
+                  type="button"
+                  className={styles.addButton}
+                  disabled={!insertTarget}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTemplateDialogOpen(true);
+                  }}
+                >
+                  + Add template
+                </button>
+              </HelpTip>
+            )}
           </div>
           {pickerOpen && insertTarget && (
             <CommandPicker
@@ -204,23 +257,52 @@ export function SectionView({ tab }: SectionViewProps) {
                   : undefined
               }
               onClose={() => setPickerOpen(false)}
-              onPick={(name) => {
-                const result = applyEdit({
-                  kind: "addCommand",
-                  at: insertTarget,
-                  name,
-                });
+              onPick={(choice) => {
+                const result = applyEdit(intentForPick(choice, insertTarget));
                 setPickerOpen(false);
-                if (result) requestFocus(result.caret);
+                revealNew(result);
               }}
             />
           )}
         </div>
         <div className={styles.content}>
-          <BlockList items={tab.items} trailingBoundary={trailingBoundary} />
+          {/* The drag layer is per tab, like the diagnostics ruler, since
+              a drop resolves against this tab's own items and autoscrolls
+              this tab's own container. */}
+          <CardDragProvider
+            items={tab.items}
+            scrollContainerRef={scrollContainerRef}
+          >
+            <BlockList items={tab.items} trailingBoundary={trailingBoundary} />
+          </CardDragProvider>
         </div>
       </div>
       <DiagnosticsRuler items={tab.items} containerRef={scrollContainerRef} />
+      {templateDialogOpen && insertTarget && templateSection && (
+        <TemplateDialog
+          section={templateSection}
+          // Read once per render while the dialog is open, both are short
+          // walks. The dialog copies playerLand into its own state on mount,
+          // see its lazy useState.
+          script={{
+            playerLand: playerLandTerrain(parseResult),
+            forestSetupPresent: definesSymbol(parseResult, FOREST_MAKER_CONST),
+          }}
+          constants={gameConstants.constants}
+          onClose={() => setTemplateDialogOpen(false)}
+          onInsert={({ text, caretOffset, setupText }) => {
+            const result = applyEdit({
+              kind: "insertText",
+              at: insertTarget,
+              text,
+              caretOffset,
+              ...(setupText === undefined ? {} : { setupText }),
+            });
+            setTemplateDialogOpen(false);
+            revealNew(result);
+          }}
+        />
+      )}
     </div>
   );
 }

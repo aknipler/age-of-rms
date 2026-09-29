@@ -322,8 +322,10 @@ export function resolveTerrainId(
   if (typeof value !== "string") return undefined;
   const byName = terrainIdByName(constants, value);
   if (byName !== undefined) return byName;
+  // A `#const` holds a float (BUG-034). An id slot is integer-only, so the
+  // engine rounds it on arrival, and this is that arrival.
   const bySymbol = symbols?.get(value);
-  if (bySymbol !== undefined) return bySymbol;
+  if (bySymbol !== undefined) return roundForIntegerSlot(bySymbol);
 
   // Form 4 (BUG-015): `#const TERR_CORNER GRASS2`, then `create_terrain
   // TERR_CORNER`. The alias's target is a NAME, so it could never live in

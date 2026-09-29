@@ -14,6 +14,10 @@ import type { AttributeOrderMode } from "../breakdown/attributeModel";
 const ATTRIBUTE_ORDER_MODE_KEY = "breakdownAttributeOrderMode";
 const CUSTOM_ATTRIBUTE_ORDER_KEY = "breakdownCustomAttributeOrder";
 const DENSITY_KEY = "breakdownDensity";
+const SCROLL_TO_ADDED_KEY = "breakdownScrollToAddedCard";
+const SUMMARY_CLICK_KEY = "breakdownSummaryClick";
+const HIDE_UNUSED_KEY = "breakdownHideUnused";
+const HIDE_UNUSED_EXCEPTIONS_KEY = "breakdownHideUnusedExceptions";
 
 export const DEFAULT_ATTRIBUTE_ORDER_MODE: AttributeOrderMode = "required";
 
@@ -37,6 +41,20 @@ export const DEFAULT_BREAKDOWN_DENSITY: BreakdownDensity = "comfortable";
 
 function isBreakdownDensity(value: unknown): value is BreakdownDensity {
   return value === "comfortable" || value === "compact";
+}
+
+/**
+ * What a click on an attribute in a collapsed card's summary line does
+ * (beta feedback 2026-09-17). "open" expands the card and focuses that
+ * attribute's editor. "edit" edits it right there in the summary.
+ */
+export type SummaryClickAction = "open" | "edit";
+
+export const DEFAULT_SUMMARY_CLICK: SummaryClickAction = "open";
+export const DEFAULT_SCROLL_TO_ADDED_CARD = true;
+
+function isSummaryClickAction(value: unknown): value is SummaryClickAction {
+  return value === "open" || value === "edit";
 }
 
 /**
@@ -94,6 +112,17 @@ export interface BreakdownSettingsValue {
   ) => void;
   density: BreakdownDensity;
   setDensity: (density: BreakdownDensity) => void;
+  /** Add Command, Add Comment and Add Template scroll the list to the new card. Off leaves the viewport where it was. */
+  scrollToAddedCard: boolean;
+  setScrollToAddedCard: (on: boolean) => void;
+  summaryClick: SummaryClickAction;
+  setSummaryClick: (action: SummaryClickAction) => void;
+  /** Sec.3.3.1 Hide Unused Attributes. Default off. Which rows a card shows is decided when it opens, see hideUnused.ts. */
+  hideUnused: boolean;
+  setHideUnused: (on: boolean) => void;
+  /** Attribute names Hide Unused never hides. */
+  hideUnusedExceptions: string[];
+  setHideUnusedExceptions: (names: string[]) => void;
 }
 
 const BreakdownSettingsContext = createContext<BreakdownSettingsValue | null>(
@@ -113,6 +142,16 @@ export function BreakdownSettingsProvider({
   const [density, setDensityState] = useState<BreakdownDensity>(
     DEFAULT_BREAKDOWN_DENSITY,
   );
+  const [scrollToAddedCard, setScrollToAddedCardState] = useState<boolean>(
+    DEFAULT_SCROLL_TO_ADDED_CARD,
+  );
+  const [summaryClick, setSummaryClickState] = useState<SummaryClickAction>(
+    DEFAULT_SUMMARY_CLICK,
+  );
+  const [hideUnused, setHideUnusedState] = useState<boolean>(false);
+  const [hideUnusedExceptions, setHideUnusedExceptionsState] = useState<
+    string[]
+  >([]);
   const [store, setStore] = useState<Store | null>(null);
 
   // `cancelled` guards a load racing an unmount, see HotkeySettingsContext.tsx
@@ -123,10 +162,22 @@ export function BreakdownSettingsProvider({
       async (loadedStore) => {
         if (cancelled) return;
         setStore(loadedStore);
-        const [savedMode, savedCustom, savedDensity] = await Promise.all([
+        const [
+          savedMode,
+          savedCustom,
+          savedDensity,
+          savedScroll,
+          savedClick,
+          savedHide,
+          savedExceptions,
+        ] = await Promise.all([
           loadedStore.get<unknown>(ATTRIBUTE_ORDER_MODE_KEY),
           loadedStore.get<unknown>(CUSTOM_ATTRIBUTE_ORDER_KEY),
           loadedStore.get<unknown>(DENSITY_KEY),
+          loadedStore.get<unknown>(SCROLL_TO_ADDED_KEY),
+          loadedStore.get<unknown>(SUMMARY_CLICK_KEY),
+          loadedStore.get<unknown>(HIDE_UNUSED_KEY),
+          loadedStore.get<unknown>(HIDE_UNUSED_EXCEPTIONS_KEY),
         ]);
         if (cancelled) return;
         if (isAttributeOrderMode(savedMode))
@@ -134,6 +185,12 @@ export function BreakdownSettingsProvider({
         if (isCustomAttributeOrderMap(savedCustom))
           setCustomAttributeOrderState(savedCustom);
         if (isBreakdownDensity(savedDensity)) setDensityState(savedDensity);
+        if (typeof savedScroll === "boolean")
+          setScrollToAddedCardState(savedScroll);
+        if (isSummaryClickAction(savedClick)) setSummaryClickState(savedClick);
+        if (typeof savedHide === "boolean") setHideUnusedState(savedHide);
+        if (isStringArray(savedExceptions))
+          setHideUnusedExceptionsState(savedExceptions);
       },
     );
     return () => {
@@ -174,6 +231,39 @@ export function BreakdownSettingsProvider({
     [store],
   );
 
+  const setScrollToAddedCard = useCallback(
+    (on: boolean) => {
+      setScrollToAddedCardState(on);
+      void store?.set(SCROLL_TO_ADDED_KEY, on);
+    },
+    [store],
+  );
+
+  const setSummaryClick = useCallback(
+    (action: SummaryClickAction) => {
+      setSummaryClickState(action);
+      void store?.set(SUMMARY_CLICK_KEY, action);
+    },
+    [store],
+  );
+
+  const setHideUnused = useCallback(
+    (on: boolean) => {
+      setHideUnusedState(on);
+      void store?.set(HIDE_UNUSED_KEY, on);
+    },
+    [store],
+  );
+
+  const setHideUnusedExceptions = useCallback(
+    (names: string[]) => {
+      const next = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+      setHideUnusedExceptionsState(next);
+      void store?.set(HIDE_UNUSED_EXCEPTIONS_KEY, next);
+    },
+    [store],
+  );
+
   const value = useMemo<BreakdownSettingsValue>(
     () => ({
       attributeOrderMode,
@@ -182,6 +272,14 @@ export function BreakdownSettingsProvider({
       setCustomAttributeOrderFor,
       density,
       setDensity,
+      scrollToAddedCard,
+      setScrollToAddedCard,
+      summaryClick,
+      setSummaryClick,
+      hideUnused,
+      setHideUnused,
+      hideUnusedExceptions,
+      setHideUnusedExceptions,
     }),
     [
       attributeOrderMode,
@@ -190,6 +288,14 @@ export function BreakdownSettingsProvider({
       setCustomAttributeOrderFor,
       density,
       setDensity,
+      scrollToAddedCard,
+      setScrollToAddedCard,
+      summaryClick,
+      setSummaryClick,
+      hideUnused,
+      setHideUnused,
+      hideUnusedExceptions,
+      setHideUnusedExceptions,
     ],
   );
 

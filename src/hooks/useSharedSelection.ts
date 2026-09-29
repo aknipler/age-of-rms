@@ -37,7 +37,8 @@ export function useSharedSelection(
   // Default shift policy: an anchor caught inside a replaced range is
   // DROPPED (ephemeralAnchors.ts's rev-4 rule), so a selection can't dangle
   // onto whatever text now occupies those offsets.
-  const [selectedAnchor, setSelectedAnchor] = useShiftedAnchor(source);
+  const [selectedAnchor, setSelectedAnchor, setAnchorAfterPending] =
+    useShiftedAnchor(source);
 
   const isSelected = useCallback(
     (span: Span) =>
@@ -65,6 +66,17 @@ export function useSharedSelection(
     [setSelectedAnchor],
   );
 
+  /**
+   * Select the card at `offset` once the edit just pushed has parsed
+   * (2026-09-18). For a move or duplicate, whose result caret is in the
+   * NEW text, see useShiftedAnchor's setAfterPending for why this cannot
+   * be a plain setAnchor.
+   */
+  const selectAfterEdit = useCallback(
+    (offset: number) => setAnchorAfterPending(offset),
+    [setAnchorAfterPending],
+  );
+
   const selectedItem: Item | undefined = useMemo(() => {
     if (selectedAnchor === null || !parseResult) return undefined;
     return findItemAtOffsetInScript(parseResult.script, selectedAnchor);
@@ -76,6 +88,7 @@ export function useSharedSelection(
     isSelected,
     selectCard,
     clearSelection,
+    selectAfterEdit,
     selectedItem,
   };
 }

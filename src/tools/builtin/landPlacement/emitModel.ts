@@ -21,22 +21,35 @@ import {
   computeOwnerPlayers,
   resolveParamRefs,
 } from "./paramEmit";
-import { emitRole } from "./roleEmit";
+import { emitRole, emitRoleOverrides } from "./roleEmit";
 import { buildCreateLandSkeleton } from "./landCommand";
 import { emitCells, formatConstLine, type EmittedConst } from "./compiler/emit";
 import { verifyEmission, type VerifyProblem } from "./compiler/verify";
 import type { NameAllocator } from "./compiler/naming";
 import type { AlpModel } from "./fence";
-import type { LandRole, Placement } from "./model";
+import {
+  ROLE_OPTIONAL_ATTRIBUTES,
+  effectiveRole,
+  type LandRole,
+  type Placement,
+} from "./model";
 import type { RoleConstNames } from "./roleEmit";
-import { buildPrologue, renderConditionalBlock } from "./prologue";
+import {
+  buildPrologue,
+  jitterUnitsForKind,
+  renderConditionalBlock,
+} from "./prologue";
 
 export interface EmissionOk {
   ok: true;
   /** Every `#const` line, role constants first then the frame/position algebra, the fence BODY (Sec.6.1). */
   body: string;
-  /** A `create_land` skeleton per placement that owns a role (Sec.6.2), keyed by Placement.id. */
+  /** A `create_land` skeleton per placement that owns a role (Sec.6.2), keyed by Placement.id, WRAPPED in its `if ALP_AT_LEAST_k` guard where it has one. */
   createLandText: ReadonlyMap<string, string>;
+  /** Every RandomParam's preview stand-in (the midpoint of its range) by param id, what the panel resolves a `param` leaf with. */
+  paramPreview: ReadonlyMap<string, number>;
+  /** The same skeletons UNWRAPPED (the `create_land { … }` block alone), what an in-place update of an existing block replaces its span with, since the guard sits outside the command node. */
+  createLandSkeleton: ReadonlyMap<string, string>;
   /**
    * Every emitted name's resolved value (Sec.5.5 step 2), what item 3's
    * placement bookkeeping and item 6's overlay builder both consume.
@@ -93,9 +106,11 @@ export type EmissionResult = EmissionOk | EmissionFailed;
 function resolveFullPlacements(model: AlpModel): Placement[] {
   const byId = new Map(model.placements.map((p) => [p.id, p] as const));
   for (const group of model.groups) {
-    const { placements: fresh } = expandShapeGroup(group);
-    const freshById = new Map(fresh.map((p) => [p.id, p] as const));
-    for (const memberId of group.members) {
+    const { placements: fresh, chainPlacements } = expandShapeGroup(group);
+    const freshById = new Map(
+      [...fresh, ...chainPlacements].map((p) => [p.id, p] as const),
+    );
+    for (const memberId of [...group.members, ...(group.chainMembers ?? [])]) {
       if (byId.has(memberId)) continue;
       const f = freshById.get(memberId);
       if (f) byId.set(memberId, f);
@@ -147,25 +162,44 @@ export function emitAlpModel(
   // is about to reject. `paramProblems`' own shape, so the panel's existing
   // Generated Code section already knows how to render it: no new surface.
   const kindProblems: VerifyProblem[] = [
-    // Step 1.5 (shape-kinds-slice-a-brief.md item 5): a perPlayer group's
-    // own member is `polar` for every kind alike (perimeter kinds included,
-    // since perimeter-symbolic-rotation-slice-a-brief.md item 2), and step 3
-    // below substitutes the prologue's ring-formula theta over ANY polar
-    // member of a perPlayer group with no regard for kind, because
-    // `buildPrologue` only ever computes the RING formula
-    // (`evenAngleOffsetDegrees`). A perPlayer line, arc or perimeter member
-    // would therefore silently draw ring angles over a shape that is not a
-    // ring, a plausible-looking wrong map rather than an error (CLAUDE.md:
-    // "a stage that silently produces a plausible output is harder to find
-    // than one that throws"). This is now the ONLY guard against that:
-    // `prologue.ts`'s own `offset.kind !== "polar"` skip used to catch every
-    // perimeter member as a second line of defence, and since every kind is
-    // polar now, it catches none of them (perimeter-symbolic-rotation-slice-
-    // a-brief.md Sec.8.7 finding 2).
+    // A per player group of every kind is placed by the prologue, so the
+    // refusal of a kind it could not place is gone
+    // (land-placement-per-player-any-kind-escalation.md slice C deleted the
+    // interim guard of its section 2). What remains here is about jitter.
+    //
+    // per-player-escalation.md Sec.11: jitter needs one draw per player. On
+    // a fixed-count ring the prologue never runs, so the field would be
+    // dropped without a word. With a shared param every player would take
+    // the same draw, which turns the ring rather than jittering it. Both are
+    // plausible-looking wrong maps, so both refuse. The panel keeps either
+    // from arising, and this catches a hand-edited fence.
     ...model.groups
-      .filter((g) => g.perPlayer && g.kind !== "circle")
+      .filter(
+        (g) =>
+          g.jitter !== undefined &&
+          (!g.perPlayer ||
+            model.randomParams.find((p) => p.id === g.jitter!.param)
+              ?.perPlayer !== true),
+      )
       .map((g) => ({
-        name: `group:${g.id}:perPlayer`,
+        name: `group:${g.id}:jitter`,
+        emittedValue: undefined,
+        directValue: undefined,
+      })),
+    // any-kind escalation Sec.5.1: degrees need an angle along the path, and
+    // a line or a perimeter has none. Emitted anyway, the draw would swing
+    // each land off its shape rather than along it. `setGroupKind`
+    // translates degrees to percent on a kind change and `applyGroupEdit`
+    // refuses an edit that would leave them, so what reaches this is a hand
+    // edited fence.
+    ...model.groups
+      .filter(
+        (g) =>
+          g.jitter !== undefined &&
+          !jitterUnitsForKind(g.kind).includes(g.jitter.unit),
+      )
+      .map((g) => ({
+        name: `group:${g.id}:jitterUnit`,
         emittedValue: undefined,
         directValue: undefined,
       })),
@@ -194,6 +228,17 @@ export function emitAlpModel(
       ),
     );
   }
+  // A walked perimeter member's lap count is computed from its group's
+  // draw lower bound (any-kind escalation Sec.5.4). The jitter refusal
+  // above guarantees the param exists for every jittered group that gets
+  // this far.
+  const jitterMinByGroup = new Map<string, number>();
+  for (const group of model.groups) {
+    const param =
+      group.jitter &&
+      model.randomParams.find((p) => p.id === group.jitter!.param);
+    if (param) jitterMinByGroup.set(group.id, param.min);
+  }
   const prologue = buildPrologue(
     model.groups,
     placements,
@@ -201,6 +246,7 @@ export function emitAlpModel(
     namer,
     playerCount,
     resolveExprParams,
+    jitterMinByGroup,
   );
 
   const roleById = new Map<string, LandRole>(
@@ -214,33 +260,105 @@ export function emitAlpModel(
   // resolves, and a `perPlayer: true` one correctly fails as "no owner".
   const ownerPlayers = computeOwnerPlayers(placements, roleById);
 
+  /**
+   * Every `Expr` a role (or an effective role) carries, resolved for
+   * `owner`. A role's own fields resolve with `undefined` (many lands, no
+   * one owner); a placement's overrides resolve with THAT placement's owner,
+   * which is the one thing an override can do that a role cannot (Sec.5.4).
+   */
+  function resolveRoleExprs(
+    role: LandRole,
+    owner: number | undefined,
+    where: string,
+  ): LandRole {
+    const resolved: LandRole = {
+      ...role,
+      baseSize: resolveExprParams(role.baseSize, owner, `${where}:baseSize`),
+      baseElevation: resolveExprParams(
+        role.baseElevation,
+        owner,
+        `${where}:baseElevation`,
+      ),
+      extent: {
+        ...role.extent,
+        value: resolveExprParams(role.extent.value, owner, `${where}:extent`),
+      },
+      // A `fixed` assign number is the one other `Expr` a role carries; a
+      // `perRepeat` one is two plain numbers and has nothing to resolve.
+      assign:
+        role.assign.kind !== "none" && role.assign.number.kind === "fixed"
+          ? {
+              ...role.assign,
+              number: {
+                kind: "fixed",
+                value: resolveExprParams(
+                  role.assign.number.value,
+                  owner,
+                  `${where}:assign`,
+                ),
+              },
+            }
+          : role.assign,
+    };
+    for (const { field } of ROLE_OPTIONAL_ATTRIBUTES) {
+      const expr = role[field];
+      if (expr === undefined) continue;
+      resolved[field] = resolveExprParams(expr, owner, `${where}:${field}`);
+    }
+    return resolved;
+  }
+
   // Step 2: emit each role's constants. One call per role, never per
   // placement, since a role's attributes are shared by every land wearing
   // it (Sec.4.5: "editing a role is editing one line").
   const roleCells: EmittedConst[] = [];
   const roleEmissions = new Map<string, ReturnType<typeof emitRole>>();
   for (const role of model.roles) {
-    const resolvedRole: LandRole = {
-      ...role,
-      baseSize: resolveExprParams(
-        role.baseSize,
-        undefined,
-        `role:${role.label}:baseSize`,
-      ),
-      baseElevation: resolveExprParams(
-        role.baseElevation,
-        undefined,
-        `role:${role.label}:baseElevation`,
-      ),
-      landPercent: resolveExprParams(
-        role.landPercent,
-        undefined,
-        `role:${role.label}:landPercent`,
-      ),
-    };
-    const emission = emitRole(resolvedRole, namer);
+    const emission = emitRole(
+      resolveRoleExprs(role, undefined, `role:${role.label}`),
+      namer,
+    );
     roleEmissions.set(role.id, emission);
     roleCells.push(...emission.cells);
+  }
+
+  // Step 2.5 (role-attributes-escalation.md Sec.10 slice 3): per-land
+  // override constants, after every role's (so the role's name is already
+  // allocated and a later delta form could reference it) and before the
+  // frame algebra. Each placement with overrides gets its effective role
+  // (role + overrides, replacement per key) resolved WITH ITS OWN OWNER, one
+  // per-land `#const` per overridden valued attribute, and an effective
+  // name set that step 4's skeleton references in place of the role's.
+  // Keyed by placement id; a placement with no overrides is simply absent
+  // and step 4 falls back to the role's own names.
+  const effectiveByPlacement = new Map<
+    string,
+    { role: LandRole; names: RoleConstNames }
+  >();
+  for (const placement of placements) {
+    if (placement.role === undefined || placement.roleOverrides === undefined)
+      continue;
+    const role = roleById.get(placement.role);
+    const roleEmission = roleEmissions.get(placement.role);
+    if (!role || !roleEmission) continue; // step 4 throws for the dangling role; not this step's job
+    const merged = effectiveRole(role, placement.roleOverrides);
+    const resolved = resolveRoleExprs(
+      merged,
+      ownerPlayers.get(placement.id),
+      `placement:${placement.label}:override`,
+    );
+    const own = emitRoleOverrides(
+      resolved,
+      placement.roleOverrides,
+      placement.label,
+      roleEmission.names,
+      namer,
+    );
+    roleCells.push(...own.cells);
+    effectiveByPlacement.set(placement.id, {
+      role: resolved,
+      names: own.names,
+    });
   }
 
   // Step 3: the frame algebra over every placement, params resolved first.
@@ -251,13 +369,20 @@ export function emitAlpModel(
       // wholesale by a reference to the prologue constant `buildPrologue`
       // already allocated for it, never param-resolved — the literal it
       // would resolve to is discarded either way, and the override is
-      // already a plain `sym` leaf with nothing left to resolve.
+      // already a plain `sym` leaf with nothing left to resolve. A kind whose
+      // radius moves with the count (a line, a perimeter kind) has its `r`
+      // replaced the same way, by its RAD cell (any-kind escalation
+      // Sec.4.1). A walked perimeter member has no RAD cell, and its `r` is
+      // never read, since `buildFrame` takes its X and Y from the walk.
       const thetaOverride = prologue.thetaOverrides.get(p.id);
+      const radiusOverride = prologue.radiusOverrides.get(p.id);
       return {
         ...p,
         offset: {
           kind: "polar",
-          r: resolveExprParams(p.offset.r, owner, `placement:${p.label}:r`),
+          r:
+            radiusOverride ??
+            resolveExprParams(p.offset.r, owner, `placement:${p.label}:r`),
           theta:
             thetaOverride ??
             resolveExprParams(
@@ -295,7 +420,7 @@ export function emitAlpModel(
     return { ok: false, problems: paramProblems };
   }
 
-  const frame = buildFrame(resolvedPlacements, namer);
+  const frame = buildFrame(resolvedPlacements, namer, prologue.walks);
 
   // Step 4: lower to #const cells and render them, the fence body.
   const frameCells = emitCells(frame.cells, namer);
@@ -388,6 +513,7 @@ export function emitAlpModel(
   );
 
   const createLandText = new Map<string, string>();
+  const createLandSkeleton = new Map<string, string>();
   const roleNamesByPlacement = new Map<string, RoleConstNames>();
   for (const placement of placements) {
     if (placement.role === undefined) continue; // a chain anchor with no land of its own
@@ -398,7 +524,16 @@ export function emitAlpModel(
       );
     }
     const roleEmission = roleEmissions.get(role.id)!;
-    roleNamesByPlacement.set(placement.id, roleEmission.names);
+    // The effective (overridden) role and names where the placement has
+    // overrides, the role's own otherwise. Detachment detection reads the
+    // same names (`roleNamesByPlacement`), so an overridden attribute is
+    // "attached" when the land references ITS constant, by construction
+    // rather than by a second list (Sec.5.5's three states).
+    const effective = effectiveByPlacement.get(placement.id) ?? {
+      role,
+      names: roleEmission.names,
+    };
+    roleNamesByPlacement.set(placement.id, effective.names);
     const quantity = frame.quantities.get(placement.id);
     if (!quantity) {
       throw new Error(
@@ -406,8 +541,8 @@ export function emitAlpModel(
       );
     }
     const skeleton = buildCreateLandSkeleton({
-      role,
-      roleNames: roleEmission.names,
+      role: effective.role,
+      roleNames: effective.names,
       xName: quantity.xName,
       yName: quantity.yName,
       repeatIndex: placement.repeatIndex,
@@ -418,6 +553,7 @@ export function emitAlpModel(
     // the prologue's own ladder uses, so this single guard cannot unbalance
     // either.
     const guardLabel = prologue.guardLabels.get(placement.id);
+    createLandSkeleton.set(placement.id, skeleton);
     createLandText.set(
       placement.id,
       guardLabel === undefined
@@ -432,6 +568,8 @@ export function emitAlpModel(
     ok: true,
     body,
     createLandText,
+    createLandSkeleton,
+    paramPreview: paramEmission.previewById,
     resolved: verified.resolved,
     quantities: frame.quantities,
     roleNamesByPlacement,

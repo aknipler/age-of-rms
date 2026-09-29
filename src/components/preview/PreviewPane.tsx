@@ -210,13 +210,18 @@ export function PreviewPane() {
     clearSelectedTile,
     hiddenObjects,
   } = usePreviewView();
-  const { openDialog: openGenerationSettings } = useGenerationSettings();
+  const { openDialog: openGenerationSettings, playerCount } =
+    useGenerationSettings();
   // Hover is local because it dies with the pane and should: a pointer
   // position means nothing once you have switched tabs. The SELECTION lives in
   // the context above the tab switch, for the same reason the seed does.
   const [hovered, setHovered] = useState<TilePoint | null>(null);
 
-  const { result } = usePreviewResultContext();
+  // `pending` is true from the moment a generation request is sent until its
+  // response lands (usePreviewResult.ts). It does NOT cover the 300ms
+  // debounce before the request, so the label below appears once the worker
+  // is actually busy, not on every keystroke.
+  const { result, pending } = usePreviewResultContext();
 
   // Rebuilt when the mode changes: the palette memoises a colour per terrain
   // id, and that cache is only valid for one mode. Keeping one palette and
@@ -286,7 +291,24 @@ export function PreviewPane() {
   // successful generation even while a newer one is running, same
   // stay-on-last-known-state convention the Problems panel already follows
   // for parse diagnostics.
-  if (result === null || snapshot === undefined) return null;
+  //
+  // With no map yet there is no canvas to put the label over, so the label
+  // stands in for the whole pane. Gated on `pending` rather than shown for
+  // any null result, because null also means "nothing to generate from"
+  // (no parse yet) and "the watchdog gave up", and claiming to be generating
+  // in either case would be a label that never goes away.
+  //
+  // This early return sits after every hook call above, and it has to. React
+  // matches hooks to their state by CALL ORDER, so a return that skipped
+  // some of them on one render and not the next would hand each later hook
+  // another one's state (the Rules of Hooks).
+  if (result === null || snapshot === undefined) {
+    return pending ? (
+      <div className={styles.loadingPane} role="status">
+        Generating...
+      </div>
+    ) : null;
+  }
   const dim = result.dim;
 
   return (
@@ -388,15 +410,30 @@ export function PreviewPane() {
         </div>
       </div>
 
-      <PreviewCanvas
-        result={result}
-        snapshot={snapshot}
-        palette={palette}
-        onHoverTile={setHovered}
-        selected={selectedTile}
-        onTileClick={toggleSelectedTile}
-        hiddenObjects={hiddenObjects}
-      />
+      {/* A wrapper of its own rather than a prop on PreviewCanvas, whose
+          container is the obvious box to centre over. That container
+          belongs to OverlayCanvas, which the Land Placement panel renders
+          too, and the label is this pane's business alone. */}
+      <div className={styles.canvasFrame}>
+        <PreviewCanvas
+          result={result}
+          snapshot={snapshot}
+          palette={palette}
+          onHoverTile={setHovered}
+          selected={selectedTile}
+          onTileClick={toggleSelectedTile}
+          hiddenObjects={hiddenObjects}
+          playerCount={playerCount}
+        />
+        {/* Mounted only while pending, so its fade in (and the delay
+            before it, see .generating) replays from the start on every
+            new generation with no timer in React. */}
+        {pending && (
+          <div className={styles.generating} role="status">
+            <span className={styles.generatingLabel}>Generating...</span>
+          </div>
+        )}
+      </div>
 
       <div className={styles.readout}>
         {tile === null ? (

@@ -35,8 +35,10 @@ export interface SafeJitterFailure {
  * `count` is the player count one prologue branch covers (1-8). `patternLength`
  * is the group's own `pattern.length` (Sec.4.1's "one angle per land per
  * branch", not per player, so a multi-slot pattern spaces `patternLength *
- * count` lands total around the ring, matching `evenAngleOffsetDegrees`'s own
- * `n` exactly). `requestedMinSeparationDegrees` is the author's "keep them at
+ * count` lands total around the ring, matching the `n` Circle's arm of
+ * `memberOffset` in expand.ts uses). Circle only. Every other kind takes a
+ * typed amount with no bound (land-placement-per-player-any-kind-
+ * escalation.md Sec.5.5). `requestedMinSeparationDegrees` is the author's "keep them at
  * least this far apart" ask.
  *
  * Refuses rather than clamps (slice-c-brief.md hazard 2) whenever the
@@ -59,4 +61,61 @@ export function computeSafeJitterDegrees(
     };
   }
   return { ok: true, jitterDegrees };
+}
+
+// ---------------------------------------------------------------------------
+// The amount the "Add jitter" button writes (per-player-escalation.md
+// Sec.11). One draw serves every player count, so it has to be safe at the
+// count where the even gap is smallest. The gap is `360 / (count * slots)`,
+// which only shrinks as players join, so that count is always
+// MAX_PLAYER_COUNT and the bound computed there holds at every count below.
+// ---------------------------------------------------------------------------
+
+export type JitterUnit = "deg" | "percent";
+
+export interface JitterAmountResult {
+  ok: true;
+  /** A whole number of at least 1, the `N` in `rnd(-N, N)`. */
+  amount: number;
+}
+
+/**
+ * The largest WHOLE `amount` that keeps neighbouring lands at least
+ * `requestedMinSeparationDegrees` apart at every count up to `maxCount`.
+ *
+ * `deg` uses `computeSafeJitterDegrees` at `maxCount`. `percent` is a share
+ * of each count's own even gap, so two neighbours can close by at most
+ * `2 * P%` of it and the bound is `P <= 50 * (1 - min / gap)`, tightest where
+ * the gap is smallest.
+ *
+ * Rounded DOWN to a whole number because the guide never says `rnd` accepts
+ * fractional bounds, and rounding down can only make the result safer.
+ * Refuses when that leaves 0, since the guide also requires `max` to exceed
+ * `min` and `rnd(0,0)` would be no jitter dressed as some.
+ */
+export function computeJitterAmount(
+  unit: JitterUnit,
+  maxCount: number,
+  patternLength: number,
+  requestedMinSeparationDegrees: number,
+): JitterAmountResult | SafeJitterFailure {
+  const degrees = computeSafeJitterDegrees(
+    maxCount,
+    patternLength,
+    requestedMinSeparationDegrees,
+  );
+  if (!degrees.ok) return degrees;
+  const evenGapDegrees = 360 / (maxCount * patternLength);
+  const exact =
+    unit === "deg"
+      ? degrees.jitterDegrees
+      : 50 * (1 - requestedMinSeparationDegrees / evenGapDegrees);
+  const amount = Math.floor(exact);
+  if (amount < 1) {
+    return {
+      ok: false,
+      reason: `At ${maxCount} players the safe jitter is ${exact.toFixed(2)}${unit === "deg" ? " degrees" : "% of the even gap"}, which is less than one whole step. Lower the minimum separation.`,
+    };
+  }
+  return { ok: true, amount };
 }

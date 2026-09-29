@@ -47,6 +47,22 @@ export function chain(op: "+" | "*", terms: readonly Expr[]): Expr {
     .reduce<Expr>((acc, term) => bin(op, acc, term), terms[0]);
 }
 
+/**
+ * `e`'s `+` addends appended one by one after `base`, so
+ * `base + (ROT + 0 + 45)` comes out as the left spine `base + ROT + 0 + 45`.
+ * RMS evaluates strictly left to right (Sec.5.1), and the emit rule hoists
+ * any right operand that is not a leaf into its own temporary `#const`.
+ * Kept flat, the sum needs no temporaries, and the tree the verifier
+ * evaluates is already the order the engine reads, so the emit rule's `+`
+ * re-association (Sec.5.3 (a)) has nothing to regroup. Addition is the only
+ * operator split apart. Any other node is appended whole.
+ */
+export function appendAddends(base: Expr, e: Expr): Expr {
+  if (e.k === "bin" && e.op === "+")
+    return appendAddends(appendAddends(base, e.l), e.r);
+  return add(base, e);
+}
+
 /** Fold a sequence of (op, operand) steps onto an initial left operand, the
  *  general non-uniform-operator case `chain()` cannot express (Sec.5.4's
  *  macro mixes `%`, `+`, `*`). */

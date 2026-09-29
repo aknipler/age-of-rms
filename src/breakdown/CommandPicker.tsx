@@ -1,12 +1,61 @@
 import { useMemo, useState } from "react";
+import type { EditIntent, InsertTarget } from "./patch/intents";
 import { useBreakdownContext } from "./BreakdownContext";
 import { HelpTip } from "../components/HelpTip";
 import styles from "./CommandPicker.module.css";
 
+/**
+ * What the picker hands back (2026-09-18). A command or directive by name,
+ * as before, or one of the two control-flow constructs, which are not
+ * CommandDefs and insert a skeleton rather than a bare name
+ * (computeEdit.ts's addControlFlow). Every caller turns this into the
+ * matching EditIntent with `intentForPick`, so the three Add buttons
+ * (section, if branch, random branch) cannot drift apart on what a pick
+ * means.
+ */
+export type PickerChoice =
+  | { kind: "command"; name: string }
+  | { kind: "controlFlow"; construct: "if" | "random" };
+
+export function intentForPick(
+  choice: PickerChoice,
+  at: InsertTarget,
+): EditIntent {
+  return choice.kind === "command"
+    ? { kind: "addCommand", at, name: choice.name }
+    : { kind: "addControlFlow", at, construct: choice.construct };
+}
+
+/**
+ * The control-flow group's rows. Not read from language.json, since `if`
+ * and `start_random` are grammar the parser owns (parser-design Sec.5), not
+ * vocabulary, and language.json's commands[] has no row for either. The
+ * descriptions here are the picker's own copy, matched to the ones on
+ * ConditionalCard/RandomCard.
+ */
+const CONTROL_FLOW: {
+  construct: "if" | "random";
+  name: string;
+  description: string;
+}[] = [
+  {
+    construct: "if",
+    name: "if … endif",
+    description:
+      "Run the commands inside only when a condition holds (a game mode, map size, or your own #define).",
+  },
+  {
+    construct: "random",
+    name: "start_random … end_random",
+    description:
+      "Pick one of several branches by chance, each with its own percent_chance.",
+  },
+];
+
 interface CommandPickerProps {
   /** The tab's section name (canonical or unknown-section raw name), filters the list by default, per Sec.3.2. */
   defaultSection?: string;
-  onPick: (name: string) => void;
+  onPick: (choice: PickerChoice) => void;
   onClose: () => void;
 }
 
@@ -36,16 +85,42 @@ export function CommandPicker({
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return lang.data.commands
+    const matches = (c: { name: string; description?: string }) =>
+      !q ||
+      c.name.toLowerCase().includes(q) ||
+      (c.description ?? "").toLowerCase().includes(q);
+    const byName = (a: { name: string }, b: { name: string }) =>
+      a.name.localeCompare(b.name);
+    const commands = lang.data.commands
       .filter((c) => showAll || c.section === defaultSection)
-      .filter(
-        (c) =>
-          !q ||
-          c.name.toLowerCase().includes(q) ||
-          (c.description ?? "").toLowerCase().includes(q),
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter(matches)
+      .sort(byName);
+    // Directives are legal in every section, not only the preamble (beta
+    // feedback 2026-09-17, "#const/#define should be available everywhere"),
+    // so they bypass the section filter and sit after the commands, where a
+    // tab's own vocabulary stays first. nonFunctional ones (#undefine,
+    // #include, engine ghosts per parser-design Sec.7) are never offered.
+    // Sec.3.6 badges them where they already exist, it doesn't hand them out.
+    const directives = lang.data.directives
+      .filter((d) => !d.nonFunctional)
+      .filter(matches)
+      .sort(byName);
+    return [...commands, ...directives];
   }, [lang, query, showAll, defaultSection]);
+  // Control flow is legal in every section, like directives, so it never
+  // takes the section filter. It sits first rather than last because there
+  // are two rows, they are structurally unlike everything below them, and
+  // "put this under a condition" is a question a person asks before they
+  // ask which command to add.
+  const controlFlow = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return CONTROL_FLOW.filter(
+      (c) =>
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q),
+    );
+  }, [query]);
 
   return (
     <div className={styles.panel} role="dialog" aria-label="Add a command">
@@ -84,15 +159,31 @@ export function CommandPicker({
       <div className={styles.listSlot}>
         <HelpTip id="breakdown.addCommand.entry">
           <div className={styles.list}>
-            {results.length === 0 && (
+            {results.length === 0 && controlFlow.length === 0 && (
               <p className={styles.empty}>No matching commands.</p>
             )}
+            {controlFlow.map((c) => (
+              <button
+                key={c.construct}
+                type="button"
+                className={`${styles.entry} ${styles.controlFlowEntry}`}
+                onClick={() =>
+                  onPick({ kind: "controlFlow", construct: c.construct })
+                }
+              >
+                <span className={styles.entryName}>{c.name}</span>
+                <span className={styles.entryDesc}>{c.description}</span>
+                {/* No verified chip. These are grammar, not reference
+                    data, so there is nothing a chip could be reporting on. */}
+                <span className={styles.chip}>control flow</span>
+              </button>
+            ))}
             {results.map((c) => (
               <button
                 key={c.name}
                 type="button"
                 className={styles.entry}
-                onClick={() => onPick(c.name)}
+                onClick={() => onPick({ kind: "command", name: c.name })}
               >
                 <span className={styles.entryName}>{c.name}</span>
                 <span className={styles.entryDesc}>{c.description ?? ""}</span>

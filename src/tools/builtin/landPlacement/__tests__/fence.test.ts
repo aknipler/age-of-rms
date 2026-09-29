@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { parseRms } from "../../../../parser/parser";
 import { commentOpenAliases } from "../../../../parser/validate";
+import { ASSIGN_TO_PLAYER_PER_REPEAT } from "../model";
 import { loadLanguage } from "../../../../parser/__tests__/testUtils";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -33,9 +34,9 @@ function modelWithLabel(label: string): AlpModel {
         terrain: { k: "name", name: "GRASS" },
         baseSize: { k: "num", v: 10 },
         baseElevation: { k: "num", v: 0 },
-        landPercent: { k: "num", v: 0 },
+        extent: { kind: "percent", value: { k: "num", v: 0 } },
         zone: { kind: "none" },
-        assignToPlayer: false,
+        assign: { kind: "none" },
       },
     ],
     randomParams: [],
@@ -122,7 +123,17 @@ describe("fence.ts — idempotence (Sec.10.4 #4)", () => {
 
 describe("fence.ts — byte-identity outside the fence (Sec.10.4 #1)", () => {
   const corpusDir = join(REPO_ROOT, "test-maps");
-  const corpusFiles = readdirSync(corpusDir).filter((f) => f.endsWith(".rms"));
+  // A corpus file that ALREADY carries a fence (a map saved from the tool,
+  // e.g. ALP_test.rms) cannot have one appended; buildFenceEdits replaces
+  // its fence in place, which is a different guarantee, pinned above.
+  const corpusFiles = readdirSync(corpusDir)
+    .filter((f) => f.endsWith(".rms"))
+    .filter(
+      (f) =>
+        locateFence(
+          parseRms(readFileSync(join(corpusDir, f), "utf8"), lang),
+        ) === null,
+    );
 
   it.each(corpusFiles)(
     "regenerating a fence appended to %s leaves the rest byte-identical",
@@ -189,5 +200,60 @@ describe("fence.ts — hazard 2: a label equal to a 69-valued constant must not 
     expect(afterToken).toBeDefined();
     expect(afterToken!.isTrivia).toBe(false);
     expect(readFenceModel(parsed)).toEqual(model);
+  });
+});
+
+describe("fence.ts — read-side upgrade of a pre-slice-1 role (role-attributes-escalation.md Sec.10 slice 1 item 4 rev 1)", () => {
+  // Written in the OLD shape by hand, because that is the only shape the
+  // bug can reach: a fence from a build that went out on 2026-09-15 carries
+  // `landPercent` and `assignToPlayer`, and a cast without this upgrade
+  // would crash the first emitRole on `role.extent === undefined`.
+  const legacyRole = {
+    id: "r1",
+    label: "Player",
+    terrain: { k: "name", name: "GRASS" },
+    baseSize: { k: "num", v: 10 },
+    baseElevation: { k: "num", v: 0 },
+    landPercent: { k: "num", v: 7 },
+    zone: { kind: "perRepeat", base: 1, step: 1 },
+    assignToPlayer: true,
+  };
+  const legacyAux = {
+    ...legacyRole,
+    id: "r2",
+    label: "Aux",
+    assignToPlayer: false,
+  };
+
+  function legacyFence(roles: unknown[]): string {
+    const json = JSON.stringify({
+      v: 1,
+      placements: [],
+      roles,
+      randomParams: [],
+      groups: [],
+    });
+    return `/* @alp v1 begin\n@alp-model ${json.replace(/ /g, "\\u0020")}\n*/\n/* @alp end */\n`;
+  }
+
+  it("lifts landPercent into extent and assignToPlayer into the AT_PLAYER per-repeat policy", () => {
+    const model = readFenceModel(
+      parseRms(legacyFence([legacyRole, legacyAux]), lang),
+    );
+    expect(model).not.toBeNull();
+    const [player, aux] = model!.roles;
+    expect(player.extent).toEqual({
+      kind: "percent",
+      value: { k: "num", v: 7 },
+    });
+    expect(player.assign).toEqual(ASSIGN_TO_PLAYER_PER_REPEAT);
+    expect(aux.assign).toEqual({ kind: "none" });
+    expect("landPercent" in player).toBe(false);
+    expect("assignToPlayer" in player).toBe(false);
+    // A current-shape role round-trips untouched (the upgrade is a no-op on it).
+    const current = modelWithLabel("Neutral B");
+    expect(readFenceModel(parseRms(renderInto(current), lang))).toEqual(
+      current,
+    );
   });
 });

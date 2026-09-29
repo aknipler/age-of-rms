@@ -12,21 +12,32 @@ import { reservedNamesForApply } from "../../applyEdits";
 import { NameAllocator } from "../../compiler/naming";
 import { emitAlpModel } from "../../emitModel";
 import type { AlpModel } from "../../fence";
-import type { Placement } from "../../model";
+import type { ChainTemplate, Placement } from "../../model";
 import { EMPTY_MODEL } from "../landPlacementModel";
 import {
   availableThetaPerCountOptions,
   buildPlacementTree,
   checkP4ForPanel,
+  defaultSelection,
   exprAsNumber,
   flattenPlacementTree,
+  formatExtentLabel,
   formatPercentWithTiles,
   numberToExpr,
   percentToTile,
+  resolveSelection,
+  shapeDisplayName,
   shapeGroupLandTotal,
+  shapeRoleIds,
   validThetaPerCountRange,
   wouldCreateCycle,
 } from "../viewModel";
+import {
+  addRing,
+  addRole,
+  addStandalonePlacement,
+  deleteRole,
+} from "../modelOps";
 
 function placement(id: string, parent: string): Placement {
   return {
@@ -90,6 +101,99 @@ describe("buildPlacementTree / flattenPlacementTree", () => {
   });
 });
 
+describe("defaultSelection / resolveSelection (Roles, Shapes and Lands sections)", () => {
+  // One role, one eight-member ring wearing it, one standalone land.
+  const { model: withRole, roleId } = addRole(EMPTY_MODEL);
+  const { model: withRing, groupId } = addRing(withRole, roleId);
+  const { model: full, id: standaloneId } = addStandalonePlacement(
+    withRing,
+    roleId,
+  );
+  const ring = full.groups.find((g) => g.id === groupId)!;
+
+  it("defaults to the first role, the top of the first section", () => {
+    expect(defaultSelection(full)).toEqual({ kind: "role", id: roleId });
+  });
+
+  it("falls back to the first shape, then the first land in tree order", () => {
+    expect(defaultSelection({ ...withRing, roles: [] })).toEqual({
+      kind: "shape",
+      id: groupId,
+    });
+    // A1 comes first in the array but nests under P1, so P1 is the top row.
+    const lands = modelWith([placement("A1", "P1"), placement("P1", "center")]);
+    expect(defaultSelection(lands)).toEqual({ kind: "land", id: "P1" });
+    expect(defaultSelection(EMPTY_MODEL)).toBeNull();
+  });
+
+  it("a role highlights every land wearing it and opens no shape gizmo", () => {
+    const r = resolveSelection(full, { kind: "role", id: roleId });
+    expect(r.role?.id).toBe(roleId);
+    expect(r.group).toBeUndefined();
+    expect(r.highlightIds.size).toBe(9);
+  });
+
+  it("a shape highlights its members and is the gizmo's group", () => {
+    const r = resolveSelection(full, { kind: "shape", id: groupId });
+    expect(r.group?.id).toBe(groupId);
+    expect(r.land).toBeUndefined();
+    expect([...r.highlightIds].sort()).toEqual([...ring.members].sort());
+  });
+
+  it("a land carries the shape it belongs to, and a standalone land none", () => {
+    const member = ring.members[0]!;
+    const inRing = resolveSelection(full, { kind: "land", id: member });
+    expect(inRing.land?.id).toBe(member);
+    expect(inRing.group?.id).toBe(groupId);
+    expect([...inRing.highlightIds]).toEqual([member]);
+    const alone = resolveSelection(full, { kind: "land", id: standaloneId });
+    expect(alone.group).toBeUndefined();
+  });
+
+  it("names a shape by its current kind and its id's number, never 'ring'", () => {
+    const n = /_(\d+)$/.exec(groupId)![1];
+    expect(shapeDisplayName(ring)).toBe(`Circle ${n}`);
+    expect(shapeDisplayName({ ...ring, kind: "square" })).toBe(`Square ${n}`);
+    // A hand-edited fence can carry an id with no number. Show it whole.
+    expect(shapeDisplayName({ ...ring, id: "outer", kind: "polygon" })).toBe(
+      "Polygon (outer)",
+    );
+  });
+
+  it("lists a shape's roles once each, from its slots and their chained lands", () => {
+    const chainLink = (role: string): ChainTemplate => ({
+      id: `c_${role}`,
+      role,
+      label: role,
+      frame: "radial",
+      offset: {
+        kind: "polar",
+        r: { k: "num", v: 5 },
+        theta: { k: "num", v: 0 },
+      },
+    });
+    const pattern = [
+      { id: "s1", role: "player", chain: [chainLink("gold")] },
+      { id: "s2", role: "neutral" },
+      { id: "s3", role: "player", chain: [chainLink("gold")] },
+    ];
+    expect(shapeRoleIds({ ...ring, pattern })).toEqual([
+      "player",
+      "gold",
+      "neutral",
+    ]);
+  });
+
+  it("reads a deleted target as nothing selected", () => {
+    const r = resolveSelection(deleteRole(full, roleId), {
+      kind: "role",
+      id: roleId,
+    });
+    expect(r.selection).toBeNull();
+    expect(r.highlightIds.size).toBe(0);
+  });
+});
+
 describe("wouldCreateCycle", () => {
   const model = modelWith([
     placement("P1", "center"),
@@ -132,14 +236,14 @@ describe("shapeGroupLandTotal", () => {
         repeats: 3,
         perPlayer: false,
       }),
-    ).toEqual({ count: 9, exact: true });
+    ).toEqual({ count: 9, points: 0, exact: true });
     expect(
       shapeGroupLandTotal({
         pattern: [{ id: "s1", role: "r" }],
         repeats: 8,
         perPlayer: false,
       }),
-    ).toEqual({ count: 8, exact: true });
+    ).toEqual({ count: 8, points: 0, exact: true });
   });
 
   it("is an upper bound for a perPlayer ring — the real count depends on the game's own player count", () => {
@@ -149,7 +253,7 @@ describe("shapeGroupLandTotal", () => {
         repeats: 8,
         perPlayer: true,
       }),
-    ).toEqual({ count: 8, exact: false });
+    ).toEqual({ count: 8, points: 0, exact: false });
   });
 });
 
@@ -208,6 +312,20 @@ describe("percentToTile / formatPercentWithTiles", () => {
   it("formats percent alongside the tile equivalent", () => {
     expect(formatPercentWithTiles(50, 200)).toBe("50% (100 tiles)");
     expect(formatPercentWithTiles(12.5, 200)).toBe("12.5% (25 tiles)");
+  });
+});
+
+describe("formatExtentLabel", () => {
+  it("shows the tile count for a percent, as a share of the map AREA, and the percent for a tile count", () => {
+    expect(formatExtentLabel("percent", 5, 200)).toBe("Land % (2000 tiles)");
+    expect(formatExtentLabel("percent", 100, 120)).toBe("Land % (14400 tiles)");
+    expect(formatExtentLabel("tiles", 2000, 200)).toBe("Tiles (5%)");
+    expect(formatExtentLabel("tiles", 600, 120)).toBe("Tiles (4.17%)");
+  });
+
+  it("falls back to the bare label with no value or no map size", () => {
+    expect(formatExtentLabel("percent", undefined, 200)).toBe("Land %");
+    expect(formatExtentLabel("tiles", 600, 0)).toBe("Tiles");
   });
 });
 

@@ -170,7 +170,14 @@ export function usePreviewResult(
         // successful `result` -- a future stalled-generation indicator
         // would hook in exactly here.
         const attempts = (retriesRef.current.get(request.id) ?? 0) + 1;
-        if (attempts > MAX_WATCHDOG_RETRIES) return;
+        if (attempts > MAX_WATCHDOG_RETRIES) {
+          // Nothing is in flight any more, so stop saying there is. Left
+          // true, the preview pane's "Generating..." label and the status
+          // bar's dimming would both stay on until the next edit, for a
+          // generation that has already been abandoned.
+          setPending(false);
+          return;
+        }
         retriesRef.current.set(request.id, attempts);
         sendRequestRef.current(request);
       }, WATCHDOG_MS);

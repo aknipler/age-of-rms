@@ -3,8 +3,11 @@ import type { IfNode } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { BlockList } from "../BlockList";
 import { ValueEditor } from "./ValueEditor";
-import { CommandPicker } from "../CommandPicker";
+import { CommandPicker, intentForPick } from "../CommandPicker";
 import { HelpTip } from "../../components/HelpTip";
+import { TrashIcon } from "../../components/TrashIcon";
+import { ProblemBadge } from "./ProblemBadge";
+import { diagnosticsWithin } from "../diagnosticsForSpan";
 import cardStyles from "./cards.module.css";
 import styles from "./ConditionalCard.module.css";
 
@@ -15,9 +18,16 @@ import styles from "./ConditionalCard.module.css";
 // use Sec.4.10; per-branch add-command opens the same CommandPicker as
 // SectionView, anchored `in: "branch"`.
 export function ConditionalCard({ node }: { node: IfNode }) {
-  const { tokens, applyEdit, requestFocus } = useBreakdownContext();
+  const { tokens, diagnostics, applyEdit, requestFocus } =
+    useBreakdownContext();
   const [pickerBranch, setPickerBranch] = useState<number | null>(null);
   const hasElse = node.branches.some((b) => tokens[b.keyword].text === "else");
+  // Sec.5's rule (see CommandCard.tsx): badges reuse the parser's own
+  // diagnostics via span containment, never Breakdown-invented validation.
+  // This card never wired that up, so a diagnostic on a conditional (e.g.
+  // an empty branch) had nowhere to surface in Breakdown at all (beta
+  // feedback 2026-09-18).
+  const cardDiagnostics = diagnosticsWithin(diagnostics, node.span);
 
   return (
     <div className={cardStyles.card}>
@@ -30,19 +40,30 @@ export function ConditionalCard({ node }: { node: IfNode }) {
             unclosed — finish in Code tab
           </span>
         )}
-        <HelpTip id="breakdown.conditionalCard.delete">
-          <button
-            type="button"
-            className={cardStyles.deleteButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              applyEdit({ kind: "removeNode", node });
-            }}
-            title="Delete this whole conditional"
-          >
-            trash
-          </button>
-        </HelpTip>
+        {/* .trailingSlot carries margin-left: auto ONCE, on the group,
+            not on the badge and the button separately. Two independent
+            auto margins split the leftover space between them instead of
+            collapsing it, which visibly separated the badge from the
+            delete button it should sit flush against (beta feedback
+            2026-09-18). */}
+        <span className={styles.trailingSlot}>
+          {cardDiagnostics.length > 0 && (
+            <ProblemBadge diagnostics={cardDiagnostics} />
+          )}
+          <HelpTip id="breakdown.conditionalCard.delete">
+            <button
+              type="button"
+              className={cardStyles.deleteButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                applyEdit({ kind: "removeNode", node });
+              }}
+              aria-label="Delete this whole conditional"
+            >
+              <TrashIcon />
+            </button>
+          </HelpTip>
+        </span>
       </div>
       {node.branches.map((branch, i) => {
         const isElse = tokens[branch.keyword].text === "else";
@@ -62,6 +83,7 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                 <ValueEditor
                   text={conditionText}
                   type="otherConstant"
+                  hint="a #define name"
                   anchorOffset={anchor}
                   helpId="breakdown.conditionalCard.condition"
                   onCommit={(value, restoreFocus) => {
@@ -87,7 +109,7 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                         branch: { parent: node, index: i },
                       });
                     }}
-                    title="Remove this branch"
+                    aria-label="Remove this branch"
                   >
                     −
                   </button>
@@ -107,6 +129,13 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                       ? tokens[node.endif].start
                       : undefined
                 }
+                // An empty branch is the drop target for "put this under
+                // the condition" (cardDrag.tsx), the same in:"branch"
+                // anchor the add-command button below uses.
+                emptyTarget={{
+                  in: "branch",
+                  branch: { parent: node, index: i },
+                }}
               />
             </div>
             <div className={styles.addWrapper}>
@@ -122,12 +151,13 @@ export function ConditionalCard({ node }: { node: IfNode }) {
               {pickerBranch === i && (
                 <CommandPicker
                   onClose={() => setPickerBranch(null)}
-                  onPick={(name) => {
-                    const result = applyEdit({
-                      kind: "addCommand",
-                      at: { in: "branch", branch: { parent: node, index: i } },
-                      name,
-                    });
+                  onPick={(choice) => {
+                    const result = applyEdit(
+                      intentForPick(choice, {
+                        in: "branch",
+                        branch: { parent: node, index: i },
+                      }),
+                    );
                     setPickerBranch(null);
                     if (result) requestFocus(result.caret);
                   }}

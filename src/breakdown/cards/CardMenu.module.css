@@ -1,0 +1,66 @@
+/* The card's right-click menu (CardMenu.tsx). Same surface, border and
+   shadow language as TitleBar's dropdown and HelpTip's popup, and a
+   z-index between them (TitleBar 910, CommandPicker 920, HelpTip 1200),
+   so a tip over a menu entry still paints on top of the menu. */
+.menu {
+  position: fixed;
+  min-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.2rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+  z-index: 930;
+}
+
+/* HelpTip wraps each entry in its own inline-block span, so the span, not
+   the button, is the flex child; the button fills it from the inside. */
+.menu > span {
+  display: block;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.entry:hover:not(:disabled),
+.entry:focus-visible {
+  background: var(--surface-hover);
+}
+
+.entry:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.key {
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+.separator {
+  height: 1px;
+  margin: 0.2rem 0.4rem;
+  background: var(--border-subtle);
+}

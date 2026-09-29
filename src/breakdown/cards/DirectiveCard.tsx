@@ -1,7 +1,8 @@
 import type { DirectiveNode } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
-import { maxSeverityWithin } from "../diagnosticsForSpan";
+import { diagnosticsWithin } from "../diagnosticsForSpan";
 import { HelpTip } from "../../components/HelpTip";
+import { TrashIcon } from "../../components/TrashIcon";
 import { AttributeValueEditor } from "./AttributeRow";
 import { ProblemBadge } from "./ProblemBadge";
 import cardStyles from "./cards.module.css";
@@ -18,7 +19,7 @@ import styles from "./DirectiveCard.module.css";
 export function DirectiveCard({ directive }: DirectiveCardProps) {
   const { tokens, diagnostics, applyEdit } = useBreakdownContext();
   const name = tokens[directive.hash].text;
-  const severity = maxSeverityWithin(diagnostics, directive.span);
+  const cardDiagnostics = diagnosticsWithin(diagnostics, directive.span);
   const known = directive.def !== undefined;
 
   return (
@@ -51,20 +52,31 @@ export function DirectiveCard({ directive }: DirectiveCardProps) {
         {!known && (
           <span className={cardStyles.unknownBadge}>unknown directive</span>
         )}
-        {severity && <ProblemBadge severity={severity} />}
-        <HelpTip id="breakdown.directiveCard.delete">
-          <button
-            type="button"
-            className={cardStyles.deleteButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              applyEdit({ kind: "removeNode", node: directive });
-            }}
-            title="Delete"
-          >
-            trash
-          </button>
-        </HelpTip>
+        {cardDiagnostics.length > 0 && (
+          <ProblemBadge diagnostics={cardDiagnostics} />
+        )}
+        {/* Pinned to the right edge regardless of how little content
+            precedes it, same reasoning as CommandCard.module.css's
+            .deleteSlot: the HelpTip it wraps renders an inline-block
+            wrapper with no flex properties of its own, so `flex`/`margin`
+            set on THIS span (a direct child of .header) is what actually
+            moves in the flex layout, not anything set inside HelpTip's
+            children. */}
+        <span className={styles.deleteSlot}>
+          <HelpTip id="breakdown.directiveCard.delete">
+            <button
+              type="button"
+              className={cardStyles.deleteButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                applyEdit({ kind: "removeNode", node: directive });
+              }}
+              aria-label="Delete"
+            >
+              <TrashIcon />
+            </button>
+          </HelpTip>
+        </span>
       </div>
     </div>
   );

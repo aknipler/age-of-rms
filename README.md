@@ -1,6 +1,6 @@
-# Age of RMS
+# Age of RMS ![Downloads](https://img.shields.io/github/downloads/aknipler/age-of-rms/total)
 
-A free, open-source desktop app that lowers the barrier of entry to Age of Empires II: Definitive Edition Random Map Script (RMS) creation, and aims to be a single home for community-made RMS tools.
+A free, open-source desktop app that lowers the barrier of entry to Age of Empires II: Definitive Edition Random Map Script (RMS) creation.
 
 ## What it does
 
@@ -9,7 +9,7 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 - **Advanced Live Diagnostics**, 48 diagnostic codes covering unclosed blocks, unknown names, argument problems and semantic mistakes the game reports no error for. Several catch lines that parse cleanly and then do nothing in game, such as an attribute whose required partner is missing, or a command sitting in a section the engine will not run it from.
 - **Approximate map preview**, a canvas render of what your script generates including a notes drawer listing every approximation and placement failure.
 - **Reference panel**, look up terrains, objects, commands and the attributes each command accepts, and read a list of every create_object object in your script beside how many of it the last generation actually placed.
-- **Advanced Tools**, a pane of built-in tools that analyze or edit your script: a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. Community-contributed external tools are planned for a later release.
+- **Advanced Tools**, a pane of built-in tools that analyze or edit your script: a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. There is no plugin system for external tools, and none is planned. See "Contributing" below for how to add one.
 
 Code is always the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
@@ -69,4 +69,4 @@ Age of Empires II © Microsoft Corporation. Age of RMS was created under Microso
 
 See `CONTRIBUTING.md`. This project is aimed at the AoE2 RMS community, including casual and first-time contributors.
 
-Thinking about writing your own Advanced Tools tool? External tools aren't pluggable yet, but the design spec is in the works, see [`docs/tool-author-preview.md`](docs/tool-author-preview.md).
+There is no external plugin system for Advanced Tools, and building one isn't planned — the existing built-in tools cover the current need, and a manifest-plus-process-plus-registry system is a lot of machinery to maintain for what would still be a handful of tools. Thinking about writing your own Advanced Tools tool anyway? It gets added as a built-in one, through a pull request, on the same contract the five tools already there use, see [`docs/tool-author-preview.md`](docs/tool-author-preview.md). Bigger ideas, including a plugin system if someone wants to build and maintain one, are welcome as a fork. Feature requests are always welcome as an issue, whether or not you plan to build it yourself.

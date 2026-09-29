@@ -7,6 +7,7 @@
 // that number belonged in 4a". This file is where those numbers live.
 
 import type { Expr } from "../../../../../tools-api/index";
+import { chainPerRepeat } from "../expand";
 import type { LanguageData } from "../../../../parser/language";
 import type { CommandNode, ParseResult, Span } from "../../../../parser/types";
 import { walkItems } from "../../../walkItems";
@@ -17,7 +18,8 @@ import {
   buildLandAttachmentExpectations,
   checkLandAttachment,
 } from "../landCommand";
-import type { Anchor, Placement, ShapeGroup } from "../model";
+import type { Anchor, LandRole, Placement, ShapeGroup } from "../model";
+import { groupForMember } from "./modelOps";
 
 // ---------------------------------------------------------------------------
 // The tree (Sec.8: "a tree mirroring the graph, indentation as the chain").
@@ -81,6 +83,134 @@ export function flattenPlacementTree(
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Selection. The right column lists roles, shapes and lands in three
+// sections, and any one item from any of them can be selected.
+// ---------------------------------------------------------------------------
+
+/**
+ * What the panel has selected. A discriminated union rather than a bare id
+ * string. Each kind opens a different editor, and the three kinds only
+ * happen to share one id namespace because `freshId` draws from all of them.
+ * `kind` is the discriminant, so a `switch (selection.kind)` narrows each
+ * branch and the compiler flags a branch that forgets a kind.
+ */
+export type PanelSelection =
+  | { kind: "role"; id: string }
+  | { kind: "shape"; id: string }
+  | { kind: "land"; id: string };
+
+/**
+ * The first item in the panel's lists, which a freshly opened panel selects
+ * so an editor is on screen from the start. The sections run Roles, Shapes,
+ * Lands, and that is the search order. Lands go by the tree's display order
+ * rather than the model's array order, so "first" is the top row on screen.
+ */
+export function defaultSelection(model: AlpModel): PanelSelection | null {
+  const role = model.roles[0];
+  if (role) return { kind: "role", id: role.id };
+  const group = model.groups[0];
+  if (group) return { kind: "shape", id: group.id };
+  const land = flattenPlacementTree(buildPlacementTree(model))[0];
+  return land ? { kind: "land", id: land.placement.id } : null;
+}
+
+export interface ResolvedSelection {
+  /** The live selection, or null when nothing is selected or its target has been deleted since. */
+  selection: PanelSelection | null;
+  role?: LandRole;
+  /** A selected shape, or the shape a selected land belongs to. The canvas draws this one's gizmo. */
+  group?: ShapeGroup;
+  land?: Placement;
+  /** The lands the canvas draws as selected. */
+  highlightIds: ReadonlySet<string>;
+}
+
+/**
+ * Looks the selection up in the current model. Resolved on read, not
+ * repaired in the store. Deleting the selected role, shape or land leaves a
+ * stale id behind, and this returns "nothing selected" for it. An effect
+ * that cleared the stale id instead would render one frame with it first.
+ */
+export function resolveSelection(
+  model: AlpModel,
+  selection: PanelSelection | null,
+): ResolvedSelection {
+  const none: ResolvedSelection = { selection: null, highlightIds: new Set() };
+  if (selection === null) return none;
+  switch (selection.kind) {
+    case "role": {
+      const role = model.roles.find((r) => r.id === selection.id);
+      if (!role) return none;
+      const wearing = model.placements.filter((p) => p.role === role.id);
+      return {
+        selection,
+        role,
+        highlightIds: new Set(wearing.map((p) => p.id)),
+      };
+    }
+    case "shape": {
+      const group = model.groups.find((g) => g.id === selection.id);
+      if (!group) return none;
+      return {
+        selection,
+        group,
+        highlightIds: new Set([
+          ...group.members,
+          ...(group.chainMembers ?? []),
+        ]),
+      };
+    }
+    case "land": {
+      const land = model.placements.find((p) => p.id === selection.id);
+      if (!land) return none;
+      return {
+        selection,
+        land,
+        group: groupForMember(model, land.id),
+        highlightIds: new Set([land.id]),
+      };
+    }
+  }
+}
+
+/** What each shape kind is called on screen. */
+export const SHAPE_KIND_LABELS: Record<ShapeGroup["kind"], string> = {
+  circle: "Circle",
+  line: "Line",
+  arc: "Arc",
+  square: "Square",
+  triangle: "Triangle",
+  polygon: "Polygon",
+};
+
+/**
+ * A shape's name on screen, its kind plus the number from its id, so
+ * `ring_2` reads "Square 2" once it is a square. The id itself stays
+ * `ring_N` for every shape, because `+ Shape` always starts a circle. It is
+ * saved in the fence, and the land labels and emitted `#const` names are
+ * built from it, so renaming it would rewrite a user's generated code. The
+ * number is what links a shape to its lands' labels (`ring_2_0_slot_3`).
+ */
+export function shapeDisplayName(group: ShapeGroup): string {
+  const kind = SHAPE_KIND_LABELS[group.kind];
+  const n = /_(\d+)$/.exec(group.id)?.[1];
+  return n === undefined ? `${kind} (${group.id})` : `${kind} ${n}`;
+}
+
+/** Every role a shape places, from its pattern slots and their chained lands, once each, in pattern order. A points-only slot has none to list. */
+export function shapeRoleIds(group: ShapeGroup): string[] {
+  const ids: string[] = [];
+  const add = (id: string | undefined) => {
+    if (id !== undefined && !ids.includes(id)) ids.push(id);
+  };
+  for (const slot of group.pattern) {
+    add(slot.role);
+    for (const link of slot.chain ?? []) add(link.role);
+  }
+  return ids;
+}
+
 /**
  * Would setting `placementId`'s parent to `candidateParent` create a cycle?
  * "center" is never a cycle (it is the tree's root, not a placement). A
@@ -113,7 +243,10 @@ export function wouldCreateCycle(
 // ---------------------------------------------------------------------------
 
 export interface ShapeGroupLandTotal {
+  /** Lands, meaning placements that emit a `create_land`. Members of a points-only slot are not lands and are counted in `points` instead. */
   count: number;
+  /** Members of points-only slots, emitted as coordinates only. */
+  points: number;
   /**
    * False for a `perPlayer` ring (per-player-escalation.md Sec.8.1): `count`
    * is `pattern.length * repeats`, and `repeats` is pinned to
@@ -127,8 +260,16 @@ export interface ShapeGroupLandTotal {
 export function shapeGroupLandTotal(
   group: Pick<ShapeGroup, "pattern" | "repeats" | "perPlayer">,
 ): ShapeGroupLandTotal {
+  // Members plus expanded chain children (Q12): every repeat produces one
+  // land per slot and one per template on any slot. A slot with no role
+  // produces a point instead of a land, and its templates still produce
+  // lands, since a template always carries its own role.
+  const pointSlots = group.pattern.filter((s) => s.role === undefined).length;
   return {
-    count: group.pattern.length * group.repeats,
+    count:
+      (group.pattern.length - pointSlots + chainPerRepeat(group.pattern)) *
+      group.repeats,
+    points: pointSlots * group.repeats,
     exact: !group.perPlayer,
   };
 }
@@ -187,6 +328,29 @@ export function percentToTile(pct: number, dim: number): number {
 
 export function formatPercentWithTiles(pct: number, dim: number): string {
   return `${formatPercent(pct)}% (${percentToTile(pct, dim)} tiles)`;
+}
+
+/**
+ * The Extent field's label, with the OTHER unit in brackets: `Land %
+ * (2000 tiles)` for a percent value, `Tiles (5%)` for a tile count.
+ * `land_percent` is a share of the map's AREA (guide: "percentage of the
+ * total map that the land should grow to cover"), so the conversion is
+ * against `dim * dim`, not the linear `percentToTile` a position uses: 5% of
+ * a 200x200 map is 2000 tiles. With no resolvable value (a symbolic
+ * formula, or no map size yet) the bare label comes back.
+ */
+export function formatExtentLabel(
+  kind: "percent" | "tiles",
+  value: number | undefined,
+  dim: number,
+): string {
+  const base = kind === "percent" ? "Land %" : "Tiles";
+  if (value === undefined || !(dim > 0)) return base;
+  const area = dim * dim;
+  if (kind === "percent") {
+    return `${base} (${Math.round((value / 100) * area)} tiles)`;
+  }
+  return `${base} (${formatPercent((value / area) * 100)}%)`;
 }
 
 function formatPercent(pct: number): string {

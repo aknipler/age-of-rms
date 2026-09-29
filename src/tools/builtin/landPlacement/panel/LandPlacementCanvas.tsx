@@ -45,13 +45,20 @@ import { resolveMapDim } from "../../../../preview/generator/mapDimensions";
 import { usePanelPreviewResultContext } from "../../../../PreviewResultContext";
 import { buildOverlayShapes } from "../overlay";
 import { evalClosed, num } from "../compiler/expr";
-import { applyDrag, dragPolar, symbolicDeclineReason } from "./dragMath";
+import type { Expr } from "../../../../../tools-api/index";
+import {
+  applyDrag,
+  dragPolar,
+  symbolicDeclineReason,
+  tryInvertFormulaCoordinate,
+} from "./dragMath";
 import { applyDefaultSnapping, snapToIntegerPercent } from "./snapping";
 import {
   buildSnapContext,
   computeArcSweepDrag,
   computeLineEndDrag,
   computeRimDragReparent,
+  perPlayerForcedLabels,
   evalGroupExpr,
   resolveGroupFrameContext,
   resolvedDegreesOf,
@@ -63,11 +70,7 @@ import {
   gizmoHandlePositions,
   lineEndHandlePosition,
 } from "./gizmoGeometry";
-import {
-  applyDragToPlacement,
-  applyGroupEdit,
-  groupForMember,
-} from "./modelOps";
+import { applyDragToPlacement, applyGroupEdit } from "./modelOps";
 import { percentToTile } from "./viewModel";
 import type { EmissionResult } from "../emitModel";
 import type { AlpModel } from "../fence";
@@ -102,7 +105,15 @@ export interface LandPlacementCanvasProps {
   parseResult: ParseResult;
   lang: LanguageData;
   mapSize: MapSize;
-  selectedId: string | null;
+  /** For the badge's "200×200, 6 players" line only; the panel's emission already takes its own copy. */
+  playerCount: number;
+  /** The selected land, which gets the rim handle. Null when a role or shape is selected instead. */
+  selectedLandId: string | null;
+  /** The shape whose gizmo handles are drawn. A selected shape, or the shape a selected land belongs to. */
+  selectedGroup: ShapeGroup | undefined;
+  /** Every land drawn as selected. A role highlights the lands wearing it and a shape its members. */
+  highlightIds: ReadonlySet<string>;
+  /** A click on a land selects it, and a click on empty map passes null. */
   onSelect: (id: string | null) => void;
   onModelChange: (updater: AlpModel | ((prev: AlpModel) => AlpModel)) => void;
 }
@@ -113,7 +124,10 @@ export function LandPlacementCanvas({
   parseResult,
   lang,
   mapSize,
-  selectedId,
+  playerCount,
+  selectedLandId,
+  selectedGroup,
+  highlightIds,
   onSelect,
   onModelChange,
 }: LandPlacementCanvasProps) {
@@ -123,9 +137,6 @@ export function LandPlacementCanvas({
   const { result: panelPreview } = usePanelPreviewResultContext();
 
   const mapDim = resolveMapDim(mapSize, lang.predefinedLabels ?? []) ?? 0;
-  const selectedGroup: ShapeGroup | undefined = selectedId
-    ? groupForMember(model, selectedId)
-    : undefined;
 
   const overlayShapes = useMemo(() => {
     if (!emission || !emission.ok || mapDim === 0) return [];
@@ -135,7 +146,7 @@ export function LandPlacementCanvas({
       resolved: emission.resolved,
       roleNamesByPlacement: emission.roleNamesByPlacement,
       mapDim,
-      selectedIds: selectedId ? new Set([selectedId]) : undefined,
+      selectedIds: highlightIds,
     });
     // Sec.7.3's gizmo handles ("a radius ring handle, a rotation handle"),
     // additive on top of Sec.3.4 layer 2's own shared builder: they are this
@@ -210,7 +221,7 @@ export function LandPlacementCanvas({
       }
     }
     return shapes;
-  }, [model, emission, mapDim, selectedId, selectedGroup]);
+  }, [model, emission, mapDim, highlightIds, selectedGroup]);
 
   const palette = useMemo(
     () => createTerrainPalette(terrainConstants, DEFAULT_TERRAIN_COLOR_MODE),
@@ -224,7 +235,10 @@ export function LandPlacementCanvas({
 
   const dim = snapshot?.dim ?? mapDim;
 
-  const circles = circlesFromOverlay(overlayShapes);
+  const circles = circlesFromOverlay(
+    overlayShapes,
+    handleGrabRadiusTiles(mapDim),
+  );
   const gizmoHandleCircles: TileCircle[] = useMemo(() => {
     if (!selectedGroup) return [];
     const r = handleGrabRadiusTiles(mapDim);
@@ -257,8 +271,10 @@ export function LandPlacementCanvas({
   // click to select, then grab a handle.
   const rimCircles = useMemo(
     () =>
-      selectedId === null ? [] : circles.filter((c) => c.id === selectedId),
-    [circles, selectedId],
+      selectedLandId === null
+        ? []
+        : circles.filter((c) => c.id === selectedLandId),
+    [circles, selectedLandId],
   );
 
   const hitTestDragStart = (tile: { x: number; y: number }): string | null => {
@@ -306,10 +322,10 @@ export function LandPlacementCanvas({
 
     // per-player-escalation.md Sec.7.7: a direct member of a perPlayer ring
     // carries a theta the emitter will override regardless of its own
-    // literal shape (slice-b-brief.md item 4) — dragMath.ts cannot see that
-    // from the Expr alone, so it is passed in here.
-    const isPerPlayerMember =
-      groupForMember(model, placementId)?.perPlayer === true;
+    // literal shape (slice-b-brief.md item 4), and on a line its radius too
+    // (any-kind escalation slice B). dragMath.ts cannot see that from the
+    // Expr alone, so it is passed in here.
+    const perPlayerForced = perPlayerForcedLabels(model, placementId);
     // shape-kinds-slice-b-brief.md item 2: the placement's own currently
     // resolved offset, so a symbolic r/theta or dx/dy can absorb the drag's
     // delta instead of declining outright.
@@ -320,7 +336,7 @@ export function LandPlacementCanvas({
       previousPosition,
       snapped,
       parentDegreesResolved,
-      isPerPlayerMember,
+      perPlayerForced,
       resolvedOffset,
     );
     if (!outcome.ok) {
@@ -388,29 +404,45 @@ export function LandPlacementCanvas({
     // the panel saying why, which is what this does: it still draws, it
     // declines to commit, and `dragDecline` renders the reason.
     const edited = isRadius ? group.radius : group.rotation;
-    if (evalClosed(edited) === undefined) {
-      setDragDecline(
-        symbolicDeclineReason([
-          isRadius ? "This ring's radius" : "This ring's rotation",
-        ]),
-      );
-      return;
-    }
-    setDragDecline(null);
     const dragged = dragPolar(
       frameCtx.anchor,
       percent,
       group.frame,
       frameCtx.parentDegreesResolved,
     );
+    const target = isRadius ? dragged.r : dragged.theta;
+    let next: Expr;
+    if (evalClosed(edited) !== undefined) {
+      next = num(target);
+    } else {
+      // A symbolic radius/rotation (a ring's default random rotation is
+      // `param + 0`) is not overwritten: the delta is ABSORBED into the
+      // constant term through the same inverter a member drag uses, so the
+      // ring keeps its draw and still turns under the handle. Only a shape
+      // the inverter cannot read (a bare reference, a product, SIN/COS)
+      // declines, in the same words as before (2026-09-22).
+      const current = evalGroupExpr(edited, emission);
+      const inverted =
+        current === undefined
+          ? null
+          : tryInvertFormulaCoordinate(edited, target - current);
+      if (inverted === null || !inverted.ok) {
+        setDragDecline(
+          symbolicDeclineReason([
+            isRadius ? "This ring's radius" : "This ring's rotation",
+          ]),
+        );
+        return;
+      }
+      next = inverted.expr;
+    }
+    setDragDecline(null);
     // Sec.7.3: "the radius handle keeps the bearing and takes the distance;
     // the rotation handle keeps the distance and takes the bearing" —
     // routed through applyGroupEdit -> reExpand(), NEVER a fresh
     // expandShapeGroup, per that item's own explicit instruction.
     onModelChange((m) => {
-      const patch = isRadius
-        ? { radius: num(dragged.r) }
-        : { rotation: num(dragged.theta) };
+      const patch = isRadius ? { radius: next } : { rotation: next };
       const result = applyGroupEdit(m, groupId, patch, parseResult, emission);
       return result ? result.model : m;
     });
@@ -511,6 +543,7 @@ export function LandPlacementCanvas({
         overlayShapes={overlayShapes}
         helpTipId="landPlacement.canvas"
         showApproximateBadge={base !== undefined}
+        playerCount={playerCount}
       />
       {dragDecline !== null && <p role="alert">{dragDecline}</p>}
     </>

@@ -61,9 +61,11 @@ describe("buildSectionTabs — absolute numbering", () => {
     expect(numbersOf(withGap)).toEqual(numbersOf(withoutGap));
   });
 
-  it("Header absent: canonical numbers still start at 1, not 0", () => {
+  it("empty preamble still gets a Header tab at 0, and canonical numbers start at 1", () => {
     const tabs = buildSectionTabs(script(0, [section("PLAYER_SETUP")]));
-    expect(tabs.find((t) => t.id === "header")).toBeUndefined();
+    const header = tabs.find((t) => t.id === "header");
+    expect(header?.number).toBe(0);
+    expect(header?.items).toEqual([]);
     expect(tabs.find((t) => t.id === "PLAYER_SETUP")?.number).toBe(1);
   });
 

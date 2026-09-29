@@ -435,7 +435,7 @@ describe("buildPrologue — an authored member theta survives into the prologue 
 
   it("a member whose stored theta happens to equal the even-default expansion is NOT treated as having a rule — the even default still varies with count", () => {
     const group = oneSlotRing(); // rotation num(0)
-    // evenAngleOffsetDegrees(1, 0, 1, 8) === 45, exactly what expand.ts would
+    // memberOffset(group, 1, 0, 8) is 0 + 45, exactly what expand.ts would
     // bake for this member with no authored slot.theta — structurally
     // identical to the default, so this must NOT freeze it at 45.
     const p2: Placement = {

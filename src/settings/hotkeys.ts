@@ -56,6 +56,9 @@ export type HotkeyId =
   | "previewReseed"
   | "breakdownDeleteCard"
   | "breakdownAddCommand"
+  | "breakdownMoveCardUp"
+  | "breakdownMoveCardDown"
+  | "breakdownDuplicateCard"
   | "codeToggleLayout";
 
 export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
@@ -67,6 +70,18 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   previewReseed: { key: "r", ctrl: true, shift: false, alt: false },
   breakdownDeleteCard: { key: "d", ctrl: true, shift: false, alt: true },
   breakdownAddCommand: { key: "a", ctrl: true, shift: false, alt: true },
+  // Alt+arrow is the move-line binding Monaco itself uses in the Code tab,
+  // so the same fingers move a card here and a line there (2026-09-18).
+  // The third exception to the one-handed rule, on the same grounds as
+  // Open. Duplicate stays in the Ctrl+Alt namespace on a left-hand key.
+  breakdownMoveCardUp: { key: "arrowup", ctrl: false, shift: false, alt: true },
+  breakdownMoveCardDown: {
+    key: "arrowdown",
+    ctrl: false,
+    shift: false,
+    alt: true,
+  },
+  breakdownDuplicateCard: { key: "c", ctrl: true, shift: false, alt: true },
   // Code tab's own namespace, Ctrl+Alt like Preview/Breakdown's. "F" for
   // Format, left-hand, unused elsewhere.
   codeToggleLayout: { key: "f", ctrl: true, shift: false, alt: true },
@@ -82,6 +97,9 @@ export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   previewReseed: "previewReseedHotkey",
   breakdownDeleteCard: "breakdownDeleteCardHotkey",
   breakdownAddCommand: "breakdownAddCommandHotkey",
+  breakdownMoveCardUp: "breakdownMoveCardUpHotkey",
+  breakdownMoveCardDown: "breakdownMoveCardDownHotkey",
+  breakdownDuplicateCard: "breakdownDuplicateCardHotkey",
   codeToggleLayout: "codeToggleLayoutHotkey",
 };
 

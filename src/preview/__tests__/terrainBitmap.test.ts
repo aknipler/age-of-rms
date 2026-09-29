@@ -124,4 +124,21 @@ describe("buildTerrainBitmap", () => {
       pixelAt(pixels, dim, 0, 0),
     );
   });
+
+  it("minimap mode ignores the layer, the owning terrain alone decides the colour", () => {
+    // The game's own minimap colours by terrain and never by layer (beta
+    // feedback 2026-09-17).
+    const minimap = createTerrainPalette(
+      (gameConstantsRaw as unknown as { constants: TerrainConstant[] })
+        .constants,
+      "minimap",
+    );
+    const dim = 2;
+    const layer = new Uint16Array(dim * dim).fill(NO_LAYER);
+    layer[3] = WATER;
+    const { pixels } = buildTerrainBitmap(snapshot(dim, { layer }), minimap);
+    expect(pixelAt(pixels, dim, 1, 1)).toMatchObject(
+      pixelAt(pixels, dim, 0, 0),
+    );
+  });
 });

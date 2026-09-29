@@ -23,9 +23,16 @@ import type {
   Span,
 } from "../../../parser/types";
 import { loadLanguage, REPO_ROOT } from "../../../parser/__tests__/testUtils";
-import { NUMERIC_ARGUMENT_TYPES } from "../../../parser/language";
+import {
+  CONSTANT_ARGUMENT_TYPES,
+  NUMERIC_ARGUMENT_TYPES,
+} from "../../../parser/language";
 import { applyEdit, computeEdit } from "../computeEdit";
-import { PatchError, type EditIntent } from "../intents";
+import {
+  PatchError,
+  type EditIntent,
+  type RearrangeableNode,
+} from "../intents";
 import { astDiff, diffOptionsFor } from "./astDiff";
 import { extractComments } from "../../comments";
 
@@ -66,6 +73,13 @@ interface Pools {
   // tokenizes as two separate markers to begin with, see computeEdit.ts's
   // addComment case) would give editComment an inverted span.
   comments: Span[];
+  // Attributes the source leaves short of their declared arguments, the
+  // target of appendArg (the 2026-09-17 bare-insert amendment's other half).
+  shortAttrs: AttributeNode[];
+  // The cards a person can duplicate (2026-09-18, intents.ts's
+  // RearrangeableNode), commands, directives and CLOSED conditionals at
+  // any depth. moveNode's own two-edit gate lives in rearrange.property.test.ts.
+  rearrangeables: RearrangeableNode[];
 }
 
 /** True when this file offers the generator nothing to do (see the assertion at the end). */
@@ -75,7 +89,8 @@ function isInert(p: Pools): boolean {
     p.removables.length === 0 &&
     p.closedBlocks.length === 0 &&
     p.sections.length === 0 &&
-    p.comments.length === 0
+    p.comments.length === 0 &&
+    p.rearrangeables.length === 0
   );
 }
 
@@ -89,9 +104,19 @@ function harvest(r: ParseResult): Pools {
     closedBlocks: [],
     sections: [],
     comments,
+    shortAttrs: [],
+    rearrangeables: [],
   };
   const visitItems = (items: Item[]) => {
     for (const item of items) {
+      if (
+        item.kind === "directive" ||
+        (item.kind === "command" &&
+          (item.block === undefined || item.block.close !== undefined)) ||
+        (item.kind === "if" && item.endif !== undefined) ||
+        (item.kind === "random" && item.end !== undefined)
+      )
+        pools.rearrangeables.push(item);
       if (
         item.kind === "command" ||
         item.kind === "attribute" ||
@@ -103,6 +128,12 @@ function harvest(r: ParseResult): Pools {
         // surface (spec Sec.3.1/Sec.3.6), with zero property coverage, and made maps whose
         // only content is directives generate no intents at all (the EM_* stubs below).
         pools.removables.push(item);
+        if (
+          item.kind === "attribute" &&
+          item.def?.arguments &&
+          item.args.length < item.def.arguments.length
+        )
+          pools.shortAttrs.push(item);
         for (const arg of item.args) {
           const tok = r.tokens[arg.firstToken];
           if (
@@ -162,6 +193,13 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
   // comment to replace the inner span of.
   if (pools.removables.length) kinds.push("addComment");
   if (pools.comments.length) kinds.push("editComment");
+  if (pools.shortAttrs.length) kinds.push("appendArg");
+  // 2026-09-18, the rearranging work. `before` mirrors `after` on the same
+  // anchor pool; duplicate and the control-flow skeletons take the
+  // rearrangeable pool, which is what the card menu and picker offer.
+  if (pools.removables.length) kinds.push("addCmdBefore");
+  if (pools.rearrangeables.length) kinds.push("duplicate");
+  if (pools.rearrangeables.length) kinds.push("addControlFlow");
   if (kinds.length === 0) return undefined;
   switch (pick(kinds)) {
     case "set": {
@@ -179,7 +217,21 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
         lang.attributesByName.has(n),
       );
       if (candidates.length === 0) return undefined;
-      return { kind: "addAttribute", target: block, name: pick(candidates) };
+      const name = pick(candidates);
+      // Half the constant-slot inserts go bare, the way AttributeRow now
+      // issues them; the other half keep exercising the placeholder path.
+      const firstType = lang.attributesByName.get(name)?.arguments?.[0]?.type;
+      const bare =
+        firstType !== undefined &&
+        CONSTANT_ARGUMENT_TYPES.has(firstType) &&
+        rand() < 0.5;
+      return { kind: "addAttribute", target: block, name, bare };
+    }
+    case "appendArg": {
+      const node = pick(pools.shortAttrs);
+      const def = node.def!.arguments![node.args.length];
+      const value = NUMERIC_ARGUMENT_TYPES.has(def.type) ? 3 : "FOO";
+      return { kind: "appendArg", node, value };
     }
     case "addCmdAfter": {
       const anchor = pick(pools.removables);
@@ -193,6 +245,24 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
     case "addComment": {
       const anchor = pick(pools.removables);
       return { kind: "addComment", at: { after: anchor } };
+    }
+    case "addCmdBefore": {
+      const anchor = pick(pools.removables);
+      return {
+        kind: "addCommand",
+        at: { before: anchor },
+        name: pick(langData.commands).name,
+      };
+    }
+    case "duplicate":
+      return { kind: "duplicateNode", node: pick(pools.rearrangeables) };
+    case "addControlFlow": {
+      const anchor = pick(pools.rearrangeables);
+      return {
+        kind: "addControlFlow",
+        at: rand() < 0.5 ? { after: anchor } : { before: anchor },
+        construct: rand() < 0.5 ? "if" : "random",
+      };
     }
     case "editComment": {
       const span = pick(pools.comments);

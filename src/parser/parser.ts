@@ -81,6 +81,13 @@ class Parser {
   readonly diagnostics: Diagnostic[];
   readonly lang: LanguageIndex;
   readonly maxNesting: number;
+  /**
+   * Names the engine defines before the script's first line (the
+   * `#const`s in random_map.def and its includes), handed in by the caller
+   * from game-constants.json. Empty by default, so a caller that passes
+   * nothing sees the old behaviour. See isDefinedSymbol.
+   */
+  readonly builtinConstants: ReadonlySet<string>;
 
   /** Indices (into `tokens`) of non-trivia tokens, the parse stream. */
   readonly nt: number[];
@@ -109,6 +116,7 @@ class Parser {
     this.source = source;
     this.lang = buildLanguageIndex(langData);
     this.maxNesting = opts.maxNestingDepth ?? DEFAULT_MAX_NESTING;
+    this.builtinConstants = opts.builtinConstants ?? new Set();
 
     const lex = tokenize(source, {
       nestedComments: opts.nestedComments,
@@ -1261,6 +1269,11 @@ class Parser {
    * (CLAUDE.md: vocabulary is data-driven).
    */
   private isDefinedSymbol(name: string): boolean {
+    // A built-in is defined above every line of every script, so the "seen
+    // so far" rule above holds for it trivially. random_map.def:55 is
+    // `#const FOREST 10`, and `effect_amount ... ATTR_FOUNDATION_TERRAIN
+    // FOREST` drew "isn't defined in this file" until this line (2026-09-28).
+    if (this.builtinConstants.has(name)) return true;
     for (const symbol of this.symbols) {
       if (symbol.name === name) return true;
     }

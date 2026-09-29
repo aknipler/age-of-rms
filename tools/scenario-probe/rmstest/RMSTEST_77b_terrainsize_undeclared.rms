@@ -1,0 +1,79 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 3
+    number_of_tiles 150
+    zone 2
+    land_position 15 50
+  }
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 3
+    number_of_tiles 150
+    zone 3
+    land_position 85 50
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  create_connect_all_lands
+  {
+    replace_terrain GRASS ROAD
+  }
+
+/*
+================================================================================
+RMSTEST_77b - control/twin for RMSTEST_77a. Identical map, identical
+command, with the "terrain_size GRASS 1 0" line removed entirely so the
+path is painted under whatever the engine's OWN undeclared default is,
+rather than the value this project assumes that default equals.
+Feeds: docs/preview-design.md Sec.6.5, same item as 77a.
+
+Byte-for-byte the same two lands, same positions, same zones as 77a. The
+only difference is the missing terrain_size line - GRASS is still declared
+replaceable, so a path still paints ROAD, just under whatever radius and
+variance the engine applies when the script itself says nothing.
+
+READING THE PAIR TOGETHER
+  77a and 77b MATCH (both clean, one patch each; or both fragmented the
+    same way) -> the assumed default (radius 1, variance 0) is confirmed,
+    since declaring it explicitly changes nothing.
+  77a is CLEAN and 77b is FRAGMENTED -> the undeclared default carries
+    real variance greater than 0 that an explicit "1 0" declaration does
+    not reproduce. Sec.6.5's doc-stated default is wrong and needs a
+    measured variance value in its place - re-run 77b at increasing
+    declared variance (1, 2, 3...) until the fragmentation rate matches,
+    which pins the true constant.
+  77a is ALSO fragmented -> see 77a's own header; the fragmentation isn't
+    about terrain_size's variance at all, and this pair has ruled out the
+    hypothesis it was built to test rather than confirmed it.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. THREE RUNS, matching 77a.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches ROAD
+  Same read as 77a: patch count, area, circularity. Put the two result
+  tables side by side before concluding anything.
+================================================================================
+*/

@@ -31,6 +31,10 @@ Thanks for your interest — this project is built for the AoE2 Random Map Scrip
 
 `reference/data/` holds three kinds of versioned JSON, each with a different maintenance model — see `PLAN.md` "Reference DB approach" for details. If you're adding or correcting a command/attribute/constant, that's a normal PR; if you're not fully sure an entry is correct, mark it `"verified": false` so a human can double check.
 
+## Adding a tool
+
+Advanced Tools has no external plugin system, and none is planned — see `docs/tool-author-preview.md` for the contract and why. A new tool is a normal PR adding a built-in to `src/tools/builtin/`. If you want something bigger, such as a plugin system of your own, forking the project is the way to do that; the maintainer isn't building one, but a fork is free to.
+
 ## Code of conduct
 
 Be respectful. This is a hobby/community project — assume good faith, and remember most contributors are learning alongside the maintainer.

@@ -141,10 +141,15 @@ export function tryInvertFormulaCoordinate(
   if (expr.k === "num") {
     return { ok: true, expr: num(expr.v + delta) };
   }
-  if (expr.k === "sym") {
+  // A `param` (a hoisted RandomParam, e.g. a ring's default random
+  // rotation) is an anchor reference exactly like a `sym`: the drag adjusts
+  // the constant beside it and leaves the draw alone (2026-09-22).
+  const isRef = (e: Expr): boolean => e.k === "sym" || e.k === "param";
+  if (isRef(expr)) {
+    const label = expr.k === "sym" ? expr.name : "the random parameter";
     return {
       ok: false,
-      reason: `"${expr.name}" alone has no constant term for the drag to adjust — give it a "+ N" to make it draggable.`,
+      reason: `"${label}" alone has no constant term for the drag to adjust — give it a "+ N" to make it draggable.`,
     };
   }
   if (expr.k === "bin" && (expr.op === "+" || expr.op === "-")) {
@@ -152,19 +157,19 @@ export function tryInvertFormulaCoordinate(
       literal.k === "num" ? num(literal.v + sign * delta) : null;
 
     if (expr.op === "+") {
-      if (expr.l.k === "num" && expr.r.k === "sym") {
+      if (expr.l.k === "num" && isRef(expr.r)) {
         const adjusted = adjustLiteral(expr.l, 1);
         return adjusted
           ? { ok: true, expr: bin("+", adjusted, expr.r) }
           : declineNonLiteral();
       }
-      if (expr.r.k === "num" && expr.l.k === "sym") {
+      if (expr.r.k === "num" && isRef(expr.l)) {
         const adjusted = adjustLiteral(expr.r, 1);
         return adjusted
           ? { ok: true, expr: bin("+", expr.l, adjusted) }
           : declineNonLiteral();
       }
-    } else if (expr.l.k === "sym" && expr.r.k === "num") {
+    } else if (isRef(expr.l) && expr.r.k === "num") {
       // sym - num: the drag SUBTRACTS from the position, so it ADDS to what's being subtracted... i.e. increasing the position means DECREASING this literal.
       const adjusted = adjustLiteral(expr.r, -1);
       return adjusted
@@ -272,6 +277,10 @@ export function symbolicDeclineReason(labels: readonly string[]): string {
 // The dispatcher a canvas handler actually calls.
 // ---------------------------------------------------------------------------
 
+/** A polar offset's two fields, in the order a decline names them. */
+export type PolarLabel = "Radius" | "Angle";
+const POLAR_LABELS: readonly PolarLabel[] = ["Radius", "Angle"];
+
 export type DragOutcome =
   { ok: true; placement: Placement } | { ok: false; reason: string };
 
@@ -299,7 +308,7 @@ export type ResolvedOffsetComponents =
  * (`EmissionOk.quantities`/`resolved`, per-node). This module has no notion
  * of a whole model or emission, only the geometry of one drag.
  * `parentDegreesResolved` is `polar`'s own extra input, see `dragPolar`.
- * `isPerPlayerMember`, per-player-escalation.md Sec.7.7/8.2: a member of a
+ * `perPlayerForced`, per-player-escalation.md Sec.7.7/8.2: a member of a
  * `perPlayer` `ShapeGroup` has its theta unconditionally replaced by a `sym`
  * reference to a prologue constant at emission time (emitModel.ts), for
  * EVERY member, whether or not it carries an authored rule (slice A already
@@ -313,6 +322,12 @@ export type ResolvedOffsetComponents =
  * which is why the caller passes this rather than this module trying to
  * infer it from the Expr shape alone (it cannot: the shape is identical to a
  * perfectly draggable literal ring member's).
+ *
+ * A list of labels rather than a boolean since the any-kind escalation's
+ * slice B (Sec.6), because a per player line member's radius is replaced by
+ * a prologue RAD cell the same way, so its decline names Radius too. The
+ * caller passes `["Angle"]` for a circle or an arc member and
+ * `["Radius", "Angle"]` where the kind's radius moves with the count.
  */
 export function applyDrag(
   placement: Placement,
@@ -320,16 +335,20 @@ export function applyDrag(
   previousPosition: PercentPoint,
   droppedAt: PercentPoint,
   parentDegreesResolved: number | undefined,
-  isPerPlayerMember = false,
+  perPlayerForced: readonly PolarLabel[] = [],
   resolvedOffset?: ResolvedOffsetComponents,
 ): DragOutcome {
   if (placement.offset.kind === "polar") {
+    // Field order, whatever order the caller listed them in, so the message
+    // always reads "Radius and Angle".
+    const forced = POLAR_LABELS.filter((l) => perPlayerForced.includes(l));
     const symbolic = symbolicComponents([
       ["Radius", placement.offset.r],
       ["Angle", placement.offset.theta],
     ]);
-    if (isPerPlayerMember && !symbolic.includes("Angle"))
-      symbolic.push("Angle");
+    const declined = POLAR_LABELS.filter(
+      (l) => symbolic.includes(l) || forced.includes(l),
+    );
 
     const target = dragPolar(
       anchor,
@@ -337,7 +356,7 @@ export function applyDrag(
       placement.frame,
       parentDegreesResolved,
     );
-    if (symbolic.length === 0) {
+    if (declined.length === 0) {
       return {
         ok: true,
         placement: {
@@ -347,7 +366,7 @@ export function applyDrag(
       };
     }
     if (resolvedOffset?.kind !== "polar")
-      return { ok: false, reason: symbolicDeclineReason(symbolic) };
+      return { ok: false, reason: symbolicDeclineReason(declined) };
 
     // Item 2's absorb path (escalation §6). Both components run through the
     // SAME inverter a numeric-literal drag already degenerates to (a bare
@@ -357,24 +376,30 @@ export function applyDrag(
     // and force-declined BEFORE any invert is attempted, never after
     // (hazard 5): a perPlayer member's theta is discarded wholesale by the
     // emitter regardless of its own shape (Sec.8.2), so absorbing a delta
-    // into it would report success and change nothing on the map.
-    const rResult = tryInvertFormulaCoordinate(
-      placement.offset.r,
-      target.r - resolvedOffset.r,
-    );
-    const thetaResult: InvertResult = isPerPlayerMember
-      ? { ok: false, reason: symbolicDeclineReason(["Angle"]) }
+    // into it would report success and change nothing on the map. The same
+    // holds for a forced Radius.
+    const FORCED: InvertResult = { ok: false, reason: "" };
+    const rResult = forced.includes("Radius")
+      ? FORCED
+      : tryInvertFormulaCoordinate(
+          placement.offset.r,
+          target.r - resolvedOffset.r,
+        );
+    const thetaResult: InvertResult = forced.includes("Angle")
+      ? FORCED
       : tryInvertFormulaCoordinate(
           placement.offset.theta,
           target.theta - resolvedOffset.theta,
         );
 
+    // An invert failure is named with its field, and the forced labels share
+    // one sentence, so a line member reads "Radius and Angle are formulas".
     const reasons: string[] = [];
-    if (!rResult.ok) reasons.push(`Radius: ${rResult.reason}`);
-    if (!thetaResult.ok)
-      reasons.push(
-        isPerPlayerMember ? thetaResult.reason : `Angle: ${thetaResult.reason}`,
-      );
+    if (!rResult.ok && !forced.includes("Radius"))
+      reasons.push(`Radius: ${rResult.reason}`);
+    if (forced.length > 0) reasons.push(symbolicDeclineReason(forced));
+    if (!thetaResult.ok && !forced.includes("Angle"))
+      reasons.push(`Angle: ${thetaResult.reason}`);
     if (reasons.length > 0) return { ok: false, reason: reasons.join("; ") };
 
     return {

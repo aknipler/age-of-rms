@@ -2,6 +2,7 @@
 // own build-log entries, closed this slice.
 
 import { describe, expect, it } from "vitest";
+import { ASSIGN_TO_PLAYER_PER_REPEAT } from "../model";
 import { num, param, sym } from "../compiler/expr";
 import { NameAllocator } from "../compiler/naming";
 import {
@@ -154,9 +155,9 @@ describe("computeOwnerPlayers", () => {
       terrain: { k: "name", name: "GRASS" },
       baseSize: num(10),
       baseElevation: num(0),
-      landPercent: num(5),
+      extent: { kind: "percent", value: num(5) },
       zone: { kind: "none" },
-      assignToPlayer: true,
+      assign: ASSIGN_TO_PLAYER_PER_REPEAT,
     };
   }
 
@@ -187,6 +188,43 @@ describe("computeOwnerPlayers", () => {
     );
     expect(owners.get("P1")).toBe(1);
     expect(owners.get("P2")).toBe(2);
+  });
+
+  it("a fixed AT_PLAYER number owns when closed; AT_COLOR / AT_TEAM confer no owner (role-attributes-escalation.md Sec.4.2)", () => {
+    const one: Placement = {
+      id: "L",
+      parent: "center",
+      frame: "radial",
+      label: "L",
+      role: "r",
+      offset: { kind: "polar", r: num(0), theta: num(0) },
+    };
+    const owner = (assign: LandRole["assign"]) =>
+      computeOwnerPlayers(
+        [one],
+        new Map([["r", { ...playerRole(), assign }]]),
+      ).get("L");
+    expect(
+      owner({ kind: "player", number: { kind: "fixed", value: num(3) } }),
+    ).toBe(3);
+    expect(
+      owner({
+        kind: "assignTo",
+        target: "AT_PLAYER",
+        number: { kind: "fixed", value: { k: "sym", name: "WHO" } },
+        mode: 0,
+        flags: 0,
+      }),
+    ).toBeUndefined(); // symbolic: the tool cannot see which player
+    expect(
+      owner({
+        kind: "assignTo",
+        target: "AT_TEAM",
+        number: { kind: "fixed", value: num(1) },
+        mode: 0,
+        flags: 0,
+      }),
+    ).toBeUndefined();
   });
 
   it("a chained child inherits its ancestor's owner", () => {

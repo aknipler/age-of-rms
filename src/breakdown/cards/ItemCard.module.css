@@ -17,3 +17,37 @@
 .ignoredByPreview {
   opacity: 0.45;
 }
+
+/* Dragging (cardDrag.tsx). The card being moved stays in place, dimmed,
+   and the destination shows as a line on the edge of the card it will
+   land beside. A line rather than a gap that opens up, since a gap would
+   reflow every card below it on each pointer move. The line is drawn on
+   a pseudo-element of the wrapper so no card component has to know about
+   dragging at all. */
+.selectable {
+  position: relative;
+}
+
+.dragSource {
+  opacity: 0.4;
+}
+
+.dropBefore::before,
+.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.dropBefore::before {
+  top: -0.3rem;
+}
+
+.dropAfter::after {
+  bottom: -0.3rem;
+}

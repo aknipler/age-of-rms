@@ -8,6 +8,7 @@ import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { parseRms } from "../parser/parser";
 import {
+  builtinConstantNames,
   commentOpenAliases,
   validate,
   type GameConstantsForValidate,
@@ -35,6 +36,12 @@ const validateRefDb: ValidateReferenceDb = {
 // Computed ONCE at module scope, not per parse. The worker is long-lived and
 // this walks the whole constants table to find the two names in it valued 69.
 const COMMENT_OPEN_ALIASES = commentOpenAliases(
+  (gameConstantsRaw as unknown as GameConstantsForValidate).constants,
+);
+// Also once. Lets `effect_amount ... ATTR_FOUNDATION_TERRAIN FOREST` resolve
+// FOREST the way the engine does, from random_map.def, instead of warning
+// that the file never defines it.
+const BUILTIN_CONSTANTS = builtinConstantNames(
   (gameConstantsRaw as unknown as GameConstantsForValidate).constants,
 );
 
@@ -71,6 +78,7 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   // here rather than inside the parser, which holds no RMS vocabulary.
   const result = parseRms(source, languageData, {
     commentOpenAliases: COMMENT_OPEN_ALIASES,
+    builtinConstants: BUILTIN_CONSTANTS,
   });
   // The semantic pass (docs/parser-design.md Sec.8) runs here, in the worker,
   // for the same reason the parse does: it's another whole-file walk, and the

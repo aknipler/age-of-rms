@@ -1,5 +1,14 @@
 # External Tools — Design (Phase 6 / M6, rev 1, draft for review)
 
+**WITHDRAWN 2026-09-28: this will not be built.** The project doesn't have enough
+tools to justify a manifest+process+trust-warning+registry system over just
+taking PRs against the built-in tool set — see CREATION_PLAN.md's Phase 6
+entry and `docs/tool-author-preview.md` for the decision as recorded there.
+Kept here for the design reasoning, not as a plan. `docs/source-languages-design.md`
+inherited this document's extension machinery for language packs; that
+dependency is now unmet, so that proposal is stalled too until someone
+designs its own path or this decision is revisited.
+
 **Status: proposal, nothing implemented.** This is CREATION_PLAN.md's Phase 6 brief — _"manifest schema + process spawning implementing the 5.1 contract; unvetted-tool warning dialog; curated registry"_ — worked out against the contract that has been running five built-in tools since 2026-08-15. It is written after `docs/tools-api-design.md` (rev 10) and `docs/source-languages-design.md` (rev 1) and reuses both wherever the shape is the same. Where it contradicts either, Sec.17 says so explicitly rather than leaving the reader to notice.
 
 **Every repo claim here is dated 2026-08-30 — re-derive before acting on it.** `docs/tools-api-design.md` Sec.10.2's standing instruction applies to this document, for the same measured reason: the half-life of an undated claim in this repo is about a week.

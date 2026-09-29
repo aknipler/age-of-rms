@@ -174,6 +174,20 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
       const d = r.diagnostics.find((x) => x.code === "RMS0202");
       expect(d?.severity).toBe("info");
     });
+
+    // 2026-09-28. random_map.def:55 is `#const FOREST 10`, so every script
+    // sees FOREST defined above its first line.
+    it("a built-in constant passed in builtinConstants draws NO diagnostic", () => {
+      const src =
+        "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE 1639 ATTR_FOUNDATION_TERRAIN FOREST";
+      const withBuiltins = parseRms(src, lang, {
+        builtinConstants: new Set(["FOREST"]),
+      });
+      expect(codes(withBuiltins)).not.toContain("RMS0202");
+      // The control, same text with no builtins, still warns, so the
+      // option is what silenced it and not the slot's type.
+      expect(codes(parse(src))).toContain("RMS0202");
+    });
   });
 
   // #const's value slot is typed otherConstant, not integer. Guide L3295

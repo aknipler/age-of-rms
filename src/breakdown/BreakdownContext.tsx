@@ -8,7 +8,13 @@ import type {
 } from "../parser/types";
 import type { LanguageIndex } from "../parser/language";
 import type { GameConstantsData } from "./gameConstants";
-import type { EditIntent, EditResult } from "./patch/intents";
+import type {
+  DraggableCard,
+  EditIntent,
+  EditResult,
+  InsertTarget,
+  RearrangeableNode,
+} from "./patch/intents";
 
 export interface BreakdownContextValue {
   tokens: readonly Token[];
@@ -30,6 +36,27 @@ export interface BreakdownContextValue {
   isExpanded: (span: Span) => boolean;
   /** Sec.6.3, toggle a card's expansion, anchored at its span.start at the moment of the call. */
   toggleExpanded: (span: Span) => void;
+  /** Expand a card without toggling (a summary-line click on an already open card must not close it). No-op when already expanded. */
+  expandCard: (span: Span) => void;
+  /**
+   * The collapse strip (beta feedback 2026-09-17). Collapses the card,
+   * scrolls the list so the collapsed card sits at the top, and remembers
+   * where the viewport was inside the card so `toggleExpanded` on the
+   * same card, with no scrolling in between, puts it back there. See
+   * scrollMemory.ts for the arithmetic.
+   */
+  collapseFromStrip: (span: Span) => void;
+  /**
+   * After an edit that inserted something (Add Command, Add Comment, Add
+   * Template), open the card the new source offset lands in and scroll it
+   * into view. Queued behind the same pending-shift entry as the edit so
+   * the offset is only ever read against the source it belongs to (the
+   * BUG-001 rule, one level up). `scroll` false opens without scrolling,
+   * the settings.breakdown.scrollToAddedCard switch. `expand` false only
+   * scrolls, for a new comment (CommentCard's anchor sense is inverted,
+   * an anchor there means closed, and a new comment is open already).
+   */
+  revealAfterEdit: (offset: number, scroll: boolean, expand?: boolean) => void;
   /**
    * Sec.6.3/Sec.4.11, after an explicit action or an Enter-commit, request
    * focus land on the editor whose current span contains `offset` once
@@ -69,6 +96,19 @@ export interface BreakdownContextValue {
    * exactly like `parseResult` does for AST-driven recomputes.
    */
   expandedAnchors: ReadonlySet<number>;
+  /**
+   * Move a card to an InsertTarget (2026-09-18, breakdown-design Sec.4.12),
+   * keeping it selected and as open or closed as it was. The drag layer
+   * (cardDrag.tsx) and the card menu (CardMenu.tsx) both end here rather
+   * than calling applyEdit themselves, so the post-move reveal and
+   * re-selection live in one place. Widened to DraggableCard, not just
+   * RearrangeableNode, so a dragged comment (CommentCard.tsx) ends up here
+   * too — the card menu never constructs a CommentRef, only the drag layer
+   * does.
+   */
+  moveItem: (item: DraggableCard, to: InsertTarget) => void;
+  /** Copy a card directly below itself. The copy takes the selection. */
+  duplicateItem: (item: RearrangeableNode) => void;
 }
 
 const BreakdownCtx = createContext<BreakdownContextValue | null>(null);

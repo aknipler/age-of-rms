@@ -81,7 +81,7 @@
 }
 
 .numberInput {
-  width: 5rem;
+  width: 18rem;
   border: 1px solid var(--border-muted);
   padding: 0.1rem 0.3rem;
   font-size: 0.85rem;
@@ -89,19 +89,11 @@
 }
 
 .textInput {
-  width: 10rem;
+  width: 22rem;
   border: 1px solid var(--border-muted);
   padding: 0.1rem 0.3rem;
   font-size: 0.85rem;
   background: var(--surface-raised);
-}
-
-.constantPill {
-  border: 1px solid var(--border-muted);
-  border-radius: 999px;
-  padding: 0.05rem 0.6rem;
-  font-size: 0.8rem;
-  background: var(--accent-bg-subtle);
 }
 
 .flagCheckbox {
@@ -140,4 +132,63 @@
 .inlineError {
   color: var(--danger);
   font-size: 0.75rem;
+}
+
+.textInput::placeholder {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.fieldWrap {
+  position: relative;
+  display: inline-block;
+}
+
+/* Room for the clear button, and no native datalist arrow: the button
+   takes its place. WebView2 is Chromium, so the -webkit- pseudo-element
+   is the one that matters here. */
+.hasClear {
+  padding-right: 1.4rem;
+}
+
+.hasClear::-webkit-calendar-picker-indicator {
+  display: none !important;
+}
+
+.clearSlot {
+  position: absolute;
+  right: 0.15rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.clearButton {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  width: 1.1rem;
+  height: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.clearButton:hover {
+  color: var(--text);
+}
+
+.argSlot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* The data-driven word before a field (ArgumentDef.leadIn), "with" between
+   replace_terrain's two terrains. */
+.leadIn {
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }

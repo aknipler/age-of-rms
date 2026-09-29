@@ -99,6 +99,21 @@ const CONSTANT_SLOT_CATEGORY: Partial<Record<ArgumentType, string>> = {
 };
 
 /**
+ * RMS0205's notion of "the right category" for a slot also accepts that
+ * category's `--misc-constants` alias twin. `objectAlias`/`terrainAlias`
+ * rows are constants.inc name->id pairs the roster join never reached
+ * (game-constants.json's own note: "NOT joined against empires2_x2_p1.dat"),
+ * not a different KIND of thing — BUSH_A really is an object, the row is
+ * just missing habitat/resource data, not missing objecthood. Without this,
+ * every alias-only name (BUSH_A, SEAGULLS, BONFIRE, ...) false-fires RMS0205
+ * on its own, completely ordinary use.
+ */
+const CATEGORY_ALIAS_OF: Partial<Record<string, string>> = {
+  object: "objectAlias",
+  terrain: "terrainAlias",
+};
+
+/**
  * Marks a guard literal standing for "the Nth branch of the Mth start_random".
  * Those branches are mutually exclusive but have no condition name to reason
  * about, so they get an opaque literal instead. The NUL prefix keeps them out
@@ -166,6 +181,28 @@ export function commentOpenAliases(
   return names;
 }
 
+/**
+ * Every engine-defined constant name, for `ParseOptions.builtinConstants`.
+ * Same ambient rule as commentOpenAliases above and the same known gap for
+ * the three mixed-source categories, so a constants.inc-only name in one of
+ * those can slip through as defined. That direction only hides a warning,
+ * it never invents one.
+ */
+export function builtinConstantNames(
+  constants: readonly {
+    rmsConstant?: string | null;
+    category?: string | null;
+  }[],
+): ReadonlySet<string> {
+  const names = new Set<string>();
+  for (const c of constants) {
+    if (!c.rmsConstant) continue;
+    if (c.category && NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category)) continue;
+    names.add(c.rmsConstant);
+  }
+  return names;
+}
+
 /** One `#const`, with the conditions that have to hold for it to run. */
 interface GuardedDefinition {
   symbol: SymbolInfo;
@@ -187,7 +224,14 @@ class Validator {
   // all of them, not just the last writer to win the map slot.
   private readonly symbolsByName = new Map<string, SymbolInfo[]>();
   private readonly predefinedByName = new Map<string, PredefinedLabel>();
-  private readonly constantsByName = new Map<string, ValidateConstant>();
+  // Grouped for the same reason symbolsByName is: a name is not unique across
+  // categories. `--misc-constants` added an `objectAlias`/`terrainAlias` row
+  // for every constants.inc name, sharing that name with a pre-existing
+  // `object`/`terrain` roster row at the same id (BUSH_A is both). A plain
+  // name->constant map made the alias row, appended later in the file, win by
+  // last-write, so RMS0205 reported BUSH_A as "an objectAlias constant" and
+  // fired on every ordinary `create_object BUSH_A` in the corpus.
+  private readonly constantsByName = new Map<string, ValidateConstant[]>();
   private readonly constantsByCategoryAndId = new Map<
     string,
     ValidateConstant
@@ -278,7 +322,11 @@ class Validator {
       this.predefinedByName.set(label.name, label);
     }
     for (const constant of refDb.gameConstants.constants) {
-      this.constantsByName.set(constant.rmsConstant, constant);
+      if (constant.rmsConstant) {
+        const list = this.constantsByName.get(constant.rmsConstant);
+        if (list) list.push(constant);
+        else this.constantsByName.set(constant.rmsConstant, [constant]);
+      }
       if (constant.constId !== undefined) {
         // Keyed by category too: terrain 0 and object 0 are different id
         // spaces, and conflating them is exactly the bug the Phase 4.0
@@ -379,15 +427,18 @@ class Validator {
   private checkCommentOpeningWords(): void {
     for (const token of this.tokens) {
       if (!token.isTrivia || token.kind !== "word") continue;
-      const constant = this.constantsByName.get(token.text);
-      if (
-        constant?.constId === COMMENT_OPEN_ID &&
-        !NON_AMBIENT_CONSTANT_CATEGORIES.has(constant.category)
-      ) {
+      const ambientHit = this.constantsByName
+        .get(token.text)
+        ?.find(
+          (c) =>
+            c.constId === COMMENT_OPEN_ID &&
+            !NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category),
+        );
+      if (ambientHit) {
         this.diagnostics.push(
           d.commentOpensNestedComment(
             token,
-            `the game's own ${constant.category} constant`,
+            `the game's own ${ambientHit.category} constant`,
           ),
         );
         return;
@@ -465,7 +516,12 @@ class Validator {
    * deserves.
    */
   private checkShadowedConstant(name: string, definitions: SymbolInfo[]): void {
-    const constant = this.constantsByName.get(name);
+    // Any row for this name is "the engine already owns this name" evidence,
+    // alias category included — the alias row exists BECAUSE the engine
+    // defines the name, it's just unverified against the object/terrain
+    // roster join. Which row wins is arbitrary only when two categories
+    // disagree on constId, which the extraction never produces.
+    const constant = this.constantsByName.get(name)?.[0];
     if (!constant) return;
 
     // Sec.6's provenance gate again: quote an ID only when the DB says where
@@ -1061,19 +1117,25 @@ class Validator {
     );
   }
 
-  /** RMS0205, fires on positive evidence only: the name IS in the DB, in the wrong category. */
+  /** RMS0205, fires on positive evidence only: the name IS in the DB, and in EVERY category it's known under, none is the expected one. */
   private checkCrossCategory(
     token: Token,
     expectedCategory: string,
     arg: ArgNode,
   ): void {
-    const constant = this.constantsByName.get(token.text);
-    if (!constant || !arg.def) return;
-    if (constant.category === expectedCategory) return;
+    const constants = this.constantsByName.get(token.text);
+    if (!constants || !arg.def) return;
+    const aliasCategory = CATEGORY_ALIAS_OF[expectedCategory];
+    if (
+      constants.some(
+        (c) => c.category === expectedCategory || c.category === aliasCategory,
+      )
+    )
+      return;
     this.diagnostics.push(
       d.crossCategoryConstant(
         token,
-        constant.category,
+        constants[0].category,
         expectedCategory,
         arg.def,
       ),

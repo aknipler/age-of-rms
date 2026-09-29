@@ -103,6 +103,7 @@ endif
 
 /* Make it so that the flags disappear at the start of the game */
 effect_amount SET_ATTRIBUTE ONGRID_PLACEHOLDER2 ATTR_HITPOINTS 0
+/* Boo boo */
 
 
 
@@ -334,7 +335,6 @@ create_elevation 4
   base_terrain          PLAYER_TEMP_TERR 
   number_of_tiles       365      
   number_of_clumps      4   
-  spacing               0         
   enable_balanced_elevation   
   set_scale_by_groups  
 }

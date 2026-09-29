@@ -113,3 +113,15 @@
   color: var(--text-faint);
   padding: 0.5rem;
 }
+
+/* The two control-flow rows at the top of the list (CommandPicker.tsx's
+   CONTROL_FLOW). A tinted background sets them apart from the commands
+   below without a group heading, which would cost a row in a 20rem box. */
+.controlFlowEntry {
+  background: var(--surface-raised);
+}
+
+.controlFlowEntry .entryName {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}

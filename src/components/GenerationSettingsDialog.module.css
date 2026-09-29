@@ -1,23 +1,64 @@
-/* dialog.module.css's shared .dialog has no explicit width, so it
-   shrink-wraps to its widest child. TeamSection's own readout line
+/* dialog.module.css's shared .dialog has no explicit size, so it
+   shrink wraps to its content in both directions. Both are fixed here.
+
+   Width. TeamSection's own readout line
    ("2 teams (4 v 4), 2_TEAM_GAME" vs "8 teams (1 v 1 v ...)" vs one with
    the "alone on a team" note appended) changes length with the player
    count and team layout, so the whole dialog used to visibly widen and
    narrow as you clicked through presets. Fixed width, sized for the
-   longest realistic readout, so it holds still regardless of preset. */
-.fixedWidth {
+   longest realistic readout, so it holds still regardless of preset.
+
+   Height. The team rows already hold still (TeamSection renders all 8),
+   but two things under them come and go with the player count. The
+   readout wraps onto a second line once the "alone on a team" note is
+   appended, and the preset lock note only exists while a preset is
+   active, which a player count edit clears. Measured against these
+   stylesheets at every UI size from 0.75 to 1.25 (2026-09-23), the content
+   runs about 34rem at its shortest and 37rem at its tallest, and the box
+   used to jump between the two.
+
+   `max(40rem, 60vh)` is a percentage of the window with a floor under it.
+   60vh alone gives a 1080p window a little over 40rem at the default UI
+   size, but a short window or a large UI size would drop it below the
+   37rem the content needs, and the floor wins there. The floor is in rem
+   rather than px so it grows with Theme Settings' UI size along with the
+   text it has to hold. `max-height` caps it for a window too short even for
+   that, where .body below scrolls rather than the dialog running off the
+   screen. */
+.fixedSize {
   width: 42rem;
   max-width: 92vw;
+  height: max(40rem, 60vh);
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Everything between the title and the Close button. `flex: 1` hands it
+   whatever height the fixed box has left over, so the spare room collects
+   here and Close stays on the bottom edge.
+
+   `min-height: 0` is the easy one to miss. A flex item's default minimum
+   height is its content's height (`min-height: auto`), so without it this
+   box never shrinks below its content, `overflow-y` never gets anything to
+   scroll, and a capped dialog pushes Close off its own bottom edge
+   instead. */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* Player count + Map size, deliberately one explicit row (see the TSX
    comment) rather than two HelpTip spans left to land side by side by
-   accident. Gap between the two fields, and margin/padding around the row
-   itself so it isn't crowded against the title above or Teams below. */
+   accident. Gap between the two fields, and padding under the row so it
+   isn't crowded against Teams below. No margin on top. The title's own
+   0.75rem margin already spaces it, and a top margin here used to collapse
+   into that one and do nothing. Inside the flex column and the scrolling
+   .body it would stop collapsing and add a gap the dialog never had. */
 .topRow {
   display: flex;
   gap: 2rem;
-  margin-top: 0.5rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-subtle);
 }

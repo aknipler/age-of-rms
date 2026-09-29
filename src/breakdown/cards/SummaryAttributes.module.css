@@ -1,0 +1,47 @@
+/* `.summary` (CommandCard.module.css) is now a flex row that clips
+   geometrically at its own edge instead of via text-overflow. An entry
+   has to keep its natural width and either fit whole or fall past the
+   edge, out of hit-testing with it. Letting it shrink instead would
+   squash the last visible one into unreadable, still-clickable mush
+   right at the boundary. */
+.entry {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dot {
+  color: var(--text-muted);
+}
+
+/* Reads as text, acts as a button. The underline on hover is the only
+   sign it is clickable; the HelpTip explains what a click does. */
+.attrButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.attrButton:hover {
+  text-decoration: underline;
+}
+
+/* A flag removed from the code a moment ago, kept on the line so one
+   click puts it back. */
+.ghost {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.ghost:hover {
+  text-decoration: line-through underline;
+}
+
+.inlineEditor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}

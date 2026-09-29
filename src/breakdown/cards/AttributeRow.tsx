@@ -1,5 +1,9 @@
 import type { AttributeNode, ArgNode } from "../../parser/types";
-import type { ArgumentType } from "../../parser/language";
+import {
+  CONSTANT_ARGUMENT_TYPES,
+  type ArgumentType,
+} from "../../parser/language";
+import { addAbsentSlotIntent } from "../hideUnused";
 import type { AttributeSlot } from "../attributeModel";
 import type { AttributeTarget } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
@@ -31,19 +35,24 @@ export function AttributeValueEditor({
 }: InstanceValueProps) {
   const { tokens, applyEdit, requestFocus } = useBreakdownContext();
   const text = renderArg(arg, tokens);
+  // Sec.3.4's 2026-09-18 amendment. A math expression arg is edited as raw
+  // text now, where it used to render as a read-only pill. The field is
+  // seeded with the reconstructed expression and a commit replaces the
+  // whole span verbatim, so nothing here parses or rebuilds the
+  // expression's own structure (a per-operand builder stays out of scope,
+  // Sec.11). The arg's span already runs first token to last, so the
+  // ordinary setArgValue below is the whole-span swap the spec asks for.
+  //
+  // Two adjustments against the ordinary path, both below.
+  // Forcing "string" makes parseRawValue hand the typed text straight
+  // back, where a numeric type would try Number() on it first and an
+  // expression has to stay opaque text.
+  // Forcing allowSpaces, because a hand-written expression carries spaces
+  // around its operators, e.g. (A + 5), and ValueEditor's commit()
+  // otherwise refuses anything holding whitespace.
   const isExpr =
     typeof arg.value === "object" && arg.value !== null && "expr" in arg.value;
-  if (isExpr) {
-    return (
-      <span
-        className={styles.constantPill}
-        title="Math expression — edit in the Code tab"
-      >
-        {text}
-      </span>
-    );
-  }
-  // Sec.3.4's quoting round-trip: a quoted source token (only #include_drs/
+  // Sec.3.4's quoting round-trip, a quoted source token (only #include_drs/
   // #includeXS filename args are ever written this way) is allowed to
   // contain spaces. computeEdit re-quotes on write iff the original
   // token was quoted, so whitespace here is legal RMS, not unrenderable.
@@ -51,10 +60,10 @@ export function AttributeValueEditor({
   return (
     <ValueEditor
       text={text}
-      type={type}
+      type={isExpr ? "string" : type}
       anchorOffset={arg.span.start}
       helpId={helpId}
-      allowSpaces={wasQuoted}
+      allowSpaces={isExpr || wasQuoted}
       onCommit={(value, restoreFocus) => {
         const result = applyEdit({ kind: "setArgValue", arg, value });
         if (result && restoreFocus) requestFocus(result.caret);
@@ -71,7 +80,8 @@ export function AttributeInstanceRow({
   node: AttributeNode;
   helpId: string;
 }) {
-  const { tokens, applyEdit, diagnostics } = useBreakdownContext();
+  const { tokens, applyEdit, diagnostics, requestFocus } =
+    useBreakdownContext();
   const name = tokens[node.name].text;
   const defArgs = node.def?.arguments ?? [];
   const isBareFlag = node.args.length === 0 && defArgs.length === 0;
@@ -143,14 +153,56 @@ export function AttributeInstanceRow({
             />
           </HelpTip>
         ) : (
-          node.args.map((arg, i) => (
-            <AttributeValueEditor
-              key={arg.span.start}
-              arg={arg}
-              type={defArgs[i]?.type ?? "string"}
-              helpId={helpId}
-            />
-          ))
+          <>
+            {node.args.map((arg, i) => (
+              <span key={arg.span.start} className={styles.argSlot}>
+                {defArgs[i]?.leadIn && (
+                  <span className={styles.leadIn}>{defArgs[i].leadIn}</span>
+                )}
+                <AttributeValueEditor
+                  arg={arg}
+                  type={defArgs[i]?.type ?? "string"}
+                  helpId={helpId}
+                />
+              </span>
+            ))}
+            {/* Every argument the source is missing (a bare insert, or a
+                hand-written `replace_terrain` with nothing after it) gets
+                an empty editor at once (beta feedback 2026-09-17, one at a
+                time was annoying). A commit appends at that index, and
+                computeEdit pads any skipped slots before it with their
+                placeholders, since the parser assigns positions left to
+                right. Registered under node.span.end + j, the first one
+                being the caret computeEdit's bare path hands requestFocus.
+                An ArgNode's editor registers under its own span.start,
+                which can never equal this node's span.end. */}
+            {defArgs.slice(node.args.length).map((def, j) => (
+              <span
+                key={`missing-${node.span.end + j}`}
+                className={styles.argSlot}
+              >
+                {def.leadIn && (
+                  <span className={styles.leadIn}>{def.leadIn}</span>
+                )}
+                <ValueEditor
+                  text=""
+                  type={def.type}
+                  anchorOffset={node.span.end + j}
+                  helpId={helpId}
+                  onCommit={(value, restoreFocus) => {
+                    if (value === "") return;
+                    const result = applyEdit({
+                      kind: "appendArg",
+                      node,
+                      index: node.args.length + j,
+                      value,
+                    });
+                    if (result && restoreFocus) requestFocus(result.caret);
+                  }}
+                />
+              </span>
+            ))}
+          </>
         )}
       </span>
       <HelpTip id="breakdown.attributeRow.delete">
@@ -165,7 +217,7 @@ export function AttributeInstanceRow({
             e.stopPropagation();
             applyEdit({ kind: "removeNode", node });
           }}
-          title="Delete"
+          aria-label="Delete"
         >
           −
         </button>
@@ -197,28 +249,19 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
       ? "repeatable"
       : "value";
   const helpId = `breakdown.attributeRow.${helpKind}`;
+  // Sec.4.3 amendment (2026-09-17): a slot whose first argument names a
+  // terrain, object or constant is inserted bare and filled in by the user,
+  // numeric slots still get their placeholder. See intents.ts.
+  const firstArgType = slot.def.arguments?.[0]?.type;
+  const insertsBare =
+    firstArgType !== undefined && CONSTANT_ARGUMENT_TYPES.has(firstArgType);
 
   if (slot.instances.length === 0) {
     const firstArgDefault = slot.def.arguments?.[0]?.default;
     const addAbsent = () => {
-      let result;
-      if (slot.isFlag) {
-        result = applyEdit({
-          kind: "toggleFlag",
-          target,
-          name: slot.name,
-          on: true,
-        });
-      } else {
-        const value =
-          firstArgDefault !== undefined ? [firstArgDefault] : undefined;
-        result = applyEdit({
-          kind: "addAttribute",
-          target,
-          name: slot.name,
-          value,
-        });
-      }
+      // Shared with the Hide Unused search bar (hideUnused.ts), so a slot
+      // added from either place inserts the same thing.
+      const result = applyEdit(addAbsentSlotIntent(slot, target));
       if (result) requestFocus(result.caret);
     };
     // Attributes were merging multiple-per-line only while
@@ -265,7 +308,7 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
           </HelpTip>
         </span>
         <span className={`${styles.absentValue} ${styles.absentDim}`}>
-          {firstArgDefault !== undefined
+          {firstArgDefault !== undefined && !insertsBare
             ? String(firstArgDefault)
             : "click to add"}
         </span>
@@ -276,7 +319,7 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
             e.stopPropagation();
             addAbsent();
           }}
-          title="Add"
+          aria-label="Add"
         >
           +
         </button>
@@ -313,15 +356,7 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
             type="button"
             className={styles.addAnotherButton}
             onClick={() => {
-              const firstArgDefault = slot.def.arguments?.[0]?.default;
-              const value =
-                firstArgDefault !== undefined ? [firstArgDefault] : undefined;
-              const result = applyEdit({
-                kind: "addAttribute",
-                target,
-                name: slot.name,
-                value,
-              });
+              const result = applyEdit(addAbsentSlotIntent(slot, target));
               if (result) requestFocus(result.caret);
             }}
           >

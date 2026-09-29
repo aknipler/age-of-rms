@@ -319,6 +319,7 @@ export interface ParseOptions {
   aliasTable?: ReadonlyMap<string, TokenKind>; // default empty (Sec.2.1); lexer-level classification override
   commentOpenAliases?: ReadonlySet<string>; // default empty; words the engine reads as `/*` INSIDE a comment; see LexOptions
   maxNestingDepth?: number; // default 200 (Sec.5.0)
+  builtinConstants?: ReadonlySet<string>; // default empty; engine-defined #const names (game-constants.json rmsConstant), resolve in numeric slots like a script #const
 }
 
 export interface ParseResult<N = number, D extends NoDefs = DefSlots> {

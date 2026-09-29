@@ -167,45 +167,66 @@ export function instantiateScript(
   // -------------------------------------------------------------------
   // Rules 5, 6: argument resolution (rnd, math expressions, symbol lookup).
   // -------------------------------------------------------------------
-  function resolveArg(node: ArgNode): InstantiatedArg {
+  // integer/percent/flag are Sec.6's "numeric slots". otherConstant is
+  // #const's own value slot and the id slot of a few commands (assign_to's
+  // target, effect_amount's type), where a string may be "another
+  // constant". All of them get the same symbol-table attempt.
+  // terrainConstant/objectConstant do NOT: those names resolve against
+  // game-constants.json elsewhere (CREATION_PLAN A.2's alias table is the
+  // unbuilt feature that would extend this to them).
+  function isNumericSlot(node: ArgNode): boolean {
     const type = node.def?.type;
-    // integer/percent/flag are Sec.6's "numeric slots"; otherConstant is
-    // #const's own value slot, whose description says a string there may be
-    // "another constant", both get the same symbol-table attempt and the
-    // same rounding, since both are fundamentally numeric internally.
-    // terrainConstant/objectConstant do NOT: those names resolve against
-    // game-constants.json elsewhere (CREATION_PLAN A.2's alias table is the
-    // unbuilt feature that would extend this to them).
-    const numericContext =
+    return (
       type !== undefined &&
-      (NUMERIC_ARGUMENT_TYPES.has(type) || type === "otherConstant");
+      (NUMERIC_ARGUMENT_TYPES.has(type) || type === "otherConstant")
+    );
+  }
 
+  /** An argument's value before any slot rounding. Only `#const` keeps it as is. */
+  function resolveUnrounded(node: ArgNode): InstantiatedValue {
     const raw = node.value;
-    let value: InstantiatedValue;
-    if (typeof raw === "number") {
-      value = raw;
-    } else if (typeof raw === "string") {
-      value = numericContext && symbols.has(raw) ? symbols.get(raw) : raw;
-    } else if ("rnd" in raw) {
+    if (typeof raw === "number") return raw;
+    if (typeof raw === "string")
+      return isNumericSlot(node) && symbols.has(raw) ? symbols.get(raw) : raw;
+    if ("rnd" in raw) {
       // Rule 5: evaluated at consumption time, own substream per occurrence.
       const rng = createSubstream(masterSeed, "S0", rndOrdinal++);
-      value = nextInt(rng, raw.rnd[0], raw.rnd[1]);
-    } else {
-      // {expr}: rule 6, parser-design Sec.2.2 exactly.
-      const texts = raw.expr.tokens.map(tokenText);
-      value = evaluateExpressionTokens(texts, (name) => symbols.get(name));
+      return nextInt(rng, raw.rnd[0], raw.rnd[1]);
     }
+    // {expr}: rule 6, parser-design Sec.2.2 exactly.
+    const texts = raw.expr.tokens.map(tokenText);
+    return evaluateExpressionTokens(texts, (name) => symbols.get(name));
+  }
 
+  function resolveArg(node: ArgNode): InstantiatedArg {
+    let value = resolveUnrounded(node);
     if (
-      numericContext &&
+      isNumericSlot(node) &&
       typeof value === "number" &&
       Number.isFinite(value) &&
       !Number.isInteger(value)
     ) {
       value = roundForIntegerSlot(value);
     }
-
     return { value, source: node };
+  }
+
+  /**
+   * `#const`'s value slot, and the one numeric slot that does not round. The
+   * engine keeps a constant as a float and rounds it only when it reaches an
+   * integer-only attribute (guide:3351, and the Summer 2025 note at
+   * guide:4548, "Constants no longer get rounded to integer values when used
+   * in math expressions"). Rounding here turned every value between -1 and 1
+   * into -1, 0 or 1, which is what a trig macro's SIN and COS constants are,
+   * so every ring of lands snapped onto a 3x3 grid (BUG-034).
+   *
+   * A separate function rather than a `storesFloat` flag on `resolveArg`,
+   * because `node.args.map(resolveArg)` hands `map`'s index to a second
+   * parameter. With a flag, every argument after the first would have
+   * silently stopped rounding.
+   */
+  function resolveConstValue(node: ArgNode): InstantiatedValue {
+    return resolveUnrounded(node);
   }
 
   function resolveAttribute(node: AttributeNode): InstantiatedAttribute {
@@ -287,7 +308,7 @@ export function instantiateScript(
         symbols.set(symbolName, undefined);
       } else {
         const valueArg = node.args[1];
-        const resolved = valueArg ? resolveArg(valueArg).value : undefined;
+        const resolved = valueArg ? resolveConstValue(valueArg) : undefined;
         symbols.set(
           symbolName,
           typeof resolved === "number" ? resolved : undefined,
@@ -507,6 +528,12 @@ export function instantiateScript(
   // "defined" (rule 4), but a downstream terrain/object lookup wants an id,
   // and handing it a name that maps to nothing would just push the same
   // narrowing onto every consumer.
+  //
+  // Values leave unrounded, as the engine holds them (BUG-034). Readers
+  // differ in what they need. Land Placement feeds them into expressions,
+  // where floats flow. The terrain and object id lookups (resolveTerrainId,
+  // objectEntry, forestTreeSuppression's two resolvers) round at the lookup,
+  // since an id slot is where the engine rounds.
   const numericSymbols = new Map<string, number>();
   for (const [name, value] of symbols) {
     if (typeof value === "number") numericSymbols.set(name, value);

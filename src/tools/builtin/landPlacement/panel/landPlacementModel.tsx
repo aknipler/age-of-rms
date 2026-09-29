@@ -21,6 +21,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AlpModel } from "../fence";
+import type { PanelSelection } from "./viewModel";
 
 export const EMPTY_MODEL: AlpModel = Object.freeze({
   v: 1,
@@ -43,14 +44,20 @@ export interface LandPlacementModelValue {
   dirty: boolean;
   /** Replace the model with an edit. Marks dirty relative to the last `load`/`markSaved`. */
   setModel: (updater: AlpModel | ((prev: AlpModel) => AlpModel)) => void;
-  /** Loads a fresh model (from the fence, or `EMPTY_MODEL` when there is none) and marks it clean. Called once when the panel mounts. */
-  load: (model: AlpModel) => void;
+  /**
+   * Loads a fresh model (from the fence, or `EMPTY_MODEL` when there is none)
+   * with its starting selection, and marks it clean. Called once when the
+   * panel mounts. A tab switch keeps the store and never calls this again,
+   * which is what lets the selection survive one.
+   */
+  load: (model: AlpModel, selection: PanelSelection | null) => void;
   /** Marks the CURRENT model as saved, called right after a successful Apply, since Apply writes exactly this model into the fence. */
   markSaved: () => void;
   /** Discards everything. Called on unmount ("select another tool" after its confirm, or a document replace). */
   clear: () => void;
-  selectedId: string | null;
-  setSelectedId: (id: string | null) => void;
+  /** Lives here rather than in the panel's own state so a tab switch, which unmounts the panel, does not lose it. */
+  selection: PanelSelection | null;
+  setSelection: (selection: PanelSelection | null) => void;
 }
 
 const LandPlacementModelCtx = createContext<LandPlacementModelValue | null>(
@@ -70,7 +77,7 @@ export function LandPlacementModelProvider({
 }) {
   const [model, setModelState] = useState<AlpModel | null>(null);
   const [saved, setSaved] = useState<AlpModel | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<PanelSelection | null>(null);
 
   const setModel = useCallback(
     (updater: AlpModel | ((prev: AlpModel) => AlpModel)) => {
@@ -81,11 +88,14 @@ export function LandPlacementModelProvider({
     [],
   );
 
-  const load = useCallback((next: AlpModel) => {
-    setModelState(next);
-    setSaved(next);
-    setSelectedId(null);
-  }, []);
+  const load = useCallback(
+    (next: AlpModel, startSelection: PanelSelection | null) => {
+      setModelState(next);
+      setSaved(next);
+      setSelection(startSelection);
+    },
+    [],
+  );
 
   const markSaved = useCallback(() => {
     setSaved(model);
@@ -94,7 +104,7 @@ export function LandPlacementModelProvider({
   const clear = useCallback(() => {
     setModelState(null);
     setSaved(null);
-    setSelectedId(null);
+    setSelection(null);
   }, []);
 
   const dirty = !sameContent(model, saved);
@@ -107,10 +117,10 @@ export function LandPlacementModelProvider({
       load,
       markSaved,
       clear,
-      selectedId,
-      setSelectedId,
+      selection,
+      setSelection,
     }),
-    [model, dirty, setModel, load, markSaved, clear, selectedId],
+    [model, dirty, setModel, load, markSaved, clear, selection],
   );
 
   return (

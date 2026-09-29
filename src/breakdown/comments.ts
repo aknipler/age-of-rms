@@ -49,6 +49,22 @@ export function extractComments(tokens: readonly Token[]): Span[] {
 }
 
 /**
+ * The comment anchored at exactly this offset, the same exact-match lookup
+ * findItemAtOffset does for an Item's own span.start (selectionResolve.ts).
+ * CommentCard's `data-anchor` is always a comment's own span.start (never an
+ * interior offset), so an exact match is enough, unlike findItemAtOffset's
+ * range test, which also has to resolve an offset that lands inside a
+ * nested branch. Used by cardDrag.tsx to resolve a drop target onto a
+ * comment card once findItemAtOffset itself comes back empty.
+ */
+export function findCommentAtOffset(
+  comments: readonly Span[],
+  offset: number,
+): Span | undefined {
+  return comments.find((c) => c.start === offset);
+}
+
+/**
  * Comments whose span falls strictly between two consecutive items in
  * `items`, the only placement BlockList could attribute to itself
  * unambiguously without knowing its container's own boundaries. A comment

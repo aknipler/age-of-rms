@@ -60,6 +60,21 @@ const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
     hint: "Opens the command picker, inserting after the selected card or at the end of the active section, same as the + Add command button.",
   },
   {
+    id: "breakdownMoveCardUp",
+    legend: "Breakdown: Move Selected Card Up",
+    hint: "Moves the selected card above the card before it, staying inside its own section or branch. Drag a card to move it further, or into an if branch.",
+  },
+  {
+    id: "breakdownMoveCardDown",
+    legend: "Breakdown: Move Selected Card Down",
+    hint: "Moves the selected card below the card after it, staying inside its own section or branch.",
+  },
+  {
+    id: "breakdownDuplicateCard",
+    legend: "Breakdown: Duplicate Selected Card",
+    hint: "Inserts a copy of the selected card directly below it, text for text, and selects the copy.",
+  },
+  {
     id: "codeToggleLayout",
     legend: "Code: Toggle Command Layout",
     hint: "Flips the command under the cursor between one line and one attribute per line. With a selection, every command it touches is toggled independently, each to the opposite of its own current shape, not to a shared target. Does nothing where flipping isn't safe, such as a block holding a nested if/start_random.",

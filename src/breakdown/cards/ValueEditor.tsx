@@ -1,5 +1,8 @@
-import { useState } from "react";
-import type { ArgumentType } from "../../parser/language";
+import { useRef, useState } from "react";
+import {
+  NUMERIC_ARGUMENT_TYPES,
+  type ArgumentType,
+} from "../../parser/language";
 import type { ArgValueInput } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
 import { HelpTip } from "../../components/HelpTip";
@@ -35,6 +38,14 @@ interface ValueEditorProps {
   helpId: string;
   /** Sec.3.4's quoting round-trip, true only for a quoted filename slot, where internal spaces are legal RMS. */
   allowSpaces?: boolean;
+  /**
+   * Overrides the type-derived placeholder below. `otherConstant`'s default
+   * assumes a `#const`-style numeric alias (effect_amount, water_definition,
+   * ...), which is wrong for an if/elseif condition: those resolve against
+   * `#define`d flags and predefined labels, not `#const` (parser-design
+   * RMS0312; breakdown-design Sec.3.5). ConditionalCard passes its own hint.
+   */
+  hint?: string;
 }
 
 // docs/breakdown-design.md Sec.3.4/Sec.4.11, the shared value editor: typed
@@ -50,10 +61,17 @@ export function ValueEditor({
   disabled,
   helpId,
   allowSpaces,
+  hint: hintOverride,
 }: ValueEditorProps) {
   const { gameConstants, parseResult, registerFocusable } =
     useBreakdownContext();
   const [error, setError] = useState<string | null>(null);
+  // A ref, not state, for the input element. The field is uncontrolled
+  // (typing never re-renders, see the header comment), so the clear button
+  // needs a handle on the DOM node to empty and refocus it, and a ref is the
+  // React idiom for "I need the element, not a value". registerFocusable
+  // wants the same node, so the ref callback below feeds both.
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const commit = (raw: string, restoreFocusOnEnter: boolean) => {
     if (raw === text) {
@@ -77,7 +95,25 @@ export function ValueEditor({
     type === "terrainConstant" ||
     type === "objectConstant" ||
     type === "otherConstant";
+  // Beta feedback 2026-09-18, the clear button existed only for constant
+  // fields (isConstant below). A numeric field is just as often worth
+  // clearing back to empty (so a following commit falls back to the
+  // attribute's default), so it gets the same affordance here.
+  const isNumeric = NUMERIC_ARGUMENT_TYPES.has(type);
+  const showClear = isConstant || isNumeric;
   const listId = isConstant ? `breakdown-values-${type}` : undefined;
+  // Shown only while the field is empty, an example rather than a value.
+  // Beta feedback 2026-09-17, a real constant sitting in the field read as
+  // "the app picked GRASS for me".
+  const hint =
+    hintOverride ??
+    (type === "terrainConstant"
+      ? "GRASS, DIRT etc."
+      : type === "objectConstant"
+        ? "GOLD, SHEEP etc."
+        : type === "otherConstant"
+          ? "a #const name"
+          : undefined);
 
   const options =
     type === "terrainConstant"
@@ -93,44 +129,84 @@ export function ValueEditor({
   return (
     <HelpTip id={helpId}>
       <span className={styles.editorWrap}>
-        <input
-          key={anchorOffset}
-          ref={(el) => registerFocusable(anchorOffset, el)}
-          type="text"
-          defaultValue={text}
-          disabled={disabled}
-          list={listId}
-          className={
-            type === "integer" || type === "percent"
-              ? styles.numberInput
-              : styles.textInput
-          }
-          onBlur={(e) => commit(e.currentTarget.value, false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit(e.currentTarget.value, true);
-            } else if (e.key === "Escape") {
-              e.currentTarget.value = text;
-              setError(null);
+        {/* .fieldWrap exists so the clear button can sit INSIDE the field
+            (beta feedback 2026-09-17), over the spot the native datalist
+            arrow used to take. The arrow is hidden by CSS; the list still
+            opens on click and while typing, which is how it was used
+            anyway. */}
+        <span className={styles.fieldWrap}>
+          <input
+            key={anchorOffset}
+            ref={(el) => {
+              inputRef.current = el;
+              registerFocusable(anchorOffset, el);
+            }}
+            type="text"
+            defaultValue={text}
+            placeholder={hint}
+            disabled={disabled}
+            list={listId}
+            className={
+              isNumeric
+                ? `${styles.numberInput} ${styles.hasClear}`
+                : isConstant
+                  ? `${styles.textInput} ${styles.hasClear}`
+                  : styles.textInput
             }
-          }}
-        />
-        {listId && (
-          <datalist id={listId}>
-            {/* A constant with no name is reached by bare id and cannot be
+            onBlur={(e) => commit(e.currentTarget.value, false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit(e.currentTarget.value, true);
+              } else if (e.key === "Escape") {
+                e.currentTarget.value = text;
+                setError(null);
+              }
+            }}
+          />
+          {listId && (
+            <datalist id={listId}>
+              {/* A constant with no name is reached by bare id and cannot be
                 typed here, so it is dropped rather than offered as a blank
                 option. `rmsConstant` became `string | null` on 2026-08-11 to
                 match the data; before that these rows were already blank
                 options, the type just hid it. */}
-            {options
-              .map((o) => ("rmsConstant" in o ? o.rmsConstant : null))
-              .filter((name): name is string => name !== null && name !== "")
-              .map((name) => (
-                <option key={name} value={name} />
-              ))}
-          </datalist>
-        )}
+              {options
+                .map((o) => ("rmsConstant" in o ? o.rmsConstant : null))
+                .filter((name): name is string => name !== null && name !== "")
+                .map((name) => (
+                  <option key={name} value={name} />
+                ))}
+            </datalist>
+          )}
+          {showClear && !disabled && (
+            <span className={styles.clearSlot}>
+              <HelpTip id="breakdown.attributeRow.clearValue">
+                <button
+                  type="button"
+                  className={styles.clearButton}
+                  aria-label="Clear value"
+                  // onMouseDown, not onClick, and preventDefault. A click first
+                  // blurs the input, and blur commits whatever is in it, so by
+                  // the time onClick ran the old value would already be
+                  // committed and the empty field would be a second commit.
+                  // Swallowing the mousedown keeps focus in the input, so the
+                  // clear happens inside one editing session and commits once,
+                  // when the user clicks away or presses Enter.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const el = inputRef.current;
+                    if (!el) return;
+                    el.value = "";
+                    el.focus();
+                  }}
+                >
+                  ×
+                </button>
+              </HelpTip>
+            </span>
+          )}
+        </span>
         {error && <span className={styles.inlineError}>{error}</span>}
       </span>
     </HelpTip>

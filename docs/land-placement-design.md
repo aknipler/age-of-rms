@@ -735,6 +735,19 @@ asking permission first. The group survives
 expansion so the canvas can still offer radius/rotation/count gizmos for the set (Sec.7.3)
 and so "regenerate this shape" is one click.
 
+**Added 2026-09-28, on the owner's decision.** `PatternSlot.role` may be absent. Such a slot
+places points, emitted as coordinates with no `create_land`, the same as a standalone Placement
+with no role, so a shape can be a set of anchors for other lands with nothing on the shape
+itself. A chain template on a points slot still places a land beside every point. A shape's
+`parent` is now editable in the panel as its Origin, and it can be any placement the shape does
+not own or hold up (`shapeOriginCandidates`). Moving the origin leaves the shape's frame alone,
+on the owner's call, since a frame that changes unasked is easy to miss. The Frame select appears
+once the origin leaves the centre, where `radial` and `absolute` start to differ. `+ Origin point`
+gives its new point angle 180 so a radial shape does not flip when it moves onto the point. A
+member's `frame` now follows its group on re-expansion, as its
+`role` and `parent` already did. A per-player ring can carry `jitter`, per
+`land-placement-per-player-escalation.md` Sec.11.
+
 ### 4.2 The radial frame: angle ABC (**resolved 2026-08-29**)
 
 **A** is the map centre, **B** is the parent land, **C** the child placed around it. The
@@ -1112,6 +1125,19 @@ before assuming), whether a per-land override composes with `ZonePolicy.perRepea
 a stated rule rather than an emergent one), and whether all 12 missing attributes are worth
 building at once or whether some (`land_id`, say) are dead weight nobody has asked for.
 
+**DESIGNED 2026-09-21 as Sec.12 Q11, in `docs/land-placement-role-attributes-escalation.md`.**
+Read that document rather than this paragraph, which is kept for the record and whose figures do
+not survive re-derivation against `language.json`. Four corrections, listed in its section 1.
+`create_land` carries **24** attributes and not 23, and the enumeration above holds **13** and
+not the 12 the sentence claims. The covered set is **6** and not the 9 this paragraph implies,
+because `ZonePolicy` has no variant for either zone flag and `assignToPlayer` emits `assign_to`
+rather than `assign_to_player`. `circle_radius` **is** a `create_land` attribute, so it is scoped
+out for a different reason than the one given here. And the `Expr`-versus-plain-number guess is
+backwards; the test is whether the TOOL consumes the value, which is why `sweep` and
+`perimeterShift` are plain numbers, and none of the thirteen new attributes is consumed, so every
+one of them is an `Expr`. `land_id` is also the opposite of dead weight, reaching 33 of the 45
+corpus maps that position a land, which is the widest spread of the thirteen.
+
 #### Future want: a repeating multi-land pattern per player, the way `Bulls_Eyes.rms` is built by hand (recorded, not designed)
 
 A stated want, not yet scoped, raised directly against the panel's own "+ Shape"/"+ Land" buttons
@@ -1178,6 +1204,41 @@ before assuming a new resolution mechanism is needed), and whether a "one repeat
 players per repeat" shape is expressible as a variant of the existing pattern/repeat model or
 needs a third axis alongside `perPlayer` and `thetaPerCount`.
 
+#### Future want, a Custom shape kind (recorded 2026-09-28, not designed)
+
+A stated want from the owner, raised beside the per player decision of the same day. A seventh
+`ShapeGroup.kind`, **Custom**, whose member positions come from a formula the user types, using
+the maths this tool already emits (Sec.5.1 and Sec.5.3). A spiral is the obvious first use, with
+the radius growing with the member index. The questions a design pass has to answer before it is
+built are these.
+
+- Which per member inputs a formula can read. The member index and the member count are the
+  minimum, and the repeat index and the slot index are candidates. Their names must not collide
+  with a script's own `#const` names (Sec.5.6).
+- Whether it yields a polar `(r, theta)` about the shape's anchor, so Radius and Rotation keep
+  their meaning and their gizmos, or a cartesian pair like the existing `formula` offset.
+- How an angle that is not a whole number reaches the trig macro, which requires one (Sec.5.4).
+  A formula closed at expansion time can be rounded there, as every other kind does. A symbolic
+  one would be truncated by the engine's `%` cast.
+- How it composes with the merge rule's delta branch, which assumes a nudge can be reapplied
+  against a new base.
+
+If the formula reads the member index and count as its only per member inputs, per player
+placement comes with it for free under `land-placement-per-player-any-kind-escalation.md`
+section 4, since the prologue asks the expander for each count's positions whatever the kind.
+
+#### Future want, using only part of a shape (recorded 2026-09-28, not designed)
+
+A stated want from the owner, raised while settling per player jitter. A field like Arc's Sweep on
+Line, Square, Triangle and Polygon, saying what percent of the shape the lands spread over, so
+50 percent of a square gives its top half at the right rotation. It would be a plain number the
+expander consumes, on `sweep`'s own reasoning (item 1 of the shape kinds slice A brief). A design
+pass has to settle where the used part starts, whether it replaces or composes with
+`perimeterShift`, and what 100 percent means. A circle's divisor `N` closes the shape, and an
+arc's `N - 1` stacks the two end lands, which is what this section chose for a 360 sweep. Per
+player placement would follow under `land-placement-per-player-any-kind-escalation.md` section 4
+with no further design.
+
 #### Angles
 
 For `N = pattern.length × repeats` lands on a ring, slot `j` of repeat `i` sits at
@@ -1219,6 +1280,14 @@ r_m     = slot.radius ?? radius
 `ShapeGroup.sweep` is a new field, a plain `number` (not an `Expr`, since it is consumed at expansion time to bake an integer degree literal per member, Sec.5.4) defaulting to **180, not 360**. A 360 sweep is legal input and stacks the last member on the first rather than closing into a ring — dividing by `N - 1` at a full turn puts two members at the same angle, which is exactly the collision the `N` divisor exists to avoid for `circle`. (The escalation doc originally read a 360 sweep as degenerating to circle exactly; it does not, and the doc has been amended in place.)
 
 **`perPlayer` is refused outside `circle`.** The per-player prologue (`prologue.ts`, per-player-escalation.md Sec.8.2) only ever computes the RING formula and substitutes it over any `polar` member of a `perPlayer` group. A line or an arc is `polar` too, so without a guard a `perPlayer` line would silently draw ring angles over it, a plausible-looking wrong map rather than an error. `emitAlpModel` refuses any `perPlayer` group whose `kind` is not `circle` before the prologue is built, and the panel disables the "One land per player" checkbox outside `circle` with a title explaining why. A `perPlayer` arc is a real future want (how a sweep divides across a runtime count) and is deliberately not built this slice.
+
+**Added 2026-09-28. The owner has decided per player works for every kind**, designed in `docs/land-placement-per-player-any-kind-escalation.md` (rev 2, three slices, nothing built yet, no open questions). The refusal above guarded the checkbox and never the Shape select, so picking Line on a per player ring made the whole emission fail and every shape vanished from the canvas. Until those slices land, an interim guard keeps a per player shape a circle. One predicate, `perPlayerSupportsKind` in `prologue.ts`, now answers the question for the emitter's refusal and two new guards. `applyGroupEdit` returns null for an edit that newly makes the combination, and the Shape select disables every kind but Circle while One land per player is ticked. That document's section 2 has the detail, and its slices widen the predicate kind by kind.
+
+**Its slice A was built later the same day.** The per kind formulas moved out of `expandShapeGroup` into an exported `memberOffset(group, repeatIndex, slotIndex, repeats)`, and the prologue now asks it for each member's angle at every player count in place of its own copy of the ring formula. So a per player Arc works, spread over its whole sweep at every count, and `perPlayerSupportsKind` answers yes for Circle and Arc. Line and the perimeter kinds wait for that document's slices B and C.
+
+**Its slice B was built the same day.** A per player Line member gets an `ALP_RAD` cell beside its `ALP_DEG` one in every branch, and the emitter substitutes it for `r`, so a line runs from one end to the other at every count. Line jitter moves the radius, in percent only, and the emitter refuses degrees on a line (`group:<id>:jitterUnit`). Switching a degree-jittered shape to Line translates the jitter to percent at the previewed count, an owner decision recorded in that document's section 3. The perimeter kinds wait for its slice C.
+
+**Its slice C was built 2026-09-29.** Square, Triangle and Polygon take one land per player, each member with `ALP_RAD` and `ALP_DEG` cells in every branch, so the lands spread evenly round the perimeter at every count. A jittered perimeter land walks the perimeter at runtime and turns its corners, from one `ALP_WALK` cell per branch and a short run of cells in the body that rewrite its X and Y (that document's Sec.5.4). `perPlayerSupportsKind` is deleted with its three guards, so the refusal paragraph above and the interim guard paragraph above it now describe history. A land holding a per count angle takes no walk, an owner decision recorded in that document's section 3.
 
 **`square`, `triangle` and `polygon` are `polar` too, same day as slices A-C.** They were built `cartesian` first (below, kept for the historical record of why); `docs/land-placement-perimeter-symbolic-rotation-escalation.md` Sec.8.3 replaced that representation the same day, in the slice named in this subsection's own heading update. A member's position is still a fraction of the way round the shape's own perimeter — `PatternSlot.theta` still has no meaning for it, the field's own doc comment says why — but that fraction now resolves to a **scale on the radius and an offset on the bearing**, an ordinary `polar` offset in exactly the shape `circle` already produces, rather than a `cartesian` `dx`/`dy` pair. The three polygon kinds (`square`, `triangle`, `polygon` and the `M`-sided general case behind them) share one function, `perimeterPolar(sides, memberCount, memberIndex)`, which takes **no rotation parameter at all**:
 
@@ -1445,7 +1514,10 @@ dirty-tracking obligation and is named here rather than assumed.
    Sec.6.2 already says per-repeat values are.
 4. **No migration.** `PatternSlot.id` changes the shape of the `@alp-model` v1 JSON, and there
    is no v1 data anywhere — no panel has ever written a fence. A later session should not build
-   a migration path for data that never existed.
+   a migration path for data that never existed. **Expired 2026-09-15.** The build carrying
+   `Land Placement (Alpha)` in its tool dropdown went out on Discord that day, so a fence written
+   by someone else's session can exist from then on. Any later reshape of a fenced field carries a
+   read-side upgrade in `readFence` (Q11's slice 1 is the first).
 
 ---
 
@@ -2135,11 +2207,44 @@ shown live, since `pattern.length × repeats` is the number the user is actually
 (Sec.4.5). A separate **Roles** list edits the `#const` set behind each chip, and each land
 in the tree shows which role it wears or that it has detached from one.
 
+**Amended 2026-09-23, at the owner's request.** The right column is three sections in this
+order, Roles, Shapes and Lands. Each has a title with its count, a clickable list, and the
+selected item's editor directly under that list. Lands is the tree above. Shapes lists every
+`ShapeGroup` by kind, id and land total, and its editor holds everything the paragraph above
+gives a shape group. A land that belongs to a shape shows a row naming the shape with an Edit
+shape button rather than embedding the shape's editor, so one shape has one editor. Selection
+is one of role, shape or land (`PanelSelection` in `viewModel.ts`). A role highlights the
+lands wearing it on the canvas. A shape highlights its members and draws its gizmo. A land
+draws its own rim handle and its shape's gizmo. A freshly opened panel selects the first item
+in the lists (the first role, else the first shape, else the top land). The default is set by
+the same one-time load that reads the fence (Sec.3.6(a)), so a tab switch, which keeps the
+store (Sec.3.6(b)), keeps the user's selection rather than resetting it. The reason is the
+2026-09-23 report that a shape saved in the fence looked missing. Nothing on screen named it
+until one of its lands was selected.
+
+**Amended again the same day.** Each list lays its rows out in columns shared by every row
+(a CSS grid per list, each row a subgrid). Roles show name, terrain and land count. Shapes
+show name, land count and the roles their pattern slots and chains wear. Lands show label,
+shape (blank for a standalone land), role, and overrides or a detached warning. A shape's
+name on screen is its kind plus the number in its id (`shapeDisplayName`, so `ring_2` as a
+square reads "Square 2"). The id itself stays `ring_N` because it is saved in the fence and
+the land labels and emitted names derive from it. The toolbar's "with role" picker gains a
+(none) option. With it, `+ Land` makes a roleless chain anchor, and since 2026-09-28 `+ Shape`
+and `+ slot` make points (Sec.4.1), where `+ Shape` used to be disabled.
+
 A **Formula** field per node accepting
 Sec.5.2's grammar, with live feedback in three parts: the parse, the resulting position, and
 **the RMS the compiler would emit for it**, with its line count. Showing the emitted lines
 while typing is what teaches the left-associativity rule without a tutorial, and it makes
 Sec.5.3's temp-count trade visible at the moment the user can act on it.
+
+**Added 2026-09-28.** A fourth part warns about each name the formula uses that has no value at
+the settings being previewed, because such a name fails the whole dry run and the canvas draws
+nothing. The warning says why, from the parser's own symbol table, which lists every `#const` and
+`#define` in every branch. There is no `#const` of that name, or only a `#define`, or every
+`#const` for it sits in an `if` or `start_random` branch not taken here, or it has no number. It
+warns and never refuses, since RMS maths also reads the game's own constants and this tool's
+list of those is partial. It stays visible after saving, which is what explains a blank canvas.
 
 A **Generated code** section previews the whole fence as a diff before Apply.
 
@@ -2601,6 +2706,123 @@ The design, the cost table, a six item implementation brief and the resolved que
 `docs/land-placement-per-player-escalation.md`. **Blocking nothing built.** Note Sec.4.4's rule
 that a runtime lift has to cover `perPlayer` parameters and rings together or not at all, which
 this design satisfies by leaving `perPlayer` parameters alone.
+
+**Q11 — full `create_land` attribute coverage on `LandRole`, plus a per-land override. BUILT
+2026-09-22, all three slices** (`LandExtent`/`AssignPolicy`/`PlayerSlot` unions, the four-argument
+`assign_to`, the `readFence` upgrade, thirteen attributes on `ROLE_OPTIONAL_ATTRIBUTES`, P6 with
+the one-click fixes for P6 and P3, `Placement.roleOverrides` with per-land constants resolved for
+the placement's owner, the two-tier Roles form and the Overrides list). Run sheet section 12 owed.
+Designed 2026-09-21. Recorded as a one-line want on 2026-09-03 (Sec.4.5's own
+"Future want" subsection) and never scoped. `LandRole` reaches 6 of `create_land`'s 24
+attributes, and the only way one land can differ from its role is the text-level escape hatch of
+hand-editing that land's `create_land` to a literal, which detaches it rather than overriding it.
+
+**The attribute set was re-derived from `language.json` and the guide rather than from Sec.4.5's
+own list, and four figures in that list move.** There are 24 attributes and not 23; the covered
+set is 6 and not the 9 the subsection implies, because `ZonePolicy` has no variant for either
+zone flag and `assignToPlayer` emits `assign_to` rather than `assign_to_player`; `circle_radius`
+IS a `create_land` attribute, `language.json` lists it and guide:858 states its behaviour there;
+and the `Expr`-versus-plain-number question resolves the opposite way from the subsection's
+guess, because the test is whether the tool CONSUMES a value and it consumes none of the
+thirteen new ones. 6 covered, 4 non-goals, 1 refused, 13 to build.
+
+**Three of the four non-goals fall out of one fact**, that every `create_land` this tool emits
+carries an explicit `land_position`, which makes `min_placement_distance`, `generate_mode` and
+`circle_radius` inert in its own output; the corpus agrees on all three, 28 of 29, 16 of 16 and
+37 of 37 of their uses sitting on unpositioned lands. Borders were expected to pattern the same
+way and run roughly three to one the other way, because placement ignores a border and GROWTH
+does not (guide:826), so they are a live tier-1 attribute on exactly the lands this tool writes.
+`set_zone_by_team` is refused on a guide sentence rather than on a count.
+
+**The mutex groups become unions, and the move already has a precedent in this document.**
+`language.json` records three (`land_percent`/`number_of_tiles`, `assign_to_player`/`assign_to`,
+the three zone attributes), `validate.ts` raises RMS0307 on a co-occurring pair, and `ZonePolicy`
+being a union is already why the zone mutex is unrepresentable. So the hazard is made
+unrepresentable rather than validated, the same move Sec.5.0 makes by giving `Expr` no `rnd` arm.
+
+**The per-land override takes `thetaPerCount`'s shape rather than `nudged`'s**, and the reason is
+mechanical; a `Placement` has no `terrain` or `baseSize` field for a deviation to live in, so the
+discriminator-plus-existing-field shape is not available. It emits its own `#const` and the land
+references that instead of the role's, because writing a literal into the `create_land` would
+collapse the detachment predicate Sec.6.2 depends on. It replaces rather than deltas, which
+answers Sec.4.5's own question about `ZonePolicy.perRepeat` directly.
+
+One defect found by the cross-check and fixed in slice 1; `landCommand.ts` emits `assign_to` with
+two arguments against `language.json`'s four, so the app's own parser raises RMS0201 on this
+tool's own output for every player-assigned land, and the two tests that touch it are too weak
+to see either spelling. One new precondition, **P6**, because `base_elevation` carries
+`requiresSection: "ELEVATION_GENERATION"` and the skeleton writes it unconditionally; the
+one-click fix it needs does not exist for P3 either, so the slice builds the mechanism and gives
+P3 its specified fix through it.
+
+**Reviewed the same day (its rev 1 marks), and one premise had expired.** Consequence 4 above
+("no panel has ever written a fence") stopped being true on 2026-09-15, when the build with
+`Land Placement (Alpha)` in its dropdown went out on Discord, so slice 1 carries a read-side
+upgrade in `readFence` for the two reshaped fields rather than no migration path. The review also
+moved `PlayerSlot`'s `fixed` arm to an `Expr` emitted as a role constant (the tool never consumes
+it, it is not per-repeat, and `CoastalForest.rms` writes a `#const` there), flattened the four
+borders into four `LandRole` fields so a per-attribute override stays per-attribute, and replaced
+one `assign_to` corpus figure that did not reproduce.
+
+The design, the corpus measurement behind the tiering, a cost table, nine resolved questions and
+a three-slice implementation brief are in
+`docs/land-placement-role-attributes-escalation.md`. **Blocking nothing built**, and Sec.10.1's
+acceptance gate stays byte-identical through all three slices.
+
+**Q12 — a repeating composite, one main land plus its own chain, per player. BUILT 2026-09-22,
+both slices** (the role picker at three sites, `ChainTemplate` on `PatternSlot.chain`,
+`ShapeGroup.chainMembers`, `chainMemberKeyAt`, the chain merge pass with the parent rewrite,
+the Chain list; `chainTemplates.test.ts` carries the Bulls_Eyes-shaped acceptance case). Run
+sheet section 12 owed, its item 10 the canvas-selectability call. Designed 2026-09-21. Recorded as a one-line want on 2026-09-04 (Sec.4.5's own "Future want"
+subsection) and never scoped. `Bulls_Eyes.rms`'s real pattern is one player land plus three
+auxiliary lands clustered around that one land, repeated per player, and Q10 rearranges a ring of
+single lands rather than a structure.
+
+**The answer is a targeted addition and not a new capability, because every emit-side mechanism
+already exists and is generic over chain depth.** Read out of the tree rather than assumed;
+`prologue.ts`'s `computeGuardLabels` walks `parent` to any depth and hands a chained land its
+ancestor's `ALP_AT_LEAST_k`, `emitModel.ts`'s `computeOwnerPlayers` does the same for owner
+resolution, `frame.ts` already composes a radial child off a polar parent, `reExpand`'s departure
+rule already refuses to delete a member that has a child, and a standalone placement parented to
+a specific per-player ring member is pinned by `emitModel.test.ts` and `prologue.test.ts` (the
+run-sheet item that would confirm it by hand is still owed). What is missing is a way to author
+the chain once and keep it in step.
+
+So `PatternSlot` gains an optional `chain: ChainTemplate[]` and `ShapeGroup` a parallel
+`chainMembers: string[]`. **A parallel array rather than a longer `members`**, because flattening
+breaks `memberKeyAt`'s positional key derivation, which Sec.4.5 pins as a model invariant, for
+every member that exists today. The expanded child copies its PARENT member's `repeatIndex`, and
+that one word is what makes `Bulls_Eyes.rms`'s aux zones resolve to 11 and 22 through
+`ZonePolicy.perRepeat` with no code that knows anything about chains.
+
+**`perPlayer` needs no change at all**, which is the load-bearing claim; it stays a `ShapeGroup`
+flag and children are guarded by the walk that already exists. Templates also work at
+`perPlayer: false`, which closes the fixed-count half of Sec.4.5's own "patterns and chains
+compose" gap and discharges the one-shot copy action that subsection recommends.
+
+Templates are **depth 1**, bounded by measurement rather than by taste; one grep over the 52
+corpus maps with a land-generation section finds `Bulls_Eyes.rms` as the only map that chains one
+land off another, and the maximum chain depth anywhere in the corpus is 1. `Venn.rms` supplies a
+second composite shape reachable by the same mechanism, a companion land at the same bearing and
+a longer radius, which is one template at `theta = -180`.
+
+**The emitted script does not change.** What moves is authoring; 11 things to author against 32,
+and one edit to change the cluster radius against 24. Sec.4.5's role-picker gap (`+ Shape`,
+`+ Land` and the slot chip all wear `roles[0]`) is real, independent, and ships as slice 1
+because a composite is not authorable without it. The add-slot gap Sec.4.5 also named was stale;
+the control existed, with an id derived from `pattern.length` that duplicated a survivor's after
+a remove-then-add, fixed 2026-09-21 as BUG-030.
+
+**Reviewed the same day (its rev 1 marks).** The one correction that would have produced a wrong
+map: a chain child's `parent` must be its member's POST-MERGE id, because `reExpand` renames a
+fresh member whose deterministic id a released placement still holds and keeps an old id on a
+matched key, so slice 2's merge pass rewrites every child's `parent` and its test builds the
+`5 → 3 → 5` case with a template on the slot.
+
+The design, the option (a)/(b)/(c) pricing, a cost table, eight resolved questions and a
+two-slice implementation brief are in
+`docs/land-placement-composite-pattern-escalation.md`. **Blocking nothing built**, and
+independent of Q11, checked rather than assumed (its section 8).
 
 **Nothing above blocks starting.** Q5 follow-up 1 has landed and rev 3 re-verified it, so the
 one prerequisite rev 2 named is discharged.

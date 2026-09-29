@@ -354,7 +354,7 @@ describe("applyDrag — the dispatcher", () => {
       CENTRE,
       { x: 70, y: 50 },
       undefined,
-      true,
+      ["Angle"],
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -372,7 +372,7 @@ describe("applyDrag — the dispatcher", () => {
       CENTRE,
       { x: 70, y: 50 },
       undefined,
-      true,
+      ["Angle"],
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -390,7 +390,45 @@ describe("applyDrag — the dispatcher", () => {
       CENTRE,
       { x: 70, y: 50 },
       undefined,
-      true,
+      ["Angle"],
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toContain("Radius and Angle");
+  });
+
+  // land-placement-per-player-any-kind-escalation.md slice B: a Line member's
+  // radius is a prologue RAD cell too, so the decline names Radius as well.
+  it("a per player line member declines naming both Radius and Angle, with both literal", () => {
+    const placement = polarPlacement({
+      offset: { kind: "polar", r: num(20), theta: bin("+", num(30), num(15)) },
+    });
+    const result = applyDrag(
+      placement,
+      CENTRE,
+      CENTRE,
+      { x: 70, y: 50 },
+      undefined,
+      ["Radius", "Angle"],
+      { kind: "polar", r: 20, theta: 45 },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toContain("Radius and Angle");
+    expect(result.reason).not.toContain("Radius:");
+  });
+
+  it("the forced labels come out in Radius, Angle order whatever order they are passed in", () => {
+    const placement = polarPlacement({
+      offset: { kind: "polar", r: num(20), theta: num(30) },
+    });
+    const result = applyDrag(
+      placement,
+      CENTRE,
+      CENTRE,
+      { x: 70, y: 50 },
+      undefined,
+      ["Angle", "Radius"],
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -496,7 +534,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         { x: 90, y: 50 },
         undefined,
-        false,
+        [],
         { kind: "polar", r: 20, theta: 0 },
       );
       expect(result.ok).toBe(true);
@@ -528,7 +566,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         { x: 50, y: 30 },
         undefined,
-        false,
+        [],
         { kind: "polar", r: 20, theta: 15 },
       );
       expect(result.ok).toBe(true);
@@ -554,7 +592,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         droppedAt,
         undefined,
-        false,
+        [],
         { kind: "polar", r: 20, theta: 15 },
       );
       expect(result.ok).toBe(true);
@@ -591,7 +629,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         { x: 90, y: 50 },
         undefined,
-        false,
+        [],
         { kind: "polar", r: 20, theta: 90 },
       );
       expect(result.ok).toBe(false);
@@ -610,7 +648,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         { x: 90, y: 50 },
         undefined,
-        false,
+        [],
         { kind: "polar", r: 20, theta: 0 },
       );
       expect(result.ok).toBe(false);
@@ -633,7 +671,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         { x: 50, y: 30 },
         undefined,
-        true,
+        ["Angle"],
         { kind: "polar", r: 20, theta: 15 },
       );
       expect(result.ok).toBe(false);
@@ -655,7 +693,7 @@ describe("applyDrag — the dispatcher", () => {
         CENTRE,
         { x: 90, y: 50 },
         undefined,
-        false,
+        [],
         { kind: "cartesian", dx: 20, dy: 0 },
       );
       expect(result.ok).toBe(false);
@@ -678,7 +716,7 @@ describe("applyDrag — the dispatcher", () => {
         { x: 40, y: 60 },
         { x: 55, y: 50 },
         undefined,
-        false,
+        [],
         { kind: "cartesian", dx: 10, dy: 0 },
       );
       expect(result.ok).toBe(true);
@@ -699,7 +737,7 @@ describe("applyDrag — the dispatcher", () => {
         { x: 40, y: 60 },
         { x: 55, y: 50 },
         undefined,
-        false,
+        [],
         { kind: "cartesian", dx: 0, dy: -10 },
       );
       expect(result.ok).toBe(false);

@@ -32,11 +32,34 @@
 //    that absence IS the fallback trigger, no separate flag needed.
 
 import type { Expr } from "../../../../tools-api/index";
-import { bin, num, sym } from "./compiler/expr";
+import { appendAddends, bin, foldLeft, num, sym } from "./compiler/expr";
 import type { NamedCell } from "./compiler/emit";
 import { expandTrig } from "./compiler/trig";
 import type { NameAllocator } from "./compiler/naming";
 import type { Placement } from "./model";
+
+/**
+ * A jittered per player perimeter member's runtime walk
+ * (land-placement-per-player-any-kind-escalation.md Sec.5.4). The prologue
+ * writes the walk itself, in laps, once per player count branch. This
+ * module turns it into the member's X and Y, once, in the unconditional
+ * body. Every field is already resolved for params.
+ */
+export interface PerimeterWalk {
+  /** A leaf naming the member's WALK cell. */
+  walk: Expr;
+  /** M, the shape's side count. */
+  sides: number;
+  /** B, the member's own circumradius, `slot.radius ?? group.radius`. */
+  radius: Expr;
+  /** The group's rotation. */
+  rotation: Expr;
+}
+
+/** Six decimal places, `perimeterOffset.ts`'s own `round6` precedent (Sec.5.4). */
+function round6(v: number): number {
+  return Math.round(v * 1e6) / 1e6;
+}
 
 export interface PlacementQuantity {
   /** `undefined` for a `cartesian`/`formula` node, it has no angle to give a child (see file header, point 2). */
@@ -53,15 +76,128 @@ export interface FrameResult {
 }
 
 /**
+ * A walked member's X and Y (any-kind escalation Sec.5.4), pushed onto
+ * `cells` in order.
+ *
+ *   SIDE = WALK * M % 100000             whole sides walked
+ *   K    = SIDE % M                      which side
+ *   F    = WALK * M - SIDE               how far along it, 0 to 1
+ *   A    = K * 360 / M + 360.5 + base    side K's midpoint bearing
+ *          (one trig macro over A)
+ *   U    = F * 2sin(180/M) - sin(180/M)  signed distance from the midpoint
+ *   VS   = U * SIN_A,  VC = U * COS_A
+ *   X    = COS_A * apo - VS * B + anchorX
+ *   Y    = SIN_A * apo + VC * B + anchorY
+ *
+ * `%` truncates both operands toward zero (Sec.5.1), which is what makes
+ * `SIDE` a whole number here, and why the prologue's WALK is kept positive.
+ * The `+ 360.5` makes the macro's own `% 360` round A to the nearest degree
+ * rather than truncate it. RMS reads X left to right as
+ * `(COS_A × apo − VS) × B + anchorX`, which is B times the side's midpoint
+ * plus U along the side, whose direction is the midpoint's turned 90
+ * degrees. So one macro serves both terms and a corner needs nothing of its
+ * own.
+ *
+ * `base` is what the member's own bearing is composed from, the rotation
+ * alone or `DEGREES_parent + 180 + rotation` in a radial frame, the same
+ * rule `buildFrame` applies to DEGREES.
+ */
+function pushWalkCells(
+  cells: NamedCell[],
+  namer: NameAllocator,
+  label: string,
+  w: PerimeterWalk,
+  base: Expr,
+  anchorX: Expr,
+  anchorY: Expr,
+): { xName: string; yName: string } {
+  const M = w.sides;
+  const define = (stem: string, expr: Expr): string => {
+    const name = namer.allocate(stem, label);
+    cells.push({ name, expr });
+    return name;
+  };
+  const side = define(
+    "SIDE",
+    foldLeft(w.walk, [
+      ["*", num(M)],
+      ["%", num(100000)],
+    ]),
+  );
+  const k = define("K", bin("%", sym(side), num(M)));
+  const f = define(
+    "F",
+    foldLeft(w.walk, [
+      ["*", num(M)],
+      ["-", sym(side)],
+    ]),
+  );
+  const a = define(
+    "A",
+    appendAddends(
+      foldLeft(sym(k), [
+        ["*", num(360)],
+        ["/", num(M)],
+        ["+", num(360.5)],
+      ]),
+      base,
+    ),
+  );
+  // Its own suffix, so its cell names read apart from the macro over the
+  // member's even bearing, which the member keeps for a radial child.
+  const trig = expandTrig(sym(a), `${label}_WALK`, namer);
+  cells.push(...trig.cells);
+  // `2 × s` from the rounded `s`, so a land at a side's midpoint (F = 0.5)
+  // gets a U of exactly 0.
+  const s = round6(Math.sin(Math.PI / M));
+  const u = define(
+    "U",
+    foldLeft(sym(f), [
+      ["*", num(2 * s)],
+      ["-", num(s)],
+    ]),
+  );
+  const vs = define("VS", bin("*", sym(u), sym(trig.sinName)));
+  const vc = define("VC", bin("*", sym(u), sym(trig.cosName)));
+  const apo = num(round6(Math.cos(Math.PI / M)));
+  const xName = define(
+    "X",
+    foldLeft(sym(trig.cosName), [
+      ["*", apo],
+      ["-", sym(vs)],
+      ["*", w.radius],
+      ["+", anchorX],
+    ]),
+  );
+  const yName = define(
+    "Y",
+    foldLeft(sym(trig.sinName), [
+      ["*", apo],
+      ["+", sym(vc)],
+      ["*", w.radius],
+      ["+", anchorY],
+    ]),
+  );
+  return { xName, yName };
+}
+
+/**
  * Builds the DEGREES/R/S/P/D/SIN/CR/CS/CP/CD/COS/X/Y cells (for a `polar`
  * offset) or the plain X/Y sum (for `cartesian`/`formula`) of a tree of
  * Placements, in dependency order (a parent's cells always precede its
  * children's, required, since a child's DEGREES/X/Y reference its parent's
  * own emitted names by `sym`).
+ *
+ * `walks` names the jittered per player perimeter members, whose X and Y
+ * come from their runtime walk (`pushWalkCells`) in place of `r` and the
+ * macro. Such a member keeps its DEGREES cell and that cell's macro, since
+ * DEGREES is the even bearing a radial child builds on (any-kind
+ * escalation Sec.5.4). Empty for every other emission.
  */
 export function buildFrame(
   placements: readonly Placement[],
   namer: NameAllocator,
+  walks: ReadonlyMap<string, PerimeterWalk> = new Map(),
 ): FrameResult {
   const childrenOf = new Map<string, Placement[]>();
   for (const p of placements) {
@@ -118,6 +254,26 @@ export function buildFrame(
 
       const trig = expandTrig(sym(degreesName), p.label, namer);
       cells.push(...trig.cells);
+
+      const walk = walks.get(p.id);
+      if (walk !== undefined) {
+        const base: Expr =
+          p.frame === "absolute" || inbound === undefined
+            ? walk.rotation
+            : appendAddends(bin("+", inbound, num(180)), walk.rotation);
+        const { xName, yName } = pushWalkCells(
+          cells,
+          namer,
+          p.label,
+          walk,
+          base,
+          anchorX,
+          anchorY,
+        );
+        quantities.set(p.id, { degreesName, xName, yName });
+        for (const child of childrenOf.get(p.id) ?? []) visit(child);
+        return;
+      }
 
       const xName = namer.allocate("X", p.label);
       cells.push({

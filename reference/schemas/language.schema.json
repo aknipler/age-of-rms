@@ -134,6 +134,10 @@
           "type": "boolean",
           "description": "Whether this trailing argument may be omitted. Schema action item (docs/parser-design.md Sec.13); honored by the parser if present."
         },
+        "leadIn": {
+          "type": "string",
+          "description": "A word Breakdown shows before this argument's field, so a multi-argument attribute reads as a sentence. replace_terrain's second terrain carries \"with\" (from X with Y). Presentation only, never written to the script."
+        },
         "variadic": {
           "type": "boolean",
           "description": "Whether this trailing argument may repeat. Schema action item; honored by the parser if present."

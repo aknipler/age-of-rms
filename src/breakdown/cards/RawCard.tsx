@@ -23,7 +23,6 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
     useBreakdownContext();
   const text = source.slice(node.span.start, node.span.end);
   const nodeDiagnostics = diagnosticsWithin(diagnostics, node.span);
-  const worstSeverity = nodeDiagnostics[0]?.severity;
   // Same anchor-by-span scheme as every other card (Sec.6.3), so a raw
   // region's collapse state survives a reparse the same way a command's
   // does, with the sense INVERTED from CommandCard's, same reasoning and
@@ -59,7 +58,9 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
           <span className={styles.kindLabel}>{kindLabel} — shown as code</span>
         </HelpTip>
         {firstLine && <span className={styles.rawPreview}>{firstLine}</span>}
-        {worstSeverity && <ProblemBadge severity={worstSeverity} />}
+        {nodeDiagnostics.length > 0 && (
+          <ProblemBadge diagnostics={nodeDiagnostics} />
+        )}
       </div>
       {expanded && (
         <>

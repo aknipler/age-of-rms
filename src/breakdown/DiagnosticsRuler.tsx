@@ -59,16 +59,6 @@ export function DiagnosticsRuler({
     if (!container) return;
     const candidates = ticksForItems(items, diagnostics);
     const scrollHeight = container.scrollHeight || 1;
-    // A native scrollbar's thumb has its own height, so its TOP never
-    // reaches the track's literal bottom, only `1 - (thumb's own height
-    // fraction)` does — the thumb's BOTTOM reaches 100%, at max scroll.
-    // A raw content-position fraction ignores this and can put a tick at
-    // 100%, past where the real scrollbar thumb's own travel range ends
-    // (item 10, UI pass 2026-09-15). Rescaling every tick's fraction by
-    // the same (1 - heightFraction) the viewport indicator below already
-    // uses makes the two tracks' usable ranges match exactly.
-    const heightFraction = Math.min(1, container.clientHeight / scrollHeight);
-    const travelFraction = 1 - heightFraction;
     // getBoundingClientRect, not offsetTop: offsetTop is only meaningful
     // relative to the element's offsetParent, the nearest ANCESTOR with
     // a non-static `position`, which is fragile here (this codebase
@@ -90,18 +80,30 @@ export function DiagnosticsRuler({
       const elRect = el.getBoundingClientRect();
       const topWithinContent =
         elRect.top - containerRect.top + container.scrollTop;
-      // Clamp to [0, 1] before rescaling: the very last item's rect can
-      // land a hair past `scrollHeight` from sub-pixel rounding
-      // (border/padding rounding differs between getBoundingClientRect's
-      // fractional pixels and the integer-rounded scrollHeight), which
-      // without clamping renders that one tick a few px below .ruler's
-      // own box, visually poking into whatever sits below the pane (the
-      // StatusBar).
+      // Clamp to [0, 1]. The very last item's rect can land a hair past
+      // `scrollHeight` from sub-pixel rounding (border/padding rounding
+      // differs between getBoundingClientRect's fractional pixels and the
+      // integer-rounded scrollHeight), which without clamping renders
+      // that one tick a few px below .ruler's own box, visually poking
+      // into whatever sits below the pane (the StatusBar). This fraction
+      // is over the FULL scrollHeight, matching the unscaled fraction
+      // .viewport below is computed from (scrollTop / scrollHeight), so
+      // an item's tick and the viewport indicator agree on where "here"
+      // is. An earlier version rescaled ticks by the viewport's own
+      // (1 - heightFraction) travel range, reasoning from a NATIVE
+      // scrollbar thumb, whose top can never reach the track's bottom
+      // because the thumb has height. That doesn't apply here. A tick is
+      // a single point, not a thumb, so it has no such reach limit, and
+      // the rescale just squeezed every tick toward the top. A tick at
+      // content-fraction 0.8 rendered at 0.64, well above where the
+      // (correctly unscaled) viewport indicator's own top lands at max
+      // scroll (0.8), even though that's exactly the content the
+      // indicator would then be showing.
       const rawFraction = Math.min(
         1,
         Math.max(0, topWithinContent / scrollHeight),
       );
-      next.push({ ...candidate, topFraction: rawFraction * travelFraction });
+      next.push({ ...candidate, topFraction: rawFraction });
     }
     setTicks(next);
   }, [items, diagnostics, containerRef]);
@@ -114,9 +116,26 @@ export function DiagnosticsRuler({
     const container = containerRef.current;
     if (!container) return;
     const scrollHeight = container.scrollHeight || 1;
+    // SectionView's "+ Add command" row is `position: sticky; top: 0`
+    // inside this same scroll container, so once scrolled past its own
+    // resting position it stays pinned over the top of whatever cards
+    // would otherwise be there. `clientHeight` has no idea any of that
+    // pixel range is covered rather than showing card content, so a raw
+    // scrollTop/clientHeight readout overstates what's actually visible
+    // by the header's own height, always at the top of the range.
+    // Subtracting it from both the top offset and the height is what
+    // makes "this tick sits at the very top edge of the indicator band"
+    // mean "this card is visible right below the sticky header", the
+    // exact alignment a user scrolling by eye would expect, rather than
+    // "partway behind it".
+    const headerHeight =
+      container.querySelector<HTMLElement>("[data-sticky-header]")
+        ?.offsetHeight ?? 0;
+    const visibleTop = container.scrollTop + headerHeight;
+    const visibleHeight = Math.max(0, container.clientHeight - headerHeight);
     setViewport({
-      topFraction: container.scrollTop / scrollHeight,
-      heightFraction: Math.min(1, container.clientHeight / scrollHeight),
+      topFraction: visibleTop / scrollHeight,
+      heightFraction: Math.min(1, visibleHeight / scrollHeight),
     });
   }, [containerRef]);
 

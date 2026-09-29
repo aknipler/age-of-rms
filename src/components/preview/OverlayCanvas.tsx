@@ -149,6 +149,17 @@ export interface OverlayCanvasProps {
   /** The "≈ Approximate preview" badge and banner notes. Meaningful only alongside `base`, since a caller with no generation has nothing for the banner to report on. */
   showApproximateBadge?: boolean;
   /**
+   * The lobby player count this generation ran with, drawn under the badge
+   * as "200×200, 6 players". The dim half of that line is this component's
+   * own `dim` (post-`override_map_size`, so it is what was actually drawn,
+   * not the lobby size). The player half cannot be read off the result:
+   * `result.players` is the markers a script managed to PLACE, which is
+   * zero for a script with no player lands, so the caller hands in the
+   * settings value the generator was given instead. Only drawn with
+   * `showApproximateBadge`.
+   */
+  playerCount?: number;
+  /**
    * Adds the small "Export" button beside the zoom controls, which saves
    * exactly what this canvas is currently showing as a PNG. Optional because
    * this component is also the Land Placement panel's own canvas (no
@@ -172,6 +183,7 @@ export function OverlayCanvas({
   overlayShapes,
   helpTipId,
   showApproximateBadge,
+  playerCount,
   showExportButton,
 }: OverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -559,6 +571,14 @@ export function OverlayCanvas({
           <HelpTip id="preview.approximateBadge">
             <span className={styles.badge}>≈ Approximate preview</span>
           </HelpTip>
+          {playerCount !== undefined && (
+            <HelpTip id="preview.mapSummary">
+              <span className={styles.badge}>
+                {dim}×{dim}, {playerCount}{" "}
+                {playerCount === 1 ? "player" : "players"}
+              </span>
+            </HelpTip>
+          )}
           {base?.result.notes
             .filter((note) => note.prominence === "banner")
             .map((note) => (

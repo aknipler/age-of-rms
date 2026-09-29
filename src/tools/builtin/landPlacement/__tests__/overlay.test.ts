@@ -3,6 +3,7 @@
 // (10,000) reporting the hidden count; the zero case printing its count."
 
 import { describe, expect, it } from "vitest";
+import { ASSIGN_TO_PLAYER_PER_REPEAT } from "../model";
 import { LIMITS } from "../../../../../tools-api/index";
 import { overlayShapesToRender } from "../../../protocol";
 import { add, num, sym } from "../compiler/expr";
@@ -39,9 +40,9 @@ function role(over: Partial<LandRole> = {}): LandRole {
     terrain: { k: "name", name: "DIRT" },
     baseSize: num(12),
     baseElevation: num(9),
-    landPercent: num(8),
+    extent: { kind: "percent", value: num(8) },
     zone: { kind: "perRepeat", base: 1, step: 1 },
-    assignToPlayer: true,
+    assign: ASSIGN_TO_PLAYER_PER_REPEAT,
     ...over,
   };
 }

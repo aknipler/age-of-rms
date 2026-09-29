@@ -45,18 +45,20 @@ export interface SectionTab {
 export function buildSectionTabs(script: ScriptNode): SectionTab[] {
   const tabs: SectionTab[] = [];
 
-  if (script.preamble.length > 0) {
-    tabs.push({
-      id: "header",
-      label: "Header",
-      known: true,
-      number: SECTION_NUMBERS.header,
-      isCanonicalOrHeader: true,
-      items: script.preamble,
-      ranges: script.preamble.map((i) => i.span),
-      sections: [],
-    });
-  }
+  // Always present, even with an empty preamble (beta feedback 2026-09-17,
+  // the tab used to appear only once something sat before the first
+  // section, so a fresh script had nowhere to add its first #const). The
+  // empty case inserts at offset 0, see computeEdit's insertIntoPreamble.
+  tabs.push({
+    id: "header",
+    label: "Header",
+    known: true,
+    number: SECTION_NUMBERS.header,
+    isCanonicalOrHeader: true,
+    items: script.preamble,
+    ranges: script.preamble.map((i) => i.span),
+    sections: [],
+  });
 
   const byName = new Map<string, SectionNode[]>();
   const order: string[] = [];

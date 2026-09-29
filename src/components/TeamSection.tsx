@@ -14,9 +14,12 @@ import styles from "./TeamSection.module.css";
 // - 1 2 3 4 and wraps, right click reverses.
 //
 // All 8 rows always render; rows for players above playerCount are greyed
-// out and their button disabled rather than removed, so the dialog's height
-// stays fixed as the count changes (beta feedback: the whole
-// GenerationSettingsDialog used to grow and shrink under this section).
+// out and their button disabled rather than removed, so the rows' height
+// stays fixed as the count changes. Beta feedback found the whole
+// GenerationSettingsDialog growing and shrinking under this section.
+// The readout and lock note below still change height, so the dialog box
+// itself is now a fixed height too (GenerationSettingsDialog.module.css's
+// .fixedSize).
 // Assignments for players above the count are RETAINED in context (see
 // DEFAULT_TEAMS' comment) so raising the count brings them back rather than
 // silently zeroing them.

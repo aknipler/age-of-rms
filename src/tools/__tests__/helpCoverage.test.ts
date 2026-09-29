@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../parser/__tests__/testUtils";
+import { TEMPLATES } from "../../breakdown/templates/templates";
 
 const uiHelp = JSON.parse(
   readFileSync(join(REPO_ROOT, "reference", "data", "ui-help.json"), "utf8"),
@@ -56,6 +57,33 @@ describe("Advanced Tools help coverage", () => {
       "src/tools/builtin/landPlacement/panel/LandPlacementHelpDialog.tsx",
     );
     expect(used.length).toBeGreaterThan(0);
+    expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  // The Breakdown card menu (2026-09-18) is a new file whose four entries
+  // are the only HelpTips in it, so like the Land Placement dialog above
+  // it is named here rather than left for the regex scan to miss.
+  it("every HelpTip in the Breakdown card menu has a ui-help.json entry", () => {
+    const used = helpTipIdsIn("src/breakdown/cards/CardMenu.tsx");
+    expect(used.length).toBe(4);
+    expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  // The Add template dialog (2026-09-28, when the forest templates arrived).
+  // Most of its ids reach a HelpTip through a field component's `helpId`
+  // prop, and the template choices are built from each template's id, so
+  // neither shape matches the literal scan alone. Both are collected here.
+  it("every HelpTip in the Add template dialog has a ui-help.json entry", () => {
+    const source = readFileSync(
+      join(REPO_ROOT, "src/breakdown/templates/TemplateDialog.tsx"),
+      "utf8",
+    );
+    const used = [
+      ...helpTipIdsIn("src/breakdown/templates/TemplateDialog.tsx"),
+      ...[...source.matchAll(/helpId="([^"]+)"/g)].map((m) => m[1]),
+      ...TEMPLATES.map((t) => `template.choice.${t.id}`),
+    ];
+    expect(used.length).toBeGreaterThan(20);
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
 

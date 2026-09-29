@@ -5,14 +5,36 @@
 // you."
 
 import { describe, expect, it, vi } from "vitest";
+import { ASSIGN_TO_PLAYER_PER_REPEAT } from "../model";
 import { loadLanguage } from "../../../../parser/__tests__/testUtils";
 import { parseRms } from "../../../../parser/parser";
 import { add, num, param, sym } from "../compiler/expr";
 import { NameAllocator } from "../compiler/naming";
 import { emitAlpModel } from "../emitModel";
+import { perimeterPolar } from "../perimeterOffset";
 import type { AlpModel } from "../fence";
 import type { LandRole, Placement, ShapeGroup } from "../model";
 import { checkP4, reservedNames } from "../preconditions";
+import { buildFenceEdits } from "../fence";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { REPO_ROOT } from "../../../../parser/__tests__/testUtils";
+import {
+  validate,
+  type GameConstantsForValidate,
+  type ValidateReferenceDb,
+} from "../../../../parser/validate";
+
+const lang = loadLanguage();
+const refDb: ValidateReferenceDb = {
+  language: lang,
+  gameConstants: JSON.parse(
+    readFileSync(
+      join(REPO_ROOT, "reference", "data", "game-constants.json"),
+      "utf8",
+    ),
+  ) as GameConstantsForValidate,
+};
 
 type PolarOffset = {
   kind: "polar";
@@ -141,9 +163,9 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
       terrain: { k: "name", name: "DIRT" },
       baseSize: num(12),
       baseElevation: num(9),
-      landPercent: num(8),
+      extent: { kind: "percent", value: num(8) },
       zone: { kind: "perRepeat", base: 1, step: 1 },
-      assignToPlayer: true,
+      assign: ASSIGN_TO_PLAYER_PER_REPEAT,
       ...over,
     };
   }
@@ -184,10 +206,57 @@ describe("emitAlpModel — roles (Sec.6.2)", () => {
     const p1Text = result.createLandText.get("P1")!;
     expect(p1Text).toContain("create_land");
     expect(p1Text).toContain("zone 1"); // base 1 + step 1 * repeatIndex 0
-    expect(p1Text).toContain("assign_to AT_PLAYER 1"); // repeatIndex 0 -> player 1
+    // The full four-argument line (Sec.9 rev 1: a prefix match passed on
+    // the two-argument defect for weeks).
+    expect(p1Text.split("\n")).toContain("assign_to AT_PLAYER 1 0 0"); // repeatIndex 0 -> player 1
     const p2Text = result.createLandText.get("P2")!;
     expect(p2Text).toContain("zone 2"); // base 1 + step 1 * repeatIndex 1
-    expect(p2Text).toContain("assign_to AT_PLAYER 2");
+    expect(p2Text.split("\n")).toContain("assign_to AT_PLAYER 2 0 0");
+  });
+
+  it("the rendered fence plus a tool-built create_land draws no RMS0201 and no RMS0307 from validate() (Sec.9, Sec.4.1)", () => {
+    // The durable claim: the app's own semantic pass accepts the tool's own
+    // output. Stronger than a string match on four tokens, and it is the
+    // check that would have caught the two-argument assign_to on day one.
+    // Mutation-tested by hand on 2026-09-21: with `String(role.assign.mode),
+    // String(role.assign.flags)` removed from landCommand.ts this reports
+    // one RMS0201 per player land.
+    const model: AlpModel = {
+      v: 1,
+      placements: [
+        {
+          id: "P1",
+          parent: "center",
+          frame: "radial",
+          label: "P1",
+          role: "player",
+          repeatIndex: 0,
+          offset: { kind: "polar", r: num(26), theta: num(0) },
+        },
+      ],
+      roles: [role()],
+      randomParams: [],
+      groups: [],
+    };
+    const result = emitAlpModel(model, new NameAllocator(), new Map(), 2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const fenceText = buildFenceEdits(parseRms("", lang), model, result.body)[0]
+      .newText;
+    const source = [
+      "<PLAYER_SETUP>",
+      "direct_placement",
+      "<LAND_GENERATION>",
+      fenceText,
+      result.createLandText.get("P1")!,
+      "",
+    ].join("\n");
+    const parsed = parseRms(source, lang);
+    const codes = [...parsed.diagnostics, ...validate(parsed, refDb)].map(
+      (d) => `${d.code} ${d.message}`,
+    );
+    expect(codes.filter((c) => c.startsWith("RMS0201"))).toEqual([]);
+    expect(codes.filter((c) => c.startsWith("RMS0307"))).toEqual([]);
   });
 
   it("a chain anchor with no role gets no create_land text", () => {
@@ -258,9 +327,9 @@ describe("emitAlpModel — defensive ShapeGroup fill (Sec.5 item 1)", () => {
       terrain: { k: "name", name: "GRASS" },
       baseSize: num(10),
       baseElevation: num(0),
-      landPercent: num(0),
+      extent: { kind: "percent", value: num(0) },
       zone: { kind: "none" },
-      assignToPlayer: false,
+      assign: { kind: "none" },
     };
     // model.placements is EMPTY, neither member is present, exercising the
     // defensive fill path end to end.
@@ -312,9 +381,9 @@ describe("emitAlpModel — RandomParam hoisting (Sec.4.4), the gap named open si
       terrain: { k: "name", name: "GRASS" },
       baseSize: num(10),
       baseElevation: num(0),
-      landPercent: num(5),
+      extent: { kind: "percent", value: num(5) },
       zone: { kind: "none" },
-      assignToPlayer: true,
+      assign: ASSIGN_TO_PLAYER_PER_REPEAT,
       ...over,
     };
   }
@@ -586,9 +655,9 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
       terrain: { k: "name", name: "GRASS" },
       baseSize: num(10),
       baseElevation: num(0),
-      landPercent: num(5),
+      extent: { kind: "percent", value: num(5) },
       zone: { kind: "none" },
-      assignToPlayer: true,
+      assign: ASSIGN_TO_PLAYER_PER_REPEAT,
     };
   }
 
@@ -741,7 +810,7 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
       ...perPlayerRole(),
       id: "aux",
       label: "Aux",
-      assignToPlayer: false,
+      assign: { kind: "none" },
     };
     const model: AlpModel = {
       ...perPlayerModel(),
@@ -836,35 +905,41 @@ describe("emitAlpModel — a per-player ring (Sec.2's own acceptance)", () => {
       expect(result.body).toContain(`#const ALP_PARAM_JITTER_P${p} rnd(-2,2)`);
   });
 
-  // shape-kinds-slice-a-brief.md item 5: a perPlayer group's own member is
-  // `polar` for line/arc exactly like circle, so without this refusal the
-  // frame-algebra pass would silently draw the RING formula over a line or
-  // arc's members — a plausible-looking wrong map, not an error.
-  //
-  // perimeter-symbolic-rotation-slice-a-brief.md item 3/Sec.8.7 finding 2:
-  // now the ONLY guard for a perimeter kind too. `prologue.ts`'s own
-  // `offset.kind !== "polar"` skip used to catch every perimeter member as
-  // a second line of defence; since square/triangle/polygon are polar now
-  // like everything else, it catches none of them, so this refusal alone
-  // stands between a perPlayer square and silently-stamped ring angles.
-  it.each(["line", "arc", "square"] as const)(
-    "a perPlayer %s group fails emission with a problem, rather than drawing ring angles over it (now the only guard against it for a perimeter kind)",
-    (kind) => {
+  // shape-kinds-slice-a-brief.md item 5 refused a perPlayer group of any
+  // kind but circle here, since the prologue only knew the ring formula and
+  // would have stamped ring angles over a line, an arc or a perimeter kind,
+  // a plausible-looking wrong map. The prologue now asks the expander for
+  // each member's position at every count, and
+  // land-placement-per-player-any-kind-escalation.md slice C deleted the
+  // refusal with the last of its kinds. What this pins is the hazard the
+  // refusal stood for. A perimeter member's cells come from the perimeter,
+  // never from the ring.
+  it.each([
+    ["square", 4],
+    ["triangle", 3],
+    ["polygon", 6],
+  ] as const)(
+    "a perPlayer %s group emits, its prologue placing members round the perimeter rather than on ring angles",
+    (kind, sides) => {
       const model: AlpModel = {
         ...perPlayerModel(),
         groups: [{ ...perPlayerRing(), kind }],
       };
       const result = emitAlpModel(model, new NameAllocator(), new Map(), 3);
-      expect(result.ok).toBe(false);
-      if (result.ok) return;
-      expect(result.problems).toHaveLength(1);
-      expect(result.problems[0].name).toBe("group:ring:perPlayer");
-      expect(result.problems[0].emittedValue).toBeUndefined();
-      expect(result.problems[0].directValue).toBeUndefined();
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      for (let m = 0; m < 3; m++) {
+        const { radiusScale, bearingDegrees } = perimeterPolar(sides, 3, m);
+        expect(result.resolved.get(`ALP_DEG_P${m + 1}`)).toBe(bearingDegrees);
+        expect(result.resolved.get(`ALP_RAD_P${m + 1}`)).toBeCloseTo(
+          30 * radiusScale,
+          9,
+        );
+      }
     },
   );
 
-  it("a perPlayer circle (this describe block's own fixture) still emits its prologue unchanged — the refusal is kind-specific, not a blanket regression", () => {
+  it("a perPlayer circle (this describe block's own fixture) still emits its prologue unchanged — the perimeter kinds joining changed nothing for it", () => {
     const result = emitAlpModel(
       perPlayerModel(),
       new NameAllocator(),
@@ -891,9 +966,9 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
       terrain: { k: "name", name: "GRASS" },
       baseSize: num(10),
       baseElevation: num(0),
-      landPercent: num(5),
+      extent: { kind: "percent", value: num(5) },
       zone: { kind: "none" },
-      assignToPlayer: false,
+      assign: { kind: "none" },
     };
   }
 
@@ -1012,5 +1087,240 @@ describe("emitAlpModel — a perimeter kind's rotation can be symbolic (perimete
       .find((l) => l.startsWith("#const ALP_DEGREES_CHILD "));
     expect(childDegreesLine).toBeDefined();
     expect(childDegreesLine).toContain(parentDegreesName!);
+  });
+});
+
+// role-attributes-escalation.md Sec.10 slice 3: the per-land override.
+describe("emitAlpModel — per-land role overrides (Sec.5, Q11)", () => {
+  function auxRole(over: Partial<LandRole> = {}): LandRole {
+    return {
+      id: "aux",
+      label: "Aux",
+      terrain: { k: "name", name: "GRASS" },
+      baseSize: num(7),
+      baseElevation: num(0),
+      extent: { kind: "percent", value: num(0) },
+      zone: { kind: "perRepeat", base: 11, step: 11 },
+      assign: { kind: "none" },
+      ...over,
+    };
+  }
+  function land(
+    id: string,
+    repeatIndex: number,
+    extra: Partial<Placement> = {},
+  ): Placement {
+    return {
+      id,
+      parent: "center",
+      frame: "radial",
+      label: id,
+      role: "aux",
+      repeatIndex,
+      offset: { kind: "polar", r: num(20), theta: num(repeatIndex * 90) },
+      ...extra,
+    };
+  }
+  function emit(model: AlpModel) {
+    const result = emitAlpModel(model, new NameAllocator(), new Map(), 2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("unreachable");
+    return result;
+  }
+  const withAux = (
+    placements: Placement[],
+    roles: LandRole[] = [auxRole()],
+  ): AlpModel => ({
+    v: 1,
+    placements,
+    roles,
+    randomParams: [],
+    groups: [],
+  });
+
+  it("one land overriding one attribute references a per-land constant; every other land wearing the role still references the role's", () => {
+    const result = emit(
+      withAux([
+        land("A1", 0, { roleOverrides: { baseSize: num(12) } }),
+        land("A2", 1),
+        land("A3", 2),
+      ]),
+    );
+    const roleName = result.roleNamesByPlacement.get("A2")!.baseSizeName;
+    const ownName = result.roleNamesByPlacement.get("A1")!.baseSizeName;
+    expect(roleName).toBe("ALP_ROLE_SIZE_AUX");
+    expect(ownName).toBe("ALP_LAND_SIZE_A1");
+    expect(result.createLandText.get("A1")!.split("\n")).toContain(
+      `base_size ${ownName}`,
+    );
+    expect(result.createLandText.get("A2")!.split("\n")).toContain(
+      `base_size ${roleName}`,
+    );
+    expect(result.createLandText.get("A3")!.split("\n")).toContain(
+      `base_size ${roleName}`,
+    );
+    // Everything A1 did NOT override still points at the role.
+    expect(result.createLandText.get("A1")!.split("\n")).toContain(
+      "terrain_type ALP_ROLE_TERRAIN_AUX",
+    );
+    // The per-land constant is a real cell with the override's value, and
+    // it reaches emittedNames so P4 can see it (Sec.10 slice 3).
+    expect(result.body).toContain(`#const ${ownName} 12`);
+    expect(result.emittedNames).toContain(ownName);
+    expect(result.resolved.get(ownName)).toBe(12);
+  });
+
+  it("a reset restores the reference rather than freezing the value", () => {
+    const before = withAux([
+      land("A1", 0, { roleOverrides: { baseSize: num(12) } }),
+    ]);
+    const after = {
+      ...before,
+      placements: before.placements.map((p) => ({
+        ...p,
+        roleOverrides: undefined,
+      })),
+    };
+    const text = emit(after).createLandText.get("A1")!;
+    expect(text.split("\n")).toContain("base_size ALP_ROLE_SIZE_AUX");
+    expect(emit(after).body).not.toContain("ALP_LAND_SIZE_A1");
+  });
+
+  it("overriding zone on a perRepeat role gives that land a fixed zone and leaves the others deriving (Sec.5.3)", () => {
+    const result = emit(
+      withAux([
+        land("A1", 0, { roleOverrides: { zone: { kind: "fixed", zone: 99 } } }),
+        land("A2", 1),
+      ]),
+    );
+    // The override REPLACES the policy: a fixed zone is a role-style constant
+    // (here per-land), not a literal.
+    const fixedName = result.roleNamesByPlacement.get("A1")!.fixedZoneName!;
+    expect(fixedName).toBe("ALP_LAND_ZONE_A1");
+    expect(result.body).toContain(`#const ${fixedName} 99`);
+    expect(result.createLandText.get("A1")!.split("\n")).toContain(
+      `zone ${fixedName}`,
+    );
+    expect(result.createLandText.get("A2")!.split("\n")).toContain("zone 22");
+    expect(
+      result.roleNamesByPlacement.get("A2")!.fixedZoneName,
+    ).toBeUndefined();
+  });
+
+  it("an override on a chained land can reference a perPlayer RandomParam; the same reference on the role fails, and on an ownerless land fails (Sec.5.4, all three directions)", () => {
+    const player: LandRole = {
+      id: "player",
+      label: "Player",
+      terrain: { k: "name", name: "DIRT" },
+      baseSize: num(12),
+      baseElevation: num(0),
+      extent: { kind: "percent", value: num(8) },
+      zone: { kind: "none" },
+      assign: ASSIGN_TO_PLAYER_PER_REPEAT,
+    };
+    const jitter = {
+      id: "jitter",
+      label: "JITTER",
+      min: 5,
+      max: 15,
+      perPlayer: true,
+    };
+    const p1: Placement = { ...land("P1", 0), role: "player" };
+    const chained = land("A1", 0, {
+      parent: "P1",
+      roleOverrides: { baseSize: param("jitter") },
+    });
+    const ok = emitAlpModel(
+      {
+        v: 1,
+        placements: [p1, chained],
+        roles: [player, auxRole()],
+        randomParams: [jitter],
+        groups: [],
+      },
+      new NameAllocator(),
+      new Map(),
+      2,
+    );
+    expect(ok.ok).toBe(true);
+    if (!ok.ok) return;
+    // Resolved to player 1's own draw, by name.
+    expect(ok.body.split(String.fromCharCode(10))).toContain(
+      "#const ALP_LAND_SIZE_A1 ALP_PARAM_JITTER_P1",
+    );
+
+    const roleFails = emitAlpModel(
+      {
+        v: 1,
+        placements: [p1, land("A1", 0, { parent: "P1" })],
+        roles: [player, auxRole({ baseSize: param("jitter") })],
+        randomParams: [jitter],
+        groups: [],
+      },
+      new NameAllocator(),
+      new Map(),
+      2,
+    );
+    expect(roleFails.ok).toBe(false);
+    if (!roleFails.ok)
+      expect(roleFails.problems.map((p) => p.name)).toEqual([
+        "role:Aux:baseSize",
+      ]);
+
+    const ownerless = emitAlpModel(
+      {
+        v: 1,
+        placements: [
+          land("A1", 0, { roleOverrides: { baseSize: param("jitter") } }),
+        ],
+        roles: [auxRole()],
+        randomParams: [jitter],
+        groups: [],
+      },
+      new NameAllocator(),
+      new Map(),
+      2,
+    );
+    expect(ownerless.ok).toBe(false);
+    if (!ownerless.ok)
+      expect(ownerless.problems.map((p) => p.name)).toEqual([
+        "placement:A1:override:baseSize",
+      ]);
+  });
+
+  it("an override's name reaches P4, and P4 still reports a genuine collision against the script", () => {
+    const model = withAux([
+      land("A1", 0, { roleOverrides: { clumpingFactor: num(20) } }),
+    ]);
+    const result = emit(model);
+    const own = result.roleNamesByPlacement.get("A1")!.optional.clumpingFactor!;
+    expect(own).toBe("ALP_LAND_CLUMPING_A1");
+    expect(result.emittedNames).toContain(own);
+    expect(checkP4(result.emittedNames, parseRms("", lang), lang).ok).toBe(
+      true,
+    );
+    const dirty = parseRms(`#const ${own} 1` + String.fromCharCode(10), lang);
+    expect(checkP4(result.emittedNames, dirty, lang).collisions).toContain(own);
+  });
+
+  it("an overridden flag and an overridden extent kind change the skeleton's attributes, not only its constants", () => {
+    const result = emit(
+      withAux([
+        land("A1", 0, {
+          roleOverrides: {
+            circularBase: true,
+            extent: { kind: "tiles", value: num(600) },
+          },
+        }),
+        land("A2", 1),
+      ]),
+    );
+    const a1 = result.createLandText.get("A1")!.split("\n");
+    expect(a1).toContain("set_circular_base");
+    expect(a1).toContain("number_of_tiles ALP_LAND_TILES_A1");
+    expect(a1.some((l) => l.startsWith("land_percent"))).toBe(false);
+    const a2 = result.createLandText.get("A2")!.split("\n");
+    expect(a2).not.toContain("set_circular_base");
+    expect(a2).toContain("land_percent ALP_ROLE_PERCENT_AUX");
   });
 });

@@ -13,16 +13,34 @@ import {
   symbolicDeclineReason,
   type DragOutcome,
   type PercentPoint,
+  type PolarLabel,
   type ResolvedOffsetComponents,
 } from "./dragMath";
 import type { SnapContext } from "./snapping";
 import { wouldCreateCycle } from "./viewModel";
-import { updatePlacement } from "./modelOps";
+import { groupForMember, updatePlacement } from "./modelOps";
+import { radiusFollowsCount } from "../prologue";
 import type { EmissionOk } from "../emitModel";
 import type { AlpModel } from "../fence";
 import type { Anchor, Placement, ShapeGroup } from "../model";
 
 const MAP_CENTRE: PercentPoint = { x: 50, y: 50 };
+
+/**
+ * The fields of `placementId`'s offset the emitter replaces with prologue
+ * cells, which a drag therefore cannot write (`applyDrag`'s
+ * `perPlayerForced`). None outside a per player shape. Angle on every per
+ * player kind, and Radius too on a kind whose radius moves with the count
+ * (any-kind escalation Sec.6).
+ */
+export function perPlayerForcedLabels(
+  model: AlpModel,
+  placementId: string,
+): PolarLabel[] {
+  const group = groupForMember(model, placementId);
+  if (group?.perPlayer !== true) return [];
+  return radiusFollowsCount(group.kind) ? ["Radius", "Angle"] : ["Angle"];
+}
 
 /**
  * `anchor`'s own resolved position, in percent, per the SAME `resolved`
@@ -183,7 +201,7 @@ export function computeRimDragReparent(
     childPosition,
     childPosition,
     parentDegreesResolved,
-    false,
+    [],
     resolvedOffsetOf(child, emission),
   );
   if (!outcome.ok) return { ok: false, reason: outcome.reason };
@@ -223,7 +241,9 @@ export function evalGroupExpr(
 ): number | undefined {
   return evalExpr(expr, {
     resolveSym: (name) => emission.resolved.get(name),
-    resolveParam: () => undefined,
+    // A param previews at its midpoint (paramEmit.ts), the same value the
+    // emission's own `resolved` table carries under the emitted name.
+    resolveParam: (id) => emission.paramPreview.get(id),
   });
 }
 

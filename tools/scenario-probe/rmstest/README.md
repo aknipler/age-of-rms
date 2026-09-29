@@ -860,6 +860,67 @@ Batch 15's `RMSTEST_66` reading of the growth-time half of this attribute was wr
 
 **What changed in the app.** `lands.ts`'s `violatesZoneAvoidance` (deleted 2026-09-02) is restored and wired back into `acceptCandidate`; `lands.test.ts`'s matching test is rewritten to assert the correct (avoidance-holds) outcome, plus two new tests for the same-zone exemption and the smaller-of-two-values rule. `docs/known-issues.md` BUG-016 and `docs/preview-design.md` Sec.6.1 are both corrected in place (struck-through claims replaced, not deleted, per this file's own convention). Full corpus (`npm test`, 111/111 files, 2757 tests) green — no tracked corpus map's pinned figures moved. `npm run typecheck` clean.
 
+## Batch 18 (written 2026-09-21, NOT YET RUN) — connection-endpoint consequences, a terrain_size default check, Venn's combined spacing attributes, and two grouped_by_team gaps
+
+Eight scripts, none generated yet. Three separate open questions, none of
+which needs new tooling — every read is `--patches`/`--bbox` on the existing
+probe. **Ready to run in any DE install with this repo's `rmstest/` copied
+into `random-map-scripts/`.**
+
+| Script                                    | Settles                                                                      | Generate at                            | Runs | Reads with                              |
+| ------------------------------------------ | ----------------------------------------------------------------------------- | --------------------------------------- | ---- | ----------------------------------------- |
+| `RMSTEST_75a_costzero_origin_blocked`     | BUG-029 consequence 1 — does `terrain_cost T 0` under a land's origin block **every** connection touching that land | Normal (200), any players               | 3    | `--bbox DIRT`, `--patches ROAD`/`GRASS`/`GRASS2` |
+| `RMSTEST_75b_costzero_origin_control`     | control for 75a — same map, cost-0 line removed                              | Normal (200), any players               | 3    | `--bbox DIRT`, `--patches ROAD`           |
+| `RMSTEST_76_terrainsize_intrudes_origin`  | BUG-029 consequence 2 — does the road's `terrain_size` disc paint inside the player's own land, right up to the origin | Normal (200), any players               | 2    | `--patches GRASS3`, `--patches ROAD`      |
+| `RMSTEST_77a_terrainsize_declared`        | Sec.15's item-32 collision (renumbered item 33 below) — undeclared `terrain_size`'s assumed radius-1/variance-0 default, declared arm | Normal (200), any players               | 3    | `--patches ROAD`                          |
+| `RMSTEST_77b_terrainsize_undeclared`      | same, undeclared arm — twin of 77a                                            | Normal (200), any players               | 3    | `--patches ROAD`                          |
+| `RMSTEST_78_combinedspacing_venn`         | does `spacing_to_other_terrain_types` + `spacing_to_specific_terrain` on ONE command compose as independent minimums — the gap `docs/known-issues.md` BUG-016's write-up flagged in Venn.rms and never resolved | Normal (200), any players               | 3    | `--patches DIRT2`/`SNOW`/`DESERT`         |
+| `RMSTEST_79_groupedbyteam_overflow`       | what `grouped_by_team` does when packed groups don't fit the ring circumference (preview-design.md Sec.6.1) | **Tiny (120), 8 players, 4 teams of 2** | 3    | `--patches GRASS2`, `--bbox GRASS2`       |
+| `RMSTEST_80_groupedbyteam_multiland`      | guide:857's documented bug — a second `create_player_lands` under `grouped_by_team` — currently just "emulate it" with nothing describing the broken shape | Normal (200), 8 players, 2 teams of 4   | 3    | `--patches GRASS2`, `--patches DIRT2`     |
+
+Twenty generations. `79` and `80` need lobby teams, same as `RMSTEST_36`/`44` —
+set them up last in a sitting, per this file's own "the editor will not set a
+5-player split" lesson from Batch 2. `75a`+`75b`, `77a`+`77b` are matched pairs
+and belong in the same sitting each; `76` and `78` are single scripts and can
+run in any order.
+
+**Where each question came from, since none of them is a fresh guess.**
+
+- **75a/75b/76 (BUG-029).** Filed 2026-09-17 alongside the fix that moved
+  connection endpoints from nearest-edge to origin-to-origin (roads were
+  stopping one land radius short of every TC on the tutorial's Golden Hill).
+  That fix's own two consequences — a cost-0 origin's block being genuinely
+  symmetric, and the `terrain_size` disc reaching all the way to the origin
+  tile rather than stopping at the land's edge — were named as owed the same
+  day and never scripted until now.
+- **77a/77b.** `RMSTEST_70` (Batch 16) noticed, while measuring an unrelated
+  question, that its own undeclared-`terrain_size` DIRT causeway fragmented
+  into dozens of small patches in two of its three runs — a shape a
+  deterministic radius-1/variance-0 disc should not produce. Opened as a new
+  Sec.15 item the same day and mislabelled "item 32", colliding with the
+  already-closed detached-seed item 32 — see the `preview-design.md` fix
+  alongside this batch, which renumbers it to item 33.
+- **78.** `docs/known-issues.md` BUG-016's write-up (Batch 15/17) flagged, in
+  passing, that Venn.rms combines `spacing_to_other_terrain_types` and
+  `spacing_to_specific_terrain` on the same `create_terrain` command and that
+  the only existing measurement of the first attribute (`RMSTEST_31`) never
+  exercised that combination — recorded as "re-read what is already measured
+  before writing a new script for either" and never followed up on. This is
+  that follow-up, and the answer is genuinely unknown: the last time two
+  guide-documented terrain rules on one command were assumed to compose
+  cleanly (`base_terrain`+`base_layer`), the assumption was wrong.
+- **79/80.** Both sit in `preview-design.md` Sec.6.1's `grouped_by_team`
+  paragraph as bare "still unmeasured" / "also emulate" notes with no script
+  ever written against them, despite `RMSTEST_36` already having built and
+  calibrated the exact instrument (a deterministic zero-variance ring,
+  intra-team spacing read off patch centroids) both of these reuse.
+
+**What "land generation" and "terrain generation" consistency this batch
+buys.** 78, 79 and 80 are the three land/terrain-generation gaps this batch
+covers directly (S1 and S4); 75a/75b/76/77a/77b are S5 (connections), included
+because BUG-029 and the item-32 collision were the two concrete owed items on
+record and both touch terrain painted onto the same grid S1 and S4 built.
+
 ## Batch 7's scripts — RECOVERED 2026-08-12
 
 `RMSTEST_40a/40b/40c` were run but existed only in the DE install for a while,

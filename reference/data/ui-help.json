@@ -193,6 +193,18 @@
       "text": "The shortcut for opening the Add Command picker in the Breakdown tab. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
+      "id": "settings.hotkeys.breakdownMoveCardUp",
+      "text": "The shortcut for moving the selected Breakdown card above the card before it. Alt+Up by default, the same keys Monaco uses to move a line in the Code tab. It must include Ctrl or Alt."
+    },
+    {
+      "id": "settings.hotkeys.breakdownMoveCardDown",
+      "text": "The shortcut for moving the selected Breakdown card below the card after it. Alt+Down by default. It must include Ctrl or Alt."
+    },
+    {
+      "id": "settings.hotkeys.breakdownDuplicateCard",
+      "text": "The shortcut for inserting a copy of the selected Breakdown card directly below it. It must include Ctrl or Alt."
+    },
+    {
       "id": "settings.hotkeys.codeToggleLayout",
       "text": "The shortcut for toggling a command between one line and one attribute per line in the Code tab. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
@@ -223,6 +235,22 @@
     {
       "id": "settings.tab.breakdown",
       "text": "Settings for the Breakdown editor: density and attribute order today, with more planned."
+    },
+    {
+      "id": "settings.breakdown.scrollToAddedCard",
+      "text": "When on, Add Command, Add Comment and Add Template scroll the list to the new card. When off, the card is still added and opened, the list just stays where it is."
+    },
+    {
+      "id": "settings.breakdown.hideUnused",
+      "text": "Hides attribute rows that are not in the code, so a busy command shows only what it uses. Nothing real is ever hidden. Which rows show is decided when a card opens, so unticking a box does not make its row vanish, and each card gets an Add Attribute search bar for the hidden ones."
+    },
+    {
+      "id": "settings.breakdown.hideUnusedExceptions",
+      "text": "Attributes that stay visible on every card even when unused. Type a name and press Enter or Add. Click the cross on a name to remove it."
+    },
+    {
+      "id": "settings.breakdown.summaryClick",
+      "text": "What happens when you click an attribute shown on a collapsed card. Open the card and go to that attribute, or edit it right there on the summary line."
     },
     {
       "id": "settings.breakdown.attributeOrder",
@@ -258,7 +286,7 @@
     },
     {
       "id": "breakdown.tab.playerSetup",
-      "text": "Where starting positions and team placement are configured."
+      "text": "Behaviours that apply to the whole script, such as how player lands are placed, changes to object and terrain behaviour, AI behaviour and more."
     },
     {
       "id": "breakdown.tab.landGeneration",
@@ -298,15 +326,171 @@
     },
     {
       "id": "breakdown.addCommand.entry",
-      "text": "Click a command to insert it. The chip shows whether this command's reference data has been verified against the official docs. \"Unverified\" entries may have incomplete or unconfirmed argument details, but are still safe to use."
+      "text": "Click a command to insert it. The two rows at the top, if and start_random, insert an empty block to fill with commands. The chip on the other rows shows whether this command's reference data has been verified against the official docs. \"Unverified\" entries may have incomplete or unconfirmed argument details, but are still safe to use."
     },
     {
       "id": "breakdown.addComment",
       "text": "Inserts a blank comment you can type into right away. It goes after the selected card, or at the end of this tab if nothing is selected, same placement rule as Add command."
     },
     {
+      "id": "breakdown.addTemplate",
+      "text": "Opens a dialog offering ready-made blocks of commands for this tab. Shown on the Objects and Terrain tabs."
+    },
+    {
+      "id": "template.choice.standardPlayerObjects",
+      "text": "A town center, starting villagers, and a scout for every player."
+    },
+    {
+      "id": "template.choice.standardPlayerResources",
+      "text": "Berries, gold, stone, sheep, deer, and boar around every player's start."
+    },
+    {
+      "id": "template.choice.standardWaterResources",
+      "text": "Shore and deep-water fish placed once for the whole map, plus optional oysters and whales."
+    },
+    {
+      "id": "template.preview",
+      "text": "The exact script text Insert will add, updated as you change the options above."
+    },
+    {
+      "id": "template.cancel",
+      "text": "Closes this dialog without changing the script."
+    },
+    {
+      "id": "template.insert",
+      "text": "Inserts the previewed block into the script and selects its first command."
+    },
+    {
+      "id": "template.t1.quickStart",
+      "text": "Swaps the plain villager block for a 9-villager quick start: six on a sheep next to the town center, three on the nearest forest, plus two houses."
+    },
+    {
+      "id": "template.t1.advanced",
+      "text": "Places the sheep and all nine villagers with the exact tile-reservation technique Venn.rms and Bulls_Eyes.rms use, instead of the simpler distance-based version. Only applies while quick-start is on."
+    },
+    {
+      "id": "template.t1.terrain",
+      "text": "When set, every command in this block gets terrain_to_place_on with this value. Leave blank to use each command's own default."
+    },
+    {
+      "id": "template.t2.seasonal",
+      "text": "Emits the placeholder names the DE seasons include expects (HERDABLE, HUNTABLE, LURABLE, BERRIES) instead of fixed object names, and adds the include line for it."
+    },
+    {
+      "id": "template.t2.berryType",
+      "text": "Which bush the berry block places. Disabled under Seasonal variation, which picks its own name."
+    },
+    {
+      "id": "template.t2.wildlife",
+      "text": "Which animal fills this role. Disabled under Seasonal variation, which picks its own name."
+    },
+    {
+      "id": "template.t2.terrain",
+      "text": "When set, every command in this block gets terrain_to_place_on with this value. Leave blank to use each command's own default."
+    },
+    {
+      "id": "template.t3.oysters",
+      "text": "Adds a water-placed oyster block."
+    },
+    {
+      "id": "template.t3.whales",
+      "text": "Adds whales, a 2x2 gold pickup that lives in deep water."
+    },
+    {
+      "id": "template.choice.playerForestsObjects",
+      "text": "A forest near every player, built from tree objects that each turn their own tile into forest terrain. Needs a few lines in PLAYER_SETUP, which are added for you."
+    },
+    {
+      "id": "template.choice.playerForestsTerrain",
+      "text": "A forest near every player, painted as real forest terrain one player at a time. Reads the player land terrain from create_player_lands."
+    },
+    {
+      "id": "template.t4.standInId",
+      "text": "A spare object reshaped into a one-tile forest maker. 1639 is the one the example maps use. Pick an id nothing else in your script places."
+    },
+    {
+      "id": "template.t4.forestTerrain",
+      "text": "The terrain each placed stand-in leaves under its tile."
+    },
+    {
+      "id": "template.t4.forestTerrainCustom",
+      "text": "Any forest terrain name or id. A name your script defines with #const works as long as it is defined before the end of PLAYER_SETUP, where the setup lines go."
+    },
+    {
+      "id": "template.t4.tree",
+      "text": "The tree shown on each tile, placed with second_object."
+    },
+    {
+      "id": "template.t4.treeCustom",
+      "text": "Any object name or id to show on each forest tile, including one your script defines with #const."
+    },
+    {
+      "id": "template.t4.forestsPerPlayer",
+      "text": "How many separate forests each player gets."
+    },
+    {
+      "id": "template.t4.treesPerForest",
+      "text": "How many trees, and so how many forest tiles, each forest has."
+    },
+    {
+      "id": "template.t4.minDistance",
+      "text": "The closest a forest tile can be to the player's start."
+    },
+    {
+      "id": "template.t4.maxDistance",
+      "text": "The furthest a forest tile can be from the player's start."
+    },
+    {
+      "id": "template.t4.terrain",
+      "text": "Optional. Limits the forests to this terrain. Leave it empty and the stand-in can land anywhere it fits, water included for some stand-ins."
+    },
+    {
+      "id": "template.t5.playerLand",
+      "text": "The terrain create_player_lands paints. Filled in from your script, change it if your player lands use a different terrain by the time terrain generation runs."
+    },
+    {
+      "id": "template.t5.forestTerrain",
+      "text": "The forest terrain each player's forest is painted with."
+    },
+    {
+      "id": "template.t5.forestTerrainCustom",
+      "text": "Any forest terrain name or id, including one your script defines with #const before this point."
+    },
+    {
+      "id": "template.t5.forestTiles",
+      "text": "How many forest tiles each player gets in total."
+    },
+    {
+      "id": "template.t5.forestClumps",
+      "text": "How many separate forests those tiles are split into."
+    },
+    {
+      "id": "template.t5.minDistance",
+      "text": "No forest tile is placed closer than this to the player's start."
+    },
+    {
+      "id": "template.t5.maxDistance",
+      "text": "No forest tile is placed further than this from the player's start."
+    },
+    {
       "id": "breakdown.commandCard.summary",
-      "text": "Click +/− to expand this command and see or edit its arguments and attributes."
+      "text": "Click +/− to expand this command and see or edit its arguments and attributes. The attributes listed here are clickable too."
+    },
+    {
+      "id": "breakdown.commandCard.summaryAttribute",
+      "text": "Click to open the card at this attribute, or to edit it right here, depending on the Breakdown setting for clicking a collapsed card's attributes. In edit mode, clicking a boolean attribute removes it and leaves it struck through for half a minute so one more click puts it back."
+    },
+    {
+      "id": "breakdown.commandCard.summaryGhost",
+      "text": "This boolean attribute was just removed from the code. Click to put it back. It disappears from the summary on its own after half a minute."
+    },
+    {
+      "id": "breakdown.commandCard.addAttributeSearch",
+      "text": "Hide Unused is on, so attributes this command does not use are out of sight. Type here to find one and click it to add it to the card."
+    },
+    {
+      "id": "breakdown.commandCard.collapseStrip",
+      "text": "Click anywhere on this left edge to collapse the card. The list scrolls so the collapsed card sits at the top, and reopening it without scrolling in between takes you back to where you were inside it."
     },
     {
       "id": "breakdown.commandCard.expand",
@@ -335,6 +519,10 @@
     {
       "id": "breakdown.attributeRow.value",
       "text": "This attribute's current value, taken directly from the code. Commits when you click away or press Enter; Escape reverts to the current value."
+    },
+    {
+      "id": "breakdown.attributeRow.clearValue",
+      "text": "Empties this field so you can type or pick a fresh value. Nothing changes in the code until you click away or press Enter."
     },
     {
       "id": "breakdown.attributeRow.name",
@@ -366,7 +554,7 @@
     },
     {
       "id": "breakdown.conditionalCard",
-      "text": "An if/elseif/else block. Each branch's contents render below it and are fully editable."
+      "text": "An if/elseif/else block. Each branch's contents render below it and are fully editable. Drag any card onto an empty branch, or between the cards in one, to put it under the condition."
     },
     {
       "id": "breakdown.conditionalCard.condition",
@@ -375,6 +563,22 @@
     {
       "id": "breakdown.conditionalCard.addCommand",
       "text": "Adds a command inside this branch."
+    },
+    {
+      "id": "breakdown.cardMenu.duplicate",
+      "text": "Inserts a copy of this card directly below it, text for text, comments included. The copy is selected afterwards, so duplicating again stacks copies downward."
+    },
+    {
+      "id": "breakdown.cardMenu.moveUp",
+      "text": "Swaps this card with the one above it. Greyed out at the top of its section or branch. To move a card further, or into an if branch, drag it by its header."
+    },
+    {
+      "id": "breakdown.cardMenu.moveDown",
+      "text": "Swaps this card with the one below it. Greyed out at the bottom of its section or branch."
+    },
+    {
+      "id": "breakdown.cardMenu.delete",
+      "text": "Deletes this card and everything inside it, the same as its trash button. Undo with Ctrl+Z."
     },
     {
       "id": "breakdown.conditionalCard.branchControls",
@@ -394,7 +598,7 @@
     },
     {
       "id": "breakdown.randomCard.chance",
-      "text": "This branch's percent_chance weight. Commits on blur/Enter."
+      "text": "This branch's percent_chance weight. Commits on blur/Enter. Starts blank rather than 0, since a first branch declared percent_chance 0 is an engine bug (it still runs) rather than a way to disable the branch."
     },
     {
       "id": "breakdown.randomCard.addCommand",
@@ -463,10 +667,6 @@
     {
       "id": "breakdown.strayAttribute",
       "text": "An attribute written outside any command's { } block. It has no effect where it sits. Move it inside the intended command's block."
-    },
-    {
-      "id": "breakdown.problemBadge",
-      "text": "A parser diagnostic (error/warning/info) applies somewhere in this card, the same ones shown as squiggles on the Code tab."
     },
     {
       "id": "preview.generationSettings",
@@ -539,6 +739,10 @@
     {
       "id": "preview.approximateBadge",
       "text": "This is a heuristic re-creation of what your script might generate, not the game's own map generator. Layouts here are plausible rather than predictive, so always test in game before publishing a map."
+    },
+    {
+      "id": "preview.mapSummary",
+      "text": "The map size this preview was drawn at, in tiles, and the player count it was generated for. Both come from the generation settings (the gear button), except that a script using override_map_size changes the size here mid-script, so this can differ from the size you picked."
     },
     {
       "id": "preview.seedChip",
@@ -654,7 +858,7 @@
     },
     {
       "id": "landPlacement.newRing",
-      "text": "Adds a shape (a circle to start, changeable to line, arc, square, triangle or polygon) of lands around the map centre, evenly spaced, all wearing one role. Set the radius, rotation and repeat count once it's created."
+      "text": "Adds a shape (a circle to start, changeable to line, arc, square, triangle or polygon) of lands around the map centre, evenly spaced, all wearing the role picked in the with role list. With (none) picked it places points instead, which other lands can be parented to or chained off. Set the radius, rotation, repeat count and origin once it's created."
     },
     {
       "id": "landPlacement.newLand",
@@ -670,15 +874,31 @@
     },
     {
       "id": "landPlacement.tree",
-      "text": "Every land and chain anchor in this layout, indented to show which placement each one is measured from. Click a row to select it and edit its numbers below."
+      "text": "Every land and chain anchor in this layout, indented to show which placement each one is measured from. The columns give its label, the shape it belongs to (blank for a standalone land), its role, and any overrides or a detached warning. Click a row to select it. Its editor opens under this list and the map highlights it."
+    },
+    {
+      "id": "landPlacement.deleteLand",
+      "text": "Deletes this land. Only offered for a standalone land; a land that belongs to a shape is deleted with the whole shape, from the Shapes section."
+    },
+    {
+      "id": "landPlacement.shapes",
+      "text": "Every shape in this layout, with how many lands it places and the roles those lands wear. A shape is named by its kind and a number, and the number matches the one in its lands' labels (Square 2 places ring_2_0_slot_3 and so on). Click a shape to edit its radius, rotation, repeats and pattern under this list. The map highlights its lands and shows its rotation and radius handles."
+    },
+    {
+      "id": "landPlacement.deleteShape",
+      "text": "Deletes this shape and every land it places."
+    },
+    {
+      "id": "landPlacement.editShape",
+      "text": "Selects the shape this land belongs to and opens its editor in the Shapes section."
     },
     {
       "id": "landPlacement.nodeEditor",
-      "text": "The selected placement's own numbers: its parent, its frame (radial or absolute), its offset, and which role it wears. A land inside a ring is edited through the ring's own controls instead."
+      "text": "The selected land's own numbers. A standalone land sets its parent, frame (radial or absolute), offset and role here. A land that belongs to a shape takes its parent, frame and radius from the shape, so only its angle and role are set here. Edit shape opens the shape itself."
     },
     {
       "id": "landPlacement.shapeKind",
-      "text": "The shape this ring's lands are arranged in. Circle spaces them evenly around the radius. Line runs them through the anchor, signed by radius, with Radius shown as the line's own half length. Arc is a circle stopped short, with a Sweep field for how many degrees it spans. Square, Triangle and Polygon all walk their own perimeter, landing on a corner or an edge depending on the count. Rotation works the same way for every shape, including a formula that re-rolls each generation. Polygon adds a Sides field for how many corners it has."
+      "text": "The shape this ring's lands are arranged in. Circle spaces them evenly around the radius. Line runs them through the anchor, signed by radius, with Radius shown as the line's own half length. Arc is a circle stopped short, with a Sweep field for how many degrees it spans. Square, Triangle and Polygon all walk their own perimeter, landing on a corner or an edge depending on the count. Rotation works the same way for every shape, including a formula that re-rolls each generation. Polygon adds a Sides field for how many corners it has. Every shape works with One land per player. Switching a shape with jitter in degrees to Line, Square, Triangle or Polygon turns the jitter into a percent of the even gap at the player count being previewed, since those shapes have no angle along them."
     },
     {
       "id": "landPlacement.shapeSides",
@@ -689,28 +909,168 @@
       "text": "Slides this land along the shape's perimeter, as a percent of one full lap around it, added on top of its even spacing. A polygon's corners sit further from the centre than its edges, so sliding a land along the shape also changes how far out it sits, not only which way it faces. Signed, and past 100 just wraps around for another lap."
     },
     {
+      "id": "landPlacement.roleBorders",
+      "text": "How close to each map edge a land wearing this role may grow, as a percent of the map. Placement of a positioned land ignores borders, but growth does not, so a land placed outside its borders stays at its base size. Leave a side empty to write nothing and let the engine use its default. Negative values are legal as long as the land's origin is still inside the map. The guide notes that a top border larger than the others can misbehave on player lands, so pair it with another side."
+    },
+    {
+      "id": "landPlacement.roleFuzziness",
+      "text": "How ragged the edge of each land wearing this role is, 0 to 100. Empty writes nothing, and the placeholder shows the engine's own default."
+    },
+    {
+      "id": "landPlacement.roleClumping",
+      "text": "How blobby each land wearing this role grows. Higher is rounder and stays in one piece; lower is stringier and can fragment. Empty writes nothing, and the placeholder shows the engine's own default."
+    },
+    {
+      "id": "landPlacement.roleZoneAvoidance",
+      "text": "The gap, in tiles, each land wearing this role keeps from lands in other zones. Empty writes nothing."
+    },
+    {
+      "id": "landPlacement.roleLandId",
+      "text": "A number objects can target later with place_on_specific_land_id. Written last in each land, after the player assignment, because assigning a land resets its id. Empty writes nothing."
+    },
+    {
+      "id": "landPlacement.roleCircularBase",
+      "text": "Makes each land wearing this role start from a round base instead of a square one. When combined with an elevation the guide reports the whole square is raised; setting Conformity to 99 is the documented fix."
+    },
+    {
+      "id": "landPlacement.roleConformity",
+      "text": "How closely each land wearing this role follows its base shape. The guide calls this attribute buggy and advises against it in general, except as the fix for a circular base raised by base_elevation, where 99 is the value to use. Empty writes nothing."
+    },
+    {
+      "id": "landPlacement.fixDirectPlacement",
+      "text": "Writes direct_placement under the script's <PLAYER_SETUP> header, opening that section if there is none. Without it the engine arranges player lands in its own circle and ignores every position this tool writes."
+    },
+    {
+      "id": "landPlacement.fixElevationSection",
+      "text": "Adds an empty <ELEVATION_GENERATION> section after the land section. The section only has to exist for base_elevation to take effect; it can stay empty."
+    },
+    {
+      "id": "landPlacement.overrideAdd",
+      "text": "Gives this one land its own value for an attribute its role sets, without duplicating the role. The land keeps following the role on everything else. The script gets one extra constant named after this land, and the land's create_land references that instead of the role's."
+    },
+    {
+      "id": "landPlacement.overrideReset",
+      "text": "Removes this override so the land follows its role again. This deletes the override rather than copying the role's current value into it, which would leave the land looking as if it still followed the role while actually frozen."
+    },
+    {
+      "id": "landPlacement.chainAdd",
+      "text": "Adds a land that hangs off every land this slot places, one copy per repeat, so a ring of eight player lands gets eight of these, each measured from its own player land. Edit it here once and every copy follows. This is how a cluster of lands around each player is built."
+    },
+    {
+      "id": "landPlacement.chainRole",
+      "text": "The label and role of this chained land. The label is the stem of the emitted constant names; the role is shared by every copy."
+    },
+    {
+      "id": "landPlacement.chainFrame",
+      "text": "Radial measures the angle from the ray pointing back at the member's own anchor, so the cluster turns with the ring. Absolute uses a plain world bearing."
+    },
+    {
+      "id": "landPlacement.chainOffset",
+      "text": "How far from its member and at what angle this chained land sits, in the member's own frame. A formula or a random parameter is allowed. Dragging one copy on the map nudges only that copy; editing here restates every un-nudged copy."
+    },
+    {
+      "id": "landPlacement.chainRemove",
+      "text": "Removes this chained land from the pattern. Copies that have been dragged, have a child of their own, or are referenced elsewhere in the script are kept as ordinary lands rather than deleted, and the strip says which."
+    },
+    {
+      "id": "landPlacement.randomParams",
+      "text": "The random draws this layout hoists into the script, each emitted once as a #const with rnd(min,max). Every new shape gets a ROTATION parameter so the map differs from seed to seed. Reference one from any formula field by its name, or type rnd(a,b) into a field to create a new one."
+    },
+    {
+      "id": "landPlacement.paramPerPlayer",
+      "text": "One draw per player instead of one shared draw, so each player's lands get their own value. Only a land that belongs to a player, or hangs off one, can use a per-player parameter."
+    },
+    {
+      "id": "landPlacement.paramDelete",
+      "text": "Removes this random parameter. Refused while any field still references it, since the script would then name a constant that does not exist."
+    },
+    {
+      "id": "landPlacement.paramAdd",
+      "text": "Adds a shared random parameter with a placeholder range. Rename it, set its range, then reference it by name from a formula field."
+    },
+    {
+      "id": "landPlacement.newWithRole",
+      "text": "The role the next shape, land or pattern slot is created with. Change it here before pressing + Shape, + Land or + slot, or change a land's or slot's role afterwards in its own editor. Falls back to the first role if the chosen one is deleted. With (none), + Land makes a chain anchor, a land with no role that writes no create_land but can be a parent for other lands. + Shape is off with (none), since a shape needs a role for its lands, and + slot uses the first role."
+    },
+    {
+      "id": "landPlacement.slotRole",
+      "text": "The role every land placed from this slot wears. Pick (none, points) to place points instead of lands. A point is written to the script as a position only, with no create_land, and other lands can be parented to it or chained off it. Changing the role re-dresses those lands in place, and lands you have dragged keep their nudge. A pattern can mix roles, so a ring can alternate player lands with neutral ones."
+    },
+    {
+      "id": "landPlacement.addSlot",
+      "text": "Adds another land to one repeat of this shape's pattern, wearing the role picked in the with role list, or a point when (none) is picked. A pattern is the cycle of lands the shape goes round with, so two slots on a ring of 4 repeats places 8 lands, alternating between the two. Lands you have already dragged keep their nudge when the pattern changes."
+    },
+    {
+      "id": "landPlacement.removeSlot",
+      "text": "Takes this land out of the pattern. Any land that was placed from it and has no chained child, no drag of its own and nothing else in the script referring to its constants is removed with it; anything that fails one of those is released as an ordinary land instead of deleted, and the strip below says which."
+    },
+    {
       "id": "landPlacement.perPlayer",
-      "text": "Makes this ring produce one land per player instead of a fixed count: at generation time the script reads how many players are actually in the game and arranges that many lands evenly, always correct at every count. While this is on, Repeats follows the game's own player count instead of a number you set."
+      "text": "Makes this shape produce one land per player instead of a fixed count. At generation time the script reads how many players are in the game and spreads that many lands over the whole shape, correct at every count. On an Arc or a Line the lands always reach both ends, so 3 players sit at the two ends and the middle. On a Square, Triangle or Polygon they spread evenly round the perimeter. While this is on, Repeats follows the game's own player count instead of a number you set. It works with every shape."
     },
     {
       "id": "landPlacement.thetaPerCount",
-      "text": "This land's angle at specific player counts, on top of the rule above. Each row overrides the angle only at the player count it names; every other count still uses the rule above. Free bearings (a random angle with no reference to another player) can still collide, since nothing in the script can guarantee separation between two independent random draws."
+      "text": "This land's angle at specific player counts, on top of the rule above. Each row overrides the angle only at the player count it names; every other count still uses the rule above. Free bearings (a random angle with no reference to another player) can still collide, since nothing in the script can guarantee separation between two independent random draws. On a Square, Triangle or Polygon a bearing alone does not pick a point on the perimeter, so the list shows there only for a land that already has an override, say from a shape change, and only lets it be removed. While the land keeps one it takes no jitter at any count."
     },
     {
       "id": "landPlacement.minSeparation",
-      "text": "Computes the largest random jitter this ring can add to its even spacing while still keeping every pair of neighbouring lands at least this far apart, at the player count you're currently previewing. Refuses rather than guessing when the request is too tight for the count to allow. Doesn't change anything by itself. Copy the suggested rnd(...) into a land's angle formula to use it."
+      "text": "The closest two neighbouring lands on this ring may come once jitter is added, in degrees around the ring. The jitter offered below is sized so this holds at every player count, which means it is worked out at 8 players, where the even spacing is tightest. Refuses rather than guessing when 8 players leave no room for it."
+    },
+    {
+      "id": "landPlacement.jitterUnit",
+      "text": "Degrees moves a land by up to the same number of degrees at every player count. Percent of the even gap scales with the count, so at 2 players a land can move further than at 8, and one percentage is equally safe at both. On an Arc the even gap is the sweep divided by one less than the number of lands. A Line, Square, Triangle or Polygon has no angle along it, so its jitter is always a percent of the gap and this choice is hidden."
+    },
+    {
+      "id": "landPlacement.jitterAmount",
+      "text": "How far each player's land may move, as a whole number of at least 1. On a Line it is always a percent of the even gap, the line's full length divided by one less than the number of lands. On a Square, Triangle or Polygon it is always a percent of the even gap round the perimeter, and a land turns the corner when the amount carries it past one. In degrees it is the most a land moves along the arc. In percent it is a share of the even gap between neighbours at each player count, so two neighbours close by at most twice the amount as a share of their gap, and an amount under 50 never lets them meet at any count. In degrees the gap is smallest at 8 players, where it is the sweep divided by one less than 8 times the number of slots. Nothing caps the amount. Past 50 percent lands can pass each other, and the two end lands can move past the ends of the arc or the line."
+    },
+    {
+      "id": "landPlacement.jitterApply",
+      "text": "Moves each player's land by its own random amount, up to the size shown, every time the map generates. On a Circle the size is the largest safe amount worked out above. On any other shape it is the amount you typed. Each player gets one draw, so a player's lands in a pattern with several slots move together. On a Circle or an Arc, a land with its own angle, or a per count override, stays exactly where you put it. On a Line the jitter slides a land along the line, so only a land with its own distance, or one you dragged, stays put. On a Square, Triangle or Polygon the jitter walks a land along the perimeter and round its corners, and a land you dragged, one with its own angle or distance, or one with a per count angle stays put. Press it again to change the amount."
+    },
+    {
+      "id": "landPlacement.jitterRemove",
+      "text": "Takes the jitter off this ring and deletes its random parameter, so every player sits on the even spacing again."
+    },
+    {
+      "id": "landPlacement.shapeOrigin",
+      "text": "The point this shape is centred on, the map centre by default. Pick any land to centre the shape on it, including a points only land or a land in another shape, and the shape follows it wherever it moves. A shape cannot be centred on one of its own lands, or on anything hanging off them."
+    },
+    {
+      "id": "landPlacement.shapeOriginPoint",
+      "text": "Makes a new point with no land on it, at this shape's current centre, and centres the shape on it. The shape does not move until the point does. Drag the point on the map, or edit its distance and angle, to move the shape."
+    },
+    {
+      "id": "landPlacement.shapeFrame",
+      "text": "Absolute keeps the shape facing the same way wherever its origin goes, so Rotation is a plain map bearing. Radial measures the shape's angles from the direction back toward its origin's own parent, so the shape turns as its origin moves around that parent. That suits a small ring that should always face away from the map centre. Moving the origin never changes this for you. New shapes start radial."
     },
     {
       "id": "landPlacement.roles",
-      "text": "Every role this layout uses. A role's terrain, size, elevation, land percent and player assignment are shared by every land wearing it. Change one line here and every one of those lands follows."
+      "text": "Every role this layout uses, with its terrain and how many lands wear it. Click a role to edit it under this list, and the map highlights the lands wearing it. A role's terrain, size, elevation, extent, zone and player assignment are shared by every land wearing it. Change one line and every one of those lands follows."
+    },
+    {
+      "id": "landPlacement.deleteRole",
+      "text": "Deletes this role. Lands wearing it keep their position but lose the terrain, size, elevation, extent, zone and player assignment it gave them."
+    },
+    {
+      "id": "landPlacement.roleExtent",
+      "text": "How big each land wearing this role grows, as either a percent of the map (land_percent) or a tile count (number_of_tiles). The script can only carry one of the two on a land, so this is one choice with one value, and switching keeps the number you typed."
+    },
+    {
+      "id": "landPlacement.roleZone",
+      "text": "Which zone each land wearing this role belongs to. A fixed zone puts every one of them in the same zone. Per repeat gives each land in a ring its own zone, counted up from the base by the step. set_zone_randomly lets the engine pick. Lands in the same zone are allowed to touch; lands in different zones keep apart."
+    },
+    {
+      "id": "landPlacement.roleAssign",
+      "text": "Whether lands wearing this role belong to a player. assign_to_player takes a player number. assign_to takes a target kind (a player number, a colour, or a team), the number, and the engine's mode and flags, usually 0 and 0. The number can count up per repeat, so a ring hands one land to each player, or be fixed, including a constant the script already defines. Any assignment here needs direct_placement in the script, or the engine ignores the position."
     },
     {
       "id": "landPlacement.generatedCode",
-      "text": "The #const lines Apply would write into the script, and how many edits it would make. Nothing here touches the document until Apply is pressed."
+      "text": "Everything Apply would write: the fenced #const block that goes in the script's header, and the create_land command for every land, guards included. Nothing here touches the document until Apply is pressed."
     },
     {
       "id": "landPlacement.apply",
-      "text": "Writes the current layout into the script as a single undo step: its own fenced block of #const lines, plus a create_land command for any land that doesn't have one yet. Re-applying with no changes makes zero edits."
+      "text": "Writes the current layout into the script as a single undo step. The fenced #const block goes in the script's header; each create_land goes in <LAND_GENERATION>, which is created in its proper place if the script has none. Once a fence exists the button reads Update: a land the tool wrote and you have not touched is rewritten in place when its role changes, a land you have edited by hand is left alone, and re-applying with no changes makes zero edits."
     },
     {
       "id": "landPlacement.explain",

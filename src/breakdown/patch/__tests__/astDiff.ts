@@ -67,7 +67,18 @@ export function diffOptionsFor(
     start: edit.start,
     end: edit.start + edit.newText.length,
   };
-  if (intent.kind === "addComment") return { insertedRange };
+  // insertText (Object Templates) can embed comments of its own (the
+  // block's own naming header, e.g. "/* Standard player objects */"),
+  // exactly the case addComment carves out clause 4 for.
+  // duplicateNode copies the node's own text, comments and all
+  // (2026-09-18), so it is the third intent whose inserted range may hold
+  // brand-new trivia.
+  if (
+    intent.kind === "addComment" ||
+    intent.kind === "insertText" ||
+    intent.kind === "duplicateNode"
+  )
+    return { insertedRange };
   if (intent.kind === "editComment")
     return { deletedRange: intent.innerSpan, insertedRange };
   return {};

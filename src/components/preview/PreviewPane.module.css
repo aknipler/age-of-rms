@@ -6,6 +6,65 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* The pane before its first map exists. `flex: 1` fills the preview slot
+   (MapSidePanel's .previewSlot is a flex column), so the label lands in the
+   middle of the space the map is about to occupy. The min-height matches
+   the canvas's own, so a small slot still shows the label. */
+.loadingPane {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 9rem;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+/* Only here to be the positioned box .generating centres itself in. */
+.canvasFrame {
+  position: relative;
+}
+
+/* Centred over the map while a newer generation is in flight. The previous
+   map stays drawn underneath (usePreviewResult keeps the last result until
+   the next one lands), so this marks the picture as out of date rather than
+   blanking it. `pointer-events: none` lets pan, zoom and tile hover work
+   straight through it.
+
+   The fade waits 150ms before it starts, and `both` holds it at opacity 0
+   for that wait. A generation that finishes inside the wait never shows the
+   label at all, which stops it flickering on every caret move while Current
+   follows the caret. This is the delayed spinner pattern, done in CSS
+   because the element remounts per generation (see the TSX). */
+.generating {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: generatingFadeIn 120ms ease-out 150ms both;
+}
+
+/* Same dark chip as PreviewCanvas's .badge, since it sits on the same
+   unthemed map colours and needs the same contrast against any of them. */
+.generatingLabel {
+  background: rgba(0, 0, 0, 0.66);
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 2px;
+}
+
+@keyframes generatingFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .controls {
   display: flex;
   align-items: center;

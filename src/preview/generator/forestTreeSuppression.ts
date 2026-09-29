@@ -27,6 +27,7 @@ import type {
   SimulationNote,
 } from "./types";
 import { objectById, objectEntry, type ObjectConstant } from "./objects";
+import { roundForIntegerSlot } from "./mathEval";
 import type { YieldOverride, YieldOverrideMap } from "./resourceSummary";
 
 /** The slice of the top-level `terrainRestrictions` table this scan needs — see reference/schemas/game-constants.schema.json. */
@@ -107,10 +108,12 @@ function resolveAttributeId(
   if (typeof value !== "string") return undefined;
   const direct = index.byNameOrId.get(value);
   if (direct !== undefined) return direct;
-  const symbol = symbols.get(value);
-  return symbol === undefined
-    ? undefined
-    : (index.byNameOrId.get(symbol) ?? symbol);
+  // A `#const` holds a float (BUG-034), rounded here where it reaches an
+  // integer-only id slot.
+  const raw = symbols.get(value);
+  if (raw === undefined) return undefined;
+  const symbol = roundForIntegerSlot(raw);
+  return index.byNameOrId.get(symbol) ?? symbol;
 }
 
 /**
@@ -135,7 +138,12 @@ function resolveTargetUnitIds(
     const symbol = symbols.get(value);
     return symbol === undefined
       ? []
-      : resolveTargetUnitIds(symbol, constants, symbols, aliases);
+      : resolveTargetUnitIds(
+          roundForIntegerSlot(symbol),
+          constants,
+          symbols,
+          aliases,
+        );
   }
   if (typeof value !== "number") return [];
   const objectClass = classById(constants, value);

@@ -148,3 +148,102 @@ export function renderCommand(
   // is synthesized by the first addAttribute (Sec.4.6), one brace-adding path.
   return renderNamed(name, def?.arguments, undefined);
 }
+
+/**
+ * Reindents a multi-line, `\n`-separated canonical block (one leading tab
+ * per line = one indent level) to the file's own detected indent unit and
+ * eol, translating a caret offset measured against the ORIGINAL text along
+ * the way. Used for insertText (Object Templates, docs/object-templates-brief.md):
+ * templates.ts authors a self-contained block with tabs as a placeholder
+ * indent unit, independent of any host file, so it stays parseable and
+ * testable on its own; this is what makes the inserted block match the
+ * target file's actual indentation (spaces vs tabs, its own step width).
+ *
+ * `caretOffset` MUST fall exactly at the start of a line (never mid-line,
+ * never inside a run of leading tabs): splitting the original text there
+ * and reindenting each half separately is what keeps the translation
+ * exact, and a mid-line split would land the caret inside a partial,
+ * wrongly-reindented fragment.
+ */
+export function reindentBlock(
+  text: string,
+  caretOffset: number,
+  indentUnit: string,
+  eol: string,
+): Rendered {
+  const reindent = (t: string): string =>
+    t
+      .split("\n")
+      .map((line) => {
+        const m = /^\t+/.exec(line);
+        return m
+          ? indentUnit.repeat(m[0].length) + line.slice(m[0].length)
+          : line;
+      })
+      .join(eol);
+  const before = reindent(text.slice(0, caretOffset));
+  const after = reindent(text.slice(caretOffset));
+  return { text: before + after, caretOffset: before.length };
+}
+
+/**
+ * A Rendered whose text depends on the indent the insert helper settles
+ * on. Every insert helper in computeEdit.ts decides its indent late (from
+ * the anchor line, the container's inferred style, or the section header),
+ * and a multi-line text needs that same indent on every continuation line,
+ * not only the first one the helper prefixes. So the helper resolves the
+ * factory once it knows the indent, and single-line renders stay plain
+ * Rendered values. The inline (same-line) insert paths resolve with "",
+ * since there is no line of their own to indent to.
+ */
+export type Renderable = Rendered | ((indent: string) => Rendered);
+
+export function resolveRendered(r: Renderable, indent: string): Rendered {
+  return typeof r === "function" ? r(indent) : r;
+}
+
+/**
+ * Prefixes every continuation line of a multi-line text with `indent`,
+ * leaving the first line alone because the insert helper prefixes that one
+ * itself. Blank lines stay blank rather than gaining trailing whitespace.
+ */
+export function indentContinuationLines(
+  text: string,
+  indent: string,
+  eol: string,
+): string {
+  const lines = text.split(eol);
+  if (lines.length === 1) return text;
+  return lines
+    .map((line, i) => (i === 0 || line === "" ? line : indent + line))
+    .join(eol);
+}
+
+/**
+ * Prepares a node's own source slice for insertion somewhere else
+ * (moveNode/duplicateNode). The slice starts at the node's first token, so
+ * its first line carries no indent of its own and takes whatever the
+ * insert helper prefixes. Each continuation line that starts with the
+ * node's ORIGINAL line indent has that prefix swapped for the destination
+ * indent, so a block nested one level deeper or shallower re-aligns. A
+ * continuation line that does not start with the original indent (an
+ * author's own irregular indentation) is left exactly as written, since
+ * guessing at it would be re-printing the author's text.
+ */
+export function relocateSlice(
+  slice: string,
+  fromIndent: string,
+  toIndent: string,
+  eol: string,
+): string {
+  const lines = slice.split(eol);
+  if (lines.length === 1) return slice;
+  return lines
+    .map((line, i) => {
+      if (i === 0) return line;
+      if (line.startsWith(fromIndent))
+        return toIndent + line.slice(fromIndent.length);
+      return line;
+    })
+    .join(eol);
+}

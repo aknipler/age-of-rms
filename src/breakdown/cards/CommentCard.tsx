@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Span } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
+import { isInteractiveTarget, useCardDrag } from "../cardDrag";
 import { HelpTip } from "../../components/HelpTip";
 import cardStyles from "./cards.module.css";
 import styles from "./CommentCard.module.css";
@@ -19,13 +20,33 @@ interface CommentCardProps {
 // gaps between consecutive items, or after the last one when a
 // `trailingBoundary` is given, via src/breakdown/comments.ts); this
 // component just renders and edits one.
+//
+// Draggable the same way ItemCard's cards are (cardDrag.tsx, Sec.3.11),
+// added here directly rather than by wrapping this card in ItemCard: that
+// wrapper's selection/context-menu machinery is Item-only and a comment has
+// neither, but the drag layer itself only ever needs a span, so
+// beginDrag/isDragSource/dropEdge port over unchanged with a CommentRef
+// (`{ kind: "comment"; span }`) standing in for the Item ItemCard would
+// pass. Previously nothing here called beginDrag at all, so a comment card
+// could be dropped ON (as an insert anchor) but never picked UP.
 export function CommentCard({ span }: CommentCardProps) {
   const { source, applyEdit, registerFocusable, isExpanded, toggleExpanded } =
     useBreakdownContext();
+  const { dragging, indicator, beginDrag, consumeDragClick } = useCardDrag();
   const innerStart = span.start + 2; // past "/*"
   const innerEnd = span.end - 2; // before "*/"
   const inner = source.slice(innerStart, innerEnd);
   const [error, setError] = useState<string | null>(null);
+  const isDragSource = dragging !== null && dragging.span.start === span.start;
+  const dropEdge =
+    indicator?.kind === "edge" && indicator.anchor === span.start
+      ? indicator.edge
+      : null;
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (isInteractiveTarget(e.target)) return;
+    beginDrag({ kind: "comment", span }, e);
+  };
   // Same anchor-by-span scheme as every other card (Sec.6.3), so a comment's
   // collapse state survives a reparse the same way a command's does, with
   // the sense INVERTED from CommandCard's: a comment starts open (there's
@@ -86,32 +107,53 @@ export function CommentCard({ span }: CommentCardProps) {
     el.style.height = `${el.scrollHeight}px`;
   };
 
-  // Collapsed, the header IS the only content, so it shows the first line
-  // as a summary. Expanded, the full text is already visible below —
-  // repeating the first line here would just print it twice.
-  const header = (
-    <div className={styles.header}>
-      <HelpTip id="breakdown.commentCard.toggle">
-        <button
-          type="button"
-          className={styles.toggle}
-          onClick={() => toggleExpanded(span)}
-          aria-expanded={expanded}
-        >
-          {expanded ? "−" : "+"}
-        </button>
-      </HelpTip>
-      {!expanded && (
-        <span className={styles.summary}>{firstLine || "(empty)"}</span>
-      )}
-    </div>
-  );
-
-  if (isNested) {
-    return (
-      <div className={`${cardStyles.card} ${styles.card}`}>
-        {header}
-        {expanded && (
+  // Toggle and content share ONE flex row (still called `.header`, but it's
+  // the card's only row now): collapsed shows the summary right after the
+  // toggle, expanded puts `.body` there instead, both the same way
+  // CommandCard's own collapsed label sits next to ITS toggle. `.body`'s
+  // `flex: 1` box lands at exactly toggle-width + gap from the card's left
+  // edge, which is what used to take a whole second, indented row below
+  // the toggle — that row's own height was the dead space users were
+  // seeing above the textarea. `styles.expanded` swaps `align-items` to
+  // `flex-start`, since a multi-line textarea shouldn't vertically center
+  // against the toggle the way a single-line summary does.
+  return (
+    <div
+      className={`${cardStyles.card} ${styles.card} ${
+        isDragSource ? styles.dragSource : ""
+      } ${dropEdge === "before" ? styles.dropBefore : ""} ${
+        dropEdge === "after" ? styles.dropAfter : ""
+      }`}
+      // Same anchor attribute ItemCard sets, so a scroll request (Add
+      // Comment's reveal, BreakdownPane) can find this card too, and so
+      // cardDrag.tsx's resolveHit can find this card as a drop target.
+      data-anchor={span.start}
+      onPointerDown={onPointerDown}
+      // Capture phase, so the click a completed drag's pointerup
+      // synthesizes is swallowed before it can reach SectionView's
+      // click-empty-space-to-deselect handler (ItemCard.tsx does the same).
+      onClickCapture={(e) => {
+        if (consumeDragClick()) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }}
+    >
+      <div className={`${styles.header} ${expanded ? styles.expanded : ""}`}>
+        <HelpTip id="breakdown.commentCard.toggle">
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={() => toggleExpanded(span)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "−" : "+"}
+          </button>
+        </HelpTip>
+        {!expanded && (
+          <span className={styles.summary}>{firstLine || "(empty)"}</span>
+        )}
+        {expanded && isNested && (
           <div className={styles.body}>
             <HelpTip id="breakdown.commentCard.nested">
               <pre className={styles.text}>
@@ -120,39 +162,33 @@ export function CommentCard({ span }: CommentCardProps) {
             </HelpTip>
           </div>
         )}
+        {expanded && !isNested && (
+          <div className={styles.body}>
+            <HelpTip id="breakdown.commentCard">
+              <textarea
+                key={span.start}
+                ref={(el) => {
+                  registerFocusable(span.start, el);
+                  autoSize(el);
+                }}
+                className={styles.text}
+                defaultValue={inner}
+                rows={1}
+                onInput={(e) => autoSize(e.currentTarget)}
+                onBlur={(e) => commit(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.currentTarget.value = inner;
+                    setError(null);
+                    e.currentTarget.blur();
+                  }
+                }}
+              />
+            </HelpTip>
+            {error && <span className={styles.inlineError}>{error}</span>}
+          </div>
+        )}
       </div>
-    );
-  }
-
-  return (
-    <div className={`${cardStyles.card} ${styles.card}`}>
-      {header}
-      {expanded && (
-        <div className={styles.body}>
-          <HelpTip id="breakdown.commentCard">
-            <textarea
-              key={span.start}
-              ref={(el) => {
-                registerFocusable(span.start, el);
-                autoSize(el);
-              }}
-              className={styles.text}
-              defaultValue={inner}
-              rows={1}
-              onInput={(e) => autoSize(e.currentTarget)}
-              onBlur={(e) => commit(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.currentTarget.value = inner;
-                  setError(null);
-                  e.currentTarget.blur();
-                }
-              }}
-            />
-          </HelpTip>
-          {error && <span className={styles.inlineError}>{error}</span>}
-        </div>
-      )}
     </div>
   );
 }

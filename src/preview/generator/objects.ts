@@ -156,6 +156,7 @@ import type {
   TileGrid,
 } from "./types";
 import { createSubstream, nextInt, type Rng } from "./rng";
+import { roundForIntegerSlot } from "./mathEval";
 import {
   DEPTH_LAND,
   DEPTH_WATER,
@@ -394,8 +395,10 @@ export function objectEntry<T extends ObjectRow>(
   const index = objectIndex(constants);
   const byName = index.byName.get(objectRef);
   if (byName !== undefined) return byName;
+  // A `#const` holds a float (BUG-034), rounded here where it reaches an
+  // integer-only id slot.
   const id = symbols?.get(objectRef);
-  if (id !== undefined) return index.byId.get(id);
+  if (id !== undefined) return index.byId.get(roundForIntegerSlot(id));
 
   // 3. A NAME-TO-NAME `#const` (BUG-015): `#const LURE BOAR`, then
   //    `create_object LURE`. The object half of the same defect, and the

@@ -5,6 +5,7 @@ import { parseRms } from "../../parser/parser";
 import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
+import { resolveTerrainId } from "../generator/grid";
 import { createSubstream, nextInt } from "../generator/rng";
 import type { InstantiatedScript } from "../generator/types";
 import {
@@ -311,10 +312,70 @@ describe("Sec.3 rule 6: math expressions", () => {
     expect(baseSize).toBe(3); // 2.5 -> 3
   });
 
+  it("rounds every argument of an attribute, not only the first", () => {
+    // A first version of the BUG-034 fix put a flag on resolveArg's second
+    // parameter, which `args.map(resolveArg)` fills with the index, so only
+    // argument 0 still rounded. Every other test here reads argument 0.
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position (5 / 2) (15 / 2)\n}\n";
+    const cmd = run(source).sections.get("LAND_GENERATION")?.[0];
+    const args = cmd?.attributes.get("land_position")?.[0]?.args;
+    expect(args?.map((a) => a.value)).toEqual([3, 8]); // 2.5 -> 3, 7.5 -> 8
+  });
+
   it("drops a nested-paren operand exactly like mathEval's own contract", () => {
     const source =
       "#const GOLD_COUNT 6\n<PLAYER_SETUP>\noverride_map_size (GOLD_COUNT + (5 + 2))\n";
     expect(run(source).dim).toBe(36); // (6+2)=8, clamped up to the 36 floor
+  });
+
+  // BUG-034. A #const keeps its float value. Only the integer slot it
+  // finally reaches rounds it.
+  describe("a #const stores a float, not a rounded integer (BUG-034)", () => {
+    it("reproduces the guide's own worked example", () => {
+      // guide:3363-3381. STONE_COUNT is 3.5 and 3.5 * 1.9 = 6.65 rounds to
+      // 7. Rounding the constant first gives 4 * 1.9 = 7.6, which rounds to 8.
+      const source = [
+        "#const A 2",
+        "#const B 3",
+        "#const RELIC_COUNT (1 + 2)",
+        "#const GOLD_COUNT (B * A)",
+        "#const STONE_COUNT (GOLD_COUNT - RELIC_COUNT * 2 + 1 / 2)",
+        "<OBJECTS_GENERATION>",
+        "create_object STONE {",
+        "number_of_objects (STONE_COUNT * 1.9)",
+        "}",
+      ].join("\n");
+      const cmd = run(source).sections.get("OBJECTS_GENERATION")?.[0];
+      const count = cmd?.attributes.get("number_of_objects")?.[0]?.args[0];
+      expect(count?.value).toBe(7);
+    });
+
+    it("keeps a sine-sized fraction alive through a chain of constants into land_position", () => {
+      // The shape of Land Placement's trig macro: a SIN/COS constant between
+      // -1 and 1, then a position constant that scales it. Rounded, SIN is 0
+      // and X is 50, which is how every ring collapsed onto a 3x3 grid.
+      const source = [
+        "#const SIN (1 / 4)",
+        "#const X (30 * SIN + 50)",
+        "<LAND_GENERATION>",
+        "create_land {",
+        "land_position X 50",
+        "}",
+      ].join("\n");
+      const cmd = run(source).sections.get("LAND_GENERATION")?.[0];
+      const x = cmd?.attributes.get("land_position")?.[0]?.args[0];
+      expect(x?.value).toBe(58); // 30 * 0.25 + 50 = 57.5, rounded up in the slot
+    });
+
+    it("exports the float, and a terrain id lookup rounds it where the id slot is", () => {
+      const result = run("#const T (7 / 2)\n");
+      // Land Placement reads this table inside expressions, so it must see 3.5.
+      expect(result.symbols.get("T")).toBe(3.5);
+      // An id slot is integer-only. [] keeps the name off the built-in table
+      // so the lookup has to go through the script's own #const.
+      expect(resolveTerrainId([], "T", result.symbols)).toBe(4);
+    });
   });
 });
 

@@ -67,29 +67,40 @@ export function LandPlacementHelpDialog({ onClose }: { onClose: () => void }) {
             The tool reads a layout back out of a fence comment that it wrote
             itself. A script with no such fence starts empty, even when that
             script already places lands by hand. Those lands are left exactly as
-            they are, and the tree reads "No lands yet" until you add something.
-            That is deliberate. There is no partial adopt, so the tool can never
-            half-own algebra it did not write. To manage an existing layout,
-            rebuild it here and Apply. To keep the hand-written one, leave the
-            tool alone.
+            they are, and the Lands list reads "No lands yet" until you add
+            something. That is deliberate. There is no partial adopt, so the
+            tool can never half-own algebra it did not write. To manage an
+            existing layout, rebuild it here and Apply. To keep the hand-written
+            one, leave the tool alone.
           </p>
 
           <h3 className={styles.heading}>Work in this order, role first</h3>
           <ul>
             <li>
               A <strong>role</strong> is a shared set of terrain, base size,
-              elevation, land percent, zone policy and player assignment. Any
+              elevation, extent, zone policy, player assignment and the optional
+              shape attributes (borders, fuzziness, clumping and the rest). Any
               number of lands wear one role, and editing the role edits every
-              land wearing it. <code>+ Shape</code> and <code>+ Land</code> stay
-              disabled until a role exists.
+              land wearing it. One land can override any of those for itself
+              under its own Overrides list, and still follows the role on
+              everything else. <code>+ Shape</code> and <code>+ Land</code> stay
+              disabled until a role exists, and create with the role picked in
+              the toolbar. Picking (none) there makes <code>+ Land</code> add a
+              chain anchor, a land with no role that writes no{" "}
+              <code>create_land</code> but can parent other lands.
             </li>
             <li>
               <strong>+ Shape</strong> adds a circle of eight lands around the
-              map centre at radius 30%, all wearing the first role. Radius,
-              rotation and repeat count are edited on the shape itself rather
-              than on its members, and the shape can be changed afterward
-              (circle, line, arc, square, triangle, polygon) from its own
-              editor.
+              map centre at radius 30%, all wearing the chosen role. With (none)
+              chosen it places points instead, positions with no land on them
+              that other lands can be parented to or chained off. A shape&apos;s
+              pattern can hold several slots with different roles, and each slot
+              can carry chained lands that repeat once per member, which is how
+              a cluster around every player is built. Radius, rotation, repeat
+              count and origin are edited on the shape itself rather than on its
+              members, and the shape can be changed afterward (circle, line,
+              arc, square, triangle, polygon) from its own editor. Click it in
+              the Shapes list to open that editor.
             </li>
             <li>
               <strong>+ Land</strong> adds one standalone land, for a home base
@@ -100,10 +111,10 @@ export function LandPlacementHelpDialog({ onClose }: { onClose: () => void }) {
           <h3 className={styles.heading}>Parents and frames</h3>
           <p>
             Every placement is measured from a parent, either the map centre or
-            another placement. That chain is what the tree's indentation shows.
-            In a <strong>radial</strong> frame the angle is measured at the
-            parent, from the ray pointing back at the parent's own anchor, so
-            turning a root turns the whole chain with it. An{" "}
+            another placement. That chain is what the Lands list's indentation
+            shows. In a <strong>radial</strong> frame the angle is measured at
+            the parent, from the ray pointing back at the parent's own anchor,
+            so turning a root turns the whole chain with it. An{" "}
             <strong>absolute</strong> frame uses a plain world bearing instead.
             An offset is polar (radius and angle), cartesian (dx and dy), or a
             custom formula.
@@ -133,12 +144,14 @@ export function LandPlacementHelpDialog({ onClose }: { onClose: () => void }) {
           </p>
           <ul>
             <li>
-              Click a circle to select it, or click a row in the tree. Clicking
+              Click a circle to select that land, or click a row in the Roles,
+              Shapes or Lands list. The selected item's editor opens under its
+              list, and the first item is selected when the tool opens. Clicking
               bare map clears the selection.
             </li>
             <li>
-              Drag a land's middle to move it. A selected ring also grows a
-              radius handle and a rotation handle.
+              Drag a land's middle to move it. A selected shape, or a selected
+              land in one, also grows a radius handle and a rotation handle.
             </li>
             <li>
               Drag the selected land's rim onto another land, or onto the map

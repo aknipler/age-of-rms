@@ -57,14 +57,16 @@ describe("useDocument.ts routes every model edit through pushOwnUndoEntry", () =
     );
   });
 
-  it("every call site routes through pushOwnUndoEntry: replaceRanges, applyTextEdit, applyTextEdits", () => {
-    // 1 definition + 3 call sites. A helper that starts calling
+  it("every call site routes through pushOwnUndoEntry: replaceRanges, applyTextEdits", () => {
+    // 1 definition + 2 call sites (the single-edit applyTextEdit was
+    // retired 2026-09-18 when Breakdown's move intent made it a second
+    // caller of the N-edit form). A helper that starts calling
     // pushEditOperations directly again would leave this count unchanged
     // while the test above catches it; a helper that stops calling
     // pushOwnUndoEntry at all (reverting to some other mechanism) is what
     // this count is for.
     const calls = source.match(/pushOwnUndoEntry\(/g) ?? [];
-    expect(calls).toHaveLength(4);
+    expect(calls).toHaveLength(3);
   });
 });
 

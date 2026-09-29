@@ -1,0 +1,113 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  grouped_by_team
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS2
+    base_size 3
+    number_of_tiles 40
+    circle_radius 40 0
+  }
+
+  create_player_lands
+  {
+    terrain_type DIRT2
+    base_size 2
+    number_of_tiles 20
+    circle_radius 25 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_80 - guide:857's documented bug: "with multiple player lands under
+grouped_by_team, the additional land positions do not generate properly."
+Is it real, and what does "not properly" actually mean?
+Feeds: docs/preview-design.md Sec.6.1 line ~245 ("Also emulate guide:857's
+bug... " - currently unmeasured, carried as a bare instruction to emulate
+something nobody has seen happen), src/preview/generator/lands.ts
+================================================================================
+
+THE QUESTION
+The guide names a real DE bug and Sec.6.1 currently just says to emulate
+it, with no description of what the broken output actually looks like -
+there is nothing to emulate FROM. Candidate shapes, all consistent with
+"do not generate properly":
+  (a) The second command's lands silently collapse onto the FIRST
+      command's positions (each player's second land lands exactly where
+      their first one did, overlapping).
+  (b) The second command's lands ignore grouped_by_team entirely and fall
+      back to plain even ring spacing, as if the flag were absent for
+      that command only.
+  (c) The second command's lands go to originFallbackCenter or some other
+      degenerate placement, clustering near the map's true centre
+      regardless of team.
+  (d) The bug does not reproduce at all under a plain generation (perhaps
+      it needs a real multiplayer lobby, or a DE patch already fixed it,
+      or the guide's report was itself wrong) - the working model, in
+      which case Sec.6.1's "also emulate" instruction should be WITHDRAWN
+      rather than carried forward unmeasured, per this project's own rule
+      that a shipped map (or a shipped guide claim) is not automatically
+      a specification.
+
+METHOD
+Two create_player_lands commands under one grouped_by_team <PLAYER_SETUP>.
+The first is an ordinary GRASS2 "main" land at radius 40%; the second is a
+smaller DIRT2 "extra" land at a different explicit radius (25%) so the two
+sets are trivially distinguishable by terrain alone and, if the second set
+generates correctly, sit on a visibly different ring. base_size and
+number_of_tiles are kept modest (matching RMSTEST_36's own calibration) so
+this run tests ONLY the multiple-command question and does not also
+trigger RMSTEST_79's separate overflow question.
+
+TEAMS: 2 teams of 4 (players 1-4 vs 5-8), same setup method as RMSTEST_36
+and RMSTEST_79.
+
+PREDICTIONS
+  WORKS CORRECTLY (guide's bug does not reproduce here, or DE has since
+    fixed it) -> both GRASS2 and DIRT2 come back as 8 separate patches
+    each, DIRT2's patches team-grouped the same way GRASS2's are (two
+    tight clusters of four, ~176-180 degrees apart, matching RMSTEST_36's
+    own reading), just on the smaller declared ring.
+  MATCHES (a) -> DIRT2 patches sit directly on top of / immediately
+    adjacent to GRASS2 patches rather than on their own declared 25%
+    ring - fewer than 16 total patches across both terrains, or DIRT2
+    patches whose centroids match GRASS2's rather than the smaller
+    radius.
+  MATCHES (b) -> DIRT2 comes back as 8 patches, but evenly spaced around
+    the full ring at roughly 45 degrees apart rather than clustered into
+    two team groups the way GRASS2 is.
+  MATCHES (c) -> DIRT2 patches (or some of them) cluster near the map's
+    true centre, far inside the declared 25% radius, or show
+    originFallbackCenter-style collision with other DIRT2 patches.
+
+GENERATE AT NORMAL (200), 8 PLAYERS, 2 TEAMS OF 4. THREE RUNS.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches GRASS2
+  python probe_scenario.py "<scenario>" --patches DIRT2
+  Patch count for each terrain first (16 total vs fewer is the headline).
+  Then centroids: GRASS2's should reproduce RMSTEST_36's two-cluster
+  shape as a sanity check that team grouping is working at all on this
+  map; compare DIRT2's shape against it directly.
+================================================================================
+*/

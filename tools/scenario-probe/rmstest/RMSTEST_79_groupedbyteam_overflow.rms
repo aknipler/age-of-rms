@@ -1,0 +1,106 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  grouped_by_team
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS2
+    base_size 20
+    number_of_tiles 200
+    circle_radius 40 0
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_79 - what does grouped_by_team do when the packed groups do not fit
+the ring's circumference?
+Feeds: docs/preview-design.md Sec.6.1 line ~245 ("Still unmeasured: what
+happens when the packed groups do not fit the circumference, reachable on
+a small map with a large base_size"), src/preview/generator/lands.ts
+(grouped_by_team origin placement)
+================================================================================
+
+THE QUESTION
+Sec.6.1 models grouped_by_team as: divide the ring by GROUP count, lay each
+group's members along the ring centred on its slot, spaced roughly
+3.5-4x base_size apart (RMSTEST_36's own measured figure, itself only
+"the working figure [tune]" since it never had reason to be pushed to its
+limit). Nothing says what happens when four groups each demanding a wide
+intra-team arc cannot all fit around one ring at once. Three genuinely
+different engine behaviours are all consistent with everything measured
+so far:
+  (a) CLAMP - the engine compresses intra-team spacing to whatever fits,
+      keeping the ring radius and every group non-overlapping.
+  (b) OVERLAP - the engine keeps the declared/implied spacing and lets
+      origins collide, land stamps overlap, or later lands overwrite
+      earlier ones (the same failure shape Sec.15 item 5 already
+      documents for ordinary land placement - "a LATER land's stamp
+      overwrote an EARLIER one's origin square entirely").
+  (c) EXPAND - the engine silently grows the ring radius beyond what
+      circle_radius declares so everyone fits.
+
+METHOD
+Eight players, four teams of two, grouped_by_team, on a TINY (120-tile)
+map with an explicit, variance-free circle_radius 40 0 (RMSTEST_36's own
+calibration - a perfect, deterministic ring with no radial or angular
+jitter, so every deviation is attributable to grouped_by_team's own
+packing logic and nothing else) and a deliberately oversized base_size 20.
+On Tiny, radius 40% of dim = 48 tiles, ring circumference approximately
+2*pi*48 = 301.6 tiles, divided four ways among the teams leaves about 75
+tiles of arc per team. RMSTEST_36's ~3.5-4x base_size spacing figure at
+base_size 20 predicts roughly 70-80 tiles needed just between the TWO
+members of one team - consuming an entire team's own arc allotment before
+any gap between teams is accounted for, and four teams each doing this
+cannot all fit on a 301.6-tile ring with anything left over.
+
+SETTING UP TEAMS
+RMSTEST_36 already established the scenario editor's Random Map generation
+screen can assign teams (a 4v4 came back as a correct [1,3,5,7] vs
+[2,4,6,8] split). Set four teams of two: players (1,2), (3,4), (5,6),
+(7,8) - any consistent pairing works, since Sec.3.1's canonicalisation to
+lobby order is what actually matters, not which literal pair.
+
+PREDICTIONS
+  CLAMP -> all 8 lands generate as 8 separate, non-overlapping patches;
+    measured intra-team spacing comes in noticeably BELOW RMSTEST_36's
+    ~3.5-4x base_size figure - i.e. below ~70-80 tiles here - while
+    teammates are still clearly closer to each other than to any
+    non-teammate.
+  OVERLAP -> fewer than 8 distinct GRASS2 patches (teammates merge into
+    one blob under 4-connectivity), or `originFallbackCenter`-style
+    clustering near the map's true centre.
+  EXPAND -> the measured origin-to-map-centre radius comes out well above
+    48 tiles (0.40 * dim) for some or all players, i.e. the ring itself
+    grew rather than the spacing shrinking.
+
+GENERATE AT TINY (120), 8 PLAYERS, 4 TEAMS OF 2. THREE RUNS.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --patches GRASS2
+  python probe_scenario.py "<scenario>" --bbox GRASS2
+  Count patches first (8 vs fewer settles OVERLAP outright). For each
+  patch, read its centroid, compute its distance from the map's true
+  centre (60, 60 on a 120-tile map) against the declared 48-tile radius,
+  and compute pairwise centroid distances within each declared team
+  against RMSTEST_36's ~3.5-4x base_size benchmark (70-80 tiles here).
+================================================================================
+*/

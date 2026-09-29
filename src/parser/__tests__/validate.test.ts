@@ -939,6 +939,19 @@ describe("RMS0204 / RMS0205 — constant IDs and categories", () => {
       ),
     ).not.toContain("RMS0205");
   });
+
+  it("accepts an object name that is ALSO an objectAlias row under the same name — BUSH_A is both", () => {
+    // game-constants.json carries two rows named BUSH_A: an "object" roster
+    // row (constId 302, habitat data) and an "objectAlias" row the
+    // --misc-constants extraction added later in the file for the same id.
+    // A name->constant map that keeps only the last-seen row reports the
+    // alias category here and false-fires on every ordinary create_object.
+    expect(
+      codes(
+        "<OBJECTS_GENERATION>\ncreate_object BUSH_A { number_of_objects 10 }\n",
+      ),
+    ).not.toContain("RMS0205");
+  });
 });
 
 describe("pass-level guarantees", () => {

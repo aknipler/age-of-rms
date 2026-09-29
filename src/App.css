@@ -78,6 +78,17 @@ body {
   color: var(--text);
 }
 
+/* While a Breakdown card is being dragged (src/breakdown/cardDrag.tsx sets
+   the class on body for the drag's duration). Global because the pointer
+   is captured and can be anywhere on screen, and the cursor should read
+   as "carrying something" wherever it is. User selection is off for the
+   same span, or a drag across a card's text would highlight it. */
+body.breakdown-dragging,
+body.breakdown-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 /* Form controls don't inherit text colour OR background from their
    ancestors the way ordinary elements do. A <button>/<select>/<input> uses
    system colours (buttontext/field) and ignores the page's `color`/

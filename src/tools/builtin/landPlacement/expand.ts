@@ -36,6 +36,49 @@ export function memberKeyAt(
   };
 }
 
+/** `Σ(slot.chain?.length ?? 0)`: chain children per repeat. */
+export function chainPerRepeat(pattern: readonly PatternSlot[]): number {
+  let n = 0;
+  for (const slot of pattern) n += slot.chain?.length ?? 0;
+  return n;
+}
+
+/**
+ * `memberKeyAt`'s sibling over the three-part key (repeat, slot, template),
+ * derived from a chain child's POSITION in `chainMembers` exactly the way a
+ * member's is from `members` (composite-pattern-escalation.md Sec.5.1).
+ * Per repeat the slots' templates are laid out in pattern order then
+ * template order, so the position walks slots until it lands inside one.
+ */
+export function chainMemberKeyAt(
+  index: number,
+  pattern: readonly PatternSlot[],
+): { repeatIndex: number; slotId: string; templateId: string } {
+  const perRepeat = chainPerRepeat(pattern);
+  if (perRepeat === 0)
+    throw new Error(
+      "chainMemberKeyAt: no slot carries a template, there is nothing to key against",
+    );
+  const repeatIndex = Math.floor(index / perRepeat);
+  let within = index % perRepeat;
+  for (const slot of pattern) {
+    const chain = slot.chain ?? [];
+    if (within < chain.length)
+      return { repeatIndex, slotId: slot.id, templateId: chain[within].id };
+    within -= chain.length;
+  }
+  throw new Error("chainMemberKeyAt: unreachable, index is inside perRepeat");
+}
+
+/** The deterministic id of the member at (repeat i, slot). `reExpand` may rename it; read `members[k]` for the real one. */
+export function memberIdFor(
+  groupId: string,
+  i: number,
+  slotId: string,
+): string {
+  return `${groupId}#${i}#${slotId}`;
+}
+
 function angleOffsetDegrees(
   repeatIndex: number,
   slotIndex: number,
@@ -59,6 +102,15 @@ export interface ShapeGroupExpansion {
   placements: Placement[];
   /** What `ShapeGroup.members` should be set to: the placements above, by id, in the same order. */
   members: string[];
+  /**
+   * The expanded chain children (Q12), ordered repeat-major, pattern order,
+   * template order, keyed by position through `chainMemberKeyAt`. Each one's
+   * `parent` is the DETERMINISTIC id of its member; `reExpand` rewrites it to
+   * the member's actual post-merge id, which can differ (Sec.5.2 rev 1).
+   */
+  chainPlacements: Placement[];
+  /** What `ShapeGroup.chainMembers` should be set to. */
+  chainMembers: string[];
 }
 
 /**
@@ -152,132 +204,158 @@ function clampSides(sides: number | undefined): number {
 }
 
 /**
+ * The side count of a perimeter kind, `undefined` for Circle, Line and Arc.
+ * `memberOffset` below and the per player prologue's runtime walk
+ * (land-placement-per-player-any-kind-escalation.md Sec.5.4) both read it,
+ * so a clamped polygon walks the same shape it was expanded on.
+ */
+export function perimeterSides(group: ShapeGroup): number | undefined {
+  switch (group.kind) {
+    case "square":
+      return 4;
+    case "triangle":
+      return 3;
+    case "polygon":
+      return clampSides(group.sides);
+    default:
+      return undefined;
+  }
+}
+
+/** A group member's offset. Every kind produces this one shape. */
+export type PolarOffset = { kind: "polar"; r: Expr; theta: Expr };
+
+/**
+ * One member's offset, the member at (`repeatIndex`, `slotIndex`) when the
+ * group holds `repeats` repeats. The per kind formulas live here and
+ * nowhere else (land-placement-per-player-any-kind-escalation.md Sec.4).
+ * `expandShapeGroup` asks at `group.repeats`. The per player prologue asks
+ * at every player count from 1 to 8, which is how a per player shape of
+ * any kind re-spaces over the whole shape at each count. Before this
+ * function the prologue kept its own copy of the ring formula, and that copy
+ * was why every other kind had to be refused.
+ *
+ * `repeats` is a parameter rather than read off `group`, so the prologue can
+ * ask about a count the group does not hold without building a second
+ * group for it. Member ids never depend on it (`memberIdFor`), so the same
+ * member keeps its identity at every count.
+ *
+ * A kind decides two things only, `theta` and `r`'s own defaults
+ * (`slot.theta`/`slot.radius` still override either one), which is what
+ * keeps `frame.ts`, `reExpand.ts` and every panel module out of this
+ * entirely: every kind still produces a plain `polar` offset.
+ */
+export function memberOffset(
+  group: ShapeGroup,
+  repeatIndex: number,
+  slotIndex: number,
+  repeats: number,
+): PolarOffset {
+  const { pattern } = group;
+  const slot = pattern[slotIndex];
+  const n = pattern.length * repeats;
+  const span = n - 1;
+  const m = repeatIndex * pattern.length + slotIndex;
+
+  switch (group.kind) {
+    case "line": {
+      // The linear index `m`/`span` here is item 2's own instruction:
+      // compute a fresh linear index for the new kinds rather than
+      // reusing circle's two-term (repeat, slot) formula, which rounds
+      // differently under float association and would move Sec.10.1's
+      // byte-identical acceptance gate.
+      const base: Expr = slot.radius ?? group.radius;
+      return {
+        kind: "polar",
+        r: lineOffset(base, m, span),
+        theta: add(group.rotation, slot.theta ?? num(0)),
+      };
+    }
+    case "arc": {
+      const step = arcStepDegrees(group.sweep ?? 180, m, span);
+      return {
+        kind: "polar",
+        r: slot.radius ?? group.radius,
+        theta: add(group.rotation, slot.theta ?? num(step)),
+      };
+    }
+    // Perimeter kinds (shape-kinds-slice-c-brief.md item 1, now polar —
+    // perimeter-symbolic-rotation-slice-a-brief.md item 2): PatternSlot.theta
+    // has no meaning for any of them (model.ts's own doc comment on that
+    // field says so), so it is deliberately not consulted here the way
+    // `line`/`arc`/`circle` all consult it — a perimeter member's bearing
+    // is derived from its position on the perimeter, not authored per
+    // slot. `square`/`triangle` fix their own side count; `polygon` is
+    // the one kind whose side count is a model value, clamped rather
+    // than refused (`clampSides`).
+    case "square":
+    case "triangle":
+    case "polygon": {
+      const sides = perimeterSides(group)!;
+      const base: Expr = slot.radius ?? group.radius;
+      return {
+        kind: "polar",
+        ...perimeterKindOffset(
+          sides,
+          base,
+          group,
+          m,
+          n,
+          slot.perimeterShift ?? 0,
+        ),
+      };
+    }
+    case "circle":
+    default: {
+      // Do NOT rewrite this in terms of `m`/`n` above: circle's own
+      // `angleOffsetDegrees` is algebraically `360 * m / n`, but the two
+      // forms round differently under float association at an exact
+      // half degree (8 slots at 22 repeats, member (15, 1), is 247 here
+      // and 248 in the linear form), and Sec.10.1's acceptance gate and
+      // every per player circle are byte comparisons.
+      const offsetTerm: Expr =
+        slot.theta ??
+        num(
+          angleOffsetDegrees(repeatIndex, slotIndex, pattern.length, repeats),
+        );
+      // rotation is always the outermost addend, so a SYMBOLIC rotation
+      // (Bulls_Eyes' own ROTATION_PLAYER, if this were a patterned ring
+      // rather than a chain) keeps steering every member (Sec.4.5: "must
+      // survive a symbolic group").
+      return {
+        kind: "polar",
+        r: slot.radius ?? group.radius,
+        theta: add(group.rotation, offsetTerm),
+      };
+    }
+  }
+}
+
+/**
  * Builds a group "from scratch", what it would look like with no prior
  * state at all. `reExpand.ts` (Sec.4.5's merge rule) is what decides, member
  * by member, whether to keep an EXISTING Placement or adopt one of these
  * fresh ones; this function does not know about prior state and does not
- * try to. A kind decides two things only, `theta` and `r`'s own defaults
- * (`slot.theta`/`slot.radius` still override either one), which is what
- * keeps `frame.ts`, `reExpand.ts` and every panel module out of this slice
- * entirely: every kind here still produces a plain `polar` offset.
+ * try to.
  */
 export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
   const { pattern, repeats } = group;
   if (pattern.length === 0 || repeats <= 0)
-    return { placements: [], members: [] };
-
-  const n = pattern.length * repeats;
-  const span = n - 1;
+    return {
+      placements: [],
+      members: [],
+      chainPlacements: [],
+      chainMembers: [],
+    };
 
   const placements: Placement[] = [];
   for (let i = 0; i < repeats; i++) {
     for (let j = 0; j < pattern.length; j++) {
       const slot = pattern[j];
-      const m = i * pattern.length + j;
-
-      let offset: Placement["offset"];
-      switch (group.kind) {
-        case "line": {
-          // The linear index `m`/`span` here is item 2's own instruction:
-          // compute a fresh linear index for the new kinds rather than
-          // reusing circle's two-term (repeat, slot) formula, which rounds
-          // differently under float association and would move Sec.10.1's
-          // byte-identical acceptance gate.
-          const base: Expr = slot.radius ?? group.radius;
-          offset = {
-            kind: "polar",
-            r: lineOffset(base, m, span),
-            theta: add(group.rotation, slot.theta ?? num(0)),
-          };
-          break;
-        }
-        case "arc": {
-          const step = arcStepDegrees(group.sweep ?? 180, m, span);
-          offset = {
-            kind: "polar",
-            r: slot.radius ?? group.radius,
-            theta: add(group.rotation, slot.theta ?? num(step)),
-          };
-          break;
-        }
-        // Perimeter kinds (shape-kinds-slice-c-brief.md item 1, now polar —
-        // perimeter-symbolic-rotation-slice-a-brief.md item 2): PatternSlot.theta
-        // has no meaning for any of them (model.ts's own doc comment on that
-        // field says so), so it is deliberately not consulted here the way
-        // `line`/`arc`/`circle` all consult it — a perimeter member's bearing
-        // is derived from its position on the perimeter, not authored per
-        // slot. `square`/`triangle` fix their own side count; `polygon` is
-        // the one kind whose side count is a model value, clamped rather
-        // than refused (`clampSides`).
-        case "square": {
-          const base: Expr = slot.radius ?? group.radius;
-          offset = {
-            kind: "polar",
-            ...perimeterKindOffset(
-              4,
-              base,
-              group,
-              m,
-              n,
-              slot.perimeterShift ?? 0,
-            ),
-          };
-          break;
-        }
-        case "triangle": {
-          const base: Expr = slot.radius ?? group.radius;
-          offset = {
-            kind: "polar",
-            ...perimeterKindOffset(
-              3,
-              base,
-              group,
-              m,
-              n,
-              slot.perimeterShift ?? 0,
-            ),
-          };
-          break;
-        }
-        case "polygon": {
-          const base: Expr = slot.radius ?? group.radius;
-          offset = {
-            kind: "polar",
-            ...perimeterKindOffset(
-              clampSides(group.sides),
-              base,
-              group,
-              m,
-              n,
-              slot.perimeterShift ?? 0,
-            ),
-          };
-          break;
-        }
-        case "circle":
-        default: {
-          // Do NOT rewrite this in terms of `m`/`n` above: circle's own
-          // `angleOffsetDegrees` is algebraically `360 * m / n`, but the two
-          // forms round differently under float association at an exact
-          // half degree, and Sec.10.1's acceptance gate is a byte
-          // comparison.
-          const offsetTerm: Expr =
-            slot.theta ??
-            num(angleOffsetDegrees(i, j, pattern.length, repeats));
-          // rotation is always the outermost addend, so a SYMBOLIC rotation
-          // (Bulls_Eyes' own ROTATION_PLAYER, if this were a patterned ring
-          // rather than a chain) keeps steering every member (Sec.4.5: "must
-          // survive a symbolic group").
-          offset = {
-            kind: "polar",
-            r: slot.radius ?? group.radius,
-            theta: add(group.rotation, offsetTerm),
-          };
-        }
-      }
+      const offset = memberOffset(group, i, j, repeats);
 
       placements.push({
-        id: `${group.id}#${i}#${slot.id}`,
+        id: memberIdFor(group.id, i, slot.id),
         parent: group.parent,
         frame: group.frame,
         offset,
@@ -291,5 +369,34 @@ export function expandShapeGroup(group: ShapeGroup): ShapeGroupExpansion {
       });
     }
   }
-  return { placements, members: placements.map((p) => p.id) };
+
+  // Second pass (composite-pattern-escalation.md Sec.5.2): the chain
+  // children, one per (repeat, slot, template), hung off the member the
+  // first pass just built. `repeatIndex = i`, the MEMBER's own repeat index
+  // and not a fresh one, is the whole of that document's Sec.2(d): it is
+  // what lets `ZonePolicy.perRepeat` on the child's role resolve
+  // Bulls_Eyes' aux zones 11 and 22 with no code that knows about chains.
+  const chainPlacements: Placement[] = [];
+  for (let i = 0; i < repeats; i++) {
+    for (const slot of pattern) {
+      for (const t of slot.chain ?? []) {
+        chainPlacements.push({
+          id: `${memberIdFor(group.id, i, slot.id)}#${t.id}`,
+          parent: memberIdFor(group.id, i, slot.id),
+          frame: t.frame,
+          offset: t.offset,
+          label: `${group.id}_${i}_${slot.id}_${t.label}`,
+          role: t.role,
+          repeatIndex: i,
+        });
+      }
+    }
+  }
+
+  return {
+    placements,
+    members: placements.map((p) => p.id),
+    chainPlacements,
+    chainMembers: chainPlacements.map((p) => p.id),
+  };
 }

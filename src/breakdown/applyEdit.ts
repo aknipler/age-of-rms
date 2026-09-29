@@ -3,7 +3,7 @@
 // and the shared Monaco document model (Sec.6.4). Cards never call
 // computeEdit directly. They go through BreakdownContext's `applyEdit`,
 // which is this function bound to the current ParseResult/lang/pushEdit.
-import { computeEdit } from "./patch/computeEdit";
+import { computeEdit, editsOf } from "./patch/computeEdit";
 import { PatchError, type EditIntent, type EditResult } from "./patch/intents";
 import {
   rebaseEdit,
@@ -13,12 +13,17 @@ import {
 import type { ParseResult } from "../parser/types";
 import type { LanguageIndex } from "../parser/language";
 
-/** Structurally matches TextEdit without importing it, keeping useDocument.ts free of a breakdown/ dependency. */
-export type ApplyTextEdit = (edit: {
-  start: number;
-  end: number;
-  newText: string;
-}) => void;
+/**
+ * Structurally matches TextEdit[] without importing it, keeping
+ * useDocument.ts free of a breakdown/ dependency. Plural since 2026-09-18,
+ * when moveNode became the first intent carrying two edits. Every edit in
+ * one call lands as ONE Monaco undo entry (useDocument.applyTextEdits), so
+ * a move undoes in one keypress instead of leaving a copy behind after the
+ * first.
+ */
+export type ApplyTextEdits = (
+  edits: readonly { start: number; end: number; newText: string }[],
+) => void;
 
 /**
  * Computes the TextEdit for `intent` and pushes it onto the shared Monaco
@@ -48,7 +53,7 @@ export function applyEditIntent(
   parseResult: ParseResult,
   intent: EditIntent,
   lang: LanguageIndex,
-  applyTextEdit: ApplyTextEdit,
+  applyTextEdits: ApplyTextEdits,
   priorEdits: readonly OffsetEdit[] = [],
 ): EditResult | null {
   let result: EditResult;
@@ -58,9 +63,27 @@ export function applyEditIntent(
     if (err instanceof PatchError) return null;
     throw err;
   }
+  // Each half is rebased on its own. They share the same original
+  // coordinates and never overlap, and rebaseEdit only ever shifts a range
+  // that lies wholly past a prior edit, so two disjoint ranges stay
+  // disjoint and in order after rebasing.
   const rebasedEdit = rebaseEdit(result.edit, priorEdits);
   if (rebasedEdit === null) return null; // overlaps an edit still in flight, unavailable right now, not a crash
+  const rebasedRemoval = result.removal
+    ? rebaseEdit(result.removal, priorEdits)
+    : undefined;
+  if (rebasedRemoval === null) return null;
+  const rebasedCompanion = result.companion
+    ? rebaseEdit(result.companion, priorEdits)
+    : undefined;
+  if (rebasedCompanion === null) return null;
   const rebasedCaret = shiftPointThroughEdits(result.caret, priorEdits);
-  applyTextEdit(rebasedEdit);
-  return { edit: rebasedEdit, caret: rebasedCaret };
+  const rebased: EditResult = {
+    edit: rebasedEdit,
+    caret: rebasedCaret,
+    ...(rebasedRemoval ? { removal: rebasedRemoval } : {}),
+    ...(rebasedCompanion ? { companion: rebasedCompanion } : {}),
+  };
+  applyTextEdits(editsOf(rebased));
+  return rebased;
 }

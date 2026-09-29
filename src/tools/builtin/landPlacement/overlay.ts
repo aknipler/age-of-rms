@@ -60,7 +60,9 @@ function resolveTile(
  * Pure: `(AlpModel, quantities, resolved, mapDim) -> OverlayShape[]`. Draws
  * every placement the model knows about, whether or not it carries a role.
  * A chain anchor with no land of its own still gets its chain-edge lines
- * drawn to and from it, but no circle (there is no `base_size` to draw).
+ * drawn to and from it, and a `point` rather than a circle (there is no
+ * `base_size` to draw). The point used to be missing, which left a
+ * points-only shape invisible and a shape's origin point unclickable.
  */
 export function buildOverlayShapes(input: OverlayInput): OverlayShape[] {
   const {
@@ -91,6 +93,14 @@ export function buildOverlayShapes(input: OverlayInput): OverlayShape[] {
           role: "primary",
         });
       }
+    } else {
+      shapes.push({
+        id: placement.id,
+        kind: "point",
+        x: pos.x,
+        y: pos.y,
+        role: "muted",
+      });
     }
 
     if (placement.parent !== "center") {

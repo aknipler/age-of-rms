@@ -1,15 +1,14 @@
 # Advanced Tools — author preview
 
-This is an early look at the Advanced Tools contract, for anyone thinking
-about writing a tool once external tools ship. **You can't plug an external
-tool into the app yet.** Today's five tools are all built-in — bundled into
-the app itself, running in-process. Phase 6 (v1.1, not yet scheduled) adds
-external tools: a separate executable plus a manifest, spawned as a child
-process and speaking the identical protocol over stdin/stdout. That's the
-point of this document — the contract a v1.1 tool will speak is _already
-finalized and running in production_ today, just with the transport nailed
-down to "in-process" for now. Nothing below should change shape by the time
-external tools land; only the transport is missing.
+This is a look at the Advanced Tools contract, for anyone thinking about
+writing a tool. **There is no external plugin system, and building one isn't
+planned** (decided 2026-09-28 — `docs/external-tools-design.md` records the
+withdrawn design). Today's five tools are all built-in — bundled into the app
+itself, running in-process — and a new tool joins them the same way, as a PR
+adding to `src/tools/builtin/`. That's the point of this document — it is a
+guided tour of the contract a built-in tool speaks. If you want a tool
+distributed independently of this repo, or a plugin system to make that
+possible, forking the project is the way to do that.
 
 The real contract, byte for byte, is [`tools-api/index.ts`](../tools-api/index.ts)
 — it's short, fully commented, and this document is a guided tour of it, not
@@ -199,12 +198,10 @@ report header).
 
 ## Where this is headed
 
-Phase 6 (v1.1) adds the second transport: a manifest with `entry` (executable
-
-- args), `language`, `author`, and `homepage`, spawned through Tauri's shell
-  plugin, with an unvetted-tool warning dialog naming exactly the capabilities
-  above before a user runs anything they didn't write themselves. A curated
-  registry (a JSON file in a separate repo, PR-able by the community) is the
-  plan for discovery. None of that is built yet, and the details are
-  deliberately deferred until v1 has shipped and real tool authors — maybe you
-  — have had a chance to react to this document.
+Nowhere, deliberately. A second transport (a manifest, a spawned child
+process, an unvetted-tool consent dialog, a curated registry) was designed in
+`docs/external-tools-design.md` but never built, and the decision as of
+2026-09-28 is not to build it — the project doesn't have enough tools for a
+plugin system to pay for its own machinery. The contract above stays exactly
+as it is; a new tool is a built-in, added by PR. Anyone who wants an external,
+independently-distributed tool ecosystem is welcome to build it in a fork.

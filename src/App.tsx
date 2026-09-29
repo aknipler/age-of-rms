@@ -439,7 +439,7 @@ function AppContent() {
                       hasFile={doc.filePath !== null}
                       source={parsed.source}
                       parseResult={parsed.parseResult}
-                      applyTextEdit={doc.applyTextEdit}
+                      applyTextEdits={doc.applyTextEdits}
                       reparseNow={parsed.reparseNow}
                       selection={selection}
                     />

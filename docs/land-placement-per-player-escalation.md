@@ -364,3 +364,40 @@ field shows), since making the main field itself track the currently-previewed c
 considered and rejected — that would make an override at any OTHER count invisible, the exact
 trap this section named. Full reasoning in `docs/build-log.md`'s 2026-09-03 (later still) entry.
 Nothing else is open; all three slices in Sec.9's plan are built and green.
+
+**Recorded 2026-09-22, not started: a "Use it" button on the Min. separation helper, and a
+percent unit for jitter.** Asked from the real host ("why is there not a button to add safe
+jitter?"). The helper's own doc comment says authoring a `rnd(...)` was cut because one draw
+can only be as generous as the tightest count. That half is a non-reason, since the tightest
+count is always 8 (the even gap `360 / (count × slots)` only shrinks as players are added), so
+a bound computed at 8 is safe at every count. The real obstacle is Sec.5's own rule: a member's
+authored angle REPLACES the even default (`resolveMemberAngle`, first match wins), so `rnd`
+appended to a member's angle would freeze that member at its 8-player position at every
+count. Jitter has to be added to the even default inside the prologue, per branch, which is a
+GROUP field, not a member edit. Two answers were given before recording this; the shape below
+is what was agreed.
+
+- `ShapeGroup.jitter?: { param: string; unit: "deg" | "percent" }`, applied by `buildPrologue`
+  to the EVEN DEFAULT only; an authored rule or a per-count override already says what it wants
+  and is left alone.
+- Degrees: `DEG_Pk = even_k + ALP_PARAM_<J>_Pk`, one `perPlayer` draw per player, the safe bound
+  computed at `MAX_PLAYER_COUNT`.
+- Percent, of the even gap at each count (agreed reading, so that it is count-independent by
+  construction): `DEG_Pk = even_k + ALP_PARAM_<J>_Pk * gap_count / 100`, the param drawn
+  `rnd(-P, P)`. A percent under 50 can never cross a neighbour at any count; the helper's
+  minimum-separation bound becomes `P ≤ 50 × (1 − min / gap_8)`.
+- The helper gains the button (creates the `RandomParam`, sets `group.jitter`) and a unit toggle.
+- **Per-player rings only** (agreed). A fixed-count ring has no per-member random draw: a
+  `perPlayer` param resolves by owning player and a neutral ring member has none, so every
+  member would take the same draw, which is a rotation, not jitter. A "one draw per member"
+  param kind is the follow-up want, recorded here and not designed.
+
+~~Waiting on the author's decomposition of the request before this becomes a slice.~~
+**Built 2026-09-28** as agreed above, with two details decided while building it. The button
+writes a whole number, rounded down from the bound, because the guide never says `rnd` takes
+fractional bounds and rounding down can only make the result safer. It refuses when that leaves
+less than 1, since `rnd(0,0)` is no jitter and the guide requires `max` to exceed `min`. The
+percent form is emitted as `J * 360 / N / 100 + ROT + 0 + even`, jitter term first, so the whole
+angle stays one left spine and costs no temporary `#const` lines. The emitter refuses jitter on
+a ring that is not per-player, or when its param is shared, and the panel locks the param's per
+player box. The fixed-count follow-up above is still not designed.

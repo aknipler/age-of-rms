@@ -7,6 +7,22 @@
   margin-bottom: 0.3rem;
 }
 
+/* Pins the ProblemBadge (when present) and the delete button to the right
+   edge of .title as one group, same idea as CommandCard.module.css's
+   .summarySlot pushing its own trailing content flush right. Without this
+   the delete button just trailed whatever badges happened to be present,
+   with no consistent right edge (beta feedback 2026-09-18). One
+   margin-left: auto on the group, not one on each child. Two independent
+   auto margins would split the leftover space between them instead of
+   collapsing it, visibly separating the badge from the button. */
+.trailingSlot {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .branch {
   border-left: 3px solid var(--border-muted);
   margin: 0.3rem 0;

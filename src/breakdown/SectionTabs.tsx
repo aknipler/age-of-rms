@@ -26,7 +26,7 @@ interface SectionTabsProps {
   diagnostics: Diagnostic[];
 }
 
-// docs/breakdown-design.md Sec.3.1, Header (if preamble non-empty) + the 7
+// docs/breakdown-design.md Sec.3.1, Header (always, even empty) + the 7
 // canonical sections (data-driven order/labels from sectionLabels.ts) +
 // any unknown sections (RMS0100), each with a count badge and a problem
 // badge computed by diagnostic-span containment over the tab's (possibly

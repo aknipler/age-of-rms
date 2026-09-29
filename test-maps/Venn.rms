@@ -932,16 +932,20 @@ create_terrain TERRAIN_CENTER { base_terrain LAYER_CENTER land_percent 100 numbe
 
 /* ************************************* CONNECTION GENERATION ************************************* */
 <CONNECTION_GENERATION>
+create_connect_all_players_land {
+      replace_terrain GRASS2 ICE
+  terrain_cost LAYER_PLAYER 122
+  terrain_cost TERRAIN_TEMP 1
+      terrain_size ICE 3 0
+}
 
 /* create_connect_land_zones 3 4
 {
   replace_terrain LAYER_PLAYER ICE 
   replace_terrain TERRAIN_TEMP TERRAIN_GAIA 
-  /* replace_terrain PL_TERRAIN CENTER_HOLE_TERRAIN  */
   terrain_cost LAYER_PLAYER 122
   terrain_cost TERRAIN_TEMP 1
   terrain_size CENTER_NONBUILDABLE_TERRAIN 1 1
-  /* terrain_size PL_TERRAIN 1 0 */
 } */
 
 

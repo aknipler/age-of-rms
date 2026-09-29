@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -48,8 +49,21 @@ export function useShiftedAnchor(
     anchor: number | null,
     edit: OffsetEdit,
   ) => number | null = shiftSingleAnchor,
-): [number | null, Dispatch<SetStateAction<number | null>>] {
+): [
+  number | null,
+  Dispatch<SetStateAction<number | null>>,
+  (offset: number) => void,
+] {
   const [anchor, setAnchor] = useState<number | null>(null);
+  // An offset to adopt once every queued shift has been applied
+  // (2026-09-18, the card-move work). A move deletes the card's old text,
+  // so the anchor inside it is dropped by the shift below, and the new
+  // position is only meaningful against the text the move produced. Setting
+  // it eagerly would hand a post-edit offset to a shift that still expects a
+  // pre-edit one, and the queue would move it a second time. So the caller
+  // parks it here and the resolving effect adopts it after the shifts, in
+  // the same state update.
+  const afterPendingRef = useRef<number | null>(null);
 
   // Latest-callback ref, the same pattern CodePane uses for
   // onCursorOffsetChange: the effect below must call the CURRENT `shift`
@@ -95,13 +109,19 @@ export function useShiftedAnchor(
     if (matchedUpTo === -1) {
       // Nothing in the queue matches the parse that just landed. Some
       // other change superseded it. Drop rather than wait forever (same
-      // trade-off Sec.3.9's original queue made).
+      // trade-off Sec.3.9's original queue made). A parked offset goes
+      // with it, since it was computed against a text that never rendered.
       pendingRef.current = [];
+      afterPendingRef.current = null;
       return;
     }
     const toApply = pending.slice(0, matchedUpTo + 1);
     pendingRef.current = pending.slice(matchedUpTo + 1);
+    const adopt =
+      pendingRef.current.length === 0 ? afterPendingRef.current : null;
+    if (adopt !== null) afterPendingRef.current = null;
     setAnchor((prev) => {
+      if (adopt !== null) return adopt;
       let next = prev;
       for (const { edits } of toApply) {
         for (const edit of edits) next = shiftRef.current(next, edit);
@@ -110,5 +130,10 @@ export function useShiftedAnchor(
     });
   }, [source]);
 
-  return [anchor, setAnchor];
+  const setAfterPending = useCallback((offset: number) => {
+    if (pendingRef.current.length === 0) setAnchor(offset);
+    else afterPendingRef.current = offset;
+  }, []);
+
+  return [anchor, setAnchor, setAfterPending];
 }

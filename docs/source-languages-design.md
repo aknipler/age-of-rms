@@ -1,6 +1,12 @@
 # Source Languages in the Code Tab — Design (rev 1, draft for discussion)
 
-**Status: proposal, nothing implemented, and scheduled AFTER M6.** External tools ship first and this feature inherits their pack machinery — see Sec.11, where that ordering is a decision with consequences rather than a sequencing accident. This covers PLAN.md's "Later" line item — _"multi-language dropdown in Code tab"_ — and the Code-tab bullet it comes from: _"language dropdown (AoE2 RMS default; other languages later for tool authors)."_ It is written after the Advanced Tools API (`docs/tools-api-design.md`), reuses that document's trust and transport reasoning wherever the shape is the same, and departs from it where a compiler is not a tool.
+**Status: proposal, nothing implemented, and stalled.** This feature inherits its
+pack machinery from `docs/external-tools-design.md` (Sec.11 is where that
+dependency was a decision, not a sequencing accident) — see that document for
+why M6 was decided against 2026-09-28. Nothing here needs it to plug into a
+plugin system, only into the extension-install machinery that document was
+going to build, so this stays stalled until someone designs a path that
+doesn't depend on it, or the M6 decision is revisited. This covers PLAN.md's "Later" line item — _"multi-language dropdown in Code tab"_ — and the Code-tab bullet it comes from: _"language dropdown (AoE2 RMS default; other languages later for tool authors)."_ It is written after the Advanced Tools API (`docs/tools-api-design.md`), reuses that document's trust and transport reasoning wherever the shape is the same, and departs from it where a compiler is not a tool.
 
 **Every repo claim here is dated 2026-08-29 — re-derive before acting on it.** `docs/tools-api-design.md` Sec.10.2's standing instruction applies to this document too, and for the same measured reason.
 

@@ -11,10 +11,10 @@
 
 import type { Expr } from "../../../../tools-api/index";
 import { MAX_PLAYER_COUNT } from "../../../generationSettings/generationSettingsConstants";
-import { sym } from "./compiler/expr";
+import { evalClosed, sym } from "./compiler/expr";
 import type { EmittedConst } from "./compiler/emit";
 import type { NameAllocator } from "./compiler/naming";
-import type { LandRole, Placement, RandomParam } from "./model";
+import type { AssignPolicy, LandRole, Placement, RandomParam } from "./model";
 
 function rndCell(name: string, min: number, max: number): EmittedConst {
   const text = `rnd(${min},${max})`;
@@ -59,6 +59,14 @@ export interface ParamEmission {
    * rolled value.
    */
   previewValues: ReadonlyMap<string, number>;
+  /**
+   * The same midpoint stand-in keyed by the PARAM's own id rather than the
+   * emitted name, for the panel: a model `Expr` still carries `param(id)`
+   * leaves (only emission substitutes names), so the canvas, the gizmo and
+   * the formula field resolve a param through this rather than through
+   * `resolved`, which only knows the emitted names.
+   */
+  previewById: ReadonlyMap<string, number>;
 }
 
 export function emitRandomParams(
@@ -67,11 +75,13 @@ export function emitRandomParams(
 ): ParamEmission {
   const cells: EmittedConst[] = [];
   const previewValues = new Map<string, number>();
+  const previewById = new Map<string, number>();
   const sharedNames = new Map<string, string>();
   const perPlayerNames = new Map<string, string[]>();
 
   for (const p of params) {
     const midpoint = (p.min + p.max) / 2;
+    previewById.set(p.id, midpoint);
     if (!p.perPlayer) {
       const name = namer.allocate("PARAM", p.label);
       cells.push(rndCell(name, p.min, p.max));
@@ -112,7 +122,7 @@ export function emitRandomParams(
     return names[ownerPlayer - 1];
   };
 
-  return { cells, resolveName, previewValues };
+  return { cells, resolveName, previewValues, previewById };
 }
 
 /**
@@ -158,8 +168,13 @@ export function resolveParamRefs(
 
 /**
  * A placement's "owning player", 1-based, `undefined` if none, is the
- * nearest ancestor (including itself) whose own role has `assignToPlayer`
- * and a `repeatIndex`, walking `parent` back to `"center"`.
+ * nearest ancestor (including itself) whose own role assigns the land to a
+ * PLAYER NUMBER (`assign_to_player N`, or `assign_to AT_PLAYER N`), walking
+ * `parent` back to `"center"`. A `perRepeat` slot resolves through the
+ * placement's `repeatIndex`; a `fixed` slot only when it is a closed
+ * numeric expression, since a symbolic one names a player the tool cannot
+ * see. `AT_COLOR` and `AT_TEAM` assign by colour or team, not by player
+ * number, so they confer no owner (role-attributes-escalation.md Sec.4.2).
  *
  * UNDOCUMENTED IN THE DESIGN DOC, DECIDED HERE (same class of gap frame.ts
  * and model.ts already document): Sec.4.4 says a `perPlayer` reference
@@ -170,6 +185,22 @@ export function resolveParamRefs(
  * Bulls_Eyes' own A1/A2/A3 off P1, belongs to that player's cluster, which
  * is exactly what this walk computes.
  */
+function ownPlayerNumber(
+  assign: AssignPolicy,
+  repeatIndex: number | undefined,
+): number | undefined {
+  if (assign.kind === "none") return undefined;
+  if (assign.kind === "assignTo" && assign.target !== "AT_PLAYER")
+    return undefined;
+  const slot = assign.number;
+  if (slot.kind === "perRepeat") {
+    return repeatIndex === undefined
+      ? undefined
+      : slot.base + slot.step * repeatIndex;
+  }
+  return evalClosed(slot.value);
+}
+
 export function computeOwnerPlayers(
   placements: readonly Placement[],
   roleById: ReadonlyMap<string, LandRole>,
@@ -185,10 +216,10 @@ export function computeOwnerPlayers(
     const p = byId.get(id);
     if (!p) return undefined;
     const role = p.role !== undefined ? roleById.get(p.role) : undefined;
-    if (role?.assignToPlayer === true && p.repeatIndex !== undefined) {
-      const owner = p.repeatIndex + 1;
-      cache.set(id, owner);
-      return owner;
+    const own = role ? ownPlayerNumber(role.assign, p.repeatIndex) : undefined;
+    if (own !== undefined) {
+      cache.set(id, own);
+      return own;
     }
     const owner = p.parent === "center" ? undefined : ownerOf(p.parent, seen);
     cache.set(id, owner);

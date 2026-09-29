@@ -66,29 +66,80 @@
   overflow: auto;
 }
 
-.treeRow {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+/*
+ * A list whose rows line up in columns. The list is the grid and each row
+ * joins it with `subgrid`, so the rows share the list's column tracks and a
+ * column is as wide as its widest cell in any row. A row still has to be one
+ * element to be one clickable button, which is why this is subgrid and not
+ * `display: contents` on the row, which drops a button from the
+ * accessibility tree in some browsers.
+ */
+.gridList {
+  display: grid;
+  column-gap: 0.9rem;
+  align-content: start;
+}
+
+.gridRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: baseline;
   padding: 0.2rem 0.4rem;
   cursor: pointer;
   font-size: 0.85rem;
   border: none;
   background: none;
-  width: 100%;
   text-align: left;
 }
 
-.treeRow:hover {
+.gridRow:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.treeRowSelected {
+.gridRowSelected {
   background: rgba(94, 174, 255, 0.18);
 }
 
-.roleTag {
-  font-size: 0.7rem;
+.gridCell {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gridFull {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.82rem;
+}
+
+.gridDeleteCell {
+  display: flex;
+  justify-content: flex-end;
+  align-self: center;
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.muted {
+  font-size: 0.75rem;
   opacity: 0.7;
 }
 
@@ -170,12 +221,6 @@
   border-radius: 3px;
 }
 
-.rolesList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
 .formulaField {
   display: flex;
   flex-direction: column;
@@ -203,8 +248,65 @@
   font-size: 0.75rem;
 }
 
+/* A name with no value. A warning rather than an error, since the box
+   still saves it (formulaField.ts, findUnknownNames). */
+.formulaWarning {
+  color: var(--warning);
+  font-size: 0.75rem;
+}
+
 .formulaPreview summary {
   cursor: pointer;
   font-size: 0.72rem;
   opacity: 0.7;
+}
+
+.chipSelect {
+  max-width: 9em;
+  font-size: inherit;
+}
+
+.newWithRole {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.9em;
+}
+
+.borderGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.5rem;
+}
+
+.roleTier2 {
+  margin-top: 0.3rem;
+}
+
+.roleTier2 > summary {
+  cursor: pointer;
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+.overrideRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.overrideBody {
+  flex: 1;
+}
+
+.chipCount {
+  font-size: 0.8em;
+  opacity: 0.8;
+  margin-left: 0.2em;
+}
+
+.applyReport {
+  margin: 0.3rem 0 0;
+  font-size: 0.85em;
+  opacity: 0.85;
 }

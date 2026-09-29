@@ -177,7 +177,7 @@ export interface UseDocumentOptions {
    *
    * A parameter rather than a `useAppSettings()` call inside the hook. The
    * hook is otherwise about files and nothing else, and taking the value in
-   * keeps it that way, the same reason `applyTextEdit` takes a structurally
+   * keeps it that way, the same reason `applyTextEdits` takes structurally
    * typed edit instead of importing Breakdown's `TextEdit`.
    */
   authorName: string;
@@ -540,35 +540,23 @@ export function useDocument({ authorName }: UseDocumentOptions) {
 
   const mapName = filePath ? fileNameFromPath(filePath) : "Untitled Map";
 
-  // Applies a byte-level TextEdit (docs/breakdown-design.md Sec.4.1's
-  // TextEdit shape) to the shared document model via pushOwnUndoEntry,
-  // which lands on Monaco's own undo/redo stack, the same stack Ctrl+Z
-  // in the Code tab uses (Sec.6.4), as its own entry (see that function's
-  // doc comment: without the pushStackElement it calls first, this is
-  // exactly the call site that used to let consecutive Breakdown actions
-  // accumulate onto one growing undo entry). This is the one function
-  // Breakdown's patch-application glue (src/breakdown/applyEdit.ts) needs
-  // from this hook; it deliberately takes a structurally-typed edit rather
-  // than importing src/breakdown/patch/intents.ts's TextEdit, so this hook
-  // stays free of any dependency on the breakdown feature.
-  const applyTextEdit = useCallback(
-    (edit: { start: number; end: number; newText: string }) => {
-      const startPos = documentModel.getPositionAt(edit.start);
-      const endPos = documentModel.getPositionAt(edit.end);
-      const range = new monaco.Range(
-        startPos.lineNumber,
-        startPos.column,
-        endPos.lineNumber,
-        endPos.column,
-      );
-      pushOwnUndoEntry([{ range, text: edit.newText, forceMoveMarkers: true }]);
-    },
-    [],
-  );
-
-  // The N-edit form, for the Advanced Tools pane (docs/tools-api-design.md
-  // Sec.4.5). It exists because calling applyTextEdit N times, each as its
-  // own pushOwnUndoEntry call, would produce N undo entries, which breaks
+  // Applies one or more byte-level TextEdits (docs/breakdown-design.md
+  // Sec.4.1's TextEdit shape) to the shared document model via
+  // pushOwnUndoEntry, which lands on Monaco's own undo/redo stack, the same
+  // stack Ctrl+Z in the Code tab uses (Sec.6.4), as ONE entry (see that
+  // function's doc comment: without the pushStackElement it calls first,
+  // this is exactly the call site that used to let consecutive Breakdown
+  // actions accumulate onto one growing undo entry). This is the one
+  // function Breakdown's patch-application glue (src/breakdown/applyEdit.ts)
+  // needs from this hook. It deliberately takes structurally-typed edits
+  // rather than importing src/breakdown/patch/intents.ts's TextEdit, so
+  // this hook stays free of any dependency on the breakdown feature. The
+  // single-edit form it used to sit beside was removed on 2026-09-18, when
+  // the first two-edit Breakdown intent (moving a card) made Breakdown a
+  // second caller of the N-edit form.
+  // The N-edit form was written for the Advanced Tools pane
+  // (docs/tools-api-design.md Sec.4.5). It exists because pushing N edits
+  // as N pushOwnUndoEntry calls would produce N undo entries, which breaks
   // that spec's central promise that a tool's Apply is one undoable action:
   // a user who applied 40 changes should press Ctrl+Z once, not forty times.
   //
@@ -650,7 +638,6 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     openFile,
     saveFile,
     saveFileAs,
-    applyTextEdit,
     applyTextEdits,
     /** Non-null while the unsaved-changes modal should be on screen; also selects its wording. */
     unsavedAction,

@@ -1,7 +1,46 @@
+.card {
+  /* For .collapseStrip's absolute positioning. */
+  position: relative;
+}
+
 .header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* The left edge of an open card, full height, sitting in the card's own
+   left padding so nothing moves when it appears. A faint bar on hover is
+   the only affordance, the HelpTip carries the words. .stripSlot is the
+   positioned box; HelpTip's inline-block wrapper (the > * rule) and the
+   button both just fill it. */
+.stripSlot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0.6rem;
+}
+
+.stripSlot > * {
+  display: block;
+  height: 100%;
+}
+
+.collapseStrip {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 4px 0 0 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.collapseStrip:hover {
+  background: var(--accent);
+  opacity: 0.35;
 }
 
 .toggle {
@@ -13,12 +52,61 @@
   flex-shrink: 0;
 }
 
-.summary {
+/* The HelpTip wrapper between .summarySlot and .summary is the real flex
+   item, and a flex item's default min-width is its content width, which is
+   exactly what let a long summary overflow the card. min-width: 0 on both
+   the slot and the wrapper is what lets the ellipsis below ever apply. */
+.summarySlot {
   flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.summarySlot > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* `display: flex` + `overflow: hidden`, not `text-overflow: ellipsis` on a
+   block. Ellipsis was clipping the PAINT only. SummaryAttributes' entries
+   are <button>s (atomic inline boxes), and text-overflow's line-box
+   algorithm hides an overflowing one by drawing the "…" glyph over it
+   rather than by removing it from hit-testing, so the button stayed
+   clickable in the space between the "…" and the row's true right edge,
+   reported as "there's a gap after the dots, and clicking it still fires
+   whatever attribute would have been there" (beta feedback 2026-09-18).
+   A flex row clips geometrically instead. An entry that doesn't fit is
+   truly outside the box, and `overflow: hidden` excludes it from
+   hit-testing like any other out-of-bounds content. The mask below
+   restores a fade where the hard ellipsis used to be, purely visual (masks
+   don't affect layout or pointer-events), so it costs nothing when the
+   line isn't actually truncated. */
+.summary {
+  display: flex;
+  align-items: baseline;
   font-size: 0.9rem;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  mask-image: linear-gradient(to right, #000 calc(100% - 1.2rem), transparent);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - 1.2rem),
+    transparent
+  );
+}
+
+/* The command name + positional args, the one part of the row that isn't
+   an individually-clickable entry. flex-shrink: 0 keeps it whole so the
+   overflow (and the clip) always lands among the attributes at the end,
+   not mid-word in the name. */
+.summaryLabel {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.deleteSlot {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .body {
@@ -172,4 +260,12 @@
 
 .argValue {
   font-family: "Cascadia Code", Consolas, monospace;
+}
+
+/* Sec.3.3.1's affordance, a filtered list must never look complete. */
+.hiddenCount {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--text-muted);
 }

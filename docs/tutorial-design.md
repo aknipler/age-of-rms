@@ -1061,3 +1061,23 @@ Each step leaves the app working and testable.
   with zero errors and renders a recognisable map in the preview.
 - `npm test`, `npm run typecheck`, `npm run lint` and `npm run validate:reference`
   all pass.
+
+## 17. Backlog, problem-solving tutorials (recorded 2026-09-17, not designed)
+
+Beta feedback asked for more tutorials, and specifically for ones that teach one
+skill or solve one problem rather than build a whole map. The shape to design
+against is this. Start from a script that is mostly complete. Show the learner
+the part of it that matters, enough to understand what the script is doing,
+then present the problem to solve. The first candidate is co-locating two
+objects, putting a mining camp next to a stone mine, which exercises
+`actor_area`, `actor_area_to_place_in` and `actor_area_radius` on a real need.
+Other candidates worth listing when this is designed are placing a per-player
+resource at a fixed distance and direction, keeping a resource off a terrain,
+and making a land connection reach the town centre.
+
+Each tutorial of this kind needs a fixture script under
+`src/tutorial/__tests__/fixtures/`, a `check` predicate for the solved state
+(Sec.8), and a step 0 that loads the fixture instead of starting from a new
+file, which is a variation Sec.9.0 does not cover yet. Tutorial A's
+"Add them for me" `autoFill` button (Sec.0) is the precedent for skipping the
+parts that are not the lesson.

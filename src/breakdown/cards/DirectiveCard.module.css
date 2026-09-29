@@ -6,8 +6,15 @@
 }
 
 .name {
-  flex: 1;
+  /* Not flex:1 - this span isn't a direct child of .header (HelpTip
+     wraps it in its own inline-block span first), so a flex property
+     here would be silently ignored. See .deleteSlot below. */
   font-family: "Cascadia Code", Consolas, monospace;
+}
+
+.deleteSlot {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .argValue {

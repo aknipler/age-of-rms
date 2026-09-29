@@ -30,9 +30,9 @@ const ROLE_P: LandRole = {
   terrain: { k: "name", name: "GRASS" },
   baseSize: num(10),
   baseElevation: num(0),
-  landPercent: num(5),
+  extent: { kind: "percent", value: num(5) },
   zone: { kind: "none" },
-  assignToPlayer: false,
+  assign: { kind: "none" },
 };
 
 function threePlacementModel(): AlpModel {

@@ -1,0 +1,91 @@
+/* Wider than the generic dialog.module.css .dialog (320px min): this one
+   holds a two-column body plus a full-width code preview, and stays
+   readable at the app's normal window width instead of wrapping. */
+.wide {
+  width: 44rem;
+  max-width: 90vw;
+}
+
+.body {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.templateList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 12rem;
+  border-right: 1px solid var(--border-muted);
+  padding-right: 1rem;
+}
+
+.templateOption {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.options select,
+.options input[type="text"] {
+  margin-left: auto;
+}
+
+.invalidInput {
+  border-color: var(--danger);
+}
+
+/* Read-only, monospace, scrollable rather than growing the dialog to fit
+   the tallest template (T2's block is the longest of the three). This is
+   the cheapest teaching aid the feature has: it shows the exact text
+   Insert is about to write, live, as options change. */
+.preview {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  max-height: 16rem;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: pre;
+}
+
+.primary {
+  font-weight: 600;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Number fields in the forest templates hold a few digits, so they stay
+   narrow and right-aligned with the selects above them. */
+.shortInput {
+  width: 6rem;
+}
+
+.note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.problems {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--danger);
+}

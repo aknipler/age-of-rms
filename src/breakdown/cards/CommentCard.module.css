@@ -1,12 +1,57 @@
 .card {
   background: var(--surface-raised);
   border-style: dashed;
+  /* Containing block for .dropBefore/.dropAfter's absolutely positioned
+     pseudo-elements below, same reasoning as ItemCard.module.css's
+     .selectable. */
+  position: relative;
 }
 
+/* Dragging (cardDrag.tsx), the same treatment ItemCard.module.css gives
+   every other card kind: the card being moved dims in place, and the line
+   marking the destination draws on a pseudo-element so CommentCard itself
+   never has to know it is being dropped on. Kept as its own copy rather
+   than importing ItemCard.module.css, this card is never wrapped by
+   ItemCard (its selection/menu machinery is Item-only, see the component's
+   own comment), so it owns this small block the same way it owns .card. */
+.dragSource {
+  opacity: 0.4;
+}
+
+.dropBefore::before,
+.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.dropBefore::before {
+  top: -0.3rem;
+}
+
+.dropAfter::after {
+  bottom: -0.3rem;
+}
+
+/* The card's only row: toggle button plus whichever of `.summary`/`.body`
+   is showing, side by side. `align-items: center` is right for the
+   collapsed case (toggle + one line of summary text), but a multi-line
+   `.body` shouldn't vertically center against the toggle the same way, so
+   `.expanded` swaps it to `flex-start` (CommentCard.tsx applies it
+   whenever `.body` is the thing rendered here). */
 .header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.header.expanded {
+  align-items: flex-start;
 }
 
 .toggle {
@@ -28,11 +73,17 @@
   white-space: nowrap;
 }
 
-/* Indents the whole expanded body — every wrapped line, not just the
-   first — to line up under where the summary text starts (toggle width
-   1.5rem + the header's 0.5rem gap). */
+/* `flex: 1` puts this box immediately after the toggle + the header's own
+   0.5rem gap, no separate indented row underneath needed — every wrapped
+   line of `.text` lands at that same x for free, since they all share the
+   textarea's one left edge. (Sits in the same flex row as `.toggle`, so
+   `display: flex` here, column, is only for stacking `.text` above
+   `.inlineError`, not for positioning against the toggle.) */
 .body {
-  padding-left: 2rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .text {

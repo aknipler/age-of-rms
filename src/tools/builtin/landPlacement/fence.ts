@@ -33,8 +33,16 @@
 // be correct.
 
 import type { ParseResult, Span } from "../../../parser/types";
-import type { TextEdit } from "../../../../tools-api/index";
-import type { LandRole, Placement, RandomParam, ShapeGroup } from "./model";
+import type { Expr, TextEdit } from "../../../../tools-api/index";
+import {
+  ASSIGN_TO_PLAYER_PER_REPEAT,
+  type AssignPolicy,
+  type LandExtent,
+  type LandRole,
+  type Placement,
+  type RandomParam,
+  type ShapeGroup,
+} from "./model";
 
 export const FENCE_VERSION = 1;
 
@@ -205,7 +213,46 @@ export function readFenceModel(parse: ParseResult): AlpModel | null {
   ) {
     return null;
   }
-  return parsed as AlpModel;
+  return upgradeRoles(parsed as AlpModel);
+}
+
+/**
+ * Lifts a role written before role-attributes-escalation.md slice 1 into the
+ * current shape. The fence version is still 1: the reshape changed two
+ * fields (`landPercent` became `extent`, `assignToPlayer` became `assign`),
+ * and the alternative, bumping `FENCE_VERSION`, would make P5 report the
+ * fence unreadable and silently start the user from an empty model. That
+ * matters because Sec.4.5's "no panel has ever written a fence" expired on
+ * 2026-09-15, when a build with this tool in its dropdown went out; a
+ * document from someone else's session can carry the old shape.
+ *
+ * Runs on every read and is a no-op on a current role, so there is no
+ * "was this upgraded" state to keep. Applied at the one place a fence
+ * enters the model, never at consumers.
+ */
+function upgradeRoles(model: AlpModel): AlpModel {
+  let changed = false;
+  const roles = model.roles.map((raw) => {
+    const legacy = raw as LandRole &
+      Partial<{ landPercent: Expr; assignToPlayer: boolean }>;
+    if (legacy.landPercent === undefined && legacy.assignToPlayer === undefined)
+      return raw;
+    changed = true;
+    const { landPercent, assignToPlayer, ...rest } = legacy;
+    const role: LandRole = {
+      ...rest,
+      extent:
+        rest.extent ??
+        ({ kind: "percent", value: landPercent! } satisfies LandExtent),
+      assign:
+        rest.assign ??
+        (assignToPlayer === true
+          ? ASSIGN_TO_PLAYER_PER_REPEAT
+          : ({ kind: "none" } satisfies AssignPolicy)),
+    };
+    return role;
+  });
+  return changed ? { ...model, roles } : model;
 }
 
 /**

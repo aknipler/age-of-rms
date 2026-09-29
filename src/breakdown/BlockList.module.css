@@ -10,3 +10,20 @@
   color: var(--text-muted);
   padding: 0.3rem;
 }
+
+/* An empty list while a card is being dragged, and the same list when the
+   pointer is over it (BlockList.tsx's EmptyDropZone). Dashed while any
+   drag is on, so every place a card could go is visible at once. */
+.emptyDroppable {
+  border: 1px dashed var(--border-muted);
+  border-radius: 4px;
+  font-style: normal;
+  text-align: center;
+}
+
+.emptyActive {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-bg-subtle);
+  color: var(--text);
+}

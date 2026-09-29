@@ -68,3 +68,19 @@ export function canDeleteItem(
     kind === "random"
   );
 }
+
+/**
+ * Which cards a person can move (drag, Alt+arrows, the card menu) or
+ * duplicate. The same four kinds as canDeleteItem, and for the same reason
+ * (2026-09-18): a card whose span is only an approximation of a construct
+ * the parser could not shape (a stray attribute, a shared block, a raw
+ * node) can have its text moved without its meaning following, so those
+ * stay where they are and get fixed in the Code tab. Kept as its own name
+ * so a future divergence between the two sets is one edit here rather than
+ * a hunt for every `canDeleteItem` that meant "rearrange".
+ */
+export function canRearrangeItem(
+  item: Item,
+): item is CommandNode | DirectiveNode | IfNode | RandomNode {
+  return canDeleteItem(item);
+}

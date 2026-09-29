@@ -47,9 +47,12 @@ export function buildTerrainBitmap(
 
       // A visual layer sits on top of the terrain rather than replacing it,
       // so it tints. Sec.9 item 6 excludes real terrain_mask blending, and a
-      // flat tint is the honest stand-in for it.
+      // flat tint is the honest stand-in for it. Game mode only: the
+      // game's own minimap colours a tile by the terrain that owns it and
+      // ignores layers entirely, so minimap mode does the same (beta
+      // feedback 2026-09-17).
       const layerId = layer[index];
-      if (layerId !== NO_LAYER) {
+      if (layerId !== NO_LAYER && palette.mode !== "minimap") {
         color = mix(color, palette.colorFor(layerId), LAYER_TINT_WEIGHT);
       }
 

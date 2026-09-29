@@ -1,0 +1,94 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_land
+  {
+    terrain_type GRASS
+    base_size 4
+    number_of_tiles 300
+    zone 2
+    land_position 20 20
+  }
+  create_land
+  {
+    terrain_type DIRT
+    base_size 4
+    number_of_tiles 300
+    zone 3
+    land_position 80 50
+  }
+  create_land
+  {
+    terrain_type GRASS2
+    base_size 4
+    number_of_tiles 300
+    zone 4
+    land_position 20 80
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+  create_connect_all_lands
+  {
+    replace_terrain GRASS ROAD
+    replace_terrain GRASS2 ROAD
+    replace_terrain DIRT ROAD
+  }
+
+/*
+================================================================================
+RMSTEST_75b - control for RMSTEST_75a. Identical map, no terrain_cost line
+at all, and DIRT is itself declared replaceable so a road crossing B is
+visible instead of merely absent-by-omission.
+Feeds: docs/known-issues.md BUG-029, preview-design.md Sec.6.5
+
+Byte-for-byte the same three lands, same positions, same zones as 75a. The
+only difference is this command drops "terrain_cost DIRT 0" and adds
+"replace_terrain DIRT ROAD" in its place, so that with DIRT at its
+ordinary default cost of 1, all three pairs should connect freely and a
+road should be able to run straight through B's body if the shortest path
+calls for it.
+
+WHY THIS CONTROL MATTERS AND ISN'T REDUNDANT WITH "not blocked" IN 75a
+75a's own "not blocked" outcome already shows what an unblocked B looks
+like in principle, but it is read off the SAME command that is testing the
+hypothesis - if something in the setup (map layout, zone assignment,
+A* tie-breaking) happened to route every path AWAY from B regardless of
+cost, 75a could read as "blocked" for a reason that has nothing to do with
+terrain_cost. This script is the same geometry with terrain_cost's only
+effect removed, so three roads (or at least a road touching every land)
+here is what confirms the setup is capable of producing them at all.
+
+PREDICTION
+Three roads, or a connected road network touching every one of A, B and C.
+ROAD tiles appear inside or immediately adjacent to DIRT's own bounding
+box on every run.
+
+GENERATE AT NORMAL (200), ANY PLAYER COUNT. THREE RUNS, matching 75a.
+
+READ WITH
+  python probe_scenario.py "<scenario>" --bbox DIRT
+  python probe_scenario.py "<scenario>" --patches ROAD
+  Confirm ROAD tiles sit inside or touching DIRT's bbox on every run. If
+  they do not - if this control ALSO reads as "blocked" - 75a's result is
+  uninterpretable and the geometry needs redesigning before trusting either
+  script.
+================================================================================
+*/
