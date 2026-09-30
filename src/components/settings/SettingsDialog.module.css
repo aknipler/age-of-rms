@@ -223,6 +223,13 @@
   line-height: 1.4;
 }
 
+/* Only a thank-you that directly follows another one gets a gap. An adjacent
+   sibling selector keeps the first paragraph flush under its heading, which
+   a blanket margin-top on .creditThanks would not. */
+.creditThanks + .creditThanks {
+  margin-top: 0.75rem;
+}
+
 /* The Microsoft attribution. Smaller and greyer than .creditThanks because it
    is a required legal notice rather than something to read, but deliberately
    not hidden behind a disclosure, since the rules ask for it wherever the app

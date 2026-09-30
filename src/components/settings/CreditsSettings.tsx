@@ -17,6 +17,14 @@ export function CreditsSettings() {
         Object reference sheets, and to his contributions to the RMS community
         in general.
       </p>
+      {/* Plain text rather than a link on purpose. A link is an interactive
+          element, which would need its own HelpTip and a Tauri opener call to
+          leave the app, and README.md already carries the URL. */}
+      <p className={styles.creditThanks}>
+        Thanks also to genie-rms by Renée Kooi, an open source reimplementation
+        of the original game&apos;s map generator. It was a useful resource for
+        how the map preview grows lands.
+      </p>
 
       {/* Required by the Game Content Usage Rules, which are what let this app
           ship the extracted reference data at all. The rules ask for the notice

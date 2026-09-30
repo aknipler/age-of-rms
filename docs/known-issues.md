@@ -22,6 +22,20 @@ No open entries.
 
 **Both now have scripts, tracked in `tools/scenario-probe/rmstest/README.md`'s Batch 18, ready to run against a real DE install.** `RMSTEST_75a_costzero_origin_blocked` / `RMSTEST_75b_costzero_origin_control` (a matched pair) put three lands under one `create_connect_all_lands`, one of them wholly cost-0 terrain and placed off the other two's line, and check that connections to it fail from BOTH of its potential neighbours rather than just one — the withdrawn per-tile model's own asymmetry (depart from anywhere the land's tiles touched, arrive only through its own passable tiles) is exactly the shape of bug this is checking was not carried forward into the origin-to-origin rewrite. `RMSTEST_76_terrainsize_intrudes_origin` checks the second consequence directly: a deterministic, variance-free `terrain_size` disc on a road running to a land's origin, reading whether ROAD tiles appear inside the land's own former footprint or stop at its edge.
 
+### BUG-036 — 2026-09-29 — `other_zone_avoidance_distance` is ignored next to a land that declares none
+
+**Status:** OPEN. The fix is part of `docs/preview-design.md` rev 8's growth rewrite (Sec.6.1 rule 6c), specified and not built. **Area:** `src/preview/generator/lands.ts`, `violatesZoneAvoidance`.
+
+**Symptom.** A land that declares `other_zone_avoidance_distance` grows right up to a land in another zone when that other land declares no distance of its own. DE keeps the declared gap.
+
+**Reproduction.** Run `tools/scenario-probe/rmstest/RMSTEST_73_other_zone_avoidance_distance_take_3.rms` through `generatePreview` at Normal and measure each grower's minimum Chebyshev distance to the ICE walls in the S1 snapshot. Seeds 1, 2 and 3 all give 1, 1 and 1 for the growers declaring 6, 10 and 12. DE measured 7, 11 and 13 on every run (`tools/scenario-probe/rmstest/README.md`, the RMSTEST_73 row).
+
+**Root cause.** `lands.ts:1540` takes `Math.min` of the growing land's distance and the other land's, and skips the tile when that is 0. RMSTEST_73's walls declare nothing, so the effective distance is always 0 and the check never fires. The function's own comment cites RMSTEST_73 as its calibration, and the code never reproduced it. RMSTEST_66's asymmetric pair (12 against 2) could not tell "the smaller wins" from "each land checks only its own distance", because both readings give a gap of 3 there. Rev 8's rule checks only the growing land's own distance, and a simulation of it gave 7, 11 and 13 on RMSTEST_73's exact fixture.
+
+**Prescribed fix.** Check only the growing land's own distance (rev 8 Sec.6.1 rule 6c). Land it with the growth port rather than on its own, since rev 8 replaces the code around this function.
+
+**Verification.** Sec.13's RMSTEST_73 gate, seen failing on the current code before the fix and passing after.
+
 ---
 
 ## Advanced Tools

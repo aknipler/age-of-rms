@@ -61,6 +61,12 @@ The reference data in `reference/data/game-constants.json` is derived from Age o
 
 Age of RMS will always be free, with no advertising and no paid tier (which is good because the Game Content Usage Rules require it). Under the Usage Rules, art, audio, binary game files and Microsoft's own written documentation stay out of this repository.
 
+## Credits
+
+Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Guide and the terrain and object reference sheets, which the hover docs and reference data build on.
+
+[genie-rms](https://github.com/genie-js/genie-rms) by Renée Kooi, an open source reimplementation of the original game's map generator, was a useful resource for how the map preview grows lands. It builds on reverse engineering of the original game by Yvan Burrie, JustTesting123 and others.
+
 ## Attribution
 
 Age of Empires II © Microsoft Corporation. Age of RMS was created under Microsoft's 'Game Content Usage Rules' using assets from Age of Empires II, and it is not endorsed by or affiliated with Microsoft.
