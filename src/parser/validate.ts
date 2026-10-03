@@ -65,6 +65,8 @@ export interface ValidateConstant {
   category: string; // "terrain" | "object" today; kept open, the data may grow
   constId?: number;
   idSource?: string; // provenance gate for RMS0204/RMS0205 wording (spec Sec.6)
+  classId?: number; // object rows, and the class number on objectClass rows (RMS0317)
+  memberIds?: number[]; // objectClass rows, the unit ids in the class (RMS0317)
 }
 
 export interface GameConstantsForValidate {
@@ -236,6 +238,11 @@ class Validator {
     string,
     ValidateConstant
   >();
+  // objectClass rows by their genie class number, the number an object row's
+  // `classId` holds. Kept apart from constantsByCategoryAndId because that
+  // one is keyed by constId (class + 900), and translating between the two
+  // here would hardcode the offset --classes measures.
+  private readonly objectClassById = new Map<number, ValidateConstant>();
   private readonly sectionNames = new Set<string>();
 
   // Names whose #define/#const is present in the file but COMMENTED OUT.
@@ -336,6 +343,8 @@ class Validator {
           constant,
         );
       }
+      if (constant.category === "objectClass" && constant.classId !== undefined)
+        this.objectClassById.set(constant.classId, constant);
     }
     for (const section of result.script.sections)
       this.sectionNames.add(section.name);
@@ -1083,8 +1092,107 @@ class Validator {
     if (typeof arg.value !== "string") return;
 
     const token = this.tokens[arg.firstToken];
-    if (expectedCategory) this.checkCrossCategory(token, expectedCategory, arg);
+    if (expectedCategory) {
+      this.checkCrossCategory(token, expectedCategory, arg);
+      this.checkAliasOverriddenByEngine(token, expectedCategory, arg);
+    }
+    this.checkEmptyClass(token);
     this.checkUseBeforeDefinition(token, arg.firstToken);
+  }
+
+  /**
+   * RMS0317, a unit class no unit belongs to. Positive evidence, since the
+   * row's empty `memberIds` was read from the dat by --classes, which is a
+   * measured fact rather than a gap in our data. Update 185872 named nine
+   * such classes (PIKEMAN_CLASS among them), and an effect aimed at one
+   * changes nothing while the map generates normally.
+   *
+   * Slot-agnostic on purpose. Only effect targets take a class today, and
+   * keying on the row rather than on a command name keeps RMS vocabulary out
+   * of this file.
+   */
+  private checkEmptyClass(token: Token): void {
+    const constants = this.constantsByName.get(token.text);
+    const row = constants?.find((c) => c.category === "objectClass");
+    if (!row || !Array.isArray(row.memberIds) || row.memberIds.length > 0)
+      return;
+    if (row.idSource === undefined || !VERIFIED_PROVENANCE.has(row.idSource))
+      return;
+
+    // PIKEMAN_CLASS -> the PIKEMAN object -> the class it really carries.
+    // Only offered when that class has a name, never guessed from the stem.
+    const stem = token.text.replace(/_CLASS$/, "");
+    const unit = this.constantsByName
+      .get(stem)
+      ?.find((c) => c.category === "object");
+    const realClass =
+      unit?.classId === undefined
+        ? undefined
+        : this.objectClassById.get(unit.classId);
+    const suggestion =
+      realClass && realClass.rmsConstant !== token.text
+        ? realClass.rmsConstant
+        : undefined;
+    this.diagnostics.push(
+      d.emptyClassTarget(token, suggestion ? { stem, suggestion } : undefined),
+    );
+  }
+
+  /**
+   * RMS0316, positive evidence on both sides. The name has a constants.inc
+   * alias row for this slot and no plain row for it, AND random_map.def
+   * defines it under another category with a different verified id. The
+   * engine loads random_map.def before the script and keeps the first
+   * #const (RMS0302 rests on the same rule), so that id is what the line
+   * uses, and an #include of constants.inc cannot change it. That is why
+   * this is not softened for includes the way the missing-name checks are.
+   *
+   * "Under another category" means outside NON_AMBIENT_CONSTANT_CATEGORIES.
+   * The mixed-source categories it lets through (civilization and friends)
+   * carry the gap that set's own comment records, and no name in today's
+   * data reaches this check through one of them.
+   */
+  private checkAliasOverriddenByEngine(
+    token: Token,
+    expectedCategory: string,
+    arg: ArgNode,
+  ): void {
+    const constants = this.constantsByName.get(token.text);
+    if (!constants || !arg.def) return;
+    if (constants.some((c) => c.category === expectedCategory)) return;
+    const aliasCategory = CATEGORY_ALIAS_OF[expectedCategory];
+    const alias = constants.find((c) => c.category === aliasCategory);
+    if (alias?.constId === undefined) return;
+    const engine = constants.find(
+      (c) =>
+        !NON_AMBIENT_CONSTANT_CATEGORIES.has(c.category) &&
+        c.constId !== undefined &&
+        c.idSource !== undefined &&
+        VERIFIED_PROVENANCE.has(c.idSource),
+    );
+    if (engine?.constId === undefined || engine.constId === alias.constId)
+      return;
+
+    // Suggest a name only when its id is verified, the same gate RMS0204
+    // applies before saying what an id is.
+    const intended = this.constantsByCategoryAndId.get(
+      `${expectedCategory}:${alias.constId}`,
+    );
+    const replacement =
+      intended?.idSource !== undefined &&
+      VERIFIED_PROVENANCE.has(intended.idSource)
+        ? intended.rmsConstant
+        : undefined;
+
+    this.diagnostics.push(
+      d.aliasOverriddenByEngine(token, {
+        engineCategory: engine.category,
+        engineValue: engine.constId,
+        aliasValue: alias.constId,
+        expectedCategory,
+        replacement: replacement || undefined,
+      }),
+    );
   }
 
   /** RMS0308, an rnd() that can't actually vary, split by which kind it is. */

@@ -867,16 +867,16 @@ which needs new tooling — every read is `--patches`/`--bbox` on the existing
 probe. **Ready to run in any DE install with this repo's `rmstest/` copied
 into `random-map-scripts/`.**
 
-| Script                                    | Settles                                                                      | Generate at                            | Runs | Reads with                              |
-| ------------------------------------------ | ----------------------------------------------------------------------------- | --------------------------------------- | ---- | ----------------------------------------- |
-| `RMSTEST_75a_costzero_origin_blocked`     | BUG-029 consequence 1 — does `terrain_cost T 0` under a land's origin block **every** connection touching that land | Normal (200), any players               | 3    | `--bbox DIRT`, `--patches ROAD`/`GRASS`/`GRASS2` |
-| `RMSTEST_75b_costzero_origin_control`     | control for 75a — same map, cost-0 line removed                              | Normal (200), any players               | 3    | `--bbox DIRT`, `--patches ROAD`           |
-| `RMSTEST_76_terrainsize_intrudes_origin`  | BUG-029 consequence 2 — does the road's `terrain_size` disc paint inside the player's own land, right up to the origin | Normal (200), any players               | 2    | `--patches GRASS3`, `--patches ROAD`      |
-| `RMSTEST_77a_terrainsize_declared`        | Sec.15's item-32 collision (renumbered item 33 below) — undeclared `terrain_size`'s assumed radius-1/variance-0 default, declared arm | Normal (200), any players               | 3    | `--patches ROAD`                          |
-| `RMSTEST_77b_terrainsize_undeclared`      | same, undeclared arm — twin of 77a                                            | Normal (200), any players               | 3    | `--patches ROAD`                          |
-| `RMSTEST_78_combinedspacing_venn`         | does `spacing_to_other_terrain_types` + `spacing_to_specific_terrain` on ONE command compose as independent minimums — the gap `docs/known-issues.md` BUG-016's write-up flagged in Venn.rms and never resolved | Normal (200), any players               | 3    | `--patches DIRT2`/`SNOW`/`DESERT`         |
-| `RMSTEST_79_groupedbyteam_overflow`       | what `grouped_by_team` does when packed groups don't fit the ring circumference (preview-design.md Sec.6.1) | **Tiny (120), 8 players, 4 teams of 2** | 3    | `--patches GRASS2`, `--bbox GRASS2`       |
-| `RMSTEST_80_groupedbyteam_multiland`      | guide:857's documented bug — a second `create_player_lands` under `grouped_by_team` — currently just "emulate it" with nothing describing the broken shape | Normal (200), 8 players, 2 teams of 4   | 3    | `--patches GRASS2`, `--patches DIRT2`     |
+| Script                                   | Settles                                                                                                                                                                                                         | Generate at                             | Runs | Reads with                                       |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ---- | ------------------------------------------------ |
+| `RMSTEST_75a_costzero_origin_blocked`    | BUG-029 consequence 1 — does `terrain_cost T 0` under a land's origin block **every** connection touching that land                                                                                             | Normal (200), any players               | 3    | `--bbox DIRT`, `--patches ROAD`/`GRASS`/`GRASS2` |
+| `RMSTEST_75b_costzero_origin_control`    | control for 75a — same map, cost-0 line removed                                                                                                                                                                 | Normal (200), any players               | 3    | `--bbox DIRT`, `--patches ROAD`                  |
+| `RMSTEST_76_terrainsize_intrudes_origin` | BUG-029 consequence 2 — does the road's `terrain_size` disc paint inside the player's own land, right up to the origin                                                                                          | Normal (200), any players               | 2    | `--patches GRASS3`, `--patches ROAD`             |
+| `RMSTEST_77a_terrainsize_declared`       | Sec.15's item-32 collision (renumbered item 33 below) — undeclared `terrain_size`'s assumed radius-1/variance-0 default, declared arm                                                                           | Normal (200), any players               | 3    | `--patches ROAD`                                 |
+| `RMSTEST_77b_terrainsize_undeclared`     | same, undeclared arm — twin of 77a                                                                                                                                                                              | Normal (200), any players               | 3    | `--patches ROAD`                                 |
+| `RMSTEST_78_combinedspacing_venn`        | does `spacing_to_other_terrain_types` + `spacing_to_specific_terrain` on ONE command compose as independent minimums — the gap `docs/known-issues.md` BUG-016's write-up flagged in Venn.rms and never resolved | Normal (200), any players               | 3    | `--patches DIRT2`/`SNOW`/`DESERT`                |
+| `RMSTEST_79_groupedbyteam_overflow`      | what `grouped_by_team` does when packed groups don't fit the ring circumference (preview-design.md Sec.6.1)                                                                                                     | **Tiny (120), 8 players, 4 teams of 2** | 3    | `--patches GRASS2`, `--bbox GRASS2`              |
+| `RMSTEST_80_groupedbyteam_multiland`     | guide:857's documented bug — a second `create_player_lands` under `grouped_by_team` — currently just "emulate it" with nothing describing the broken shape                                                      | Normal (200), 8 players, 2 teams of 4   | 3    | `--patches GRASS2`, `--patches DIRT2`            |
 
 Twenty generations. `79` and `80` need lobby teams, same as `RMSTEST_36`/`44` —
 set them up last in a sitting, per this file's own "the editor will not set a
@@ -920,6 +920,34 @@ buys.** 78, 79 and 80 are the three land/terrain-generation gaps this batch
 covers directly (S1 and S4); 75a/75b/76/77a/77b are S5 (connections), included
 because BUG-029 and the item-32 collision were the two concrete owed items on
 record and both touch terrain painted onto the same grid S1 and S4 built.
+
+## Batch 19 (written 2026-10-03, ANSWERED the same day by owner tests, see below) — what BOGLAND paints after Update 185872
+
+Update 185872 defined `BOGLAND` as map type 123 in `random_map.def`, while
+`includes/constants.inc` still defines it as terrain 101. DE's own
+`Murkwood.rms` includes constants.inc and then writes `create_terrain BOGLAND`.
+The pair asks which definition the engine keeps when both exist. RMSTEST_69
+measured first-definition-wins inside one script, and nothing has measured it
+between `random_map.def` and an included file.
+
+| Script                            | Settles                                                      | Generate at               | Runs |
+| --------------------------------- | ------------------------------------------------------------ | ------------------------- | ---- |
+| `RMSTEST_81a_bogland_noinclude`   | `BOGLAND` with only `random_map.def` in play (expected 123)  | Normal (200), any players | 1    |
+| `RMSTEST_81b_bogland_withinclude` | the same with `constants.inc` included, Murkwood's own shape | Normal (200), any players | 1    |
+
+Read both with the default histogram and compare tiles of 101 against 123.
+If 81b paints 101, RMS0316 has to go quiet in a script that includes
+constants.inc, and RMS0302's "the engine keeps its own definition" needs the
+same caveat. If it paints 123, Murkwood's swamp clumps are grass with flowers
+in game, which is worth reporting to the developers.
+
+**81a's question answered 2026-10-03, by an equivalent owner test.** A map
+with only `base_terrain BOGLAND` and no include came out Grass, Flowers 2,
+which is terrain 123 as predicted. 81b's question was answered the same day in Murkwood itself, which includes
+constants.inc. Raising its `create_terrain BOGLAND` from 4% to 100% painted
+Grass, Flowers 2, so `random_map.def`'s 123 beats the include's 101.
+First-definition-wins holds across an included file, RMS0316 stands as built,
+and DE's Murkwood paints flowery grass where it means bog.
 
 ## Batch 7's scripts — RECOVERED 2026-08-12
 

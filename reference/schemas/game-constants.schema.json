@@ -34,11 +34,11 @@
         },
         "permittedTerrainIds": {
           "type": "array",
-          "description": "Every terrain id (0-130) this restriction row permits, i.e. every index where passable_buildable_dmg_multiplier > 0. Restriction 0 permits all 131 (unrestricted); most other rows are a real subset.",
+          "description": "Every terrain id (0-133) this restriction row permits, i.e. every index where passable_buildable_dmg_multiplier > 0. Restriction 0 permits all 134 (unrestricted), and most other rows are a real subset. The ceiling was 130 until Update 185872 added terrains 131 to 133 in September 2026.",
           "items": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 130
+            "maximum": 133
           }
         }
       }

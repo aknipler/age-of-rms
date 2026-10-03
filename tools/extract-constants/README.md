@@ -816,6 +816,54 @@ section, the same defence that already keeps `*_CLASS` names out of
 `constId` 69, so the `NON_AMBIENT_CONSTANT_CATEGORIES` fix above needed no
 changes for this pass.
 
+## Re-running after a DE patch
+
+Update 185872 (2026-09-22) was the first patch taken with every mode in place,
+on 2026-10-03. The modes ran in this order against a scratch copy of the JSON.
+
+```bash
+python extract_constants.py --attributes --output scratch.json
+python extract_constants.py --classes --output scratch.json
+python extract_constants.py --misc-constants --output scratch.json
+python extract_constants.py --roster --output scratch.json
+python extract_constants.py --storages --output scratch.json
+python extract_constants.py --terrain-table --output scratch.json
+python extract_constants.py --colors-only --output scratch.json
+python extract_constants.py --terrain-units --output scratch.json
+```
+
+Four things no mode does, which were done by hand first.
+
+- A renumbered or removed name. `--misc-constants` and `--roster` never touch
+  an existing row, so diff the install's `random_map.def` against the last one
+  and patch those rows yourself. 185872 renumbered 12 map types, removed 6, and
+  swapped `FELLED_TREE_BAMBOO`/`FELLED_TREE_BAOBAB`.
+- A name that already exists under another category. `--misc-constants` skips
+  it, which is how `BOGLAND` (map type 123) went missing beside the
+  constants.inc terrain alias of the same name.
+- An unnamed roster row the def now names. Name the row before `--roster` runs,
+  or it adds a second row for the same id.
+- A new terrain. Add its row with `deTextureFile` from the dat, then
+  `--colors-only` and `--terrain-units` fill the rest.
+
+Three things to undo afterwards.
+
+- `--terrain-table` writes `allowedTerrains` and `placementSideTerrain` onto
+  every roster row, which doubles the file. Strip them from rows that did not
+  carry them before.
+- Every mode re-dates its own notes clause. Restore any row whose only change
+  is its notes, so the diff shows the facts that moved.
+- `--classes` and `--attributes` append their rows at the end of the file. Put
+  the categories back in their old order.
+
+Every mode now writes through `write_game_constants`, which runs the repo's own
+Prettier on the result and writes LF line endings, so the file comes out in the
+layout CI checks. Without Node it writes the unformatted file and prints a
+reminder to run `npx prettier --write` yourself. That is also why
+`test_byte_identical_when_nothing_changes` compares through Prettier, and skips
+when Node is missing, leaving `test_formatter_round_trips_its_own_output` as the
+guard that always runs.
+
 ## If the dat parse breaks: the Advanced Genie Editor
 
 DE ships the **Advanced Genie Editor** under `Tools_Builds/` in the

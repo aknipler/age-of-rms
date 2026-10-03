@@ -275,6 +275,24 @@ export const DIAGNOSTIC_CODES: Record<
     summary:
       "Attribute needs a partner attribute in the same block, and there is none",
   },
+  // Added 2026-10-03. A name that only fits this slot as a constants.inc
+  // alias, while random_map.def defines the same name as something else.
+  // random_map.def loads first and the first #const wins, so the engine
+  // uses its number, even in a script that includes constants.inc. Update
+  // 185872 created the case by adding BOGLAND (map type 123) beside the
+  // alias BOGLAND (terrain 101). Separate from RMS0205 because RMS0205 stays
+  // silent here on purpose, since the alias does belong to this slot.
+  RMS0316: {
+    severity: "warning",
+    summary:
+      "Name is a constants.inc alias for this slot, but the game defines it as something else first",
+  },
+  // Added 2026-10-03. A unit class the game names and no unit belongs to, so
+  // an effect aimed at it does nothing. Update 185872 named nine of them.
+  RMS0317: {
+    severity: "warning",
+    summary: "Unit class has no units in the current game data",
+  },
 };
 
 function toSpan(token: Token): Span {
@@ -805,6 +823,62 @@ export function crossCategoryConstant(
     `${token.text} is a ${actualCategory} constant, but "${argDef.name}" expects ${expectedCategory === "object" ? "an" : "a"} ${expectedCategory}. The engine reads every constant as a number, so this still runs. It just probably isn't what you meant.`,
     toSpan(token),
   );
+}
+
+/** What RMS0316 knows about the two meanings of one name. */
+export interface AliasOverride {
+  /** The category random_map.def files the name under, e.g. "mapType". */
+  engineCategory: string;
+  /** The number the engine actually uses. */
+  engineValue: number;
+  /** The number the constants.inc alias stands for. */
+  aliasValue: number;
+  /** The slot's own category, "terrain" or "object". */
+  expectedCategory: string;
+  /** A named constant for `aliasValue` in this slot's category, when one exists. */
+  replacement?: string;
+}
+
+/**
+ * RMS0316. Leads with the number the line really uses, because the map still
+ * generates and the wrong terrain or object is the only symptom.
+ */
+export function aliasOverriddenByEngine(
+  token: Token,
+  o: AliasOverride,
+): Diagnostic {
+  const fix = o.replacement
+    ? `Write ${o.replacement} instead.`
+    : `Write ${o.aliasValue} instead, or define your own constant under a different name.`;
+  // The data's camelCase category ("mapType") read as words ("map type").
+  const engineKind = o.engineCategory.replace(
+    /[A-Z]/g,
+    (c) => ` ${c.toLowerCase()}`,
+  );
+  const diagnostic = makeDiagnostic(
+    "RMS0316",
+    `${token.text} is a ${engineKind} constant in the game's own definitions, meaning ${o.engineValue}, so this line uses ${o.expectedCategory} ${o.engineValue}. The ${o.expectedCategory} ${o.aliasValue} that constants.inc calls ${token.text} never applies, even with constants.inc included, because the game's definition comes first. ${fix}`,
+    toSpan(token),
+  );
+  if (o.replacement) diagnostic.suggestion = o.replacement;
+  return diagnostic;
+}
+
+/**
+ * RMS0317. Deliberately carries no `suggestion`. The class the unit really
+ * belongs to is far wider (PIKEMAN_CLASS to INFANTRY_CLASS reaches every
+ * infantry unit), so a one-click swap would change the effect's meaning. The
+ * message names both choices and leaves the decision to the author.
+ */
+export function emptyClassTarget(
+  token: Token,
+  real?: { stem: string; suggestion: string },
+): Diagnostic {
+  const base = `${token.text} is a unit class the game names, but no unit belongs to it in the current game data, so anything aimed at it changes nothing.`;
+  const advice = real
+    ? ` ${real.stem} is in ${real.suggestion}. Target ${real.stem} itself to change only that unit, or ${real.suggestion} to change the whole class.`
+    : " Target the units themselves instead.";
+  return makeDiagnostic("RMS0317", base + advice, toSpan(token));
 }
 
 /**

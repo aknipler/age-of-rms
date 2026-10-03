@@ -1,0 +1,61 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  create_terrain BOGLAND
+  {
+    base_terrain GRASS
+    land_percent 30
+    number_of_clumps 4
+  }
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_81a - which terrain does BOGLAND paint now that Update 185872 made it
+map type 123 in random_map.def? No include in this arm.
+Feeds: RMS0316 (src/parser/validate.ts), and DE's own Murkwood.rms line 1095,
+which writes create_terrain BOGLAND after including constants.inc.
+Paired with RMSTEST_81b, whose only difference is the include line.
+================================================================================
+
+THE QUESTION
+random_map.def (always loaded first) now says BOGLAND 123. constants.inc says
+BOGLAND 101 (Swamp, Bogland). This arm has no include, so the only definition
+in play is random_map.def's.
+
+PREDICTION
+About 30% of the map is terrain 123 (Grass, Flowers 2). No terrain 101 at all.
+
+WHAT WOULD REFUTE IT
+Any terrain 101. Or no painted clumps at all, which would mean BOGLAND does not
+resolve as a terrain id here, a third reading nobody has proposed.
+
+READ
+Default probe histogram. Count tiles of 101 and of 123. By eye, bog is brown
+swamp and 123 is green grass with flowers.
+================================================================================
+*/

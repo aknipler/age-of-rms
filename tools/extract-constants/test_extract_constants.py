@@ -38,6 +38,7 @@ from extract_constants import (
     derive_habitat,
     format_constant,
     format_game_constants,
+    prettier_format,
     format_preview_color,
     format_resource_amounts,
     format_terrain_restrictions,
@@ -491,7 +492,23 @@ class TestRoundTripAgainstRepoFile(unittest.TestCase):
         # own round-trip silently dropped the table — see format_game_constants's
         # own comment on why every caller has to pass it through.
         reformatted = format_game_constants(data["constants"], data.get("terrainRestrictions"))
-        self.assertEqual(reformatted, original)
+        # The repo file is Prettier's layout since 2026-09-16, so the comparison
+        # goes through Prettier, the same step write_game_constants takes.
+        prettified = prettier_format(reformatted, REPO_GAME_CONSTANTS)
+        if prettified is None:
+            self.skipTest("Prettier could not be run (no Node), see test_formatter_round_trips_its_own_output")
+        self.assertEqual(prettified, original)
+
+    def test_formatter_round_trips_its_own_output(self):
+        """The same guard without Node. Formatting, parsing and formatting
+        again must be identical, or a run would rewrite unrelated lines."""
+        if not REPO_GAME_CONSTANTS.exists():
+            self.skipTest(f"{REPO_GAME_CONSTANTS} not found (unexpected repo layout)")
+        data = json.loads(REPO_GAME_CONSTANTS.read_text(encoding="utf-8"))
+        once = format_game_constants(data["constants"], data.get("terrainRestrictions"))
+        again_data = json.loads(once)
+        twice = format_game_constants(again_data["constants"], again_data.get("terrainRestrictions"))
+        self.assertEqual(once, twice)
 
 
 #: A miniature random_map.def carrying both traps the real file sets: a
@@ -714,6 +731,14 @@ class TestHabitatNote(unittest.TestCase):
         once = habitat_note("constId 53 confirmed.", self.fit, self.placement, "2026-08-10")
         twice = habitat_note(once, self.fit, self.placement, "2026-08-10")
         self.assertEqual(once, twice)
+
+    def test_keeps_a_clause_written_after_the_habitat_clause(self):
+        once = habitat_note("constId 53 confirmed.", self.fit, self.placement, "2026-08-10")
+        with_storage = f"{once} | storage: raw slots [17]=225 read 2026-08-11 by tools/extract-constants --storages."
+        again = habitat_note(with_storage, self.fit, self.placement, "2026-10-03")
+        self.assertIn("| storage: raw slots [17]=225", again)
+        self.assertIn("Derived 2026-10-03", again)
+        self.assertNotIn("Derived 2026-08-10", again)
 
     def test_handles_an_entry_with_no_prior_notes(self):
         note = habitat_note(None, self.fit, self.placement, "2026-08-10")
@@ -988,6 +1013,10 @@ class TestClassConstants(unittest.TestCase):
         text = SAMPLE_DEF + "\n/* Attribute Constants */\n#const ATTR_SIZE_CLASS 163\n"
         self.assertNotIn("ATTR_SIZE_CLASS", class_constants(text))
 
+    def test_reads_the_object_classes_section_185872_added(self):
+        text = SAMPLE_DEF + "\n/* Object Classes */\n#const PREDATOR_ANIMAL_CLASS 910\n"
+        self.assertEqual(class_constants(text)["PREDATOR_ANIMAL_CLASS"], 910)
+
 
 class TestClassDescriptiveName(unittest.TestCase):
     def test_derives_from_the_constant(self):
@@ -1042,6 +1071,15 @@ class TestVerifyClassOffset(unittest.TestCase):
         self.assertEqual(len(contradicted), 1)
         self.assertEqual(len(confirmed), 0)
 
+    def test_an_empty_class_is_tolerated_once_a_stem_confirms_the_offset(self):
+        # Update 185872 named nine classes the dat leaves empty (HEALER_CLASS...).
+        confirmed, coincidental, contradicted = verify_class_offset(
+            {**self.NAMED, "HEALER_CLASS": 917}, self.CLASSES, self.OBJECTS, self.class_of
+        )
+        self.assertEqual(len(contradicted), 0)
+        self.assertEqual(len(coincidental), 1)
+        self.assertIn("HEALER_CLASS", coincidental[0])
+
     def test_a_shifted_offset_reads_as_contradiction_not_coincidence(self):
         """What separates the two, and why one bad row is tolerated and this is
         not: a wrong offset moves EVERY constant by the same amount, so the
@@ -1060,6 +1098,11 @@ class TestBuildClassEntries(unittest.TestCase):
 
     def entries(self):
         return build_class_entries(self.CLASSES, self.NAMED, "2026-08-10")
+
+    def test_a_named_class_with_no_members_still_gets_a_row(self):
+        entries = build_class_entries(self.CLASSES, {**self.NAMED, "HEALER_CLASS": 917}, "2026-10-03")
+        healer = next(e for e in entries if e["rmsConstant"] == "HEALER_CLASS")
+        self.assertEqual((healer["classId"], healer["memberIds"]), (17, []))
 
     def test_constid_is_the_class_plus_the_offset(self):
         by_class = {e["classId"]: e for e in self.entries()}
@@ -1362,6 +1405,21 @@ class TestMiscFamilyConstants(unittest.TestCase):
         families = misc_family_constants(MISC_SAMPLE_DEF)
         self.assertNotIn("ATTR_DISABLE", families["modifyTechAttribute"])
         self.assertNotIn("ATTR_SET_TIME", families["effectFlag"])
+
+    def test_reads_the_headers_185872_rewrote(self):
+        text = (
+            "/* ----- Random Map Types for AI ----- */\n\n/* Standard Maps */\n#const ARABIA 9\n"
+            "/* Real World Maps */\n#const REAL_WORLD_SPAIN 49\n"
+            "/* Capture the Relic Maps */\n#const CTR_RANDOM 79\n"
+            "/* Cliff Types */\n#const CT_GRANITE 0\n"
+            "/* Colour Correction Types */\n#const CC_DEFAULT 0\n"
+            "/* Civilizations */\n#const CIVILIZATION_DANES 62\n"
+        )
+        families = misc_family_constants(text)
+        self.assertEqual(families["mapType"], {"ARABIA": 9, "REAL_WORLD_SPAIN": 49, "CTR_RANDOM": 79})
+        self.assertEqual(families["cliffType"], {"CT_GRANITE": 0})
+        self.assertEqual(families["colorCorrection"], {"CC_DEFAULT": 0})
+        self.assertEqual(families["civilization"], {"CIVILIZATION_DANES": 62})
 
     def test_every_category_from_the_section_map_is_present_even_when_empty(self):
         families = misc_family_constants("#const UNRELATED 1\n")

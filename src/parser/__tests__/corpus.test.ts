@@ -242,7 +242,13 @@ describe("corpus: a word valued 69 inside a comment truncates the file (Sec.2.1 
 
   it("the alias set is exactly the constants valued 69, and is not empty", () => {
     expect(ALIASES.size).toBeGreaterThan(0);
-    expect([...ALIASES].sort()).toEqual(["ATTR_PROJECTILE_ARC", "SHORE_FISH"]);
+    // CENOTES joined on 2026-10-03, when Update 185872 renumbered it from 40
+    // to 69. Predicted from this rule rather than seen in game.
+    expect([...ALIASES].sort()).toEqual([
+      "ATTR_PROJECTILE_ARC",
+      "CENOTES",
+      "SHORE_FISH",
+    ]);
   });
 
   it("reports which maps the engine truncates", () => {

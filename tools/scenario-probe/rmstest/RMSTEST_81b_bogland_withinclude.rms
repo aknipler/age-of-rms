@@ -1,0 +1,64 @@
+/* The header for this test is at the BOTTOM of this file, below the script.
+   It is there because a constant inside a leading comment can swallow the
+   rest of the file in the engine - see RMSTEST_56 and the directory README.
+   Nothing below the script can do any harm. */
+
+#include_drs includes/constants.inc
+
+<PLAYER_SETUP>
+  random_placement
+
+<LAND_GENERATION>
+  base_terrain GRASS
+
+  create_player_lands
+  {
+    terrain_type GRASS
+    land_percent 10
+  }
+
+<ELEVATION_GENERATION>
+
+
+<TERRAIN_GENERATION>
+
+  create_terrain BOGLAND
+  {
+    base_terrain GRASS
+    land_percent 30
+    number_of_clumps 4
+  }
+
+<OBJECTS_GENERATION>
+
+
+<CONNECTION_GENERATION>
+
+
+/*
+================================================================================
+RMSTEST_81b - the same question as RMSTEST_81a, WITH constants.inc included,
+the way DE's own Murkwood.rms does it (include at its line 80, create_terrain
+BOGLAND at its line 1095). The include line is the only difference from 81a.
+================================================================================
+
+THE QUESTION
+Does the include's BOGLAND 101 take effect, or does random_map.def's BOGLAND
+123 stay, since the engine loads random_map.def first and keeps the first
+#const? RMSTEST_69 measured first-definition-wins inside one script. No run
+has measured it between random_map.def and an included file.
+
+PREDICTION (first definition wins, the rule RMS0302 and RMS0316 rest on)
+Same as 81a. About 30% terrain 123, no terrain 101. If this holds, Murkwood's
+swamp clumps have been grass with flowers since Update 185872.
+
+WHAT WOULD REFUTE IT
+Terrain 101 here while 81a shows 123. Then an included file's #const replaces
+random_map.def's, RMS0316 must not fire in a script that includes
+constants.inc, RMS0302's "the engine keeps its own definition" needs the same
+caveat, and Murkwood is fine.
+
+READ
+As 81a. Default probe histogram, 101 against 123.
+================================================================================
+*/

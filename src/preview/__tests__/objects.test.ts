@@ -24,6 +24,7 @@ import {
   isGrouped,
   isTightGrouping,
   objectCategory,
+  groupMemberProbabilities,
   objectGroupMembers,
   objectHabitat,
   objectHabitatIsDeclared,
@@ -957,8 +958,8 @@ describe("objectCategory (Sec.12 item 8 fallback)", () => {
   });
 });
 
-describe("objectGroupMembers (create_object_group, guide:2025: % weights read but never consulted)", () => {
-  it("reads every add_object member in order", () => {
+describe("objectGroupMembers (create_object_group)", () => {
+  it("reads every add_object member in order, with its weight", () => {
     const instantiated = instantiateScript(
       parseRms(
         "<OBJECTS_GENERATION>\ncreate_object_group HUNTABLE {\nadd_object DEER 50\nadd_object BOAR 50\n}\ncreate_object HUNTABLE",
@@ -970,7 +971,46 @@ describe("objectGroupMembers (create_object_group, guide:2025: % weights read bu
     );
     const groupCmd = instantiated.objectGroups.get("HUNTABLE");
     expect(groupCmd).toBeDefined();
-    expect(objectGroupMembers(groupCmd!)).toEqual(["DEER", "BOAR"]);
+    expect(objectGroupMembers(groupCmd!)).toEqual([
+      { name: "DEER", weight: 50 },
+      { name: "BOAR", weight: 50 },
+    ]);
+  });
+});
+
+describe("groupMemberProbabilities (Update 185872's add_object weights, measured 2026-10-01)", () => {
+  // toBeCloseTo per member, since a value like 0.2475 sits on a rounding edge.
+  const expectProbabilities = (weights: number[], expected: number[]) => {
+    const actual = groupMemberProbabilities(weights);
+    expect(actual).toHaveLength(expected.length);
+    expected.forEach((e, i) => expect(actual[i]).toBeCloseTo(e, 4));
+  };
+
+  it("gives five equal weights of 20 the measured 84 4 4 4 4", () => {
+    expectProbabilities([20, 20, 20, 20, 20], [0.84, 0.04, 0.04, 0.04, 0.04]);
+  });
+
+  it("splits 0 75 75 75 evenly", () => {
+    expectProbabilities([0, 75, 75, 75], [0.25, 0.25, 0.25, 0.25]);
+  });
+
+  it("caps the largest weight at 99, leaving 0 75 150 75's first member 1%", () => {
+    expectProbabilities([0, 75, 150, 75], [0.01, 0.2475, 0.495, 0.2475]);
+  });
+
+  it("turns the corpus's usual 50 50 into 75 25", () => {
+    expectProbabilities([50, 50], [0.75, 0.25]);
+  });
+
+  it("gives every draw to the first member when no weight is positive (predicted by the rule, not yet measured)", () => {
+    expectProbabilities([0, 0, 0], [1, 0, 0]);
+  });
+
+  it("always sums to 1", () => {
+    for (const weights of [[10, 40], [33, 33, 34], [99, 1], [5]]) {
+      const sum = groupMemberProbabilities(weights).reduce((a, b) => a + b, 0);
+      expect(sum).toBeCloseTo(1, 10);
+    }
   });
 });
 
@@ -1274,7 +1314,7 @@ describe("applyObjects: basic placement", () => {
     expect(objects).toHaveLength(2);
   });
 
-  it("a resolved object group draws members uniformly, never the un-added group name itself", () => {
+  it("a resolved object group draws its members, never the un-added group name itself", () => {
     const { objects } = bare(
       "<OBJECTS_GENERATION>\ncreate_object_group HUNTABLE {\nadd_object DEER 50\nadd_object BOAR 50\n}\ncreate_object HUNTABLE { number_of_objects 40 }",
       1,
@@ -1283,6 +1323,21 @@ describe("applyObjects: basic placement", () => {
     expect(objects).toHaveLength(40);
     const refs = new Set(objects.map((o) => o.objectRef));
     expect(refs).toEqual(new Set(["DEER", "BOAR"]));
+  });
+
+  it("weights a 50 50 group toward its first member, about 75 25 (Update 185872)", () => {
+    // A uniform pick lands near 0.5 with a spread of about 0.025 over 400
+    // draws, so this band only passes if the weights are actually consulted.
+    const { objects } = bare(
+      "<OBJECTS_GENERATION>\ncreate_object_group HUNTABLE {\nadd_object DEER 50\nadd_object BOAR 50\n}\ncreate_object HUNTABLE { number_of_objects 400 }",
+      1,
+      { mapSize: "Medium" },
+    );
+    expect(objects).toHaveLength(400);
+    const deerShare =
+      objects.filter((o) => o.objectRef === "DEER").length / objects.length;
+    expect(deerShare).toBeGreaterThan(0.65);
+    expect(deerShare).toBeLessThan(0.85);
   });
 
   it("set_place_for_every_player places once per matching player land", () => {

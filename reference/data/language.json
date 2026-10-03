@@ -1150,7 +1150,8 @@
           "description": "DE treats this as a float."
         }
       ],
-      "verified": true
+      "verified": true,
+      "notes": "Update 185872 (2026-09-22) says GAIA effect_amount changes from a random map generated in the scenario editor no longer carry over into the next game in the same session. Testing on 2026-10-03 found the fix partial. Single player and multiplayer games start clean, but switching maps inside the scenario editor still keeps the previous map's GAIA changes, so a GAIA effect tested in the editor can show an earlier map's changes on top of its own."
     },
     {
       "name": "effect_percent",
@@ -1858,10 +1859,10 @@
           "max": 99
         }
       ],
-      "description": "Adds an object type to the enclosing object group. The weight is currently inverted in game, so a lower number makes the object MORE likely, and duplicating a line is the reliable way to make a member commoner.",
+      "description": "Adds an object type to the enclosing object group. Since the September 2026 update the weights are lopsided. The largest weight (capped at 99) is the share of draws split among the members by weight, and the first member also gets everything left over, so 50 50 plays as about 75 25. To set a member's chance, give the first member 0 and make the largest weight 100 minus the share you want the first member to keep.",
       "repeatable": true,
       "verified": true,
-      "notes": "guide:2013-2040, Game versions: DE only. The 0-99 range is the guide's. The weight is the interesting part and the old description had it as an ordinary percent chance: the guide records the % first not working at all (all members equally likely) and then working as an INVERSE, and flags that it might still be a bug. src/preview/generator/objects.ts reads the weights and deliberately never consults them, which matches. repeatable set from corpus evidence: stacking add_object lines is the entire mechanism of create_object_group (one line per member type), and 43 blocks across the 57-map corpus repeat it. Without the flag validate()'s RMS0306 false-warns on every object group."
+      "notes": "guide:2013-2040, Game versions: DE only. The 0-99 range is the guide's. The weight is the interesting part and the old description had it as an ordinary percent chance: the guide records the % first not working at all (all members equally likely) and then working as an INVERSE, and flags that it might still be a bug. src/preview/generator/objects.ts reads the weights and deliberately never consults them, which matches. repeatable set from corpus evidence: stacking add_object lines is the entire mechanism of create_object_group (one line per member type), and 43 blocks across the 57-map corpus repeat it. Without the flag validate()'s RMS0306 false-warns on every object group. Update 185872 (2026-09-22) said it stopped the weight being inverted. Community measurement afterwards (Thire7, AoE2 RMS Discord, 2026-10-01, 10,000 units per run) found the rule the description now states, plus two effects it leaves out. The split among weighted members leans toward the largest weight more than a proportional split would, and a member whose share works out near 1% sometimes never spawns. groupMemberProbabilities in src/preview/generator/objects.ts models the stated rule, and the earlier inverse and uniform readings above no longer describe the engine."
     },
     {
       "name": "assign_to",

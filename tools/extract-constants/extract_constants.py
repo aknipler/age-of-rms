@@ -148,6 +148,11 @@ SECTION_HEADER_RE = re.compile(r"/\*\s*([^*/][^*]*?)\s*\*/")
 #: own; `EXPORTED FROM THE DATABASE` is the long tail (588 live names).
 OBJECT_SECTIONS = frozenset({"OBJECT TYPES", "GAIA", "UNITS", "BUILDINGS", "EXPORTED FROM THE DATABASE"})
 
+#: Sections `class_constants` reads. The `*_CLASS` names sat inside the object
+#: sections until Update 185872 (2026-09-22) gave them an `Object Classes`
+#: section of their own and grew them from 24 names to 65.
+CLASS_SECTIONS = OBJECT_SECTIONS | {"Object Classes"}
+
 
 def parse_random_map_def_sections(text: str) -> dict[str, list[tuple[str, int]]]:
     """Section title -> [(name, id)], in file order, for LIVE `#const`s only.
@@ -214,7 +219,7 @@ def class_constants(text: str) -> dict[str, int]:
     """
     sections = parse_random_map_def_sections(text)
     result: dict[str, int] = {}
-    for title in OBJECT_SECTIONS:
+    for title in CLASS_SECTIONS:
         for name, value in sections.get(title, []):
             if name.endswith("_CLASS"):
                 result[name] = value
@@ -323,13 +328,28 @@ def build_attribute_entries(attributes: dict[str, int], run_date: str) -> list[d
 #: LAST one is the section's actual key. Fragile to a future header rewrite —
 #: MISC_FAMILY_MIN_COUNTS below turns a silently-empty section into a loud one
 #: rather than a quietly-shrunk category.
+#:
+#: Update 185872 (2026-09-22) rewrote every one of the first six headers, and
+#: split the map types into six sub-sections of their own, so both spellings
+#: are listed. The old ones still parse older def files and the test fixture.
 MISC_FAMILY_SECTIONS = {
     "29 NOV 99": "mapType",
+    "Standard Maps": "mapType",
+    "Escalation Mode Maps": "mapType",
+    "Real World Maps": "mapType",
+    "Special Maps": "mapType",
+    "Battle Royal Maps": "mapType",  # sic, the file's own spelling
+    "Capture the Relic Maps": "mapType",
     "CIVILIZATIONS": "civilization",
+    "Civilizations": "civilization",
     "WATER DEFINITIONS": "waterDefinition",
+    "Water Definitions": "waterDefinition",
     "SEASON TYPES": "colorCorrection",
+    "Colour Correction Types": "colorCorrection",
     "CLIFF TYPES": "cliffType",
+    "Cliff Types": "cliffType",
     "ASSIGN TYPES": "assignTarget",
+    "Assign Types": "assignTarget",
     # Added in the second pass (2026-08-30). All six are effect_amount's own
     # third-argument vocabulary, sharing the file's habit of an "ATTR_" prefix
     # across several UNRELATED families — see `effectFlag`'s and
@@ -658,7 +678,7 @@ def run_misc_constants(install_path: Path, output: Path, dry_run: bool) -> int:
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(existing["constants"] + new_entries, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(output, existing["constants"] + new_entries, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -695,19 +715,29 @@ def verify_class_offset(
     agree. So a coincidence is reported and tolerated, a derived id that matches
     no class at all is fatal, and zero confirmations out of a non-empty stem set
     is fatal too — that last one is what a shifted offset actually looks like.
+
+    **Unless a stem has already confirmed the offset.** Update 185872 named 65
+    classes in `random_map.def`, and nine of them (HEALER_CLASS, HERO_CLASS,
+    PIKEMAN_CLASS, ...) hold no live unit in the current dat. Once one stem check
+    has matched, a shift is ruled out, so an empty class is the game naming a
+    class it does not use and is reported as a coincidence. With no stem match
+    it stays fatal, which is the case the shifted-offset test pins.
     """
     confirmed: list[str] = []
     coincidental: list[str] = []
     contradicted: list[str] = []
+    unoccupied: list[str] = []
+    stem_confirmed = False
     for name, declared in sorted(named_classes.items()):
         derived = declared - CLASS_CONST_BASE
         stem = name[: -len("_CLASS")]
         unit_id = objects.get(stem)
         actual = class_of_unit(unit_id) if unit_id is not None else None
         if actual is not None and actual == derived:
+            stem_confirmed = True
             confirmed.append(f"{name} {declared} -> class {derived}, and {stem} (unit {unit_id}) carries class {actual}")
         elif derived not in classes:
-            contradicted.append(f"{name} {declared} -> class {derived}, which no unit is in")
+            unoccupied.append(f"{name} {declared} -> class {derived}, which no unit is in")
         elif actual is not None:
             coincidental.append(
                 f"{name} {declared} -> class {derived} ({len(classes[derived])} units), but the object constant "
@@ -715,6 +745,10 @@ def verify_class_offset(
             )
         else:
             confirmed.append(f"{name} {declared} -> class {derived}, which exists ({len(classes[derived])} units)")
+    if stem_confirmed:
+        coincidental.extend(f"{line} (named by random_map.def, empty in the dat)" for line in unoccupied)
+    else:
+        contradicted.extend(unoccupied)
     return confirmed, coincidental, contradicted
 
 
@@ -759,7 +793,9 @@ def build_class_entries(
     """
     by_id = {declared - CLASS_CONST_BASE: name for name, declared in named_classes.items()}
     entries: list[dict] = []
-    for class_id in sorted(classes):
+    # A class random_map.def names but no live unit carries still gets a row, so
+    # `HEALER_CLASS` resolves as a class rather than an unknown word.
+    for class_id in sorted(set(classes) | set(by_id)):
         # **Negative class ids are dropped, and the first run found 116 units in
         # class -1.** A negative class is the dat's "no class", not a class with
         # a negative number, so there is nothing for a constant to name: writing
@@ -769,7 +805,7 @@ def build_class_entries(
         # something.
         if class_id < 0:
             continue
-        members = classes[class_id]
+        members = classes.get(class_id, [])
         name = by_id.get(class_id)
         entries.append(
             {
@@ -1009,6 +1045,10 @@ def derive_habitat(allowed: list[int], side_terrains: list[int], terrain_flags: 
 #: touch what the full run wrote, since the two passes confirm different fields
 #: on different days. Splitting on a sentinel gives both.
 HABITAT_NOTE_SEPARATOR = " | habitat: "
+#: One whole habitat clause, from its separator to the sentence that closes it.
+_HABITAT_CLAUSE_RE = re.compile(
+    re.escape(HABITAT_NOTE_SEPARATOR) + r".*?Derived \d{4}-\d{2}-\d{2} by tools/extract-constants --terrain-table\."
+)
 
 
 def habitat_note(existing: str | None, fit: "HabitatFit", placement: "ExtractedPlacement", run_date: str) -> str:
@@ -1020,7 +1060,6 @@ def habitat_note(existing: str | None, fit: "HabitatFit", placement: "ExtractedP
     file should not read the same for both. Pure, so it is unit-testable
     without an install — same reason as `clean_dat_filename`.
     """
-    head = (existing or "").split(HABITAT_NOTE_SEPARATOR)[0].strip()
     detail = (
         f"'{fit.habitat}' derived from terrain restriction {placement.restriction_id} "
         f"({len(placement.allowed_terrains)} terrains permitted; closest of the coarse classes, "
@@ -1028,7 +1067,14 @@ def habitat_note(existing: str | None, fit: "HabitatFit", placement: "ExtractedP
     )
     if fit.side_terrain_unmodelled:
         detail += f"; NOTE placement_side_terrain {placement.side_terrains} is not expressible as a habitat class"
-    return f"{head}{HABITAT_NOTE_SEPARATOR}{detail}. Derived {run_date} by tools/extract-constants --terrain-table."
+    clause = f"{HABITAT_NOTE_SEPARATOR}{detail}. Derived {run_date} by tools/extract-constants --terrain-table."
+    # Replace the old clause in place. Cutting at the separator instead, as this
+    # once did, also cut every clause after it, and the 2026-10-03 re-run found
+    # it deleting the `| storage:` sentence --storages had written there.
+    note = existing or ""
+    if _HABITAT_CLAUSE_RE.search(note):
+        return _HABITAT_CLAUSE_RE.sub(lambda _: clause, note, count=1)
+    return f"{note.split(HABITAT_NOTE_SEPARATOR)[0].strip()}{clause}"
 
 
 # ---------------------------------------------------------------------------
@@ -1839,6 +1885,53 @@ def format_game_constants(constants: list[dict], terrain_restrictions: list[dict
     return "{\n  \"constants\": [\n" + body + "\n  ]\n}\n"
 
 
+def prettier_format(text: str, filepath: Path) -> str | None:
+    """`text` as the repo's own Prettier would write it, or None when Node or
+    Prettier cannot be run.
+
+    The repo has been Prettier-formatted since 2026-09-16 and CI checks it, so
+    the file this script writes has to match Prettier's layout byte for byte.
+    Reproducing that layout here is not attempted. Prettier fills number
+    arrays to 80 columns and keeps an object expanded when its source was, so
+    a Python copy of those rules would drift on the first edge case. Running
+    the real thing cannot drift. `--stdin-filepath` only tells Prettier which
+    parser and config apply, nothing is read from that path.
+    """
+    import shutil
+    import subprocess
+
+    npx = shutil.which("npx")
+    if npx is None:
+        return None
+    try:
+        result = subprocess.run(
+            [npx, "prettier", "--stdin-filepath", str(filepath)],
+            input=text,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=REPO_ROOT,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def write_game_constants(output: Path, constants: list[dict], terrain_restrictions: list[dict] | None) -> None:
+    """The one place this script writes game-constants.json.
+
+    `newline="\\n"` because `Path.write_text` otherwise turns every line ending
+    into CRLF on Windows, and Prettier (and so CI) wants LF. Without Prettier
+    available the file is still written, unformatted, with a reminder.
+    """
+    text = format_game_constants(constants, terrain_restrictions)
+    formatted = prettier_format(text, output)
+    if formatted is None:
+        print(f"WARNING: could not run Prettier. Run `npx prettier --write {output}` before committing.", file=sys.stderr)
+    output.write_text(formatted if formatted is not None else text, encoding="utf-8", newline="\n")
+
+
 # ---------------------------------------------------------------------------
 # 5b. Terrain-table run (preview-design Sec.15 item 23, CREATION_PLAN 4.7)
 # ---------------------------------------------------------------------------
@@ -1898,8 +1991,9 @@ def run_terrain_table(install_path: Path, output: Path, dat: "DatExtraction | No
         if entry.get("category") != "object":
             updated.append(entry)
             continue
-        name = entry.get("rmsConstant")
-        const_id = objects.get(name, entry.get("constId"))
+        const_id = objects.get(entry.get("rmsConstant"), entry.get("constId"))
+        # Printed, never looked up. The roster's unnamed rows carry None here.
+        name = entry_label(entry)
         placement = dat.placement(const_id) if const_id is not None else None
         if placement is None:
             unresolved.append(name)
@@ -1971,7 +2065,7 @@ def run_terrain_table(install_path: Path, output: Path, dat: "DatExtraction | No
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(output, updated, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2050,7 +2144,7 @@ def run_terrain_units(install_path: Path, output: Path, dat: "DatExtraction | No
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated, terrain_restrictions), encoding="utf-8")
+    write_game_constants(output, updated, terrain_restrictions)
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2200,7 +2294,7 @@ def run_storages(install_path: Path, output: Path, dat: "DatExtraction | None", 
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(output, updated, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2243,7 +2337,7 @@ def run_attributes(install_path: Path, output: Path, dry_run: bool) -> int:
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(kept + entries, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(output, kept + entries, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2339,6 +2433,13 @@ def run_classes(install_path: Path, output: Path, dat: "DatExtraction | None", d
             unresolved.append(name)
             updated.append(entry)
             continue
+        if class_id < 0:
+            # The dat's "no class", which gets no objectClass row (see
+            # build_class_entries), so a stamped -1 fails validate:reference.
+            # --roster already skips it, and this mode only met it once it ran
+            # after the roster existed (2026-10-03).
+            updated.append({k: v for k, v in entry.items() if k != "classId"})
+            continue
         stamped.append((name, class_id))
         updated.append({**entry, "classId": class_id})
 
@@ -2363,7 +2464,7 @@ def run_classes(install_path: Path, output: Path, dat: "DatExtraction | None", d
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(output, updated, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2682,7 +2783,7 @@ def run_roster(install_path: Path, output: Path, dat: "DatExtraction | None", dr
     if dry_run:
         print("\n--dry-run: nothing written.")
         return 0
-    output.write_text(format_game_constants(updated, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(output, updated, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root, then the before/after corpus diff — the habitat fallback stops firing for hundreds of objects and the preview is expected to MOVE.")
     return 0
@@ -2758,7 +2859,7 @@ def main() -> int:
         existing = json.loads(args.output.read_text(encoding="utf-8"))
         run_date = date.today().isoformat()
         updated_constants = [merge_terrain_colors(e, textures, minimaps, run_date) for e in existing["constants"]]
-        args.output.write_text(format_game_constants(updated_constants, existing.get("terrainRestrictions")), encoding="utf-8")
+        write_game_constants(args.output, updated_constants, existing.get("terrainRestrictions"))
         terrains = [c for c in updated_constants if c.get("category") == "terrain"]
         print(f"\nWrote {args.output}")
         print(f"{'const':<13} {'texture':<8} {'previewColor (game)':<22} minimapColor")
@@ -2846,7 +2947,7 @@ def main() -> int:
         resolved += 1
         updated_constants.append(merge_entry(entry, const_id, dat_extraction, run_date, textures))
 
-    args.output.write_text(format_game_constants(updated_constants, existing.get("terrainRestrictions")), encoding="utf-8")
+    write_game_constants(args.output, updated_constants, existing.get("terrainRestrictions"))
 
     print(f"\nResolved {resolved}/{len(existing['constants'])} constants against {def_path.name}.")
     if unresolved:

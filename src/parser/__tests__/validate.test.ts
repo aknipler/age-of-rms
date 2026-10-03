@@ -902,6 +902,80 @@ describe("RMS0311 — base_elevation without <ELEVATION_GENERATION>", () => {
   });
 });
 
+describe("RMS0316, a constants.inc alias the game defines as something else first", () => {
+  it("flags BOGLAND as a terrain, which the game reads as map type 123", () => {
+    const found = only(
+      "<TERRAIN_GENERATION>\ncreate_terrain BOGLAND { number_of_clumps 4 }\n",
+      "RMS0316",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).toContain("map type constant");
+    expect(found[0].message).toContain("terrain 123");
+    expect(found[0].suggestion).toBe("DLC_BOGLAND");
+  });
+
+  it("still fires with constants.inc included, since the game's definition comes first", () => {
+    expect(
+      codes(
+        "#include_drs includes/constants.inc\n<TERRAIN_GENERATION>\ncreate_terrain BOGLAND { number_of_clumps 4 }\n",
+      ),
+    ).toContain("RMS0316");
+  });
+
+  it("offers the number when no named constant exists for it (FORTRESS, object 33)", () => {
+    const found = only(
+      "<OBJECTS_GENERATION>\ncreate_object FORTRESS\n",
+      "RMS0316",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].suggestion).toBeUndefined();
+    expect(found[0].message).toContain("Write 33 instead");
+  });
+
+  it("stays silent on the replacement and on an alias nothing else defines", () => {
+    expect(
+      codes(
+        "<TERRAIN_GENERATION>\ncreate_terrain DLC_BOGLAND { number_of_clumps 4 }\n",
+      ),
+    ).not.toContain("RMS0316");
+    expect(codes("<OBJECTS_GENERATION>\ncreate_object BUSH_A\n")).not.toContain(
+      "RMS0316",
+    );
+  });
+});
+
+describe("RMS0317, a unit class no unit belongs to", () => {
+  it("flags PIKEMAN_CLASS and names the class pikemen are really in", () => {
+    const found = only(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE PIKEMAN_CLASS ATTR_HITPOINTS 50\n",
+      "RMS0317",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).toContain("PIKEMAN is in INFANTRY_CLASS");
+    // A swap to INFANTRY_CLASS would widen the effect, so no one-click fix.
+    expect(found[0].suggestion).toBeUndefined();
+  });
+
+  it("falls back to general advice when no unit carries the stem (HERO_CLASS)", () => {
+    const found = only(
+      "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE HERO_CLASS ATTR_HITPOINTS 50\n",
+      "RMS0317",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("Target the units themselves");
+  });
+
+  it("stays silent on a class that has units", () => {
+    expect(
+      codes(
+        "<PLAYER_SETUP>\neffect_amount SET_ATTRIBUTE INFANTRY_CLASS ATTR_HITPOINTS 50\n",
+      ),
+    ).not.toContain("RMS0317");
+  });
+});
+
 describe("RMS0204 / RMS0205 — constant IDs and categories", () => {
   it("names the constant behind a bare ID", () => {
     const found = only(

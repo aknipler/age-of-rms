@@ -137,7 +137,31 @@ const whatsNew060: TutorialDefinition = {
   ],
 };
 
+// No new controls this release, so the announcement is the whole tour.
+const whatsNew070: TutorialDefinition = {
+  id: "whats-new-0.7.0",
+  kind: "feature",
+  title: "What's new in 0.7",
+  blurb:
+    "Game data for The Viking Sagas update, object groups weighted the way the game now picks them, and two new warnings.",
+  version: "0.7.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.7",
+      body: [
+        "Game data is updated for The Viking Sagas update. That brings the spruce and green oak forests, the new animals, trees and rocks, the three new civilizations, every map type and every unit class. Several map type constants changed number in that update, and the reference panel now shows the new ones.",
+        "Object groups in the preview now follow the game's new add_object weighting. The first member gets more than its share, so a group of two at 50 50 places about 75 25. The add_object help explains how to set the chances you want.",
+        "BOGLAND now means Grass, Flowers 2 in every script, even one that includes constants.inc, so the editor warns when you use it as a terrain and suggests DLC_BOGLAND.",
+        "The editor also warns about unit classes no unit belongs to, such as PIKEMAN_CLASS. An effect aimed at one changes nothing, and the warning names the class the unit is really in.",
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
+  whatsNew070,
 ];

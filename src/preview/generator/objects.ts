@@ -5,9 +5,9 @@
 // TWO ORTHOGONAL "GROUP" CONCEPTS, easy to conflate because both are called
 // "group" in the guide's own vocabulary:
 //   1. OBJECT groups (`create_object_group NAME { add_object ... }`), which
-//      pick WHICH object gets placed at a site, resolved per placement, %
-//      weights ignored (guide:2025 confirms uniform IS engine behaviour, not
-//      an approximation of it).
+//      pick WHICH object gets placed at a site, resolved per placement, by
+//      the weighted rule `groupMemberProbabilities` models (Update 185872
+//      made the % weights live, and lopsided toward the first member).
 //   2. SPATIAL grouping (`number_of_groups`/`group_placement_radius`/
 //      `set_tight_grouping`/`set_loose_grouping`), which decides WHERE
 //      placements cluster. `isGrouped` below is this second concept only.
@@ -155,7 +155,7 @@ import type {
   SimulationNote,
   TileGrid,
 } from "./types";
-import { createSubstream, nextInt, type Rng } from "./rng";
+import { createSubstream, nextFloat01, nextInt, type Rng } from "./rng";
 import { roundForIntegerSlot } from "./mathEval";
 import {
   DEPTH_LAND,
@@ -634,19 +634,75 @@ export function isTightGrouping(cmd: InstantiatedCommand): boolean {
 // create_object_group member resolution (Sec.6.6 preamble)
 // ---------------------------------------------------------------------------
 
-/** Member names of an object group, in declared order. % weights are read from language.json's shape but deliberately never consulted, guide:2025 confirms the engine ignores them too. */
-export function objectGroupMembers(groupCmd: InstantiatedCommand): string[] {
+/** One `add_object` line. `weight` is its % argument, or 0 when it has none. */
+export interface ObjectGroupMember {
+  name: string;
+  weight: number;
+}
+
+/** Members of an object group, in declared order, with their % weights. */
+export function objectGroupMembers(
+  groupCmd: InstantiatedCommand,
+): ObjectGroupMember[] {
   const attrs = groupCmd.attributes.get("add_object") ?? [];
-  const out: string[] = [];
+  const out: ObjectGroupMember[] = [];
   for (const attr of attrs) {
     const name = attr.args[0]?.value;
-    if (typeof name === "string") out.push(name);
+    const weight = attr.args[1]?.value;
+    if (typeof name === "string")
+      out.push({ name, weight: typeof weight === "number" ? weight : 0 });
   }
   return out;
 }
 
-function pickGroupMember(members: readonly string[], rng: Rng): string {
-  return members[nextInt(rng, 0, members.length - 1)];
+/**
+ * The chance each member is picked, given the `add_object` weights in
+ * declared order. Update 185872 (2026-09-22) said it fixed an inverted
+ * weight, and community measurement on DE afterwards (Thire7, AoE2 RMS
+ * Discord, 2026-10-01) found this rule instead.
+ *
+ * The LARGEST weight, capped at 99, is the share of draws the weights get,
+ * divided among all members in proportion to their weight. The rest goes to
+ * the FIRST member. So 20 20 20 20 20 measured 84 4 4 4 4 over 10,000 units
+ * (this rule says exactly that), 0 75 75 75 came out even, and 0 75 150 75
+ * left the first member about 1%.
+ *
+ * Two measured effects are not modelled. The split among weighted members
+ * leans further toward the largest weight than a proportional split, and a
+ * weight that works out near 1% sometimes produces nothing, which the
+ * measurer put down to rounding. Neither changes a group whose weights are
+ * all equal, which is every group in this repo's corpus.
+ */
+export function groupMemberProbabilities(weights: readonly number[]): number[] {
+  const clamped = weights.map((w) => (w > 0 ? w : 0));
+  const total = clamped.reduce((sum, w) => sum + w, 0);
+  const share = Math.min(
+    99,
+    clamped.reduce((top, w) => (w > top ? w : top), 0),
+  );
+  const out = clamped.map((w) => (total > 0 ? (share * w) / total / 100 : 0));
+  if (out.length > 0) out[0] += (100 - share) / 100;
+  return out;
+}
+
+/**
+ * One draw from the group. It consumes exactly one value from `rng`, the same
+ * as the uniform pick it replaced, so a map's other draws keep their seeds.
+ */
+function pickGroupMember(
+  members: readonly ObjectGroupMember[],
+  probabilities: readonly number[],
+  rng: Rng,
+): string {
+  const r = nextFloat01(rng);
+  let cumulative = 0;
+  for (let i = 0; i < members.length; i++) {
+    cumulative += probabilities[i];
+    if (r < cumulative) return members[i].name;
+  }
+  // Floating-point sums can land a hair under 1, so a draw past the end
+  // belongs to the last member rather than to nobody.
+  return members[members.length - 1].name;
 }
 
 // ---------------------------------------------------------------------------
@@ -1753,7 +1809,14 @@ export function applyObjects(
 
     const groupCmd = instantiated.objectGroups.get(typeName);
     const isObjectGroup = groupCmd !== undefined;
-    const members = groupCmd ? objectGroupMembers(groupCmd) : [typeName];
+    const members = groupCmd
+      ? objectGroupMembers(groupCmd)
+      : [{ name: typeName, weight: 0 }];
+    // Computed once per command, not per draw, since the weights cannot change
+    // between placements.
+    const memberProbabilities = groupMemberProbabilities(
+      members.map((m) => m.weight),
+    );
     if (members.length === 0) {
       pushFailure(failures, {
         bucket: "noValidTiles",
@@ -2085,7 +2148,9 @@ export function applyObjects(
         if (!forcePlacement) grid.occupied[tile] = 1;
         spacing.add(x, y);
         const objectRef =
-          members.length > 1 ? pickGroupMember(members, rng) : members[0];
+          members.length > 1
+            ? pickGroupMember(members, memberProbabilities, rng)
+            : members[0].name;
         objects.push({
           objectRef,
           x,
@@ -2156,7 +2221,9 @@ export function applyObjects(
               const x = tile % dim;
               const y = (tile - x) / dim;
               const objectRef =
-                members.length > 1 ? pickGroupMember(members, rng) : members[0];
+                members.length > 1
+                  ? pickGroupMember(members, memberProbabilities, rng)
+                  : members[0].name;
               objects.push({
                 objectRef,
                 x,
@@ -2223,7 +2290,9 @@ export function applyObjects(
             )
               continue;
             const objectRef =
-              members.length > 1 ? pickGroupMember(members, rng) : members[0];
+              members.length > 1
+                ? pickGroupMember(members, memberProbabilities, rng)
+                : members[0].name;
             if (!forcePlacement) grid.occupied[tile] = 1;
             spacing.add(x, y);
             objects.push({
