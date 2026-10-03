@@ -338,14 +338,24 @@ describe("findConnectionPaths (one multi-goal Dijkstra per source land, origin t
     const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
     const origins = originTilesAt(grid, [2, 10], [17, 10], [10, 2]);
     grid.terrain[tileIndex(grid, 17, 10)] = WATER; // land 1's origin
-    const fromA = findConnectionPaths(grid, grid.terrain, costOf, origins, 0, [
-      1, 2,
-    ]);
+    const fromA = findConnectionPaths(
+      grid,
+      grid.terrain,
+      costOf,
+      origins,
+      0,
+      [1, 2],
+    );
     expect(fromA.has(1)).toBe(false); // its origin cannot be entered
     expect(fromA.has(2)).toBe(true); // the sibling is unaffected
-    const fromB = findConnectionPaths(grid, grid.terrain, costOf, origins, 1, [
-      0, 2,
-    ]);
+    const fromB = findConnectionPaths(
+      grid,
+      grid.terrain,
+      costOf,
+      origins,
+      1,
+      [0, 2],
+    );
     expect(fromB.size).toBe(0); // cannot even depart
   });
 
@@ -433,9 +443,14 @@ describe("findConnectionPaths (one multi-goal Dijkstra per source land, origin t
     const origins = originTilesAt(grid, [0, 10], [5, 10], [19, 10]); // the last behind the wall
     for (let y = 0; y < 20; y++) grid.terrain[tileIndex(grid, 10, y)] = WATER;
     const costOf = (terrainId: number): number => (terrainId === WATER ? 0 : 1);
-    const paths = findConnectionPaths(grid, grid.terrain, costOf, origins, 0, [
-      1, 2,
-    ]);
+    const paths = findConnectionPaths(
+      grid,
+      grid.terrain,
+      costOf,
+      origins,
+      0,
+      [1, 2],
+    );
     expect(paths.has(1)).toBe(true);
     expect(paths.has(2)).toBe(false);
   });
@@ -460,9 +475,14 @@ describe("buildConnectivityIndex / landsCanConnect (the pre-search reachability 
     expect(landsCanConnect(index, 0, 1)).toBe(true);
     expect(landsCanConnect(index, 0, 2)).toBe(false);
     // The search's own verdict, which this is standing in for.
-    const paths = findConnectionPaths(grid, grid.terrain, costOf, origins, 0, [
-      1, 2,
-    ]);
+    const paths = findConnectionPaths(
+      grid,
+      grid.terrain,
+      costOf,
+      origins,
+      0,
+      [1, 2],
+    );
     expect(paths.has(1)).toBe(true);
     expect(paths.has(2)).toBe(false);
   });
@@ -491,7 +511,8 @@ describe("buildConnectivityIndex / landsCanConnect (the pre-search reachability 
     const grid = createTileGrid(20, GRASS);
     stampLand(grid, 1, 15, 8, 19, 12);
     for (let y = 8; y <= 12; y++)
-      for (let x = 15; x <= 19; x++) grid.terrain[tileIndex(grid, x, y)] = WATER;
+      for (let x = 15; x <= 19; x++)
+        grid.terrain[tileIndex(grid, x, y)] = WATER;
     grid.terrain[tileIndex(grid, 15, 10)] = GRASS;
     const origins = originTilesAt(grid, [2, 10], [15, 10]);
     const index = buildConnectivityIndex(grid, grid.terrain, costOf, origins);
@@ -1074,7 +1095,14 @@ describe("applyConnections (Sec.6.5 end to end)", () => {
     // has radius 1 (guide:1958): a ROAD tile must sit within 1 tile of
     // every player origin AND of the neutral land's origin.
     const source = readFileSync(
-      join(REPO_ROOT, "src", "tutorial", "__tests__", "fixtures", "goldenHill.rms"),
+      join(
+        REPO_ROOT,
+        "src",
+        "tutorial",
+        "__tests__",
+        "fixtures",
+        "goldenHill.rms",
+      ),
       "utf8",
     );
     const { grid, dim, origins, reports } = place(source, 7, {
@@ -1094,7 +1122,8 @@ describe("applyConnections (Sec.6.5 end to end)", () => {
       return best;
     };
     const gaps = origins.map((origin) => {
-      const label = origin.player !== undefined ? `P${origin.player}` : "neutral";
+      const label =
+        origin.player !== undefined ? `P${origin.player}` : "neutral";
       return `${label} (${origin.x}, ${origin.y}): ${nearestRoad(origin.x, origin.y)}`;
     });
     const tooFar = origins.filter((o) => nearestRoad(o.x, o.y) > 1);
