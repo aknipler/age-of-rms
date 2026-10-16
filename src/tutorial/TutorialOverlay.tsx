@@ -73,6 +73,16 @@ export function TutorialOverlay({
     ? `${active.definition.id}:${active.track ?? ""}:${active.stepIndex}`
     : null;
 
+  // The What's New text is several paragraphs, so it gets the wide callout
+  // in both ways it can appear: the popup after an upgrade (`announcement`)
+  // and its first step opened from the Help menu (an ordinary `active` run
+  // at index 0, the same condition StepCallout's showSupportButton uses).
+  const wide =
+    announcement !== null ||
+    (active !== null &&
+      active.definition.id.startsWith("whats-new-") &&
+      active.stepIndex === 0);
+
   const stepContext: StepContext = {
     parseResult,
     source: parseResult?.source ?? "",
@@ -535,7 +545,13 @@ export function TutorialOverlay({
           ))}
         </>
       )}
-      <div ref={calloutRef} className={styles.callout} style={calloutStyle}>
+      <div
+        ref={calloutRef}
+        className={
+          wide ? `${styles.callout} ${styles.calloutWide}` : styles.callout
+        }
+        style={calloutStyle}
+      >
         {announcement ? (
           <AnnouncementCallout
             title={announcement.title}
@@ -576,6 +592,47 @@ export function TutorialOverlay({
   );
 }
 
+/**
+ * The RMS Discord and Buy Me a Coffee links every What's New shows, in both
+ * of its forms (the popup after an upgrade, and its first step opened from
+ * the Help menu). Both open into the user's own browser, never a webview
+ * with no address bar or back button.
+ */
+function SupportLinks() {
+  function open(url: string, what: string) {
+    openUrl(url).catch((error: unknown) => {
+      console.error(`Failed to open the ${what}`, error);
+    });
+  }
+  return (
+    <div className={styles.supportRow}>
+      {RMS_DISCORD_URL !== "" && (
+        <>
+          <HelpTip id="tutorial.discordLink">
+            <button
+              type="button"
+              className={styles.discordLink}
+              onClick={() => open(RMS_DISCORD_URL, "RMS Discord invite")}
+            >
+              RMS Discord ↗
+            </button>
+          </HelpTip>
+          <span aria-hidden="true"> · </span>
+        </>
+      )}
+      <HelpTip id="tutorial.supportLink">
+        <button
+          type="button"
+          className={styles.discordLink}
+          onClick={() => open(SUPPORT_URL, "Buy Me a Coffee page")}
+        >
+          ☕ Buy me a coffee ↗
+        </button>
+      </HelpTip>
+    </div>
+  );
+}
+
 function AnnouncementCallout({
   title,
   body,
@@ -593,6 +650,7 @@ function AnnouncementCallout({
     <>
       <h3 className={styles.title}>{title}</h3>
       <StepBody blocks={body} onContentResize={onContentResize} />
+      <SupportLinks />
       <div className={styles.controls}>
         <span className={styles.spacer} />
         <HelpTip id="tutorial.announcementNotNow">
@@ -668,16 +726,11 @@ function StepCallout({
     });
   }
 
-  // The announcement step of a What's New tour carries a small support
-  // button, opened into the user's browser like the Discord link.
-  const showSupportButton =
-    tutorialId.startsWith("whats-new-") && stepIndex === 0;
-
-  function openSupport() {
-    openUrl(SUPPORT_URL).catch((error: unknown) => {
-      console.error("Failed to open the Buy Me a Coffee page", error);
-    });
-  }
+  // The announcement step of every What's New tour carries the RMS Discord
+  // and support links (SupportLinks). A What's New tour is an announcement
+  // and not a lesson, so its exit button reads "Exit".
+  const isWhatsNew = tutorialId.startsWith("whats-new-");
+  const showSupportButton = isWhatsNew && stepIndex === 0;
 
   // Rendered in one of two slots outside the body. A picture between
   // paragraphs is an image block in `body` (types.ts).
@@ -721,17 +774,7 @@ function StepCallout({
           </button>
         </HelpTip>
       )}
-      {showSupportButton && (
-        <HelpTip id="tutorial.supportLink">
-          <button
-            type="button"
-            className={styles.discordLink}
-            onClick={openSupport}
-          >
-            ☕ Buy me a coffee ↗
-          </button>
-        </HelpTip>
-      )}
+      {showSupportButton && <SupportLinks />}
       {isCheck && !satisfied && step.hint && (
         <p className={styles.hint}>{step.hint}</p>
       )}
@@ -808,7 +851,7 @@ function StepCallout({
         )}
         <HelpTip id="tutorial.exit">
           <button type="button" className={styles.exit} onClick={onExit}>
-            Exit tutorial
+            {isWhatsNew ? "Exit" : "Exit tutorial"}
           </button>
         </HelpTip>
       </div>

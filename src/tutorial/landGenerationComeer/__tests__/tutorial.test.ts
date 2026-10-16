@@ -274,13 +274,15 @@ describe("each step's check, false before and true after", () => {
     expect(playerIslandTarget(0)).toBeLessThanOrEqual(square);
     expect(playerIslandTarget(last)).toBeLessThanOrEqual(square);
     expect(playerIslandTarget(last + 1)).toBeGreaterThan(square);
+    // Every named value above `last` grows the island, and 20 grows it most.
+    expect(playerIslandTarget(last + 3)).toBeGreaterThan(square);
     expect(playerIslandTarget(20)).toBeGreaterThan(
-      playerIslandTarget(last + 2),
+      playerIslandTarget(last + 3),
     );
     // The values the copy names are the ones the arithmetic picked.
     const growth = tutorial.steps.find((s) => s.id === "player-land-growth")!;
     expect(growth.body[0]).toContain(
-      `${last}, ${last + 1}, ${last + 2} and 20`,
+      `${last}, ${last + 1}, ${last + 2}, ${last + 3} and 20`,
     );
   });
 

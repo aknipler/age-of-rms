@@ -33,7 +33,10 @@
 .callout {
   position: fixed;
   width: max-content;
-  max-width: 320px;
+  /* rem, not px, so the width follows Theme Settings' UI size slider along
+     with the text inside it (App.css scales the root font-size). The root
+     is 16px x 0.9 by default, so 23rem is about 331px. */
+  max-width: 23rem;
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
@@ -46,6 +49,13 @@
   overflow-y: auto;
   z-index: 902;
   pointer-events: auto;
+}
+
+/* The What's New announcement only. Its text is several paragraphs long, so
+   at the running steps' width it became a tall thin column. Same specificity
+   as .callout and declared after it, so this max-width wins. */
+.calloutWide {
+  max-width: 36rem;
 }
 
 .counter {
@@ -152,6 +162,13 @@
 
 .discordLink:hover {
   opacity: 0.85;
+}
+
+/* Right-aligns the What's New support link. HelpTip's wrapper is
+   inline-block, so `text-align` on a block parent moves it, with help mode
+   on or off. */
+.supportRow {
+  text-align: right;
 }
 
 /* tutorial-islands-design.md Sec.4.1. One rule for every placement slot
