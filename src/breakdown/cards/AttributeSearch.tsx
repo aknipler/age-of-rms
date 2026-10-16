@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AttributeSlot } from "../attributeModel";
 import type { AttributeTarget } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
 import { addAbsentSlotIntent, filterSlots } from "../hideUnused";
 import { HelpTip } from "../../components/HelpTip";
+import { useSearchListNav } from "../../hooks/useSearchListNav";
 import styles from "./AttributeSearch.module.css";
 
 interface AttributeSearchProps {
@@ -24,6 +25,7 @@ export function AttributeSearch({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const results = filterSlots(hidden, query);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const pick = (slot: AttributeSlot) => {
     const result = applyEdit(addAbsentSlotIntent(slot, attributeTarget));
@@ -31,6 +33,15 @@ export function AttributeSearch({
     setOpen(false);
     if (result) requestFocus(result.caret);
   };
+
+  const nav = useSearchListNav({
+    count: results.length,
+    onPick: (i) => pick(results[i]),
+    onEscape: () => {
+      setOpen(false);
+      inputRef.current?.blur();
+    },
+  });
 
   return (
     <div
@@ -45,6 +56,7 @@ export function AttributeSearch({
     >
       <HelpTip id="breakdown.commandCard.addAttributeSearch">
         <input
+          ref={inputRef}
           type="text"
           className={styles.input}
           placeholder="Add Attribute"
@@ -53,20 +65,13 @@ export function AttributeSearch({
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
+            nav.reset();
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setOpen(false);
-              e.currentTarget.blur();
-            } else if (e.key === "Enter" && results.length > 0) {
-              e.preventDefault();
-              pick(results[0]);
-            }
-          }}
+          onKeyDown={nav.onKeyDown}
         />
       </HelpTip>
       {open && (
-        <div className={styles.list} role="listbox">
+        <div className={styles.list} role="listbox" ref={nav.listRef}>
           {results.length === 0 && (
             <p className={styles.empty}>
               {hidden.length === 0
@@ -74,12 +79,13 @@ export function AttributeSearch({
                 : "No matching attributes."}
             </p>
           )}
-          {results.map((slot) => (
+          {results.map((slot, i) => (
             <button
               key={slot.name}
               type="button"
               role="option"
-              aria-selected={false}
+              aria-selected={i === nav.activeIndex}
+              data-active={i === nav.activeIndex}
               className={styles.entry}
               // mousedown, so the input's blur (which would close the list
               // before the click lands) does not fire first.

@@ -3,7 +3,6 @@
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.5rem;
-  border-bottom: 1px solid var(--border);
 }
 
 /* The pane before its first map exists. `flex: 1` fills the preview slot
@@ -23,6 +22,23 @@
 /* Only here to be the positioned box .generating centres itself in. */
 .canvasFrame {
   position: relative;
+  /* Cancels .pane's 0.5rem side padding so the map runs edge to edge in the
+     side panel, flush against the vertical divider on its left. The controls
+     and readout keep the padding. */
+  margin: 0 -0.5rem;
+}
+
+/* Once the user has dragged the canvas's bottom edge (CanvasResizer), the
+   frame has an explicit height and the canvas fills it instead of staying
+   square. The canvas box is PreviewCanvas.module.css's .container, shared
+   with the Land Placement panel, so it is overridden from here rather than
+   changed there. `:first-child` is that box (.generating is a later
+   sibling), and the extra class makes this win without !important. Its
+   width stays 100%, so it keeps following the side panel's width. */
+.canvasFrame.canvasFrameSized > :first-child {
+  aspect-ratio: auto;
+  height: 100%;
+  min-height: 0;
 }
 
 /* Centred over the map while a newer generation is in flight. The previous

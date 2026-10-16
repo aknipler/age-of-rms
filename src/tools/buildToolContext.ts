@@ -34,6 +34,7 @@ export interface BuildToolContextInput {
     playerCount: number;
     mapSize: MapSize;
     teams: readonly number[];
+    teamPositions: boolean;
   };
   lang: LanguageData;
   gameConstants: PublishedGameConstants;
@@ -67,6 +68,7 @@ export function buildToolContext(
             playerCount: input.generation.playerCount,
             mapSize: { name: input.generation.mapSize, tiles },
             teams: [...input.generation.teams],
+            teamPositions: input.generation.teamPositions,
           },
         }
       : {}),

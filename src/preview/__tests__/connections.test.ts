@@ -90,8 +90,8 @@ function place(
     seed,
   );
   const grid: TileGrid = createTileGrid(instantiated.dim, GRASS);
-  const landResult = placeLandOrigins(instantiated, grid, constants, seed);
-  growLands(landResult.origins, grid, landResult.reports, seed);
+  const landResult = placeLandOrigins(instantiated, grid, constants);
+  growLands(landResult.origins, grid, landResult.reports, landResult.stream);
   paintLandTerrain(landResult.origins, grid);
   applyBaseElevation(instantiated, landResult.origins, grid, constants);
   applyElevation(instantiated, grid, constants, landResult.origins, seed);
@@ -168,8 +168,10 @@ function fabricateOrigin(
     minPlacementDistance: 0,
     behaviorVersion: 0,
     declaredTargetTiles: 0,
+    landConformity: 0,
+    target: 0,
     fromOriginFallback: false,
-    borderBounds: { minX: 0, maxX: x * 2, minY: 0, maxY: y * 2 },
+    borderTiles: { left: 0, right: x * 2, top: 0, bottom: y * 2 },
     generateMode: 0,
   };
 }

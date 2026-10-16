@@ -89,6 +89,7 @@ export function TitleBar({
   // HelpTip/SettingsDialog calling useHelpSettings() themselves.
   const { start } = useTutorial();
   const rmsBasics = getTutorial("rms-basics");
+  const landComeer = getTutorial("land-generation-comeer");
   const appTour = getTutorial("app-tour");
   const whatsNew = latestFeatureTour();
 
@@ -120,6 +121,17 @@ export function TitleBar({
     setOpenMenu((current) => (current === menu ? null : menu));
   }
 
+  // While any menu is open, hovering another top-level button switches to
+  // it, as in native menu bars. Focus moves first on purpose: the old
+  // button's onBlur closes the menu, so setting the new menu before the
+  // focus change would be overwritten by that blur. Moving focus keeps the
+  // blur-to-close rule and the later click-to-toggle consistent.
+  function switchOnHover(menu: OpenMenu, button: HTMLButtonElement) {
+    if (openMenu === null || openMenu === menu) return;
+    button.focus();
+    setOpenMenu(menu);
+  }
+
   function openGuide() {
     // openUrl rejects when the OS has no handler for the URL. There is no
     // notification surface in the app yet, so the rejection is logged rather
@@ -148,6 +160,7 @@ export function TitleBar({
             type="button"
             className={styles.menuItem}
             onClick={() => toggleMenu("file")}
+            onMouseEnter={(e) => switchOnHover("file", e.currentTarget)}
             // Closes the menu when focus leaves it (e.g. clicking elsewhere).
             onBlur={() => setOpenMenu(null)}
           >
@@ -223,6 +236,7 @@ export function TitleBar({
             type="button"
             className={styles.menuItem}
             onClick={() => toggleMenu("edit")}
+            onMouseEnter={(e) => switchOnHover("edit", e.currentTarget)}
             onBlur={() => setOpenMenu(null)}
           >
             Edit
@@ -376,6 +390,7 @@ export function TitleBar({
             type="button"
             className={styles.menuItem}
             onClick={() => toggleMenu("help")}
+            onMouseEnter={(e) => switchOnHover("help", e.currentTarget)}
             onBlur={() => setOpenMenu(null)}
           >
             Help
@@ -418,6 +433,20 @@ export function TitleBar({
                 </button>
               </HelpTip>
             )}
+            {landComeer && (
+              <HelpTip id="titleBar.help.tutorialComeer">
+                <button
+                  type="button"
+                  className={styles.dropdownItem}
+                  onMouseDown={() => {
+                    start(landComeer.id);
+                    setOpenMenu(null);
+                  }}
+                >
+                  Tutorial: {landComeer.title}
+                </button>
+              </HelpTip>
+            )}
             {appTour && (
               <HelpTip id="titleBar.help.tutorialApp">
                 <button
@@ -428,7 +457,7 @@ export function TitleBar({
                     setOpenMenu(null);
                   }}
                 >
-                  Tutorial: {appTour.title}
+                  {appTour.title}
                 </button>
               </HelpTip>
             )}

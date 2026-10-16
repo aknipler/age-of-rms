@@ -93,7 +93,8 @@ function createPreviewResultChannel(): {
     cutOffset,
     children,
   }: PreviewResultProviderProps): ReactElement {
-    const { playerCount, mapSize, teams } = useGenerationSettings();
+    const { playerCount, mapSize, teams, teamPositions } =
+      useGenerationSettings();
 
     /*
      * Current vs Final (preview-design Sec.5), and the ONLY place the two
@@ -126,6 +127,7 @@ function createPreviewResultChannel(): {
       playerCount,
       mapSize,
       teams,
+      teamPositions,
       seed,
     );
 

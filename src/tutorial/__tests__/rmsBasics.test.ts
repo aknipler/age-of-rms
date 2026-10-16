@@ -17,6 +17,7 @@ import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import type { ParseResult } from "../../parser/types";
 import type { StepContext } from "../types";
 import { rmsBasicsTutorial } from "../content/rmsBasics";
+import { describeEditorTracks } from "./editorTracks";
 
 const lang = loadLanguage();
 const gameConstants = JSON.parse(
@@ -177,4 +178,54 @@ describe("rms-basics — every other check step is false before its own edit", (
       ),
     ).toBe(false);
   });
+});
+
+/**
+ * Where each Code check step's typing starts in goldenHill.rms. The section
+ * header is included when the step's own text types it.
+ */
+const CODE_STEP_STARTS: Record<string, string> = {
+  "random-or-direct-code": "<PLAYER_SETUP>",
+  "player-lands-code": "<LAND_GENERATION>",
+  "hill-in-the-middle-code": "create_land {",
+  "hills-code": "<ELEVATION_GENERATION>",
+  "cliffs-code": "<CLIFF_GENERATION>",
+  "trees-code": "<TERRAIN_GENERATION>",
+  "road-to-hill-code": "<CONNECTION_GENERATION>",
+  "starting-units-code": "<OBJECTS_GENERATION>",
+  "gold-on-the-hill-code": "create_object GOLD {",
+  "everyone-elses-resources-code": "create_object FORAGE_BUSH {",
+};
+
+// Sec.9.2. The tests every Breakdown and Code tutorial shares.
+describeEditorTracks(rmsBasicsTutorial, {
+  breakdownIds: [
+    "start-new-file",
+    "breakdown-or-code",
+    "order-of-a-map",
+    "random-or-direct",
+    "player-lands",
+    "hill-in-the-middle",
+    "watch-it-appear",
+    "hills",
+    "cliffs",
+    "trees",
+    "road-to-hill",
+    "starting-units",
+    "gold-on-the-hill",
+    "everyone-elses-resources",
+    "this-is-what-it-really-is",
+    "looking-things-up",
+    "resources-at-a-glance",
+    "player-count-and-map-size",
+    "you-made-a-map",
+  ],
+  codeStepTabs: { "the-same-map-as-cards": "breakdown" },
+  ctxFor: (source) => ctxFor(parseRms(source, lang)),
+  typedInto: Object.fromEntries(
+    Object.entries(CODE_STEP_STARTS).map(([id, before]) => [
+      id,
+      (typed: string) => `${sourceBefore(before)}\n${typed}\n`,
+    ]),
+  ),
 });

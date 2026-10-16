@@ -6,7 +6,7 @@ import { buildLanguageIndex, type LanguageIndex } from "../../parser/language";
 import { loadLanguage, REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { instantiateScript } from "../generator/instantiate";
 import { resolveTerrainId } from "../generator/grid";
-import { createSubstream, nextInt } from "../generator/rng";
+import { createDeStream } from "../generator/deRandom";
 import type { InstantiatedScript } from "../generator/types";
 import {
   DEFAULT_TEAMS,
@@ -115,6 +115,31 @@ describe("Sec.3 rule 1: environment", () => {
     expect(names.filter((n) => n === "override_map_size")).toHaveLength(0);
   });
 
+  it("defines TEAM_POSITIONS when the Team Positions box is ticked, and by default", () => {
+    const source =
+      "<PLAYER_SETUP>\nif TEAM_POSITIONS\ndirect_placement\nendif\nif FIXED_POSITIONS\nnomad_resources\nendif\n";
+    const parse = parseRms(source, lang);
+    const names = (teamPositions?: boolean) =>
+      commandNames(
+        instantiateScript(
+          parse,
+          refDb,
+          {
+            ...settings(),
+            ...(teamPositions === undefined ? {} : { teamPositions }),
+          },
+          1,
+        ),
+      );
+    expect(names()).toEqual(["direct_placement"]);
+    expect(names(true)).toEqual(["direct_placement"]);
+    expect(names(false)).toEqual([]);
+    // FIXED_POSITIONS stays undefined either way (Sec.15 item 55).
+    expect(instantiateScript(parse, refDb, settings(), 1).teamPositions).toBe(
+      true,
+    );
+  });
+
   it("defines team labels through the canonical model, not the picker's raw numbers", () => {
     // Player 1 picks team 3, player 2 picks team 3 too -> canonical team 1
     // (lowest player number in the surviving group), per teamModel.ts.
@@ -173,33 +198,68 @@ describe("Sec.3 rule 2: if/elseif/else", () => {
   });
 });
 
-describe("Sec.3 rule 3: start_random / percent_chance", () => {
-  function expectedRoll(seed: number, ordinal: number): number {
-    return nextInt(createSubstream(seed, "S0", ordinal), 1, 100);
+describe("Sec.3 rule 3: start_random / percent_chance (rev 9, measured)", () => {
+  /** The `k`-th draw reduced to 0..99, for a script with no other draw before it. */
+  function roll(seed: number, k = 0): number {
+    const stream = createDeStream(seed);
+    for (let i = 0; i < k; i++) stream.raw();
+    return stream.bounded(100);
   }
 
-  it("is deterministic for a given seed, and matches the same S0/ordinal-0 substream math as rng.ts", () => {
+  /** The first seed whose first roll satisfies `test`. */
+  function seedWhere(test: (r: number) => boolean): number {
+    let seed = 0;
+    while (!test(roll(seed))) seed++;
+    return seed;
+  }
+
+  it("takes the first branch whose running total is at least the roll, 0..99", () => {
     const source =
       "<PLAYER_SETUP>\nstart_random\npercent_chance 50\ndirect_placement\npercent_chance 50\nrandom_placement\nend_random\n";
-    for (const seed of [1, 2, 3, 42, 999]) {
-      const roll = expectedRoll(seed, 0);
+    for (const seed of [1, 2, 3, 42, 999, -1411066173]) {
       const names = commandNames(run(source, seed));
-      if (roll <= 50) expect(names).toEqual(["direct_placement"]);
+      if (roll(seed) <= 50) expect(names).toEqual(["direct_placement"]);
       else expect(names).toEqual(["random_placement"]);
     }
   });
 
-  it("truncates at 99 — the 100th percent (and beyond) is never chosen even when branches sum past 100", () => {
-    // Sweep seeds until we find one whose roll lands on 100 (guaranteed to
-    // exist since nextInt is uniform over a 100-wide range).
-    let seed = 0;
-    while (expectedRoll(seed, 0) !== 100) seed++;
+  it("gives the first branch one extra value, so a roll equal to its weight takes it", () => {
+    // The boundary the DE range probes (p6-range) pinned. A "more than" rule
+    // sends this roll to the second branch.
+    const seed = seedWhere((r) => r === 30);
     const source =
-      "<PLAYER_SETUP>\nstart_random\npercent_chance 60\ndirect_placement\npercent_chance 60\nrandom_placement\nend_random\n";
-    expect(commandNames(run(source, seed))).toEqual([]);
+      "<PLAYER_SETUP>\nstart_random\npercent_chance 30\ndirect_placement\npercent_chance 70\nrandom_placement\nend_random\n";
+    expect(commandNames(run(source, seed))).toEqual(["direct_placement"]);
   });
 
-  it("two start_random nodes in one script draw from independent substreams (ordinal, not shared state)", () => {
+  it("chooses a percent_chance 0 first branch on a roll of 0, the guide's 'occasionally chosen anyway' bug", () => {
+    const seed = seedWhere((r) => r === 0);
+    const source =
+      "<PLAYER_SETUP>\nstart_random\npercent_chance 0\ndirect_placement\npercent_chance 100\nrandom_placement\nend_random\n";
+    expect(commandNames(run(source, seed))).toEqual(["direct_placement"]);
+  });
+
+  it("always takes a branch when the weights add up to 99, and none when the roll is past their total", () => {
+    const top = seedWhere((r) => r === 99);
+    expect(
+      commandNames(
+        run(
+          "<PLAYER_SETUP>\nstart_random\npercent_chance 49\ndirect_placement\npercent_chance 50\nrandom_placement\nend_random\n",
+          top,
+        ),
+      ),
+    ).toEqual(["random_placement"]);
+    expect(
+      commandNames(
+        run(
+          "<PLAYER_SETUP>\nstart_random\npercent_chance 30\ndirect_placement\npercent_chance 30\nrandom_placement\nend_random\n",
+          top,
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("two start_random blocks roll one after the other on the one stream", () => {
     const source = [
       "<PLAYER_SETUP>",
       "start_random",
@@ -215,13 +275,23 @@ describe("Sec.3 rule 3: start_random / percent_chance", () => {
       "nomad_resources",
       "end_random",
     ].join("\n");
-    const seed = 1;
-    const names = commandNames(run(source, seed));
-    const firstPick =
-      expectedRoll(seed, 0) <= 50 ? "direct_placement" : "random_placement";
-    const secondPick =
-      expectedRoll(seed, 1) <= 50 ? "grouped_by_team" : "nomad_resources";
-    expect(names).toEqual([firstPick, secondPick]);
+    for (const seed of [1, 2, 3, 4]) {
+      const firstPick =
+        roll(seed, 0) <= 50 ? "direct_placement" : "random_placement";
+      const secondPick =
+        roll(seed, 1) <= 50 ? "grouped_by_team" : "nomad_resources";
+      expect(commandNames(run(source, seed))).toEqual([firstPick, secondPick]);
+    }
+  });
+});
+
+describe("Sec.3: reading order (rev 9)", () => {
+  it("defines symbols in the order the file is written, not in section order", () => {
+    // The game reads the file top to bottom. The flag is written in a
+    // section that runs later, but it is read before the test of it.
+    const source =
+      "<OBJECTS_GENERATION>\n#define MY_FLAG\n<PLAYER_SETUP>\nif MY_FLAG\ndirect_placement\nendif\n";
+    expect(commandNames(run(source))).toEqual(["direct_placement"]);
   });
 });
 
@@ -288,13 +358,54 @@ describe("Sec.3 rule 4: #define / #const / #undefine", () => {
   });
 });
 
-describe("Sec.3 rule 5: rnd(a,b)", () => {
-  it("evaluates rnd() from its own S0 substream, deterministically", () => {
+describe("Sec.3 rule 5: rnd(a,b) (rev 9, measured)", () => {
+  function sizeOf(source: string, seed: number): number {
+    return run(source, seed).dim;
+  }
+
+  it("is a + bounded(b - a + 1) on the game's stream", () => {
     const source = "<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
     for (const seed of [1, 7, 99]) {
-      const expected = nextInt(createSubstream(seed, "S0", 0), 100, 200);
-      expect(run(source, seed).dim).toBe(expected);
+      expect(sizeOf(source, seed)).toBe(
+        100 + createDeStream(seed).bounded(101),
+      );
     }
+  });
+
+  it("draws every rnd() inside a start_random block, taken or not, before the block's roll", () => {
+    // p5a-rnd's order, which matched DE at two seeds: the branch rnd() calls,
+    // then the roll, then whatever follows the block.
+    const source =
+      "start_random\npercent_chance 50 #const U1 rnd(1,3)\npercent_chance 50 #const U2 rnd(1,3)\nend_random\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
+    for (const seed of [1000, 1001]) {
+      const stream = createDeStream(seed);
+      stream.raw();
+      stream.raw();
+      stream.raw();
+      expect(sizeOf(source, seed)).toBe(100 + stream.bounded(101));
+    }
+  });
+
+  it("draws an rnd() in an if branch that is not taken, where it is written (Sec.15 item 49, untested in DE)", () => {
+    const source =
+      "if NOT_A_REAL_LABEL\n#const X rnd(1,3)\nendif\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
+    const stream = createDeStream(5);
+    stream.raw();
+    expect(sizeOf(source, 5)).toBe(100 + stream.bounded(101));
+  });
+
+  it("still draws for a #const that loses to an earlier definition", () => {
+    const source =
+      "#const X 1\n#const X rnd(1,3)\n<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n";
+    const stream = createDeStream(5);
+    stream.raw();
+    expect(sizeOf(source, 5)).toBe(100 + stream.bounded(101));
+  });
+
+  it("hands S1 the stream after the last parse-time draw", () => {
+    const one = run("<PLAYER_SETUP>\noverride_map_size rnd(100,200)\n", 3);
+    const none = run("<PLAYER_SETUP>\n", 3);
+    expect(one.landStream.count).toBe(none.landStream.count + 1);
   });
 });
 

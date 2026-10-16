@@ -15,6 +15,7 @@ import { load, type Store } from "@tauri-apps/plugin-store";
 import {
   DEFAULT_MAP_SIZE,
   DEFAULT_PLAYER_COUNT,
+  DEFAULT_TEAM_POSITIONS,
   DEFAULT_TEAMS,
   findTeamPreset,
   GENERATION_SETTINGS_STORE_FILE,
@@ -23,6 +24,7 @@ import {
   isTeams,
   MAP_SIZE_KEY,
   PLAYER_COUNT_KEY,
+  TEAM_POSITIONS_KEY,
   TEAM_PRESET_KEY,
   TEAM_STASH_KEY,
   TEAMS_KEY,
@@ -59,10 +61,24 @@ interface GenerationSettingsValue {
   activePreset: string | null;
   /** Applies a preset, or deselects it and restores the stash if it's active. */
   toggleTeamPreset: (presetId: string) => void;
+  /**
+   * Applies a preset and does nothing if it is already active. A tutorial
+   * that pins a preset on several steps needs this, since calling the
+   * toggle a second time would switch the preset off.
+   */
+  selectTeamPreset: (presetId: string) => void;
   /** True while a preset owns the team assignments. */
   teamsLocked: boolean;
   /** True while a preset also owns the player count (every preset but FFA). */
   playerCountLocked: boolean;
+  /**
+   * The lobby's Team Positions box (preview-design Sec.6.1, rev 9). It changes
+   * how the game places players, and it defines the TEAM_POSITIONS label.
+   * Independent of the team presets, which only assign teams, so pressing a
+   * preset never changes it.
+   */
+  teamPositions: boolean;
+  setTeamPositions: (on: boolean) => void;
   /**
    * Whether GenerationSettingsDialog is open. Lives here rather than as
    * local state in App.tsx (which renders the dialog) because the button
@@ -94,6 +110,9 @@ export function GenerationSettingsProvider({
   const [teams, setTeamsState] = useState<readonly TeamNumber[]>(DEFAULT_TEAMS);
   const [activePreset, setActivePresetState] = useState<string | null>(null);
   const [stash, setStashState] = useState<TeamStash | null>(null);
+  const [teamPositions, setTeamPositionsState] = useState<boolean>(
+    DEFAULT_TEAM_POSITIONS,
+  );
   const [store, setStore] = useState<Store | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -129,6 +148,13 @@ export function GenerationSettingsProvider({
         const savedStash = await loadedStore.get<unknown>(TEAM_STASH_KEY);
         if (!cancelled && isTeamStash(savedStash)) {
           setStashState(savedStash);
+        }
+        // A typeof check rather than a truthiness test, since false is a
+        // real saved answer and an absent key must keep the default.
+        const savedPositions =
+          await loadedStore.get<unknown>(TEAM_POSITIONS_KEY);
+        if (!cancelled && typeof savedPositions === "boolean") {
+          setTeamPositionsState(savedPositions);
         }
       },
     );
@@ -170,6 +196,14 @@ export function GenerationSettingsProvider({
     [store],
   );
 
+  const setTeamPositions = useCallback(
+    (on: boolean) => {
+      setTeamPositionsState(on);
+      void store?.set(TEAM_POSITIONS_KEY, on);
+    },
+    [store],
+  );
+
   const setPlayerTeam = useCallback(
     (playerIndex: number, team: TeamNumber) => {
       // Functional update, not `teams[i] = team` on the captured array: the
@@ -188,26 +222,49 @@ export function GenerationSettingsProvider({
     [store],
   );
 
+  // Shared by both actions that rewrite the lobby as a whole, the preset
+  // toggle and the tutorial's idempotent select.
+  const persist = useCallback(
+    (
+      nextTeams: readonly TeamNumber[],
+      nextPlayerCount: number,
+      nextPreset: string | null,
+      nextStash: TeamStash | null,
+    ) => {
+      setTeamsState(nextTeams);
+      setPlayerCountState(nextPlayerCount);
+      setActivePresetState(nextPreset);
+      setStashState(nextStash);
+      void store?.set(TEAMS_KEY, nextTeams);
+      void store?.set(PLAYER_COUNT_KEY, nextPlayerCount);
+      void store?.set(TEAM_PRESET_KEY, nextPreset);
+      void store?.set(TEAM_STASH_KEY, nextStash);
+    },
+    [store],
+  );
+
+  const selectTeamPreset = useCallback(
+    (presetId: string) => {
+      const preset = findTeamPreset(presetId);
+      if (!preset || activePreset === presetId) return;
+      // Same stash rule as the toggle below. Only a hand-built lobby is
+      // stashed, never another preset's layout.
+      const nextStash =
+        activePreset === null ? { teams: [...teams], playerCount } : stash;
+      persist(
+        preset.teams,
+        preset.playerCount ?? playerCount,
+        presetId,
+        nextStash,
+      );
+    },
+    [activePreset, persist, playerCount, stash, teams],
+  );
+
   const toggleTeamPreset = useCallback(
     (presetId: string) => {
       const preset = findTeamPreset(presetId);
       if (!preset) return;
-
-      const persist = (
-        nextTeams: readonly TeamNumber[],
-        nextPlayerCount: number,
-        nextPreset: string | null,
-        nextStash: TeamStash | null,
-      ) => {
-        setTeamsState(nextTeams);
-        setPlayerCountState(nextPlayerCount);
-        setActivePresetState(nextPreset);
-        setStashState(nextStash);
-        void store?.set(TEAMS_KEY, nextTeams);
-        void store?.set(PLAYER_COUNT_KEY, nextPlayerCount);
-        void store?.set(TEAM_PRESET_KEY, nextPreset);
-        void store?.set(TEAM_STASH_KEY, nextStash);
-      };
 
       if (activePreset === presetId) {
         // Pressing the active preset deselects it and restores what it
@@ -222,19 +279,9 @@ export function GenerationSettingsProvider({
         return;
       }
 
-      // Switching straight from one preset to another must NOT re-stash.
-      // The stash holds the hand-built lobby, and overwriting it with 2v2's
-      // layout would mean deselecting 3v3 restores 2v2 rather than your work.
-      const nextStash =
-        activePreset === null ? { teams: [...teams], playerCount } : stash;
-      persist(
-        preset.teams,
-        preset.playerCount ?? playerCount,
-        presetId,
-        nextStash,
-      );
+      selectTeamPreset(presetId);
     },
-    [activePreset, playerCount, stash, store, teams],
+    [activePreset, persist, playerCount, selectTeamPreset, stash, teams],
   );
 
   const activePresetDef = findTeamPreset(activePreset);
@@ -249,8 +296,11 @@ export function GenerationSettingsProvider({
       setPlayerTeam,
       activePreset,
       toggleTeamPreset,
+      selectTeamPreset,
       teamsLocked: activePresetDef !== undefined,
       playerCountLocked: activePresetDef?.playerCount != null,
+      teamPositions,
+      setTeamPositions,
       isDialogOpen,
       openDialog,
       closeDialog,
@@ -264,7 +314,10 @@ export function GenerationSettingsProvider({
       setPlayerTeam,
       activePreset,
       toggleTeamPreset,
+      selectTeamPreset,
       activePresetDef,
+      teamPositions,
+      setTeamPositions,
       isDialogOpen,
       openDialog,
       closeDialog,

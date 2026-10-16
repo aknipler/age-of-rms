@@ -39,6 +39,11 @@
   border: 1px solid var(--border);
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
   padding: 0.75rem 0.9rem;
+  /* A step with every hint open is taller than the editor it sits in. The
+     callout scrolls inside itself past three quarters of the window. The
+     placement code reads the clamped height, so it stays on screen. */
+  max-height: 75vh;
+  overflow-y: auto;
   z-index: 902;
   pointer-events: auto;
 }
@@ -147,4 +152,107 @@
 
 .discordLink:hover {
   opacity: 0.85;
+}
+
+/* tutorial-islands-design.md Sec.4.1. One rule for every placement slot
+   (imagePlacement.ts). `display: block` drops the inline baseline gap under
+   the image, and the max width keeps a large picture inside the callout
+   instead of setting the callout's width. */
+.image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border: 1px solid var(--border);
+}
+
+/* The callout's padding already spaces its first child from the edge. */
+.image:first-child {
+  margin-top: 0;
+}
+
+/* Sec.4.2 there, both spoiler forms (StepBody.tsx). A block spoiler sits
+   between paragraphs, so it takes the same spacing a paragraph does. */
+.spoiler {
+  margin: 0 0 0.5rem;
+}
+
+.spoiler:last-child {
+  margin-bottom: 0;
+}
+
+.spoilerToggle {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.spoilerToggle:hover {
+  text-decoration: underline;
+}
+
+.spoilerText {
+  margin: 0.25rem 0 0 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* Script text a step asks the learner to type (StepBody.tsx, a code block or
+   an opened code spoiler). `pre` keeps the line breaks and the indent inside
+   a block, which is the shape being taught. A long line scrolls inside the
+   box rather than widening the callout. */
+.code {
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  /* The callout itself is --surface, so the box takes the raised shade to
+     read as a separate thing. */
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.code:last-child {
+  margin-bottom: 0;
+}
+
+.spoilerCode {
+  margin: 0.25rem 0 0 0.9rem;
+}
+
+/* A masked run inside a sentence. The button holds figure spaces, not the
+   hidden words, so the bar is all there is to see. */
+.inlineSpoiler {
+  cursor: pointer;
+  /* The highlight sits on the whole run, so the spaces between the words are
+     covered too and the answer reads as one lump. */
+  background: var(--text-muted);
+  border-radius: 2px;
+  /* Each line of a wrapped run gets its own corners. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* One block per hidden word, its width set from the measured word. */
+.inlineBar {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.inlineSpoiler:hover {
+  background: var(--accent);
+}
+
+/* A faint underline marks what was hidden, so a learner rereading the step
+   can still tell which words were the answer. */
+.inlineRevealed {
+  text-decoration: underline dotted var(--text-faint);
+  text-underline-offset: 2px;
 }

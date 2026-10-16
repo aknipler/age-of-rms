@@ -107,6 +107,27 @@ the same set guide:1513 lists as "already a blend of two texture files"
 and unable to be visually masked. There is no single texture to average.
 They fall back to `minimapColor`, which they all have.
 
+**Changed 2026-10-14, decision open.** `--colors-only` now fills a null
+`deTextureFile` from the dat's `Terrain.name_2`, and the dat names one
+texture for each of these ten (`o_sng` for `GRASS_SNOW`, `o_snd` for
+`DIRT_SNOW`, and so on), so the run that day gave all ten a `previewColor`.
+Those files ship, but `o_sng.dds` and `o_snd.dds` are placeholder art, a
+blend of the two textures with a grid and the word PLACEHOLDER printed
+over it. The paragraph above is right that the game draws these from two
+textures, and the ten colours are averages of placeholders. They sit
+between the two component colours (`o_sng` gives (159, 170, 155), snow and
+grass average (154, 175, 141)).
+
+**Decided the same day.** The owner chose averaging the two component
+textures. The dat does not say which two, so `LEGACY_BLEND_COMPONENTS` in
+`extract_constants.py` lists a pair only where the terrain's name and its
+placeholder image agree, which is three of the nine: `DIRT_SNOW` (`g_sno`,
+`g_des`), `GRASS_SNOW` (`g_sno`, `g_grs`) and 38 road snow (`g_sno`,
+`g_rd1`). The other six (39, `DLC_DRYROAD`, `DLC_MOORLAND`,
+`DLC_JUNGLEROAD`, `DLC_JUNGLELEAVES`, `DLC_ROADGRAVEL`) keep the mean of
+their own placeholder until their pairs are confirmed. 36, dirt snow
+foundation, reads `g_snd`, which is real art, so its own mean is right.
+
 This is the mode to reach for after a DE art patch. It is deliberately a
 separate code path from a full run (`merge_terrain_colors`, not
 `merge_entry`) because a full run recomputes `verified` and rewrites

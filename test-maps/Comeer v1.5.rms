@@ -1,6 +1,6 @@
 /* Created by Captain Kniples the Fourth */
 /* 3 Villager version made for Thalassocracy 2 */
-/* First created 2025 July, last update 22 Aug 2025 */
+/* First created 2025 July, last update 14 Oct 2026 */
 /* 
 Changelog:
 21-08-2025
@@ -21,6 +21,9 @@ Changelog:
 ** Addressing the issue of a transport ship easily stealing an opponents sheep **
 - used placeholders to make the transport ships spawn closer to the back of the islands
 - made the scouts always spawn closest to the center of the map
+14-10-2026
+- changed base_size for player lands to 9, so that the spacing between player lands is never less than 2 tiles of water -> this way a dock cannot block the channel.
+- changed variables names to be <attribute_name>_<identifier> i.e. PL_BORDERS to BORDERS_PL
 */
 
 
@@ -36,25 +39,23 @@ Changelog:
 
 /* math constants */
 #const INSIDE_RING_ORIGIN_DIST 16
-#const ISLAND_BORDERS 3
-#const PLAYER_FOREST_CLUMPS 3
-#const PLAYER_TOTAL_FOREST_TILES 110
-#const PL_BORDERS 12
+#const CLUMPS_PLAYER_FOREST 3
+#const NUM_TILES_PLAYER_FOREST 110
+#const BORDERS_PL 12
 
 /* terrains */
-#const TEMP_TERRAIN 68 
-#const TEMP_TERRAIN2 19
-#const PLAYER_TEMP_TERR 74
+#const TERR_TEMP 68 
+#const TERR_PLAYER_TEMP 74
 #const MUD 76
-#const PL_TERRAIN 34 /* snow grass */
-#const NEUTRAL_TERRAIN 32 /* snow */
-#const NEUTRAL_TERRAIN_MASK 0
-#const TERRAIN_MASK 32
+#const TERR_PLAYER 34 /* snow grass */
+#const TERR_NEUTRAL 32 /* snow */
+#const TERR_NEUTRAL_MASK 0
+#const TERR_MASK_PLAYER 32
 #const BASE_TERRAIN 1
 
 /* objects */
-#const MAKE_UNDERBRUSH_SNOW_TERRAIN 1639
-#const MAKE_SNOW_TERRAIN 1640
+#const MAKE_TERR_UNDERBRUSH_SNOW 1639
+#const MAKE_TERR_SNOW 1640
 
 
 start_random
@@ -78,17 +79,17 @@ effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_DEAD_ID 641
 effect_amount SET_ATTRIBUTE DLC_ZEBRA ATTR_STORAGE_VALUE 1
 
 /* Make it so that the forests can't be quickly removed by players using building foundations */
-effect_percent SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
-effect_percent SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
-effect_amount SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_FOUNDATION_TERRAIN 72 /* underbrush snow */
-effect_amount SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_FOG_FLAG 0 /* underbrush snow */
-/* effect_amount SET_ATTRIBUTE MAKE_UNDERBRUSH_SNOW_TERRAIN ATTR_STANDING_GRAPHIC 11202 So that if seen in a start of game revealer, the artifact it leaves is much harder to see */  
+effect_percent SET_ATTRIBUTE MAKE_TERR_UNDERBRUSH_SNOW ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_TERR_UNDERBRUSH_SNOW ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_TERR_UNDERBRUSH_SNOW ATTR_FOUNDATION_TERRAIN 72 /* underbrush snow */
+effect_amount SET_ATTRIBUTE MAKE_TERR_UNDERBRUSH_SNOW ATTR_FOG_FLAG 0 /* underbrush snow */
+/* effect_amount SET_ATTRIBUTE MAKE_TERR_UNDERBRUSH_SNOW ATTR_STANDING_GRAPHIC 11202 So that if seen in a start of game revealer, the artifact it leaves is much harder to see */  
 
-effect_percent SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_RADIUS_1 50 /* make it a 1x1 object */
-effect_percent SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_RADIUS_2 50 /* make it a 1x1 object */
-effect_amount SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_FOUNDATION_TERRAIN 32 /* snow */
-effect_amount SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_STANDING_GRAPHIC 12263  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
-effect_amount SET_ATTRIBUTE MAKE_SNOW_TERRAIN ATTR_FOG_FLAG 0  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
+effect_percent SET_ATTRIBUTE MAKE_TERR_SNOW ATTR_RADIUS_1 50 /* make it a 1x1 object */
+effect_percent SET_ATTRIBUTE MAKE_TERR_SNOW ATTR_RADIUS_2 50 /* make it a 1x1 object */
+effect_amount SET_ATTRIBUTE MAKE_TERR_SNOW ATTR_FOUNDATION_TERRAIN 32 /* snow */
+effect_amount SET_ATTRIBUTE MAKE_TERR_SNOW ATTR_STANDING_GRAPHIC 12263  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
+effect_amount SET_ATTRIBUTE MAKE_TERR_SNOW ATTR_FOG_FLAG 0  /* So that if seen in a start of game revealer, the artifact it leaves is much harder to see */
 
 
 
@@ -138,13 +139,13 @@ endif
 
 base_terrain BASE_TERRAIN
 
-create_player_lands { terrain_type PLAYER_TEMP_TERR land_percent 25 circle_radius 16 1 base_size 10 clumping_factor 20 other_zone_avoidance_distance 3 left_border PL_BORDERS right_border PL_BORDERS top_border PL_BORDERS bottom_border PL_BORDERS }
+create_player_lands { terrain_type TERR_PLAYER_TEMP land_percent 0 circle_radius 16 1 base_size 9 clumping_factor 20 other_zone_avoidance_distance 3 left_border BORDERS_PL right_border BORDERS_PL top_border BORDERS_PL bottom_border BORDERS_PL }
 
 /* neutral islands */
-create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 1 land_id 100 land_position 9 9 }
-create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 2 land_id 100 land_position 9 91 }
-create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 3 land_id 100 land_position 91 9 }
-create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 4 land_id 100 land_position 91 91 }
+create_land { terrain_type TERR_NEUTRAL land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 1 land_id 100 land_position 9 9 }
+create_land { terrain_type TERR_NEUTRAL land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 2 land_id 100 land_position 9 91 }
+create_land { terrain_type TERR_NEUTRAL land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 3 land_id 100 land_position 91 9 }
+create_land { terrain_type TERR_NEUTRAL land_percent 6 base_size rnd(7,9) clumping_factor rnd(13,24) other_zone_avoidance_distance 10  zone 4 land_id 100 land_position 91 91 }
 
 
 
@@ -152,10 +153,9 @@ create_land { terrain_type NEUTRAL_TERRAIN land_percent 6 base_size rnd(7,9) clu
 
 create_elevation 1
 {
-  base_terrain          PLAYER_TEMP_TERR 
+  base_terrain          TERR_PLAYER_TEMP 
   number_of_tiles       40      
-  number_of_clumps      3
-  spacing               0         
+  number_of_clumps      3       
   enable_balanced_elevation   
   set_scale_by_groups  
 }
@@ -163,7 +163,7 @@ create_elevation 1
 
 create_elevation 1
 {
-  base_terrain          NEUTRAL_TERRAIN 
+  base_terrain          TERR_NEUTRAL 
   number_of_tiles       250      
   number_of_clumps      15         
   enable_balanced_elevation    
@@ -176,34 +176,34 @@ create_elevation 1
 <TERRAIN_GENERATION>
 
 /* fix small patches */
-create_terrain TEMP_TERRAIN { base_terrain BASE_TERRAIN land_percent 5 number_of_clumps 6 set_scale_by_groups spacing_to_other_terrain_types 3 }
-create_terrain NEUTRAL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 }
+create_terrain TERR_TEMP { base_terrain BASE_TERRAIN land_percent 5 number_of_clumps 6 set_scale_by_groups spacing_to_other_terrain_types 3 }
+create_terrain TERR_NEUTRAL { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 }
 
 /* player forests */
 /* 1 */
-create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
-create_terrain SNOW_FOREST { base_terrain TEMP_TERRAIN number_of_tiles PLAYER_TOTAL_FOREST_TILES number_of_clumps PLAYER_FOREST_CLUMPS spacing_to_other_terrain_types 3 set_avoid_player_start_areas 13 } 
-create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
-create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
-create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain TERR_TEMP { base_terrain TERR_PLAYER_TEMP land_percent 100 number_of_clumps 1 } 
+create_terrain SNOW_FOREST { base_terrain TERR_TEMP number_of_tiles NUM_TILES_PLAYER_FOREST number_of_clumps CLUMPS_PLAYER_FOREST spacing_to_other_terrain_types 3 set_avoid_player_start_areas 13 } 
+create_terrain TERR_PLAYER { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain TERR_PLAYER { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain TERR_PLAYER { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
 
 /* 2 */
-create_terrain TEMP_TERRAIN { base_terrain PLAYER_TEMP_TERR land_percent 100 number_of_clumps 1 } 
-create_terrain SNOW_FOREST { base_terrain TEMP_TERRAIN number_of_tiles PLAYER_TOTAL_FOREST_TILES number_of_clumps PLAYER_FOREST_CLUMPS spacing_to_other_terrain_types 3 set_avoid_player_start_areas 13 } 
-create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps beach_terrain ICYSHORE 4056 } 
-create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps beach_terrain ICYSHORE 4056 } 
-create_terrain PL_TERRAIN { base_terrain TEMP_TERRAIN land_percent 100 number_of_clumps beach_terrain ICYSHORE 4056 } 
+create_terrain TERR_TEMP { base_terrain TERR_PLAYER_TEMP land_percent 100 number_of_clumps 1 } 
+create_terrain SNOW_FOREST { base_terrain TERR_TEMP number_of_tiles NUM_TILES_PLAYER_FOREST number_of_clumps CLUMPS_PLAYER_FOREST spacing_to_other_terrain_types 3 set_avoid_player_start_areas 13 } 
+create_terrain TERR_PLAYER { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain TERR_PLAYER { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
+create_terrain TERR_PLAYER { base_terrain TERR_TEMP land_percent 100 number_of_clumps 4056 beach_terrain ICYSHORE } 
 
 
 
 /* masking */
-create_terrain NEUTRAL_TERRAIN_MASK { base_terrain NEUTRAL_TERRAIN land_percent 31 number_of_clumps 4056 terrain_mask 1 } 
-create_terrain TERRAIN_MASK { base_terrain PL_TERRAIN land_percent 2 number_of_clumps 6 terrain_mask 1 } 
+create_terrain TERR_NEUTRAL_MASK { base_terrain TERR_NEUTRAL land_percent 31 number_of_clumps 4056 terrain_mask 1 } 
+create_terrain TERR_MASK_PLAYER { base_terrain TERR_PLAYER land_percent 2 number_of_clumps 6 terrain_mask 1 } 
 
 
 
 /* neutral forests */
-create_terrain SNOW_FOREST { base_terrain NEUTRAL_TERRAIN number_of_tiles 470 number_of_clumps 30 spacing_to_other_terrain_types 2 set_scale_by_groups } 
+create_terrain SNOW_FOREST { base_terrain TERR_NEUTRAL number_of_tiles 470 number_of_clumps 30 spacing_to_other_terrain_types 2 set_scale_by_groups } 
 
 
 /* 
@@ -217,10 +217,10 @@ create_connect_to_nonplayer_land
   terrain_cost INSIDE_GOLD_AREA_TERRAIN 0
   terrain_cost BEACH 0
   terrain_cost LEAVES 0
-  terrain_cost INSIDE_PL_TERRAIN 0
+  terrain_cost INSIDE_TERR_PLAYER 0
   terrain_cost EXTERNAL_TERRAIN 0
   terrain_cost LOWER_HILLTOPS 11
-  terrain_cost OUTSIDE_PL_TERRAIN 2
+  terrain_cost OUTSIDE_TERR_PLAYER 2
   terrain_cost BASE_TERRAIN 15
   terrain_size LOWER_HILLTOPS 2 0
 } */
@@ -631,7 +631,7 @@ endif
 create_object FORAGE 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 rnd(5,7)
   min_distance_to_players           10
   max_distance_to_players           14
@@ -650,7 +650,7 @@ create_object FORAGE
 create_object GOLD 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 7
   min_distance_to_players           12
   max_distance_to_players           15
@@ -669,7 +669,7 @@ create_object GOLD
 create_object STONE
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 5
   min_distance_to_players           11
   max_distance_to_players           18
@@ -689,7 +689,7 @@ create_object STONE
 create_object GOLD 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 4
   min_distance_to_players           13
   max_distance_to_players           22
@@ -710,7 +710,7 @@ create_object GOLD
 create_object STONE
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 3
   min_distance_to_players           13
   max_distance_to_players           22
@@ -732,7 +732,7 @@ create_object STONE
 create_object HERDABLE
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
     number_of_objects                 2
   if 3_VILL_START
     number_of_groups                  2
@@ -752,7 +752,7 @@ create_object HERDABLE
 create_object BOAR 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 1
   number_of_groups                  2
   min_distance_to_players           13
@@ -769,7 +769,7 @@ create_object BOAR
 create_object DEER 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 rnd(3,4)
   min_distance_to_players           14
   max_distance_to_players           20
@@ -783,7 +783,7 @@ create_object DEER
 create_object SNOW_PINE_TREE 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 1
   number_of_groups                  2
   min_distance_to_players           4
@@ -794,7 +794,7 @@ create_object SNOW_PINE_TREE
 create_object SNOW_PINE_TREE 
 {
   set_place_for_every_player
-  terrain_to_place_on               PL_TERRAIN
+  terrain_to_place_on               TERR_PLAYER
   number_of_objects                 1
   number_of_groups                  3
   min_distance_to_players           6
@@ -880,7 +880,7 @@ create_object FORAGE
 {
   place_on_specific_land_id 100
 
-  terrain_to_place_on               NEUTRAL_TERRAIN
+  terrain_to_place_on               TERR_NEUTRAL
   number_of_objects                 4
   number_of_groups                  1
   temp_min_distance_group_placement 12
@@ -899,7 +899,7 @@ create_object GOLD
 {
   place_on_specific_land_id 100
   
-  terrain_to_place_on               NEUTRAL_TERRAIN
+  terrain_to_place_on               TERR_NEUTRAL
   number_of_objects                 4
   number_of_groups                  2
   temp_min_distance_group_placement 12
@@ -919,7 +919,7 @@ create_object STONE
 {
   place_on_specific_land_id 100
   
-  terrain_to_place_on               NEUTRAL_TERRAIN
+  terrain_to_place_on               TERR_NEUTRAL
   number_of_objects                 4
   number_of_groups                  1
   temp_min_distance_group_placement 12
@@ -940,7 +940,7 @@ create_object DEER
 {
   place_on_specific_land_id 100
   
-  terrain_to_place_on               NEUTRAL_TERRAIN
+  terrain_to_place_on               TERR_NEUTRAL
   number_of_objects                 4
   number_of_groups                  2
   temp_min_distance_group_placement 12
@@ -960,7 +960,7 @@ create_object BOAR
 {
   place_on_specific_land_id 100
   
-  terrain_to_place_on               NEUTRAL_TERRAIN
+  terrain_to_place_on               TERR_NEUTRAL
   number_of_objects                 1
   number_of_groups                  1
   temp_min_distance_group_placement 12
@@ -979,7 +979,7 @@ create_object RELIC
 {
   place_on_specific_land_id 100
   
-  terrain_to_place_on               NEUTRAL_TERRAIN
+  terrain_to_place_on               TERR_NEUTRAL
   number_of_objects                 1
   number_of_groups                  1
   temp_min_distance_group_placement 12
@@ -1026,6 +1026,6 @@ create_object BIRD_B {
 } 
 
 
-create_object  MAKE_UNDERBRUSH_SNOW_TERRAIN { number_of_groups 33 /* second_object FLAG_B */ number_of_objects 6 group_variance 2 set_tight_grouping terrain_to_place_on NEUTRAL_TERRAIN other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
-create_object  MAKE_UNDERBRUSH_SNOW_TERRAIN { set_place_for_every_player number_of_groups 22 /* second_object FLAG_B */ number_of_objects 6 group_variance 2 set_tight_grouping terrain_to_place_on PL_TERRAIN other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
-create_object  MAKE_SNOW_TERRAIN { set_place_for_every_player number_of_groups 22 second_object RELIC number_of_objects 7 group_variance 2 set_tight_grouping terrain_to_place_on PL_TERRAIN other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
+create_object  MAKE_TERR_UNDERBRUSH_SNOW { number_of_groups 33 /* second_object FLAG_B */ number_of_objects 6 group_variance 2 set_tight_grouping terrain_to_place_on TERR_NEUTRAL other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
+create_object  MAKE_TERR_UNDERBRUSH_SNOW { set_place_for_every_player number_of_groups 22 /* second_object FLAG_B */ number_of_objects 6 group_variance 2 set_tight_grouping terrain_to_place_on TERR_PLAYER other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }
+create_object  MAKE_TERR_SNOW { set_place_for_every_player number_of_groups 22 second_object RELIC number_of_objects 7 group_variance 2 set_tight_grouping terrain_to_place_on TERR_PLAYER other_zone_avoidance_distance 4 set_gaia_object_only set_gaia_unconvertible ignore_terrain_restrictions min_distance_to_players 12 avoid_actor_area 12 }

@@ -81,8 +81,8 @@ function place(
     seed,
   );
   const grid: TileGrid = createTileGrid(instantiated.dim, GRASS);
-  const landResult = placeLandOrigins(instantiated, grid, constants, seed);
-  growLands(landResult.origins, grid, landResult.reports, seed);
+  const landResult = placeLandOrigins(instantiated, grid, constants);
+  growLands(landResult.origins, grid, landResult.reports, landResult.stream);
   paintLandTerrain(landResult.origins, grid);
   applyBaseElevation(instantiated, landResult.origins, grid, constants);
   applyElevation(instantiated, grid, constants, landResult.origins, seed);
@@ -156,8 +156,10 @@ function fabricateOrigin(
     minPlacementDistance: 0,
     behaviorVersion: 0,
     declaredTargetTiles: 0,
+    landConformity: 0,
+    target: 0,
     fromOriginFallback: false,
-    borderBounds: { minX: 0, maxX: x * 2, minY: 0, maxY: y * 2 },
+    borderTiles: { left: 0, right: x * 2, top: 0, bottom: y * 2 },
     generateMode: 0,
   };
 }
@@ -838,6 +840,33 @@ describe("applyAutomaticBeach (engine behaviour, not a command)", () => {
       expect(grid.terrain[y * dim + 3]).toBe(BEACH);
       expect(grid.terrain[y * dim + 7]).toBe(BEACH);
       expect(grid.terrain[y * dim + 8]).toBe(GRASS);
+    }
+  });
+
+  it("lays a 45 degree coast two tiles deep, because a diagonal neighbour counts (RMSTEST_75)", () => {
+    // Water fills the triangle x + y < 8, so the coast is a staircase. The
+    // tiles on x + y = 8 touch water at a side. The tiles on x + y = 9 touch
+    // it only at a corner, which is the case a 4 connected test misses and
+    // DE beaches anyway. Nothing on x + y = 10 reaches the water. The two
+    // ends of the x + y = 9 line sit on the map edge, where the corner that
+    // would touch water is off the map, so they stay grass. DE's RMSTEST_75
+    // has the same single beach tile where its cut meets row 0.
+    const dim = 12;
+    const grid = createTileGrid(dim, GRASS);
+    for (let y = 0; y < dim; y++) {
+      for (let x = 0; x < dim; x++) {
+        if (x + y < 8) grid.terrain[y * dim + x] = WATER;
+      }
+    }
+    applyAutomaticBeach(grid, constants);
+    for (let y = 0; y < dim; y++) {
+      for (let x = 0; x < dim; x++) {
+        const sum = x + y;
+        const onEdge = x === 0 || y === 0;
+        const expected =
+          sum < 8 ? WATER : sum === 8 || (sum === 9 && !onEdge) ? BEACH : GRASS;
+        expect(grid.terrain[y * dim + x], `tile ${x},${y}`).toBe(expected);
+      }
     }
   });
 });

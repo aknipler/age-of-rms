@@ -58,7 +58,7 @@ const refDb: ValidateReferenceDb = {
 const ZERO_ERROR_ALLOWLIST = [
   "sample.rms",
   "AD4 - Ra.rms",
-  "TC2 - Comeer v1.4.rms",
+  "Comeer v1.5.rms", // renamed from TC2 - Comeer v1.4.rms (2026-10-14)
   "Menindee_AUS_v2.3.rms",
   "AK_ForeDaut_v1.3.rms",
   "AK_Six_Points_v1.4.rms",

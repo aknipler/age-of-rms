@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildBugReportUrl,
   buildEnvironmentBlock,
+  FEATURE_REQUEST_URL,
   type BugReportFacts,
 } from "../bugReport";
 
@@ -77,5 +78,25 @@ describe("buildBugReportUrl", () => {
   it("stays well inside GitHub's URL ceiling on realistic input", () => {
     const url = buildBugReportUrl({ ...BASE, userAgent: "x".repeat(5000) });
     expect(url.length).toBeLessThan(2000);
+  });
+});
+
+describe("FEATURE_REQUEST_URL", () => {
+  it("opens a new discussion in the ideas category of the same repo", () => {
+    const url = new URL(FEATURE_REQUEST_URL);
+    expect(url.origin + url.pathname).toBe(
+      "https://github.com/aknipler/age-of-rms/discussions/new",
+    );
+    expect(url.searchParams.get("category")).toBe("ideas");
+  });
+
+  it("shares a repo with the bug report link", () => {
+    // Both links are typed out separately, so a repo rename that updates one
+    // and misses the other would send suggestions somewhere bugs do not go.
+    const bugUrl = new URL(buildBugReportUrl(BASE));
+    const featureUrl = new URL(FEATURE_REQUEST_URL);
+    expect(featureUrl.pathname.split("/").slice(1, 3)).toEqual(
+      bugUrl.pathname.split("/").slice(1, 3),
+    );
   });
 });

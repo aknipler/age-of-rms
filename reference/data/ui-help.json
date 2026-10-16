@@ -81,6 +81,10 @@
       "text": "Builds a small map called Golden Hill from scratch, step by step, right in the Breakdown editor. Starts over from step 1 even if you've finished it before."
     },
     {
+      "id": "titleBar.help.tutorialComeer",
+      "text": "Builds the islands of a 1v1 tournament map called Comeer, and teaches how land grows and what stops it. Sets the preview to 1v1 on a Tiny map and leaves it that way. Starts over from step 1 even if you've finished it before."
+    },
+    {
       "id": "titleBar.help.tutorialApp",
       "text": "A tour of the preview, reference table, status bar, generation settings and Advanced Tools, for someone who already writes RMS. Starts over from step 1 even if you've finished it before."
     },
@@ -130,7 +134,11 @@
     },
     {
       "id": "statusBar.reportBug",
-      "text": "Opens a prefilled bug report on the project's GitHub issue tracker in your browser. It carries the app version, your system and the current problem counts. Your script is never attached, so paste any part of it you can share into the form yourself."
+      "text": "Report a Bug."
+    },
+    {
+      "id": "statusBar.suggestFeature",
+      "text": "Suggest a Feature / Tutorial / Idea."
     },
     {
       "id": "update.install",
@@ -147,6 +155,10 @@
     {
       "id": "generationSettings.mapSize",
       "text": "The map size this script targets. Not yet used by the resource totals. Will feed the approximate preview and consistency checker in a later phase."
+    },
+    {
+      "id": "generationSettings.teamPositions",
+      "text": "The lobby's Team Positions box. Ticked, the game seats teammates next to each other, and a script testing TEAM_POSITIONS takes that branch. It also changes the random draws the game makes while placing players, so the preview's lands only match a real game at the same seed when this box matches that game's lobby. Ticked by default."
     },
     {
       "id": "settings.authorName",
@@ -738,7 +750,7 @@
     },
     {
       "id": "preview.approximateBadge",
-      "text": "This is a heuristic re-creation of what your script might generate, not the game's own map generator. Layouts here are plausible rather than predictive, so always test in game before publishing a map."
+      "text": "This is a re-creation of what your script might generate, not the game's own map generator. The lands are drawn the way the game draws them, and on every map checked against the game so far they match it tile for tile at the same seed. Everything after the lands (hills, cliffs, terrain patches, connections and objects) is plausible rather than predictive, so always test in game before publishing a map."
     },
     {
       "id": "preview.mapSummary",
@@ -746,11 +758,15 @@
     },
     {
       "id": "preview.seedChip",
-      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It has no relationship to the seed the game uses for a real match."
+      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It is also the game's own seed for the lands. Type the seed a match used (the game shows it on the Objectives screen) with the same players, teams and Team Positions setting, and the lands come out where the game put them. Everything drawn after the lands is the preview's own approximation and will differ."
     },
     {
       "id": "preview.reroll",
       "text": "Draws a new seed and generates a fresh arrangement. Rolling through several is how you tell a layout that holds up from one that got lucky once."
+    },
+    {
+      "id": "preview.canvasResizer",
+      "text": "Drag the bottom edge of the map up or down to change its height. The width already follows the side panel, so this is how you get a bigger map. Growing it pushes the reference table down to make room. Arrow keys resize it once it has focus, and double click puts it back to a square. The height is remembered between sessions."
     },
     {
       "id": "preview.exportPng",
@@ -1105,12 +1121,24 @@
       "text": "Adds these commands for you, exactly as described, so you can see the result and move on."
     },
     {
+      "id": "tutorial.choice",
+      "text": "Picks how the rest of this tutorial runs. Go Back to this step to change it."
+    },
+    {
       "id": "tutorial.announcementShowMe",
       "text": "Starts a short tour of what's new, spotlighting the new controls."
     },
     {
       "id": "tutorial.announcementNotNow",
       "text": "Dismisses this announcement. You can still find it from Help ▸ What's new."
+    },
+    {
+      "id": "tutorial.supportLink",
+      "text": "Opens the maintainer's Buy Me a Coffee page in your browser. Entirely optional."
+    },
+    {
+      "id": "credits.supportLink",
+      "text": "Opens the maintainer's Buy Me a Coffee page in your browser. Entirely optional."
     },
     {
       "id": "tutorial.discordLink",

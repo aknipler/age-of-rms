@@ -48,6 +48,8 @@ import {
   placeLandOrigins,
   growLands,
   paintLandTerrain,
+  cleanLandTerrain,
+  cleanWaterTerrain,
   applyBaseElevation,
   countOwnedTiles,
 } from "./lands";
@@ -155,7 +157,7 @@ function collectLandOutcomes(
             key: "landOverwrittenBeforeGrowth",
             prominence: "drawer",
             stage: "S1",
-            text: `${overwritten} ${overwritten === 1 ? "land is" : "lands are"} missing from this preview. Each one's starting square was covered by a later land before it could grow, and this preview grows a land outward from its own tiles — with none, it has nowhere to start. What the engine does in that position has not been measured, so the map may be showing less land here than a real game would.`,
+            text: `${overwritten} ${overwritten === 1 ? "land is" : "lands are"} missing from this map. Each one's starting square was covered by a later land before it could grow, so every tile it could have grown into was already taken. The game loses these lands the same way.`,
           }
         : undefined,
   };
@@ -280,16 +282,22 @@ export function generatePreview(
     if (snapshots) snapshots.push(captureSnapshot(stage, grid));
   };
 
-  const landResult = placeLandOrigins(instantiated, grid, constants, opts.seed);
-  growLands(landResult.origins, grid, landResult.reports, opts.seed);
-  // Immediately after growth: nothing later writes `landId`, and reading it
-  // here keeps the marks a statement about land generation rather than about
-  // whatever S4 painted over the result.
+  // S1 continues the game's random stream from where S0's parse-time draws
+  // left it, and growth continues it from where origin placement left it
+  // (Sec.8, rev 9). Every later stage keeps its own substreams.
+  const landResult = placeLandOrigins(instantiated, grid, constants);
+  growLands(landResult.origins, grid, landResult.reports, landResult.stream);
+  // Read right after growth and before the cleanup pass below, which also
+  // clears `landId`. A land the cleanup erases was not buried by a later
+  // stamp, and counting it here would give the note the wrong reason. Reading
+  // it this early also keeps the marks a statement about land generation
+  // rather than about whatever S4 painted over the result.
   const landOutcomes = collectLandOutcomes(landResult.origins, grid);
-  // Both strictly after growth, and both over the land's FINAL footprint
-  // (Sec.6.1). Terrain first only for readability, they write different
-  // arrays, so the order between them is not load-bearing.
+  // Sec.6.1 rules 9 to 11, in that order. The cleanup compares terrain, so it
+  // has to follow painting, and base_elevation reads each land's tiles as the
+  // cleanup left them.
   paintLandTerrain(landResult.origins, grid);
+  cleanLandTerrain(grid, baseTerrainId);
   const baseElevationNotes = applyBaseElevation(
     instantiated,
     landResult.origins,
@@ -330,6 +338,12 @@ export function generatePreview(
     landResult.origins,
     opts.seed,
   );
+  // The terrain stage ends with the cleanup pass run against WATER, as the
+  // original game's does (Sec.6.4, rev 9, measured on every water map in the
+  // land-stage fixture). A tile pinched between two water tiles becomes
+  // water, whatever painted it.
+  const waterId = resolveTerrainId(constants, "WATER");
+  if (waterId !== undefined) cleanWaterTerrain(grid, waterId);
   snapshot("S4");
 
   const connectionsResult = applyConnections(

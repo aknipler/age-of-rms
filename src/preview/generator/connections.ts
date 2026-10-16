@@ -222,7 +222,7 @@ export function sameZonePairs(
 // ---------------------------------------------------------------------------
 // Binary min-heap (Sec.11: "A* uses a binary heap"), exported for direct
 // unit testing, matching this codebase's convention for a risky, easy-to-
-// get-subtly-wrong mechanism (bucketWeights/reservoirSize, growClump, ...).
+// get-subtly-wrong mechanism (bucketWeights, growClump, ...).
 // Lazy-deletion: a stale, superseded entry may still sit in the heap when
 // popped; the caller checks it against its own closed/gScore state and
 // skips it rather than this heap supporting decrease-key.

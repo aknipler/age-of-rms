@@ -1035,8 +1035,12 @@ function createObjectStageCaches(
    *     rather than papering over: what the engine anchors on is one row of
    *     its terrain table, which is Sec.15 item 23's data and not ours yet.
    *
-   * Adjacency is 4-connected, matching the beach rule that put the sand
-   * there. A diagonal-only touch is not a shore.
+   * Adjacency is 4 connected, so a diagonal only touch is not a shore. It
+   * was chosen to match the beach rule, which DE has since been measured to
+   * run 8 connected (terrains.ts, 2026-10-15). Whether a shore object places
+   * against a beach it touches only at a corner is unmeasured, so this stays
+   * 4 connected until a run says otherwise. A 45 degree coast still gives
+   * every water tile on it a side neighbour of sand.
    *
    * **`relaxed` is the shore class under `ignore_terrain_restrictions`, and
    * it widens the water rather than removing the anchor.** Measured in game

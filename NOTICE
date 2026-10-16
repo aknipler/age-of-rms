@@ -47,6 +47,18 @@ Microsoft's own written documentation are not, so do not copy prose out of the
 scripting guide DE ships in its `Docs` directory into this project's help
 text. Educational content is written by hand.
 
+Code ported from genie-rms
+--------------------------
+
+The map preview's land growth in `src/preview/generator/lands.ts`, from
+`growLands` through `cleanWaterTerrain`, began as a modified TypeScript port of
+genie-rms (https://github.com/genie-js/genie-rms) by Renée Kooi, which is
+licensed under GPL-3.0. It is based on `src/LandGenerator.js` and on the
+`cleanTerrain` function in `src/Map.js`. The growth loop's structure, its seed
+order and the cleanup pass come from there. The port was changed in 2026 to
+match measurements taken in Age of Empires II: Definitive Edition, and the
+header above that code in `lands.ts` says so, as GPL-3.0 section 5 asks.
+
 Attribution
 -----------
 

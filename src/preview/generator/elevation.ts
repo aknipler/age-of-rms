@@ -46,11 +46,39 @@ import {
   type AttributedPredicate,
 } from "./placement";
 import type { PlacementOutcome } from "./types";
-import { bucketWeights } from "./lands";
 
 // ---------------------------------------------------------------------------
 // [tune] constants
 // ---------------------------------------------------------------------------
+
+/**
+ * The frontier weight table `growClump` draws with. It lived in `lands.ts`
+ * until preview-design rev 8 (2026-09-29) replaced land growth with a port of
+ * genie-rms's land stage, which has no weight table at all. Sec.6.1 says to
+ * move it here unchanged before deleting land growth, so that S2's output does
+ * not move with no spec behind it. The values are exactly the rev 7 land
+ * table's, and `growClump` only ever calls it at `CLUMP_GROWTH_CF`.
+ *
+ * cf >= 0 gives weight(k) = 1 + steepness*(k-1) for neighborsOwned k in [1,4],
+ * with steepness ramping from 0 to MAX_STEEPNESS as cf goes from 0 to 15 and
+ * flat after that. At cf 0 every bucket weighs 1, and higher cf favours
+ * infill more. [tune], since no measurement pins the magnitude.
+ */
+const MAX_STEEPNESS = 3;
+
+/** cf < 0 strongly favours neighborsOwned 1. Not exactly 0 elsewhere, so growth is never stuck when bucket 1 empties first. */
+const NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [
+  1, 0.05, 0.05, 0.05,
+];
+
+/** Exported for direct unit testing. */
+export function bucketWeights(
+  clumpingFactor: number,
+): readonly [number, number, number, number] {
+  if (clumpingFactor < 0) return NEGATIVE_REGIME_WEIGHTS;
+  const steepness = (Math.min(clumpingFactor, 15) / 15) * MAX_STEEPNESS;
+  return [1, 1 + steepness, 1 + 2 * steepness, 1 + 3 * steepness];
+}
 
 /** RMSTEST_14: default tile budget is `dim`, NOT area-scaled, "about 120 on tiny maps" scales with side length. */
 function defaultTileBudget(dim: number): number {
@@ -205,9 +233,9 @@ function fourNeighbors(dim: number, tile: number): number[] {
 }
 
 /**
- * Frontier-weighted growth from one seed to `target` tiles, the same
- * bucket-by-neighborsOwned shape lands.ts's growth uses (`bucketWeights`,
- * imported rather than re-derived), at the fixed "moderate" regime Sec.6.2
+ * Frontier-weighted growth from one seed to `target` tiles, by the
+ * bucket-by-neighborsOwned shape of `bucketWeights` above (the rev 7 land
+ * table, kept here when land growth moved to the rev 8 port), at the fixed "moderate" regime Sec.6.2
  * specifies (no clumping_factor attribute exists on `create_elevation`, so
  * there is nothing per-command to read). No border/zone rejection: nothing
  * in Sec.6.2 or `create_elevation`'s attribute list gates growth candidates

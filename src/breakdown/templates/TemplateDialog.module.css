@@ -1,8 +1,11 @@
 /* Wider than the generic dialog.module.css .dialog (320px min): this one
    holds a two-column body plus a full-width code preview, and stays
-   readable at the app's normal window width instead of wrapping. */
+   readable at the app's normal window width instead of wrapping. The forest
+   templates put a terrain dropdown, a tree dropdown and a custom-id code box
+   on one row, which overflowed at 44rem, so the width is doubled. The
+   90vw cap keeps it inside smaller windows. */
 .wide {
-  width: 44rem;
+  width: 88rem;
   max-width: 90vw;
 }
 

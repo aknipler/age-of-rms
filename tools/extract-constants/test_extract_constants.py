@@ -45,6 +45,7 @@ from extract_constants import (
     habitat_note,
     merge_entry,
     merge_terrain_colors,
+    LEGACY_BLEND_COMPONENTS,
     merge_terrain_table,
     merge_terrain_units,
     object_constants,
@@ -426,6 +427,108 @@ class TestMergeTerrainColors(unittest.TestCase):
         entry = dict(self.GRASS)
         self.merge(entry)
         self.assertNotIn("previewColor", entry)
+
+class TestMergeTerrainColorsFillsTextureName(unittest.TestCase):
+    """A null deTextureFile is filled from the dat's Terrain.name_2 before the
+    colour is looked up. Ten terrains sat with no previewColor for this reason
+    (2026-10-14), GRASS_SNOW among them, which Comeer paints its player
+    islands with, so the preview drew them in the green fallback."""
+
+    GRASS_SNOW = {
+        "constId": 34,
+        "rmsConstant": "GRASS_SNOW",
+        "category": "terrain",
+        "deTextureFile": None,
+        "verified": False,
+        "notes": "transcribed from the community table.",
+    }
+
+    @staticmethod
+    def _dat(names):
+        class FakeDat:
+            def terrain(self, const_id):
+                name = names.get(const_id)
+                return None if name is None else ExtractedTerrain(texture_file=name)
+
+        return FakeDat()
+
+    def merge(self, entry, names=None, textures=None, run_date="2026-10-14"):
+        return merge_terrain_colors(
+            entry,
+            FakeColors({"o_sng": [159, 170, 155]} if textures is None else textures),
+            FakeColors({34: [0, 169, 0]}),
+            run_date,
+            self._dat({34: "o_sng"} if names is None else names),
+        )
+
+    # 44, DLC_MOORLAND, has no pair in LEGACY_BLEND_COMPONENTS, so its colour
+    # is its own file's mean and these tests see the name fill on its own.
+    MOORLAND = dict(GRASS_SNOW, constId=44, rmsConstant="DLC_MOORLAND")
+
+    def test_fills_a_null_name_from_the_dat_and_colours_it(self):
+        out = self.merge(self.MOORLAND, names={44: "o_gr4"}, textures={"o_gr4": [129, 119, 73]})
+        self.assertEqual(out["deTextureFile"], "o_gr4")
+        self.assertEqual(out["previewColor"], [129, 119, 73])
+        self.assertIn("deTextureFile 'o_gr4' is Terrain.name_2", out["notes"])
+        self.assertIn("previewColor [129, 119, 73] is the mean of the opaque texels of o_gr4.dds", out["notes"])
+        for key in ("constId", "rmsConstant", "category", "verified"):
+            self.assertEqual(out[key], self.MOORLAND[key])
+
+    def test_never_replaces_a_name_that_is_already_there(self):
+        entry = dict(self.MOORLAND, deTextureFile="g_grs")
+        out = self.merge(entry, names={44: "o_gr4"}, textures={"g_grs": [129, 146, 63], "o_gr4": [1, 2, 3]})
+        self.assertEqual(out["deTextureFile"], "g_grs")
+        self.assertEqual(out["previewColor"], [129, 146, 63])
+        self.assertNotIn("Terrain.name_2", out["notes"])
+
+    def test_a_rerun_does_not_stack_the_texture_sentence(self):
+        once = self.merge(self.GRASS_SNOW)
+        twice = self.merge(once, run_date="2026-10-15")
+        self.assertEqual(twice["notes"].count("Terrain.name_2"), 1)
+        self.assertEqual(twice["notes"].count("Colours: "), 1)
+
+    def test_fills_the_name_even_when_the_texture_file_is_missing(self):
+        # The name is a fact from the dat whether or not this install ships
+        # the file, and a later run with the file present then finds it.
+        out = self.merge(self.GRASS_SNOW, textures={})
+        self.assertEqual(out["deTextureFile"], "o_sng")
+        self.assertNotIn("previewColor", out)
+
+    def test_leaves_the_name_null_when_the_dat_has_none(self):
+        out = self.merge(self.GRASS_SNOW, names={})
+        self.assertIsNone(out["deTextureFile"])
+        self.assertNotIn("previewColor", out)
+
+    def test_without_a_dat_behaves_as_before(self):
+        out = merge_terrain_colors(
+            self.GRASS_SNOW,
+            FakeColors({"o_sng": [159, 170, 155]}),
+            FakeColors({}),
+            "2026-10-14",
+        )
+        self.assertEqual(out, self.GRASS_SNOW)
+
+    def test_a_listed_legacy_blend_averages_its_two_real_textures(self):
+        # o_sng.dds is placeholder art, so GRASS_SNOW takes snow and grass.
+        out = self.merge(
+            self.GRASS_SNOW,
+            textures={"o_sng": [1, 2, 3], "g_sno": [180, 205, 219], "g_grs": [129, 146, 63]},
+        )
+        self.assertEqual(out["previewColor"], [154, 176, 141])
+        self.assertIn("average of the mean opaque texels of g_sno.dds and g_grs.dds", out["notes"])
+        self.assertIn("o_sng.dds is placeholder art", out["notes"])
+
+    def test_a_blend_missing_a_component_keeps_its_earlier_colour(self):
+        entry = dict(self.GRASS_SNOW, deTextureFile="o_sng", previewColor=[9, 9, 9])
+        out = self.merge(entry, textures={"o_sng": [1, 2, 3], "g_sno": [180, 205, 219]})
+        self.assertEqual(out["previewColor"], [9, 9, 9])
+
+    def test_every_listed_blend_names_two_real_textures(self):
+        for const_id, pair in LEGACY_BLEND_COMPONENTS.items():
+            self.assertEqual(len(pair), 2, const_id)
+            for name in pair:
+                # A real texture is a g_ file. The o_ files are the placeholders.
+                self.assertTrue(name.startswith("g_"), (const_id, name))
 
 
 class TestParseJascPalette(unittest.TestCase):

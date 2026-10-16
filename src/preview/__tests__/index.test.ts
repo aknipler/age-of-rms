@@ -181,7 +181,10 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
     // pass ran before the path existed and only ever touched GRASS/WATER.
     const script =
       "<LAND_GENERATION>\nbase_terrain WATER\ncreate_player_lands {\nterrain_type GRASS\nland_percent 8\nbase_size 3\nborder_fuzziness 0\ncircle_radius 20 0\n}\n<CONNECTION_GENERATION>\ncreate_connect_all_players_land {\nreplace_terrain WATER DIRT\n}\n";
-    const result = run(script, 3, false, { playerCount: 2, mapSize: "Tiny" });
+    // Seed 1 rather than any seed. Under rev 9's player placement some seeds
+    // carve a causeway one tile wide, and the beach pass then turns all of it
+    // to beach, leaving no DIRT to sit beside any.
+    const result = run(script, 1, false, { playerCount: 2, mapSize: "Tiny" });
     const DIRT = constants.find((c) => c.rmsConstant === "DIRT")!.constId!;
     const { dim, terrain } = result.grid;
     let dirtBesideBeach = false;
@@ -325,31 +328,33 @@ describe("generatePreview: failure marks (Sec.15 item 5)", () => {
   // so this is the only file that can test them, which is also the argument
   // for deriving them here rather than inside lands.ts.
 
-  it("marks a land the border settings leave nowhere to place", () => {
-    // left 60% and right 60% overlap, so borderBounds yields an empty box and
-    // placeOrigin fails outright rather than exhausting its 100 attempts.
+  it("marks a land that runs out of places to put its origin", () => {
+    // The second land asks to sit 500 tiles from every other land, so every
+    // candidate conflicts with the first, and after 990 conflicts the game
+    // puts it at the map centre (Sec.6.1, rev 9). Borders that leave no room
+    // used to fail here too, but the game places such a land at the corner
+    // of its box, so they no longer do.
     const result = run(
-      "<LAND_GENERATION>\ncreate_land { land_percent 10 left_border 60 right_border 60 }\n",
+      "<LAND_GENERATION>\ncreate_land { land_percent 10 land_position 20 20 }\ncreate_land { land_percent 10 min_placement_distance 500 }\n",
     );
     expect(result.failureMarks).toHaveLength(1);
     expect(result.failureMarks[0].kind).toBe("landAtMapCenter");
   });
 
   it("a land covered before it could grow is a NOTE about our model, not a mark against the script", () => {
-    // Land 1 is stamped at the centre and land 2 stamps over it (later wins),
-    // so land 1 owns nothing before growth starts. clumping_factor 100 is what
-    // makes it stay that way: at that setting the detached-seed reservoir is
-    // empty (RMSTEST_38 / Sec.15 item 16), so there is no second candidate
-    // source to grow from and the land is genuinely absent.
+    // Land 1 is stamped at the centre and land 2, in another zone, stamps
+    // over it (later wins), so every one of land 1's seeds lies under land 2
+    // and is refused, and the land is lost. That is RMSTEST_53's buried land,
+    // which DE loses the same way (Sec.6.1, rev 9). In ONE zone the outcome
+    // differs, since the leftover fill then paints land 1's seeds that sit
+    // between two cells of the shared zone.
     //
-    // All 15 corpus instances of an empty land have exactly this cause, which
-    // is why it is not a canvas marker: growing only from owned tiles is our
-    // model's rule, and the engine's behaviour here is unmeasured (Sec.15
-    // item 30). Marking it would blame the author for our approximation.
+    // It is a note rather than a canvas marker because the script is doing
+    // what the game does, which is not the author's mistake to flag.
     const result = run(
       "<LAND_GENERATION>\n" +
         "create_land { land_position 50 50 base_size 0 number_of_tiles 20 clumping_factor 100 }\n" +
-        "create_land { land_position 50 50 base_size 8 number_of_tiles 20 clumping_factor 100 }\n",
+        "create_land { land_position 50 50 base_size 8 number_of_tiles 20 clumping_factor 100 zone 1 }\n",
     );
     expect(result.failureMarks).toHaveLength(0);
     const note = result.notes.find(

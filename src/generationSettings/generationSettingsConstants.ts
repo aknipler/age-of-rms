@@ -10,6 +10,14 @@ export const MAP_SIZE_KEY = "generationMapSize";
 export const TEAMS_KEY = "generationTeams";
 export const TEAM_PRESET_KEY = "generationTeamPreset";
 export const TEAM_STASH_KEY = "generationTeamStash";
+export const TEAM_POSITIONS_KEY = "generationTeamPositions";
+
+/**
+ * The lobby's Team Positions box. On by default, since 109 of the 111 DE maps
+ * the land stage was measured on, and the one real lobby checked, had it on
+ * (preview-design Sec.6.1, rev 9).
+ */
+export const DEFAULT_TEAM_POSITIONS = true;
 
 // AoE2:DE's standard map-size names, smallest to largest. Not consumed by
 // resourceTotals.ts in v1 (only playerCount is). Persisted now so the preview/consistency-checker work

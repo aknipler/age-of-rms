@@ -21,6 +21,7 @@ import type {
 } from "../../generationSettings/generationSettingsConstants";
 import type { CanonicalTeams } from "../../generationSettings/teamModel";
 import type { ResourceTotals } from "./resourceSummary";
+import type { DeStreamState } from "./deRandom";
 
 // ---------------------------------------------------------------------------
 // Inputs (Sec.10)
@@ -55,6 +56,14 @@ export interface PreviewSettings {
    * generator imports it rather than re-implementing it.
    */
   teams: readonly TeamNumber[];
+  /**
+   * The lobby's Team Positions setting, on unless set to false (Sec.6.1, rev
+   * 9). It changes how many draws player setup takes and whether teammates
+   * sit together, so the land stage cannot match the game without it. Every
+   * saved DE map in the land-stage fixture but two was made with it on, as was
+   * the one real lobby game checked.
+   */
+  teamPositions?: boolean;
 }
 
 /** Structured-cloneable: plain data only, no functions (Sec.10). */
@@ -89,12 +98,26 @@ export interface InstantiatedArg {
   value: InstantiatedValue;
   /** The originating node, kept for its span (click-through) and its ArgumentDef. */
   source: ArgNode;
+  /**
+   * The value before a numeric slot rounded it, present only when rounding
+   * changed it. The land stage reads its percentages from here, because the
+   * game keeps them as floats (`land_percent 2.5` grows 2.5% of the map,
+   * measured on a DE map, Sec.6.1 rev 9).
+   */
+  exact?: number;
 }
 
 export interface InstantiatedAttribute {
   name: string;
   args: InstantiatedArg[];
   span: Span;
+  /**
+   * The raw draw this attribute took while the script was read, for the two
+   * attributes that take one there, `set_zone_randomly` and `assign_to` in
+   * random mode (Sec.3, rev 9). The draw belongs to the reading order, so S0
+   * makes it, and S1 reduces it to a range once it knows the range.
+   */
+  draw?: number;
 }
 
 export interface InstantiatedCommand {
@@ -199,6 +222,15 @@ export interface InstantiatedScript {
   aliases: ReadonlyMap<string, string>;
   /** Canonicalised team assignment (Sec.3.1 / generationSettings/teamModel.ts), ready for S1/S6's zone and ring math. */
   teams: CanonicalTeams;
+  /** `PreviewSettings.teamPositions` with its default applied. */
+  teamPositions: boolean;
+  /**
+   * Where the game's random stream stands once the script has been read
+   * (Sec.8, rev 9). Every parse-time draw has been taken from it, and S1
+   * resumes it for player setup. A snapshot rather than a live stream, so
+   * running S1 twice on one instantiated script gives the same lands twice.
+   */
+  landStream: DeStreamState;
   notes: SimulationNote[];
 }
 
@@ -275,10 +307,21 @@ export interface BorderBounds {
 // S1 lands (Sec.6.1), one record per placed land, output of the origin-
 // placement phase. Growth (lands.ts's growLands) reads and extends this; it
 // does not replace it, so the fields here are what origin placement itself
-// can compute, plus the border/generate_mode state growth's own candidate
-// rejection needs and origin placement had already resolved once for its own
-// purposes.
+// can compute, plus every attribute growth reads, resolved once.
 // ---------------------------------------------------------------------------
+
+/**
+ * A land's border box as the game computes it (Sec.6.1, rev 9). `left` and
+ * `top` are `round(dim * p / 100)` and `right` and `bottom` are
+ * `round(dim - dim * p / 100)`, all in single precision. With no borders the
+ * box is `0..dim` on both axes, `dim` and not `dim - 1`.
+ */
+export interface BorderTiles {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
 
 export interface LandOrigin {
   commandSpan: Span;
@@ -288,7 +331,7 @@ export interface LandOrigin {
   zone: number;
   /** From the `land_id` attribute, if given, the name later commands (`place_on_specific_land_id`) target. Distinct from the grid's internal `landId` index. */
   declaredLandId?: number;
-  /** 1-based, present only for a player's own land (ring-placed). Assign_to-based assignment is not yet modelled (see lands.ts). */
+  /** 1-based, present for a player land, from `create_player_lands` or from a `create_land` assigned to a player. */
   player?: number;
   baseSize: number;
   circularBase: boolean;
@@ -301,22 +344,21 @@ export interface LandOrigin {
   clumpingFactor: number;
   borderFuzziness: number;
   otherZoneAvoidanceDistance: number;
-  minPlacementDistance: number;
-  /**
-   * The `behavior_version` in effect for this land (Sec.6.1: governs whether
-   * the origin square counts toward `declaredTargetTiles` or is additional to
-   * it). The additive/included adjustment itself is growth's job, not
-   * origin placement's, this field is carried through so growth doesn't
-   * have to re-derive it from the command.
-   */
+  /** `min_placement_distance` when the land declares it. Absent means the origin rule derives the distance from avoidance and base sizes instead. */
+  minPlacementDistance?: number;
+  /** `land_conformity`, default 0. Growth draws its conformity rolls whatever this is. */
+  landConformity: number;
+  /** The `behavior_version` in effect for this land, which decides how its tile counter starts (Sec.6.1, rev 9). */
   behaviorVersion: 0 | 1;
-  /** land_percent (already divided per player for a player land) or number_of_tiles, BEFORE the behaviorVersion additive/included adjustment. */
+  /** The size as the script declares it, for the outcome checks that skip deliberate zero-tile stamps. Not the growth target, see `target`. */
   declaredTargetTiles: number;
-  /** True when this origin came from Sec.6.1's K-attempts exhaustion fallback (map center, overlapping whatever is there) rather than a real placement. */
+  /** The tile count growth stops at, with the game's rounding and its per-player rules applied (Sec.6.1, rev 9). */
+  target: number;
+  /** True when this origin came from the origin rule's exhaustion fallback (map center, overlapping whatever is there) rather than a real placement. */
   fromOriginFallback: boolean;
-  /** This land's own border bounds (Sec.4), resolved once here rather than re-read from the command by growth, growth's border rejection and detached-seed reservoir sampling both need it. */
-  borderBounds: BorderBounds;
-  /** The `generate_mode` attribute's value (default 0); `1` disables the cross-shaped-region restriction for reservoir seeding, same as it does for origin placement. */
+  /** This land's own border box, resolved once for the origin rule and the growth border roll. */
+  borderTiles: BorderTiles;
+  /** The `generate_mode` attribute's value (default 0); `1` lets the origin rule use the box's corners. */
   generateMode: number;
 }
 

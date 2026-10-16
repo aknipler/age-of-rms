@@ -1,6 +1,7 @@
-/* CREATION_PLAN 4.4. Both strips are 14px wide: enough to be an easy pointer
-   target and to hold the chevron button, narrow enough that a collapsed panel
-   really does give the whole tab back to the editor.
+/* CREATION_PLAN 4.4. The separator is a 1px line with a 7px grab area; the
+   reopener is a 7px strip, wide enough to hold the chevron button, narrow
+   enough that a collapsed panel really does give the whole tab back to the
+   editor.
 
    These two elements are the flex items in the surrounding pane, and the
    HelpTip wrapper sits INSIDE them around the button (see SidePanelResizer's
@@ -9,17 +10,43 @@
    the splitter down to something un-grabbable. */
 
 .resizer {
-  flex: 0 0 7px;
+  /* A 1px line at rest (the hairline between the editor and the panel). The
+     bar and its collapse button appear on hover, drawn OVER the neighbours
+     instead of widening this flex item, so showing them never shifts the
+     layout. */
+  flex: 0 0 1px;
+  /* A flex item's min-width defaults to its content's width, which is the
+     7px collapse button here, so without this the line is 7px wide. */
+  min-width: 0;
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: col-resize;
-  background: var(--surface-raised);
-  border-right: 1px solid var(--border);
+  background: var(--border);
   /* Stops a touch drag scrolling the pane instead of moving the splitter.
      Pointer capture handles the mouse; this is the touch half. */
   touch-action: none;
   user-select: none;
+}
+
+/* The 7px grab area, and the bar itself once it is shown. A pseudo-element
+   counts as part of its owner for hover, focus and pointer events, so the
+   whole strip drags even though the flex item is 1px wide. */
+.resizer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: -3px;
+  background: transparent;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  transition:
+    background 100ms,
+    border-color 100ms;
 }
 
 /* :not(:has(...)) so hovering the collapse button highlights ONLY the
@@ -28,14 +55,40 @@
    ancestor from anywhere inside its box, button included, and the two
    highlights (same colour) were stacking, making the button's own hover
    state invisible against the bar's identical one. */
-.resizer:hover:not(:has(.collapseButton:hover)),
-.dragging {
+.resizer:hover:not(:has(.collapseButton:hover))::before,
+.resizer:focus-visible::before,
+.dragging::before {
   background: var(--accent-bg-subtle);
+  border-left-color: var(--border);
+  border-right-color: var(--border);
+}
+
+.resizer:hover:has(.collapseButton:hover)::before {
+  background: var(--surface-raised);
+  border-left-color: var(--border);
+  border-right-color: var(--border);
 }
 
 .resizer:focus-visible {
+  outline: none;
+}
+
+.resizer:focus-visible::before {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+/* The collapse button stays in the flow (so HelpTip's wrapper keeps a real
+   box to hover) but is transparent until the bar is shown. */
+.resizer .collapseButton {
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.resizer:hover .collapseButton,
+.resizer:focus-within .collapseButton,
+.dragging .collapseButton {
+  opacity: 1;
 }
 
 .reopener {

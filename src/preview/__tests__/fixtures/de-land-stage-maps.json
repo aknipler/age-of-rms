@@ -1,0 +1,1041 @@
+{
+  "source": "DE 101.103.54800.0, scenario editor, Tiny 120x120, read with AoE2ScenarioParser. Exported by RMS/de-disassembly/tests/export_golden.py. Letters: . base, D DESERT, S SNOW, F FOREST, R DIRT, W WATER. Terrain is run-length coded row by row from (0,0), x fastest.",
+  "scripts": [
+    "<PLAYER_SETUP>\ngrouped_by_team\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
+    "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 3 number_of_tiles 40 assign_to_player 1 land_position 25 25 }\ncreate_land { terrain_type FOREST base_size 3 number_of_tiles 40 assign_to_player 2 land_position 75 75 }\ncreate_land { terrain_type DIRT base_size 3 number_of_tiles 40 assign_to_player 3 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 3 number_of_tiles 40 assign_to_player 1 }\ncreate_land { terrain_type FOREST base_size 3 number_of_tiles 40 assign_to_player 2 }\ncreate_land { terrain_type DIRT base_size 3 number_of_tiles 40 assign_to_player 3 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 circle_radius 35 0 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 circle_radius 30 5 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\nbehavior_version 1\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 40 land_position 30 30 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 40 land_position 36 30 }\ncreate_land { terrain_type FOREST base_size 0 number_of_tiles 60 land_position 70 60 }\ncreate_land { terrain_type DIRT base_size 2 number_of_tiles 25 land_position 73 66 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 6 number_of_tiles 0 land_position 25 25 set_circular_base }\ncreate_land { terrain_type SNOW base_size 3 number_of_tiles 60 land_position 75 25 set_circular_base }\ncreate_land { terrain_type FOREST base_size 8 number_of_tiles 100 land_position 25 75 set_circular_base }\ncreate_land { terrain_type DIRT base_size 3 number_of_tiles 60 land_position 75 75 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 land_percent 4 }\ncreate_land { terrain_type SNOW base_size 2 land_percent 1 land_position 25 30 }\ncreate_land { terrain_type FOREST base_size 2 land_percent 2.5 land_position 75 30 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 land_percent 100 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 land_percent 60 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 land_percent 97 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 land_percent 99 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 40 land_position 30 30 other_zone_avoidance_distance 4 set_zone_randomly }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 40 land_position 34 30 other_zone_avoidance_distance 4 set_zone_randomly }\ncreate_land { terrain_type FOREST base_size 1 number_of_tiles 40 land_position 30 34 other_zone_avoidance_distance 4 set_zone_randomly }\ncreate_land { terrain_type DIRT base_size 1 number_of_tiles 40 land_position 34 34 other_zone_avoidance_distance 4 set_zone_randomly }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 20 20 land_conformity 20 }\ncreate_land { terrain_type SNOW base_size 2 number_of_tiles 60 land_position 50 20 land_conformity 50 }\ncreate_land { terrain_type FOREST base_size 2 number_of_tiles 60 land_position 80 20 land_conformity 80 }\ncreate_land { terrain_type DIRT base_size 2 number_of_tiles 60 land_position 35 70 land_conformity 99 }\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 65 70 land_conformity -50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 20 20 land_conformity 20 set_circular_base }\ncreate_land { terrain_type SNOW base_size 2 number_of_tiles 60 land_position 50 20 land_conformity 50 set_circular_base }\ncreate_land { terrain_type FOREST base_size 2 number_of_tiles 60 land_position 80 20 land_conformity 80 set_circular_base }\ncreate_land { terrain_type DIRT base_size 2 number_of_tiles 60 land_position 35 70 land_conformity 99 set_circular_base }\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 65 70 land_conformity -50 set_circular_base }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 9 land_position 20 25 land_conformity 100 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 land_position 55 25 land_conformity 100 }\ncreate_land { terrain_type FOREST base_size 1 number_of_tiles 70 land_position 20 70 land_conformity 100 set_circular_base }\ncreate_land { terrain_type DIRT base_size 1 number_of_tiles 150 land_position 60 70 land_conformity 100 set_circular_base }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 20 20 land_conformity 20 set_circular_base }\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 50 20 land_conformity 50 set_circular_base }\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 80 20 land_conformity 80 set_circular_base }\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 35 70 land_conformity 99 set_circular_base }\ncreate_land { terrain_type DESERT base_size 2 number_of_tiles 60 land_position 65 70 land_conformity -50 set_circular_base }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 20 20 land_conformity 20 set_circular_base }\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 50 20 land_conformity 50 set_circular_base }\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 80 20 land_conformity 80 set_circular_base }\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 35 70 land_conformity 99 set_circular_base }\ncreate_land { terrain_type WATER base_size 2 number_of_tiles 60 land_position 65 70 land_conformity -50 set_circular_base }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 3 number_of_tiles 0 other_zone_avoidance_distance 10 }\ncreate_land { terrain_type SNOW base_size 3 number_of_tiles 0 other_zone_avoidance_distance 10 }\ncreate_land { terrain_type FOREST base_size 3 number_of_tiles 0 other_zone_avoidance_distance 10 generate_mode 1 }\ncreate_land { terrain_type DIRT base_size 3 number_of_tiles 0 min_placement_distance 40 }\ncreate_land { terrain_type WATER base_size 3 number_of_tiles 0 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 1000 land_position 50 50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 14400 land_position 50 50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 2000 land_position 50 50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 4000 land_position 50 50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 7200 land_position 50 50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 4000 land_position 88 12 }\n",
+    "/* Growth probe. One one-tile land (base_size 0) in the middle of the map, wanting 25 tiles. */\n<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 0 number_of_tiles 25 land_position 50 50 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 40 land_position 30 30 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 40 land_position 36 30 }\ncreate_land { terrain_type FOREST base_size 0 number_of_tiles 60 land_position 70 60 }\ncreate_land { terrain_type DIRT base_size 2 number_of_tiles 25 land_position 73 66 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 0 number_of_tiles 80 land_position 50 50 left_border 40 right_border 40 top_border 40 bottom_border 40 }\ncreate_land { terrain_type FOREST base_size 1 number_of_tiles 80 land_position 20 20 left_border 15 right_border 70 top_border 15 bottom_border 70 border_fuzziness 5 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 0 number_of_tiles 50 land_position 25 25 clumping_factor 0 }\ncreate_land { terrain_type SNOW base_size 0 number_of_tiles 50 land_position 75 25 clumping_factor 25 }\ncreate_land { terrain_type FOREST base_size 0 number_of_tiles 50 land_position 25 75 clumping_factor 2 }\ncreate_land { terrain_type DIRT base_size 0 number_of_tiles 50 land_position 75 75 clumping_factor 12 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type FOREST base_size 1 number_of_tiles 50 land_position 70 70 zone 1 other_zone_avoidance_distance 4 }\ncreate_land { terrain_type DIRT base_size 1 number_of_tiles 50 land_position 74 70 zone 2 other_zone_avoidance_distance 4 }\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 50 land_position 25 30 zone 3 other_zone_avoidance_distance 0 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 50 land_position 29 30 zone 4 other_zone_avoidance_distance 0 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
+    "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n<OBJECTS_GENERATION>\ncreate_object VILLAGER {\nnumber_of_objects 1\nset_place_for_every_player\nmin_distance_to_players 3\nmax_distance_to_players 3\n}\n",
+    "#const C1 rnd(10,90)\n#const C2 rnd(10,90)\n<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 1 number_of_tiles 0 land_position C1 C1 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 0 land_position rnd(10,90) rnd(10,90) }\ncreate_land { terrain_type FOREST base_size 1 number_of_tiles 0 land_position C2 rnd(10,90) }\nstart_random\npercent_chance 50 #const U1 rnd(1,3)\npercent_chance 50 #const U2 rnd(1,3)\nend_random\ncreate_land { terrain_type DIRT base_size 1 number_of_tiles 0 land_position rnd(10,90) rnd(10,90) }\ncreate_land { terrain_type WATER base_size 1 number_of_tiles 0 }\n",
+    "/* range probe for seed 1000: weights sit on the roll boundary */\nstart_random percent_chance 4 #define A0 percent_chance 96 #define B0 end_random\nstart_random percent_chance 22 #define A1 percent_chance 78 #define B1 end_random\nstart_random percent_chance 74 #define A2 percent_chance 26 #define B2 end_random\nstart_random percent_chance 66 #define A3 percent_chance 34 #define B3 end_random\nstart_random percent_chance 60 #define A4 percent_chance 40 #define B4 end_random\nstart_random percent_chance 77 #define A5 percent_chance 23 #define B5 end_random\nstart_random percent_chance 95 #define A6 percent_chance 5 #define B6 end_random\nstart_random percent_chance 11 #define A7 percent_chance 89 #define B7 end_random\nstart_random percent_chance 70 #define A8 percent_chance 30 #define B8 end_random\nstart_random percent_chance 21 #define A9 percent_chance 79 #define B9 end_random\nstart_random percent_chance 45 #define A10 percent_chance 55 #define B10 end_random\nstart_random percent_chance 44 #define A11 percent_chance 56 #define B11 end_random\nstart_random percent_chance 70 #define A12 percent_chance 30 #define B12 end_random\nstart_random percent_chance 85 #define A13 percent_chance 15 #define B13 end_random\nstart_random percent_chance 97 #define A14 percent_chance 3 #define B14 end_random\nstart_random percent_chance 50 #define A15 percent_chance 50 #define B15 end_random\nstart_random percent_chance 5 #define A16 percent_chance 95 #define B16 end_random\nstart_random percent_chance 35 #define A17 percent_chance 65 #define B17 end_random\nstart_random percent_chance 1 #define A18 percent_chance 99 #define B18 end_random\nstart_random percent_chance 10 #define A19 percent_chance 90 #define B19 end_random\nstart_random percent_chance 89 #define A20 percent_chance 11 #define B20 end_random\nstart_random percent_chance 59 #define A21 percent_chance 41 #define B21 end_random\nstart_random percent_chance 84 #define A22 percent_chance 16 #define B22 end_random\nstart_random percent_chance 98 #define A23 percent_chance 2 #define B23 end_random\nstart_random percent_chance 5 #define A24 percent_chance 95 #define B24 end_random\nstart_random percent_chance 34 #define A25 percent_chance 66 #define B25 end_random\nstart_random percent_chance 92 #define A26 percent_chance 8 #define B26 end_random\nstart_random percent_chance 49 #define A27 percent_chance 51 #define B27 end_random\nstart_random percent_chance 45 #define A28 percent_chance 55 #define B28 end_random\nstart_random percent_chance 84 #define A29 percent_chance 16 #define B29 end_random\nstart_random percent_chance 58 #define A30 percent_chance 42 #define B30 end_random\nstart_random percent_chance 39 #define A31 percent_chance 61 #define B31 end_random\nstart_random percent_chance 57 #define A32 percent_chance 43 #define B32 end_random\nstart_random percent_chance 15 #define A33 percent_chance 85 #define B33 end_random\nstart_random percent_chance 69 #define A34 percent_chance 31 #define B34 end_random\nstart_random percent_chance 8 #define A35 percent_chance 92 #define B35 end_random\nstart_random percent_chance 72 #define A36 percent_chance 28 #define B36 end_random\nstart_random percent_chance 67 #define A37 percent_chance 33 #define B37 end_random\nstart_random percent_chance 85 #define A38 percent_chance 15 #define B38 end_random\nstart_random percent_chance 33 #define A39 percent_chance 67 #define B39 end_random\n<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { if A0 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 12 }\ncreate_land { if A1 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 12 }\ncreate_land { if A2 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 12 }\ncreate_land { if A3 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 12 }\ncreate_land { if A4 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 12 }\ncreate_land { if A5 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 12 }\ncreate_land { if A6 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 12 }\ncreate_land { if A7 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 12 }\ncreate_land { if A8 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 28 }\ncreate_land { if A9 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 28 }\ncreate_land { if A10 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 28 }\ncreate_land { if A11 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 28 }\ncreate_land { if A12 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 28 }\ncreate_land { if A13 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 28 }\ncreate_land { if A14 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 28 }\ncreate_land { if A15 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 28 }\ncreate_land { if A16 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 44 }\ncreate_land { if A17 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 44 }\ncreate_land { if A18 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 44 }\ncreate_land { if A19 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 44 }\ncreate_land { if A20 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 44 }\ncreate_land { if A21 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 44 }\ncreate_land { if A22 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 44 }\ncreate_land { if A23 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 44 }\ncreate_land { if A24 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 60 }\ncreate_land { if A25 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 60 }\ncreate_land { if A26 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 60 }\ncreate_land { if A27 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 60 }\ncreate_land { if A28 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 60 }\ncreate_land { if A29 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 60 }\ncreate_land { if A30 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 60 }\ncreate_land { if A31 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 60 }\ncreate_land { if A32 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 76 }\ncreate_land { if A33 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 76 }\ncreate_land { if A34 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 76 }\ncreate_land { if A35 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 76 }\ncreate_land { if A36 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 76 }\ncreate_land { if A37 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 76 }\ncreate_land { if A38 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 76 }\ncreate_land { if A39 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 76 }\n",
+    "/* range probe for seed 1001: weights sit on the roll boundary */\nstart_random percent_chance 75 #define A0 percent_chance 25 #define B0 end_random\nstart_random percent_chance 89 #define A1 percent_chance 11 #define B1 end_random\nstart_random percent_chance 90 #define A2 percent_chance 10 #define B2 end_random\nstart_random percent_chance 2 #define A3 percent_chance 98 #define B3 end_random\nstart_random percent_chance 51 #define A4 percent_chance 49 #define B4 end_random\nstart_random percent_chance 26 #define A5 percent_chance 74 #define B5 end_random\nstart_random percent_chance 66 #define A6 percent_chance 34 #define B6 end_random\nstart_random percent_chance 62 #define A7 percent_chance 38 #define B7 end_random\nstart_random percent_chance 63 #define A8 percent_chance 37 #define B8 end_random\nstart_random percent_chance 40 #define A9 percent_chance 60 #define B9 end_random\nstart_random percent_chance 66 #define A10 percent_chance 34 #define B10 end_random\nstart_random percent_chance 80 #define A11 percent_chance 20 #define B11 end_random\nstart_random percent_chance 68 #define A12 percent_chance 32 #define B12 end_random\nstart_random percent_chance 94 #define A13 percent_chance 6 #define B13 end_random\nstart_random percent_chance 32 #define A14 percent_chance 68 #define B14 end_random\nstart_random percent_chance 41 #define A15 percent_chance 59 #define B15 end_random\nstart_random percent_chance 95 #define A16 percent_chance 5 #define B16 end_random\nstart_random percent_chance 56 #define A17 percent_chance 44 #define B17 end_random\nstart_random percent_chance 50 #define A18 percent_chance 50 #define B18 end_random\nstart_random percent_chance 78 #define A19 percent_chance 22 #define B19 end_random\nstart_random percent_chance 8 #define A20 percent_chance 92 #define B20 end_random\nstart_random percent_chance 54 #define A21 percent_chance 46 #define B21 end_random\nstart_random percent_chance 70 #define A22 percent_chance 30 #define B22 end_random\nstart_random percent_chance 94 #define A23 percent_chance 6 #define B23 end_random\nstart_random percent_chance 80 #define A24 percent_chance 20 #define B24 end_random\nstart_random percent_chance 38 #define A25 percent_chance 62 #define B25 end_random\nstart_random percent_chance 16 #define A26 percent_chance 84 #define B26 end_random\nstart_random percent_chance 45 #define A27 percent_chance 55 #define B27 end_random\nstart_random percent_chance 85 #define A28 percent_chance 15 #define B28 end_random\nstart_random percent_chance 72 #define A29 percent_chance 28 #define B29 end_random\nstart_random percent_chance 45 #define A30 percent_chance 55 #define B30 end_random\nstart_random percent_chance 10 #define A31 percent_chance 90 #define B31 end_random\nstart_random percent_chance 91 #define A32 percent_chance 9 #define B32 end_random\nstart_random percent_chance 31 #define A33 percent_chance 69 #define B33 end_random\nstart_random percent_chance 24 #define A34 percent_chance 76 #define B34 end_random\nstart_random percent_chance 95 #define A35 percent_chance 5 #define B35 end_random\nstart_random percent_chance 17 #define A36 percent_chance 83 #define B36 end_random\nstart_random percent_chance 94 #define A37 percent_chance 6 #define B37 end_random\nstart_random percent_chance 29 #define A38 percent_chance 71 #define B38 end_random\nstart_random percent_chance 43 #define A39 percent_chance 57 #define B39 end_random\n<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { if A0 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 12 }\ncreate_land { if A1 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 12 }\ncreate_land { if A2 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 12 }\ncreate_land { if A3 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 12 }\ncreate_land { if A4 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 12 }\ncreate_land { if A5 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 12 }\ncreate_land { if A6 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 12 }\ncreate_land { if A7 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 12 }\ncreate_land { if A8 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 28 }\ncreate_land { if A9 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 28 }\ncreate_land { if A10 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 28 }\ncreate_land { if A11 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 28 }\ncreate_land { if A12 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 28 }\ncreate_land { if A13 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 28 }\ncreate_land { if A14 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 28 }\ncreate_land { if A15 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 28 }\ncreate_land { if A16 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 44 }\ncreate_land { if A17 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 44 }\ncreate_land { if A18 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 44 }\ncreate_land { if A19 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 44 }\ncreate_land { if A20 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 44 }\ncreate_land { if A21 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 44 }\ncreate_land { if A22 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 44 }\ncreate_land { if A23 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 44 }\ncreate_land { if A24 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 60 }\ncreate_land { if A25 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 60 }\ncreate_land { if A26 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 60 }\ncreate_land { if A27 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 60 }\ncreate_land { if A28 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 60 }\ncreate_land { if A29 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 60 }\ncreate_land { if A30 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 60 }\ncreate_land { if A31 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 60 }\ncreate_land { if A32 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 76 }\ncreate_land { if A33 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 76 }\ncreate_land { if A34 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 76 }\ncreate_land { if A35 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 76 }\ncreate_land { if A36 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 76 }\ncreate_land { if A37 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 76 }\ncreate_land { if A38 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 76 }\ncreate_land { if A39 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 76 }\n"
+  ],
+  "maps": [
+    {
+      "name": "a3-grouped_1000_n4",
+      "script": 0,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "539.3S117.3S114.6S114.7S113.7S113.7S116.3S118.2S118.2S975.8D111.9D111.9D111.11D109.11D109.11D109.11D109.10D111.9D112.2D2.2D292.5D115.5D114.7D112.10D110.10D108.12D108.12D108.12D110.10D110.10D111.8D116.3D4037.7D112.9D111.9D111.9D111.10D110.10D110.10D110.9D112.7D116.4D116.4D2450.2D117.7D111.10D109.11D109.11D111.9D111.10D110.10D110.10D111.7D114.6D318."
+    },
+    {
+      "name": "a3-grouped_1000_n4t1122",
+      "script": 0,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "539.3S117.3S114.6S114.7S113.7S113.7S116.3S118.2S118.2S1758.2D117.9D110.10D110.10D110.10D110.9D111.9D111.10D110.10D111.7D114.6D235.3D1.4D111.9D111.9D110.11D109.11D110.10D110.10D110.9D111.8D112.4D2835.7D112.9D111.9D111.9D111.10D110.10D111.9D111.8D112.7D116.4D121.5D114.8D110.10D110.10D108.12D108.12D108.12D110.10D110.10D111.8D116.3D3368."
+    },
+    {
+      "name": "a3-grouped_1000_n8t11223344",
+      "script": 0,
+      "seed": 1000,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "2230.9D111.12D108.20D100.21D99.12D1.8D100.20D100.22D98.9D1.12D100.3D5.11D43.2D65.9D40.7D65.3D1.3D40.9D65.2D1.3D40.9D68.3D40.9D109.13D107.13D108.12D109.11D110.7D225.2D116.7D112.10D110.10D110.10D110.10D110.10D110.10D110.9D111.8D115.5D2842.7D113.7D113.8D111.10D110.10D110.10D110.10D110.10D111.8D113.7D121.5D111.10D110.10D110.10D110.10D111.9D112.8D112.8D112.8D112.8D113.5D570.2S76.5D34.5S74.7D34.5S73.9D33.5S73.9D31.7S73.9D31.7S73.9D32.6S73.10D32.3S75.10D2.7D101.9D2.9D101.7D3.9D111.9D111.10D110.10D110.9D111.9D112.7D113.6D114.4D116.3D557."
+    },
+    {
+      "name": "a3-grouped_1001_n4t1122",
+      "script": 0,
+      "seed": 1001,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1627.2D113.7D111.10D110.10D3.7D100.10D2.8D100.10D2.8D100.10D2.9D99.10D2.9D99.10D2.9D101.7D3.9D111.9D112.7D114.6D3944.6S114.6S114.7S113.7S113.7S114.3S118.2S3690.8D112.10D110.10D109.12D108.12D109.10D110.10D110.10D110.10D726.5D110.10D110.10D110.10D110.9D111.9D111.8D112.8D112.9D112.8D112.9D61."
+    },
+    {
+      "name": "a4-direct_1000_n2",
+      "script": 1,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "779.6S113.7S113.7S113.7S113.4S116.2S237.2S118.2S1288.2D118.7D111.10D110.10D111.9D111.9D111.9D111.9D111.9D112.7D117.2D118.2D5936.2F116.7F112.9F111.10F110.10F110.10F110.10F110.9F111.9F111.8F112.8F116.4F2786."
+    },
+    {
+      "name": "a4-direct_1000_n3",
+      "script": 1,
+      "seed": 1000,
+      "players": 3,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3029.3D115.8D111.9D111.9D111.9D111.9D111.9D111.9D111.9D112.7D113.5D575.3S115.7S113.8S112.8S112.7S118.2S118.2S1298.7R112.9R111.9R111.10R109.11R109.11R110.10R110.10R110.9R114.4R2369.9F111.9F110.11F109.11F110.10F111.9F111.9F111.9F111.9F112.7F3026."
+    },
+    {
+      "name": "a4-direct_1001_n3",
+      "script": 1,
+      "seed": 1001,
+      "players": 3,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3030.3D114.7D112.9D111.9D111.9D110.10D110.11D110.10D110.9D112.7D115.4D1084.2R116.8R112.8R112.8R110.10R110.11R109.11R109.10R111.9R111.9R112.7R1149.2S118.6S114.6S115.5S113.7S113.6S114.6S118.2S1891.7F112.9F111.9F111.9F109.11F109.11F109.11F111.9F112.8F113.5F118.2F2787."
+    },
+    {
+      "name": "a5-assign_1000_n2",
+      "script": 2,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "779.6S113.7S113.7S113.7S113.4S116.2S237.2S118.2S569.2F116.7F112.9F111.10F110.10F110.10F110.10F110.9F111.9F111.8F112.8F116.4F5236.2D118.7D111.10D110.10D111.9D111.9D111.9D111.9D111.9D112.7D117.2D118.2D4205."
+    },
+    {
+      "name": "a5-assign_1000_n4",
+      "script": 2,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "40.5S115.5S115.5S115.5S115.6S113.7S113.6S117.2S144.3F116.5F115.8F112.8F110.12F108.12F108.10F110.10F110.10F111.9F112.7F6049.2R116.4R116.8R111.9R111.9R111.10R110.10R110.10R101.7D2.10R100.9D1.10R100.9D2.7R102.9D4.3R104.9D4.2R105.9D111.9D111.9D111.8D112.8D4082."
+    },
+    {
+      "name": "a5-assign_1001_n4",
+      "script": 2,
+      "seed": 1001,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "391.3D117.3D115.7D112.9D111.9D111.9D111.9D111.9D111.9D111.10D111.9D113.3D5070.3S117.4S116.5S30.7F78.5S29.9F77.5S29.9F77.5S29.9F77.5S29.9F77.4S30.9F111.10F109.11F109.10F113.6F116.2F4733.4R114.6R113.7R112.9R111.9R109.11R109.11R110.10R111.9R111.9R112.7R199."
+    },
+    {
+      "name": "a6-circle_1000_n4",
+      "script": 3,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "539.3S117.3S114.6S114.7S113.7S113.7S116.3S118.2S118.2S108.2D117.7D111.10D109.11D109.11D111.9D111.10D110.10D110.10D111.7D114.6D3043.5D115.5D114.7D112.10D110.10D108.12D108.12D108.12D110.10D110.10D111.8D116.3D871.7D112.9D111.9D111.9D111.10D110.10D110.10D110.9D112.7D116.4D116.4D2438.8D111.9D111.9D111.11D109.11D109.11D109.11D109.10D111.9D112.2D2.2D1612."
+    },
+    {
+      "name": "a6-circle_1001_n4",
+      "script": 3,
+      "seed": 1001,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1846.3D113.7D112.9D111.9D111.9D110.12D108.12D109.11D109.11D110.10D117.3D1602.8D112.9D111.9D111.9D111.9D110.10D110.10D110.10D112.7D114.3D3762.7D112.9D110.10D110.10D110.10D110.10D110.10D110.10D112.7D113.7D762.5D115.7D110.11D109.12D108.12D108.12D109.11D110.9D111.9D112.7D813.2S115.6S114.6S113.7S113.7S114.6S114.6S115.2S310."
+    },
+    {
+      "name": "a6b-circlev_1000_n4",
+      "script": 4,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2686.4D114.8D112.9D111.9D111.10D109.11D109.11D110.9D111.9D112.7D115.4D116.4D1362.4D115.6D112.8D111.9D111.9D111.9D111.10D110.10D110.9D110.10D110.9D116.2D407.2D118.7D112.9D111.9D111.10D110.11D109.11D109.9D111.9D112.7D2673.2D118.2D117.3D117.5D115.8D111.9D111.9D110.10D110.10D110.10D111.9D111.9D112.7D454.3S115.5S115.6S114.8S113.7S114.6S114.5S913."
+    },
+    {
+      "name": "a6b-circlev_1001_n4",
+      "script": 4,
+      "seed": 1001,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2086.8D112.8D112.8D111.10D110.10D110.10D110.9D111.9D111.8D115.4D116.4D2077.2D117.7D112.9D111.9D111.9D111.9D111.10D110.10D110.9D112.7D115.5D2212.2D118.5D114.7D112.9D111.9D110.10D108.12D108.11D109.11D112.8D113.7D760.2D117.3D115.5D113.9D110.10D110.10D109.11D109.10D110.10D110.10D98.2S11.9D98.3S11.7D97.6S113.7S113.8S112.8S112.2S1747."
+    },
+    {
+      "name": "a7-behaviour_1000_n2",
+      "script": 5,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3879.4S116.6S109.5D6S107.9D5S106.7D2.5S106.7D2.5S106.6D3.5S106.4D5.5S106.4D7.3S3275.3F115.5F115.5F115.5F115.6F114.7F114.7F113.7F113.7F114.5F117.2F2.4R115.5R115.5R115.5R115.5R4589."
+    },
+    {
+      "name": "a7-behaviour_1001_n2",
+      "script": 5,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3762.4S116.4S114.1D5S109.6D5S108.7D5S108.7D5S106.9D5S106.6D4.4S107.5D5.3S108.3D3764.4F113.8F112.8F112.8F113.7F113.7F115.5F5R111.4F5R112.3F5R112.3F5R114.1F5R4589."
+    },
+    {
+      "name": "b1-circular_1000_n2",
+      "script": 6,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3027.7D57.2S53.9D54.5S51.11D53.6S50.11D52.9S48.11D50.11S48.11D50.10S49.11D50.10S49.11D52.8S49.11D53.8S49.9D54.8S50.7D55.4S2.2S114.2S2.2S5210.2F118.4F116.4F116.7F111.11F55.2R51.13F54.4R49.13F48.10R45.18F47.10R45.18F48.9R45.20F45.10R45.21F44.10R45.22F43.12R42.23F43.13R41.22F44.13R43.20F44.11R45.19F45.10R46.18F48.3R54.10F110.8F112.8F114.3F2371."
+    },
+    {
+      "name": "b1-circular_1001_n2",
+      "script": 6,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3027.7D112.9D52.7S51.11D50.9S50.11D50.11S48.11D50.14S45.11D50.14S45.11D52.11S46.11D52.11S46.11D53.3S2.2S50.9D54.3S55.7D55.2S5696.7F111.11F108.13F50.3R4.4R46.13F49.6R1.5R45.15F48.12R42.2F1.15F46.13R43.2F1.17F44.13R43.20F44.13R42.21F44.12R43.21F44.11R44.21F44.11R46.19F47.8R46.19F50.2R49.17F103.14F106.14F108.13F109.5F2.4F110.2F6.2F2244."
+    },
+    {
+      "name": "b2-percent_1000_n2",
+      "script": 7,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1478.7D96.2D2.4D9.8D95.8D10.7D95.8D6.12D95.9D3.13D95.9D1.15D94.25D95.25D96.22D98.22D98.22D98.21D99.18D42.2F6.2F51.17D32.2F8.10F51.17D29.11F2.10F51.15D30.24F51.12D33.24F51.12D33.26F49.6D4.2D33.20F2.4F49.3S3D3S35.21F2.3F47.7S2D5S33.13F2.11F43.19S32.13F2.11F43.19S34.25F42.18S35.25F42.18S35.28F40.17S37.26F40.6S3.9S36.27F39.5S4.9S41.22F46.10S42.2F11.10F45.10S55.10F50.6S54.3F57.6S115.3S2704.2D116.4D17.2D97.8D3.2D8.3D96.8D3.2D3.2D2.5D95.8D2.15D95.25D95.25D99.21D101.19D101.19D101.19D101.19D101.19D102.18D103.17D106.14D109.11D111.9D112.8D112.8D113.6D116.2D3843."
+    },
+    {
+      "name": "b2-percent_1001_n2",
+      "script": 7,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "209.2D114.6D114.6D114.6D111.11D8.3D95.14D3.2D3.3D93.22D2.3D92.28D90.30D89.30D88.30D90.30D90.28D92.28D92.14D2.5D1.4D94.8D4.2D5.2D3.2D94.8D11.2D99.8D112.5D431.2S116.4S116.5S115.6S115.6S53.4F2.2F54.8S49.13F51.7S49.13F52.6S48.14F46.2S4.6S48.13F47.3S2.7S48.12F47.13S48.11F48.12S46.2F1.11F48.12S41.19F50.12S39.19F47.15S38.21F46.15S38.22F47.13S38.22F48.7S43.22F48.7S43.18F53.5S44.18F54.3S45.19F101.19F103.17F110.12F108.12F108.11F109.11F110.10F110.3F1.6F110.3F1.2F2.2F114.2F118.2F3415.3D106.2D8.6D104.2D6.8D108.12D107.13D107.13D107.13D105.15D105.15D105.15D105.15D106.14D3.2D102.14D2.2D102.20D100.20D101.18D102.17D103.17D104.17D104.9D3.5D103.7D5.5D105.4D6.4D117.3D117.2D1645."
+    },
+    {
+      "name": "b2b-percent100_1000_n2",
+      "script": 8,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "221D1.14178D"
+    },
+    {
+      "name": "b2c-percent60_1000_n2",
+      "script": 9,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2.6D2.2D6.12D8.16D9.11D1.7D42.9D3.15D7.21D3.18D44.32D2.22D2.18D45.75D45.75D44.73D45.73D47.49D1.23D5.2D39.50D1.23D2.6D37.83D37.83D37.80D1.2D37.83D37.83D37.83D37.86D34.88D32.88D32.88D32.88D32.86D34.82D38.82D38.83D37.83D37.83D37.84D36.86D34.86D34.86D34.86D34.80D40.80D11.4D25.77D1.2D10.7D23.81D9.7D23.73D1.8D5.11D3.3D16.73D1.8D5.17D16.73D2.8D2.19D16.74D1.28D17.103D17.103D17.102D7.4D7.102D6.6D6.103D4.7D4.72D1.32D4.7D4.65D2.3D3.111D4.2D2.85D4.23D4.2D1.51D1.33D5.24D6.51D1.2D8.22D6.24D9.48D1.2D8.20D9.23D11.46D11.20D10.23D10.46D11.20D10.25D8.46D10.13D3.4D10.26D6.48D10.13D3.4D7.29D3.51D10.8D2.3D3.4D7.30D2.51D11.5D4.3D16.28D2.51D11.5D25.26D1.52D11.4D26.79D12.2D29.77D47.72D48.17D2.53D48.16D3.53D48.72D48.72D48.73D47.73D47.13D1.59D48.12D1.59D48.72D49.71D49.71D51.68D52.7D1.57D55.65D57.67D51.69D51.69D51.68D52.68D51.69D50.70D50.71D48.72D48.72D48.72D49.70D53.64D56.64D50.2D4.64D46.6D4.63D47.7D3.62D48.71D49.71D50.73D47.73D47.73D49.74D48.72D49.2D4.65D58.62D59.62D58.62D59.61D59.14D4.4D2.37D62.10D5.2D5.36D62.10D5.2D8.32D63.6D2.2D15.31D65.3D22.30D90.30D90.29D91.29D92.24D2.2D92.21D95.25D95.25D95.25D96.21D99.5D1.14D100.3D3.14D14."
+    },
+    {
+      "name": "b2c-percent60_1000_n4",
+      "script": 9,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "16.5D63.14D4.7D26.5D60.2D2.17D1.7D14.2D4.3D2.6D60.30D11.19D58.33D9.20D58.34D3.4D1.17D61.34D3.22D61.34D2.22D8.2D54.56D4.9D51.57D2.11D50.70D50.69D51.69D54.64D56.61D59.61D59.61D58.62D2.3D53.67D53.66D56.64D57.59D62.58D63.29D3.25D64.28D4.24D64.31D1.24D64.31D1.24D67.28D1.24D8.3D56.26D3.26D5.4D58.24D3.29D2.5D2.5D33.3D13.24D4.36D2.8D23.4D2.4D13.23D5.36D3.7D23.12D11.23D5.36D4.7D20.14D11.23D5.35D5.7D20.14D9.27D3.32D9.3D1.2D20.14D9.29D2.30D10.6D19.14D6.34D1.30D8.9D18.14D4.36D1.30D8.9D19.14D3.65D10.9D19.85D2.2D3.9D19.85D2.2D2.10D19.44D1.44D2.12D17.53D1.49D19.51D1.49D19.100D20.100D1.2D17.100D1.3D17.92D1.4D3.3D16.97D4.2D17.48D3.45D2.7D5.5D5.2D5.10D2.29D3.44D2.21D2.2D6.5D6.29D3.40D5.26D19.27D3.39D6.26D19.27D3.13D3.23D8.24D19.26D4.13D3.18D14.22D20.26D4.13D1.20D14.22D20.26D4.13D1.21D11.30D16.24D4.37D9.30D15.25D4.37D7.32D15.25D4.36D3.3D2.32D12.28D4.36D2.39D10.12D3.14D4.36D2.39D10.11D7.10D5.36D2.39D10.8D9.10D6.36D3.38D9.9D9.7D9.36D4.37D5.12D10.7D9.12D1.22D4.27D2.11D2.13D12.5D9.12D3.20D3.28D2.25D14.6D7.2D1.9D1.7D2.70D16.5D7.2D1.8D2.7D2.24D1.47D14.5D10.6D3.8D2.6D1.12D1.4D8.41D13.6D7.45D9.40D12.7D7.47D7.40D10.12D5.46D6.45D6.12D5.47D5.45D4.14D5.47D1.49D4.10D7.99D4.10D7.98D5.11D6.98D5.11D6.98D2.12D8.74D2.35D9.74D2.35D9.74D2.35D9.47D1.26D2.35D9.75D1.34D10.1D1.73D1.34D12.3D1.44D1.60D11.3D2.51D1.52D16.104D16.58D3.43D16.51D10.39D20.27D1.23D11.38D16.55D11.35D19.55D11.35D19.52D14.33D21.52D15.32D21.52D15.8D2.14D4.4D18.46D24.4D2.2D3.13D26.46D35.13D26.49D32.3D3.7D26.49D30.4D4.7D26.49D30.4D37.46D35.2D37.46D74.46D74.43D77.43D77.44D76.4D1.39D76.45D75.45D75.46D75.30D2.13D75.30D3.11D75.12D2.5D3.3D2.3D4.8D78.11D11.3D9.8D78.9D25.6D80.9D27.2D82.9D111.9D111.3D2.4D111."
+    },
+    {
+      "name": "b2c-percent97_1000_n2",
+      "script": 10,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "95D3.6D3.4D9.95D3.6D2.5D9.111D9.112D8.112D8.112D8.112D8.114D6.114D6.96D1.21D2.479D1.118D2.1319D1.73D1.45D1.117D3.117D3.117D3.61D1.55D3.61D1.53D5.115D5.114D6.112D8.112D8.113D7.119D1.119D1.119D1.719D1.119D1.61D1.57D1.119D1.118D2.118D2.117D3.51D1.64D4.116D4.98D3.15D4.98D3.16D3.118D2.110D3.6D1.110D4.115D6.112D8.112D12.108D13.109D2.2D7.113D7.113D7.44D1.73D2.299D1.419D1.116D4.116D4.479D1.119D1.119D1.119D1.119D1.119D1.118D2.118D2.117D3.117D3.117D3.43D1.73D3.43D2.71D4.43D2.71D4.114D6.114D6.114D6.114D6.114D6.114D6.114D6.114D6.108D12.107D13.107D13.109D11.109D11.107D13.107D13.107D13.107D13.107D13.107D13.107D13.108D12.108D12.78D2.27D13.79D3.25D13.79D3.24D14.79D3.22D16.79D5.20D16.49D1.29D6.19D16."
+    },
+    {
+      "name": "b2c-percent99_1000_n2",
+      "script": 11,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "91D18.3D3.99D14.106D12.110D9.111D8.103D1.8D8.112D7.114D6.114D2.2D2.15D2.116D4.116D4.115D5.115D5.115D5.115D5.109D11.110D10.111D9.111D9.112D8.112D8.108D12.103D17.103D17.103D17.103D17.103D17.104D16.105D15.105D15.108D3.2D7.114D6.116D4.118D2.118D2.118D2.118D2.1261D1.589D1.118D2.117D2.118D1.119D1.367D1.113D1.611D1.358D1.536D1.116D4.116D4.330D2.84D1.33D2.27D1.119D1.119D1.55D1.63D1.1091D1.38D1.972D1.690D1.5D1.837D1.235D1.49D2.67D2.49D2.66D3.49D3.66D2.49D3.32D1.34D1.21D1.25D5.32D1.34D3.18D2.24D6.26D7."
+    },
+    {
+      "name": "b2c-percent99_1001_n2",
+      "script": 11,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "4103D1.488D1.114D2.8D1.2D1.345D1.117D3.631D1.122D1.78D1.43D1.1455D1.119D1.725D2.119D2.31D1.119D1.119D2.118D2.118D3.117D3.117D1.118D2.92D1.25D1.360D1.119D1.958D1.119D1.119D1.715D1.964D1.79D3.36D2.79D3.36D2.118D2.119D1.438D1.38D2.118D2.118D2.119D1.119D1.75D3.18D2.20D2."
+    },
+    {
+      "name": "b3-zonerand_1000_n2",
+      "script": 12,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3035.3D117.3D2S115.3D2S114.4D2S114.4D4S112.4D6S110.4D6S110.4D6S110.2D1.1D6S109.6D5S109.6D5S111.3D2.3S112.3D2.3S352.3F2.3R112.3F2.3R110.7F4R109.7F4R108.7F5R108.7F5R108.5F6R109.5F1R1.4R109.6F116.2F118.2F8364."
+    },
+    {
+      "name": "b3-zonerand_1000_n4",
+      "script": 12,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3035.3D117.2D2S116.3D3S113.4D4S112.4D4S112.4D6S110.4D6S110.4D6S110.2D1.1D6S109.6D5S109.6D5S111.3D2.3S112.3D2.3S352.3F2.3R112.3F2.3R110.7F4R109.7F4R108.7F5R108.7F5R108.5F6R109.5F1R1.4R112.3F1.4R116.4R116.3R8358."
+    },
+    {
+      "name": "b3-zonerand_1001_n2",
+      "script": 12,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3394.2D7S111.3D7S110.3D7S109.5D5S110.5D3S111.6D3S111.6D5S108.8D4S108.7D2.3S111.4D2.3S111.1F1D116.4F116.6F2.3R109.6F2.3R108.7F2.2R109.5F115.5F115.5F11.2R103.4F4.2R4.3R111.2R4.3R111.2R8598."
+    },
+    {
+      "name": "c1-conf_1000_n2",
+      "script": 13,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2423.5D28.2S83.7D28.8S29.7F40.9D27.8S29.7F40.9D27.9S28.7F40.9D27.9S28.7F41.8D27.8S29.7F41.7D29.7S29.7F42.5D30.7S29.7F77.4S117.2S6018.5W115.5W76.7R29.8W76.7R29.10W74.7R29.11W73.7R27.13W73.7R26.12W75.7R26.10W77.7R27.8W113.4W116.4W3642."
+    },
+    {
+      "name": "c1-conf_1001_n2",
+      "script": 13,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2422.3D114.8D30.7S29.7F39.9D29.8S28.7F40.8D29.8S28.7F40.8D29.7S29.7F39.9D29.8S28.7F39.10D28.8S28.7F41.8D28.7S29.7F81.3S6132.3W117.6W77.7R30.6W77.7R29.8W76.7R25.13W75.7R25.14W74.7R27.12W74.7R27.12W74.7R28.12W115.5W116.3W3635."
+    },
+    {
+      "name": "c1-conf_1002_n2",
+      "script": 13,
+      "seed": 1002,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2422.5D113.7D30.7S29.7F40.9D28.7S29.7F40.9D28.7S29.7F40.9D28.7S29.7F40.9D28.7S29.7F41.7D29.7S29.7F42.5D30.7S29.7F44.2D5934.4W112.8W112.7W113.5W78.7R30.5W78.7R27.9W77.7R27.9W77.7R27.9W77.7R29.8W76.7R29.8W76.7R30.8W114.6W118.2W3636."
+    },
+    {
+      "name": "c1-conf_1003_n2",
+      "script": 13,
+      "seed": 1003,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2541.6D30.7S29.7F41.7D29.7S29.7F41.7D29.7S29.7F41.7D29.7S29.7F41.7D29.7S29.7F41.8D28.7S29.7F41.8D27.8S29.7F45.4D27.4S87.2D6170.6W74.7R29.11W73.7R29.11W73.7R29.11W73.7R28.12W73.7R28.12W73.7R28.10W75.7R29.9W3876."
+    },
+    {
+      "name": "c1-conf_1004_n2",
+      "script": 13,
+      "seed": 1004,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2460.4S77.6D30.7S29.7F40.8D29.7S29.7F40.8D29.7S29.7F40.8D29.7S29.7F40.10D26.8S29.7F40.10D26.8S29.7F42.5D30.7S29.7F43.3D33.2S5657.2W118.2W116.6W114.6W115.6W114.6W76.7R30.6W77.7R29.7W77.7R28.9W76.7R28.10W75.7R29.9W75.7R29.9W75.7R30.8W116.4W118.2W3636."
+    },
+    {
+      "name": "c1-conf_1005_n2",
+      "script": 13,
+      "seed": 1005,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2301.2D1.2D115.5D114.8D29.7S29.7F40.8D28.8S29.7F39.9D28.8S29.7F39.9D28.8S29.7F41.7D29.7S29.7F41.7D29.7S29.7F42.6D29.7S29.7F77.4S6133.2W118.2W2.2W79.7R28.7W78.7R27.10W76.7R25.12W76.7R25.12W76.7R25.12W76.7R25.12W76.7R25.10W112.8W118.2W3639."
+    },
+    {
+      "name": "c2-conf-circ_1002_n2",
+      "script": 14,
+      "seed": 1002,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2301.2D118.2D118.2D240.4D32.3S33.3F45.4D31.4S33.3F45.3D31.5S33.3F46.3D30.4S34.2F47.3D6650.2W82.3R31.5W81.3R31.7W79.3R33.5W115.5W115.4W117.3W117.3W3639."
+    },
+    {
+      "name": "c2-conf-circ_1003_n2",
+      "script": 14,
+      "seed": 1003,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2544.6D114.6D113.3D33.3S33.3F45.3D1.2D30.3S33.3F46.2D1.2D30.3S33.3F163.6D114.6D5930.5W114.7W113.7W113.7W113.7W114.7W77.3R33.7W77.3R31.9W77.3R30.9W111.5W117.3W3881."
+    },
+    {
+      "name": "c2-conf-circ_1004_n2",
+      "script": 14,
+      "seed": 1004,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2183.2D118.4D116.4D36.3S77.4D36.3S78.3D36.2S78.4D32.3S33.3F45.4D32.4S32.3F45.3D33.4S2.2S28.3F43.4D40.3S73.4D40.3S74.3D5810.4W116.5W116.5W115.6W114.6W114.6W113.7W79.3R31.7W79.3R31.7W79.3R31.5W115.5W116.4W116.4W116.2W3642."
+    },
+    {
+      "name": "c2-conf-circ_1005_n2",
+      "script": 14,
+      "seed": 1005,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2336.2S118.2S87.4D27.2S85.6D114.6D30.3S33.3F45.6D29.4S33.3F45.3D32.4S33.3F44.4D116.3D6415.4W112.8W110.10W77.3R30.10W77.3R30.10W77.3R30.11W113.8W112.8W117.3W117.2W3635."
+    },
+    {
+      "name": "c2-conf-circle_1000_n2",
+      "script": 14,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2424.3D116.4D116.5D115.5D31.3S33.3F41.9D31.3S33.3F41.9D31.3S33.3F42.5D35.2S77.3D117.3D117.2D5933.2W115.7W113.7W112.9W111.9W82.3R26.10W81.3R27.9W81.3R28.8W115.4W117.3W3881."
+    },
+    {
+      "name": "c2-conf-circle_1001_n2",
+      "script": 14,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2338.3S117.3S79.3D35.2S78.7D112.9D33.3S33.3F39.10D32.3S33.3F39.5D1.4D32.3S33.3F39.5D37.2S118.2S6496.2W115.5W82.3R30.6W81.3R30.8W79.3R30.8W112.8W112.7W113.7W113.7W113.7W115.5W115.5W3279."
+    },
+    {
+      "name": "c3-conf100_1000_n2",
+      "script": 15,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3424.5S74.3D38.5S74.3D38.5S74.3D38.5S115.5S6001.5R68.3F44.5R68.3F44.5R68.3F44.5R115.5R4005."
+    },
+    {
+      "name": "c3-conf100_1001_n2",
+      "script": 15,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3424.5S74.3D38.5S74.3D38.5S74.3D38.5S115.5S6001.5R68.3F44.5R68.3F44.5R68.3F44.5R115.5R4005."
+    },
+    {
+      "name": "c4-desert_1002_n2",
+      "script": 16,
+      "seed": 1002,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2301.2D118.2D118.2D240.4D32.3D33.3D45.4D31.4D33.3D45.3D31.5D33.3D46.3D30.4D34.2D47.3D6650.2D82.3D31.5D81.3D31.7D79.3D33.5D115.5D115.4D117.3D117.3D3639."
+    },
+    {
+      "name": "c4-water_1001_n2",
+      "script": 17,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2338.3W117.3W79.3W35.2W78.7W34.1W77.9W33.3W33.3W39.10W32.3W33.3W39.10W32.3W33.3W39.5W37.2W118.2W6496.2W115.5W82.3W30.6W81.3W30.8W79.3W30.8W112.8W112.7W113.7W113.7W113.7W115.5W115.5W3279."
+    },
+    {
+      "name": "c4-water_1002_n2",
+      "script": 17,
+      "seed": 1002,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2301.2W118.2W118.2W119.2W119.4W32.3W33.3W45.4W31.4W33.3W45.4W30.5W33.3W46.3W30.4W34.2W47.3W6650.2W82.3W31.5W81.3W31.7W79.3W33.5W115.5W115.4W117.3W117.3W3639."
+    },
+    {
+      "name": "d1-neutral_1000_n2",
+      "script": 18,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "39.7F113.7F113.7F113.7F113.7F113.7F113.7F131.7S113.7S113.7S113.7S113.7S113.7S113.7S6102.7W113.7W113.7W42.7R64.7W42.7R64.7W42.7R64.7W42.7R64.7W42.7R113.7R113.7R907.7D113.7D113.7D113.7D113.7D113.7D113.7D4024."
+    },
+    {
+      "name": "d1-neutral_1001_n2",
+      "script": 18,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1050.7F113.7F113.7F113.7F113.7F113.7F113.7F428.7R113.7R113.7R113.7R113.7R113.7R113.7R3269.7W113.7W113.7W113.7W113.7W113.7W113.7W94.7S113.7S113.7S113.7S113.7S113.7S113.7S5378.7D113.7D113.7D113.7D113.7D113.7D113.7D546."
+    },
+    {
+      "name": "e1-large-1000_1000_n2",
+      "script": 19,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "4009.4D112.2D2.4D109.11D108.13D107.13D5.2D99.14D3.4D99.24D98.23D97.23D97.23D97.23D97.24D96.24D95.25D95.25D93.30D88.32D87.33D87.32D89.31D89.31D89.31D90.6D1.22D91.29D90.30D77.3D2.6D2.29D78.20D2.20D75.23D2.20D75.45D74.37D2.3D78.17D2.10D2.5D84.17D5.7D4.2D86.16D6.4D6.2D88.12D8.4D95.13D6.6D94.15D5.6D94.16D4.5D98.13D107.12D109.7D114.6D115.5D115.5D117.5D115.5D5126."
+    },
+    {
+      "name": "e1-large-14400_1000_n2",
+      "script": 20,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "14400D"
+    },
+    {
+      "name": "e1-large-2000_1000_n2",
+      "script": 21,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2601.2D118.5D115.5D115.5D1.4D110.5D1.4D102.2D6.8D103.7D2.10D100.20D100.20D100.20D100.19D101.19D4.2D95.25D95.25D94.9D1.16D94.26D94.22D96.24D96.27D83.4D2.31D83.37D83.36D84.36D81.41D78.43D76.44D70.50D69.50D70.50D71.48D74.46D74.46D73.48D72.50D71.50D70.51D71.49D69.52D68.41D6.5D68.41D7.3D71.2D2.34D90.30D91.29D91.26D94.25D95.25D96.2D2.20D101.19D97.2D5.16D97.2D4.17D97.2D2.21D98.22D97.23D96.24D95.25D94.26D94.26D94.26D94.26D94.23D94.25D94.26D93.27D93.27D95.26D93.19D2.6D93.7D2.11D2.4D95.4D4.12D101.3D4.12D108.8D116.3D3407."
+    },
+    {
+      "name": "e1-large-2000_1001_n2",
+      "script": 21,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "36.3D2.34D80.42D78.43D77.43D77.46D76.44D77.44D76.45D78.45D75.48D72.48D72.48D61.3D7.27D4.17D57.10D5.26D5.12D62.11D4.26D5.2D73.40D81.28D1.8D83.38D82.38D82.35D86.10D1.22D87.33D86.34D86.35D85.35D85.36D84.38D84.37D83.40D80.3D2.36D86.34D87.32D88.31D89.30D89.29D86.36D82.38D82.37D85.35D89.31D92.26D94.3D3.20D100.20D101.19D101.19D99.19D101.19D100.19D101.19D102.19D102.20D104.17D6.2D95.17D4.5D96.15D3.6D96.15D1.8D100.19D101.17D102.18D102.18D103.17D103.17D104.16D106.16D105.3D3.9D111.8D116.3D117.3D118.2D6289."
+    },
+    {
+      "name": "e1-large-4000_1000_n2",
+      "script": 22,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "31.6D3.15D96.24D93.2D1.24D93.30D90.31D89.6D1.24D84.37D5.7D71.49D71.51D70.50D68.52D68.52D68.55D63.57D63.57D63.11D1.45D63.57D61.58D62.57D62.56D64.54D66.54D66.54D66.54D66.56D64.60D4.5D51.60D4.7D47.62D4.7D47.62D2.7D50.70D50.69D52.68D52.69D49.75D40.80D38.82D38.81D36.84D36.13D2.69D34.15D2.70D33.87D33.84D37.83D38.81D40.80D40.82D38.82D40.77D44.76D44.77D41.81D38.11D1.71D36.84D36.84D36.84D36.83D37.72D1.2D3.5D40.69D6.4D41.66D54.20D1.39D2.2D57.19D1.10D2.27D62.6D5.5D3.10D3.11D2.11D81.12D3.8D9.3D85.10D5.8D102.4D117.3D117.3D6444."
+    },
+    {
+      "name": "e1-large-7200_1000_n2",
+      "script": 23,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "12.27D5.6D8.2D15.10D47.27D5.6D25.10D47.19D1.6D6.6D14.2D9.10D47.24D8.8D5.3D2.4D4.15D47.24D7.11D3.30D46.23D7.45D45.23D8.44D46.22D8.44D43.2D2.25D4.46D41.79D41.78D42.78D37.2D3.74D1.3D37.83D11.3D23.83D11.3D23.14D1.68D11.3D25.81D11.4D8.2D14.82D7.17D14.86D2.18D15.105D17.103D18.3D1.98D19.101D19.102D18.102D16.104D16.101D18.102D18.4D1.97D18.4D2.93D21.3D3.93D29.90D29.93D26.95D24.96D24.96D24.95D25.95D4.2D20.100D21.99D21.99D21.9D4.85D22.9D4.85D24.7D7.80D26.5D9.80D26.4D8.81D28.2D9.81D39.11D3.67D38.11D4.68D35.13D6.66D33.14D7.55D43.15D9.53D43.15D9.53D43.15D8.54D44.4D1.8D9.56D42.13D10.55D42.13D10.55D46.7D14.51D51.4D12.28D3.22D52.3D12.19D2.7D3.24D65.19D3.4D5.10D2.12D64.18D15.9D2.13D63.17D16.6D5.13D64.16D15.7D5.8D3.2D64.15D16.7D7.5D69.15D17.5D9.3D71.14D18.3D10.3D71.15D30.4D68.18D30.4D68.18D30.5D67.20D27.9D66.19D26.10D67.20D23.11D70.16D9.2D12.11D70.15D7.6D11.14D69.2D3.8D7.6D10.15D74.8D7.8D8.16D72.9D7.8D9.16D71.9D7.12D3.18D71.9D7.12D1.17D74.9D6.29D74.14D3.27D76.14D2.28D76.43D3.2D73.42D3.2D74.42D78.45D75.45D75.45D74.49D61.3D5.51D61.3D5.51D60.4D2.52D62.58D63.57D63.59D63.57D63.57D61.60D60.60D58.62D58.62D58.63D57.63D57.62D62.2D3.48D67.2D5.46D74.46D74.46D75.24D2.19D75.16D2.5D7.15D75.15D3.5D8.14D78.12D3.3D10.11D81.12D16.2D1.5D84.3D3.5D22.2D91.3D116.4D116.4D291."
+    },
+    {
+      "name": "e1-large-7200_1001_n2",
+      "script": 23,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "50.20D5.27D67.21D5.26D66.24D4.26D15.2D49.25D4.25D14.5D40.2D4.61D6.7D40.68D5.7D40.69D4.7D40.80D42.78D34.3D5.78D34.6D2.78D35.85D35.85D35.84D37.83D39.81D41.80D40.80D38.82D38.82D38.82D32.88D32.88D33.84D36.82D38.82D38.82D36.84D36.85D35.85D37.81D41.78D42.77D43.75D35.2D8.72D38.2D7.71D40.2D7.70D38.5D7.70D38.5D6.71D34.9D4.75D31.10D2.77D31.89D31.89D31.42D1.45D32.91D33.92D28.92D28.92D28.92D28.94D25.95D25.94D27.91D29.90D31.89D31.2D2.82D38.13D4.64D39.12D4.65D39.12D4.65D45.5D5.65D46.3D6.65D52.2D1.62D55.65D55.66D54.66D54.67D53.67D54.67D56.64D57.61D61.59D62.56D64.48D4.2D67.47D73.48D72.2D2.44D78.43D77.43D77.22D1.20D77.43D77.43D76.44D75.45D75.42D78.42D77.43D76.42D78.39D84.34D88.32D90.28D92.28D92.28D88.32D88.32D87.33D86.34D86.33D85.35D85.35D86.34D86.36D87.33D87.34D86.34D83.37D83.9D5.22D85.8D5.22D89.4D5.24D94.28D92.28D92.27D93.23D97.23D98.24D96.24D95.25D95.25D94.12D2.12D94.11D4.11D33."
+    },
+    {
+      "name": "e2-corner-4000_1000_n2",
+      "script": 24,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "91.17D2.2D99.21D93.3D3.22D6.1D84.4D3.24D3.2D84.36D84.36D83.37D83.37D83.37D83.37D86.34D89.31D89.31D77.4D7.32D77.4D7.32D77.8D3.32D77.43D76.44D75.45D75.19D1.25D76.44D76.44D76.44D72.48D70.50D64.2D4.5D1.44D64.2D4.50D64.55D62.58D61.59D61.60D62.58D62.58D62.58D62.58D62.58D63.57D65.55D65.55D64.56D64.56D64.56D61.59D60.60D60.60D59.61D59.61D58.54D1.2D2.3D58.57D3.2D53.2D3.57D3.2D50.61D59.13D1.47D60.59D62.58D60.60D59.61D56.2D1.61D56.64D56.65D58.62D61.57D63.57D64.56D71.49D73.47D73.35D3.9D73.48D72.50D70.50D70.49D72.48D72.48D72.51D71.49D71.48D75.45D75.45D75.44D76.35D3.4D78.34D4.4D78.10D1.23D97.23D98.21D99.18D111.9D111.2D4.3D4102."
+    },
+    {
+      "name": "land4_1000",
+      "script": 25,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "7023.5D115.5D117.3D7132."
+    },
+    {
+      "name": "land4_1001",
+      "script": 25,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "7259.3D117.4D116.4D116.4D117.3D118.2D6537."
+    },
+    {
+      "name": "land4_1002",
+      "script": 25,
+      "seed": 1002,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "7259.3D115.8D112.8D115.4D117.3D6656."
+    },
+    {
+      "name": "p1-multi_1000",
+      "script": 26,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3878.3S115.2D3S114.3D7S109.6D7S107.6D7S107.6D6S109.3D7S114.6S115.5S118.2S3276.2F118.3F117.6F112.8F112.8F114.6F114.7F1R111.6F1R1F1R111.6F1R1F1R111.5F7R110.3F7R110.2F8R113.8R112.8R113.5R117.2R4350."
+    },
+    {
+      "name": "p1-multi_1001",
+      "script": 26,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "4004.2S108.4D4.4S108.5D2.5S108.5D1.2D5S107.7D6S108.3D9S110.1D5S2.3S111.4S2.3S111.4S117.3S3519.3F113.7F113.7F113.6F114.6F5R109.6F7R107.5F9R106.8F6R106.6F8R106.5F2.7R107.4F2.7R114.5R4469."
+    },
+    {
+      "name": "p2-border_1000",
+      "script": 27,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2181.4F116.6F114.9F111.9F112.9F111.9F111.9F110.10F110.10F111.9F112.5F116.2F2916.4D116.4D116.7D112.9D111.9D111.9D110.10D110.9D111.7D114.5D117.3D6774."
+    },
+    {
+      "name": "p2-border_1001",
+      "script": 27,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1824.3F112.2F3.4F111.2F2.5F114.5F114.5F114.6F114.6F114.6F114.7F113.10F111.9F113.6F114.4F116.2F3274.2D111.2D4.4D108.12D108.11D108.12D108.5D4.3D108.5D4.3D108.5D6906."
+    },
+    {
+      "name": "p3a-clump_1000",
+      "script": 28,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3329.2S118.6S52.10D52.7S51.10D52.8S52.4D56.8S52.4D55.9S52.3D56.3S2.4S117.2S59.2D118.2D5752.2F118.2F118.4F116.8F49.5R58.8F49.5R58.8F49.5R57.8F50.7R55.8F49.8R55.2F2.4F49.8R115.3R3149."
+    },
+    {
+      "name": "p3a-clump_1001",
+      "script": 28,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3327.7S113.7S59.4D49.9S53.9D49.9S53.9D49.9S54.8D49.8S55.7D50.5S58.6D54.2S58.5D115.2D5697.2R116.4R115.5R61.2F52.5R57.7F51.5R56.9F50.4R57.10F48.7R55.10F48.7R56.8F49.2R3.2R57.7F3325."
+    },
+    {
+      "name": "p3b-avoid_1000",
+      "script": 29,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3276.3S116.4S110.3D3.3S110.4D3.3S110.4D3.3S109.7D2.2S109.8D1.2S110.6D4S110.5D5S110.4D6S110.6D6S109.5D6S109.5D4S113.3D1.3S117.3S117.2S3887.2F116.4F116.4F116.3F115.5F115.4F116.4F116.4F116.4F6.2R108.6F2.8R105.5F2.8R105.5F2.10R103.3F6.8R103.3F8.8R101.3F8.8R112.7R3621."
+    },
+    {
+      "name": "p3b-avoid_1001",
+      "script": 29,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "3270.4D116.5D116.4D116.4D116.4D115.5D114.6D1S113.5D3S111.5D1.4S110.4D6S110.5D5S110.4D9S107.4D9S111.9S111.8S115.5S4718.2F114.6F2.2F110.12F2.6R101.11F2.9R98.11F2.9R98.9F6.7R105.2F6.8R112.8R114.5R115.5R115.2R3386."
+    },
+    {
+      "name": "p4-players_1000",
+      "script": 30,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "779.6S113.7S113.7S113.7S113.4S116.2S237.2S118.2S569.2D116.7D112.9D111.10D110.10D110.10D110.10D110.9D111.9D111.8D112.8D116.4D5236.2D118.7D111.10D110.10D111.9D111.9D111.9D111.9D111.9D112.7D117.2D118.2D4205."
+    },
+    {
+      "name": "p4-players_1000_n3",
+      "script": 30,
+      "seed": 1000,
+      "players": 3,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "40.5S115.5S115.5S115.5S115.6S113.7S113.6S117.2S144.3D116.5D115.8D112.8D110.12D108.12D108.10D110.10D110.10D111.9D112.7D6049.2D116.4D116.8D111.9D111.9D111.10D110.10D110.10D101.7D2.10D100.9D1.10D100.9D2.7D102.9D4.3D104.9D4.2D105.9D111.9D111.9D111.8D112.8D4082."
+    },
+    {
+      "name": "p4-players_1000_n4",
+      "script": 30,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "84.12D108.12D108.13D109.11D109.10D110.10D110.10D112.7D113.6D114.2D2.2D1707.3D117.7D112.10D110.10D110.10D110.10D110.10D110.10D110.10D112.8D114.6D5255.2D114.7D112.10D110.10D110.10D110.10D110.10D110.9D111.9D112.7D999.9D111.10D108.12D34.3S71.11D33.6S70.11D33.6S72.9D33.5S73.9D32.6S73.9D32.6S73.9D33.4S75.7D34.2S1849."
+    },
+    {
+      "name": "p4-players_1000_n4r",
+      "script": 30,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": false,
+      "terrain": "1503.2D117.4D113.7D112.9D111.9D111.9D111.10D110.10D110.10D110.9D112.7D1742.2S118.2S116.5S115.6S114.6S114.5S115.5S115.5S702.2D114.9D111.10D110.10D109.11D109.11D12.5D93.10D12.7D91.10D11.10D90.9D11.10D91.7D12.11D109.11D109.11D109.9D111.9D112.7D115.3D5200.8D111.10D110.12D109.11D109.10D110.10D110.10D110.9D112.7D416."
+    },
+    {
+      "name": "p4-players_1000_n4t1122",
+      "script": 30,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "808.7D111.10D110.10D110.10D109.12D108.12D109.10D111.9D111.8D115.3D118.2D628.3D117.3D116.7D113.7D113.8D112.8D112.9D111.9D111.9D111.8D112.8D112.7D234.2D118.2D5138.7D112.9D111.9D111.9D111.9D111.9D111.10D110.10D110.8D112.2D2.3D166.3D112.8D111.9D111.9D111.10D108.12D108.12D108.11D109.11D33.2S78.6D33.6S77.3D34.6S77.2D35.6S114.6S114.6S114.5S1967."
+    },
+    {
+      "name": "p4-players_1000_n4t1212",
+      "script": 30,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 2, 1, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "88.7D112.9D111.10D109.11D109.12D108.12D108.10D111.9D111.8D115.4D1706.7D113.7D113.9D111.9D111.9D111.9D111.9D111.8D112.8D112.7D113.6D118.2D118.2D118.2D5015.7D112.9D111.9D111.9D111.9D110.10D110.10D111.9D112.8D115.2D882.6D114.7D112.9D111.9D33.2S75.11D32.6S71.11D32.6S71.11D32.6S71.11D32.6S71.10D33.6S72.8D34.2S118.2S1729."
+    },
+    {
+      "name": "p4-players_1000_n8",
+      "script": 30,
+      "seed": 1000,
+      "players": 8,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2122.3D116.5D82.2D28.8D78.9D25.8D77.10D25.9D76.10D25.10D75.11D24.10D75.11D24.10D75.10D25.9D76.9D26.9D76.9D27.7D78.8D29.4D81.3D33.2D175.7D110.11D109.11D109.11D109.11D109.11D111.9D111.9D111.8D112.2D210.2D117.3D116.7D112.9D111.9D111.10D109.11D109.11D109.11D109.11D61.6S43.2D1.6D62.7S42.2D3.3D63.7S112.6S114.5S115.5S116.3S674.3D114.8D112.9D111.9D111.9D110.10D110.10D110.10D110.10D110.9D112.2D2.4D117.2D440.3D115.7D112.9D111.11D109.11D109.11D108.12D108.10D110.10D111.8D115.3D52.2D64.2D48.2D2.4D112.8D112.9D26.8D77.9D25.11D75.9D25.11D75.9D25.11D74.11D24.11D74.11D25.9D75.10D26.9D77.7D27.9D80.2D29.9D115.2D2329."
+    },
+    {
+      "name": "p4-players_1000_n8t11223344",
+      "script": 30,
+      "seed": 1000,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "1402.2D112.8D112.11D109.11D109.12D109.11D109.10D110.10D111.9D77.7D28.5D79.9D111.10D110.11D109.11D109.10D110.10D110.12D109.11D110.2D4.2D71.4D113.7D112.9D111.9D111.9D111.9D111.9D111.9D111.9D111.9D112.8D112.3D344.7D111.10D110.10D110.11D110.10D110.10D110.9D111.9D63.3S46.8D61.6S45.8D61.6S114.6S114.6S112.7S113.6S781.7D111.11D109.11D109.11D109.10D110.10D110.10D111.9D111.9D702.2D115.8D112.8D112.9D111.9D111.10D110.10D110.10D110.10D111.7D114.6D117.2D792.5D115.5D113.8D110.10D110.11D109.11D108.12D108.11D111.9D112.7D115.5D317.8D112.9D111.9D111.9D110.11D108.12D108.12D108.12D108.12D117.3D320."
+    },
+    {
+      "name": "p4-players_1001",
+      "script": 30,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "682.7D112.9D111.9D110.10D110.11D109.11D109.11D110.10D111.7D114.2D8936.7D112.9D111.10D110.10D110.10D110.10D110.10D110.9D112.7D115.3D1461.5S115.6S114.6S113.7S113.7S114.6S116.3S428."
+    },
+    {
+      "name": "p4-players_1001_n3",
+      "script": 30,
+      "seed": 1001,
+      "players": 3,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "391.3D117.3D115.7D112.9D111.9D111.9D111.9D111.9D111.9D111.10D111.9D113.3D5070.3S117.4S116.5S30.7D78.5S29.9D77.5S29.9D77.5S29.9D77.5S29.9D77.4S30.9D111.10D109.11D109.10D113.6D116.2D4733.4D114.6D113.7D112.9D111.9D109.11D109.11D110.10D111.9D111.9D112.7D199."
+    },
+    {
+      "name": "p4-players_1001_n4t1122",
+      "script": 30,
+      "seed": 1001,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2359.4D115.7D112.9D110.10D110.10D110.10D110.11D109.11D109.11D111.7D113.4D1011.5D110.13D107.13D107.12D108.12D110.10D110.9D111.9D111.8D2359.2D118.9D111.10D111.9D111.9D111.8D112.9D111.9D111.9D112.7D114.6D679.2S118.4S114.7S113.7S113.6S113.6S114.6S115.2S1416.3D113.7D112.9D111.9D111.10D109.12D108.12D109.11D109.10D111.8D117.3D1155."
+    },
+    {
+      "name": "p4o-players_1000_n4",
+      "script": 31,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "84.12D108.12D108.13D109.11D109.10D110.10D110.10D112.7D113.6D114.2D2.2D1707.3D117.7D112.10D110.10D110.10D110.10D110.10D110.10D110.10D112.8D114.6D5255.2D114.7D112.10D110.10D110.10D110.10D110.10D110.9D111.9D112.7D999.9D111.10D108.12D34.3S71.11D33.6S70.11D33.6S72.9D33.5S73.9D32.6S73.9D32.6S73.9D33.4S75.7D34.2S1849."
+    },
+    {
+      "name": "p4o-players_1000_n4r",
+      "script": 31,
+      "seed": 1000,
+      "players": 4,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": false,
+      "terrain": "1503.2D117.4D113.7D112.9D111.9D111.9D111.10D110.10D110.10D110.9D112.7D1742.2S118.2S116.5S115.6S114.6S114.5S115.5S115.5S702.2D114.9D111.10D110.10D109.11D109.11D12.5D93.10D12.7D91.10D11.10D90.9D11.10D91.7D12.11D109.11D109.11D109.9D111.9D112.7D115.3D5200.8D111.10D110.12D109.11D109.10D110.10D110.10D110.9D112.7D416."
+    },
+    {
+      "name": "p4o-players_1000_n4t1122",
+      "script": 31,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "808.7D111.10D110.10D110.10D109.12D108.12D109.10D111.9D111.8D115.3D118.2D628.3D117.3D116.7D113.7D113.8D112.8D112.9D111.9D111.9D111.8D112.8D112.7D234.2D118.2D5138.7D112.9D111.9D111.9D111.9D111.9D111.10D110.10D110.8D112.2D2.3D166.3D112.8D111.9D111.9D111.10D108.12D108.12D108.11D109.11D33.2S78.6D33.6S77.3D34.6S77.2D35.6S114.6S114.6S114.5S1967."
+    },
+    {
+      "name": "p4o-players_1000_n4t1122r",
+      "script": 31,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": false,
+      "terrain": "1503.2D117.4D113.7D112.9D111.9D111.9D111.10D110.10D110.10D110.9D112.7D1742.2S118.2S116.5S115.6S114.6S114.5S115.5S115.5S702.2D114.9D111.10D110.10D109.11D109.11D12.5D93.10D12.7D91.10D11.10D90.9D11.10D91.7D12.11D109.11D109.11D109.9D111.9D112.7D115.3D5200.8D111.10D110.12D109.11D109.10D110.10D110.10D110.9D112.7D416."
+    },
+    {
+      "name": "p4o-players_1000_n4t1212",
+      "script": 31,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 2, 1, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "88.7D112.9D111.10D109.11D109.12D108.12D108.10D111.9D111.8D115.4D1706.7D113.7D113.9D111.9D111.9D111.9D111.9D111.8D112.8D112.7D113.6D118.2D118.2D118.2D5015.7D112.9D111.9D111.9D111.9D110.10D110.10D111.9D112.8D115.2D882.6D114.7D112.9D111.9D33.2S75.11D32.6S71.11D32.6S71.11D32.6S71.11D32.6S71.10D33.6S72.8D34.2S118.2S1729."
+    },
+    {
+      "name": "p4o-players_1000_n4t1221",
+      "script": 31,
+      "seed": 1000,
+      "players": 4,
+      "teams": [1, 2, 2, 1, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "86.9D111.11D111.9D110.10D110.10D110.9D111.9D111.9D113.7D113.4D1715.5D113.8D111.10D110.10D110.10D110.10D110.10D110.10D111.9D111.8D112.5D5370.7D112.9D111.9D109.11D109.11D109.11D111.9D111.9D112.7D116.2D44.2D116.7D112.9D110.10D110.11D110.10D110.10D110.10D110.9D34.3S75.7D35.3S75.6D36.3S115.5S115.6S114.6S114.6S114.5S1967."
+    },
+    {
+      "name": "p4o-players_1000_n8t11223344",
+      "script": 31,
+      "seed": 1000,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "1402.2D112.8D112.11D109.11D109.12D109.11D109.10D110.10D111.9D77.7D28.5D79.9D111.10D110.11D109.11D109.10D110.10D110.12D109.11D110.2D4.2D71.4D113.7D112.9D111.9D111.9D111.9D111.9D111.9D111.9D111.9D112.8D112.3D344.7D111.10D110.10D110.11D110.10D110.10D110.9D111.9D63.3S46.8D61.6S45.8D61.6S114.6S114.6S112.7S113.6S781.7D111.11D109.11D109.11D109.10D110.10D110.10D111.9D111.9D702.2D115.8D112.8D112.9D111.9D111.10D110.10D110.10D110.10D111.7D114.6D117.2D792.5D115.5D113.8D110.10D110.11D109.11D108.12D108.11D111.9D112.7D115.5D317.8D112.9D111.9D111.9D110.11D108.12D108.12D108.12D108.12D117.3D320."
+    },
+    {
+      "name": "p4o-players_1000_n8t12213443",
+      "script": 31,
+      "seed": 1000,
+      "players": 8,
+      "teams": [1, 2, 2, 1, 3, 4, 4, 3],
+      "teamPositions": true,
+      "terrain": "2121.2D81.7D30.4D78.10D25.8D77.10D25.8D77.10D25.9D74.12D25.10D73.11D26.10D73.11D26.10D73.11D26.9D76.8D27.9D112.7D115.4D170.3D114.8D112.9D111.9D111.9D111.9D111.9D110.10D110.10D111.8D112.7D115.3D218.4D112.9D110.10D110.10D110.10D110.10D110.10D110.9D57.3S51.9D57.5S50.8D58.4S50.6D60.6S52.2D60.6S114.5S115.5S115.4S557.3D117.3D117.7D112.9D111.9D111.10D110.10D110.10D110.10D110.10D111.8D112.8D551.5D115.7D110.10D110.10D109.12D108.12D109.11D111.9D111.9D111.8D206.2D117.4D112.8D77.8D27.10D74.11D25.10D74.11D25.9D75.11D24.10D75.11D24.10D76.9D25.10D76.9D25.10D76.9D27.7D77.9D28.5D82.2D33.3D2328."
+    },
+    {
+      "name": "p4o-players_1001_n4t1122",
+      "script": 31,
+      "seed": 1001,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2359.4D115.7D112.9D110.10D110.10D110.10D110.11D109.11D109.11D111.7D113.4D1011.5D110.13D107.13D107.12D108.12D110.10D110.9D111.9D111.8D2359.2D118.9D111.10D111.9D111.9D111.8D112.9D111.9D111.9D112.7D114.6D679.2S118.4S114.7S113.7S113.6S113.6S114.6S115.2S1416.3D113.7D112.9D111.9D111.10D109.12D108.12D109.11D109.10D111.8D117.3D1155."
+    },
+    {
+      "name": "p4o-players_1001_n8t11223344",
+      "script": 31,
+      "seed": 1001,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "639.2D116.4D114.7D112.9D111.9D111.9D111.9D110.10D110.10D110.10D110.10D115.5D26.7D82.4D26.9D111.9D111.9D111.10D110.10D110.9D111.9D111.9D115.5D975.4D115.5D115.6D114.8D111.9D111.9D111.9D24.7D80.9D23.9D79.10D20.12D78.10D20.12D78.9D21.12D79.7D24.10D110.10D110.9D112.7D116.4D118.2D2260.4D113.7D112.9D111.9D111.9D111.9D19.3D89.10D14.8D89.9D13.10D88.9D13.11D87.8D14.11D88.7D15.9D89.3D19.9D110.10D110.10D110.10D110.3D1961.4S116.5S105.4D6.7S103.6D3.8S101.8D3.7S101.9D6.3S102.9D6.3S101.11D30.3D76.12D28.4D76.12D25.7D77.9D26.9D76.9D25.11D76.7D26.11D78.3D28.11D109.11D110.9D111.9D112.7D277."
+    },
+    {
+      "name": "p4o-players_1002_n4t1122",
+      "script": 31,
+      "seed": 1002,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "869.2D116.7D112.10D108.12D108.12D108.11D109.11D110.10D111.9D112.7D117.3D117.2D909.3D117.3D114.7D112.9D109.11D109.11D109.11D110.10D110.10D111.9D112.7D116.4D2238.5S114.6S114.6S114.5S115.5S115.5S117.2S3185.7D112.9D110.10D110.10D110.10D67.2D41.10D65.7D38.10D65.8D38.9D64.10D38.7D65.10D39.6D65.9D41.5D65.9D110.10D110.10D110.7D2190."
+    },
+    {
+      "name": "p4o-players_1002_n8t11223344",
+      "script": 31,
+      "seed": 1002,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "502.6D114.8D110.10D110.10D111.9D111.9D111.10D111.9D111.9D112.7D115.4D30.2D117.4D115.8D112.9D111.10D110.10D110.10D110.9D111.9D37.3D71.9D31.9D72.8D30.10D75.4D31.10D75.3D33.9D111.9D109.11D109.11D109.11D112.8D116.4D2544.5D115.7D80.7D25.9D78.9D24.9D78.9D24.10D77.9D24.10D76.10D24.10D76.10D23.10D77.10D23.10D78.9D24.9D78.9D29.4D81.6D29.2D610.3S3.3S111.9S111.10S112.8S112.6S115.4S1503.3D34.5D76.7D31.7D74.10D28.9D73.10D28.9D73.10D27.10D73.10D27.10D73.10D28.9D72.11D28.9D72.10D29.9D74.7D31.7D76.5D1159.4D112.8D112.8D111.9D111.9D111.10D110.10D110.10D110.10D110.10D116.2D298."
+    },
+    {
+      "name": "p4o-players_1003_n4t1122",
+      "script": 31,
+      "seed": 1003,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "151.6D112.8D49.10D52.10D48.10D50.12D48.11D49.12D48.11D49.12D49.10D49.12D49.10D49.12D49.10D49.12D50.9D52.7D53.8D53.2D57.3D73.3S41.3D70.6S114.6S114.5S114.6S114.5S115.5S116.3S117.2S7773.2D117.5D113.7D112.9D111.10D109.12D108.12D108.12D109.9D111.9D112.7D118.2D661.2D115.7D112.9D111.9D110.10D110.10D110.11D110.10D110.9D112.7D113.5D996."
+    },
+    {
+      "name": "p4o-players_1003_n6t112233",
+      "script": 31,
+      "seed": 1003,
+      "players": 6,
+      "teams": [1, 1, 2, 2, 3, 3, 0, 0],
+      "teamPositions": true,
+      "terrain": "48.4D116.8D111.9D111.10D3.4S103.10D3.5S102.10D2.6S102.10D1.7S102.9D2.7S102.9D3.6S103.7D5.4S104.7D5.2S110.2D1375.2D117.4D115.5D115.9D111.9D111.9D111.9D111.9D111.10D110.10D110.9D112.8D112.3D255.8D111.10D110.10D110.10D111.9D111.9D110.10D110.10D110.10D112.5D3457.4D113.7D112.9D111.10D110.10D110.10D110.10D110.11D109.11D18.7D85.7D20.9D86.5D20.10D110.10D110.9D111.9D111.9D111.9D112.8D43.4D65.4D44.8D65.3D43.9D111.10D110.10D109.11D109.11D109.11D111.9D112.7D115.4D2211."
+    },
+    {
+      "name": "p4o-players_1003_n8t11223344",
+      "script": 31,
+      "seed": 1003,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "660.4S116.5S115.7S113.7S113.7S115.5S477.2D114.8D82.5D24.10D80.8D22.10D79.9D22.10D79.9D22.10D77.13D20.11D76.13D20.11D78.11D21.9D79.10D23.7D80.9D24.6D82.3D1.3D73.2D2.3D112.8D111.9D111.9D110.11D109.11D109.10D110.10D110.10D113.7D113.3D117.3D1569.8D111.10D110.10D110.10D110.11D109.12D108.12D108.11D111.5D115.4D461.7D111.10D110.10D110.10D110.11D110.10D110.10D110.10D111.8D116.3D117.2D1094.9D110.10D110.10D110.9D111.9D111.9D111.10D110.10D111.7D35.8D24.11D36.4D36.9D24.12D74.10D24.12D74.11D24.11D74.11D24.11D74.10D26.10D75.9D26.10D75.9D26.10D75.9D28.7D76.6D2466."
+    },
+    {
+      "name": "p4o-players_1004_n4t1122",
+      "script": 31,
+      "seed": 1004,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1155.3D114.10D110.10D111.9D111.9D111.9D110.10D110.12D109.11D110.9D1407.2S116.4S116.5S115.5S115.5S115.5S115.5S115.5S116.3S199.2D112.9D111.10D110.13D107.13D107.12D109.11D109.10D110.9D111.8D3699.3D117.3D114.7D112.9D111.9D111.10D109.11D109.11D109.10D111.9D112.7D1592.2D3.2D111.10D110.11D110.10D110.11D110.12D108.12D108.12D108.10D111.8D922."
+    },
+    {
+      "name": "p4o-players_1004_n8t11223344",
+      "script": 31,
+      "seed": 1004,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "915.7D113.8D111.9D82.3D24.13D77.7D23.13D76.9D22.13D75.10D22.11D76.11D22.11D76.12D22.9D77.12D28.3D79.9D111.9D111.8D114.4D1283.3D117.3D116.7D113.7D112.9D111.9D111.9D111.9D111.9D111.9D89.3D19.9D83.9D20.7D84.10D109.11D109.11D109.11D109.11D109.11D109.11D110.10D2234.3S60.2D53.5S59.7D47.7S59.8D46.7S58.9D46.6S58.10D48.4S58.11D47.4S58.12D47.3S33.2D24.11D79.7D23.10D78.10D23.7D80.12D22.2D84.12D22.2D84.12D109.9D111.9D111.9D111.8D117.3D1173.2D117.3D112.8D80.8D23.10D79.9D22.10D78.10D22.11D77.10D22.11D77.10D21.12D76.11D21.10D78.11D22.9D80.9D23.7D82.7D115.2D1518."
+    },
+    {
+      "name": "p4o-players_1005_n4t1122",
+      "script": 31,
+      "seed": 1005,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1886.8D112.9D111.9D111.9D111.9D111.9D111.9D111.9D112.7D114.6D114.6D115.3D40.3D113.10D110.10D110.10D110.11D109.11D109.11D109.11D110.9D112.7D114.4D986.7S113.7S113.7S112.7S113.6S115.5S4486.7D112.8D110.11D109.11D110.10D110.10D110.10D111.9D112.7D169.7D111.10D110.10D110.10D110.10D109.12D108.12D109.11D109.9D114.6D1645."
+    },
+    {
+      "name": "p4o-players_1005_n8t11223344",
+      "script": 31,
+      "seed": 1005,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "776.2D112.5D1.3D111.10D110.10D110.10D110.10D111.9D111.9D26.3D82.9D24.7D81.7D24.9D81.4D25.10D81.4D25.11D111.9D110.10D110.9D111.9D112.7D39.2D116.5D114.10D40.4S65.11D39.5S65.11D39.5S65.11D37.7S65.11D37.7S66.10D38.6S66.9D39.6S66.9D40.2S70.8D116.2D2003.2D117.4D113.8D112.9D111.9D111.9D111.8D111.10D110.10D110.10D21.8D81.10D20.10D82.6D22.10D82.2D2.2D22.10D109.11D109.11D109.11D110.10D112.7D2002.8D112.9D111.9D110.10D109.11D109.11D109.11D109.11D112.7D114.4D443.3D117.4D115.8D110.10D110.10D79.3D28.12D77.3D28.12D76.7D26.11D74.10D25.9D76.10D26.8D76.11D25.7D77.11D27.3D80.9D111.9D111.9D112.7D115.3D117.2D689."
+    },
+    {
+      "name": "p4o-players_1006_n4t1122",
+      "script": 31,
+      "seed": 1006,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1875.4D116.4D115.9D111.10D111.9D112.8D112.8D111.9D111.9D111.9D112.7D116.3D117.3D522.7D113.8D110.10D110.10D111.9D111.10D110.10D110.10D111.7D116.3D3327.4D116.6D112.8D112.10D110.10D110.10D110.10D110.9D26.2S83.9D25.3S83.9D22.6S84.8D22.7S114.6S114.6S115.5S117.4S116.4S631.3D114.8D112.10D110.10D110.11D109.11D108.12D108.10D110.10D110.9D113.5D2472."
+    },
+    {
+      "name": "p4o-players_1006_n8t11223344",
+      "script": 31,
+      "seed": 1006,
+      "players": 8,
+      "teams": [1, 1, 2, 2, 3, 3, 4, 4],
+      "teamPositions": true,
+      "terrain": "757.9D111.10D109.11D109.11D109.11D111.10D110.10D110.10D110.10D114.2D272.3D115.7D112.9D111.9D111.9D111.9D111.9D111.9D111.9D112.7D113.5D116.4D118.2D780.7D81.7D24.8D81.7D24.9D80.8D22.10D80.9D21.10D80.9D21.10D80.9D21.10D80.9D21.10D80.9D21.9D81.9D111.9D112.8D2858.2D116.8D34.3D74.10D33.8D69.10D32.9D69.11D30.10D69.11D30.12D67.10D32.11D67.10D32.11D67.10D31.12D67.9D32.11D69.5D37.9D979.3D28.2S82.11D24.3S82.11D22.5S83.10D22.5S83.11D20.5S84.11D19.5S85.10D20.5S86.9D20.5S86.9D21.4S87.7D113.6D748.3D114.8D111.9D111.9D111.9D109.12D108.12D110.9D111.9D112.7D114.3D525."
+    },
+    {
+      "name": "p4o-players_1007_n4t1122",
+      "script": 31,
+      "seed": 1007,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2505.2D117.4D27.10D77.7D26.10D76.8D26.10D75.11D24.10D75.12D23.10D75.12D23.10D75.11D24.10D76.9D25.9D77.9D26.7D79.8D27.2D83.3D2655.4S116.5S115.5S115.7S113.7S113.7S113.5S115.3S2621.7D112.9D111.9D111.9D111.10D110.10D110.10D110.9D112.7D113.4D1356.6D114.8D112.10D110.10D109.11D109.9D111.9D112.8D113.7D114.4D116.4D116.4D690."
+    },
+    {
+      "name": "p4o-players_1008_n4t1122",
+      "script": 31,
+      "seed": 1008,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "2187.8D112.9D111.9D110.10D110.10D110.10D110.11D110.10D111.7D113.4D663.2D116.7D112.8D112.10D110.10D109.11D109.11D109.11D109.10D110.9D113.2D2.3D3925.6S114.6S114.6S113.7S112.6S114.4S117.3S71.5D41.3S68.8D112.9D110.11D109.11D109.11D110.10D61.3D46.10D59.6D45.10D56.9D45.8D58.9D111.9D111.9D111.9D111.9D111.9D111.9D112.8D2550."
+    },
+    {
+      "name": "p4o-players_1009_n4t1122",
+      "script": 31,
+      "seed": 1009,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "321.9D111.10D111.9D111.9D110.10D110.10D110.10D110.10D112.7D115.2D1362.3D115.5D115.7D112.9D111.9D110.11D109.11D109.10D110.10D111.9D111.8D112.6D117.3D122.3S116.4S116.4S115.5S114.5S115.5S115.5S115.5S116.3S3795.2D2.2D114.6D114.7D112.10D109.11D109.11D109.11D109.11D109.11D109.11D111.7D1619.2D114.7D111.10D110.10D111.9D111.9D110.10D110.10D111.9D111.8D116.3D1282."
+    },
+    {
+      "name": "p4o-players_1010_n4t1122",
+      "script": 31,
+      "seed": 1010,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "395.3D116.4D114.7D112.9D111.10D109.11D109.11D109.11D109.10D110.10D111.8D117.2D1737.3D113.7D111.10D110.10D111.9D111.9D83.2S26.9D83.4S24.9D82.5S24.9D82.5S25.7D83.5S26.2D87.7S113.7S5110.2D117.3D117.3D115.7D112.9D110.10D110.10D54.7D50.10D52.9D49.10D52.10D48.10D52.10D48.9D53.10D48.8D54.10D109.11D109.11D109.11D116.3D2555."
+    },
+    {
+      "name": "p4o-players_1011_n4t1122",
+      "script": 31,
+      "seed": 1011,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1394.6D111.10D110.10D110.10D109.11D109.11D109.11D110.10D112.7D116.3D1967.2D118.3D113.7D112.8D112.8D112.9D111.9D111.9D111.9D111.9D111.8D1892.8D93.4S13.10D93.5S12.10D93.7S10.11D92.7S10.11D93.6S10.11D94.4S11.11D94.4S11.11D94.3S12.8D112.7D4026.7D112.9D110.10D110.10D110.10D110.11D109.11D109.11D110.10D113.2D664."
+    },
+    {
+      "name": "p4o-players_1012_n4t1122",
+      "script": 31,
+      "seed": 1012,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "76.5D113.7D112.9D111.9D110.10D110.10D110.10D110.10D110.10D110.9D117.2D3220.3S117.3S117.4S115.6S113.8S112.8S112.7S556.3D114.9D111.10D110.10D110.10D110.12D108.12D109.9D111.9D112.7D116.3D117.2D196.4D116.8D112.10D110.10D109.11D109.11D109.11D110.10D110.10D111.9D4245.9D110.10D110.10D110.10D110.10D110.10D110.10D110.10D111.9D113.3D679."
+    },
+    {
+      "name": "p4o-players_1013_n4t1122",
+      "script": 31,
+      "seed": 1013,
+      "players": 4,
+      "teams": [1, 1, 2, 2, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1233.2D114.8D112.8D112.9D111.9D111.8D111.9D111.9D111.9D112.8D113.7D113.6D186.4D111.9D110.11D109.11D110.10D110.11D109.11D110.10D110.9D111.8D6690.3S2.2S113.7S114.6S115.5S115.5S1.7D107.5S9D106.5S9D107.3S1.11D110.10D109.11D52.3D54.11D50.7D52.9D52.7D53.7D52.9D56.2D51.12D108.12D108.12D110.10D110.10D110.9D112.7D1529."
+    },
+    {
+      "name": "p5a-rnd_1000",
+      "script": 32,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1815.3D117.3D117.3D1740.3R117.3R117.3R4392.3F67.3W47.3F67.3W47.3F67.3W456.3S117.3S117.3S4955."
+    },
+    {
+      "name": "p5a-rnd_1001",
+      "script": 32,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1657.3S117.3S117.3S4051.3R117.3R117.3R1223.3F117.3F117.3F28.3W117.3W117.3W2112.3D117.3D117.3D4114."
+    },
+    {
+      "name": "p6-range-s1000_1000",
+      "script": 33,
+      "seed": 1000,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1569.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S2057.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D1937.3S11.3D11.3D12.3S11.3D12.3D11.3S11.3D17.3S11.3D11.3D12.3S11.3D12.3D11.3S11.3D17.3S11.3D11.3D12.3S11.3D12.3D11.3S11.3D1937.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S1937.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D3248."
+    },
+    {
+      "name": "p6-range-s1000_1001",
+      "script": 33,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1569.3S11.3S11.3S12.3D11.3D12.3D11.3D11.3S17.3S11.3S11.3S12.3D11.3D12.3D11.3D11.3S17.3S11.3S11.3S12.3D11.3D12.3D11.3D11.3S2057.3D11.3S11.3S12.3S11.3D12.3S11.3D11.3D17.3D11.3S11.3S12.3S11.3D12.3S11.3D11.3D17.3D11.3S11.3S12.3S11.3D12.3S11.3D11.3D1937.3S11.3S11.3S12.3S11.3D12.3D11.3D11.3D17.3S11.3S11.3S12.3S11.3D12.3D11.3D11.3D17.3S11.3S11.3S12.3S11.3D12.3D11.3D11.3D1937.3S11.3S11.3D12.3D11.3S12.3D11.3D11.3D17.3S11.3S11.3D12.3D11.3S12.3D11.3D11.3D17.3S11.3S11.3D12.3D11.3S12.3D11.3D11.3D1937.3S11.3S11.3D12.3S11.3D12.3S11.3D11.3S17.3S11.3S11.3D12.3S11.3D12.3S11.3D11.3S17.3S11.3S11.3D12.3S11.3D12.3S11.3D11.3S3248."
+    },
+    {
+      "name": "p6-range-s1001_1001",
+      "script": 34,
+      "seed": 1001,
+      "players": 2,
+      "teams": [0, 0, 0, 0, 0, 0, 0, 0],
+      "teamPositions": true,
+      "terrain": "1569.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S2057.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D1937.3S11.3D11.3D12.3S11.3D12.3D11.3S11.3D17.3S11.3D11.3D12.3S11.3D12.3D11.3S11.3D17.3S11.3D11.3D12.3S11.3D12.3D11.3S11.3D1937.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S17.3D11.3S11.3D12.3D11.3S12.3D11.3D11.3S1937.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D17.3D11.3D11.3S12.3D11.3D12.3S11.3D11.3D3248."
+    }
+  ]
+}

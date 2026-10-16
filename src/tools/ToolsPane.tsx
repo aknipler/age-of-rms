@@ -265,6 +265,7 @@ export function ToolsPane({
         playerCount: generation.playerCount,
         mapSize: generation.mapSize,
         teams: generation.teams,
+        teamPositions: generation.teamPositions,
       },
       lang,
       gameConstants,

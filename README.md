@@ -17,7 +17,7 @@ The preview is an approximation and can always be improved. It reproduces the en
 
 ## Status
 
-In development, and usable. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built (tools are beta). See the [user guide](docs/user-guide.md) for a walkthrough.
+Open Beta. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built (tools are beta). See the [user guide](docs/user-guide.md) for a walkthrough.
 
 ## Installing
 
@@ -66,6 +66,8 @@ Age of RMS will always be free, with no advertising and no paid tier (which is g
 Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Guide and the terrain and object reference sheets, which the hover docs and reference data build on.
 
 [genie-rms](https://github.com/genie-js/genie-rms) by Renée Kooi, an open source reimplementation of the original game's map generator, was a useful resource for how the map preview grows lands. It builds on reverse engineering of the original game by Yvan Burrie, JustTesting123 and others.
+
+[AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE) gave the first leads to how Definitive Edition draws the random numbers behind its lands. Every rule the preview's land stage uses was then tested against maps the game generated, and the code is written from those tests rather than from AoE2RMSIDE's. The generator itself is Chris Lomont's WELL512, seeded with a 32-bit xorshift and Robert Jenkins' integer hash.
 
 ## Attribution
 

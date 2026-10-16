@@ -258,3 +258,86 @@ export function isEmptyScript(parse: ParseResult | null): boolean {
     parse.script.sections.length === 0 && parse.script.preamble.length === 0
   );
 }
+
+/**
+ * Each `command` in `section` as a map from lowercased attribute name to the
+ * argument texts of its LAST occurrence, one map per command. For a check that
+ * compares attributes of one command with each other, such as four borders
+ * that must hold the same value, which `hasCommandWithAttributeWhere` cannot
+ * express because it looks at one attribute at a time. A command with no block
+ * gives an empty map.
+ */
+export function commandAttributeMaps(
+  parse: ParseResult | null,
+  section: string,
+  command: string,
+): Map<string, string[]>[] {
+  if (!parse) return [];
+  return commandsNamed(parse, section, command).map((cmd) => {
+    const map = new Map<string, string[]>();
+    for (const attr of attributesOf(cmd)) {
+      map.set(tokenText(parse, attr.name).toLowerCase(), argTexts(parse, attr));
+    }
+    return map;
+  });
+}
+
+/**
+ * True when a `#const NAME ...` exists anywhere in the script, in the
+ * preamble or inside a section, and `test` accepts the text of the arguments
+ * after the name. `#const` is a directive, and Breakdown's picker offers
+ * directives in every section, so a learner may put it in either place.
+ * Comparing the name case-sensitively is deliberate: RMS names are, and a
+ * `PL_BORDERS` the learner spelt `pl_borders` is a different constant.
+ */
+export function hasConstWhere(
+  parse: ParseResult | null,
+  name: string,
+  test: (valueArgs: string[]) => boolean,
+): boolean {
+  if (!parse) return false;
+  const all: Item[] = [...collectItems(parse.script.preamble)];
+  for (const section of parse.script.sections) {
+    all.push(...collectItems(section.items));
+  }
+  return all.some(
+    (item) =>
+      item.kind === "directive" &&
+      tokenText(parse, item.hash).toLowerCase() === "#const" &&
+      item.args.length > 0 &&
+      renderArg(item.args[0], parse.tokens) === name &&
+      test(item.args.slice(1).map((arg) => renderArg(arg, parse.tokens))),
+  );
+}
+
+/**
+ * True when `#const name` is written before the first `command` in `section`.
+ * RMS reads a script top to bottom, so a constant defined below its use is
+ * not defined yet where it is used. Breakdown's picker appends a new item at
+ * the end of a section, so a learner who adds the constant after the command
+ * has to move it up, and the step that teaches naming a number needs to know
+ * whether they did.
+ */
+export function isConstBeforeCommand(
+  parse: ParseResult | null,
+  name: string,
+  section: string,
+  command: string,
+): boolean {
+  if (!parse) return false;
+  const commands = commandsNamed(parse, section, command);
+  if (commands.length === 0) return false;
+  const firstUse = Math.min(...commands.map((cmd) => cmd.span.start));
+  const all: Item[] = [...collectItems(parse.script.preamble)];
+  for (const node of parse.script.sections) {
+    all.push(...collectItems(node.items));
+  }
+  return all.some(
+    (item) =>
+      item.kind === "directive" &&
+      tokenText(parse, item.hash).toLowerCase() === "#const" &&
+      item.args.length > 0 &&
+      renderArg(item.args[0], parse.tokens) === name &&
+      item.span.start < firstUse,
+  );
+}

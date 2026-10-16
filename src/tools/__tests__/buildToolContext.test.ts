@@ -26,6 +26,9 @@ function baseInput(
       playerCount: 4,
       mapSize: "Tiny" as const,
       teams: [1, 1, 2, 2, 0, 0, 0, 0],
+      // false, the non-default value, so the assertion below shows the
+      // setting is carried through rather than defaulted on the way.
+      teamPositions: false,
     },
     lang,
     gameConstants,
@@ -62,6 +65,7 @@ describe("buildToolContext", () => {
       playerCount: 4,
       mapSize: { name: "Tiny", tiles: expect.any(Number) },
       teams: [1, 1, 2, 2, 0, 0, 0, 0],
+      teamPositions: false,
     });
   });
 

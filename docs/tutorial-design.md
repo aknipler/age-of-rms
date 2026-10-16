@@ -43,6 +43,12 @@ the third and fourth time. Scoped to that one step, not a blanket auto-apply
 for every check step: see Sec.5.1's `autoFill` field and the build log's
 2026-09-01 entry for the mechanism.
 
+**Reversed 2026-10-10, one branch point.** The owner asked for Tutorial A to be
+offered in the Code tab as well as in Breakdown, with the learner picking which.
+That is a branching flow, so the rev 1 exclusion above no longer holds for this
+one case. The branch is a single choice step, and each step after it is either
+shared or belongs to one track. Sec.9.2 has the mechanism and the reasons.
+
 ## 1. Vocabulary
 
 | Term          | Meaning                                                                                              |
@@ -346,6 +352,12 @@ rev-1 ~600ms post-rev-1 — 600ms read as too quick to actually register the
 tick before the callout moved on) showing a tick beside the title — instant
 advance reads as the callout having been dismissed by accident. A step already
 satisfied on arrival does not auto-advance at all; Sec.5.5 has the reasoning.
+
+**Added 2026-10-16.** A check step can opt out of auto-advance with
+`completion.autoAdvance: false`. It still shows the tick when its test passes,
+and the learner moves on with Next. This is for a step whose body still has
+something to read after the learner acts, such as a spoiler explaining what
+they just saw. Comeer's "Does the square count?" is the first one.
 
 ### 5.3 Context and navigator registry
 
@@ -850,9 +862,9 @@ the content file, in the same plain, unhurried voice as `docs/user-guide.md`.
 | 1   | The order of a map         | `region:breakdown.sectionTabs` · tab `breakdown`                                                                                                                                                                                                                                                       | A random map script runs top to bottom, and these seven numbered tabs are that order: 0. Header, 1. Player Setup, 2. Land, 3. Elevation, 4. Cliff, 5. Terrain, 6. Terrain Connection, 7. Objects. The game finishes each stage before starting the next, which is why you place land before you place gold on it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | manual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 2   | Random or direct placement | `help:breakdown.tab.playerSetup` + `help:breakdown.addCommand` + `region:breakdown.main` · section `PLAYER_SETUP` (nudged +368px right, widened to 380px — clears CommandPicker's dropdown, Sec.4.2.1)                                                                                                 | Two ways to decide where players start. `random_placement` lets the generator scatter the player lands for you — one line, and it is what most maps use. `direct_placement` hands you the controls instead: you position every land yourself with `land_position`, which is more power and a lot more work. We'll use random placement. Press `+ Add command` and pick `random_placement`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `hasCommand(PLAYER_SETUP, "random_placement")`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 3   | Give the players some land | `help:breakdown.addCommand` + `region:breakdown.main` · section `LAND_GENERATION` (nudged +368px right, widened to 380px — same CommandPicker clearance as step 2, Sec.4.2.1)                                                                                                                          | Add `create_player_lands`. It makes one land per player, all identical, which is the easy way to keep a map fair. Three attributes is enough: `terrain_type GRASS` for what the land is made of, `land_percent 20` for how much of the map the lands take between them, and `circle_radius 35` for how far out from the centre they sit. That last one is the number you will reach for most often — it is the ring everybody starts on, so it decides how far apart players are, and nudging it is the quickest way to change how a map plays.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `terrain_type` present as `GRASS` **and** `land_percent` present with value `20` **and** `circle_radius` present with value `35` — presence alone is satisfied by the placeholder `computeEdit` fills in the instant `+` is pressed (`circle_radius`'s first argument has no declared default, so `placeholderFor` falls back to its `min`, `-50`; `land_percent`'s declared default is `100`), which is not what the step asks for. `land_percent` was the one still missing a value check post-rev-1 ("doesn't check for land percent" — Ash's own report) — `circle_radius` alone had been checked since the very first value-check pass, on the reasoning that it's the LAST attribute the body lists (same "check the final one" shorthand row 6 and row 8 used before their own gaps were found); that shorthand is retired now, this row checks everything the body names |
-| 4   | A hill in the middle       | same anchor/`extraAnchors`/nudge as row 3 (`help:breakdown.addCommand` + `region:breakdown.main`, +368px/380px) — literally the same element, so the callout lands in the same spot for both steps rather than jumping for what reads as a continuation of the same action · section `LAND_GENERATION` | Now add `create_land` — the same attributes, but one land instead of one per player. Make it `terrain_type DIRT` with `land_percent 8`, `land_position 50 50` to pin it to the map's centre, `base_elevation 3` to raise it, and `land_id 10` so we can find it again when we put the gold on it. Expect a warning to appear at the bottom of the window: raised land needs an elevation section, and we add that next.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `terrain_type` present with value `DIRT` **and** `land_percent` present with value `8` **and** `land_position` present with values `50`/`50` **and** `base_elevation` present with value `3` **and** `land_id` present with value `10` — every attribute the body names, same placeholder-timing reasoning as row 3 (`terrain_type`'s default is `GRASS`, `land_percent`'s is `100`, `land_position`'s two arguments have no default and fall back to their shared `min`, `0`/`0`, `base_elevation`'s is `0`, `land_id` falls back to its `min`, `-10` — none matches). `land_percent`/`land_position` were the two still missing after the row's first value-check pass added `terrain_type`                                                                                                                                                                                    |
+| 4   | A hill in the middle       | same anchor/`extraAnchors`/nudge as row 3 (`help:breakdown.addCommand` + `region:breakdown.main`, +368px/380px) — literally the same element, so the callout lands in the same spot for both steps rather than jumping for what reads as a continuation of the same action · section `LAND_GENERATION` | Now add `create_land` — the same attributes, but one land instead of one per player. Make it `terrain_type DIRT` with `land_percent 8`, `land_position 50 50` to pin it to the map's centre, `base_elevation 3` to raise it, and `land_id 10` so we can find it again when we put the gold on it. Expect an error to appear at the bottom of the window: raised land needs an elevation section, and we add that next.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `terrain_type` present with value `DIRT` **and** `land_percent` present with value `8` **and** `land_position` present with values `50`/`50` **and** `base_elevation` present with value `3` **and** `land_id` present with value `10` — every attribute the body names, same placeholder-timing reasoning as row 3 (`terrain_type`'s default is `GRASS`, `land_percent`'s is `100`, `land_position`'s two arguments have no default and fall back to their shared `min`, `0`/`0`, `base_elevation`'s is `0`, `land_id` falls back to its `min`, `-10` — none matches). `land_percent`/`land_position` were the two still missing after the row's first value-check pass added `terrain_type`                                                                                                                                                                                    |
 | 5   | Watch it appear            | `region:sidePanel.preview`                                                                                                                                                                                                                                                                             | The preview regenerates as you edit. Your player lands and the centre hill should be there now. It is an approximation rather than the game — the notes drawer lists everything it could not model exactly — but it is fast enough to try an idea and see it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | manual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 6   | Hills                      | `help:breakdown.tab.elevationGeneration` + `region:breakdown.cardList` · section `ELEVATION_GENERATION`                                                                                                                                                                                                | `create_elevation` raises clumps of ground, and its argument is the height to build up to. Add `create_elevation 4` with `base_terrain GRASS` (only grass gets raised), `number_of_clumps 10` and `number_of_tiles 600`. The warning from the last step should clear as soon as this section exists. `create_elevation`'s own positional argument (the height) present with value `4` **and** `base_terrain` present as `GRASS` (its declared default, so this one was never actually at risk) **and** `number_of_clumps` present with value `10` **and** `number_of_tiles` present with value `600` — the height and both of the latter two default to something else the instant `+`/the command is created (`create_elevation`'s own argument declares `default: 0`; `number_of_clumps`'s declared default is `1`; `number_of_tiles` has no default and falls back to its `min`, `0`), so a presence-only check (rev 1 shipped bare `hasCommand`, then a mid-session revision shipped presence-only attribute checks, then a value-check pass that covered the three ATTRIBUTES but missed the command's own positional argument) is satisfied before the user retypes any of them. The height check uses `hasCommandWhere`, same as Cliffs (row 7) — it's the command's own argument, not a nested attribute                                                                                                                                                                              |
+| 6   | Hills                      | `help:breakdown.tab.elevationGeneration` + `region:breakdown.cardList` · section `ELEVATION_GENERATION`                                                                                                                                                                                                | `create_elevation` raises clumps of ground, and its argument is the height to build up to. Add `create_elevation 4` with `base_terrain GRASS` (only grass gets raised), `number_of_clumps 10` and `number_of_tiles 600`. The error from the last step should clear as soon as this section exists. `create_elevation`'s own positional argument (the height) present with value `4` **and** `base_terrain` present as `GRASS` (its declared default, so this one was never actually at risk) **and** `number_of_clumps` present with value `10` **and** `number_of_tiles` present with value `600` — the height and both of the latter two default to something else the instant `+`/the command is created (`create_elevation`'s own argument declares `default: 0`; `number_of_clumps`'s declared default is `1`; `number_of_tiles` has no default and falls back to its `min`, `0`), so a presence-only check (rev 1 shipped bare `hasCommand`, then a mid-session revision shipped presence-only attribute checks, then a value-check pass that covered the three ATTRIBUTES but missed the command's own positional argument) is satisfied before the user retypes any of them. The height check uses `hasCommandWhere`, same as Cliffs (row 7) — it's the command's own argument, not a nested attribute                                                                                                                                                                                |
 | 7   | Cliffs                     | `help:breakdown.tab.cliffGeneration` + `region:breakdown.cardList` · section `CLIFF_GENERATION`                                                                                                                                                                                                        | Cliffs are the odd section out: no block, just a handful of standalone settings. Add `min_number_of_cliffs 3` and `max_number_of_cliffs 6`, then `min_length_of_cliff 4` and `max_length_of_cliff 8`. Cliffs block movement, so a few go a long way.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | All four settings present with their stated value — `min_number_of_cliffs` `3`, `max_number_of_cliffs` `6`, `min_length_of_cliff` `4`, `max_length_of_cliff` `8` (`hasCommandWhere`, reading each COMMAND's own argument — these are standalone commands, not attributes of anything). Every command argument gets the identical `default ?? min ?? 0` placeholder on creation; `min_number_of_cliffs`'s default (`3`) happens to already match, the other three (`8`, `5`, `9`) do not. The first post-rev-1 revision of this row only checked the first two ("only the commands are checked" — Ash's own words for the gap, since all four read as "attributes" of the section to someone not reading the AST)                                                                                                                                                                 |
 | 8   | Trees                      | `help:breakdown.tab.terrainGeneration` + `region:breakdown.cardList` · section `TERRAIN_GENERATION`                                                                                                                                                                                                    | `create_terrain FOREST` paints forest over what is already there. `base_terrain GRASS` says what it may paint over, `land_percent 10` how much, `number_of_clumps 20` how broken up it is (10/20 = 0.5 land percent per group), and `set_avoid_player_start_areas 8` keeps it off everybody's town centre. `create_terrain`'s own positional argument (the terrain constant) present as `FOREST` **and** `base_terrain` present as `GRASS` (its default, never at risk) **and** `land_percent`/`number_of_clumps`/`set_avoid_player_start_areas` each present with their stated value (`10`/`20`/`8`) — none of the checked-by-value ones has a default that happens to match (`create_terrain`'s own argument has no default at all and falls back to the literal string `"TODO"` per `placeholderFor`'s non-numeric branch; `land_percent`'s default is `100`; `number_of_clumps`'s is `1`; `set_avoid_player_start_areas` has none and falls back to `0`), so presence alone (rev 1, then a mid-session revision that still checked only `base_terrain`, then one that checked all four ATTRIBUTE names but no values, then one that checked their values but missed the command's own positional argument) was satisfied by the wrong value every time. `FOREST` is checked with `hasCommandWhere`, same reasoning as Hills (row 6). The fixture's `number_of_clumps` was `12` through all of that — inconsistent with the copy's own "10/20 = 0.5" arithmetic — and is now `20` to match |
 | 9   | A road to the hill         | `help:breakdown.tab.connectionGeneration` + `region:breakdown.cardList` · section `CONNECTION_GENERATION`                                                                                                                                                                                              | `create_connect_to_nonplayer_land` walks a path from every player to every neutral land, paving as it goes. Two lines of paving is all we need: `replace_terrain GRASS ROAD` and `replace_terrain DIRT ROAD`, so the road shows up on the grass and again where it climbs the dirt hill.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `hasCommand(CONNECTION_GENERATION, "create_connect_to_nonplayer_land")` **and** a `replace_terrain GRASS ROAD` attribute **and** a `replace_terrain DIRT ROAD` attribute — rev 1 named `create_connect_all_players_land` here (and checked only its presence, no attributes); that command connects player lands to EACH OTHER and only incidentally passes through neutral land "if the cost is favorable" (guide:1757-1760), so it cannot guarantee reaching the hill the step is titled after. `create_connect_to_nonplayer_land` is guide-documented as "Connect all player lands to all neutral lands" (guide:1858-1861) and is what the shipped `content/rmsBasics.ts` actually used — the design doc and the test fixture (`fixtures/goldenHill.rms`) had silently drifted from the implementation; both are now corrected to match it                                    |
@@ -871,6 +883,105 @@ item, and for the reason `TitleBar.tsx` already records (a Tauri webview has no
 address bar, no back button and none of the user's session). The URL is
 `RMS_DISCORD_URL` in `content/rmsBasics.ts` (Sec.14 open question 1, resolved
 2026-08-31).
+
+### 9.2 Breakdown or Code (2026-10-10)
+
+Tutorial A asks the learner, right after Step 0, whether to build Golden Hill in
+the Breakdown editor or by typing it in the Code tab. Everything else about the
+tutorial stays as Sec.9.1 describes it. The Breakdown track is Sec.9.1's steps
+in their old order with the choice added after Step 0, and a test pins that.
+
+**Where the choice sits.** Step `breakdown-or-code` comes straight after
+`start-new-file`. By then the file exists, so both tabs have something real to
+show when the step spotlights them. Step 0 is the same for both tracks and the
+first step after it (`order-of-a-map`) is the first one that points at an
+editor, so this is the earliest point where the two tutorials differ. Asking on
+the welcome pane instead would put a question about two editors in front of a
+user who has seen neither.
+
+**The copy.** The step explains the difference in four short paragraphs.
+Breakdown shows the script as cards and fills names in from lists, which suits
+someone who has never written code. Code is the script as text, typed line by
+line with hover help, which is where most authors work once they know the
+names. Both write the same file, and Back from the next step returns to the
+choice.
+
+**Engine.** Three additions, all optional fields, so no other tutorial changes.
+
+- `TutorialStep.track` marks a step as belonging to one track. A step without
+  one is shown on every run.
+- `TutorialStep.choice` turns a step into a choice. Its options are buttons that
+  replace Next. `choose(track)` in `TutorialContext` sets the run's track and
+  moves on one step. Every step before a choice must be untracked, so the
+  choice has the same index on every track and Back from either track's first
+  step lands on it.
+- `BodyBlock` gains `{ kind: "code" }`, script text shown in the editor font
+  with its line breaks and indent kept, and a block spoiler gains `code: true`
+  to show its answer the same way.
+
+`visibleSteps(definition, track)` in `registry.ts` gives the steps a run shows.
+Before anything is picked it counts the first option's track, so the step
+counter is right from step 1. The run's `steps` list is derived from the
+definition and track, never stored.
+
+**The Code track** (`content/rmsBasicsCode.ts`). One Code step per Breakdown
+step that names a Breakdown control, 12 in all, each inserted after its twin by
+`withCodeTrack`. A Code step takes its twin's `completion` and `autoFill` as the
+same objects. Both tabs edit one document and the checks read its parse, so the
+same check is correct for both, and a later fix to a check reaches both
+tracks. `rmsBasics.test.ts` asserts the sharing, and also appends each Code
+step's own code blocks to the script before that step and requires the step's
+check to pass. That proves every Answer is text the check accepts.
+
+The Code copy fades its scaffolding. The first three typing steps show the text
+to type. From the hill onward a step says what to write in words and keeps the
+text behind an `Answer` spoiler. The hill step plants a missing section on
+purpose. The learner sees RMS0311's red underline under `base_elevation` and
+watches it clear when they type the elevation header in the next step. The
+last Code step, `the-same-map-as-cards`, shows the Breakdown tab, mirroring
+Breakdown's own "This is what it really is".
+
+The Code typing steps spotlight `region:code.editor`. Neither side of the editor has
+room for the callout, so it settles in the window's bottom right, the same
+place Breakdown's "This is what it really is" step already lands. Whether it
+covers anything the learner needs is owed on the run sheet (section 21).
+
+**Shared by every tutorial (2026-10-14).** The owner asked for "Land Generation
+(Comeer)" to offer the same choice, and expects every later map-building tutorial
+to as well. The pieces Tutorial A built for itself now live in
+`src/tutorial/editorTracks.ts`.
+
+- `editorChoiceStep()` returns the choice step, so every tutorial asks with the
+  same words and the same two buttons. It goes straight after `start-new-file`,
+  for the reason above.
+- `withCodeTrack(steps, codeTwins)` takes the tutorial's own list of Code twins.
+  A twin always takes its Breakdown step's `completion` and `autoFill`. It also
+  takes the title, body, hint, bypass, preview and image unless it writes its
+  own. A step whose words name only attributes and the preview then needs a
+  one line twin, and the shared words cannot drift apart. It never takes the
+  callout placement or `navigate`, which point at Breakdown controls, and those
+  default to the code editor and the Code tab.
+- A twin's `body` may be a function of its Breakdown step's body.
+  `replaceBlock` and `insertAfterBlock` change one block, found by a phrase in
+  its words rather than by its position, and throw at module load when the
+  phrase is missing or appears twice.
+
+`src/tutorial/__tests__/editorTracks.ts` holds `describeEditorTracks`, the track
+tests a tutorial runs with one call. They check the choice right after `start-new-file`
+with nothing tracked before it, the Breakdown order pinned, equal track lengths
+with shared steps in the same places, checks shared by identity, each track's
+first step switching to its own tab (so Back and a different pick does not start
+on the wrong tab), no Breakdown control named on a Code step, the copy rules,
+and every script Answer accepted by its step's check. A tutorial passes in, for
+each Code step that shows script text, the script that text is typed into.
+
+The Comeer Code track is `src/tutorial/landGenerationComeer/codeTrack.ts`, 14
+twins. Seven keep their Breakdown words unchanged, since most of that tutorial
+is about attributes and the preview. The others change the words that name a
+Breakdown control, and add script text the first time a learner writes a new
+kind of line (a section header, a block, a `#const`, a copied block, an `rnd()`
+with no spaces). Each script Answer sits behind a spoiler at the end of the
+step's hint ladder, so the hints still come first.
 
 ## 10. Tutorial B — "Tour of Age of RMS" (`content/appTour.ts`)
 
@@ -1081,3 +1192,40 @@ Each tutorial of this kind needs a fixture script under
 file, which is a variation Sec.9.0 does not cover yet. Tutorial A's
 "Add them for me" `autoFill` button (Sec.0) is the precedent for skipping the
 parts that are not the lesson.
+
+### 17.1 Tutorial ideas by level (recorded 2026-10-03, not designed)
+
+Ideas for the tutorial catalogue, grouped by the level of the learner. None is
+designed. Some fit the Sec.17 problem-solving shape (a mostly complete script
+plus one problem) and some are closer to a short guided build.
+
+Beginner
+
+- Where to make lands and how to control their spread, using borders or other
+  lands.
+
+Mix of beginner and intermediate
+
+- Practice with the different ways to place objects. The ways to cover are
+  actor areas (static and dynamically placed), terrain, land ID, and avoiding
+  or favouring the map edge and forests.
+
+Intermediate
+
+- Forest paths without connections, using terrain generation.
+- Clustering resources around a central point such as a shrine, done two ways
+  so the learner can compare them. One way uses actor areas and the other uses
+  `land_id`.
+
+Advanced
+
+- The building foundation trick.
+- Using connections for gate placement.
+
+### 17.2 Beginner land tutorial, designed (2026-10-06)
+
+The beginner idea in Sec.17.1 is designed in `docs/tutorial-islands-design.md` as
+Tutorial C, "Growing islands", built around a simplified TC2 Comeer. It adds a
+step image, spoilers and a pinned preview state to the engine, and a seed finder
+plus regression gate for its overlap discovery step. The three engine additions
+and the seed check are built (2026-10-06). The tutorial content is not.

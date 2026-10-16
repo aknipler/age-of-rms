@@ -303,7 +303,6 @@ describe("a per player arc re-spaces over its whole sweep at every count", () =>
       instantiated,
       createTileGrid(dim, 0),
       constants,
-      1,
     );
     expect(origins).toHaveLength(3);
     const bearings = origins
@@ -673,7 +672,6 @@ describe("a per player line runs from -B to +B with even steps at every count", 
       instantiated,
       createTileGrid(dim, 0),
       constants,
-      1,
     );
     expect(origins).toHaveLength(3);
     const polar = origins

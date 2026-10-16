@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { usePreviewView } from "./PreviewViewContext";
 import { useGenerationSettings } from "../../generationSettings/GenerationSettingsContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
@@ -11,6 +11,8 @@ import { usePreviewCut } from "../../PreviewCutContext";
 import type { TilePoint } from "../../preview/render/projection";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
+import { usePreviewReferenceSplit } from "../sidepanel/PreviewReferenceSplitContext";
+import { CanvasResizer } from "./CanvasResizer";
 import { PreviewCanvas } from "./PreviewCanvas";
 import {
   describeTile,
@@ -216,6 +218,11 @@ export function PreviewPane() {
   // position means nothing once you have switched tabs. The SELECTION lives in
   // the context above the tab switch, for the same reason the seed does.
   const [hovered, setHovered] = useState<TilePoint | null>(null);
+  // The canvas's remembered height, null while it is still the default square.
+  // CanvasResizer owns changing it; this pane only applies it.
+  const { canvasHeight } = usePreviewReferenceSplit();
+  const paneRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
 
   // `pending` is true from the moment a generation request is sent until its
   // response lands (usePreviewResult.ts). It does NOT cover the 300ms
@@ -312,7 +319,11 @@ export function PreviewPane() {
   const dim = result.dim;
 
   return (
-    <div className={styles.pane} data-tutorial-anchor="sidePanel.preview">
+    <div
+      ref={paneRef}
+      className={styles.pane}
+      data-tutorial-anchor="sidePanel.preview"
+    >
       <div className={styles.controls}>
         {/* Left cluster: settings, view toggle, pin, colour mode. Right
             cluster: seed + re-roll. Two flex children of `.controls`
@@ -414,7 +425,15 @@ export function PreviewPane() {
           container is the obvious box to centre over. That container
           belongs to OverlayCanvas, which the Land Placement panel renders
           too, and the label is this pane's business alone. */}
-      <div className={styles.canvasFrame}>
+      <div
+        ref={frameRef}
+        className={
+          canvasHeight === null
+            ? styles.canvasFrame
+            : `${styles.canvasFrame} ${styles.canvasFrameSized}`
+        }
+        style={canvasHeight === null ? undefined : { height: canvasHeight }}
+      >
         <PreviewCanvas
           result={result}
           snapshot={snapshot}
@@ -433,6 +452,7 @@ export function PreviewPane() {
             <span className={styles.generatingLabel}>Generating...</span>
           </div>
         )}
+        <CanvasResizer frameRef={frameRef} paneRef={paneRef} />
       </div>
 
       <div className={styles.readout}>

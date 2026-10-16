@@ -95,3 +95,36 @@ export function isPreviewReferenceCollapsedSide(
 ): value is PreviewReferenceCollapsedSide {
   return value === "preview" || value === "reference" || value === null;
 }
+
+// The map canvas's own height, a separate thing from the split above. The
+// canvas is square by default (`aspect-ratio: 1` in PreviewCanvas.module.css),
+// which caps how much of a tall preview slot the map can use however far the
+// split is dragged. A user who wants a bigger map drags the canvas's bottom
+// edge instead, and that height is remembered. PIXELS, not a fraction: unlike
+// the split, it is not "a share of whatever room there is" but a size the
+// user picked, and the width it sits in already follows the side panel.
+
+/** Shortest the canvas can be dragged: the same 9rem floor PreviewCanvas.module.css gives the default square. */
+export const MIN_CANVAS_HEIGHT = 144;
+
+/** Tallest the canvas can be dragged. A sanity cap for a corrupt stored value or a runaway drag, well past any real window. */
+export const MAX_CANVAS_HEIGHT = 3000;
+
+/** Clamps to the canvas's own bounds, whole pixels. Non-finite input falls back to the minimum. */
+export function clampCanvasHeight(height: number): number {
+  if (!Number.isFinite(height)) return MIN_CANVAS_HEIGHT;
+  return Math.round(
+    Math.min(MAX_CANVAS_HEIGHT, Math.max(MIN_CANVAS_HEIGHT, height)),
+  );
+}
+
+/** Guards the persisted height on the way out of the Tauri store. `null` is a real, storable state (back to the square default), same as the collapsed side. */
+export function isCanvasHeight(value: unknown): value is number | null {
+  return (
+    value === null ||
+    (typeof value === "number" &&
+      Number.isFinite(value) &&
+      value >= MIN_CANVAS_HEIGHT &&
+      value <= MAX_CANVAS_HEIGHT)
+  );
+}

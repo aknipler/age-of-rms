@@ -11,8 +11,7 @@ import {
   growLands,
   paintLandTerrain,
   applyBaseElevation,
-  bucketWeights,
-  reservoirSize,
+  cleanLandTerrain,
   type LandPlacementResult,
 } from "../generator/lands";
 import type { LandOrigin, TileGrid } from "../generator/types";
@@ -61,7 +60,7 @@ function place(
     seed,
   );
   const grid = createTileGrid(instantiated.dim, GRASS);
-  const result = placeLandOrigins(instantiated, grid, constants, seed);
+  const result = placeLandOrigins(instantiated, grid, constants);
   return { ...result, dim: instantiated.dim };
 }
 
@@ -81,8 +80,8 @@ function placeAndGrow(
     seed,
   );
   const grid = createTileGrid(instantiated.dim, GRASS);
-  const result = placeLandOrigins(instantiated, grid, constants, seed);
-  growLands(result.origins, grid, result.reports, seed);
+  const result = placeLandOrigins(instantiated, grid, constants);
+  growLands(result.origins, grid, result.reports, result.stream);
   return { ...result, dim: instantiated.dim, grid };
 }
 
@@ -102,8 +101,8 @@ function placeGrowElevate(
     seed,
   );
   const grid = createTileGrid(instantiated.dim, GRASS);
-  const result = placeLandOrigins(instantiated, grid, constants, seed);
-  growLands(result.origins, grid, result.reports, seed);
+  const result = placeLandOrigins(instantiated, grid, constants);
+  growLands(result.origins, grid, result.reports, result.stream);
   const elevationNotes = applyBaseElevation(
     instantiated,
     result.origins,
@@ -347,15 +346,18 @@ describe("player lands (create_player_lands) ring", () => {
       expect(origin.player).toBeGreaterThanOrEqual(1);
   });
 
-  it("explicit circle_radius R with variance 0 puts every player at EXACTLY radius R, no jitter", () => {
+  it("explicit circle_radius R with variance 0 puts every player on a circle of radius R, no jitter", () => {
+    // Rev 9: the game truncates `cos * r + c` to a tile, so each coordinate
+    // sits up to one tile inside the true circle, and the distance from the
+    // centre is within sqrt(2) of R rather than exactly R.
     const { origins, dim } = place(
       "<LAND_GENERATION>\ncreate_player_lands {\ncircle_radius 30 0\n}\n",
       3,
       { playerCount: 4 },
     );
-    const center = { x: dim / 2, y: dim / 2 };
+    const center = { x: Math.floor(dim / 2), y: Math.floor(dim / 2) };
     for (const origin of origins) {
-      expect(distance(origin, center)).toBeCloseTo(0.3 * dim, 0);
+      expect(Math.abs(distance(origin, center) - 0.3 * dim)).toBeLessThan(1.5);
     }
   });
 
@@ -403,26 +405,23 @@ describe("player lands (create_player_lands) ring", () => {
       13,
       { playerCount: 8, teams },
     );
-    const center = { x: dim / 2, y: dim / 2 };
-    const angleOf = (o: LandOrigin) =>
-      Math.atan2(o.y - center.y, o.x - center.x);
-    const team1Angles = origins.filter((o) => o.player! <= 4).map(angleOf);
-    const team2Angles = origins.filter((o) => o.player! >= 5).map(angleOf);
-    const spread = (angles: number[]) => {
-      const sorted = [...angles].sort((a, b) => a - b);
-      let max = 0;
-      for (let i = 1; i < sorted.length; i++)
-        max = Math.max(max, sorted[i] - sorted[i - 1]);
-      return max;
-    };
-    // Within a 4-member team the angular spread end-to-end should be a small
-    // fraction of the circle; if members were spaced evenly around the WHOLE
-    // ring instead, adjacent-within-team gaps would be ~45 degrees each.
-    const team1Span = Math.max(...team1Angles) - Math.min(...team1Angles);
-    const team2Span = Math.max(...team2Angles) - Math.min(...team2Angles);
-    expect(team1Span).toBeLessThan((60 * Math.PI) / 180);
-    expect(team2Span).toBeLessThan((60 * Math.PI) / 180);
-    void spread;
+    // Rev 9: the two groups sit half the perimeter apart, and teammates
+    // base + 5 + base = 11 apart along it, so every pair of teammates is
+    // closer than any player is to the other team. Spaced evenly instead,
+    // neighbours from different teams would sit as close as teammates.
+    void dim;
+    const gap = (a: LandOrigin, b: LandOrigin) =>
+      Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+    const team1 = origins.filter((o) => o.player! <= 4);
+    const team2 = origins.filter((o) => o.player! >= 5);
+    let widestTeam = 0;
+    for (const team of [team1, team2])
+      for (const a of team)
+        for (const b of team) widestTeam = Math.max(widestTeam, gap(a, b));
+    let closestRival = Infinity;
+    for (const a of team1)
+      for (const b of team2) closestRival = Math.min(closestRival, gap(a, b));
+    expect(widestTeam).toBeLessThan(closestRival);
   });
 
   it("direct_placement uses create_player_lands' own land_position for every player", () => {
@@ -530,7 +529,7 @@ describe("origin stamp", () => {
       1,
     );
     const gridSquare = createTileGrid(instantiatedSquare.dim, GRASS);
-    placeLandOrigins(instantiatedSquare, gridSquare, constants, 1);
+    placeLandOrigins(instantiatedSquare, gridSquare, constants);
     const instantiatedCircle = instantiateScript(
       parseRms(circularSource, lang),
       refDb,
@@ -538,7 +537,7 @@ describe("origin stamp", () => {
       1,
     );
     const gridCircle = createTileGrid(instantiatedCircle.dim, GRASS);
-    placeLandOrigins(instantiatedCircle, gridCircle, constants, 1);
+    placeLandOrigins(instantiatedCircle, gridCircle, constants);
 
     const ox = Math.round(instantiatedSquare.dim / 2);
     const oy = Math.round(instantiatedSquare.dim / 2);
@@ -557,7 +556,7 @@ describe("origin stamp", () => {
       1,
     );
     const grid = createTileGrid(instantiated.dim, GRASS);
-    placeLandOrigins(instantiated, grid, constants, 1);
+    placeLandOrigins(instantiated, grid, constants);
     const center = tileIndex(
       grid,
       Math.round(instantiated.dim / 2),
@@ -758,7 +757,7 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
     }
   });
 
-  it("grouped_by_team: an assigned extra land hits guide:857's documented bug instead of a working ring slot", () => {
+  it("grouped_by_team: an assigned extra land never gets a perimeter value, guide:857's documented bug", () => {
     const teams: TeamNumber[] = [1, 1, 1, 1, 2, 2, 2, 2];
     const source = [
       "<PLAYER_SETUP>",
@@ -771,17 +770,16 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
       playerCount: 8,
       teams,
     });
+    // Rev 9: grouped_by_team places only each player's first land, so the
+    // extra keeps perimeter value 0, the start of the low-y side, x = minX +
+    // tw. At Normal with base_size 3 that is 3 + floor(2 * 194 / 10) = 41.
+    // Its y still takes the side's edge draw.
+    void reports;
     expect(origins).toHaveLength(9); // 8 implicit + 1 extra
     const extra = origins[8];
     expect(extra.player).toBe(1);
-    expect(extra.x).toBe(Math.round(dim / 2));
-    expect(extra.y).toBe(Math.round(dim / 2));
-    const extraReport = reports.find(
-      (r) => r.commandSpan.start !== reports[0].commandSpan.start,
-    );
-    expect(extraReport?.failures.some((f) => f.bucket === "notSimulated")).toBe(
-      true,
-    );
+    expect(dim).toBe(200);
+    expect(extra.x).toBe(41);
   });
 
   it("a standalone assign_to'd land (no create_player_lands at all) still gets ring-placed, not treated as neutral", () => {
@@ -803,7 +801,7 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
     ).toBeGreaterThan(dim * 0.1);
   });
 
-  it("zone still defaults to playerNumber - 10 for an assigned land", () => {
+  it("zone still defaults to playerNumber - 10 for an assigned land (Sec.6.1 rev 9, not discriminated by the DE fixture)", () => {
     const { origins } = place(
       "<LAND_GENERATION>\ncreate_land {\nassign_to_player 3\n}\n",
       1,
@@ -813,7 +811,12 @@ describe("assign_to / assign_to_player (Sec.6.1)", () => {
   });
 });
 
-describe("detached seeds stay near their land (Sec.15 item 27)", () => {
+describe("a land's tiles stay attached to it (Sec.15 item 27's two failures)", () => {
+  // Rev 8 (2026-09-29) deleted the detached-seed reservoir these three tests
+  // were written against. They stay because the failures they catch are
+  // properties of the MAP, a land showing up far from itself or on the far
+  // side of a wall, and any future growth model must keep passing them. The
+  // comments below describe the reservoir era.
   it("a fragmenting land's pieces are splinters off it, not tiles on the far side of the map", () => {
     // A detached seed models a land BREAKING APART. Drawn from the whole map,
     // as Sec.6.1's text reads, it instead teleports, and a land whose target
@@ -948,56 +951,45 @@ describe("detached seeds stay near their land (Sec.15 item 27)", () => {
       expect(flood).toBeGreaterThanOrEqual(0);
 
       expect(countComponents(grid, flood)).toBe(1);
-      expect(reachableUnowned(grid, flood)).toBe(0);
-      ownedPerSeed.push(ownedCount(grid, flood));
+      // Rev 9: a few pinholes are the game's own. Every claim rolls for
+      // conformity and its neighbours each roll too, and at land_conformity 0
+      // a cell beyond the conformity radius fails one roll in a hundred. A
+      // cell whose every neighbour was claimed before it got through is never
+      // pushed again. The large DE fixture maps (14,400 tiles) carry the same
+      // holes, tile for tile.
+      const owned = ownedCount(grid, flood);
+      expect(reachableUnowned(grid, flood)).toBeLessThanOrEqual(owned * 0.002);
+      ownedPerSeed.push(owned);
     }
-    expect(ownedPerSeed[1]).toBe(ownedPerSeed[0]);
-    expect(ownedPerSeed[2]).toBe(ownedPerSeed[0]);
+    for (const owned of ownedPerSeed)
+      expect(Math.abs(owned - ownedPerSeed[0])).toBeLessThanOrEqual(
+        ownedPerSeed[0] * 0.002,
+      );
   }, 20000);
 });
 
-describe("bucketWeights / reservoirSize (Sec.6.1's two growth knobs, isolated from the full pipeline)", () => {
-  // reservoirSize is non-zero for every cf < 20, so a full-pipeline
-  // connectivity test can't isolate what bucketWeights alone controls (shape
-  // roundness) from what reservoirSize controls (fragmentation); see the
-  // build log entry on the mutation test that found this. Unit-tested here
-  // instead.
-
-  it("reservoirSize is 0 at cf >= 20 and rises monotonically as cf falls below it", () => {
-    expect(reservoirSize(20)).toBe(0);
-    expect(reservoirSize(100)).toBe(0);
-    expect(reservoirSize(-20)).toBeGreaterThan(reservoirSize(0));
-    expect(reservoirSize(0)).toBeGreaterThan(reservoirSize(19));
-  });
-
-  it("bucketWeights(negative) strongly favours neighborsOwned==1 over every other bucket", () => {
-    const [w1, w2, w3, w4] = bucketWeights(-20);
-    expect(w1).toBeGreaterThan(w2);
-    expect(w1).toBeGreaterThan(w3);
-    expect(w1).toBeGreaterThan(w4);
-  });
-
-  it("bucketWeights(cf) is uniform at cf=0 and increasingly favours high neighborsOwned as cf rises, saturating by cf=15", () => {
-    expect(bucketWeights(0)).toEqual([1, 1, 1, 1]);
-    const at8 = bucketWeights(8);
-    const at15 = bucketWeights(15);
-    const at100 = bucketWeights(100);
-    expect(at8[3]).toBeGreaterThan(at8[0]); // some preference for infill already
-    expect(at15[3]).toBeGreaterThan(at8[3]); // stronger by 15
-    expect(at100).toEqual(at15); // saturated: no further change past 15
-  });
-});
-
-describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
+describe("growth (Sec.6.1 rev 8, the genie-rms land stage)", () => {
   it("grows a land toward its number_of_tiles target, remaining a superset of the origin stamp", () => {
-    const { origins, grid } = placeAndGrow(
+    // Rev 9's behavior_version 0 counters (the 1.0c quirk, measured by
+    // land4-grow). A land sets the counter of land number `zone byte`, which
+    // for default-zone lands is land 0. So a lone land starts at its stamp's
+    // 25 tiles and stops at 200, while a SECOND default-zone land starts at 0
+    // (it overwrote land 0's counter instead) and grows 200 beyond its stamp.
+    // The leftover fill adds tiles the counter never sees, which is where
+    // DE's overshoot comes from, so the bound is 15%.
+    const { grid } = placeAndGrow(
       "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 200\n}\n",
     );
     const owned = ownedCount(grid, 0);
-    // behavior_version 0 (default): target is ADDITIVE to the origin square,
-    // so the final count should be near origin + 200, not exactly 200.
-    expect(owned).toBeGreaterThan(150);
-    expect(owned).toBeLessThanOrEqual(origins[0].declaredTargetTiles + 25 + 5); // origin square (5x5=25) + target, small slack for edge effects
+    expect(owned).toBeGreaterThanOrEqual(200);
+    expect(owned).toBeLessThanOrEqual(200 * 1.15);
+
+    const pair = placeAndGrow(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 20 20\nbase_size 2\nnumber_of_tiles 200\n}\ncreate_land {\nland_position 80 80\nbase_size 2\nnumber_of_tiles 200\n}\n",
+    );
+    const second = ownedCount(pair.grid, 1);
+    expect(second).toBeGreaterThanOrEqual(225);
+    expect(second).toBeLessThanOrEqual(225 * 1.15);
   });
 
   it("never claims a tile outside its own border bounds when border_fuzziness is a hard stop (f=100)", () => {
@@ -1023,6 +1015,8 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     // vitest's 5s default, so it went red under load on a machine whose load
     // factor reaches 3.7x. Reporting the first offender by coordinate also
     // makes the failure readable, which 57,000 anonymous assertions did not.
+    // Rev 9: the box runs from L to R inclusive, R = dim - dim * 20 / 100, so
+    // tile `hi` itself is inside it.
     const lo = Math.round(0.2 * dim);
     const hi = dim - Math.round(0.2 * dim);
     let owned = 0;
@@ -1033,7 +1027,7 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
         owned++;
         if (
           firstOutside === undefined &&
-          (x < lo || x >= hi || y < lo || y >= hi)
+          (x < lo || x > hi || y < lo || y > hi)
         )
           firstOutside = { x, y };
       }
@@ -1066,7 +1060,7 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     expect(owned).toBeGreaterThan(1000);
   });
 
-  it("keeps two different-zone lands apart during growth by the SMALLER of their two other_zone_avoidance_distance values (BUG-016 reopened, RMSTEST_73/RMSTEST_66-recheck, measured 2026-09-03)", () => {
+  it("keeps two different-zone lands apart during growth when both declare the same other_zone_avoidance_distance (BUG-016 reopened, RMSTEST_66 recheck, measured 2026-09-03)", () => {
     // Origins only 20 tiles apart (45/55%), each targeting 15000 tiles -- a
     // ~69-tile-radius circle each -- so with no constraint at all these
     // would freely overlap; the point is to force a genuine contest for the
@@ -1085,7 +1079,9 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     // calibrated the model exactly: measured gap = declared value + 1, for
     // three different declared values, reproducing across three runs. See
     // lands.ts's violatesZoneAvoidance for the restored check and the full
-    // measurement, and known-issues.md BUG-016 for the write-up.
+    // measurement, and known-issues.md BUG-016 for the write-up. Rev 8
+    // (BUG-036) changed which land's distance counts, and with both at 5 the
+    // two readings agree, so this pair still stops at 6.
     const { grid, dim } = placeAndGrow(
       [
         "<LAND_GENERATION>",
@@ -1110,12 +1106,12 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
         }
       }
     }
-    // Chebyshev distance, matching violatesZoneAvoidance's own metric: the
-    // check rejects any candidate at distance <= the smaller of the two
-    // declared values (5 here, since both match), so the closest tile either
-    // land can ever claim sits at exactly effective+1 = 6 from the other's
-    // territory.
-    expect(minGap).toBe(6);
+    // Chebyshev distance. DE measured this pair 5 to 7 tiles apart. Along an
+    // axis the closest tile either land can claim sits at 5 + 1 = 6, and rev
+    // 9's avoidance window trims its two top corners, so a land approaching
+    // from below on a diagonal can come one tile closer.
+    expect(minGap).toBeGreaterThanOrEqual(5);
+    expect(minGap).toBeLessThanOrEqual(7);
   });
 
   it("does not enforce other_zone_avoidance_distance between two lands sharing a zone (same-zone exemption)", () => {
@@ -1151,11 +1147,15 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     expect(minGap).toBe(1);
   });
 
-  it("applies the SMALLER of two mismatched other_zone_avoidance_distance values, not the larger (RMSTEST_66 pair 3, re-read 2026-09-03)", () => {
+  it("between two mismatched other_zone_avoidance_distance values the smaller one sets the gap (RMSTEST_66 pair 3, re-read 2026-09-03)", () => {
     // Real-engine re-read of RMSTEST_66's asymmetric pair (DIRT3 declared 12,
     // GRASS3 declared 2) with the true tile-distance method: 3-7 tiles apart
     // across four runs, three of the four landing on exactly 2+1=3 -- nowhere
-    // near the 12+1=13 the "larger wins" reading would predict.
+    // near the 12+1=13 the "larger wins" reading would predict. Rev 8 reads
+    // this as each land checking only its own distance. The land at 2 walks
+    // up to within 3 of the other, and the land at 12 stops short, which is
+    // why the pair could not tell that rule apart from "the smaller of the
+    // two applies" (BUG-036, and the next test is the case that can).
     const { grid, dim } = placeAndGrow(
       [
         "<LAND_GENERATION>",
@@ -1183,6 +1183,47 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     expect(minGap).toBe(3);
   });
 
+  it("keeps a land its own declared distance from a neighbour that declares none (BUG-036, RMSTEST_73)", () => {
+    // The case RMSTEST_66 could not reach. The rev 7 check took the smaller of
+    // the two distances, 0 here, and let the grower run flush into the wall,
+    // gap 1. DE measured declared + 1 against walls that declare nothing. The
+    // wall is a zero-tile stamp so that only the grower moves.
+    // Rev 9: along the axis the gap is declared + 1 = 9, as RMSTEST_73
+    // measured, and the trimmed top corners of the window let the grower
+    // reach the wall's lower corner diagonally at 7 (o = 5 for a = 8, so the
+    // row 7 above sees only 6 tiles either side). The axis is what this pins,
+    // so it reads the gap along the wall's left face.
+    const { grid, dim } = placeAndGrow(
+      [
+        "<LAND_GENERATION>",
+        "create_land {\nland_position 30 50\nbase_size 2\nnumber_of_tiles 15000\nzone 1\nother_zone_avoidance_distance 8\n}",
+        "create_land {\nland_position 60 50\nbase_size 10\nnumber_of_tiles 0\nzone 2\n}",
+      ].join("\n"),
+    );
+    let axisGap = Infinity;
+    const wallLeft = Math.round(0.6 * dim) - 10;
+    for (let x = 0; x < wallLeft; x++)
+      if (grid.landId[tileIndex(grid, x, Math.round(0.5 * dim))] === 0)
+        axisGap = wallLeft - x;
+    expect(axisGap).toBe(9);
+    let minGap = Infinity;
+    for (let y = 0; y < dim; y++) {
+      for (let x = 0; x < dim; x++) {
+        if (grid.landId[tileIndex(grid, x, y)] !== 0) continue;
+        for (let dy = -12; dy <= 12; dy++) {
+          for (let dx = -12; dx <= 12; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= dim || ny < 0 || ny >= dim) continue;
+            if (grid.landId[tileIndex(grid, nx, ny)] === 1)
+              minGap = Math.min(minGap, Math.max(Math.abs(dx), Math.abs(dy)));
+          }
+        }
+      }
+    }
+    expect(minGap).toBeGreaterThanOrEqual(7);
+  });
+
   it("never lets two lands claim the same tile", () => {
     const { grid } = placeAndGrow(
       [
@@ -1199,19 +1240,87 @@ describe("growth (Sec.6.1's synchronized frontier expansion)", () => {
     expect(ownedCount(grid, 1)).toBeGreaterThan(50);
   });
 
-  it("high clumping_factor produces a single connected piece; very negative clumping_factor fragments", () => {
+  it("growth alone never splits a land; the cleanup pass is what fragments a snakey one", () => {
+    // Rev 8's account of RMSTEST_38's fragments. Growth only adds a tile next
+    // to one the land already holds, so straight out of growLands every land
+    // is one piece at any clumping_factor. cleanLandTerrain then erases the
+    // one tile wide necks a cf -20 land grows, and that is what splits it.
+    // The land needs a terrain_type, since the cleanup compares terrain and a
+    // land that paints nothing is invisible to it.
     const roundSource =
-      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor 100\n}\n";
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor 100\nterrain_type DIRT\n}\n";
     const snakeySource =
-      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor -20\n}\n";
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 3\nnumber_of_tiles 600\nclumping_factor -20\nterrain_type DIRT\n}\n";
     let fragmentedSeeds = 0;
     for (let seed = 1; seed <= 8; seed++) {
       const round = placeAndGrow(roundSource, seed);
+      paintLandTerrain(round.origins, round.grid);
+      cleanLandTerrain(round.grid, GRASS);
       expect(countComponents(round.grid, 0)).toBe(1);
+
       const snakey = placeAndGrow(snakeySource, seed);
+      expect(countComponents(snakey.grid, 0)).toBe(1);
+      paintLandTerrain(snakey.origins, snakey.grid);
+      cleanLandTerrain(snakey.grid, GRASS);
       if (countComponents(snakey.grid, 0) > 1) fragmentedSeeds++;
     }
     expect(fragmentedSeeds).toBeGreaterThan(0);
+  });
+
+  it("the cleanup pass leaves no painted tile between two base tiles, and gives the tiles it clears back to the base fill", () => {
+    // Rule 10's pass 0, the prediction 21 DE exports confirm. Also checks a
+    // cleared tile leaves its land, so later stages do not read a land where
+    // the map shows base terrain.
+    const source =
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 1\nnumber_of_tiles 800\nclumping_factor -20\nterrain_type DIRT\n}\n";
+    for (let seed = 1; seed <= 4; seed++) {
+      const { grid, dim, origins } = placeAndGrow(source, seed);
+      paintLandTerrain(origins, grid);
+      const reverted = cleanLandTerrain(grid, GRASS);
+      expect(reverted).toBeGreaterThan(0);
+      const base = (nx: number, ny: number) =>
+        nx >= 0 &&
+        ny >= 0 &&
+        nx < dim &&
+        ny < dim &&
+        grid.terrain[tileIndex(grid, nx, ny)] === GRASS;
+      let sandwiched = 0;
+      let mismatched = 0;
+      for (let y = 0; y < dim; y++) {
+        for (let x = 0; x < dim; x++) {
+          const i = tileIndex(grid, x, y);
+          if ((grid.terrain[i] === GRASS) !== (grid.landId[i] === -1))
+            mismatched++;
+          if (grid.terrain[i] === GRASS) continue;
+          if (
+            (base(x - 1, y) && base(x + 1, y)) ||
+            (base(x, y - 1) && base(x, y + 1))
+          )
+            sandwiched++;
+        }
+      }
+      expect({ seed, sandwiched, mismatched }).toEqual({
+        seed,
+        sandwiched: 0,
+        mismatched: 0,
+      });
+    }
+  });
+
+  it("the leftover fill is not a second growth phase", () => {
+    // A 1x1 stamp at base_size 0 asking for one tile already has it, since a
+    // lone land's counter starts at its stamp (rev 9), so it never grows, and
+    // its four seeds each touch it on one side only, so none fills. A 3x3
+    // stamp asking for nothing leaves its twelve edge seeds queued, and none
+    // of those is flanked by the land on both opposite sides either.
+    const one = placeAndGrow(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 0\nnumber_of_tiles 1\n}\n",
+    );
+    expect(ownedCount(one.grid, 0)).toBe(1);
+    const square = placeAndGrow(
+      "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 1\nnumber_of_tiles 0\n}\n",
+    );
+    expect(ownedCount(square.grid, 0)).toBe(9);
   });
 
   it("reports growthShortfall when a tiny bordered land cannot reach an oversized target", () => {
@@ -1476,8 +1585,8 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
         12345,
       );
       const grid = createTileGrid(instantiated.dim, GRASS);
-      const result = placeLandOrigins(instantiated, grid, constants, 12345);
-      growLands(result.origins, grid, result.reports, 12345);
+      const result = placeLandOrigins(instantiated, grid, constants);
+      growLands(result.origins, grid, result.reports, result.stream);
       expect(() =>
         applyBaseElevation(instantiated, result.origins, grid, constants),
       ).not.toThrow();
@@ -1504,8 +1613,8 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
         12345,
       );
       const grid = createTileGrid(instantiated.dim, GRASS);
-      const result = placeLandOrigins(instantiated, grid, constants, 12345);
-      growLands(result.origins, grid, result.reports, 12345);
+      const result = placeLandOrigins(instantiated, grid, constants);
+      growLands(result.origins, grid, result.reports, result.stream);
       expect(result.origins.length).toBeGreaterThan(0);
       let owned = 0;
       for (let i = 0; i < grid.landId.length; i++)

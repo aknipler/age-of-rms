@@ -83,3 +83,19 @@ export function buildBugReportUrl(facts: BugReportFacts): string {
 
   return `${ISSUE_URL}?${params.toString()}`;
 }
+
+/**
+ * The "Suggest a feature" link, which opens a new discussion rather than an
+ * issue. Discussions suit ideas better than issues do, because a suggestion
+ * gets talked over and voted on and never needs closing, and the same category
+ * also takes tutorial ideas.
+ *
+ * A constant and not a builder. GitHub's discussion form cannot be prefilled
+ * from the URL the way an issue form can, so there are no facts to carry. The
+ * `category` value is the category's slug, and the form's fields live in
+ * `.github/DISCUSSION_TEMPLATE/ideas.yml`, which GitHub matches to the category
+ * by that same slug. Renaming the category in the repo's settings changes the
+ * slug and silently sends this link to the category picker instead.
+ */
+export const FEATURE_REQUEST_URL =
+  "https://github.com/aknipler/age-of-rms/discussions/new?category=ideas";

@@ -1450,9 +1450,42 @@ class DatExtraction:
 _COLOR_NOTE_RE = re.compile(r"\s*Colours: .*?module docstring\)\.")
 
 
-def color_note(preview_color, minimap_color, texture_file: str | None, run_date: str) -> str:
+# The two textures a legacy blend terrain is drawn from, by constId. The guide
+# (line 1513) lists ten terrains as "already a blend of two texture files",
+# and the dat names one texture for each, but for nine of them that file is
+# placeholder art, the two textures mixed with a grid and the word PLACEHOLDER
+# printed over it, so its mean is not the terrain's colour. The game draws the
+# terrain from the two real textures instead, and the dat does not say which
+# two. A pair is listed here only where the terrain's name and its placeholder
+# image agree on both halves (2026-10-14). The other six (39 road fungus,
+# DLC_DRYROAD, DLC_MOORLAND, DLC_JUNGLEROAD, DLC_JUNGLELEAVES, DLC_ROADGRAVEL)
+# wait on the owner, and keep the mean of their own file meanwhile. 36, dirt
+# snow foundation, is not here because its `g_snd` is real art.
+LEGACY_BLEND_COMPONENTS: dict[int, tuple[str, str]] = {
+    33: ("g_sno", "g_des"),  # DIRT_SNOW, snow and DIRT
+    34: ("g_sno", "g_grs"),  # GRASS_SNOW, snow and GRASS
+    38: ("g_sno", "g_rd1"),  # road snow, snow and ROAD
+}
+
+
+def blend_color(textures, pair: tuple[str, str]):
+    """The average of the two component textures' mean colours, or None when
+    either cannot be read. Equal weight, the owner's ruling (2026-10-14), since
+    the game's blend proportions are not known."""
+    first, second = (textures.color(name) for name in pair)
+    if first is None or second is None:
+        return None
+    return [round((a + b) / 2) for a, b in zip(first, second)]
+
+
+def color_note(preview_color, minimap_color, texture_file: str | None, run_date: str, blend: tuple[str, str] | None = None) -> str:
     parts = []
-    if preview_color is not None:
+    if preview_color is not None and blend is not None:
+        parts.append(
+            f"previewColor {preview_color} is the average of the mean opaque texels of {blend[0]}.dds and {blend[1]}.dds, "
+            f"the two textures this legacy blend is drawn from, since {texture_file}.dds is placeholder art"
+        )
+    elif preview_color is not None:
         parts.append(f"previewColor {preview_color} is the mean of the opaque texels of {texture_file}.dds")
     if minimap_color is not None:
         parts.append(f"minimapColor {minimap_color} is Terrain.colors[0] decoded through original.pal")
@@ -1463,9 +1496,10 @@ def color_note(preview_color, minimap_color, texture_file: str | None, run_date:
     )
 
 
-def merge_terrain_colors(entry: dict, textures, minimaps, run_date: str) -> dict:
+def merge_terrain_colors(entry: dict, textures, minimaps, run_date: str, dat=None) -> dict:
     """Adds/updates `previewColor` and `minimapColor` on a terrain entry,
-    touching NOTHING else — not constId, not verified, not the rest of notes.
+    touching nothing else (not constId, not verified, not the rest of notes),
+    with one exception below for a missing texture name.
 
     This is the `--colors-only` path and it is deliberately separate from
     merge_entry. A full run rewrites every entry's `notes` and recomputes
@@ -1476,15 +1510,41 @@ def merge_terrain_colors(entry: dict, textures, minimaps, run_date: str) -> dict
 
     The two sources fail independently, so a run with no palette still
     refreshes previewColor and leaves any existing minimapColor alone.
+
+    The exception. previewColor is looked up by texture name, so an entry
+    whose `deTextureFile` is null can never get one. Ten terrains were in that
+    state (2026-10-14), all transcribed from the community terrain table,
+    which gives no texture for them, while the dat names one for each (34
+    GRASS_SNOW reads `o_sng`, and o_sng.dds ships). Searching the textures
+    folder cannot find the right file, since nothing in a null entry says
+    which file is its own. The dat's Terrain.name_2 does, the same field a
+    full run reads (DatExtraction.terrain). So when `dat` is given and the
+    name is null, the name is filled from the dat and noted. A name that is
+    already there is never replaced here, since a full run is what verifies
+    one.
     """
     if entry.get("category") != "terrain":
         return entry
-    preview_color = textures.color(entry.get("deTextureFile")) if textures else None
     const_id = entry.get("constId")
+    texture_file = entry.get("deTextureFile")
+    filled_texture = None
+    if not texture_file and dat is not None and isinstance(const_id, int):
+        terrain = dat.terrain(const_id)
+        if terrain is not None and terrain.texture_file:
+            texture_file = filled_texture = terrain.texture_file
+    blend = LEGACY_BLEND_COMPONENTS.get(const_id) if isinstance(const_id, int) else None
+    if not textures:
+        preview_color = None
+    elif blend is not None:
+        preview_color = blend_color(textures, blend)
+    else:
+        preview_color = textures.color(texture_file)
     minimap_color = minimaps.color(const_id) if minimaps and isinstance(const_id, int) else None
-    if preview_color is None and minimap_color is None:
+    if preview_color is None and minimap_color is None and filled_texture is None:
         return entry
     updated = dict(entry)
+    if filled_texture is not None:
+        updated["deTextureFile"] = filled_texture
     if preview_color is not None:
         updated["previewColor"] = preview_color
     if minimap_color is not None:
@@ -1495,7 +1555,30 @@ def merge_terrain_colors(entry: dict, textures, minimaps, run_date: str) -> dict
     # not stack duplicates — a tool meant to be re-run after every DE patch has
     # to be idempotent, and the first version of this was not.
     existing_notes = _COLOR_NOTE_RE.sub("", updated.get("notes", "")).strip()
-    note = color_note(updated.get("previewColor"), updated.get("minimapColor"), entry.get("deTextureFile"), run_date)
+    if filled_texture is not None:
+        # Written once, when the name is filled. A later run finds the name
+        # set and skips this branch, so the sentence never stacks.
+        texture_note = (
+            f"deTextureFile '{filled_texture}' is Terrain.name_2 from empires2_x2_p1.dat, "
+            f"filled {run_date} by tools/extract-constants --colors-only because the entry had none."
+        )
+        existing_notes = f"{existing_notes} {texture_note}" if existing_notes else texture_note
+    if updated.get("previewColor") is None and updated.get("minimapColor") is None:
+        updated["notes"] = existing_notes
+        return updated
+    # The blend wording only describes a colour this run computed from the
+    # pair. When the pair could not be read the earlier colour is kept and
+    # described as its own file's mean, which is what it was before the pair
+    # table existed. After a pair run, a later run that cannot read the pair
+    # would mislabel it that way, which needs a component texture missing from
+    # the install.
+    note = color_note(
+        updated.get("previewColor"),
+        updated.get("minimapColor"),
+        updated.get("deTextureFile"),
+        run_date,
+        blend if preview_color is not None else None,
+    )
     updated["notes"] = f"{existing_notes} {note}" if existing_notes else note
     return updated
 
@@ -2801,7 +2884,7 @@ def main() -> int:
     parser.add_argument("--install-path", type=Path, default=None, help="AoE2 DE install root. Auto-detected from common Steam paths if omitted.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Where to write game-constants.json (default: reference/data/game-constants.json)")
     parser.add_argument("--ids-only", action="store_true", help="Skip empires2_x2_p1.dat entirely — only fill in constId from random_map.def. Use this if genieutils-py isn't installed or the .dat parse fails on your DE version.")
-    parser.add_argument("--colors-only", action="store_true", help="Update ONLY previewColor on terrain entries, from each terrain's existing deTextureFile. Reads no .dat and rewrites no other field — use this to refresh colours without re-extracting everything.")
+    parser.add_argument("--colors-only", action="store_true", help="Update ONLY previewColor and minimapColor on terrain entries. previewColor comes from each terrain's deTextureFile, and a null deTextureFile is first filled from the dat's Terrain.name_2. Reads the dat for those and for minimapColor, and rewrites no other field. Use this to refresh colours without re-extracting everything.")
     parser.add_argument("--terrain-table", action="store_true", help="Update ONLY the engine's terrain table on object entries, read from empires2_x2_p1.dat (preview-design Sec.15 item 23): terrainRestrictionId, allowedTerrains, placementSideTerrain, and the coarse habitat derived from them. Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
     parser.add_argument("--terrain-units", action="store_true", help="Update ONLY autoTreeUnits on terrain entries (the units a terrain auto-spawns with no create_object, first-hit-wins by slot) plus the top-level terrainRestrictions table, both read from empires2_x2_p1.dat. Rewrites no other field. Prints every entry whose measured autoTreeUnits disagrees with what is in the file.")
     parser.add_argument("--storages", action="store_true", help="Update ONLY the resource-storage data on object entries, read from empires2_x2_p1.dat: the raw resourceStorages slots plus a refreshed resourceAmounts derived from them. Rewrites no other field. This is what tells a consumer whether an effect_amount ATTR_STORAGE_VALUE line changes a resource, a population count or a decay timer.")
@@ -2847,9 +2930,10 @@ def main() -> int:
             return None
 
     if args.colors_only:
-        # minimapColor comes from the dat, so --colors-only loads it too. It
-        # still writes only the two colour fields.
-        minimaps = MinimapColorExtraction(install_path, load_dat())
+        # minimapColor comes from the dat, so --colors-only loads it too, and
+        # the same dat fills a null deTextureFile (merge_terrain_colors).
+        dat = load_dat()
+        minimaps = MinimapColorExtraction(install_path, dat)
         if not minimaps.available:
             print(
                 f"WARNING: could not read {install_path / BASE_PALETTE_RELATIVE} or the dat "
@@ -2858,7 +2942,14 @@ def main() -> int:
             )
         existing = json.loads(args.output.read_text(encoding="utf-8"))
         run_date = date.today().isoformat()
-        updated_constants = [merge_terrain_colors(e, textures, minimaps, run_date) for e in existing["constants"]]
+        updated_constants = [merge_terrain_colors(e, textures, minimaps, run_date, dat) for e in existing["constants"]]
+        filled = [
+            entry_label(new)
+            for old, new in zip(existing["constants"], updated_constants)
+            if not old.get("deTextureFile") and new.get("deTextureFile")
+        ]
+        if filled:
+            print(f"Filled deTextureFile from the dat: {', '.join(filled)}")
         write_game_constants(args.output, updated_constants, existing.get("terrainRestrictions"))
         terrains = [c for c in updated_constants if c.get("category") == "terrain"]
         print(f"\nWrote {args.output}")

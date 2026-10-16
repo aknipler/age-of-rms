@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampCanvasHeight,
   clampPreviewFraction,
   COLLAPSE_DRAG_MARGIN,
   DEFAULT_PREVIEW_FRACTION,
+  isCanvasHeight,
   isPreviewFraction,
   isPreviewReferenceCollapsedSide,
+  MAX_CANVAS_HEIGHT,
+  MIN_CANVAS_HEIGHT,
   MIN_PANE_FRACTION,
   resolvePreviewReferenceDrag,
 } from "../previewReferenceSplit";
@@ -131,5 +135,38 @@ describe("the constants themselves", () => {
     // the preview would sit below 0, past the drag surface's own top edge,
     // which the pointer can only reach by leaving the window.
     expect(COLLAPSE_DRAG_MARGIN).toBeLessThan(MIN_PANE_FRACTION);
+  });
+});
+
+describe("clampCanvasHeight", () => {
+  it("passes an in-range height through as whole pixels", () => {
+    expect(clampCanvasHeight(400)).toBe(400);
+    expect(clampCanvasHeight(400.6)).toBe(401);
+  });
+
+  it("clamps to both bounds", () => {
+    expect(clampCanvasHeight(1)).toBe(MIN_CANVAS_HEIGHT);
+    expect(clampCanvasHeight(1e9)).toBe(MAX_CANVAS_HEIGHT);
+  });
+
+  it("falls back to the minimum for non-finite input", () => {
+    expect(clampCanvasHeight(Number.NaN)).toBe(MIN_CANVAS_HEIGHT);
+    expect(clampCanvasHeight(Number.NEGATIVE_INFINITY)).toBe(MIN_CANVAS_HEIGHT);
+  });
+});
+
+describe("isCanvasHeight", () => {
+  it("accepts null (the square default) and in-range numbers", () => {
+    expect(isCanvasHeight(null)).toBe(true);
+    expect(isCanvasHeight(MIN_CANVAS_HEIGHT)).toBe(true);
+    expect(isCanvasHeight(MAX_CANVAS_HEIGHT)).toBe(true);
+  });
+
+  it("rejects anything else the store could hand back", () => {
+    expect(isCanvasHeight(undefined)).toBe(false);
+    expect(isCanvasHeight("400")).toBe(false);
+    expect(isCanvasHeight(Number.NaN)).toBe(false);
+    expect(isCanvasHeight(MIN_CANVAS_HEIGHT - 1)).toBe(false);
+    expect(isCanvasHeight(MAX_CANVAS_HEIGHT + 1)).toBe(false);
   });
 });

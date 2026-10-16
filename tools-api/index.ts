@@ -279,6 +279,13 @@ export interface ToolGenerationSettings {
    * with `isTeams`.
    */
   teams: number[];
+  /**
+   * The lobby's Team Positions box (preview-design Sec.6.1, rev 9). It changes
+   * how the game places players and defines the TEAM_POSITIONS label.
+   * Optional, so a tool built before it existed still type-checks, and absent
+   * means on, the preview's default.
+   */
+  teamPositions?: boolean;
 }
 
 /**

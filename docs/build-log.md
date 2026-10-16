@@ -13434,6 +13434,62 @@ Spec and docs only, and no generator code changed. The request was for the land 
 
 > 1. **Land growth.** A 200×200 map at `land_percent 100` is 40k tiles, each one a weighted draw from a frontier of hundreds of candidates. Re-normalizing weights per step is tens of millions of operations before objects are placed. Required: the frontier lives in **fixed integer weight buckets** (Sec.6.1 defines the bucket function), each bucket an append-only `Int32Array` of tile indices with a live count; a draw picks a bucket proportional to `count × weight` then an index within it, both O(1); membership is tracked in a `Uint8Array` so a tile is never enqueued twice, and stale entries are skipped lazily on pop rather than removed. No sorting, no re-weighting, no per-candidate object.
 
+## 2026-09-30 preview-design rev 8 built, land growth from genie-rms, and BUG-036 closed
+
+`lands.ts` now grows lands by Sec.6.1 rev 8's eleven rules, a port of genie-rms's 1.0c land stage. The rev 7 frontier weight buckets, the detached-seed reservoir, its reachability filter, the one-roll border rule and the step cap are gone.
+
+**What changed.**
+
+- `src/preview/generator/lands.ts`. `growLands` is rewritten as rules 1 to 8, and `cleanLandTerrain` is new (rule 10). The growth code carries the GPL-3.0 section 5 header naming genie-rms, Renée Kooi, the license, `src/LandGenerator.js` and `cleanTerrain` in `src/Map.js`, and saying the code is a modified port. `stampBounds` and `inCircularStamp` are shared by the stamp and by rule 3's seeding, so the two cannot disagree about where a stamp is. The file header's out-of-date scope note is replaced by the order `index.ts` calls the steps in.
+- `src/preview/generator/elevation.ts`. `bucketWeights` moved here unchanged, first, as Sec.6.1 asks, with its two constants. S2's output does not move. Comments in `terrains.ts` and `connections.ts` that named its old home are updated.
+- `src/preview/generator/index.ts` calls `cleanLandTerrain` after `paintLandTerrain` and before `applyBaseElevation` (rules 9 to 11). `collectLandOutcomes` stays before the cleanup, since a land the cleanup erases was not buried by a later stamp. The `landOverwrittenBeforeGrowth` note no longer says the engine's behaviour there is unmeasured, since Sec.15 item 36 measured it and the port explains it.
+- `NOTICE` gained a paragraph on the ported code.
+- `docs/preview-design.md`. Sec.13's RMSTEST_23 and sandwich gates are reworded on the owner's decision (below), and Appendix A records the build.
+- BUG-036 moved from `docs/known-issues.md` to the end of this file, word for word.
+
+**The queue, since Sec.11 item 1 left one choice open.** Sec.11 asks for one stack per cost with a running minimum. Indexed by raw cost, a land at `clumping_factor 1000` needs 24,000 slots and a fractional `clumping_factor` does not index at all. A land can only ever push 2501 distinct costs, since `r'` is 0..99, `n` is 0..24 and seeds cost 0, so each land indexes its stacks by the RANK of a cost among the ones it can produce. The pop order is identical, equal costs share a stack as rule 2's tie rule needs, and the bound is a fact about the work. Rule 2's one node per tile is a per-tile owner land and version, with stale entries skipped on pop.
+
+**Gates (Sec.13), `src/preview/__tests__/landGrowthGates.test.ts`, all through `generatePreview` and the S1 snapshot.**
+
+- RMSTEST_73. Seen failing on the rev 7 code first, gaps 1, 1, 1 at seed 1 against DE's 7, 11, 13. Passes on the port, exactly 7, 11 and 13 on seeds 1 to 3.
+- RMSTEST_38 at Giant. The `cf` 20, 40 and 100 lands are one piece on all five seeds and the `cf` −20 land's mean piece count is inside 4 to 12.
+- RMSTEST_53. The buried land paints nothing on seeds 1 to 3.
+- RMSTEST_23 and the sandwich invariant both needed the owner's decision, below.
+
+**RMSTEST_23, decided 2026-09-30: held to DE's figures.** As first worded the gate asked for min x exactly 80 at `f` 100 on every seed. The port gave 83, 80, 81, 80, 80, 82 on seeds 1 to 6, and 80 on 36 of 40 seeds. On the other seeds the DESERT land never touches the border, because the DIRT3 land above it grows down into the strip first. The design session's own simulation shows the same tail (82 and 83 on 2 of 40), and DE's own six runs gave 80 to 81, not always 80. The `f` 20 arm had the same issue (83 on seed 5). The gate now asks that each arm's median over six seeds lies in DE's range (80 to 81, 79 to 80, 78 to 81) and that no tile on any seed lies past the point where rule 6a's chance reaches 100 (x 80, 79 and 76). Seeds 1 to 6 give medians 80.5, 79 and 78. The `f` 0 clause is unchanged, and five of six seeds leak below 75.
+
+**The sandwich invariant, decided 2026-09-30: read before the beach pass.** Worded against the S1 snapshot, it failed on TL Tres Leches only, 25 to 30 tiles per seed, all BEACH. The snapshot is taken after the automatic beach pass, which lays beach on base tiles beside a water land, and a beach tile between two base tiles is correct there. The first fix counted only tiles holding a land-painted terrain, which went green, but the beach pass also turns an island's own edge tiles into beach, and those are the tiles a missed cleanup leaves sandwiched, so that fix would have been blind on every water-base map. The gate now rebuilds the land stage's own terrain from the final `grid.landId` and each land's `terrainId`, which is exact because no stage after S1 writes `landId`. A consistency count guards the rebuild. Zero sandwiched tiles over all 42 maps on disk at seeds 1 to 3.
+
+**Mutation tests, each restored and checked by grep for the marker.**
+
+- Skipping the `cleanLandTerrain` call in `index.ts` turns the sandwich gate red on most of the corpus (13_Rings_v1.2 61 to 72 per seed, 24hr_Arrakeen 12 to 14), with the map and seed named in the failure.
+- Making `borderRefuses` never refuse turns the RMSTEST_23 gate red on its floor clause.
+- RMSTEST_73 on the rev 7 code, above.
+
+**`lands.test.ts`.** The reservoir tests are gone (`reservoirSize` no longer exists) and the two `bucketWeights` tests moved to `elevation.test.ts`. Item 27's three tests stay, since a land appearing far from itself or past a wall is a property of the map, not of the reservoir. The zone tests are reworded for BUG-036 and one is new, a land keeping its own 8 (gap 9) from a zero-tile wall that declares nothing. The fragmentation test now paints and cleans, since growth alone never splits a land, and asserts both halves. New tests cover the cleanup's output (no sandwiched tile, and terrain back to base exactly where `landId` is −1) and the leftover fill not acting as a second growth phase. The size test's upper bound is 15% over target, since rule 8's fill adds tiles the counter never sees, which is where DE's measured overshoot comes from.
+
+**Timing.** Over the 42 maps on disk, 8 players at Normal, two seeds each, no snapshots, the rev 7 and rev 8 generators ran side by side in one process. Median 606 ms against 592 ms, total 28.2 s against 26.2 s, so the port is no slower. The sandwich gate itself costs about 60 to 85 s, since it runs 126 full generations with snapshots. It is the slowest test in the suite, and Sec.13's corpus note already says how to cut it if that matters.
+
+**Still open.** Sec.15 items 43 to 48 stand as rev 8 opened them. Item 46 in particular is now runnable, since the port exists. A `npm run tauri dev` look at a few maps is owed, since nothing here was seen rendered.
+
+**Closed known-issues entry, moved 2026-09-30.**
+
+### BUG-036 — 2026-09-29 — `other_zone_avoidance_distance` is ignored next to a land that declares none
+
+**Status:** OPEN. The fix is part of `docs/preview-design.md` rev 8's growth rewrite (Sec.6.1 rule 6c), specified and not built. **Area:** `src/preview/generator/lands.ts`, `violatesZoneAvoidance`.
+
+**Symptom.** A land that declares `other_zone_avoidance_distance` grows right up to a land in another zone when that other land declares no distance of its own. DE keeps the declared gap.
+
+**Reproduction.** Run `tools/scenario-probe/rmstest/RMSTEST_73_other_zone_avoidance_distance_take_3.rms` through `generatePreview` at Normal and measure each grower's minimum Chebyshev distance to the ICE walls in the S1 snapshot. Seeds 1, 2 and 3 all give 1, 1 and 1 for the growers declaring 6, 10 and 12. DE measured 7, 11 and 13 on every run (`tools/scenario-probe/rmstest/README.md`, the RMSTEST_73 row).
+
+**Root cause.** `lands.ts:1540` takes `Math.min` of the growing land's distance and the other land's, and skips the tile when that is 0. RMSTEST_73's walls declare nothing, so the effective distance is always 0 and the check never fires. The function's own comment cites RMSTEST_73 as its calibration, and the code never reproduced it. RMSTEST_66's asymmetric pair (12 against 2) could not tell "the smaller wins" from "each land checks only its own distance", because both readings give a gap of 3 there. Rev 8's rule checks only the growing land's own distance, and a simulation of it gave 7, 11 and 13 on RMSTEST_73's exact fixture.
+
+**Prescribed fix.** Check only the growing land's own distance (rev 8 Sec.6.1 rule 6c). Land it with the growth port rather than on its own, since rev 8 replaces the code around this function.
+
+**Verification.** Sec.13's RMSTEST_73 gate, seen failing on the current code before the fix and passing after.
+
+Closed 2026-09-30 by the rev 8 port. The RMSTEST_73 gate failed on the rev 7 code (1, 1, 1) and passes on the port (7, 11, 13 on seeds 1 to 3), as the entry above records.
+
 ## 2026-10-03 DE Update 185872 taken into the reference data, and add_object weights modelled
 
 DE shipped Update 185872 (The Viking Sagas) on 2026-09-22. The local install took it on 2026-09-30, and this session diffed its `random_map.def` against the old copy and re-ran `tools/extract-constants` against it.
@@ -13479,3 +13535,445 @@ Both new codes are in parser-design Sec.8's table.
 **2026-10-03 addendum, BOGLAND without an include measured.** A map with only `base_terrain BOGLAND` and no include painted Grass, Flowers 2, so `BOGLAND` is 123 in game when only `random_map.def` defines it, matching RMSTEST_81a's prediction. An earlier look at Murkwood showing bog did not decide anything, since most of its bog is `SHALLOWS_SWAMP` (111), and 101 and 123 have near-identical average colours. RMSTEST_81b, the include arm, is still open.
 
 **2026-10-03 addendum, the include arm measured too.** Murkwood includes `constants.inc` before its `create_terrain BOGLAND`. Raised from 4% to 100%, that line painted Grass, Flowers 2, so `random_map.def`'s definition beats an included file's. That is the first measurement of first-definition-wins between `random_map.def` and an `#include_drs`, which RMS0302 had taken from the guide. RMS0316 stands as built, unsoftened for includes. Murkwood's 32 bog clumps have been flowery grass since Update 185872, a DE-official defect to report. No other official script uses `BOGLAND` or `FORTRESS` in a slot.
+
+## 2026-10-06, Tutorial C (island land tutorial) design
+
+Design only, no code. New `docs/tutorial-islands-design.md` (rev 1), pointer added as `docs/tutorial-design.md` Sec.17.2. Map concept settled on a simplified TC2 Comeer v1.4, with its author's permission.
+
+Measured with a throwaway probe (deleted) over 200 to 300 seeds of the real `generatePreview`. Player islands merge or not depending on the ring geometry. At the app default of 8 players every seed merges even at `base_size 10`. At 4 players none merge at `base_size 12`. At 6 players, `base_size 12` merges on 224 of 300 seeds and `base_size 10` on none. Two origins whose offsets are both at most `2 * base_size` overlap as squares, and that held on every seed except one, where the offset was exactly `2 * base_size` on both axes. That is a one tile corner touch and the pipeline keeps the islands separate, so a guarantee needs an overlap two tiles deep. Of the 224 merging seeds only 140 overlapped as stamps, the rest merged through growth.
+
+Not done. The Golden Hill PNG for Tutorial A. The dev server could not render the app outside the Tauri host, as CLAUDE.md already says, and the PNG export opens a native save dialog. A person has to export it from `npm run tauri dev`.
+
+**2026-10-06 addendum, Tutorial C narrowed to 1v1 Tiny.** The six player figures above are superseded. With the 1v1 preset on Tiny (120 tiles), the two players are 26 to 40 tiles apart (Chebyshev) at `circle_radius 16 1`, and of 80 seeds the number whose islands merged was 0 at `base_size` 8, 10 and 12, then 12, 32 and 62 at 14, 16 and 18. It did not change with `land_percent`. Border values are percentages of the map. `border_fuzziness` is border adherence per the guide, 0 ignores borders and 100 respects them, and the measurement agrees. The first design draft had it backwards and the doc now says so. Throwaway probe deleted.
+
+## 2026-10-06, Land Generation (Comeer) tutorial engine additions
+
+Built `docs/tutorial-islands-design.md` Sec.4.1 to Sec.4.3. The tutorial content is not written yet.
+
+**Step image.** `TutorialStep.image` takes an optional `placement` on the owner's request, so a picture can sit above the title, before or inside or after the body, or just above the buttons. `src/tutorial/imagePlacement.ts` reduces every placement inside the body to a paragraph count. The callout is placed again on the image's `load`, since a manual step has no polling loop to notice it grow. A test fails if a registered step image is missing from `public/`. Both images still need an owner run of `npm run tauri dev` to export, and each needs a build log line whenever the renderer changes.
+
+**Spoilers.** `TutorialStep.spoilers`, each a toggle button with `aria-expanded`, wrapped in HelpTip (`tutorial.spoilerToggle` in `ui-help.json`). A native details element was rejected because HelpTip wraps its child and a summary only works as the first child of its details. `StepCallout` is now keyed by the step, so an answer opened on one step is shut on the next and on a return visit.
+
+**Pinned preview state.** `TutorialStep.preview` pins the seed, a team preset and the map size whenever the step becomes active, Back included. The app registers a `PreviewPinner` through `useRegisterPreviewPinner`, the same inversion as the navigators. `GenerationSettingsContext` gained `selectTeamPreset`, which leaves an already active preset alone, since the toggle would switch it off on the second step that pins it. A capture and restore of the learner's settings was built and then removed in the same session when the owner decided the settings stay as the tutorial leaves them (design doc Sec.0 item 6).
+
+**Rename.** The background seed check another session had started in `src/tutorial/islands/` moved to `src/tutorial/landGenerationComeer/`, with the owner's approval of the name. Files `pinnedSeedStore.ts`, `prepareSeed.ts`, `seedCheckGenerate.ts` and `__tests__/seedCheck.test.ts`. Exports with an island prefix became Comeer or seed check names.
+
+**Owner decisions** recorded as the design doc's new Sec.0. The title, the first step's copy, the adherence order (100 first, then 10 to 40 with 20 picked), Comeer's values as every spoiler pick, and `rnd()` in `create_player_lands` treated as equal for both players.
+
+**Verification.** New `src/tutorial/__tests__/stepExtras.test.tsx`, 15 tests. Each was mutation tested against the defect it exists for (callout not keyed by step, toggle used instead of select, pin never applied, the clamp and the `afterBody` slot in placement), and every mutant went red. The placement test caught a real bug before that, `"top"` rendered below the title. A mutation script's restore once failed on an empty replacement string and left `key={stepKey}` deleted, which was found and put back by hand. The script now refuses an empty or already present replacement and checks the file is byte identical afterwards.
+
+**2026-10-06 addendum, spoilers and images as body blocks.** On the owner's request a spoiler can now sit anywhere in a step, including inside a sentence. `TutorialStep.body` is a list of `BodyBlock`, which can be a plain string (unchanged, so no content moved), a paragraph array mixing strings with `{ spoiler }` runs, a `{ kind: "spoiler" }` toggle, or a `{ kind: "image" }` picture. Rendering moved to `src/tutorial/StepBody.tsx`, which the feature tour announcement uses too. The `spoilers` field and the in-body `image.placement` slots from earlier the same day are removed. Body image blocks cover those, and `image.placement` keeps only `"top"` and `"bottom"`. An inline spoiler leaves the hidden words out of the DOM until it is clicked, because a blur would still let a screen reader or find in page read the answer. The image content guard now reads body image blocks as well. The new tests were mutation tested (hidden words rendered, callout not keyed by step, image block dropped, bottom image dropped) and every mutant went red. The figure space that fills the masked bar is built with `String.fromCharCode(0x2007)`. Two attempts to write it as a ` ` escape came back as the bare invisible character.
+
+**2026-10-06 addendum, no HelpTip on spoilers.** The owner judged both spoiler controls self explanatory and asked for no HelpTip, an exception to CLAUDE.md's every-control rule. The two wrappers and their `ui-help.json` entries are removed, and `StepBody.tsx` says why at both components.
+
+## 2026-10-06, Land Generation (Comeer) tutorial built
+
+The tutorial is `src/tutorial/landGenerationComeer/tutorial.ts`, registered as `land-generation-comeer` and listed in the Help menu as "Tutorial: Land Generation (Comeer)". Seventeen steps, built from `docs/tutorial-islands-design.md` Sec.0 and Sec.2 as the owner revised them. Every number the learner has to find is hidden as three inline spoilers, a low end, a high end and the pick, taken from `comeerValues.ts` so the copy cannot drift from what the tests prove.
+
+Built in the same session. `restOfScript.ts` (the fill-in button's three sections, added only if missing), `finishedScript.ts`, `renderImage.ts` (a canvas-free renderer using the preview's own bitmap and palette, plus a PNG encoder) and `public/tutorial/comeer.png`, and two checks in `scriptChecks.ts` (`hasConstWhere`, `isConstBeforeCommand`, with `commandAttributeMaps`).
+
+Findings. The picture test reads the committed PNG back and compares pixels, never bytes, since zlib output can differ between Node versions. Looking at the first render showed the two player islands very close, which led to measuring the real water gap. It is 3 tiles for every `base_size` from 8 to 11, the players' own avoidance distance, and falls to 1 or 2 on some seeds at 12. The earlier "not fused" check could not tell a channel from a corner touch, so `seedCheck.ts` now asserts the full avoidance gap and the stated range became 8 to 11. The first version of the finished script test read `failureMarks`, which holds only land failures, so a gold pile with no room never showed in it. It reads `reports` now, and a mutant that sends the gold to a land that does not exist is asserted to fail.
+
+Suite. 133 files, 3483 tests, `tsc` and Prettier clean, eslint no errors. Never run in the real app, see `manual-test-run-sheet.md` section 20.
+
+## 2026-10-07, Comeer tutorial pass after the owner's rewrite of steps 1 to 9
+
+The step 1 picture showed the player islands touching because `finishedScript.ts` had no player `other_zone_avoidance_distance`. The seed gate (`comeerScript`) also differed from what a learner types, with `clumping_factor 20` and avoidance 3 against the default and 4. Both now carry Comeer's avoidance 3 and no player `clumping_factor`, the gate still passes on seed 13 at every stated range, and the picture is regenerated. The finished script's forest and second gold command were retuned (8 percent in 12 clumps, 6 gold, chosen from a small sweep at seed 13, so a forest clump can still run out of room on another seed) because the new layout left them short at the pinned seed.
+
+Copy. Steps from `player-lands` onward gained a hint ladder, prediction prompts and self-explanation questions, the review questions on the last step, and the `something-is-wrong` explanation now says why the avoidance distance did not prevent the join (it is only checked while a land grows). Bugs fixed in the owner's own steps: a `${OVERSIZED_BASE_SIZE}` inside a plain string, colons the copy test rules out, a seven word title, and the four-corners copy saying zones may be shared while the check requires distinct zones. Step `player-land-avoidance_distance` is renamed `player-land-avoidance` and its check is now exactly 3. `tutorial.test.ts` stages were brought up to date. Approach recorded in memory as tutorial-writing-approach.
+
+Suite. `src/tutorial` 9 files, 134 tests green, `tsc` clean. Still never run in the real app.
+
+**2026-10-07 follow-up, owner rulings.** A colon that ends a heading or label is allowed in tutorial copy, so the copy test now rules out only colons inside a sentence and the hint labels read `Hint 1: ` again. The four-corners check no longer needs distinct zones. It requires a zone that is not the player lands' (a `zone` written on create_player_lands, else the default -9 to -2), and the copy again says the islands may share one. The seed gate proves both choices (shared zone and one zone each, at the ends of the neutral ranges). `finishedScript.ts` no longer holds a second hand-written land section. It calls `comeerScript` with a named border, four neutrals, `rnd(7,9)` size and clumping 18, and `comeerScript` now writes attributes in the order the learner is taught, one shared neutral zone by default. Player avoidance is 3 throughout. `src/tutorial` 9 files, 135 tests green.
+
+**2026-10-07 follow-up, the fill-in is Comeer's own script.** `comeerScript` (in `comeerValues.ts`) is not the .rms file. It is a TypeScript function that prints the land section as text, so the seed gate and the first-step picture start from the same land commands. The fill-in button now appends Captain Kniples' real TC2 Comeer v1.4, everything except `<PLAYER_SETUP>` and `<LAND_GENERATION>`, from `comeerRest.rms` (imported with Vite's `?raw`). Two edits to the copy, `#const PL_BORDERS` is dropped since the learner wrote their own and `PLAYER_TEMP_TERR` is 124 (SNOW_SOFT). To make the appended elevation and terrain commands find tiles, the learner's lands now use SNOW_SOFT (players) and SNOW (neutral islands), where GRASS and DIRT left 64 silent placement failures. The land_id 100 the gold uses already matched. `restOfScript.test.ts` rebuilds the copy from `test-maps/TC2 - Comeer v1.4.rms` and fails on drift. The real map reports placement failures by design (4056 clump requests, ship placeholders), so the finished-map test now pins that list as a snapshot and separately asserts no land failures and six land origins. The first-step picture is regenerated and is now the snowy Comeer. Preview findings worth a look, not tutorial work: `HERDABLE` (a `#const` set inside `start_random`) is reported as missing `set_gaia_object_only`, and the preview does not see actor area 1500 or 7011 created by earlier objects. `src/tutorial` 10 files, 141 tests green.
+
+## 2026-10-10, Your first random map in Breakdown or Code
+
+On the owner's request, Tutorial A ("Your first random map") can now be done in the Code tab. A new step, `breakdown-or-code`, comes straight after "Start a new script" and asks the learner to pick. Breakdown suits someone who has never written code, since it fills names in from lists. Code is the script as text typed with hover help, where most authors end up. This reverses rev 1's "no branching flows" for this one case, recorded in `tutorial-design.md` Sec.0 and specified in the new Sec.9.2.
+
+Engine. `TutorialStep.track` and `TutorialStep.choice` are new optional fields. A choice step's options replace Next, and `choose(track)` in `TutorialContext` sets the run's track and moves on. `visibleSteps` (in `registry.ts`, not the context file, so Fast Refresh keeps working there) gives the steps a run shows and counts the first option's track before anything is picked. The run's `steps` list is derived with `useMemo` from the definition and track rather than stored. The callout key now includes the track, so going Back to the choice and picking the other option remounts the next step. `BodyBlock` gained `{ kind: "code" }` and block spoilers gained `code: true`, both rendered as `pre` in the editor font. `tutorial.choice` is a new `ui-help.json` entry, and each option passes its own help text.
+
+Content. `src/tutorial/content/rmsBasicsCode.ts` holds 12 Code steps, each joined after its Breakdown twin by `withCodeTrack` and given the twin's `completion` and `autoFill` as the same objects. The Breakdown steps carry `track: BREAKDOWN_TRACK` in `rmsBasics.ts`. Shared steps (Watch it appear, Looking things up, the status bar and settings steps, the finish) appear once. The Code copy shows the text to type for the first three typing steps, then moves to words plus an `Answer` spoiler. The hill step lets the learner see RMS0311's red underline and the next step clears it.
+
+Tests. `rmsBasics.test.ts` pins the Breakdown track's order, that both tracks are 19 steps with shared steps at the same index, that every twin shares its check and autoFill by identity, the copy rules on the new text, and that each Code step's own code blocks satisfy its check when appended to the script before that step. `TutorialContext.test.tsx` gained a forked fixture covering the default count, `choose`, Back and re-pick, completion on either track, and the rendered option buttons. Mutation tested three ways (a wrong value in the hill Answer, a copied rather than shared check, `choose` ignoring its track), each caught. Comeer's copy test needed one line for the new block kind.
+
+Not this change. `landGenerationComeer/__tests__/tutorial.test.ts` has two red tests, `name-the-border` and "the whole stated range satisfies its step", in a describe this change does not touch. `comeerValues.ts` and Comeer's `tutorial.ts` were last modified outside this session, and `tutorial.ts` is not Prettier-clean either.
+
+Never run in the real app, see `manual-test-run-sheet.md` section 21.
+
+## 2026-10-14, preview-design rev 9, the land stage matches DE tile for tile
+
+What. The owner's land-stage study (`RMS/de-disassembly`, written up in `notes/de-land-stage.md` on 2026-10-13) found DE's random number generator, its seeding, how a draw becomes a range, and the order of every draw from the script's first `rnd()` to the end of `<LAND_GENERATION>`. This session folded it into `docs/preview-design.md` as rev 9 and built it. The preview's land stage now reproduces DE tile for tile at the same seed on every saved DE map a lobby can produce, 111 of them, 1 to 8 players, Tiny.
+
+Code.
+
+- `deRandom.ts` (new). WELL512 with the game's xorshift and Jenkins-hash seeding and its two-generator chain, and the three reductions `bounded`, `index` and `low15`. `mulHigh32` does `(n * raw) >> 32` exactly past 2^53 by splitting `raw` in two 16-bit halves.
+- `float32.ts` (new). Single-precision arithmetic through `Math.fround`, round half away from zero, and a square root, cosine and sine written with `+` and `*` only, since Sec.8's lint rule forbids `Math.sqrt`, `Math.cos` and `Math.sin` in the generator.
+- `instantiate.ts`. S0 reads the file top to bottom instead of in section order, and draws from the game's stream. An `rnd()` is drawn where it is read, untaken branches included, and a `start_random` block reads ahead through all its branches before it rolls (`predrawItems`, `rollFor`). The roll is 0 to 99 and takes the first branch whose running total is at least the roll. `set_zone_randomly` and `assign_to AT_TEAM` in mode 0 take a draw stored on the attribute (`InstantiatedAttribute.draw`). A rounded numeric slot keeps its exact value beside the rounded one (`InstantiatedArg.exact`), since the game holds percentages as floats. The stream's position goes to S1 as `InstantiatedScript.landStream`.
+- `lands.ts`. Player setup (slot shuffle, team draws, the rectangle perimeter pass, `grouped_by_team`, `circle_radius`, `direct_placement`), the origin rule, the unexplained draw, and growth and the leftover fill rewritten to the measured rules on the one stream. `placeLandOrigins` lost its seed parameter and returns the stream for `growLands`, which takes it in place of the seed. `cleanTerrainAgainst` generalises the cleanup, with `cleanLandTerrain` and the new `cleanWaterTerrain` on top. `LandOrigin` gained `target`, `landConformity` and `borderTiles` in place of `borderBounds`, and `minPlacementDistance` is absent when undeclared.
+- `index.ts`. Runs the WATER cleanup as the last step of S4.
+- `types.ts`. `PreviewSettings.teamPositions`, optional, on unless false. No settings control sets it yet.
+
+Tests. `landStageDeMaps.test.ts` (new) runs every fixture map through `generatePreview` and compares every tile of the five probe terrains with DE's. The fixture, `src/preview/__tests__/fixtures/de-land-stage-maps.json`, was written by the study's `export_golden.py` from the saved scenarios. It is measured data and our own probe scripts, no model code. Mutation-tested. Dropping the unexplained draw failed 98 maps. Reading the roll rule as "more than" failed none of the first 108 maps, so the two `p6-range` maps, whose 40 blocks sit on the roll boundary, joined the fixture, and the mutant then failed both. `deRandom.test.ts` (new) pins the generator's outputs against the study's reference implementation and the trig against the platform's, rounded to float32. `instantiate.test.ts` rule 3 and 5 tests were rewritten for the game's stream, and `lands.test.ts`, `index.test.ts` and five stage suites were updated where the measured rules overturned rev 8 (the counter quirk, an inclusive right and bottom border, the trimmed avoidance window letting a land come one tile closer on a diagonal, pinholes from the one-in-a-hundred conformity failure, borders that leave no room no longer failing, a one-tile causeway at seed 3). Every rev 8 RMSTEST gate in `landGrowthGates.test.ts` passes unchanged, at Normal and Giant.
+
+Found while building.
+
+1. `land_percent 2.5` failed two DE maps until S0 kept the exact percentage. The game holds percentages as floats.
+2. numpy's float32 `cos` and `sin`, which the study's model used, are one unit in the last place off the correctly rounded values at many angles. Both versions match every `circle_radius` map, and which one DE uses is Sec.15 item 52.
+3. The zone of an assigned `create_land` is not discriminated by any fixture map. The write-up's text says `k − 10`, its model said −10, and both pass (Sec.15 item 53).
+
+Not done here. The Comeer tutorial's seed check now fails, since its checks were written on the rev 8 generator. Its players sit on a diagonal, where DE's trimmed avoidance corner leaves a 2-tile channel at `other_zone_avoidance_distance 3` instead of 3, and `border 10` leaves 11 tiles on the far edge rather than 12, because DE's right and bottom borders are inclusive. Of the seeds below 3000, 110 put the players on a diagonal, and none of the 27 inspected passes every property. Another session was editing that tutorial at the time, so its files were left alone, and its thresholds or copy need a decision. The same run had one other red test, `keeps the Breakdown track in its pinned order`, from that session's work.
+
+Removed from `docs/preview-design.md` by rev 9, word for word, each under the label of the edit that replaced it, followed by rev 8's Appendix A.
+
+#### title
+
+# Approximate Preview Design (Phase 4.1, rev 8)
+
+#### Sec.1 goal 1
+
+1. **Honest approximation.** The preview conveys _layout_ — where lands, terrains, hills, and objects plausibly end up — never a claim of pixel- or seed-accuracy. Every rendering is labeled approximate (Sec.9). We would rather show nothing than show something confidently wrong.
+
+#### Sec.1 goal 5
+
+ECMAScript does not bit-specify `Math.sin`/`cos`/`pow`/`sqrt`, so **the generator uses none of them** (Sec.8) — the player ring reads a precomputed fixed-point sine table, land growth costs are integers, distance comparisons are done on squared values.
+
+#### Sec.1 non-goals
+
+Non-goals: seed parity with DE (our seeds mean nothing in-game and the UI must never imply otherwise); full-fidelity rendering
+
+#### Sec.3 rule 3
+
+3. **`start_random`/`percent_chance`:** roll once per RandomNode from the stage-0 RNG substream (Sec.8). Model: roll `r` = uniform integer 1–100; branches claim cumulative ranges in declaration order, truncated at 99 (guide:3007); a branch fires when its range covers `r`. **The 100th percent is never chosen** (guide:3010) — `r`=100 is always the no-branch outcome, so even totals summing to exactly 99 or 100 leave a 1% no-branch chance; totals <99 leave a larger one.
+   The truncation rule is uncontroversial — guide:3007: "if the total exceeds 99%, only the first 99% will have a chance of occurring". The two statements that pin the _boundary_ sit apart: guide:3006 says "if the total percentages add up to _less than_ 99%, there is a chance that none of them get chosen", and guide:3010 — tacked onto the `percent_chance 0` bug bullet — says "the 100th percent is never chosen". They are not in conflict; the first states a sufficient condition for a no-branch outcome, not an exclusive one, so a 99 total leaving 1% unclaimed is consistent with both. The model above simply follows the second, which is the only statement that pins the boundary. Rev 4 framed this as resolving a contradiction and spent a verify slot on it; both were overstatements.
+
+#### Sec.3 rule 5
+
+5. **`rnd(a,b)`:** evaluated at consumption time from the current substream, uniform integer inclusive.
+
+#### Sec.3 rule 11
+
+11. **Duplicate sections merge; sections process in canonical engine order** —
+
+#### Sec.6.1 player lands
+
+**Player lands** (`create_player_lands`, expanded to one land per active player):
+
+- Default placement: origins on a circle. Radius: `circle_radius` values are a **percentage of map width** (guide:843), and so is our default — nothing here is in tiles. Two regimes for borders (guide:854 distinguishes them): the _default_ circle's center = map center shifted by borders (borders shift the whole circle); an _explicit_ `circle_radius` **ignores borders when placing origins** — center stays at map center — though growth remains border-constrained.
+  - **No `circle_radius` at all:** radius **40**, radial variance **10**, plus **angular jitter of roughly ±7°**. **MEASURED (RMSTEST_24, 2026-08-01), 48 origins over six runs on a 120 map.** Three separate results:
+    - **The percentage is of the FULL map width, not the half width.** Mean origin distance from centre was **50.44 tiles = 42.0% of dim**, against 48.0 for the full-width reading and 24.0 for the half-width one. The guide's bare "percentage of map width" (guide:843) admitted both and the two describe completely different maps; it is the full width. 40 stands as the default and is slightly low.
+    - **Variance 20 is about twice too large.** Measured sd was 7.11 tiles, which for a uniform draw implies a half-range near 12.3 tiles, about 10% of width. Guide:849's "20 seems to be close" is the guide author's own hedge and it overshoots. Note the measurement conflates origin jitter with centroid displacement from asymmetric growth, but a 60-tile land can only contribute a tile or two of that, so the radial spread is dominated by real variance.
+    - **The ring also jitters in angle, which no revision modelled.** Gaps between the eight origins came out 53.9, 40.2, 49.9, 39.2, 43.4, 44.2, 51.0 degrees — mean 45 as expected, spread ±7. Apply it per player after the whole-ring rotation offset.
+  - **`circle_radius R V` given:** radius `R`, variance **`V`, default 0** when the argument is omitted (guide:847: "Variance - number (default: 0)"). Rev 3 let the 20 leak into this branch, which would have scattered a deliberately perfect ring. Three corpus maps write a bare `circle_radius 38` / `circle_radius 19` with no variance and mean a perfect circle.
+  - **`circle_radius 0` disables circular positioning entirely** (guide:844: "0 will disable circle_radius") — fall back to the no-`circle_radius` default ring, _not_ to radius 0. Treating 0 as an explicit radius stacks every player on the map center, which is both a visible lie and a guaranteed `originFallbackCenter` storm. **CONFIRMED in-game** (Tests 2 and 5, 2026-07-30): eight player islands on a water base, `circle_radius 0` versus the attribute deleted entirely, produced the same wide scatter with an empty centre across three seeds each. So 0 behaves _exactly as if the attribute were absent_ — which also means it inherits the no-attribute variance, not the variance-0 default of the second argument. **That figure is ~10, not guide:849's ~20**: Tests 2/5 predate RMSTEST_24 and this line quoted the guide's estimate until 2026-08-02, contradicting the measurement three bullets above. Use the measured no-`circle_radius` branch wholesale — radius 40, radial variance 10, angular jitter ±7° — since "as if absent" means exactly that. ~~Note `language.json` declares `radiusPercent` with `min: 1`, so this legal idiom currently draws a false `RMS0203`.~~ **FIXED 2026-08-04** — `radiusPercent` now declares `min: -50`, guarded by `src/parser/__tests__/circleRadius.test.ts` and mutation-tested against the old bound.
+  - **`circle_radius` NEGATIVE is a THIRD behaviour, and it is neither of the two above. MEASURED (RMSTEST_27, 2026-08-04)** — `circle_radius -20`, five runs on Tiny at 8 players, 34 origins. Mean radius **33.2 tiles = 27.6% of dim, CV 0.44**, against the default-ring branch's 50.4 tiles / CV 0.14 and against 24 tiles / CV 0 for an absolute-value reading. So it is **not** the disable sentinel, and it is **not** `|R|`. The distribution is scattered rather than annular (CV 0.44 sits nearer uniform's ~0.52 than a ring's 0.14) while still centre-biased relative to uniform (33.2 against ~45.9), and origins merged at 27% against RMSTEST_24's zero. The convenient answer — fold negative into the same branch as 0 so the data fix is one bound — was recorded as the prediction precisely because it was convenient, and it is refuted. **Model it as a scattered draw, not a ring, and mark the parameters [tune].**
+
+    **The shape, since "scattered draw" is not implementable and rev 6 stopped there.** The two moments to hit are **mean radius `0.276·dim`, CV 0.44**, centre biased, origins permitted to merge. Neither obvious draw matches, and it is worth writing down why so 4.3 does not spend the afternoon rediscovering it: a **uniform radius** on `[0, 0.552·dim]` hits the mean but gives CV `2/√12 = 0.577` (too scattered), while a **uniform point in a disc** of radius `0.414·dim` hits the mean but gives CV `1/(2√2·⅔)` ≈ 0.354 (too annular — the `r·dr` weight pushes mass outward). 0.44 sits between them, so the distribution needs one shape parameter and cannot be either. **Start with a mixture of the two, weight `[tune]` fitted to CV 0.44**, which is monotone in the weight and therefore trivially solvable, and re-fit if a second run lands. `language.json`'s own note on this attribute says "Not yet modelled precisely" and is honest; the gap was here, not in the data. A second run at `circle_radius -60` would say whether the magnitude enters at all, which is the cheapest next question if anything ever depends on it.
+
+  - With multiple `create_player_lands` commands, only the **final** radius applies (guide:856).
+  - Angles: players evenly spaced, whole ring rotated by a random offset, each player's radius jittered by variance independently. Angles come from a precomputed fixed-point sine table indexed by `floor(3600·k/N)`, never `Math.sin`/`Math.cos` (goal 5, Sec.8).
+- `grouped_by_team`: **modelled, and MEASURED (RMSTEST_36, 2026-08-04) — the ring is divided by GROUP count, not player count.** Distribute the **groups** evenly around the ring, where a group is a canonical team and **every un-teamed player is a group of one**, then lay each group's members along the ring centred on its slot. Ring radius and the whole-ring rotation are unchanged; the per-player ±7° angular jitter is **not** applied inside a group, since it would fight the spacing the attribute exists to set.
+  **Evidence, and it is unambiguous.** Five runs at 4v4 gave two tight clusters of exactly four lands 176–180° apart (360/2). Three runs at **5v1v1v1** — the discriminating configuration — gave one packed arc of five spanning 24–32°, plus three lone players, arranged as **four groups at 89–91° (360/4)**, every origin at radius 79.6–80.7 on an 80-tile ring. The competing reading (space all eight players evenly at 45° and merely reorder so teammates are adjacent) predicts eight separate lands at uniform spacing and is refuted outright. The 5v1v1v1 runs also confirm the solo-player rule directly: players 6, 7 and 8 each took a full ring slot of their own.
+  **The intra-team spacing is NOT 2·`base_size`, and this is unresolved.** guide:356 says "distance between team members is double the `base_size`", which at `base_size 3` is 6 tiles. Measured centre-to-centre spacing between consecutive teammates was **10–12 tiles at 4v4** and 8–11 tiles across the 5-arc (24–32° at radius 80), i.e. roughly **3.5–4·`base_size`**. Treat 2·`base_size` as a lower bound and the measured ~3.5× as the working figure **[tune]**. Caveat, and it is why this is not pinned: these are centroids of _grown_ lands, not origins, and growth displaces a centroid. A run at several `base_size` values would separate the constant from the growth artefact. Note the shape of the discrepancy — a factor of about two on a reference length — is the same error the ring's own radius carried until RMSTEST_25.
+  Mutually exclusive with `random_placement` (guide:345) and disabled by `direct_placement` on DE (guide:367). Still unmeasured: what happens when the packed groups do not fit the circumference, reachable on a small map with a large `base_size`. Also emulate guide:857's bug: with multiple player lands under `grouped_by_team`, the additional land positions do not generate properly. **Both are now Sec.15 items 40 and 41 (opened 2026-09-21), and both have written, unrun scripts** (tools/scenario-probe/rmstest README Batch 18): `RMSTEST_79_groupedbyteam_overflow` (four teams of two at an oversized `base_size` on a Tiny map, forcing each team's own intra-member arc past what the ring can hold, to distinguish clamped spacing from overlapping origins from a silently-expanded ring) and `RMSTEST_80_groupedbyteam_multiland` (two `create_player_lands` commands under one `grouped_by_team`, checking whether the second command's lands collapse onto the first's, ignore team grouping, or land correctly on their own declared ring — the guide names the bug but nothing describes what broken output from it actually looks like, so there is nothing to emulate FROM yet).
+- `direct_placement` in <PLAYER_SETUP>: disables circular positioning; player lands with `land_position` go exactly there; assigned `create_land`s likewise (guide direct_placement).
+- `land_percent P` on player lands: total-map percentage **divided equally among players**; `number_of_tiles N`: N **per player** (guide).
+
+#### Sec.6.1 assign_to mode
+
+- **`Mode`** (`-1` or `0`, guide:1005–1007, "only matters for AT_TEAM"): `0` selects that player at random, `-1` selects in lobby order. **Modelled** — `-1` is deterministic and free, `0` draws from the S1 substream.
+
+#### Sec.6.1 assign_to land_position
+
+This overrides the neutral-land origin rule immediately below: an assigned `create_land` takes a **ring slot**, like a player land, and only `direct_placement` restores its `land_position`.
+
+#### Sec.6.1 neutral origin rule 2
+
+2. Else a rejection-sampled random tile: inside borders, inside the **cross-shaped area** (not corners) unless `generate_mode 1` — reject candidates where _both_ |x−center| and |y−center| exceed **0.35·(half the reference span)**. **The centre and the span are those of the rectangle the BORDERS leave, not of the map — MEASURED (RMSTEST_51, 2026-08-11, BUG-009, applied 2026-08-12).** With no borders the two frames coincide and this is the map's own centre with span `dim`, i.e. **0.171·dim**, which is what the original measurement below says; with borders the cross moves and shrinks with the box, and the map-frame reading left a bordered land drawing its origin from an L-shaped sliver along the box's outer edges. Each axis takes its own span, which is a judgment call: RMSTEST_51's box is square and cannot separate that from one reference length taken off a single axis. **MEASURED (RMSTEST_25, 2026-08-01), and the reference length was the error, not the constant.** 258 origins over six runs put **zero** in the modelled corner region against ~23 for a uniform draw, so the cross is real; but the observed maximum of `min(|dx|,|dy|)` was **20.5 tiles on a 120 map**, with eleven of the twelve corner-most samples sitting at _exactly_ 20.5 — a hard wall, not a distribution tail. 20.5 is 0.342·(dim/2). Revisions 3 through 6 applied 0.35 to `dim`, which draws a cross **twice the engine's width** and scatters origins through a band the engine never uses. The high inter-origin merge rate in that test independently corroborates a smaller placement region. Symmetry control passed (mean x 0.4958, mean y 0.4924); at least `base_size` from every edge; at least `min_placement_distance` (center-to-center; default: `other_zone_avoidance_distance` edge-to-edge) from prior origins. **K = 100 [tune]** attempts; on exhaustion, the engine places the land **at map center, overlapping whatever is there** — we do the same and record `originFallbackCenter` (Sec.7), which is exactly the signal 5.2 wants.
+
+#### Sec.6.1 zones randomly
+
+`set_zone_randomly` → uniform in [−8, playerCount−9] (guide:1071 states the range directly); zone −12 → belongs to no zone (other zones may grow over it).
+
+#### Sec.6.1 size targets
+
+**Size targets:** `land_percent` → `P/100 · dim²` tiles (per-player division applied first); `number_of_tiles` → N. behavior_version 0: target is _additive_ to the origin square; version 1/2: origin square _included_ in the target (guide behavior_version). Default when neither given: land_percent 100.
+
+#### Sec.6.1 out of range land_percent
+
+**Do not clamp `land_percent`**: `Crownwood.rms:173` writes `land_percent 1024` and `fortified_clearing.rms` writes `128` four times, against a documented 0–100. Compute the target as written, so 1024 asks for ten times the map, the land runs to frontier exhaustion, and it reports `growthShortfall` with `blocker: space`.
+
+#### Sec.6.1 growth rules
+
+**The rules.** Everything from here to the `land_conformity` line is normative.
+
+1. **Growth state.** Growth keeps its own per-tile state, separate from `grid.landId`. A tile is unowned, dead, or held by a zone. This is the port's search map, and it stores ZONES rather than lands, which rules 6c and 7 depend on. Stamps write it along with `grid.landId`.
+2. **Queues.** Each land has one queue of candidate tiles ordered by an integer cost, lowest first, and among equal costs the most recently pushed tile comes first. A tile sits in at most one queue at a time. Pushing a tile that is already in any queue, this land's or another's, moves it to the new queue at the new cost. This is the port's one node per tile, and it means a land can take a candidate out of another land's queue.
+3. **Seeding.** Each land seeds its queue when its origin is stamped, in origin order, so a later stamp can cover an earlier land's seeds. A square stamp pushes the tiles just outside its four edges at cost 0, in the port's order. That order is the column left of the square top to bottom, the row above it left to right, the column right of it top to bottom, then the row below it left to right. Tiles off the map are skipped, and a seed is pushed whatever its state, since rule 6b discards it later if it is taken. A circular stamp (`set_circular_base`, DE only, so not in the port) pushes every tile 4-adjacent to the stamp and outside it, once each, in row-major order `[unmeasured, low impact]`.
+4. **Size counter.** A land's counter starts at its stamp's tile count, clipped to the map and taken at stamp time. `behavior_version` 0 sets the target to the declared size plus that count, and versions 1 and 2 set it to the declared size (Size targets, above). A later stamp covering part of this land does not reduce the counter `[unmeasured]`, and the difference is at most one stamp.
+5. **Turns.** Lands take turns in origin order. In each round every land below its target pops one tile, and a land with an empty queue skips its turn. Growth ends after a round in which no land popped anything.
+6. **A popped tile goes through three checks, in this order.**
+   - **(a) Border roll.** Draw `r` in 0..99. The draw happens on every pop, even when `f` is 0 or the tile is inside the border. Let `d` be how far the tile lies outside the land's border box, summed over both axes, so `max(0, minX − x) + max(0, x − maxX)` plus the same in `y`. The chance is `f × d`, and a chance of 100 or more always refuses. When the chance exceeds `r` and the tile is unowned, the tile becomes dead for every land for the rest of S1, and no push revives it. `f = 0` never refuses, which is guide:906's "ignore borders entirely". A negative `f` refuses every tile past the border, following guide:907. The port reads a negative `f` as borders ignored, and the guide is the DE statement where the port is 1.0c, so the guide wins here `[verify]`, Sec.15 item 44.
+   - **(b) Occupancy.** A tile that is not unowned is discarded. The port runs the border roll before this check and so can mark a tile another land holds as dead in its search map. Rev 8 does not. Such a tile only reaches a queue when a later stamp covers a seed, and nothing measured supports a roll erasing a stamp.
+   - **(c) Zone check.** When this land declares `other_zone_avoidance_distance a` with `a > 0`, refuse the tile if any tile within Chebyshev distance `a` of it is held by a different zone. Zone −12 is exempt on either side. **Only the growing land's own distance counts.** The other land's distance plays no part, so a land keeps its distance even from a land that declares none. A refused tile is not dead. It leaves the queue and comes back if a later claim next to it pushes it again. The window's shape off the measured axis is `[verify]`, Sec.15 item 47.
+7. **Claim.** An accepted tile is written to the growth state as this land's zone and to `grid.landId` and `grid.zone` as this land, and the counter goes up by one. Before the tile is marked, count `n`, the tiles in the 5×5 window centred on it that are held by this land's ZONE, whichever land holds them. Off-map cells count 0. Then push each unowned neighbour in the order left (`x − 1`), right (`x + 1`), up (`y − 1`), down (`y + 1`), at cost `r′ − cf × n + 250`, with a fresh draw `r′` in 0..99 for each neighbour. Dead and held tiles are not pushed. The port counts off-map cells toward `n`, with a weight that looks garbled. RMSTEST_23's `f = 0` arm prefers 0, since counting them dragged that land along the map edge to x 0–44 where DE reached 57–81, and counting 0 gave 44–76 `[verify]`, Sec.15 item 43.
+8. **Leftover fill.** When growth ends, each land in origin order empties its queue. A remaining tile whose left and right neighbours both hold the land's zone, or whose upper and lower neighbours both do, joins the land in `grid.landId` and `grid.zone` but not in its counter. The check reads the growth state as growth left it, so fills do not chain. The engine writes only terrain here. Rev 8 also writes ownership, so that `grid.landId` keeps meaning "painted by this land in S1", which every later stage relies on `[modelling choice]`.
+9. **Painting.** Unchanged, see Terrain painting above.
+10. **Cleanup.** After painting, run the port's `cleanTerrain` over the whole map against `base_terrain`. Repeat full sweeps until a sweep changes nothing. A sweep is two row-major passes over every tile whose terrain is not `base_terrain`, and a change takes effect at once, so later tiles in the same pass see it. Pass 0 reverts a tile whose upper and lower neighbours are both `base_terrain`, or whose left and right neighbours are. Pass 1 reverts tiles by the port's diagonal patterns, transcribed exactly from `Map.js`, asymmetries included. A reverted tile gets `base_terrain` back and loses its `grid.landId` and `grid.zone`. `grid.layer` is untouched, since lands never write it. A land whose terrain is `base_terrain`, or that paints nothing, is invisible to this pass, which is what the engine does with a pass that compares terrain. Pass 0's prediction is confirmed on 21 DE exports (above), and pass 1 is unconfirmed on its own `[verify]`, Sec.15 item 46.
+11. **`base_elevation`** runs last, on the land's tiles as the cleanup left them.
+
+#### Sec.6.1 randomness
+
+**Randomness.** Each land keeps its own substream (Sec.8's best-effort stability), and draws within a land follow the order above. A draw in 0..99 is `floor(u32 × 100 / 2^32)`, integer arithmetic only, as Sec.8's lint rule requires. The port uses one shared C runtime `rand()` stream across all lands. Matching it is the seed parity question, which Sec.1 makes a non-goal, and Sec.15 item 48 records how to test it cheaply once the port exists.
+
+#### Sec.6.1 land_conformity
+
+`land_conformity` is **not simulated** (buggy in-engine, guide advises avoiding it) — SimulationNote when present.
+
+#### Sec.6.4 water cleanup
+
+### 6.5 Connections (S5)
+
+#### Sec.8 PRNG
+
+- PRNG: **mulberry32** (or splitmix32) — tiny, fast, deterministic across JS engines; quality is ample for a visual heuristic. No `Math.random()` anywhere in `src/preview/generator/`.
+
+#### Sec.8 lint no need
+
+There is no need for them: the player ring uses a **precomputed integer sine table** (3600 entries, fixed-point, checked into `rng.ts`'s neighbourhood as data), land growth costs are **integers**
+
+#### Sec.8 substreams
+
+- **Substreams:** stream seed = `hash(masterSeed, stageId, commandOrdinal)` (e.g. splitmix of the tuple). Each instantiated command draws only from its own substream; stage-0 randomization (start_random rolls, rnd()) uses per-node substreams keyed by node ordinal. Consequence: editing one create_object does not reshuffle lands or unrelated commands — _best-effort_ stability (shared state like occupancy still cascades), a deliberate UX choice the real engine does not share; documented in the help popup, harmless to honesty since our seeds never match DE's anyway.
+
+#### Sec.8 UI
+
+The help text explicitly says previews with the same seed match _each other_, never the in-game map — and mentions that DE shows its own map seed in the Objectives screen for eventual side-by-side checking (parser-design Sec.13.9).
+
+#### Sec.9 item 1
+
+1. Engine seed/RNG parity — layouts are _plausible_, never _predictive_.
+
+#### Sec.9 item 8
+
+8. `land_conformity` (bugged in-engine, guide advises against).
+
+#### Sec.9 item 16
+
+16. The engine bug where a `percent_chance 0` first branch is still occasionally chosen (Sec.3.3) — we never select it; validate() warns against writing it.
+
+#### Sec.10 PreviewSettings
+
+interface PreviewSettings {
+playerCount: number;
+mapSize: MapSize;
+
+#### Sec.13 DE gate
+
+The determinism gate above already covers growth and needs no change.
+
+#### Sec.14 files
+
+    rng.ts              mulberry32 + substream hashing
+
+#### Sec.15 status
+
+## 15. Open questions / calibration items (for 4.3)
+
+#### Sec.15 item 43
+
+43. **OPEN (2026-09-29), do off-map cells count toward a land's clumping window?**
+
+#### Sec.15 item 44
+
+44. **OPEN (2026-09-29), border depth off a single axis, and negative `border_fuzziness`.**
+
+#### Sec.15 item 45
+
+45. **OPEN (2026-09-29), a land whose origin is outside its own border box.**
+
+#### Sec.15 item 46
+
+46. **OPEN (2026-09-29), the gaps the port leaves.**
+
+#### Sec.15 item 47
+
+47. **OPEN (2026-09-29), the zone check off its measured axis.**
+
+#### Sec.15 item 48
+
+48. **OPEN (2026-09-29), optional and a non-goal (Sec.1), could the preview match DE seed for seed?**
+
+#### Sec.15 item 41
+
+41. **OPEN (2026-09-21) — guide:857's documented bug:
+
+#### Sec.15 new items
+
+## Appendix A: rev 8 changelog
+
+#### Appendix A: rev 8 changelog
+
+A replacement round for one subsection. Rev 8 swaps Sec.6.1's land growth for a port of the original game's land stage. It was checked by simulation against four existing RMSTESTs and by one new check against 21 exports already on disk. No new RMSTEST was run in DE. Built 2026-09-30 in `lands.ts` (`growLands` and `cleanLandTerrain`), with the Sec.13 gates in `src/preview/__tests__/landGrowthGates.test.ts`. Two of those gates were reworded that day on the owner's decision, the RMSTEST_23 gate to DE's own ranges and the sandwich invariant to the terrain before the beach pass, and `docs/build-log.md`'s 2026-09-30 entry has the figures.
+
+**Replaced.**
+
+1. **Sec.6.1's growth.** The frontier weight buckets, the detached-seed reservoir with its reachability filter, and the one-roll border rule are gone. The land stage of genie-rms, a reimplementation of AoC 1.0c's generator, takes their place, with the reading the DE data supports wherever the port's code is garbled. The removed text is in `docs/build-log.md`'s 2026-09-29 entry.
+2. **Sec.11 item 1**, rewritten for a cost-ordered queue.
+
+**Found.**
+
+1. **BUG-036.** The shipped zone check applied the smaller of two lands' distances, so a land ignored any neighbour that declared none. Run on RMSTEST_73, the shipped generator puts every grower flush against the ICE walls (gap 1 on three seeds) where DE measured 7, 11 and 13, and RMSTEST_73 is the very test the code's own comment cites as its calibration. RMSTEST_66's asymmetric pair could not tell the two readings apart, which is how the error survived. The port matches DE exactly.
+2. **Low `clumping_factor` fragments come from a cleanup pass after growth, not from growth.** Confirmed on 21 DE exports, which hold zero sandwiched land tiles where growth alone leaves 74 to 102 per map.
+
+**Opened.** Sec.15 items 43 to 48. **Withdrawn.** Item 18. **Retired.** Item 32's fix, which lived in the reservoir.
+
+**Process note.** The reservoir survived rev 7's review and eight weeks in the code because it reproduced the numbers it was fitted to, and a fit cannot do more than that. A fitted mechanism is still an argument in the sense of CLAUDE.md's "prefer an observable" rule, however well it fits. The exports that settled it had been on disk since August. Before fitting a mechanism to a measurement, look for an existing reimplementation of the engine, and ask what the candidate predicts that exports already on disk could refute.
+
+## 2026-10-14, Land Generation (Comeer) in Breakdown or Code, and a shared track module
+
+On the owner's request, the Comeer tutorial now asks Breakdown or Code straight after "Start a new script", the same place Tutorial A asks (`tutorial-design.md` Sec.9.2 gives the reason). The owner expects every later map-building tutorial to offer the choice, so the pieces Tutorial A built for itself moved to `src/tutorial/editorTracks.ts`.
+
+Shared module. `editorChoiceStep()` is the choice step both tutorials now use. `withCodeTrack(steps, codeTwins)` takes each tutorial's own twin list. A twin always runs on its Breakdown step's check and autoFill. It also takes the title, body, hint, bypass, preview and image unless it writes its own, and never takes the callout placement or `navigate`, which default to the code editor and the Code tab. A twin's body can be a function of the Breakdown body, edited with `replaceBlock` or `insertAfterBlock`, which find a block by a phrase in its words and throw at load when the phrase is missing or appears twice. `src/tutorial/__tests__/editorTracks.ts` holds `describeEditorTracks`, the track tests a tutorial runs with one call. `rmsBasics.test.ts` now uses it in place of its own copy. New guards there are each track's first step switching to its own tab, and no Breakdown control named on a Code step.
+
+Content. `landGenerationComeer/codeTrack.ts` has 14 twins. Seven keep their Breakdown words. The rest swap the words that name a Breakdown control and add a script Answer the first time a learner writes a new kind of line (a section header, a block, a `#const`, a copied block, an `rnd()`). The first Breakdown step, `player-placement`, now navigates to the Breakdown tab as well, so Back from Code and a Breakdown pick does not start on the Code tab. `BORDER_CONSTANT` moved to `comeerValues.ts`, and `comeerScript` uses it, with output unchanged. The Code copy says a space inside `rnd()` breaks it (guide line 172), and a new test proves the check refuses `rnd(7, 9)`. The hidden number test now counts visible code blocks as plain text.
+
+Mutation tested four ways, each caught by the one test it targets (a twin inheriting Breakdown words, a wrong value in a script Answer, the first Breakdown step without its tab, a `replaceBlock` phrase that no longer matches).
+
+Not this change. `seedCheck.test.ts` (5 tests), `renderImage.test.ts` and the finished-script failure snapshot are red. At seed 13 the two players are no longer on a diagonal. Another session edited `src/preview/generator/` during this one (`deRandom.ts`, `float32.ts`, `lands.ts` and others, 10:23 to 10:59). The script text is unchanged, since "the finished script is the one the first step's picture is drawn from" still passes. Re-pin the seed with `findComeerSeed` and regenerate the picture once that engine work lands, not before.
+
+Suite. `src/tutorial` fast files 180 tests, all green except that snapshot. `tsc`, eslint and Prettier clean on the changed files. Never run in the real app, see `manual-test-run-sheet.md` section 22.
+
+## 2026-10-14, the Team Positions setting
+
+What. The lobby's Team Positions box is now a checkbox in Generation Settings, in the top row beside Player count and Map size, HelpTip `generationSettings.teamPositions`, ticked by default and persisted under `generationTeamPositions`. Rev 9 had made it a generator input with no control. It changes the land stage's draws (preview-design Sec.6.1), and ticked it defines `TEAM_POSITIONS`, which ten tracked corpus maps branch on. `FIXED_POSITIONS` stays undefined (Sec.15 item 55).
+
+Plumbing. `GenerationSettingsContext` carries `teamPositions` and `setTeamPositions`. `PreviewResultContext` passes it to `usePreviewResult`, which puts it in `PreviewSettings`. The published tool contract gained an optional `ToolContext.settings.teamPositions` (`tools-api/index.ts`, `tools-api-design.md` Sec.3), filled by `buildToolContext` and read by `previewBridge`, so the consistency checker and Land Placement generate with the pane's lobby. That is the drift `tools-api-design.md` Sec.10.2 names, an app setting the tool contract does not carry, and an optional field keeps tools built before it compiling.
+
+Tests. `instantiate.test.ts` checks the label is defined by default and when ticked and not when cleared, mutation-tested by defining it always. `buildToolContext.test.ts` passes `false` through, the non-default value, so the assertion shows the setting is carried rather than defaulted. Full `npm test` 136 files, 3691 passing and the same 8 red as before, all BUG-037. Never run in the app, `manual-test-run-sheet.md` section 23.
+
+## 2026-10-14, BUG-037 closed, the Comeer seed checks match DE, and a replacement seed is remembered
+
+On the owner's decision, the two seed-check properties BUG-037 names now ask for what DE does, and the tutorial copy is unchanged. `seedCheck.ts` holds them as `DIAGONAL_AVOIDANCE_GAP` (the avoidance distance minus 1, since DE's avoidance window trims its top-row corners) and `borderLane` (the smallest stated border's tiles minus 1, since DE's right and bottom borders are inclusive). Under them 6 of the first 11 diagonal seeds pass. The other 5 fail only because `base_size` 10 or 11 already closes the channel on that seed. The finder's first pass, 55, is now `PINNED_COMEER_SEED`. On 55, 123 and 134, `base_size` 8 to 12 keep the 2 tile channel, 13 leaves 1 and 14 fuses. The stated range stays 8 to 11, and the edge test now asserts the top of the range holds and 13 does not. The picture is regenerated and the finished-map failure snapshot accepted after reading its diff, mostly group numbers moving with the seed.
+
+Remembered seed, also the owner's request. When the background check at tutorial start finds that the pinned seed fails and a search finds one that passes, `seedMemory.ts` saves `{ seed, replaces }` under `tutorialComeerSeed` in `settings.json`. A later start checks the saved seed first, then the pinned one, and the steps use the saved seed before the check finishes, so they no longer show the stale seed while it runs. A saved seed counts only for the pinned seed it replaced, so a release that re-pins ignores it and then overwrites or clears it, and it is cleared when the pinned seed passes again. `verifyOrFindSeed` now takes a list of candidate seeds. The store and worker are wired in `prepareSeed.ts`, and the logic takes them as parameters so `seedMemory.test.ts` drives it with fakes (8 tests, one mutant on the `replaces` rule caught).
+
+Found while looking at the new picture, not fixed. The player islands draw bright green because Comeer's `PL_TERRAIN` is terrain 34 ("OBSOLETE: Snow Dirt" in `game-constants.json`), which has no `previewColor`, so the palette falls back to its minimap green. The neutral islands draw olive, terrain 68, Comeer's temporary terrain, which the preview mostly leaves in place on this seed. The new snapshot also has a one clump `TEMP_TERRAIN` command reaching 2 of 14400 tiles.
+
+Suite. Full `npm test` 137 files, 3708 tests green, floor passed. The first full run timed out three seed-search tests at the 5 s default, since a search from seed 1 now walks to 55 (2.2 to 3.0 s alone), so they now carry a 30 s timeout with the measurement beside it. `tsc`, eslint and Prettier clean on the changed files. The closed entry follows word for word.
+
+### BUG-037, 2026-10-14, the Comeer tutorial's seed check fails under the measured land stage
+
+**Status.** OPEN, needs the owner's decision on the tutorial's promises. **Area.** `src/tutorial/landGenerationComeer/` (`seedCheck.ts`, `comeerValues.ts`, the pinned seed and `public/tutorial/comeer.png`), `docs/tutorial-islands-design.md`.
+
+**Symptom.** `seedCheck.test.ts` fails five tests and `tutorial.test.ts` and `renderImage.test.ts` one each. The pinned seed 13 no longer puts the players on a diagonal, and the finder finds no seed that passes every property. Of the seeds below 3000, 110 put the players on a diagonal, and none of the 27 inspected passed.
+
+**Reproduction.** `npx vitest run src/tutorial/landGenerationComeer/__tests__/seedCheck.test.ts`.
+
+**Root cause.** The checks were written on the rev 8 generator, and preview-design rev 9 replaced the land stage with DE's measured one. Two properties now fail on every diagonal seed, and both are DE's behaviour rather than a defect.
+
+1. `base-size-N-keeps-the-avoidance-gap` asks for 3 water tiles between the islands at `other_zone_avoidance_distance 3`. DE's avoidance window trims its two top-row corners (Sec.6.1 growth rule 6), so two islands meeting on a diagonal stop at Chebyshev distance 3, which is 2 water tiles. The hint's "at least three tiles apart" still holds read as a distance.
+2. `border-10-leaves-a-lane` asks for 12 tiles between land and the edge. DE's right and bottom borders are inclusive (`R = dim − dim·p/100` is inside the box), so `border 10` on Tiny leaves 12 tiles on the near edges and 11 on the far ones.
+
+**Prescribed fix.** The owner chooses. Either relax the two thresholds to what DE does (a gap of `other_zone_avoidance_distance − 1` on a diagonal, a lane of 11) and keep the copy, or change the tutorial's values and copy (for example a larger avoidance distance, or 11 to 14 as the border range). Then rerun the finder, pin its seed in `PINNED_COMEER_SEED`, and regenerate the picture with `UPDATE_COMEER_IMAGE=1`.
+
+**Verification.** `seedCheck.test.ts`, `tutorial.test.ts` and `renderImage.test.ts` green, and run sheet section 20 in the app.
+
+## 2026-10-14, terrain colours for the ten legacy blends, and the Comeer picture
+
+The Comeer picture drew the player islands bright green because terrain 34 (`GRASS_SNOW`, Comeer's `PL_TERRAIN`) had no `previewColor`, so the palette fell back to its minimap green. Ten terrains had a null `deTextureFile` and no `previewColor`, all transcribed from the community table on 2026-08-07. `--colors-only` read the texture name from the JSON, so it could never fill them. On the owner's request it now fills a null `deTextureFile` from the dat's `Terrain.name_2` (the field a full run reads), notes where the name came from, and never replaces a name already there. Six tests in `test_extract_constants.py`, extractor suite 171 green, and a mutant that turns the lookup off fails three of them. The run filled all ten (`DIRT_SNOW` `o_snd`, `GRASS_SNOW` `o_sng`, 36 `g_snd`, 38 `o_sr1`, 39 `o_sr2`, `DLC_DRYROAD` `o_rd3`, `DLC_MOORLAND` `o_gr4`, `DLC_JUNGLEROAD` `o_rd4`, `DLC_JUNGLELEAVES` `o_fo2`, `DLC_ROADGRAVEL` `o_rd5`). The other 124 terrain rows changed only in `notes`, where the colour sentence carries the new date and moves to the end. `validate:reference` and Prettier clean. The Comeer picture is regenerated and the player islands now draw grey-green.
+
+Open, the owner's decision. The extractor README had recorded these ten as deliberately null, since the guide (line 1513) calls them "already a blend of two texture files". Looking at the files settles part of it. `o_sng.dds` and `o_snd.dds` are placeholder art, the two terrains blended with a grid and the word PLACEHOLDER printed over them, so the game draws these terrains from two textures, and the ten colours are averages of placeholders. They land near the component average (`o_sng` (159, 170, 155) against snow and grass at (154, 175, 141)). The choices are to keep them, average the two component textures instead, or null them again. The README carries the same note. The neutral islands in the picture stay olive, terrain 68, Comeer's temporary terrain, which is a terrain-stage question and not a colour gap.
+
+Suite. Full `npm test` 137 files, 3708 tests green, floor passed.
+
+## 2026-10-14, Comeer seed 217 and base_size 9, and three blend colours from their real textures
+
+Owner's decisions. The Comeer tutorial pins seed 217 and the player `base_size` is 9, with a stated safe range of 7 to 9 (`comeerValues.ts`). Comeer itself writes 10, and the comment says so. On 217 the players start 21 to 22 tiles apart, `base_size` 7 to 9 keep DE's 2 tile channel, 10 leaves 1 and 11 fuses, so the step that asks for the biggest value with a clear channel now has the pick as its answer. `inspectSeed` checks the base sizes as a set, since the pick is also the top of the range. `seedCheck.test.ts` 15 green on 217, with the edge test now asserting the top holds and one above it fails. `tutorial.test.ts` stages moved to `base_size 9` and its out-of-range examples to 6, 10 and 11. The failure snapshot was read and accepted, the same kinds of entries renumbered for the seed.
+
+Blend colours. The owner chose averaging the two real textures for the legacy blends whose own file is placeholder art. The dat names no second texture (terrain 34's record has only `o_sng` and the mask `snow.png`, which plain snow shares), and splitting each placeholder into its two main colours matched snow clearly and the second half only loosely. So `LEGACY_BLEND_COMPONENTS` lists a pair only where the name and the image agree, `DIRT_SNOW` (`g_sno`, `g_des`), `GRASS_SNOW` (`g_sno`, `g_grs`) and 38 road snow (`g_sno`, `g_rd1`), averaged with equal weight. The other six keep their placeholder mean and wait on the owner. 36's `g_snd` is real art and keeps its own mean. Three tests added, extractor suite 174 green, a mutant that ignores the table fails two. The `--colors-only` run changed exactly three colours (33 to (197, 180, 156), 34 to (154, 176, 141), 38 to (180, 184, 178)), `validate:reference` and Prettier clean. The Comeer picture is regenerated for seed 217 with the new colours.
+
+Suite. Full `npm test` 135 of 137 files green. Two `index.test.ts` determinism tests timed out at 15 s under load and pass alone (95 of 95). Two Comeer tests are red from an edit made outside this session at 16:17, after this change's own green run. `player-lands` now also requires `base_size` equal to `COMEER.player.baseSize` (9), while its copy tells the learner to type `base_size 16` and `land_percent 0`, and the test stage and the Code Answer have no `base_size`. Left for whoever is editing that step.
+
+## 2026-10-14, Comeer v1.5 taken in
+
+The owner edited the Comeer map and renamed it `test-maps/Comeer v1.5.rms` (constants renamed to `<attribute>_<identifier>`, two unused ones dropped, a changelog entry). Taken in. `.gitignore` whitelists the new name (the old entry would have left v1.5 ignored and dropped Comeer from every clone). `corpus.test.ts`'s zero-error allowlist names it, the same silent-drop trap its Vanguard comment records. `restOfScript.test.ts` reads v1.5, finds its cuts by the `#define 3_VILL_START`, `<PLAYER_SETUP>` and `<ELEVATION_GENERATION>` lines instead of line numbers 26, 118 and 150 (the marker cut reproduces the old copy from v1.4 exactly), and its two edits use the new names (`BORDERS_PL`, `TERR_PLAYER_TEMP`). That test used to skip when the original was missing, so after the rename it checked nothing, and it now fails instead. `comeerRest.rms` is rebuilt from v1.5, every difference a rename or the header date. The finished-map snapshot changed only by the renamed constant in two messages.
+
+Verified. v1.4 and v1.5 generate the same terrain on every tile and the same object count at seeds 1, 13 and 217, and carry the same seven warnings. The corpus gate passes.
+
+Found, not changed (the owner's file). The changelog says the player `base_size` is now 9, but `create_player_lands` still writes `base_size 10`. Lines 194 to 196 write `number_of_clumps beach_terrain ICYSHORE 4056`, the count after the wrong attribute (RMS0201 and RMS0215, already in v1.4), where the `/* 1 */` block writes `number_of_clumps 4056 beach_terrain ICYSHORE`. Line 159 writes `spacing 0` (RMS0203). The file now has CRLF line endings where v1.4 had LF. Both versions set `behavior_version 1`, which the tutorial's script has never had, and the fill-in leaves out `<PLAYER_SETUP>`, so the finished tutorial map has run on version 0.
+
+Suite. Full `npm test` 136 of 137 files green. The two red tests are the `player-lands` check the owner is editing.
+
+**2026-10-14 follow-up.** On the owner's request the tutorial's border constant is `BORDERS_PL` (`comeerValues.ts` `BORDER_CONSTANT`), the name Comeer v1.5 uses. `tutorial.ts` and the Code track read the constant, so only the test stages, comments, run sheet item 6 of section 20 and two lines of `tutorial-islands-design.md` named it. `src/tutorial` 204 of 206 green, the two red being the `player-lands` edit in progress, and the picture test passes unchanged.
+
+## 2026-10-14, Comeer v1.5 fixes taken in, and the behavior_version step
+
+The owner fixed the map. Player `base_size` is 9, the `/* 2 */` block's three `TERR_PLAYER` lines put 4056 after `number_of_clumps`, and `spacing 0` is gone. The file parses with no diagnostics (it had seven). It is still CRLF. `comeerRest.rms` is rebuilt from it, and the copy and corpus tests pass. The fix is visible in the finished-map snapshot, where two one-clump `TEMP_TERRAIN` commands that reached 1 of 14400 tiles now reach about 1580, so both player islands get their snow grass. `comeerValues.ts`'s `baseSize` comment now says Comeer writes 9.
+
+The owner's `player-lands` edit asks for `base_size 16` from the start. The test stages and the Code answers now carry it. "Player land growth" also asks for exactly 16, so it is satisfied on arrival (the engine shows the tick and waits for Next), and its test uses a mid-experiment stage at `base_size 3` as the before state.
+
+New step, on the owner's decision. "Does the square count?" (`does-the-square-count`) follows "One island per player" in Player Setup. It asks whether the starting square counts toward land_percent, has the learner add `behavior_version 1`, and explains in two spoilers, the default adds the square on top and version 1 counts it, and Comeer uses 1. Its Code twin types the line under `random_placement`. `comeerScript` gains `behaviorVersion` (default 1), so the seed check, the finished map and the picture all run on version 1, and seed 217 still passes every property. `playerLandsStepScript` is the script at the two player land steps, which the new property `behavior-version-1-shrinks-the-islands` measures (version 1 at most 0.8 of version 0) and the test stages are held to. A check-can-fail test drops the line and the property fails. The missing-land test now looks for the "land_id 999" failure itself. Its count comparison stayed at 44 on the version 1 map, because moving the forage off the islands freed tiles another failure had been short of. The picture is regenerated. Template strings in two test files carried a literal line break where the escape `\n` was meant, written through a shell heredoc that drops backslashes, and now read `\n`.
+
+Suite. `src/tutorial` 11 files, 210 tests green, `tsc` and Prettier clean.
+
+## 2026-10-15, Comeer tutorial review pass
+
+Review of "Player land growth" and the whole Comeer tutorial, with the owner's rulings applied.
+
+`bigger-islands` is now `player-land-growth` (its Code twin `player-land-growth-code`). Its check wants `base_size` 16 and `land_percent` 25. The learner arrives with both, so the step is ticked on arrival and does not auto-advance (`TutorialOverlay.tsx` advances only on a transition to satisfied). Changing either and restoring it advances it. The body held a plain string with `${OVERSIZED_BASE_SIZE}` in it (never interpolated) and a spaced hyphen the copy test refuses, both fixed. `keep-them-apart` also wants `land_percent` 25, since "Spot the problem" has the learner set it to 0 and nothing else would notice it left there. `four-corners` wants `land_id` 100 on all four islands, as its copy says. The hint no longer claims 100 crashes the game, which was never measured. It says `land_position` stops at 99, which `language.json` and RMS0203 record.
+
+`name-the-border` keeps the section order explanation as a dropdown, "Why does a #const need to go before the command that uses it?". The Code twin rewrites only the plain paragraph.
+
+The owner's `0 0` edit lets a learner place the islands at 0 and 99, but the seed gate only proved Comeer's 9 and 91. Measured on seed 217 and seeds 1 to 3, the ends of both spans (0 and 99, 10 and 90) keep six lands, every origin on land, none fused. Seed 217 with 0 and 99 also leaves two stray fragments of 2 and 12 tiles, and 10 and 90 one of 4 tiles. The gate does not ban fragments. `inspectSeed` now proves both end pairs (`comeerScript` takes `neutralCorners`).
+
+`COMEER.neutral` carries `baseSizePick` 8 and `clumpingFactorPick` 18, which the copy and test stages typed as bare numbers. The ending has a fourth question, why `behavior_version 1` shrinks the islands.
+
+Suite. `src/tutorial/landGenerationComeer` 5 files, 94 tests green with `--testTimeout=60000 --no-file-parallelism`. Under the default 5 s and parallel workers, several Comeer tests time out and vitest fails to start a worker, all passing alone. `tsc`, eslint and Prettier clean.
+
+**2026-10-15 follow-up.** "Player land growth" is manual, replacing the check above. A check on `base_size` 16 and `land_percent` 25 is ticked on arrival, and a learner who restores `base_size` before trying `land_percent` values would advance the moment it came back. The copy now ends with a plain line asking for both values back, and a test holds the step to that wording. The step gained a "Prediction answer" spoiler and a "Prediction answer explanation" dropdown (0 and 15 leave the island alone, 16 and above grow it, from 1080 against 1152 target tiles for a 1089 tile square). Its numbers come from `startingSquareTiles` and `playerIslandTarget` in `comeerValues.ts` and a test pins 15 under the square and 16 over it. The square's edge rule is stated once, in "Does the square count?", and the two later places use their consequence. `WRONG_BORDERS` is now `WRONG_BORDER` (4), and the seed gate proves one wrong border, not two. `src/tutorial` 11 files, 213 tests green, `tsc`, eslint and Prettier clean.
+
+**2026-10-15, "Borders cut the corners".** New manual step `border-corners` between `show-the-border` and `name-the-border` (Code twin `border-corners-code`). The learner predicts the shape four equal borders leave, raises all four to `BORDER_CORNER_TEST` (25) and sees each corner cut off at a slant, an octagon. The cut is the term in `borderChance` (`lands.ts`) that moves the top and bottom borders inward near a left or right border. Read off the preview at fuzziness 100 and `land_percent` 100 on seed 217 with a single `create_land`: all four borders 25 gives the octagon, left and right 0 with top and bottom 25 gives a plain strip, left and right 25 with top and bottom 0 still cuts the corners at the map edge, left and right 25 with top and bottom -45 gives a plain strip, and left 0 with the rest 25 cuts only the right side. So a negative or zero border on the sides the cut pushes toward removes it, which is why shipped maps use negative borders (AK_ForeDaut_v1.3 writes -45). No seed gate property, on the owner's decision. `show-the-border`'s teaser now says "Soon" and not "In the next step". `src/tutorial` 11 files, 214 tests green, `tsc`, eslint and Prettier clean.
+
+**2026-10-15, the automatic beach is 8 connected.** `applyAutomaticBeach` (`terrains.ts`) now beaches a land tile when anything deeper sits in any of its eight neighbours, where it used to read only the four at its sides. The header had named this as an open question that a land with a diagonal edge would settle. RMSTEST_75 is that land, one DIRT `create_land` on WATER whose `left_border 33` cuts both left corners at 45 degrees for 20 rows. DE laid 180 beach tiles and the 4 connected rule gives 140, one short on every row of each cut. The same check over saved maps already on disk agreed: both RMSTEST_52 runs (ragged coasts against open water and against shallows) give 721 and 862 for 8 connected, exactly DE's count, against 538 and 631, and both RMSTEST_15 runs give 432 against 420. So shallows follow the same rule. A neighbour off the map is never deeper, so land at the map edge takes no beach there, which DE shows on row 0 of RMSTEST_75. The new gate `deBeachMaps.test.ts` reads those five maps from `fixtures/de-beach-maps.json` (written by RMS/de-disassembly/tests/export_beach_golden.py), turns each BEACH tile back into its land, runs the pass and expects DE's terrain back exactly. Mutation check: with diagonals skipped all five maps and the new 45 degree unit test in `terrains.test.ts` go red, with counts 420, 420, 538, 631 and 140. Spec Sec.6.4 states the rule. `shoreMask` in `objects.ts` stays 4 connected, since corner contact for shore objects is unmeasured, and its comment no longer says it matches the beach rule. Consequences: the Comeer picture and its failures snapshot were regenerated. The islands are unchanged, but wider beaches change how many tiles each later `create_terrain` can pick from, so the forest and snow patches moved. Full suite 3718 of 3723 before the regeneration. Of the five failures, the picture and the snapshot came from this change and pass under the old rule. The other three were already failing and are not touched here: the `border-corners` copy has a colon the punctuation tests reject (two tests), and the corpus gate reports RMS0111 on `Comeer v1.5.rms`.
+
+## 2026-10-15, Suggest a feature button, drawn feedback icons, and community map sharing noted
+
+A lightbulb button now sits beside the bug button in the status bar. It opens `https://github.com/aknipler/age-of-rms/discussions/new?category=ideas` in the user's browser through `openUrl`, and carries nothing from the app or the script. The link is the constant `FEATURE_REQUEST_URL` in `bugReport.ts` and not a builder, since a discussion form cannot be prefilled from a URL. GitHub matches `.github/DISCUSSION_TEMPLATE/ideas.yml` to the category by its slug, so renaming the Ideas category in the repo settings would send the link to the category picker without any error. The form asks for the kind of idea (including a tutorial idea), the goal, the current workaround and the area. The help entry is `statusBar.suggestFeature`.
+
+The bug and lightbulb buttons are now SVGs (`BugIcon`, `LightbulbIcon` in `StatusBar.tsx`), replacing the 🐞 and 💡 glyphs, for the same reason `ProblemIcon` and the resource icons are drawn. The bulb is a grey outline at rest (1.4 stroke, 0.85 opacity, `currentColor`) that fades to the original filled yellow bulb on hover or keyboard focus, two drawings in one SVG (`.bulbOutline` and `.bulbColour`). The two feedback buttons sit in `.feedbackButtons` with no gap and 0.375rem button padding, so their icons are 0.75rem apart where they were 1.5rem. The bug was redrawn the same day as a single grey outline in `currentColor` at 0.85 opacity, chosen from several rounds of options. It is a full oval body (rx 3.5, ry 4.9) and a full round head touching at one point, with six legs that reach the icon's edge and a 1.4 stroke. With no fill, an overlap would show as a line through the neck, so the shapes touch and do not overlap. On hover or keyboard focus the bug turns the theme's `--danger` colour (`.bugIcon` in `StatusBar.module.css`, #dc3545 in Light and #e5636f in Dark, so a custom theme's Error colour applies too). Not yet seen rendered in the app, so both shapes at about 16px are owed a look in `npm run tauri dev` in both themes.
+
+Discussions was enabled on the repo the same day, and `gh api graphql` confirmed the Ideas category exists with the slug `ideas`, which the link and `ideas.yml` both depend on.
+
+`CREATION_PLAN.md` gains A.6, community map sharing (upload and download maps, versions across maps, links to tournaments and tournament sets through Liquipedia, possibly tournament submissions). It is recorded as unscheduled and not designed, with four open questions (hosting, licensing and consent, whether Liquipedia can supply the links, privacy of unreleased maps). It is not the withdrawn tool registry. It comes from item 5 of `feedback/next_steps.md`.
+
+Suite. `bugReport.test.ts` 9 tests green, `helpCoverage` and tutorial `registry` green, `tsc`, eslint, Prettier and `validate:reference` clean. Full `npm test` not run.
+
+## 2026-10-16, Comeer tutorial opens on a non-diagonal seed
+
+The tutorial used to open on seed 217, a diagonal arrangement, so the avoidance step ended with the islands already fused, which is the problem "Spot the problem" is meant to introduce. `START_COMEER_SEED` (50, players 35 tiles apart across and 13 down) is now what step 0 pins. No step between step 0 and "Spot the problem" pins a seed, so the learner keeps it, or their own re-roll. "Spot the problem" pins `PINNED_COMEER_SEED` as before, and its copy now says the preview moved to a different seed. Seed 50 was chosen from seeds 1 to 60 as one with no failing property other than the three the planted problem owns, and with a starting-square clearance that holds at base_size 16 as well as 13. `seedCheck.test.ts` proves it (non-diagonal, squares clear, every other claim holds, a 2 tile channel at all three adherence values) and `tutorial.test.ts` proves the pin placement. Both were mutation-tested with the start seed set to 217. Back from "Spot the problem" to an earlier step leaves the diagonal seed on screen, since nothing re-pins.
+
+Same day, follow-up. The owner had lowered `OVERSIZED_BASE_SIZE` to 13 because 16 overlapped on too many seeds and gave away "Spot the problem", without updating everything that assumed 16. Fixed: the tests' `BIG` stage and the mutants now read the constant, and "Player land growth" derives its prediction values from the new `largestPercentWithoutGrowth` (10 at base_size 13, was a hardcoded 15 and 16), in both the instructions and the answer. `does-the-square-count` is manual on purpose, since a check advanced the learner while they were still reading, so its check case, its Code `typedInto` entry and its `test` are gone and a test pins that both tracks are manual. `prepareComeerSeed` is back on. `tutorial` suite 219 of 219 green, Prettier clean. Full `npm test` not run.
+
+## 2026-10-16, Comeer tutorial step "Box in the neutral island"
+
+New manual step `neutral-island-borders` between "Shape the island" and "Four corners", on the owner's request, with Code twin `neutral-island-borders-code` (inherits the body, names no Breakdown control). The learner sets the neutral island to land_percent 100 and border_fuzziness 100, tries right_border and bottom_border, and reads a range sentence (78 to 83, pick 82, all hidden). A "Notice something?" dropdown asks why two of three corners are cut at a slant, explains that the cut comes only from the left and right borders and is applied at the top and bottom, and walks a hint ladder to a negative top_border that moves the cut off the map. The answer also says the editor's caution on a negative border is safe here, since land_position keeps the island on the map. The step ends with land_percent back at 6 and the borders optional, the owner's wording, plus the measured note that kept borders keep the island smaller than it grows on its own. "Four corners" now checks land_percent 6 on every island, since four islands left at 100 fill the map.
+
+The range was measured first, over 42 seeds, positions 0 0, 5 5 and 10 10, and three base_size and clumping_factor pairs. From 78 up the border box at land_percent 100 holds fewer tiles than the island grows to on its own at 6, on all 378 runs (76 failed 274). Up to 83 no land tile lies past the border lines (84 failed 45 of 120). `top_border -5` makes row 0 as wide as the widest row for 78 to 82 (the cut is at most 6 tiles there), matching de-disassembly `notes/borders-corner-cut.md` and RMSTEST_75. `RANGES.neutralBorder`, `NEUTRAL_BORDER_PICK` and `NEUTRAL_TOP_BORDER_FIX` hold the numbers. `comeerScript` gains `neutralLandPercent` and `neutralBorders`. `seedCheck.ts` section 7 proves both ends of the range at both ends of the near corner span, the cut against the map edge, and the fix, and four new check-can-fail mutants each make one of those properties fail.
+
+Engine. A spoiler block may now hold `paragraphs` (types.ts `Paragraph`, `string | Inline[]`) in place of `text`, so a dropdown can carry its own inline spoilers. A second spoiler shape rather than a widened `text`, because a widened field would still compile in every reader that puts it in a template literal and print "[object Object]", while a new field made the compiler list all five readers (StepBody, editorTracks `blockText`, the track test's `prose` and `typedText`, the Comeer copy test). Inline spoilers inside the dropdown reset when it closes, the same rule as a step change. A render test covers it. The Code track's punctuation test reads a dropdown piece by piece, so a "Hint 1: " label is not read as a colon inside a sentence.
+
+Suite. `src/tutorial` 11 files, 224 tests green, `tsc`, eslint and Prettier clean on the changed files. Full `npm test` not run. Run sheet section 20 item 16 added.
+
+## 2026-10-16, a check step that ticks without advancing
+
+On the owner's request. "Does the square count?" should tick once the learner adds `behavior_version 1` but not advance, since they are still reading "What happened". Before this a step could tick only as a `check`, and every check auto-advanced, so the step had been made manual and showed no tick.
+
+Engine. `StepCompletion`'s `check` gains `autoAdvance?: boolean`, and the overlay's auto-advance effect skips a step with `autoAdvance: false`. It is an option on `check` and not a third `kind`, because the tick, the hint, the anchor poll and the tests that run every check against its stage script all key on `kind === "check"` and keep working. A new `TutorialContext.test.tsx` case has a step become satisfied while active and stay put after the pause, and it went red with the overlay condition removed. `tutorial-design.md` Sec.5.2 notes the option.
+
+Step. `does-the-square-count` is a check again, on `behavior_version` in Player Setup with the value 1, with `autoAdvance: false`. The value has to be 1 because a Breakdown add writes the placeholder 0. Its Code twin takes the completion as before. The step is back in the false-before, true-after cases, the Code twin has a `typedInto` entry again, and a test pins that 0 does not tick and both tracks have `autoAdvance` false. Run sheet section 20 items 5 and 9a now also ask that it waits for Next.
+
+Suite. `src/tutorial` 11 files, 228 tests green, `tsc` and Prettier clean on the changed files. Full `npm test` not run.
+
+Same day, follow-up on the owner's review. The range is for borders KEPT at border_fuzziness 20 and land_percent 6, a border that stops the really wild growth and does not make the island smaller, not a hard box at land_percent 100. Measured against the same runs with no borders: unbordered, the farthest island reaches 57 tiles from its corner, at 70 none passes 38. With the tutorial's base_size 8 and clumping_factor 18 over 62 seeds at positions 0, 5, 9 and 10, the mean island at its worst position is 0.988 of its unbordered size at 74, 0.980 at 75, 0.969 at 76 and 0.939 at 77. The owner had proposed 71 to 77 by eye and chose 70 to 74 on those numbers, pick 73. A first, broader probe that mixed three shape pairs read 77 as only 1% smaller, which the tutorial's own shape does not bear out. Single runs come out a few percent smaller at any value that touches the island, a border at 50 shows it too, so the gate holds the mean. The hint ladder steps top_border by 1, and the full fix is -8, since the cut at 70 is 9 tiles and -7 is 8 (owner expected -6, which clears the cut only from 75 up). The step is now a check with `autoAdvance: false` on the kept borders (land_percent 6, fuzziness 20, both borders in range, top_border at most -8), with a hint saying Next works with the borders removed too. The final paragraph says to set fuzziness 20 and that a border in the range stops the wildest growth without making the island smaller, replacing the earlier "keeps the island smaller". `inspectSeed` section 7 keeps only the corner cut (cut at the map edge, -8 removes it, -7 leaves a notch at 70). New `inspectNeutralBorders(deps, seeds)` proves the range over 22 seeds at both ends of the near corner span, wild growth held within 4 tiles of the line on a sample whose unbordered islands go well past it, and mean size at least 0.98, with mutants for borders that do nothing and a border that shrinks. `src/tutorial` 11 files, 233 tests green, `tsc` clean.

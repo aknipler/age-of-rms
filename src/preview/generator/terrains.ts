@@ -129,7 +129,7 @@ const TERRAIN_DEFAULT_CF = 20;
 /**
  * RMSTEST_20's saturation point, which happens to equal RMSTEST_21's land
  * saturation point (Sec.6.1), coincidence in the data, not a reason to
- * import lands.ts's `bucketWeights`. Sec.6.4 explicitly says the two tables
+ * import `bucketWeights` (elevation.ts since rev 8, lands.ts before it). Sec.6.4 explicitly says the two tables
  * are separate measurements ("do not reuse Sec.6.1's land table"), and an
  * edit to one must not risk silently changing the other's tested shape.
  * same reasoning grid.ts gives for keeping `distanceTransform` and
@@ -238,7 +238,7 @@ export function resolveClumpCount(
 
 // ---------------------------------------------------------------------------
 // Terrain's own clumping_factor regime (Sec.6.4, RMSTEST_20). See the
-// TERRAIN_SATURATION_CF comment above for why this is not lands.ts's
+// TERRAIN_SATURATION_CF comment above for why this is not elevation.ts's
 // `bucketWeights` despite the identical shape.
 // ---------------------------------------------------------------------------
 
@@ -624,7 +624,19 @@ export interface AutomaticBeachOptions {
  *
  * Depth is read from a mask taken BEFORE any write, so a beach laid on one
  * tile can never make its neighbour think it is shallower than it was.
- * Beaches are one tile wide.
+ *
+ * **Adjacency is 8 connected, MEASURED 2026-10-15.** A land tile takes a beach
+ * when anything deeper sits in any of its eight neighbours, the diagonals
+ * included. On a straight coast that is the same single row of sand as a 4
+ * connected test gives. On a coast running at 45 degrees it is two tiles
+ * thick, because the tile one step inland still touches the water at a
+ * corner. Five saved DE maps match this exactly and none matches the 4
+ * connected reading (`de-beach-maps.json`, checked in `deBeachMaps.test.ts`).
+ * RMSTEST_75's two 20 row border cuts have 180 beach tiles where 4 connected
+ * gives 140, and RMSTEST_52's ragged shallows coasts 721 and 862 where it
+ * gives 538 and 631, so shallows follow the same rule as open water.
+ * Neighbours off the map are not deeper, so land running to the map edge
+ * takes no beach there, as in DE.
  *
  * `beachTerrain` is `create_terrain`'s own `beach_terrain` attribute, and
  * passing it here rather than letting the command dress its own clump is what
@@ -634,17 +646,10 @@ export interface AutomaticBeachOptions {
  * honours it), which a data-default-only pass would overwrite, because a
  * non-beach terrain's own row says it grows a BEACH.
  *
- * TWO THINGS IT DOES NOT DO, named rather than left to be discovered:
- *
- *   - **Adjacency is 4-connected**, matching every other adjacency rule in
- *     this generator. RMSTEST_15 cannot discriminate: its land is a
- *     rectangle, and a rectangle's corner tile has two orthogonal water
- *     neighbours, so 4- and 8-connected produce the identical ring there. A
- *     land with a diagonal staircase edge would tell them apart.
- *   - **`grid.layer` is left alone.** A beach replaces the tile's terrain;
- *     whether it also strips a `terrain_mask` layer painted over that terrain
- *     is unmeasured, and leaving the layer is the reading that changes
- *     nothing else.
+ * ONE THING IT DOES NOT DO, named rather than left to be discovered.
+ * **`grid.layer` is left alone.** A beach replaces the tile's terrain, and
+ * whether it also strips a `terrain_mask` layer painted over that terrain is
+ * unmeasured. Leaving the layer is the reading that changes nothing else.
  */
 export function applyAutomaticBeach(
   grid: TileGrid,
@@ -669,14 +674,7 @@ export function applyAutomaticBeach(
     // **3 and 2** where shallow meets water, which is a triple junction rather
     // than a boundary. See the header for what survives of the depth model.
     if (own !== DEPTH_LAND) continue;
-    const x = i % dim;
-    const y = (i - x) / dim;
-    const bordersDeeper =
-      (x > 0 && depth[i - 1] > own) ||
-      (x < dim - 1 && depth[i + 1] > own) ||
-      (y > 0 && depth[i - dim] > own) ||
-      (y < dim - 1 && depth[i + dim] > own);
-    if (!bordersDeeper) continue;
+    if (!bordersDeeper(depth, dim, i, own)) continue;
 
     const terrainId = grid.terrain[i];
     let beach: number | undefined;
@@ -706,6 +704,33 @@ export function applyAutomaticBeach(
     written++;
   }
   return written;
+}
+
+/**
+ * Whether tile `i` has a deeper tile among its eight neighbours, the beach
+ * adjacency measured against DE (see `applyAutomaticBeach`). A loop over the
+ * offsets rather than eight spelled out conditions, because the bounds check
+ * is the part that goes wrong when written eight times. A neighbour off the
+ * map is never deeper.
+ */
+function bordersDeeper(
+  depth: Uint8Array,
+  dim: number,
+  i: number,
+  own: number,
+): boolean {
+  const x = i % dim;
+  const y = (i - x) / dim;
+  for (let dy = -1; dy <= 1; dy++) {
+    const ny = y + dy;
+    if (ny < 0 || ny >= dim) continue;
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx;
+      if ((dx === 0 && dy === 0) || nx < 0 || nx >= dim) continue;
+      if (depth[ny * dim + nx] > own) return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

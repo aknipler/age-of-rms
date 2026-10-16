@@ -87,6 +87,7 @@ export function previewSettingsFromContext(
       playerCount: overrides?.playerCount ?? settings.playerCount,
       mapSize: settings.mapSize.name,
       teams: settings.teams,
+      teamPositions: settings.teamPositions,
     },
   };
 }

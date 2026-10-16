@@ -134,6 +134,12 @@
   font-weight: 600;
 }
 
+/* Extra room above a second heading inside one panel, which the shared
+   .panelTitle margin does not give. Credits uses it before "Game data". */
+.sectionBreak {
+  margin-top: 2rem;
+}
+
 .fieldset {
   border: none;
   padding: 0;
@@ -217,6 +223,21 @@
 
 /* Deliberately not .hint: a thank-you is content, not a footnote about a
    control, so it keeps the body font size. */
+.creditLink {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.creditLink:hover {
+  opacity: 0.85;
+}
+
 .creditThanks {
   margin: 0;
   max-width: 34rem;

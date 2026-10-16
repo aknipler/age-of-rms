@@ -180,6 +180,9 @@ export interface ToolGenerationSettings {
   // rather than re-implementing. Plain number[] at the JSON boundary; a built-in
   // re-narrows with `isTeams`.
   teams: number[];
+  // The lobby's Team Positions box, added 2026-10-14 with preview-design rev 9.
+  // Optional, and absent means on, the preview's own default.
+  teamPositions?: boolean;
 }
 ```
 
@@ -298,7 +301,7 @@ export interface ToolImplementation {
 
 ```
 generatePreview(parse, refDb, settings: PreviewSettings, opts: PreviewOptions)  // preview/generator/index.ts:232
-PreviewSettings  = { playerCount, mapSize: MapSize, teams: readonly TeamNumber[] } // generator/types.ts:37-54
+PreviewSettings  = { playerCount, mapSize: MapSize, teams: readonly TeamNumber[], teamPositions?: boolean } // generator/types.ts
 PreviewOptions   = { seed, collectSnapshots }                                      // generator/types.ts:57-61
 ```
 

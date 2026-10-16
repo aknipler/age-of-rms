@@ -1,0 +1,59 @@
+# GitHub matches this file to the discussion category whose slug equals the file
+# name, so `ideas.yml` is the form for the Ideas category. The in-app suggestion
+# button (FEATURE_REQUEST_URL in src/bugReport.ts) links to that category.
+# Discussion forms cannot be prefilled from a URL, so nothing here is named
+# after a query parameter and the fields can be renamed freely.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Feature suggestions, tutorial ideas and ways the app
+        could teach better all belong here. Search the existing ideas first, and
+        add a thumbs up to one that matches yours instead of posting a copy.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of idea is it
+      options:
+        - A new feature
+        - A change to an existing feature
+        - A tutorial or a topic a tutorial should cover
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What do you want to do
+      description: Describe the map or the task you have in mind, not only the feature you picture. Knowing the goal lets others suggest other ways to reach it.
+      placeholder: I want to place the same set of starting objects for every player without copying the block eight times.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you do today instead
+      description: Optional. A workaround, or the point where you got stuck.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app
+      options:
+        - Not sure
+        - Breakdown editor
+        - Code editor
+        - Map preview
+        - Reference panel
+        - Problems and diagnostics
+        - Resource totals
+        - Tutorials
+        - Advanced Tools
+        - Opening or saving files
+    validations:
+      required: false

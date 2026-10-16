@@ -25,8 +25,14 @@ interface GenerationSettingsDialogProps {
 export function GenerationSettingsDialog({
   onClose,
 }: GenerationSettingsDialogProps) {
-  const { playerCount, setPlayerCount, mapSize, setMapSize } =
-    useGenerationSettings();
+  const {
+    playerCount,
+    setPlayerCount,
+    mapSize,
+    setMapSize,
+    teamPositions,
+    setTeamPositions,
+  } = useGenerationSettings();
 
   // A string draft, not the committed number directly: the field is
   // controlled, so a `value` that always mirrors `playerCount` snaps back on
@@ -114,6 +120,26 @@ export function GenerationSettingsDialog({
                     </option>
                   ))}
                 </select>
+              </div>
+            </HelpTip>
+
+            {/* A lobby setting like the two fields beside it, so it sits in
+                their row rather than under Teams, and adds no height to a
+                dialog whose height is fixed (GenerationSettingsDialog.module.css).
+                The checkbox comes first and the label points at it with
+                htmlFor, the same idiom as GeneralSettings, so clicking the
+                words toggles it too. */}
+            <HelpTip id="generationSettings.teamPositions">
+              <div className={styles.optionRow}>
+                <input
+                  id="generation-team-positions"
+                  type="checkbox"
+                  checked={teamPositions}
+                  onChange={(event) => setTeamPositions(event.target.checked)}
+                />
+                <label htmlFor="generation-team-positions">
+                  Team Positions
+                </label>
               </div>
             </HelpTip>
           </div>

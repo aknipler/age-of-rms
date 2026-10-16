@@ -28,6 +28,8 @@ interface StatusBarProps {
   cutLabel?: string;
   /** Opens a prefilled GitHub issue in the user's browser (src/bugReport.ts). */
   onReportBug?: () => void;
+  /** Opens a new discussion in the ideas category in the user's browser (src/bugReport.ts). */
+  onSuggestFeature?: () => void;
 }
 
 const ZERO_RANGE: ResourceRange = {
@@ -173,6 +175,58 @@ function StoneIcon() {
   );
 }
 
+// Food was the last of the four still drawn as text, the 🍖 glyph. Its look
+// depends on whichever emoji font the OS ships (a bone on Windows, a drumstick
+// elsewhere), and it ignored the game's own meat art. This draws a cut of meat
+// instead, after the resource icon the game shows. The silhouette is the
+// point. Gold is a round coin and stone a faceted rock, so the meat is a
+// rounded slab, longer than it is tall (with corners rounded part way between a
+// rectangle and an oval), with a big lobe at one end and a
+// smaller one at the other, tilted. Neither of them shares that profile.
+// Colour comes second (a saturated red-pink no other icon here has), then the
+// pale fat rim and the dark outline that keeps it from bleeding into the bar.
+// The marbling is detail for larger sizes.
+//
+// Drawn lying flat, then tilted and centred with one `transform` on a group. The alternative
+// is writing the tilted coordinates out by hand, which is harder to tweak:
+// moving a lobe or the waist here is a one-number change on level ground.
+function FoodIcon() {
+  return (
+    <svg
+      className={styles.resourceIcon}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g transform="translate(7.56 8.55) scale(1.02) rotate(-40) translate(-8 -8)">
+        {/* The meat. Fat rim and lean are two layers of one outline, so the
+            rim survives as a thin pale band. Straight sides with rounded
+            corners keep it rectangular, so it does not read as an oval. The
+            big lobe (right, before the tilt) is the front of the cut. */}
+        <path
+          d="M3.6 4.9 L6.6 4.9 Q8.2 4.9 8.7 3.9 Q9.1 3.2 10 3.2 L11.8 3.2 Q14.8 3.2 14.8 6.2 L14.8 9.8 Q14.8 12.8 11.8 12.8 L10 12.8 Q9.1 12.8 8.7 12.1 Q8.2 11.1 6.6 11.1 L3.6 11.1 Q1.2 11.1 1.2 8.7 L1.2 7.3 Q1.2 4.9 3.6 4.9Z"
+          fill="#f2d6cf"
+          stroke="#7a2230"
+          strokeWidth="0.9"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M3.8 6.2 L6.5 6.2 Q8.3 6.2 9.1 5 Q9.4 4.5 10 4.5 L11.8 4.5 Q13.5 4.5 13.5 6.2 L13.5 9.8 Q13.5 11.5 11.8 11.5 L10 11.5 Q9.4 11.5 9.1 11 Q8.3 9.8 6.5 9.8 L3.8 9.8 Q2.5 9.8 2.5 8.5 L2.5 7.5 Q2.5 6.2 3.8 6.2Z"
+          fill="#d9475a"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M4.2 8.1 Q5.3 7.4 6.5 8.1 M10.4 6.9 Q11.8 6.2 13 7.1 M10.6 9.9 Q11.8 9.3 12.8 9.8"
+          fill="none"
+          stroke="#f2b8bb"
+          strokeWidth="0.55"
+          strokeLinecap="round"
+        />
+      </g>
+    </svg>
+  );
+}
+
 // Twelve figures share this row with a problem count and two buttons, and
 // the labels were most of its width, hence an icon instead of the word. It
 // carries an `aria-label` with the real word, so the saving is visual only:
@@ -184,7 +238,7 @@ const RESOURCES: readonly {
   name: string;
   icon: React.ReactNode;
 }[] = [
-  { key: "food", name: "Food", icon: "🍖" },
+  { key: "food", name: "Food", icon: <FoodIcon /> },
   { key: "wood", name: "Wood", icon: <WoodIcon /> },
   { key: "gold", name: "Gold", icon: <GoldIcon /> },
   { key: "stone", name: "Stone", icon: <StoneIcon /> },
@@ -212,6 +266,101 @@ function ProblemIcon() {
       />
       <rect x="7.1" y="4.4" width="1.8" height="4.8" rx="0.6" fill="#fff" />
       <rect x="7.1" y="10.2" width="1.8" height="1.8" rx="0.6" fill="#fff" />
+    </svg>
+  );
+}
+
+// The two feedback buttons are drawn the same way as ProblemIcon and the
+// resource icons, so they look identical on every Windows build instead of
+// depending on which emoji font the OS ships. The bug is a single grey line
+// drawing in `currentColor`, so it follows the light and dark themes with the
+// rest of the status bar. Its body and head are two complete shapes that touch
+// at one point. With no fill, any overlap would show as a line through the
+// neck. It turns the theme's error colour on hover (`.bugIcon` in the module
+// CSS), which works because every stroke here is `currentColor`.
+function BugIcon() {
+  return (
+    <svg
+      className={`${styles.buttonIcon} ${styles.bugIcon}`}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        opacity="0.85"
+      >
+        <ellipse cx="8" cy="9.7" rx="3.5" ry="4.9" />
+        <circle cx="8" cy="3.2" r="1.7" />
+        <path d="M4.8 7.6 1.2 5.8M4.5 9.7 0.9 9.7M4.8 11.8 1.6 14.2M11.2 7.6 14.8 5.8M11.5 9.7 15.1 9.7M11.2 11.8 14.4 14.2" />
+      </g>
+    </svg>
+  );
+}
+
+// Two drawings of one bulb in the same box. The grey outline is what shows at
+// rest, matching the bug, and the filled yellow bulb fades in on hover or
+// keyboard focus (`.bulbOutline` and `.bulbColour` in the module CSS). Both
+// share the glass path, so the shape does not shift when they swap.
+function LightbulbIcon() {
+  return (
+    <svg
+      className={styles.buttonIcon}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g
+        className={styles.bulbOutline}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M8 1C4.9 1 3 3.3 3 5.9C3 7.7 3.9 8.8 4.8 9.9C5.3 10.5 5.5 11 5.5 11.7H10.5C10.5 11 10.7 10.5 11.2 9.9C12.1 8.8 13 7.7 13 5.9C13 3.3 11.1 1 8 1Z" />
+        <path d="M5.9 13.4H10.1M6.7 14.9H9.3" />
+        <path
+          d="M8 8.6V11.7"
+          strokeWidth="0.5"
+        />
+      </g>
+      <g className={styles.bulbColour}>
+        <path
+          d="M8 1C4.9 1 3 3.3 3 5.9C3 7.7 3.9 8.8 4.8 9.9C5.3 10.5 5.5 11 5.5 11.7H10.5C10.5 11 10.7 10.5 11.2 9.9C12.1 8.8 13 7.7 13 5.9C13 3.3 11.1 1 8 1Z"
+          fill="#f7c948"
+          stroke="#c99a1e"
+          strokeWidth="0.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6.4 6.8 8 8.6 9.6 6.8M8 8.6V11.7"
+          stroke="#a87a0c"
+          strokeWidth="0.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <rect
+          x="5.6"
+          y="12.5"
+          width="4.8"
+          height="1.1"
+          rx="0.5"
+          fill="currentColor"
+        />
+        <rect
+          x="6.4"
+          y="14.1"
+          width="3.2"
+          height="1"
+          rx="0.5"
+          fill="currentColor"
+        />
+      </g>
     </svg>
   );
 }
@@ -270,6 +419,7 @@ export function StatusBar({
   pending = false,
   cutLabel,
   onReportBug,
+  onSuggestFeature,
 }: StatusBarProps) {
   const problems = summariseProblems(diagnostics);
 
@@ -321,16 +471,31 @@ export function StatusBar({
             {problems.label}
           </span>
         </HelpTip>
-        <HelpTip id="statusBar.reportBug">
-          <button
-            type="button"
-            className={styles.settingsCog}
-            onClick={onReportBug}
-            aria-label="Report a bug"
-          >
-            🐞
-          </button>
-        </HelpTip>
+        {/* The two feedback buttons sit in their own row so the spacing
+            between them is set here and not by `.pinned`'s gap, which would
+            also space them from the problem count. */}
+        <div className={styles.feedbackButtons}>
+          <HelpTip id="statusBar.reportBug">
+            <button
+              type="button"
+              className={styles.settingsCog}
+              onClick={onReportBug}
+              aria-label="Report a bug"
+            >
+              <BugIcon />
+            </button>
+          </HelpTip>
+          <HelpTip id="statusBar.suggestFeature">
+            <button
+              type="button"
+              className={styles.settingsCog}
+              onClick={onSuggestFeature}
+              aria-label="Suggest a feature"
+            >
+              <LightbulbIcon />
+            </button>
+          </HelpTip>
+        </div>
       </div>
     </div>
   );

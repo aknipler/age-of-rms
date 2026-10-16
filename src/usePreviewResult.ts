@@ -77,7 +77,7 @@ export interface PreviewResultState {
 /**
  * The single generated preview for the current document (Sec.10). Runs
  * generatePreview() in a dedicated worker, debounced after the parse
- * settles. `playerCount`/`mapSize`/`teams` are taken as separate primitives
+ * settles. `playerCount`/`mapSize`/`teams`/`teamPositions` are taken as separate primitives
  * (matching useParsedDocument's own `playerCount` param) rather than one
  * `PreviewSettings` object, so a caller building that object fresh every
  * render doesn't reset the debounce timer on referential inequality alone.
@@ -88,6 +88,7 @@ export function usePreviewResult(
   playerCount: number,
   mapSize: MapSize,
   teams: readonly TeamNumber[],
+  teamPositions: boolean,
   seed: number,
 ): PreviewResultState {
   const [result, setResult] = useState<PreviewWireResult | null>(null);
@@ -106,8 +107,8 @@ export function usePreviewResult(
   const retriesRef = useRef<Map<number, number>>(new Map());
 
   const settings: PreviewSettings = useMemo(
-    () => ({ playerCount, mapSize, teams }),
-    [playerCount, mapSize, teams],
+    () => ({ playerCount, mapSize, teams, teamPositions }),
+    [playerCount, mapSize, teams, teamPositions],
   );
 
   const clearWatchdog = useCallback((): void => {

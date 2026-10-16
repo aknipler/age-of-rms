@@ -536,6 +536,147 @@ been seen in the Tauri host.
 
 ---
 
+## 20. Land Generation (Comeer) tutorial, 2026-10-06 (`tutorial-islands-design.md`)
+
+Nothing in this tutorial has run in the real app. Every check below is owed against `npm run tauri dev`.
+
+1. Open the Help menu. Confirm "Tutorial: Land Generation (Comeer)" is listed between the Golden Hill
+   entry and the app tour, and that its hover help reads sensibly.
+2. Start it. Confirm the first step is centred with no spotlight, shows the finished map picture
+   under "We are going to make a tournament map, Comeer.", and the picture is not cut off. Confirm
+   the preview switches to 1v1 on a Tiny map at once, with the 1v1 preset lit in the generation
+   settings, and the seed chip shows 13.
+3. Open the console. Confirm there is no warning that the pinned seed no longer passes, and no
+   error from the background check. Exit the tutorial in the first second and confirm nothing is
+   logged afterwards.
+4. Step through to "Start a new script" and complete it, then through the Player Setup and water
+   steps. On every step that opens the Add command picker, confirm the callout does not sit over
+   the picker.
+5. On "One island per player", add the four attributes. Enter `circle_radius` as 16 and 1 in its
+   two fields. Confirm the step ticks, and that the islands run to the map edge in the preview.
+   On "Does the square count?", confirm the app moves to the Player Setup tab, add
+   behavior_version with the value 1, and confirm the islands get visibly smaller and the step
+   ticks. Confirm it does not tick while the value is still 0, and that it stays on screen after
+   ticking until you press Next. The next step should move back to the Land tab.
+6. On the two border steps, confirm the preview shows land about 5 tiles from the edge at 4 and
+   about 8 at 7. Press Re-roll before each, then press Next, and confirm the seed returns to 217 on
+   the next step that reads the picture.
+7. On "Give the number a name", add `#const` from the picker. Confirm it lands at the bottom of
+   the section, that the step does not tick, then use Move up to put it above create_player_lands
+   and confirm it ticks once all four borders read BORDERS_PL and the value is 10 to 14.
+8. On "Let the edges breathe", confirm 9 and 41 do not tick it and 10, 20 and 40 do. Confirm the
+   edges look ragged and no land reaches the map edge.
+9. Set base_size 16. Confirm the two player islands join into one piece of land in the preview. On
+   "Spot the problem" open the hint, then fix it. Confirm 8 to 11 tick the step and 12 does not,
+   and that a channel of water is visible between the islands at 10.
+10. On every step with hidden numbers, confirm each number is a separate masked bar, that clicking
+    one reveals only that number, and that stepping Back then Next hides them all again. Confirm
+    the callout moves sensibly when a spoiler opens.
+11. Add the first neutral island and shape it. Duplicate it three times from the card menu, set each
+    zone and position, and confirm the step ticks only with four different zones. Confirm the four
+    islands sit in the corners and do not join the player islands.
+12. On "A little chance", wrap base_size or clumping_factor in rnd(). Confirm rnd(7,9) ticks it and
+    rnd(1,30) does not. Press Re-roll and confirm the island changes.
+13. On "Finish the map", press "Fill in the rest for me". Confirm three sections appear at the end,
+    the step ticks, the status bar shows no placement failures, and pressing it again does nothing.
+    Run the tutorial a second time and use "I'll write the rest myself", then write the three parts.
+14. On the last step, confirm the copy is true. The preview is still 1v1 on a Tiny map.
+15. Compare the first step's picture with the preview of the finished map at seed 217. The islands
+    and forests should match, though the preview draws objects and the picture does not.
+16. On "Box in the neutral island" (2026-10-16), set the neutral island to land_percent 100,
+    border_fuzziness 100, right_border 73 and bottom_border 73. Confirm the island is a box whose
+    two corners on the right_border side are cut at a slant, one of them against the map edge, and
+    whose corner on the left_border side is square. Open "Notice something?" and confirm its hints
+    stay masked until clicked, and that closing and reopening it masks them again. Lower
+    top_border from -1 one step at a time. Confirm the cut at the map edge shrinks and is gone by
+    -8, the other cut stays, and the editor shows a caution on the negative value. Set land_percent
+    back to 6 and border_fuzziness to 20. Confirm the step ticks but does not move on by itself,
+    and that Next still works with the borders removed instead. On "Four corners" confirm the step
+    does not tick while any island is still at 100.
+
+---
+
+## 21. Your first random map, Breakdown or Code, 2026-10-10 (`tutorial-design.md` Sec.9.2)
+
+Nothing in this change has run in the real app. Every check below is owed against `npm run tauri dev`.
+
+1. Start "Your first random map" from the Help menu and complete "Start a new script". Confirm the
+   next step is "Breakdown or Code", with both top tabs spotlit, the counter reading 2 / 19, and
+   two buttons "Use Breakdown" and "Use Code" where Next would be. Hover each and confirm its help.
+2. Press "Use Breakdown". Confirm the next step is "The order of a map" pointing at the section
+   tabs, exactly as before this change. Press Back and confirm the choice step returns.
+3. Press "Use Code". Confirm the app switches to the Code tab and "The order of a map" shows the
+   seven headers as a boxed block in a fixed width font, line breaks kept.
+4. On each Code typing step, confirm where the callout sits. It should land bottom right. Confirm
+   it does not cover the lines being typed at the top of an empty file, and that "Move this out of
+   the way" parks it. If it covers the side panel's preview at "Watch it appear", note it.
+5. Type the text each step asks for. Confirm each step ticks and moves on by itself, including when
+   the text is typed in a different order or with different indentation.
+6. On "A hill in the middle", confirm a red underline appears under base_elevation and its hover
+   explains the missing elevation section. On "Hills", confirm it clears as soon as the
+   `<ELEVATION_GENERATION>` header is typed.
+7. On every step with an Answer, open it. Confirm the code keeps its indentation, a long line
+   scrolls inside its box rather than widening the callout, and the callout re-places itself.
+8. On "Everyone else's resources", press "Add them for me". Confirm the four blocks appear in the
+   editor and the step ticks.
+9. Confirm "The same map as cards" switches to Breakdown on the Objects tab with every typed block
+   showing as a card, and the next step switches back to Code.
+10. Finish the Code track. Confirm the last step shows the Discord link and Finish, and that the
+    tutorial is then marked complete. Start it again from Help and confirm it begins at step 1 and
+    the choice is asked again.
+
+## 22. Land Generation (Comeer), Breakdown or Code, 2026-10-14 (`tutorial-design.md` Sec.9.2)
+
+Nothing in this change has run in the real app. Every check below is owed against `npm run tauri dev`.
+Section 20 is still owed too, and covers the Breakdown track.
+
+1. Start "Land Generation (Comeer)" from the Help menu, pass the picture and complete "Start a new
+   script". Confirm the next step is "Breakdown or Code", the counter reads 3 / 20, and the two
+   buttons replace Next.
+2. Press "Use Code". Confirm the app switches to the Code tab and "Player Setup" spotlights the
+   editor. Press Back, pick "Use Breakdown", and confirm the app switches back to the Breakdown tab
+   on Player Setup with Add command spotlit.
+3. Back again, pick "Use Code", and type each step's text. Confirm every check step ticks by itself.
+4. On every step with a script Answer (Player Setup, base_terrain, One island per player, Name a
+   value once, A neutral island), open it and confirm the indentation is kept and the callout
+   re-places itself.
+5. On "Name a value once", type the `#const` BELOW create_player_lands first and confirm the step
+   does not tick, then move it above and confirm it does.
+6. On "A little chance", type `rnd(7, 9)` with a space and confirm the step does not tick, then
+   remove the space and confirm it does.
+7. On "Spot the problem", confirm the preview is spotlit while the Code tab is showing.
+8. On "Finish the map", press "Fill in the rest for me" and confirm the three sections appear at the
+   end of the editor text and the step ticks.
+9. On each Code typing step, note whether the callout covers the lines being typed or the preview.
+   9a. On "Does the square count?" in Code, type behavior_version 1 under random_placement. Confirm
+   the islands shrink and the step ticks, and that it waits for Next.
+10. Remembered seed. With the app closed, set `PINNED_COMEER_SEED` to 1 (a seed that fails) in
+    `comeerValues.ts`, start the app and the tutorial, and wait about 30 seconds. Confirm the
+    console warns that seed 1 no longer passes and a found seed is saved, and that
+    `settings.json` now holds `tutorialComeerSeed`. Restart the tutorial and confirm the console
+    says it is using the saved seed, with no long wait. Put the seed back to 217, restart, and
+    confirm `tutorialComeerSeed` is gone from `settings.json`.
+
+---
+
+## 23. Team Positions setting and the DE-exact lands, 2026-10-14 (`preview-design.md` rev 9)
+
+1. Open Generation Settings from the preview pane. Confirm a ticked "Team Positions" checkbox sits
+   in the top row beside Player count and Map size, its HelpTip shows, and clicking the words
+   toggles it.
+2. With a 2v2 preset, untick it and confirm the player lands move. Tick it again and confirm they
+   return to the same places at the same seed.
+3. Untick it, close the app, reopen, and confirm it is still unticked. Tick it again before going on.
+4. Open a corpus map that branches on `TEAM_POSITIONS` (for example `AK_Vanguard_v1.2.rms`) and
+   confirm the preview changes when the box is toggled.
+5. Run the Generation Consistency Checker once with the box ticked and once unticked, and confirm
+   both runs complete.
+6. Optional, against the game. Generate any land-only script in DE's scenario editor at a typed
+   seed with Team Positions ticked, set the same seed, players and teams in the preview, and
+   compare the lands. Note the map size used, since only Tiny has been measured.
+
+---
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

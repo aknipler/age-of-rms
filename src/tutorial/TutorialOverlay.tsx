@@ -5,7 +5,9 @@ import { useParsedDocumentContext } from "../ParsedDocumentContext";
 import { HelpTip } from "../components/HelpTip";
 import { useTutorial } from "./TutorialContext";
 import { RMS_DISCORD_URL } from "./content/rmsBasics";
-import type { Anchor, StepContext } from "./types";
+import { SUPPORT_URL } from "../supportLink";
+import { StepBody } from "./StepBody";
+import type { Anchor, BodyBlock, StepContext, TutorialStep } from "./types";
 import type { TabId } from "../types";
 import styles from "./TutorialOverlay.module.css";
 
@@ -13,7 +15,7 @@ import styles from "./TutorialOverlay.module.css";
 const GAP_PX = 8;
 const VIEWPORT_MARGIN_PX = 8;
 
-/** How long the tick shows before a freshly-satisfied check step auto-advances (Sec.5.5), long enough to read as a reward, not a dismissal. */
+/** How long the tick shows before a freshly-satisfied check step auto-advances (Sec.5.5), long enough to read as a reward, not a dismissal. A step with `autoAdvance: false` never does. */
 const AUTO_ADVANCE_DELAY_MS = 1100;
 
 interface TutorialOverlayProps {
@@ -53,6 +55,7 @@ export function TutorialOverlay({
 }: TutorialOverlayProps) {
   const {
     active,
+    choose,
     next,
     back,
     exit,
@@ -63,8 +66,12 @@ export function TutorialOverlay({
   } = useTutorial();
   const parseResult = useParsedDocumentContext();
 
-  const step = active ? active.definition.steps[active.stepIndex] : null;
-  const stepKey = active ? `${active.definition.id}:${active.stepIndex}` : null;
+  const step = active ? active.steps[active.stepIndex] : null;
+  // The track is part of the key. Back to a choice step and a different pick
+  // reaches the same index with a different step, which must remount.
+  const stepKey = active
+    ? `${active.definition.id}:${active.track ?? ""}:${active.stepIndex}`
+    : null;
 
   const stepContext: StepContext = {
     parseResult,
@@ -96,11 +103,13 @@ export function TutorialOverlay({
 
   // Auto-advance only on a TRANSITION to satisfied, never for a step that
   // arrives already done. Running the tutorial against a finished map
-  // must read as a reference, not race to the end (Sec.5.5).
+  // must read as a reference, not race to the end (Sec.5.5). A step that
+  // opts out with `autoAdvance: false` shows its tick and waits for Next.
   useLayoutEffect(() => {
     if (
       !step ||
       step.completion.kind !== "check" ||
+      step.completion.autoAdvance === false ||
       satisfiedOnArrival ||
       !satisfied
     )
@@ -152,6 +161,16 @@ export function TutorialOverlay({
   const movedAside = asideState.aside;
   const moveAside = useCallback(() => {
     setAsideState({ key: stepKey, aside: true });
+  }, [stepKey]);
+
+  // A dropdown spoiler opening grows an anchorless callout. Re-centring would
+  // shift its top edge, so those re-placements keep the top where it was and
+  // only move up when the new height no longer fits below it.
+  const positionRef = useRef(position);
+  positionRef.current = position;
+  const keepTopRef = useRef(false);
+  useLayoutEffect(() => {
+    keepTopRef.current = false;
   }, [stepKey]);
 
   const place = useCallback(() => {
@@ -283,13 +302,58 @@ export function TutorialOverlay({
       setPosition(overlapsSpotlight(pos) ? belowSpotlight() : pos);
     }
 
+    // Inside the anchor's corner, ahead of every beside/below rule. Those
+    // would put the Code tab's callout on the preview panel to the editor's
+    // left. There is deliberately no "too big" fallback to those rules. A
+    // step with several open hints is the tallest callout there is, and
+    // falling back is what put it back on the preview. A tall callout grows
+    // upward instead, stopping at the top of the anchor.
+    if (
+      anchorBox &&
+      step?.calloutInsideAnchor === "bottom-right" &&
+      calloutBox.width + 2 * GAP_PX <= anchorBox.width
+    ) {
+      setPosition({
+        top: Math.max(
+          VIEWPORT_MARGIN_PX,
+          Math.min(
+            Math.max(
+              anchorBox.top + GAP_PX,
+              anchorBox.bottom - calloutBox.height - GAP_PX,
+            ),
+            window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+          ),
+        ),
+        left: Math.max(
+          VIEWPORT_MARGIN_PX,
+          Math.min(
+            anchorBox.right - calloutBox.width - GAP_PX,
+            window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
+          ),
+        ),
+      });
+      return;
+    }
+
     if (!anchorBox) {
+      const previous = positionRef.current;
+      const centredTop = Math.max(
+        VIEWPORT_MARGIN_PX,
+        (window.innerHeight - calloutBox.height) / 2,
+      );
+      const top =
+        keepTopRef.current && previous
+          ? Math.max(
+              VIEWPORT_MARGIN_PX,
+              Math.min(
+                previous.top,
+                window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+              ),
+            )
+          : centredTop;
       commitPosition(
         applyNudge({
-          top: Math.max(
-            VIEWPORT_MARGIN_PX,
-            (window.innerHeight - calloutBox.height) / 2,
-          ),
+          top,
           left: Math.max(
             VIEWPORT_MARGIN_PX,
             (window.innerWidth - calloutBox.width) / 2,
@@ -399,6 +463,11 @@ export function TutorialOverlay({
     // re-runs and re-resolves against the now-mounted DOM.
   }, [showingCallout, place, step, satisfied, movedAside, activeTab]);
 
+  const placeKeepingTop = useCallback(() => {
+    keepTopRef.current = true;
+    place();
+  }, [place]);
+
   if (!showingCallout) return null;
 
   const positionStyle = position ?? {
@@ -471,21 +540,26 @@ export function TutorialOverlay({
           <AnnouncementCallout
             title={announcement.title}
             body={announcement.steps[0]?.body ?? []}
+            onContentResize={place}
             onShowMe={showAnnouncementTour}
             onNotNow={dismissAnnouncement}
           />
         ) : active && step ? (
           <StepCallout
+            key={stepKey}
             step={step}
             stepIndex={active.stepIndex}
-            total={active.definition.steps.length}
+            total={active.steps.length}
             tutorialId={active.definition.id}
             satisfied={satisfied}
             movedAside={movedAside}
             onMoveAside={moveAside}
             onBack={back}
             onNext={next}
+            onChoose={choose}
             onExit={exit}
+            onContentResize={place}
+            onDropdownToggle={placeKeepingTop}
             onAutoFill={
               step.autoFill
                 ? () => {
@@ -507,20 +581,18 @@ function AnnouncementCallout({
   body,
   onShowMe,
   onNotNow,
+  onContentResize,
 }: {
   title: string;
-  body: string[];
+  body: readonly BodyBlock[];
+  onContentResize: () => void;
   onShowMe: () => void;
   onNotNow: () => void;
 }) {
   return (
     <>
       <h3 className={styles.title}>{title}</h3>
-      <div className={styles.body}>
-        {body.map((paragraph, i) => (
-          <p key={i}>{paragraph}</p>
-        ))}
-      </div>
+      <StepBody blocks={body} onContentResize={onContentResize} />
       <div className={styles.controls}>
         <span className={styles.spacer} />
         <HelpTip id="tutorial.announcementNotNow">
@@ -552,12 +624,13 @@ function StepCallout({
   onMoveAside,
   onBack,
   onNext,
+  onChoose,
   onExit,
+  onContentResize,
+  onDropdownToggle,
   onAutoFill,
 }: {
-  step: NonNullable<
-    ReturnType<typeof useTutorial>["active"]
-  >["definition"]["steps"][number];
+  step: TutorialStep;
   stepIndex: number;
   total: number;
   tutorialId: string;
@@ -566,7 +639,17 @@ function StepCallout({
   onMoveAside: () => void;
   onBack: () => void;
   onNext: () => void;
+  onChoose: (track: string) => void;
   onExit: () => void;
+  /**
+   * Re-runs placement after the callout changes height on its own, when an
+   * image finishes loading or a spoiler opens. A `check` step's rAF loop
+   * would catch that anyway, a `manual` step has no loop, and a centred
+   * callout that grows downward ends up off centre, or off screen.
+   */
+  onContentResize: () => void;
+  /** Like `onContentResize`, for a dropdown spoiler: keeps the callout's top edge. */
+  onDropdownToggle: () => void;
   /** Present only when the step declares `autoFill`. Performs its edit. */
   onAutoFill?: () => void;
 }) {
@@ -585,11 +668,35 @@ function StepCallout({
     });
   }
 
+  // The announcement step of a What's New tour carries a small support
+  // button, opened into the user's browser like the Discord link.
+  const showSupportButton =
+    tutorialId.startsWith("whats-new-") && stepIndex === 0;
+
+  function openSupport() {
+    openUrl(SUPPORT_URL).catch((error: unknown) => {
+      console.error("Failed to open the Buy Me a Coffee page", error);
+    });
+  }
+
+  // Rendered in one of two slots outside the body. A picture between
+  // paragraphs is an image block in `body` (types.ts).
+  const imagePlacement = step.image?.placement ?? "top";
+  const imageElement = step.image && (
+    <img
+      className={styles.image}
+      src={step.image.src}
+      alt={step.image.alt}
+      onLoad={onContentResize}
+    />
+  );
+
   return (
     <>
       <div className={styles.counter}>
         {stepIndex + 1} / {total}
       </div>
+      {imagePlacement === "top" && imageElement}
       <h3 className={styles.title}>
         {step.title}
         {isCheck && satisfied && (
@@ -598,11 +705,11 @@ function StepCallout({
           </span>
         )}
       </h3>
-      <div className={styles.body}>
-        {step.body.map((paragraph, i) => (
-          <p key={i}>{paragraph}</p>
-        ))}
-      </div>
+      <StepBody
+        blocks={step.body}
+        onContentResize={onContentResize}
+        onDropdownToggle={onDropdownToggle}
+      />
       {showDiscordLink && (
         <HelpTip id="tutorial.discordLink">
           <button
@@ -614,9 +721,21 @@ function StepCallout({
           </button>
         </HelpTip>
       )}
+      {showSupportButton && (
+        <HelpTip id="tutorial.supportLink">
+          <button
+            type="button"
+            className={styles.discordLink}
+            onClick={openSupport}
+          >
+            ☕ Buy me a coffee ↗
+          </button>
+        </HelpTip>
+      )}
       {isCheck && !satisfied && step.hint && (
         <p className={styles.hint}>{step.hint}</p>
       )}
+      {imagePlacement === "bottom" && imageElement}
       <div className={styles.controls}>
         <HelpTip id="tutorial.back">
           <button
@@ -661,15 +780,32 @@ function StepCallout({
             </button>
           </HelpTip>
         )}
-        <HelpTip id="tutorial.next">
-          <button
-            type="button"
-            className={`${styles.button} ${styles.primary}`}
-            onClick={onNext}
-          >
-            {isLast ? "Finish" : "Next"}
-          </button>
-        </HelpTip>
+        {/* A choice step's options stand in for Next. Next beside them would
+            be a third answer to a two way question, and Sec.2.2's "you can
+            always move on" still holds, since either option moves on. */}
+        {step.choice ? (
+          step.choice.options.map((option) => (
+            <HelpTip key={option.track} id="tutorial.choice" text={option.help}>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.primary}`}
+                onClick={() => onChoose(option.track)}
+              >
+                {option.label}
+              </button>
+            </HelpTip>
+          ))
+        ) : (
+          <HelpTip id="tutorial.next">
+            <button
+              type="button"
+              className={`${styles.button} ${styles.primary}`}
+              onClick={onNext}
+            >
+              {isLast ? "Finish" : "Next"}
+            </button>
+          </HelpTip>
+        )}
         <HelpTip id="tutorial.exit">
           <button type="button" className={styles.exit} onClick={onExit}>
             Exit tutorial

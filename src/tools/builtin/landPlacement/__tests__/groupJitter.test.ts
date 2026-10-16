@@ -295,7 +295,6 @@ describe("a jittered ring in the map preview", () => {
       instantiated,
       createTileGrid(dim, 0),
       constants,
-      seed,
     );
     expect(origins).toHaveLength(4);
     const bearings = origins

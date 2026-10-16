@@ -51,7 +51,8 @@
   cursor: pointer;
 }
 
-.entry:hover {
+.entry:hover,
+.entry[data-active="true"] {
   background: var(--accent-bg-subtle);
 }
 

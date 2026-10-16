@@ -1,0 +1,50 @@
+/* The positioned box: a strip straddling the canvas's bottom edge, 4px inside
+   it and 4px below. It positions against PreviewPane's .canvasFrame
+   (`position: relative`). HelpTip's wrapper span is inside it, not around
+   it, because that wrapper is `position: relative` itself and would
+   otherwise become the containing block. The wrapper and the handle are
+   stretched to fill this box, the same trap PreviewCanvas.module.css
+   describes for its own HelpTip. */
+.zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 8px;
+  z-index: 2;
+}
+
+.zone > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.resizer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  /* Stops a touch drag scrolling the side panel instead of resizing. */
+  touch-action: none;
+  user-select: none;
+}
+
+.grip {
+  width: 2.5rem;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 120ms;
+}
+
+.resizer:hover .grip,
+.resizer:focus-visible .grip {
+  background: var(--accent);
+}
+
+.resizer:focus-visible {
+  outline: none;
+}

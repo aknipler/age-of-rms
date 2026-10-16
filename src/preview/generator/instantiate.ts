@@ -11,11 +11,20 @@
 // the AST.
 //
 // One walk, not two: `if`/`start_random` branch selection, `#define`/`#const`
-// symbol definitions, and the S0 RNG rolls all happen in the SAME
-// depth-first traversal, in canonical section order (Sec.3 rule 11), so a
-// symbol defined only inside a taken branch resolves correctly for
-// everything after it, and a symbol inside an UNTAKEN branch never exists,
-// exactly as the engine would see it.
+// symbol definitions, and the S0 draws all happen in the SAME depth-first
+// traversal, in the order the file is written (rev 9), so a symbol defined
+// only inside a taken branch resolves correctly for everything after it, and
+// a symbol inside an UNTAKEN branch never exists, exactly as the engine would
+// see it. The commands are still collected per section, and the stages still
+// run in canonical section order (Sec.3 rule 11).
+//
+// THE DRAWS ARE THE GAME'S, IN THE GAME'S ORDER (Sec.3 rules 3 and 5, rev 9).
+// The game reads the whole script before player setup, and every rnd() it
+// reads takes a draw from the one stream the land stage then continues. That
+// includes an rnd() inside a start_random branch that is not taken, because
+// the game reads a whole start_random block, drawing as it goes, before it
+// rolls for the branch. So a block's roll comes after every rnd() inside it
+// and before every rnd() after it. `predrawItems` below is that read-ahead.
 
 import type {
   ArgNode,
@@ -38,7 +47,7 @@ import {
   canonicaliseTeams,
   teamLabels,
 } from "../../generationSettings/teamModel";
-import { createSubstream, nextInt } from "./rng";
+import { createDeStream } from "./deRandom";
 import { evaluateExpressionTokens, roundForIntegerSlot } from "./mathEval";
 import { resolveMapDim } from "./mapDimensions";
 import type {
@@ -69,11 +78,10 @@ const FALLBACK_DIM = 200;
 const LAND_COMMAND_NAMES = new Set(["create_land", "create_player_lands"]);
 
 /**
- * Sec.3: AST -> InstantiatedScript. `masterSeed` seeds every S0-owned
- * substream (start_random rolls, rnd() draws) via rng.ts's
- * `createSubstream(masterSeed, "S0", ordinal)` convention, keyed by an
- * independent per-construct-kind ordinal so editing one rnd() or
- * start_random does not reshuffle another (Sec.8's "best-effort stability").
+ * Sec.3: AST -> InstantiatedScript. `masterSeed` is the game seed. It seeds
+ * the game's own stream (deRandom.ts), every parse-time draw comes off it in
+ * reading order, and the stream's position afterwards goes to S1 as
+ * `landStream` (Sec.8, rev 9).
  */
 export function instantiateScript(
   parse: ParseResult,
@@ -113,7 +121,8 @@ export function instantiateScript(
   env.add("DE_AVAILABLE");
   env.add("DE_GAME_AGE2");
   // Deliberately NOT set: UP_*, DE_GAME_ROME, every other gameMode
-  // (REGICIDE, EMPIRE_WARS, ...), lobbySetting, startingResources,
+  // (REGICIDE, EMPIRE_WARS, ...), lobbySetting except TEAM_POSITIONS below,
+  // startingResources,
   // startingAge, none of these are derivable from PreviewSettings, so
   // "standard-lobby defaults for the rest" means they stay undefined/false.
 
@@ -123,16 +132,33 @@ export function instantiateScript(
   );
   for (const label of teamLabels(canonicalTeams)) env.add(label);
 
+  // The lobby's Team Positions box defines TEAM_POSITIONS, resolved through
+  // predefinedLabels rather than constructed and trusted. FIXED_POSITIONS,
+  // which the guide ties to the older "team together" box, is left undefined,
+  // since nothing measured says the DE box sets it too (preview-design
+  // Sec.15 item 55).
+  const teamPositions = settings.teamPositions !== false;
+  if (teamPositions) {
+    const label = predefinedLabels.find(
+      (l) => l.category === "lobbySetting" && l.name === "TEAM_POSITIONS",
+    );
+    if (label) env.add(label.name);
+  }
+
   const lobbyDim =
     resolveMapDim(settings.mapSize, refDb.data.predefinedLabels) ??
     FALLBACK_DIM;
 
   // -------------------------------------------------------------------
-  // Mutable stream state (rules 4, 7, 8, 11) and RNG ordinals (Sec.8).
+  // Mutable stream state (rules 4, 7, 8, 11) and the game's stream (Sec.8).
   // -------------------------------------------------------------------
   const symbols = new Map<string, number | undefined>(); // presence = "defined" (rule 4)
-  let rndOrdinal = 0;
-  let randomOrdinal = 0;
+  const stream = createDeStream(masterSeed);
+  // An rnd() is drawn once, where the game reads it, and keyed by its token
+  // so the walk that later resolves it reads that same draw. A start_random
+  // roll is drawn once, after everything inside its block.
+  const rndByToken = new Map<number, number>();
+  const rollByNode = new Map<RandomNode, number>();
   let behaviorVersion: 0 | 1 = 0;
   let overrideDim = lobbyDim;
   let landCommandSeen = false;
@@ -188,25 +214,21 @@ export function instantiateScript(
     if (typeof raw === "number") return raw;
     if (typeof raw === "string")
       return isNumericSlot(node) && symbols.has(raw) ? symbols.get(raw) : raw;
-    if ("rnd" in raw) {
-      // Rule 5: evaluated at consumption time, own substream per occurrence.
-      const rng = createSubstream(masterSeed, "S0", rndOrdinal++);
-      return nextInt(rng, raw.rnd[0], raw.rnd[1]);
-    }
+    if ("rnd" in raw) return drawRnd(node.firstToken, raw.rnd[0], raw.rnd[1]);
     // {expr}: rule 6, parser-design Sec.2.2 exactly.
     const texts = raw.expr.tokens.map(tokenText);
     return evaluateExpressionTokens(texts, (name) => symbols.get(name));
   }
 
   function resolveArg(node: ArgNode): InstantiatedArg {
-    let value = resolveUnrounded(node);
+    const value = resolveUnrounded(node);
     if (
       isNumericSlot(node) &&
       typeof value === "number" &&
       Number.isFinite(value) &&
       !Number.isInteger(value)
     ) {
-      value = roundForIntegerSlot(value);
+      return { value: roundForIntegerSlot(value), source: node, exact: value };
     }
     return { value, source: node };
   }
@@ -230,11 +252,22 @@ export function instantiateScript(
   }
 
   function resolveAttribute(node: AttributeNode): InstantiatedAttribute {
-    return {
-      name: tokenText(node.name),
-      args: node.args.map(resolveArg),
-      span: node.span,
-    };
+    const name = tokenText(node.name);
+    const args = node.args.map(resolveArg);
+    const inst: InstantiatedAttribute = { name, args, span: node.span };
+    // The two attributes that draw while the script is read (Sec.3, rev 9),
+    // named here for the same reason behavior_version is named below, an
+    // engine mechanic rather than vocabulary. Only AT_TEAM in random mode is
+    // measured to draw. AT_PLAYER and AT_COLOR name one player already, and
+    // whether a 0 mode still draws for them is untested (Sec.15 item 50).
+    if (name === "set_zone_randomly") inst.draw = stream.raw();
+    else if (
+      name === "assign_to" &&
+      args[0]?.value === "AT_TEAM" &&
+      args[2]?.value === 0
+    )
+      inst.draw = stream.raw();
+    return inst;
   }
 
   /** Rule 10: last-wins, except attributes language.json flags `repeatable`. */
@@ -268,28 +301,94 @@ export function instantiateScript(
   }
 
   /**
-   * Rule 3: roll r uniform 1-100 from this RandomNode's own substream;
-   * branches claim cumulative ranges in declaration order, truncated at 99
-   * (guide:3007), so r=100 is always the no-branch outcome, and a total
-   * under 99 leaves an even larger gap. Deterministic given the seed, never
-   * re-rolled once chosen.
+   * Rule 3 (rev 9, measured): the roll is 0..99, and the first branch whose
+   * running total of `percent_chance` values is AT LEAST the roll is taken.
+   * So the first branch wins for its weight plus one of the 100 values, every
+   * later branch for exactly its weight, and a block whose weights add up to
+   * 99 or more always takes a branch. A `percent_chance 0` first branch wins
+   * on a roll of 0, which is the "occasionally chosen anyway" bug the guide
+   * reports.
    */
   function selectRandomBranch(node: RandomNode): RandomBranch | undefined {
-    const rng = createSubstream(masterSeed, "S0", randomOrdinal++);
-    const roll = nextInt(rng, 1, 100);
+    const roll = rollFor(node);
     let cumulative = 0;
     for (const branch of node.branches) {
-      if (cumulative >= 99) break; // nothing left to claim
       const resolved = branch.chance
         ? resolveArg(branch.chance).value
         : undefined;
-      const pct = typeof resolved === "number" ? resolved : 0;
-      const width = Math.max(0, Math.min(pct, 99 - cumulative));
-      if (width > 0 && roll >= cumulative + 1 && roll <= cumulative + width)
-        return branch;
-      cumulative += width;
+      cumulative += typeof resolved === "number" ? resolved : 0;
+      if (cumulative >= roll) return branch;
     }
     return undefined;
+  }
+
+  // -------------------------------------------------------------------
+  // The read-ahead (rules 3 and 5, rev 9). Draws every rnd() in a stretch
+  // of script and rolls every start_random block in it, in reading order,
+  // without defining anything or collecting any command. The walk below
+  // uses it for every branch it does not take, and a start_random block
+  // uses it on all of its own branches before it rolls.
+  // -------------------------------------------------------------------
+  function drawRnd(token: number, low: number, high: number): number {
+    const drawn = rndByToken.get(token);
+    if (drawn !== undefined) return drawn;
+    const value = low + stream.bounded(high - low + 1);
+    rndByToken.set(token, value);
+    return value;
+  }
+
+  function predrawArg(node: ArgNode): void {
+    const raw = node.value;
+    if (typeof raw === "object" && "rnd" in raw)
+      drawRnd(node.firstToken, raw.rnd[0], raw.rnd[1]);
+  }
+
+  function predrawTokens(first: number, last: number): void {
+    for (let i = first; i <= last; i++) {
+      const tok = parse.tokens[i];
+      if (tok?.kind !== "rnd") continue;
+      const m = /^rnd\((-?\d+),(-?\d+)\)$/.exec(tok.text);
+      if (m) drawRnd(i, Number(m[1]), Number(m[2]));
+    }
+  }
+
+  function predrawItems(items: readonly Item[]): void {
+    for (const item of items) {
+      switch (item.kind) {
+        case "command":
+          item.args.forEach(predrawArg);
+          if (item.block) predrawItems(item.block.items);
+          break;
+        case "attribute":
+        case "directive":
+          item.args.forEach(predrawArg);
+          break;
+        case "if":
+          for (const branch of item.branches) predrawItems(branch.items);
+          break;
+        case "random":
+          rollFor(item);
+          break;
+        case "orphanBlock":
+        case "raw":
+          predrawTokens(item.firstToken, item.lastToken);
+          break;
+      }
+    }
+  }
+
+  /** A block's roll, drawn after every draw inside the block. Nested blocks inside it roll first, in reading order. */
+  function rollFor(node: RandomNode): number {
+    const rolled = rollByNode.get(node);
+    if (rolled !== undefined) return rolled;
+    predrawItems(node.preamble);
+    for (const branch of node.branches) {
+      if (branch.chance) predrawArg(branch.chance);
+      predrawItems(branch.items);
+    }
+    const roll = stream.bounded(100);
+    rollByNode.set(node, roll);
+    return roll;
   }
 
   // -------------------------------------------------------------------
@@ -303,7 +402,12 @@ export function instantiateScript(
         nameArg && typeof nameArg.value === "string"
           ? nameArg.value
           : undefined;
-      if (symbolName === undefined || symbols.has(symbolName)) return; // first-definition-wins
+      if (symbolName === undefined || symbols.has(symbolName)) {
+        // First-definition-wins, but the game still reads the value, so an
+        // rnd() in it still takes its draw.
+        node.args.forEach(predrawArg);
+        return;
+      }
       if (directiveName === "#define") {
         symbols.set(symbolName, undefined);
       } else {
@@ -451,6 +555,7 @@ export function instantiateScript(
           // unknown name.
           if (sink || item.def === undefined) {
             addNote(unsimulatedNote(item.span));
+            predrawItems([item]); // the game still reads it, and its rnd() calls still draw
             break;
           }
           out?.push(resolveCommand(item, sectionName));
@@ -459,6 +564,7 @@ export function instantiateScript(
         case "attribute": {
           if (!sink) {
             addNote(unsimulatedNote(item.span)); // attribute name outside any block
+            predrawItems([item]);
             break;
           }
           foldAttribute(sink, item);
@@ -468,60 +574,71 @@ export function instantiateScript(
           processDirective(item);
           break;
         case "if": {
-          const branch = selectIfBranch(item);
-          if (branch) walkItems(branch.items, sectionName, sink, out);
+          // Branches in reading order. The game skips an untaken branch but
+          // still reads it, so its rnd() calls draw where they sit
+          // (Sec.15 item 49).
+          const taken = selectIfBranch(item);
+          for (const branch of item.branches) {
+            if (branch === taken)
+              walkItems(branch.items, sectionName, sink, out);
+            else predrawItems(branch.items);
+          }
           break;
         }
         case "random": {
+          // The roll comes first, and it reads ahead through the whole block.
           // Preamble tokens sit before the engine's own branch filtering
           // starts (RMS0106 already flags this as misplaced authoring) and
           // execute unconditionally; the chosen branch, if any, follows.
-          walkItems(item.preamble, sectionName, sink, out);
           const branch = selectRandomBranch(item);
+          walkItems(item.preamble, sectionName, sink, out);
           if (branch) walkItems(branch.items, sectionName, sink, out);
           break;
         }
         case "orphanBlock":
         case "raw":
           addNote(unsimulatedNote(item.span));
+          predrawItems([item]);
           break;
       }
     }
   }
 
   // -------------------------------------------------------------------
-  // Rule 11: merge duplicate sections, process in canonical engine order.
-  // `refDb.data.sections` already IS that order, read from the data
-  // rather than retyping the seven names.
+  // Rule 11: merge duplicate sections, run in canonical engine order. The
+  // walk reads the file top to bottom, the way the game reads it, so
+  // definitions and draws happen in written order (rev 9), and each
+  // section's commands collect into one list however many times the
+  // section is written.
   // -------------------------------------------------------------------
-  const bySection = new Map<string, Item[]>();
-  for (const section of parse.script.sections) {
-    const merged = bySection.get(section.name);
-    if (merged) merged.push(...section.items);
-    else bySection.set(section.name, [...section.items]);
-  }
+  const bySection = new Map<string, InstantiatedCommand[]>();
 
   // Preamble: content written above the first <SECTION> tag. Not one of the
   // seven pipeline sections (rule 11), so nothing is collected for it, but
   // it still runs, for its symbol/stream-state side effects.
   walkItems(parse.script.preamble, "", undefined, undefined);
 
+  for (const section of parse.script.sections) {
+    let out = bySection.get(section.name);
+    if (out === undefined) {
+      out = [];
+      bySection.set(section.name, out);
+    }
+    walkItems(section.items, section.name, undefined, out);
+  }
+
+  // `refDb.data.sections` already IS the canonical order, read from the data
+  // rather than retyping the seven names.
   for (const sectionName of refDb.data.sections) {
-    const items = bySection.get(sectionName);
-    if (items === undefined) continue;
+    const out = bySection.get(sectionName);
+    if (out === undefined) continue;
     bySection.delete(sectionName);
-    const out: InstantiatedCommand[] = [];
-    walkItems(items, sectionName, undefined, out);
     sections.set(sectionName, out);
   }
   // Unknown section names (RMS0100): not one of the canonical seven, but
   // "never silently drop content", still instantiated, after the seven, in
   // first-encountered order (there is no engine-defined slot for them).
-  for (const [sectionName, items] of bySection) {
-    const out: InstantiatedCommand[] = [];
-    walkItems(items, sectionName, undefined, out);
-    sections.set(sectionName, out);
-  }
+  for (const [sectionName, out] of bySection) sections.set(sectionName, out);
 
   // Only the numeric definitions leave this function. `symbols` internally
   // stores `undefined` for a bare `#define`, where presence alone means
@@ -548,6 +665,8 @@ export function instantiateScript(
     symbols: numericSymbols,
     aliases,
     teams: canonicalTeams,
+    teamPositions,
+    landStream: stream.state(),
     notes,
   };
 }

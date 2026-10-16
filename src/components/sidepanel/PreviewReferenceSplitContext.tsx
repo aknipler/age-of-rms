@@ -10,8 +10,10 @@ import {
 } from "react";
 import { load, type Store } from "@tauri-apps/plugin-store";
 import {
+  clampCanvasHeight,
   clampPreviewFraction,
   DEFAULT_PREVIEW_FRACTION,
+  isCanvasHeight,
   isPreviewFraction,
   isPreviewReferenceCollapsedSide,
   type PreviewReferenceCollapsedSide,
@@ -23,6 +25,7 @@ import {
 const SPLIT_STORE_FILE = "settings.json";
 const PREVIEW_FRACTION_KEY = "previewReferenceFraction";
 const COLLAPSED_SIDE_KEY = "previewReferenceCollapsedSide";
+const CANVAS_HEIGHT_KEY = "previewCanvasHeight";
 
 /**
  * The split between the map preview and the reference table, inside the map
@@ -52,6 +55,17 @@ export interface PreviewReferenceSplitValue {
   /** Writes the current fraction to the store. Call once, when a drag ends. */
   commitFraction: () => void;
   setCollapsedSide: (side: PreviewReferenceCollapsedSide) => void;
+  /**
+   * The map canvas's own height in pixels, or `null` for the default square.
+   * Lives here rather than in its own context because it is the same kind of
+   * thing (how the preview column is sized), shared between the tabs, and
+   * persisted to the same store file with the same set/commit split.
+   */
+  canvasHeight: number | null;
+  /** Live update during a drag, no store write; see `setFraction`. `null` returns to the square default. */
+  setCanvasHeight: (height: number | null) => void;
+  /** Writes the current canvas height to the store. Call once, when a drag ends. */
+  commitCanvasHeight: () => void;
 }
 
 const PreviewReferenceSplitContext =
@@ -65,6 +79,7 @@ export function PreviewReferenceSplitProvider({
   const [fraction, setFractionState] = useState(DEFAULT_PREVIEW_FRACTION);
   const [collapsedSide, setCollapsedSideState] =
     useState<PreviewReferenceCollapsedSide>(null);
+  const [canvasHeight, setCanvasHeightState] = useState<number | null>(null);
   const [store, setStore] = useState<Store | null>(null);
   // Same stale-closure fix as SidePanelLayoutContext's own widthRef: commitFraction
   // takes no argument, so it has to read the CURRENT fraction at the moment
@@ -72,6 +87,8 @@ export function PreviewReferenceSplitProvider({
   // variable would capture whatever it was when the callback was created.
   const fractionRef = useRef(fraction);
   fractionRef.current = fraction;
+  const canvasHeightRef = useRef(canvasHeight);
+  canvasHeightRef.current = canvasHeight;
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +105,11 @@ export function PreviewReferenceSplitProvider({
         if (!cancelled && isPreviewReferenceCollapsedSide(savedCollapsedSide)) {
           setCollapsedSideState(savedCollapsedSide);
         }
+        const savedCanvasHeight =
+          await loadedStore.get<unknown>(CANVAS_HEIGHT_KEY);
+        if (!cancelled && isCanvasHeight(savedCanvasHeight)) {
+          setCanvasHeightState(savedCanvasHeight);
+        }
       },
     );
     return () => {
@@ -101,6 +123,14 @@ export function PreviewReferenceSplitProvider({
 
   const commitFraction = useCallback(() => {
     void store?.set(PREVIEW_FRACTION_KEY, fractionRef.current);
+  }, [store]);
+
+  const setCanvasHeight = useCallback((next: number | null) => {
+    setCanvasHeightState(next === null ? null : clampCanvasHeight(next));
+  }, []);
+
+  const commitCanvasHeight = useCallback(() => {
+    void store?.set(CANVAS_HEIGHT_KEY, canvasHeightRef.current);
   }, [store]);
 
   const setCollapsedSide = useCallback(
@@ -121,8 +151,20 @@ export function PreviewReferenceSplitProvider({
       setFraction,
       commitFraction,
       setCollapsedSide,
+      canvasHeight,
+      setCanvasHeight,
+      commitCanvasHeight,
     }),
-    [fraction, collapsedSide, setFraction, commitFraction, setCollapsedSide],
+    [
+      fraction,
+      collapsedSide,
+      setFraction,
+      commitFraction,
+      setCollapsedSide,
+      canvasHeight,
+      setCanvasHeight,
+      commitCanvasHeight,
+    ],
   );
 
   return (

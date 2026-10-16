@@ -1,3 +1,6 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { SUPPORT_URL } from "../../supportLink";
+import { HelpTip } from "../HelpTip";
 import styles from "./SettingsDialog.module.css";
 
 // Static text, no controls, the only settings tab with nothing to set. It
@@ -5,6 +8,12 @@ import styles from "./SettingsDialog.module.css";
 // already exists and a second modal would be a whole window's worth of
 // chrome for two paragraphs.
 export function CreditsSettings() {
+  function openSupport() {
+    openUrl(SUPPORT_URL).catch((error: unknown) => {
+      console.error("Failed to open the Buy Me a Coffee page", error);
+    });
+  }
+
   return (
     <>
       <h3 className={styles.panelTitle}>Credits</h3>
@@ -12,6 +21,19 @@ export function CreditsSettings() {
         <span className={styles.creditLabel}>Maintainer</span>
         Captain Kniples the Fourth
       </p>
+      <p className={styles.creditRow}>
+        <span className={styles.creditLabel}>Support</span>
+        <HelpTip id="credits.supportLink">
+          <button
+            type="button"
+            className={styles.creditLink}
+            onClick={openSupport}
+          >
+            Buy me a coffee ↗
+          </button>
+        </HelpTip>
+      </p>
+      <h3 className={`${styles.panelTitle} ${styles.sectionBreak}`}>Thank yous</h3>
       <p className={styles.creditThanks}>
         A big thank you to Zetnus for allowing use of his guide and Terrain /
         Object reference sheets, and to his contributions to the RMS community
@@ -25,13 +47,18 @@ export function CreditsSettings() {
         of the original game&apos;s map generator. It was a useful resource for
         how the map preview grows lands.
       </p>
+      <p className={styles.creditThanks}>
+        Thanks also to Big John for his work on AoE2RMSIDE, which gave the first leads to how the game
+        draws the random numbers behind its lands. Every rule the preview uses
+        was then tested against maps the game itself generated.
+      </p>
 
       {/* Required by the Game Content Usage Rules, which are what let this app
           ship the extracted reference data at all. The rules ask for the notice
           wherever the item is distributed, so it appears here and in NOTICE at
           the repo root. Do not reword the second paragraph, it is Microsoft's
           own template filled in. */}
-      <h3 className={styles.panelTitle}>Game data</h3>
+      <h3 className={`${styles.panelTitle} ${styles.sectionBreak}`}>Game data</h3>
       <p className={styles.creditThanks}>
         The terrain and object reference data is derived from Age of Empires II:
         Definitive Edition&apos;s own data files, and the names in it are

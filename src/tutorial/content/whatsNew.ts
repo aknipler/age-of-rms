@@ -160,8 +160,47 @@ const whatsNew070: TutorialDefinition = {
   ],
 };
 
+const whatsNew080: TutorialDefinition = {
+  id: "whats-new-0.8.0",
+  kind: "feature",
+  title: "What's new in 0.8",
+  blurb:
+    "Preview Generator Land section matches DE, Feature Requests, a Team Positions setting, a second tutorial, a resizable map, and keyboard control of the search lists.",
+  version: "0.8.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.8",
+      body: [
+        "The preview land generation section is now the same as the game. It should be tile-for-tile on same seed. Additional testing is always appreciated, specifically with larger map sizes. Credit to Big John and his work on the AoE2RMSIDE project for figuring out the number generator.",
+        "Feature Requests! There is now a little button in the bottom right corner of the status bar that opens the project's GitHub Discussions page in your browser. You can suggest a feature, a tutorial, or any other idea. Please let me know if anything pops into your head!",
+        "Generation Settings now has a Team Positions checkbox, on by default. Maps that branch on TEAM_POSITIONS will work too.",
+        "A new tutorial, Land Generation (Comeer), focusses on teaching land generation section techniques. It is in the Help menu. Both tutorials now work in both Breakdown and Code, asking you which you want to do.",
+        "The map preview can have its size adjusted vertically as well as horizontally. The Add command picker and the attribute search are navigable with Up, Down and Enter, and the Credits tab has a Buy Me a Coffee link if you want to support the work. :)",
+        "What's next:",
+        "(1) improving the preview engine, (2) adding in community hub for sharing maps (this may take a while), (3) more tutorials! (4) improving the Advanced Land Placement tool, (5) any of the bug fixes or small QOL improvements that you guys suggest along the way.",
+        "I would also like to start looking into supporting multiple languages. If anyone is interested in helping with that, please reach out to me on GitHub or Discord. I would love to have a community of people helping to make this app accessible to everyone.",
+        "Thank you for the support!",
+        { kind: "text", text: "Happy scripting,", align: "right" },
+        { kind: "text", text: "Captain Kniples the Fourth", align: "right" },
+      ],
+      completion: { kind: "manual" },
+    },
+    {
+      id: "comeer-tutorial",
+      title: "Try the Comeer tutorial",
+      anchor: { kind: "help", id: "titleBar.help" },
+      body: [
+        "The Tutorial: Land Generation (Comeer) is found in the Help menu. I would love some feedback on how to improve it!",
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
   whatsNew070,
+  whatsNew080,
 ];

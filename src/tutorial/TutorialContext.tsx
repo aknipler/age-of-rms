@@ -16,14 +16,33 @@ import {
   TUTORIAL_STORE_FILE,
   WELCOME_SEEN_KEY,
 } from "./tutorialConstants";
-import { featureTourForVersion, getTutorial, TUTORIALS } from "./registry";
-import type { TutorialDefinition } from "./types";
+import {
+  featureTourForVersion,
+  getTutorial,
+  TUTORIALS,
+  visibleSteps,
+} from "./registry";
+import type { PreviewPinner, TutorialDefinition, TutorialStep } from "./types";
 
 export type NavigatorKey = "appTab" | "breakdownSection";
 
+/**
+ * Run state. `steps` is derived from `definition` and `track`, never stored,
+ * so it cannot fall out of step with them (see the provider's useMemo).
+ */
+interface ActiveRun {
+  definition: TutorialDefinition;
+  stepIndex: number;
+  /** Set by `choose`. Null until the learner reaches a choice step and picks. */
+  track: string | null;
+  steps: TutorialStep[];
+}
+
 interface TutorialValue {
-  active: { definition: TutorialDefinition; stepIndex: number } | null;
+  active: ActiveRun | null;
   start: (id: string) => void;
+  /** A choice step's button. Sets the run's track and moves to the next step. */
+  choose: (track: string) => void;
   next: () => void;
   back: () => void;
   exit: () => void; // abandons; does not mark complete
@@ -34,6 +53,8 @@ interface TutorialValue {
     key: NavigatorKey,
     fn: (target: string) => void,
   ) => () => void;
+  /** tutorial-islands-design.md Sec.4.3. One pinner at a time, the last to register wins. Returns the unregister function. */
+  registerPreviewPinner: (pinner: PreviewPinner) => () => void;
   /**
    * Sec.11, a feature tour whose FIRST step is being shown as a standalone
    * announcement (centred, no spotlight), or null. Distinct from `active`:
@@ -72,10 +93,17 @@ export function TutorialProvider({
   appVersion = __APP_VERSION__,
   tutorials = TUTORIALS,
 }: TutorialProviderProps) {
-  const [active, setActive] = useState<{
+  // Only what cannot be derived lives in state. ActiveRun's `steps` is
+  // computed from it in the useMemo just below.
+  const [run, setRun] = useState<{
     definition: TutorialDefinition;
     stepIndex: number;
+    track: string | null;
   } | null>(null);
+  const active = useMemo<ActiveRun | null>(
+    () => run && { ...run, steps: visibleSteps(run.definition, run.track) },
+    [run],
+  );
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [completed, setCompleted] = useState<ReadonlySet<string>>(new Set());
   const [announcement, setAnnouncement] = useState<TutorialDefinition | null>(
@@ -83,6 +111,24 @@ export function TutorialProvider({
   );
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [store, setStore] = useState<Store | null>(null);
+
+  // A tutorial's optional background `prepare` (types.ts). Keyed on the
+  // definition object and not on `active`, because `active` is replaced on
+  // every Next and Back while the definition stays the same object, so this
+  // runs once per start. The returned function is the effect's cleanup, and it
+  // is what aborts the work on exit, on completion (active becomes null), and
+  // on starting a different tutorial. It also makes React StrictMode's
+  // development double-invoke harmless, since the first run is aborted before
+  // the second begins.
+  const activeDefinition = active?.definition ?? null;
+  useEffect(() => {
+    if (!activeDefinition?.prepare) return;
+    const controller = new AbortController();
+    activeDefinition.prepare(controller.signal).catch((error: unknown) => {
+      console.error(`Tutorial "${activeDefinition.id}" prepare failed`, error);
+    });
+    return () => controller.abort();
+  }, [activeDefinition]);
 
   // The registry, keyed by the NavigatorKey union, is a ref inside the
   // provider rather than a module-level map, so it can't survive React
@@ -102,6 +148,17 @@ export function TutorialProvider({
     },
     [],
   );
+
+  // tutorial-islands-design.md Sec.4.3. A ref for the same reason the
+  // navigator map is one: registering must not re-render the provider.
+  const pinnerRef = useRef<PreviewPinner | null>(null);
+
+  const registerPreviewPinner = useCallback((pinner: PreviewPinner) => {
+    pinnerRef.current = pinner;
+    return () => {
+      if (pinnerRef.current === pinner) pinnerRef.current = null;
+    };
+  }, []);
 
   // Sec.7.1 (welcome pane) + Sec.11 (feature tour) triggers, both evaluated
   // once on mount from the same store load. The welcome pane wins if both
@@ -175,39 +232,61 @@ export function TutorialProvider({
         console.error(`No tutorial registered with id "${id}"`);
         return;
       }
-      setActive({ definition, stepIndex: 0 });
+      setRun({ definition, stepIndex: 0, track: null });
     },
     [tutorials],
   );
 
+  // A step count read inside a state updater has to come from the updater's
+  // own `current`, not from `active` in this closure, which could be a
+  // render behind when two clicks land in the same frame.
   const next = useCallback(() => {
-    setActive((current) => {
+    setRun((current) => {
       if (!current) return current;
-      const { definition, stepIndex } = current;
-      if (stepIndex >= definition.steps.length - 1) {
+      const { definition, stepIndex, track } = current;
+      if (stepIndex >= visibleSteps(definition, track).length - 1) {
         completeTutorial(definition.id);
         return null;
       }
-      return { definition, stepIndex: stepIndex + 1 };
+      return { ...current, stepIndex: stepIndex + 1 };
     });
   }, [completeTutorial]);
 
+  // Every step before a choice step has no track (types.ts), so the choice
+  // sits at the same index on every track and moving on by one lands on the
+  // first step of the picked track.
+  const choose = useCallback(
+    (track: string) => {
+      setRun((current) => {
+        if (!current) return current;
+        const { definition, stepIndex } = current;
+        if (stepIndex >= visibleSteps(definition, track).length - 1) {
+          completeTutorial(definition.id);
+          return null;
+        }
+        return { definition, stepIndex: stepIndex + 1, track };
+      });
+    },
+    [completeTutorial],
+  );
+
   const back = useCallback(() => {
-    setActive((current) =>
+    setRun((current) =>
       current && current.stepIndex > 0
         ? { ...current, stepIndex: current.stepIndex - 1 }
         : current,
     );
   }, []);
 
-  const exit = useCallback(() => setActive(null), []);
+  const exit = useCallback(() => setRun(null), []);
 
   const showAnnouncementTour = useCallback(() => {
     setAnnouncement((tour) => {
       if (tour)
-        setActive({
+        setRun({
           definition: tour,
           stepIndex: Math.min(1, tour.steps.length - 1),
+          track: null,
         });
       return null;
     });
@@ -221,7 +300,15 @@ export function TutorialProvider({
   // the time the section navigator runs.
   useEffect(() => {
     if (!active) return;
-    const step = active.definition.steps[active.stepIndex];
+    const step = active.steps[active.stepIndex];
+
+    // tutorial-islands-design.md Sec.4.3, applied on every activation of a
+    // pinning step, Back included, so a learner who re-rolled gets the
+    // pinned seed again. Reading `step.preview` here, and not earlier, is
+    // what lets a step define its seed as a getter (StepPreviewPin).
+    const pin = step?.preview;
+    if (pin) pinnerRef.current?.apply(pin);
+
     const nav = step?.navigate;
     if (!nav) return;
     if (nav.tab) navigatorsRef.current.get("appTab")?.(nav.tab);
@@ -240,13 +327,16 @@ export function TutorialProvider({
     return undefined;
     // navigatorsRef is a ref, deliberately excluded. It's mutated by
     // registerNavigator without needing to re-run this effect.
+    // `track` is in the list because Back to a choice step and a different
+    // pick lands on the same index with a different step.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active?.definition.id, active?.stepIndex]);
+  }, [active?.definition.id, active?.stepIndex, active?.track]);
 
   const value = useMemo<TutorialValue>(
     () => ({
       active,
       start,
+      choose,
       next,
       back,
       exit,
@@ -254,6 +344,7 @@ export function TutorialProvider({
       dismissWelcome,
       completed,
       registerNavigator,
+      registerPreviewPinner,
       announcement,
       showAnnouncementTour,
       dismissAnnouncement,
@@ -262,6 +353,7 @@ export function TutorialProvider({
     [
       active,
       start,
+      choose,
       next,
       back,
       exit,
@@ -269,6 +361,7 @@ export function TutorialProvider({
       dismissWelcome,
       completed,
       registerNavigator,
+      registerPreviewPinner,
       announcement,
       showAnnouncementTour,
       dismissAnnouncement,
@@ -309,5 +402,27 @@ export function useRegisterNavigator(
   useEffect(
     () => registerNavigator(key, (target) => fnRef.current(target)),
     [key, registerNavigator],
+  );
+}
+
+/**
+ * Registers the app's preview pinner for as long as the calling component is
+ * mounted (tutorial-islands-design.md Sec.4.3). Same ref-forwarding as
+ * `useRegisterNavigator` above, so `pinner` can be a fresh object every
+ * render and `apply` still calls that render's setters. A callback captured
+ * once at registration would call the first render's, a stale closure, and
+ * `selectTeamPreset` reads the current preset from its closure to decide
+ * whether there is anything to do.
+ */
+export function useRegisterPreviewPinner(pinner: PreviewPinner): void {
+  const { registerPreviewPinner } = useTutorial();
+  const pinnerRef = useRef(pinner);
+  pinnerRef.current = pinner;
+  useEffect(
+    () =>
+      registerPreviewPinner({
+        apply: (pin) => pinnerRef.current.apply(pin),
+      }),
+    [registerPreviewPinner],
   );
 }

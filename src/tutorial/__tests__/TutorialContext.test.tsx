@@ -108,6 +108,8 @@ describe("TutorialProvider — start / next / back / exit", () => {
     expect(result.current.active).toEqual({
       definition: fixtureTutorial,
       stepIndex: 0,
+      track: null,
+      steps: fixtureTutorial.steps,
     });
 
     act(() => result.current.next());
@@ -247,6 +249,69 @@ describe("TutorialOverlay — a check step's arrival-vs-transition tick behaviou
       vi.useRealTimers();
     }
   });
+
+  it("a check with autoAdvance false ticks when satisfied WHILE active and waits for Next", async () => {
+    // The same fixture with step-b opted out, so the only difference from
+    // the test above is the flag.
+    const waitingTutorial: TutorialDefinition = {
+      ...fixtureTutorial,
+      steps: fixtureTutorial.steps.map((s) =>
+        s.id === "step-b"
+          ? {
+              ...s,
+              completion: {
+                kind: "check",
+                test: (ctx) => ctx.hasFile,
+                autoAdvance: false,
+              },
+            }
+          : s,
+      ),
+    };
+    await seedWelcomed();
+    let api: ReturnType<typeof useTutorial> | null = null;
+    let hasFile = false;
+    function Capture() {
+      api = useTutorial();
+      return null;
+    }
+    function Harness() {
+      return (
+        <HelpSettingsProvider>
+          <TutorialProvider tutorials={[waitingTutorial]} appVersion="1.0.0">
+            <Capture />
+            <TutorialOverlay
+              hasFile={hasFile}
+              activeTab="breakdown"
+              applyTextEdits={() => {}}
+            />
+          </TutorialProvider>
+        </HelpSettingsProvider>
+      );
+    }
+    const { rerender } = render(<Harness />);
+    await waitFor(() => expect(api?.welcomeOpen).toBe(false));
+
+    vi.useFakeTimers();
+    try {
+      act(() => api!.start("fixture"));
+      act(() => api!.next());
+      expect(api!.active?.stepIndex).toBe(1);
+      expect(screen.queryByLabelText("done")).toBeNull();
+
+      hasFile = true;
+      act(() => rerender(<Harness />));
+      expect(screen.getByLabelText("done")).toBeTruthy();
+
+      act(() => vi.advanceTimersByTime(2000));
+      expect(api!.active?.stepIndex).toBe(1);
+
+      act(() => api!.next());
+      expect(api!.active?.stepIndex).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("TutorialProvider — welcome-versus-upgrade precedence (Sec.11)", () => {
@@ -328,6 +393,8 @@ describe("TutorialProvider — welcome-versus-upgrade precedence (Sec.11)", () =
     expect(result.current.active).toEqual({
       definition: tourWithSpotlight,
       stepIndex: 1,
+      track: null,
+      steps: tourWithSpotlight.steps,
     });
   });
 
@@ -341,5 +408,219 @@ describe("TutorialProvider — welcome-versus-upgrade precedence (Sec.11)", () =
     await waitFor(() => expect(errorSpy).toHaveBeenCalled());
     expect(result.current.welcomeOpen).toBe(false);
     errorSpy.mockRestore();
+  });
+});
+
+describe("TutorialProvider — a tutorial's background prepare", () => {
+  function withPrepare(
+    prepare: NonNullable<TutorialDefinition["prepare"]>,
+  ): TutorialDefinition {
+    return { ...fixtureTutorial, prepare };
+  }
+
+  async function started(definition: TutorialDefinition) {
+    await seedWelcomed();
+    const rendered = renderHook(() => useTutorial(), {
+      wrapper: wrapperFor([definition]),
+    });
+    await waitFor(() =>
+      expect(rendered.result.current.welcomeOpen).toBe(false),
+    );
+    act(() => rendered.result.current.start(definition.id));
+    return rendered;
+  }
+
+  it("runs once per start, not on every Next and Back", async () => {
+    const prepare = vi.fn(async () => {});
+    const { result } = await started(withPrepare(prepare));
+    expect(prepare).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.next());
+    act(() => result.current.back());
+    expect(prepare).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts its signal when the tutorial is exited", async () => {
+    let signal: AbortSignal | undefined;
+    const { result } = await started(
+      withPrepare(async (s) => {
+        signal = s;
+      }),
+    );
+    expect(signal?.aborted).toBe(false);
+    act(() => result.current.exit());
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("aborts its signal when the tutorial completes", async () => {
+    let signal: AbortSignal | undefined;
+    const { result } = await started(
+      withPrepare(async (s) => {
+        signal = s;
+      }),
+    );
+    act(() => result.current.next());
+    act(() => result.current.next());
+    act(() => result.current.next()); // past the last step
+    expect(result.current.active).toBeNull();
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("runs again when the tutorial is started again", async () => {
+    const prepare = vi.fn(async () => {});
+    const { result } = await started(withPrepare(prepare));
+    act(() => result.current.exit());
+    act(() => result.current.start("fixture"));
+    expect(prepare).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a rejection and leaves the tutorial running", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result } = await started(
+      withPrepare(async () => {
+        throw new Error("check failed");
+      }),
+    );
+    await waitFor(() => expect(error).toHaveBeenCalled());
+    expect(result.current.active?.stepIndex).toBe(0);
+    error.mockRestore();
+  });
+});
+
+describe("TutorialProvider, a choice step and its tracks (Sec.9.2)", () => {
+  // Shared, choice, two steps on track "a", one on track "b", shared end.
+  const forked: TutorialDefinition = {
+    id: "forked",
+    kind: "rms",
+    title: "Forked",
+    blurb: "A tutorial with a choice.",
+    steps: [
+      {
+        id: "intro",
+        title: "Intro",
+        body: ["Shared."],
+        completion: { kind: "manual" },
+      },
+      {
+        id: "pick",
+        title: "Pick",
+        body: ["Choose."],
+        completion: { kind: "manual" },
+        choice: {
+          options: [
+            { track: "a", label: "Take A", help: "Track A." },
+            { track: "b", label: "Take B", help: "Track B." },
+          ],
+        },
+      },
+      {
+        id: "a1",
+        title: "A1",
+        track: "a",
+        body: ["A one."],
+        completion: { kind: "manual" },
+      },
+      {
+        id: "b1",
+        title: "B1",
+        track: "b",
+        body: ["B one."],
+        completion: { kind: "manual" },
+      },
+      {
+        id: "a2",
+        title: "A2",
+        track: "a",
+        body: ["A two."],
+        completion: { kind: "manual" },
+      },
+      {
+        id: "end",
+        title: "End",
+        body: ["Shared."],
+        completion: { kind: "manual" },
+      },
+    ],
+  };
+
+  const ids = (api: ReturnType<typeof useTutorial>) =>
+    api.active?.steps.map((s) => s.id);
+  const current = (api: ReturnType<typeof useTutorial>) =>
+    api.active?.steps[api.active.stepIndex]?.id;
+
+  async function startedForked() {
+    await seedWelcomed();
+    const hook = renderHook(() => useTutorial(), {
+      wrapper: wrapperFor([forked]),
+    });
+    await waitFor(() => expect(hook.result.current.welcomeOpen).toBe(false));
+    act(() => hook.result.current.start("forked"));
+    return hook;
+  }
+
+  it("counts the first option's track before anything is picked", async () => {
+    const { result } = await startedForked();
+    expect(result.current.active?.track).toBeNull();
+    expect(ids(result.current)).toEqual(["intro", "pick", "a1", "a2", "end"]);
+  });
+
+  it("choose() sets the track and moves to that track's first step", async () => {
+    const { result } = await startedForked();
+    act(() => result.current.next());
+    act(() => result.current.choose("b"));
+    expect(result.current.active?.track).toBe("b");
+    expect(ids(result.current)).toEqual(["intro", "pick", "b1", "end"]);
+    expect(current(result.current)).toBe("b1");
+  });
+
+  it("Back returns to the choice, and a different pick switches track", async () => {
+    const { result } = await startedForked();
+    act(() => result.current.next());
+    act(() => result.current.choose("b"));
+    act(() => result.current.back());
+    expect(current(result.current)).toBe("pick");
+    act(() => result.current.choose("a"));
+    expect(current(result.current)).toBe("a1");
+    act(() => result.current.next());
+    expect(current(result.current)).toBe("a2");
+  });
+
+  it("finishing on either track completes the one tutorial id", async () => {
+    const { result } = await startedForked();
+    act(() => result.current.next());
+    act(() => result.current.choose("b"));
+    act(() => result.current.next()); // end
+    act(() => result.current.next()); // past the last step
+    expect(result.current.active).toBeNull();
+    expect(result.current.completed.has("forked")).toBe(true);
+  });
+
+  it("shows the options in place of Next, and clicking one picks its track", async () => {
+    await seedWelcomed();
+    let api: ReturnType<typeof useTutorial> | null = null;
+    function Capture() {
+      api = useTutorial();
+      return null;
+    }
+    render(
+      <HelpSettingsProvider>
+        <TutorialProvider tutorials={[forked]} appVersion="1.0.0">
+          <Capture />
+          <TutorialOverlay
+            hasFile={true}
+            activeTab="breakdown"
+            applyTextEdits={() => {}}
+          />
+        </TutorialProvider>
+      </HelpSettingsProvider>,
+    );
+    await waitFor(() => expect(api?.welcomeOpen).toBe(false));
+    act(() => api!.start("forked"));
+    act(() => api!.next());
+    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    act(() => screen.getByRole("button", { name: "Take B" }).click());
+    expect(current(api!)).toBe("b1");
+    expect(screen.getByText("3 / 4")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next" })).toBeTruthy();
   });
 });

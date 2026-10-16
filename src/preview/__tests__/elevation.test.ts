@@ -15,6 +15,7 @@ import {
 } from "../generator/lands";
 import {
   applyElevation,
+  bucketWeights,
   growClump,
   clumpEdgeDistances,
   buildSeedPool,
@@ -76,8 +77,8 @@ function place(
     seed,
   );
   const grid: TileGrid = createTileGrid(instantiated.dim, GRASS);
-  const landResult = placeLandOrigins(instantiated, grid, constants, seed);
-  growLands(landResult.origins, grid, landResult.reports, seed);
+  const landResult = placeLandOrigins(instantiated, grid, constants);
+  growLands(landResult.origins, grid, landResult.reports, landResult.stream);
   paintLandTerrain(landResult.origins, grid);
   applyBaseElevation(instantiated, landResult.origins, grid, constants);
   const elevationResult = applyElevation(
@@ -139,11 +140,35 @@ function fabricateOrigin(
     minPlacementDistance: 0,
     behaviorVersion: 0,
     declaredTargetTiles: 0,
+    landConformity: 0,
+    target: 0,
     fromOriginFallback: false,
-    borderBounds: { minX: 0, maxX: x * 2, minY: 0, maxY: y * 2 },
+    borderTiles: { left: 0, right: x * 2, top: 0, bottom: y * 2 },
     generateMode: 0,
   };
 }
+
+describe("bucketWeights (growClump's frontier table, moved here from lands.ts by preview-design rev 8)", () => {
+  // The rev 7 land table, kept unchanged for S2 when land growth moved to the
+  // genie-rms port. These pin that it did not move in transit.
+
+  it("bucketWeights(negative) strongly favours neighborsOwned==1 over every other bucket", () => {
+    const [w1, w2, w3, w4] = bucketWeights(-20);
+    expect(w1).toBeGreaterThan(w2);
+    expect(w1).toBeGreaterThan(w3);
+    expect(w1).toBeGreaterThan(w4);
+  });
+
+  it("bucketWeights(cf) is uniform at cf=0 and increasingly favours high neighborsOwned as cf rises, saturating by cf=15", () => {
+    expect(bucketWeights(0)).toEqual([1, 1, 1, 1]);
+    const at8 = bucketWeights(8);
+    const at15 = bucketWeights(15);
+    const at100 = bucketWeights(100);
+    expect(at8[3]).toBeGreaterThan(at8[0]); // some preference for infill already
+    expect(at15[3]).toBeGreaterThan(at8[3]); // stronger by 15
+    expect(at100).toEqual(at15); // saturated: no further change past 15
+  });
+});
 
 describe("resolveTileBudget / resolveClumpCount (Sec.6.2, tested directly against real attribute folding)", () => {
   it("defaults number_of_tiles to dim, NOT area-scaled (RMSTEST_14)", () => {
@@ -408,8 +433,8 @@ describe("height accumulation (MaxHeight is an absolute ceiling — nothing adds
       seed,
     );
     const grid = createTileGrid(instantiated.dim, WATER);
-    const land = placeLandOrigins(instantiated, grid, constants, seed);
-    growLands(land.origins, grid, land.reports, seed);
+    const land = placeLandOrigins(instantiated, grid, constants);
+    growLands(land.origins, grid, land.reports, land.stream);
     paintLandTerrain(land.origins, grid);
     applyBaseElevation(instantiated, land.origins, grid, constants);
     const maxOn = (landIndex: number) => {

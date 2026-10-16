@@ -3,13 +3,15 @@
 // rms-basics and app-tour; whatsNew.ts adds one entry per release that has
 // something to announce).
 
-import type { TutorialDefinition } from "./types";
+import type { TutorialDefinition, TutorialStep } from "./types";
 import { appTourTutorial } from "./content/appTour";
+import { landGenerationComeerTutorial } from "./landGenerationComeer/tutorial";
 import { rmsBasicsTutorial } from "./content/rmsBasics";
 import { WHATS_NEW_TOURS } from "./content/whatsNew";
 
 export const TUTORIALS: readonly TutorialDefinition[] = [
   rmsBasicsTutorial,
+  landGenerationComeerTutorial,
   appTourTutorial,
   ...WHATS_NEW_TOURS,
 ];
@@ -19,6 +21,32 @@ export function getTutorial(
   tutorials: readonly TutorialDefinition[] = TUTORIALS,
 ): TutorialDefinition | undefined {
   return tutorials.find((t) => t.id === id);
+}
+
+/**
+ * The track a run follows before the learner has picked one, the first
+ * option of the tutorial's first choice step. Undefined for a tutorial with
+ * no choice step, where every step has no track anyway.
+ */
+function defaultTrack(definition: TutorialDefinition): string | undefined {
+  return definition.steps.find((s) => s.choice)?.choice?.options[0]?.track;
+}
+
+/**
+ * The steps a run shows, in order. A step with no track is always shown. A
+ * step with a track is shown when it matches the run's track, or the
+ * default track while nothing has been picked yet.
+ *
+ * Counting the default track before the choice keeps the "3 / 20" counter
+ * honest from the first step. Counting only the untracked steps would read
+ * "1 / 9" and then jump to "3 / 20" at the choice.
+ */
+export function visibleSteps(
+  definition: TutorialDefinition,
+  track: string | null,
+): TutorialStep[] {
+  const shown = track ?? defaultTrack(definition);
+  return definition.steps.filter((s) => !s.track || s.track === shown);
 }
 
 /** Sec.11 step 3, the feature tour whose `version` matches exactly, if one exists. */

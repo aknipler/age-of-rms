@@ -43,7 +43,7 @@ import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutC
 import { PreviewReferenceSplitProvider } from "./components/sidepanel/PreviewReferenceSplitContext";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useUpdateCheck } from "./update/useUpdateCheck";
-import { buildBugReportUrl } from "./bugReport";
+import { buildBugReportUrl, FEATURE_REQUEST_URL } from "./bugReport";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useDocument, getDocumentModel } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
@@ -68,6 +68,7 @@ import {
   useTutorial,
 } from "./tutorial/TutorialContext";
 import { TutorialOverlay } from "./tutorial/TutorialOverlay";
+import { useAppPreviewPinner } from "./tutorial/useAppPreviewPinner";
 import { WelcomeDialog } from "./tutorial/WelcomeDialog";
 import type { Diagnostic, ParseResult } from "./parser/types";
 import type { TabId } from "./types";
@@ -146,9 +147,11 @@ function PreviewResultProviders({
 function StatusBarContainer({
   diagnostics,
   onReportBug,
+  onSuggestFeature,
 }: {
   diagnostics: Diagnostic[];
   onReportBug: () => void;
+  onSuggestFeature: () => void;
 }) {
   const { result, pending } = usePreviewResultContext();
   const { pinnedOffset, pinnedLine, cursorOffset, cursorLine } =
@@ -176,6 +179,7 @@ function StatusBarContainer({
       pending={pending}
       cutLabel={cutLabel}
       onReportBug={onReportBug}
+      onSuggestFeature={onSuggestFeature}
     />
   );
 }
@@ -208,6 +212,10 @@ function AppContent() {
   // is the same trust the type Anchor/navigate fields already put in
   // hand-written content (Sec.5.1).
   useRegisterNavigator("appTab", (target) => setActiveTab(target as TabId));
+  // A step's pinned seed, team preset and map size (tutorial-islands-design.md
+  // Sec.4.3). Here for the same reason as the navigator above, the contexts
+  // it writes to are only reachable below their providers.
+  useAppPreviewPinner();
   // The author name is read here rather than inside useDocument, so that hook
   // keeps depending on files and nothing else (see UseDocumentOptions).
   // AppContent already sits below AppSettingsProvider, which is what makes
@@ -377,6 +385,12 @@ function AppContent() {
     });
   }
 
+  function suggestFeature() {
+    openUrl(FEATURE_REQUEST_URL).catch((error: unknown) => {
+      console.error("Failed to open the feature suggestion form", error);
+    });
+  }
+
   return (
     <div className={styles.app}>
       <TitleBar
@@ -494,6 +508,7 @@ function AppContent() {
             <StatusBarContainer
               diagnostics={parsed.diagnostics}
               onReportBug={reportBug}
+              onSuggestFeature={suggestFeature}
             />
           </PreviewResultProviders>
         </PreviewCutProvider>

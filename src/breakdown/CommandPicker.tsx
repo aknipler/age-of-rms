@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { EditIntent, InsertTarget } from "./patch/intents";
 import { useBreakdownContext } from "./BreakdownContext";
 import { HelpTip } from "../components/HelpTip";
+import { useSearchListNav } from "../hooks/useSearchListNav";
 import styles from "./CommandPicker.module.css";
 
 /**
@@ -122,6 +123,23 @@ export function CommandPicker({
     );
   }, [query]);
 
+  const total = controlFlow.length + results.length;
+  const pickAt = (i: number) => {
+    if (i < controlFlow.length) {
+      onPick({ kind: "controlFlow", construct: controlFlow[i].construct });
+    } else {
+      const c = results[i - controlFlow.length];
+      if (c) onPick({ kind: "command", name: c.name });
+    }
+  };
+  // The highlight index runs over controlFlow then results, the render order.
+  const nav = useSearchListNav({
+    count: total,
+    onPick: pickAt,
+    onEscape: onClose,
+  });
+  const activeIndex = nav.activeIndex;
+
   return (
     <div className={styles.panel} role="dialog" aria-label="Add a command">
       <div className={styles.searchRow}>
@@ -131,8 +149,12 @@ export function CommandPicker({
             autoFocus
             placeholder="Search commands…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && onClose()}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // The list reshapes under the highlight, so start over.
+              nav.reset();
+            }}
+            onKeyDown={nav.onKeyDown}
             className={styles.search}
           />
         </HelpTip>
@@ -142,7 +164,10 @@ export function CommandPicker({
               <input
                 type="checkbox"
                 checked={showAll}
-                onChange={(e) => setShowAll(e.target.checked)}
+                onChange={(e) => {
+                  setShowAll(e.target.checked);
+                  nav.reset();
+                }}
               />
               show all sections
             </label>
@@ -158,14 +183,15 @@ export function CommandPicker({
           made one from the outside, see the CSS comment. */}
       <div className={styles.listSlot}>
         <HelpTip id="breakdown.addCommand.entry">
-          <div className={styles.list}>
+          <div className={styles.list} ref={nav.listRef}>
             {results.length === 0 && controlFlow.length === 0 && (
               <p className={styles.empty}>No matching commands.</p>
             )}
-            {controlFlow.map((c) => (
+            {controlFlow.map((c, i) => (
               <button
                 key={c.construct}
                 type="button"
+                data-active={i === activeIndex}
                 className={`${styles.entry} ${styles.controlFlowEntry}`}
                 onClick={() =>
                   onPick({ kind: "controlFlow", construct: c.construct })
@@ -178,10 +204,11 @@ export function CommandPicker({
                 <span className={styles.chip}>control flow</span>
               </button>
             ))}
-            {results.map((c) => (
+            {results.map((c, i) => (
               <button
                 key={c.name}
                 type="button"
+                data-active={controlFlow.length + i === activeIndex}
                 className={styles.entry}
                 onClick={() => onPick({ kind: "command", name: c.name })}
               >

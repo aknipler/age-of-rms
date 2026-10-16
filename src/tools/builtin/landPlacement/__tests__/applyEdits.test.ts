@@ -438,7 +438,6 @@ describe("an Applied ring places its lands on a circle in the map preview (BUG-0
         instantiated,
         createTileGrid(dim, 0),
         constants,
-        seed,
       );
       // A rounded SIN/COS snaps every member onto the eight outer points of
       // a 3x3 grid. Eight distinct points there means using all four
