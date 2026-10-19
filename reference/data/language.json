@@ -1437,7 +1437,7 @@
           "name": "type",
           "type": "otherConstant",
           "default": "CT_GRANITE",
-          "description": "One of CT_GRANITE, CT_DESERT, CT_SNOW, CT_MARBLE, CT_LIMESTONE."
+          "description": "One of CT_GRANITE, CT_DESERT, CT_SNOW, CT_MARBLE, CT_LIMESTONE, CT_TERRACE. Only the look changes. The same seed gives the same cliffs in another style."
         }
       ],
       "verified": true
@@ -1460,15 +1460,16 @@
       "name": "max_number_of_cliffs",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
-      "description": "Maximum number of cliff formations to generate.",
+      "description": "Upper bound on the number of cliff formations, not itself included. The game draws a count from min_number_of_cliffs up to one less than this, so the defaults give 3 to 8 cliffs. Setting both to the same value gives exactly that many.",
       "arguments": [
         {
           "name": "count",
           "type": "integer",
-          "default": 8
+          "default": 9
         }
       ],
-      "verified": true
+      "verified": true,
+      "notes": "Default 9, measured 2026-10-17 on five DE maps of a bare <CLIFF_GENERATION> header at three sizes (docs/preview-design.md Sec.6.3 rule 1). The count is min + draw(max - min), so the value is exclusive. The earlier default of 8 was the largest count the guide's wording allows, not the value the game reads."
     },
     {
       "name": "min_length_of_cliff",
@@ -1490,7 +1491,7 @@
       "name": "max_length_of_cliff",
       "section": "CLIFF_GENERATION",
       "kind": "standalone",
-      "description": "Maximum length of each cliff formation.",
+      "description": "Upper bound on each cliff's length, not itself included. Each cliff draws its length from min_length_of_cliff up to one less than this, so the defaults give lengths of 5 to 8. Setting both to the same value gives exactly that length.",
       "arguments": [
         {
           "name": "length",

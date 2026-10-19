@@ -10,7 +10,7 @@ import {
   placeLandOrigins,
   growLands,
   paintLandTerrain,
-  applyBaseElevation,
+  baseElevationNotes,
   cleanLandTerrain,
   type LandPlacementResult,
 } from "../generator/lands";
@@ -103,12 +103,7 @@ function placeGrowElevate(
   const grid = createTileGrid(instantiated.dim, GRASS);
   const result = placeLandOrigins(instantiated, grid, constants);
   growLands(result.origins, grid, result.reports, result.stream);
-  const elevationNotes = applyBaseElevation(
-    instantiated,
-    result.origins,
-    grid,
-    constants,
-  );
+  const elevationNotes = baseElevationNotes(instantiated, result.origins);
   return { ...result, dim: instantiated.dim, grid, elevationNotes };
 }
 
@@ -1517,12 +1512,17 @@ describe("base_elevation (Sec.6.1, applied after growth)", () => {
     expect(anyRaised).toBe(false);
   });
 
-  it("has no effect and notes it when <ELEVATION_GENERATION> is absent from the script", () => {
+  // Rev 10 (2026-10-19, lh2). DE saves the heights without the section,
+  // standing as sheer steps since nothing smooths them, so the land is
+  // raised and the note says why it looks the way it does.
+  it("still raises the land, and notes it, when <ELEVATION_GENERATION> is absent from the script", () => {
     const source =
       "<LAND_GENERATION>\ncreate_land {\nland_position 50 50\nbase_size 2\nnumber_of_tiles 50\nbase_elevation 10\n}\n";
     const { grid, elevationNotes } = placeGrowElevate(source);
-    const anyRaised = [...grid.elevation].some((v) => v !== 0);
-    expect(anyRaised).toBe(false);
+    const anyRaised = [...grid.elevation].some(
+      (v, i) => grid.landId[i] === 0 && v === 10,
+    );
+    expect(anyRaised).toBe(true);
     expect(
       elevationNotes.some((n) => n.key.startsWith("baseElevationNoSection:")),
     ).toBe(true);
@@ -1556,7 +1556,7 @@ describe("base_elevation (Sec.6.1, applied after growth)", () => {
   });
 });
 
-describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw", () => {
+describe("corpus: placeLandOrigins + growLands + baseElevationNotes never throw", () => {
   // One `it()` per map, not one big loop inside a single `it()`; matching
   // corpus.test.ts's and instantiate.test.ts's own convention. Growth on a
   // handful of maps (e.g. Crownwood's deliberately-unclamped land_percent
@@ -1588,7 +1588,7 @@ describe("corpus: placeLandOrigins + growLands + applyBaseElevation never throw"
       const result = placeLandOrigins(instantiated, grid, constants);
       growLands(result.origins, grid, result.reports, result.stream);
       expect(() =>
-        applyBaseElevation(instantiated, result.origins, grid, constants),
+        baseElevationNotes(instantiated, result.origins),
       ).not.toThrow();
     });
   }

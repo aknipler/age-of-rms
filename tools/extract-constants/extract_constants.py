@@ -1380,6 +1380,26 @@ class DatExtraction:
         n = max(0, t.number_of_terrain_units_used)
         return [(int(t.terrain_unit_id[i]), int(t.terrain_unit_density[i])) for i in range(n)]
 
+    def terrain_generation(self, const_id: int) -> tuple[int, list[tuple[int, int, bool]]] | None:
+        """The two terrain fields the map generator's elevation and cliff
+        stages read (docs/preview-design.md Sec.6.3 and Sec.12 item 10). `Terrain.is_water` is not a boolean despite genieutils' name. It
+        is a bitfield the write-up calls the placement class (0x0F water kinds,
+        0x10 shore, 0x20 land, 0x40 shallows-type, 0x80 frozen). The used
+        `terrain_unit_*` slots are the terrain's decorations, every slot this
+        time, cosmetic ones included, since a decoration costs random draws
+        whether or not it carries wood. Each slot is (unit id, density
+        per-mille, centered)."""
+        terrains = self.dat.terrain_block.terrains
+        if not (0 <= const_id < len(terrains)):
+            return None
+        t = terrains[const_id]
+        n = max(0, t.number_of_terrain_units_used)
+        slots = [
+            (int(t.terrain_unit_id[i]), int(t.terrain_unit_density[i]), bool(t.terrain_unit_centering[i]))
+            for i in range(n)
+        ]
+        return int(t.is_water), slots
+
     def terrain_restrictions_table(self) -> list[dict]:
         """The dat's WHOLE `terrain_restrictions` table, one row per restriction
         id, each expanded to the terrain ids it permits — the top-level
@@ -1692,6 +1712,47 @@ def merge_terrain_units(entry: dict, auto_tree_units: list[dict], run_date: str)
     return updated
 
 
+_TERRAIN_GENERATION_NOTE_RE = re.compile(
+    r"\s*placementClass and decorations extracted \S+ by tools/extract-constants --terrain-generation "
+    r"\(is_water and terrain_unit_id/terrain_unit_density/terrain_unit_centering read directly from empires2_x2_p1\.dat\)\."
+)
+
+
+def terrain_generation_note(run_date: str) -> str:
+    return (
+        f"placementClass and decorations extracted {run_date} by tools/extract-constants --terrain-generation "
+        "(is_water and terrain_unit_id/terrain_unit_density/terrain_unit_centering read directly from empires2_x2_p1.dat)."
+    )
+
+
+def compute_terrain_generation(placement_class: int, slots: list[tuple[int, int, bool]]) -> dict:
+    """Raw `terrain_generation()` reading -> the schema's two fields. Nothing is
+    dropped or normalised, unlike `compute_auto_tree_units`. The preview turns
+    a decoration into a draw count by its density and centering (a density of
+    0 costs nothing, one of 1000 costs fewer draws than any other), so a slot
+    that looks inert is still part of the rule's input."""
+    return {
+        "placementClass": placement_class,
+        "decorations": [
+            {"objectId": unit_id, "densityPerMille": density, "centered": centered}
+            for unit_id, density, centered in slots
+        ],
+    }
+
+
+def merge_terrain_generation(entry: dict, fields: dict, run_date: str) -> dict:
+    """Writes `placementClass` and `decorations` onto one terrain entry. Unlike
+    `autoTreeUnits`, an empty decoration list IS written, since a row read from
+    the dat with no slot is a measurement of "no decorations", and the elevation
+    and cliff stages need to tell that apart from a row nobody has read."""
+    updated = dict(entry)
+    updated.update(fields)
+    existing_notes = _TERRAIN_GENERATION_NOTE_RE.sub("", updated.get("notes", "")).strip()
+    note = terrain_generation_note(run_date)
+    updated["notes"] = f"{existing_notes} {note}" if existing_notes else note
+    return updated
+
+
 def entry_label(entry: dict) -> str:
     """A name for console output. `rmsConstant` is null for the 53 DE terrains
     that have no callable constant, so nothing that prints an entry may reach
@@ -1849,6 +1910,10 @@ CONSTANT_KEY_ORDER = [
     # Sits beside isForest, which it is read together with (D9's fallback:
     # isForest true + this field absent means one implicit 100-wood slot).
     "autoTreeUnits",
+    # Terrain entries only, --terrain-generation. The dat's own placement class
+    # bitfield and every decoration slot, read by the elevation and cliff stages.
+    "placementClass",
+    "decorations",
     "isHybrid",
     "isBeach",
     "beachTerrain",
@@ -2228,6 +2293,57 @@ def run_terrain_units(install_path: Path, output: Path, dat: "DatExtraction | No
         print("\n--dry-run: nothing written.")
         return 0
     write_game_constants(output, updated, terrain_restrictions)
+    print(f"\nWrote {output}")
+    print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
+    return 0
+
+
+def run_terrain_generation(output: Path, dat: "DatExtraction | None", dry_run: bool) -> int:
+    """Writes `placementClass` and `decorations` onto every terrain entry with
+    a constId, both read from `empires2_x2_p1.dat`. The preview's elevation and
+    cliff stages read them (preview-design Sec.6.3, Sec.12 item 10), and so does
+    the land stage's cleanup, whose restored tiles spend their base terrain's
+    decoration draws. Prints every entry whose values change."""
+    import json
+
+    if dat is None:
+        print("Cannot extract terrain placement classes without empires2_x2_p1.dat.", file=sys.stderr)
+        return 1
+
+    existing = json.loads(output.read_text(encoding="utf-8"))
+    run_date = date.today().isoformat()
+    changed: list[tuple[str, dict, dict]] = []
+    unread: list[str] = []
+    unchanged = 0
+    updated: list[dict] = []
+    for entry in existing["constants"]:
+        if entry.get("category") != "terrain" or entry.get("constId") is None:
+            updated.append(entry)
+            continue
+        reading = dat.terrain_generation(entry["constId"])
+        if reading is None:
+            unread.append(entry_label(entry))
+            updated.append(entry)
+            continue
+        fields = compute_terrain_generation(*reading)
+        before = {k: entry.get(k) for k in fields}
+        if before == fields:
+            unchanged += 1
+            updated.append(entry)
+            continue
+        changed.append((entry_label(entry), before, fields))
+        updated.append(merge_terrain_generation(entry, fields, run_date))
+
+    print(f"  placementClass/decorations agree with the file: {unchanged}")
+    print(f"  placementClass/decorations CHANGED by this run  : {len(changed)}")
+    for name, before, after in changed:
+        print(f"      {name:22s} {before} -> {after}")
+    if unread:
+        print(f"  no terrain row in the dat: {', '.join(unread)}")
+    if dry_run:
+        print("\n--dry-run: nothing written.")
+        return 0
+    write_game_constants(output, updated, existing.get("terrainRestrictions"))
     print(f"\nWrote {output}")
     print("Next: run `npm run validate:reference` from the repo root and review the diff before committing.")
     return 0
@@ -2887,6 +3003,7 @@ def main() -> int:
     parser.add_argument("--colors-only", action="store_true", help="Update ONLY previewColor and minimapColor on terrain entries. previewColor comes from each terrain's deTextureFile, and a null deTextureFile is first filled from the dat's Terrain.name_2. Reads the dat for those and for minimapColor, and rewrites no other field. Use this to refresh colours without re-extracting everything.")
     parser.add_argument("--terrain-table", action="store_true", help="Update ONLY the engine's terrain table on object entries, read from empires2_x2_p1.dat (preview-design Sec.15 item 23): terrainRestrictionId, allowedTerrains, placementSideTerrain, and the coarse habitat derived from them. Rewrites no other field. Prints every entry whose derived habitat disagrees with what is in the file.")
     parser.add_argument("--terrain-units", action="store_true", help="Update ONLY autoTreeUnits on terrain entries (the units a terrain auto-spawns with no create_object, first-hit-wins by slot) plus the top-level terrainRestrictions table, both read from empires2_x2_p1.dat. Rewrites no other field. Prints every entry whose measured autoTreeUnits disagrees with what is in the file.")
+    parser.add_argument("--terrain-generation", action="store_true", help="Update ONLY placementClass and decorations on terrain entries, read from empires2_x2_p1.dat (Terrain.is_water, which is a bitfield, and every used terrain_unit slot with its density and centering). The preview's elevation and cliff stages read them. Rewrites no other field.")
     parser.add_argument("--storages", action="store_true", help="Update ONLY the resource-storage data on object entries, read from empires2_x2_p1.dat: the raw resourceStorages slots plus a refreshed resourceAmounts derived from them. Rewrites no other field. This is what tells a consumer whether an effect_amount ATTR_STORAGE_VALUE line changes a resource, a population count or a decay timer.")
     parser.add_argument("--attributes", action="store_true", help="Update ONLY the effect_amount attribute selectors (ATTR_*), read from random_map.def's own Attribute Constants section. Needs no dat file. Rewrites no other field.")
     parser.add_argument("--classes", action="store_true", help="Update ONLY the unit-class data, read from empires2_x2_p1.dat: one objectClass row per genie unit class (with the unit ids in it) plus a classId on every object entry. Rewrites no other field. Verifies the class-to-constant offset against random_map.def first and refuses to write if it disagrees.")
@@ -2895,8 +3012,8 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Compute and report, write nothing. Use with --terrain-table, --terrain-units, --classes, --roster or --misc-constants to see the diff before taking it.")
     args = parser.parse_args()
 
-    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants)]) > 1:
-        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --terrain-units, --classes, --storages, --attributes, --roster, --misc-constants) are mutually exclusive.", file=sys.stderr)
+    if sum([bool(args.ids_only), bool(args.colors_only), bool(args.terrain_table), bool(args.terrain_units), bool(args.terrain_generation), bool(args.classes), bool(args.storages), bool(args.attributes), bool(args.roster), bool(args.misc_constants)]) > 1:
+        print("The narrow modes (--ids-only, --colors-only, --terrain-table, --terrain-units, --terrain-generation, --classes, --storages, --attributes, --roster, --misc-constants) are mutually exclusive.", file=sys.stderr)
         return 1
 
     install_path = args.install_path or guess_install_path()
@@ -2971,6 +3088,9 @@ def main() -> int:
 
     if args.terrain_units:
         return run_terrain_units(install_path, args.output, load_dat(), args.dry_run)
+
+    if args.terrain_generation:
+        return run_terrain_generation(args.output, load_dat(), args.dry_run)
 
     if args.classes:
         return run_classes(install_path, args.output, load_dat(), args.dry_run)

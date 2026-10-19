@@ -272,6 +272,13 @@ export interface ObjectConstant {
   habitat?: string;
   /** Terrain entries only: the units this terrain auto-spawns (forestTrees.ts). Absent means unknown, not "no trees" — see the schema field's own doc comment. */
   autoTreeUnits?: readonly { objectId: number; density: number }[];
+  /** Terrain entries only. The dat's placement class bitfield and decoration slots (terrainClass.ts). */
+  placementClass?: number;
+  decorations?: readonly {
+    objectId: number;
+    densityPerMille: number;
+    centered: boolean;
+  }[];
   /** Object rows: the unit's raw resource-storage slots. `effect_amount ... ATTR_STORAGE_VALUE` (or any attribute carrying `writesStorageSlot`) rewrites one of these (forestTreeSuppression.ts). */
   resourceStorages?: readonly {
     type: number;

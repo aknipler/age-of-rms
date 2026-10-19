@@ -106,7 +106,7 @@ export const NEUTRAL_BORDER_FUZZINESS = 20;
 /**
  * The highest `top_border` that moves the corner cut fully off the map for
  * every value in `RANGES.neutralBorder`. The cut is a quarter of the box's
- * width (de-disassembly notes/borders-corner-cut.md), 9 tiles at 70, 8 at
+ * width (preview-design Sec.6.1 growth rule 7), 9 tiles at 70, 8 at
  * 71 to 73 and 7 at 74. -7 is round(-8.4), 8 tiles, which leaves a one tile
  * notch in row 0 at 70, and -8 is 10 tiles. The hint ladder steps down by 1,
  * so the learner meets the notch on the way. Proven in seedCheck.ts.

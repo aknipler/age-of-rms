@@ -158,7 +158,7 @@
     },
     {
       "id": "generationSettings.teamPositions",
-      "text": "The lobby's Team Positions box. Ticked, the game seats teammates next to each other, and a script testing TEAM_POSITIONS takes that branch. It also changes the random draws the game makes while placing players, so the preview's lands only match a real game at the same seed when this box matches that game's lobby. Ticked by default."
+      "text": "The lobby's Team Positions box. Ticked, the game seats teammates next to each other, and a script testing TEAM_POSITIONS takes that branch. It also changes the random draws the game makes while placing players, so the preview's lands, hills and cliffs only match a real game at the same seed when this box matches that game's lobby. Ticked by default."
     },
     {
       "id": "settings.authorName",
@@ -750,7 +750,7 @@
     },
     {
       "id": "preview.approximateBadge",
-      "text": "This is a re-creation of what your script might generate, not the game's own map generator. The lands are drawn the way the game draws them, and on every map checked against the game so far they match it tile for tile at the same seed. Everything after the lands (hills, cliffs, terrain patches, connections and objects) is plausible rather than predictive, so always test in game before publishing a map."
+      "text": "This is a re-creation of what your script might generate, not the game's own map generator. The lands, hills and cliffs are drawn the way the game draws them, and on every map checked against the game so far they match it tile for tile at the same seed. Everything after the cliffs (terrain patches, connections and objects) is plausible rather than predictive, so always test in game before publishing a map."
     },
     {
       "id": "preview.mapSummary",
@@ -758,7 +758,7 @@
     },
     {
       "id": "preview.seedChip",
-      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It is also the game's own seed for the lands. Type the seed a match used (the game shows it on the Objectives screen) with the same players, teams and Team Positions setting, and the lands come out where the game put them. Everything drawn after the lands is the preview's own approximation and will differ."
+      "text": "The random seed this arrangement was drawn from. The same seed always produces the same preview, so a number can be shared and reproduced. It is also the game's own seed for the lands, hills and cliffs. Type the seed a match used (the game shows it on the Objectives screen) with the same players, teams and Team Positions setting, and those come out where the game put them. Everything drawn after the cliffs is the preview's own approximation and will differ."
     },
     {
       "id": "preview.reroll",

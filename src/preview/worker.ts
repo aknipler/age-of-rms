@@ -75,6 +75,7 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     notes,
     landOrigins,
     resourceTotals,
+    cliffPieces,
   } = result;
   return {
     dim,
@@ -87,6 +88,7 @@ function toWireResult(result: PreviewResult): PreviewWireResult {
     notes,
     landOrigins,
     resourceTotals,
+    cliffPieces,
   };
 }
 

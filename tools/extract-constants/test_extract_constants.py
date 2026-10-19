@@ -35,6 +35,9 @@ from extract_constants import (
     roster_descriptive_name,
     storage_note,
     compute_auto_tree_units,
+    compute_terrain_generation,
+    merge_terrain_generation,
+    terrain_generation_note,
     derive_habitat,
     format_constant,
     format_game_constants,
@@ -987,6 +990,33 @@ class TestComputeAutoTreeUnits(unittest.TestCase):
 
     def test_empty_slot_list_gives_empty_result(self):
         self.assertEqual(compute_auto_tree_units([], {}), [])
+
+
+class TestTerrainGeneration(unittest.TestCase):
+    """The `--terrain-generation` pure derivation and merge. Unlike
+    autoTreeUnits nothing is dropped, since a decoration spends random draws in
+    the game whether or not it carries wood."""
+
+    def test_keeps_every_slot_raw_and_in_order(self):
+        # PINE_FOREST's shape, whose two 0-density bush slots autoTreeUnits drops.
+        result = compute_terrain_generation(32, [(302, 0, True), (1053, 0, True), (350, 1000, True)])
+        self.assertEqual(result["placementClass"], 32)
+        self.assertEqual([d["objectId"] for d in result["decorations"]], [302, 1053, 350])
+        self.assertEqual(result["decorations"][2], {"objectId": 350, "densityPerMille": 1000, "centered": True})
+
+    def test_no_slots_is_an_empty_list_not_an_absent_field(self):
+        result = compute_terrain_generation(160, [])
+        self.assertEqual(result, {"placementClass": 160, "decorations": []})
+        merged = merge_terrain_generation({"constId": 32, "notes": "x."}, result, "2026-10-19")
+        self.assertEqual(merged["decorations"], [])
+
+    def test_merge_replaces_its_own_provenance_clause_rather_than_stacking_it(self):
+        fields = compute_terrain_generation(32, [(1358, 60, False)])
+        once = merge_terrain_generation({"constId": 0, "notes": "constId 0 confirmed."}, fields, "2026-10-19")
+        twice = merge_terrain_generation(once, fields, "2026-10-20")
+        self.assertIn(terrain_generation_note("2026-10-20"), twice["notes"])
+        self.assertNotIn(terrain_generation_note("2026-10-19"), twice["notes"])
+        self.assertTrue(twice["notes"].startswith("constId 0 confirmed."))
 
 
 class TestMergeTerrainUnits(unittest.TestCase):

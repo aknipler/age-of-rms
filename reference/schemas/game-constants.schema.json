@@ -129,6 +129,38 @@
             }
           }
         },
+        "placementClass": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Terrain entries only. The dat's own placement class for this terrain, the field genieutils calls Terrain.is_water, which is a bitfield rather than a flag (tools/extract-constants --terrain-generation). 0x0F holds the water kinds, 0x10 marks a shore (beach), 0x20 land, 0x40 a shallows-type terrain and 0x80 a frozen one. GRASS is 0x20, SNOW 0xA0, SHALLOW 0x08 and BEACH 0x10. The preview's elevation and cliff stages read it exactly as the game does (docs/preview-design.md Sec.6.3 and Sec.12 item 10). A cliff cell holding a terrain with any of 0x4F is blocked, and the water repair around a cliff line treats 0x0F as water. Absent means the row was never read from the dat."
+        },
+        "decorations": {
+          "type": "array",
+          "description": "Terrain entries only. Every used terrain_unit slot of this terrain in the dat, cosmetic ones included, in slot order (tools/extract-constants --terrain-generation). Unlike autoTreeUnits nothing is dropped, because what the preview needs from a slot is the number of random draws the game spends on it, and a slot spends draws whether or not its unit carries wood. Each time a cliff line crosses a tile, or the land stage's cleanup restores a tile to the base terrain, the game spends that terrain's decoration draws (docs/preview-design.md Sec.6.1 growth rule 11, Sec.6.3 rule 6, Sec.12 item 10). An empty array is a measurement of no decorations. Absent means the row was never read.",
+          "items": {
+            "type": "object",
+            "required": ["objectId", "densityPerMille", "centered"],
+            "additionalProperties": false,
+            "properties": {
+              "objectId": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The decoration unit's constId, as in autoTreeUnits."
+              },
+              "densityPerMille": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000,
+                "description": "terrain_unit_density as the dat stores it, per thousand tiles."
+              },
+              "centered": {
+                "type": "boolean",
+                "description": "terrain_unit_centering. A centered decoration stands in the tile's middle and a randomized one at a random spot, which is why the two spend different numbers of draws."
+              }
+            }
+          }
+        },
         "isHybrid": {
           "type": "boolean",
           "description": "Terrain entries only. True for the shallows — terrain that BOTH land units and ships can cross, so it is neither land nor open water but sits between them. Taken from the community DE table's own 'Unit Pathing' column, which reads 'all' on exactly 24 rows; the nine beach terrains and the five rice farms are removed, leaving these ten: 4 SHALLOW, 26 Ice Navigable, 54 DLC_MANGROVESHALLOW, 55 DLC_MANGROVEFOREST, 59 DLC_NEWSHALLOW, 90 Forest Reeds (Shallows), 93 and 94 Moddable Walkable Shallows, 111 MUDDY_SHALLOW, 115 YELLOW_SHALLOW. A beach terrain is removed because it is what this rule PRODUCES rather than a thing it edges, and a rice farm because 'both can path it' describes farmland without making it wet. It is ORTHOGONAL to isWater and does not restate it: isWater still answers the placement question every other stage asks (a shallow is water you cannot build a house on), while isHybrid answers the depth question only the automatic-beach rule asks, and the two disagree in both directions — SHALLOW is water and hybrid, DLC_MANGROVESHALLOW is hybrid and not water. The two forests in the set (55, 90) are a flagged judgment call: both are named as growing out of a shallow rather than out of dry ground, so they are edged as shallows. There is no name heuristic for absence, unlike isWater and isForest: YELLOW_SHALLOW is hybrid and YELLOW_SHALLOW_WATER is open water, so no pattern separates them, and every one of the 131 rows carries this field explicitly. Absent therefore means a terrain the table has never covered, and such a terrain is treated as not hybrid, which leaves it behaving exactly as it did before the field existed."

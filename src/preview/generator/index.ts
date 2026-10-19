@@ -47,14 +47,12 @@ import { createTileGrid, resolveTerrainId } from "./grid";
 import {
   placeLandOrigins,
   growLands,
-  paintLandTerrain,
-  cleanLandTerrain,
-  cleanWaterTerrain,
-  applyBaseElevation,
+  finishLandStage,
+  baseElevationNotes,
   countOwnedTiles,
 } from "./lands";
 import { applyElevation } from "./elevation";
-import { applyCliffs } from "./cliffs";
+import { applyCliffs, finishTerrainStage } from "./cliffs";
 import { applyAutomaticBeach, applyTerrains } from "./terrains";
 import { applyConnections } from "./connections";
 import { applyObjects, type ObjectConstant } from "./objects";
@@ -282,35 +280,39 @@ export function generatePreview(
     if (snapshots) snapshots.push(captureSnapshot(stage, grid));
   };
 
-  // S1 continues the game's random stream from where S0's parse-time draws
-  // left it, and growth continues it from where origin placement left it
-  // (Sec.8, rev 9). Every later stage keeps its own substreams.
+  // S1 to S3 run on the game's own random stream, each stage continuing it
+  // where the one before left it (Sec.8, rev 10), from S0's parse-time draws
+  // through origins, growth, the cleanup's restore draws, every hill and
+  // every cliff. Each stage takes the stream as plain data and hands it back
+  // the same way, so the order of the draws is visible here in the order of
+  // the calls. S4 and later keep their own substreams.
   const landResult = placeLandOrigins(instantiated, grid, constants);
-  growLands(landResult.origins, grid, landResult.reports, landResult.stream);
+  const grown = growLands(
+    landResult.origins,
+    grid,
+    landResult.reports,
+    landResult.stream,
+  );
   // Read right after growth and before the cleanup pass below, which also
   // clears `landId`. A land the cleanup erases was not buried by a later
   // stamp, and counting it here would give the note the wrong reason. Reading
   // it this early also keeps the marks a statement about land generation
   // rather than about whatever S4 painted over the result.
   const landOutcomes = collectLandOutcomes(landResult.origins, grid);
-  // Sec.6.1 rules 9 to 11, in that order. The cleanup compares terrain, so it
-  // has to follow painting, and base_elevation reads each land's tiles as the
-  // cleanup left them.
-  paintLandTerrain(landResult.origins, grid);
-  cleanLandTerrain(grid, baseTerrainId);
-  const baseElevationNotes = applyBaseElevation(
-    instantiated,
+  // Sec.6.1 rules 9 to 11. Painting, then the cleanup, whose restored tiles
+  // spend the base terrain's decoration draws. Heights were written during
+  // growth, so base_elevation only has notes left to give.
+  const landStream = finishLandStage(
     landResult.origins,
     grid,
+    baseTerrainId,
     constants,
+    grown,
   );
-  // The engine beaches at the end of land generation, before any
-  // <TERRAIN_GENERATION> command runs. That ordering is load-bearing rather
-  // than cosmetic: `base_terrain BEACH` is an ordinary idiom (67 uses across
-  // the tracked corpus) and it matches nothing unless a beach already exists
-  // by the time S4 starts. Whole grid, no scope, every land tile takes its
-  // own beach here, and S4 then beaches per command. See applyAutomaticBeach.
-  const beachedInLands = applyAutomaticBeach(grid, constants);
+  const baseElevationNoteList = baseElevationNotes(
+    instantiated,
+    landResult.origins,
+  );
   snapshot("S1");
 
   const elevationResult = applyElevation(
@@ -318,7 +320,7 @@ export function generatePreview(
     grid,
     constants,
     landResult.origins,
-    opts.seed,
+    landStream,
   );
   snapshot("S2");
 
@@ -327,10 +329,18 @@ export function generatePreview(
     grid,
     constants,
     landResult.origins,
-    opts.seed,
+    elevationResult.stream,
   );
   snapshot("S3");
 
+  // A beach before <TERRAIN_GENERATION>, so that `base_terrain BEACH`, an
+  // ordinary idiom (67 uses across the tracked corpus), has a beach to match
+  // when S4 starts. It used to run at the end of the land stage, and DE says
+  // that is too early. lh1 grows hills on the DESERT around a WATER land and
+  // matches DE only if that DESERT is not beached first. Here, after the
+  // cliffs, it is an assumption no DE map has tested, and on a script with no
+  // create_terrain it changes nothing the end of the stage would not redo.
+  const beachedBeforeTerrains = applyAutomaticBeach(grid, constants);
   const terrainsResult = applyTerrains(
     instantiated,
     grid,
@@ -338,12 +348,16 @@ export function generatePreview(
     landResult.origins,
     opts.seed,
   );
-  // The terrain stage ends with the cleanup pass run against WATER, as the
-  // original game's does (Sec.6.4, rev 9, measured on every water map in the
-  // land-stage fixture). A tile pinched between two water tiles becomes
-  // water, whatever painted it.
-  const waterId = resolveTerrainId(constants, "WATER");
-  if (waterId !== undefined) cleanWaterTerrain(grid, waterId);
+  // The end of the terrain stage, in the game's order (Sec.6.4, rev 10).
+  // Cliff lines get their earlier terrain back, then the cleanup runs
+  // against WATER, then the beach pass. So hills and cliffs both saw the
+  // coast before the cleanup, and wc1 matches DE only this way.
+  finishTerrainStage(
+    grid,
+    cliffsResult.lineTiles,
+    resolveTerrainId(constants, "WATER"),
+  );
+  const beachedAtTerrainEnd = applyAutomaticBeach(grid, constants);
   snapshot("S4");
 
   const connectionsResult = applyConnections(
@@ -418,7 +432,10 @@ export function generatePreview(
   // map that no line of the script asked for, so an author looking for the
   // command that put it there will not find one.
   const beached =
-    beachedInLands + terrainsResult.beached + beachedAfterConnections;
+    beachedBeforeTerrains +
+    terrainsResult.beached +
+    beachedAtTerrainEnd +
+    beachedAfterConnections;
   const beachNote: SimulationNote | undefined =
     beached > 0
       ? {
@@ -449,7 +466,7 @@ export function generatePreview(
       beachNote,
       landOutcomes.note,
       ...landResult.notes,
-      ...baseElevationNotes,
+      ...baseElevationNoteList,
       ...cliffsResult.notes,
       ...terrainsResult.notes,
       ...connectionsResult.notes,
@@ -471,5 +488,6 @@ export function generatePreview(
     grid,
     landOrigins: landResult.origins,
     resourceTotals,
+    cliffPieces: cliffsResult.pieces,
   };
 }

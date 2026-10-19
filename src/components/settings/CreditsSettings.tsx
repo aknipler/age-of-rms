@@ -33,7 +33,9 @@ export function CreditsSettings() {
           </button>
         </HelpTip>
       </p>
-      <h3 className={`${styles.panelTitle} ${styles.sectionBreak}`}>Thank yous</h3>
+      <h3 className={`${styles.panelTitle} ${styles.sectionBreak}`}>
+        Thank yous
+      </h3>
       <p className={styles.creditThanks}>
         A big thank you to Zetnus for allowing use of his guide and Terrain /
         Object reference sheets, and to his contributions to the RMS community
@@ -48,9 +50,9 @@ export function CreditsSettings() {
         how the map preview grows lands.
       </p>
       <p className={styles.creditThanks}>
-        Thanks also to Big John for his work on AoE2RMSIDE, which gave the first leads to how the game
-        draws the random numbers behind its lands. Every rule the preview uses
-        was then tested against maps the game itself generated.
+        Thanks also to Big John for his work on AoE2RMSIDE, which gave the first
+        leads to how the game draws its random numbers. Every rule the preview 
+        uses was then tested against maps the game itself generated.
       </p>
 
       {/* Required by the Game Content Usage Rules, which are what let this app
@@ -58,7 +60,9 @@ export function CreditsSettings() {
           wherever the item is distributed, so it appears here and in NOTICE at
           the repo root. Do not reword the second paragraph, it is Microsoft's
           own template filled in. */}
-      <h3 className={`${styles.panelTitle} ${styles.sectionBreak}`}>Game data</h3>
+      <h3 className={`${styles.panelTitle} ${styles.sectionBreak}`}>
+        Game data
+      </h3>
       <p className={styles.creditThanks}>
         The terrain and object reference data is derived from Age of Empires II:
         Definitive Edition&apos;s own data files, and the names in it are

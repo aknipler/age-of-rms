@@ -1,2 +1,7 @@
 # Local-only, deliberately untracked; never reformat it.
 CLAUDE.md
+
+# Cargo's build output. Prettier reads only this file and the root .gitignore,
+# not src-tauri/.gitignore, so it walked into target/ and tried to read the
+# multi-hundred-megabyte age_of_rms_lib.lib files as text.
+src-tauri/target

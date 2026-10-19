@@ -341,6 +341,13 @@ export interface LandOrigin {
   terrainId?: number;
   /** Raw declared value (1-16, or negative meaning "maximally elevated"); clamping and application happen in the elevation step (Sec.6.1: "after growth, set elevation = H"), not here. */
   baseElevation?: number;
+  /**
+   * The height this land writes on every tile it stamps or claims, and on
+   * every cell of its leftover fill whose conformity roll passes (Sec.6.1,
+   * rev 10). `base_elevation` clamped to 0..16, or 0 for a land whose terrain
+   * is water-like, which ignores `base_elevation` in the game.
+   */
+  height: number;
   clumpingFactor: number;
   borderFuzziness: number;
   otherZoneAvoidanceDistance: number;
@@ -605,6 +612,25 @@ export interface PreviewResult {
    * Folds in the forest-wood aggregate (forestTrees.ts) as Neutral wood.
    */
   resourceTotals: ResourceTotals;
+  /** Every cliff object the cliff stage built (Sec.6.3, rev 10), as the game places them. */
+  cliffPieces: readonly CliffPiece[];
+}
+
+/**
+ * One cliff object, as a saved scenario stores it (Sec.6.3, rev 10). The game
+ * places one on every 3 x 3 cell a cliff walks through, and its object and
+ * facing follow from which neighbouring cells the cliff joins it to.
+ */
+export interface CliffPiece {
+  /** Cell coordinates, 3 x 3 tiles each. */
+  cellX: number;
+  cellY: number;
+  objectId: number;
+  /** Tile units, the scenario's own unit coordinates. */
+  x: number;
+  y: number;
+  /** The saved object's animation frame, which picks the face shown. */
+  facing: number;
 }
 
 /**

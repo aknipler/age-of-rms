@@ -1695,7 +1695,9 @@ the resolved pair. A script that writes `min_number_of_cliffs 9` and nothing els
 is a script that crashes. **So: report it, at error, and word the finding so the
 defaulted side is visible** (_"against the default maximum of 8, which this
 script does not set"_), because a user who never wrote a maximum needs to be told
-which number the comparison used.
+which number the comparison used. (2026-10-19. The default maximum is 9, measured
+on a bare cliff header, preview-design Sec.6.3 rev 10. So the script that crashes
+writes `min_number_of_cliffs 10` alone, and `9` alone draws exactly 9 cliffs.)
 
 **The 0 has a second mechanism behind it besides "expert-written", and it is
 worth naming so the number is not read as stronger than it is.** This check
@@ -4305,7 +4307,7 @@ SOME_UNDEFINED_NAME GRASS2` added, which must route to the named-terrain
      row (`152-175` against `176-198`); `min 9` alone writes one and puts them at
      the **same** span. Assert on both that the S3 row states the contradiction
      as its reason, and on the second that the finding names the **defaulted**
-     maximum of 8. Its negative partner is `min 3 / max 8` written explicitly,
+     maximum of 8 (9 since 2026-10-19, so the fixture writes `min 10`). Its negative partner is `min 3 / max 8` written explicitly,
      which must report nothing. This is the seventh zero-attempt path and no
      corpus map trips it — all 8 that write the pair write `min < max` — so it is
      fixtures or nothing.

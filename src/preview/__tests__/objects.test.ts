@@ -13,7 +13,6 @@ import {
   placeLandOrigins,
   growLands,
   paintLandTerrain,
-  applyBaseElevation,
 } from "../generator/lands";
 import { applyElevation } from "../generator/elevation";
 import { applyCliffs } from "../generator/cliffs";
@@ -85,11 +84,27 @@ function place(
   );
   const grid: TileGrid = createTileGrid(instantiated.dim, GRASS);
   const landResult = placeLandOrigins(instantiated, grid, constants);
-  growLands(landResult.origins, grid, landResult.reports, landResult.stream);
+  const grown = growLands(
+    landResult.origins,
+    grid,
+    landResult.reports,
+    landResult.stream,
+  );
   paintLandTerrain(landResult.origins, grid);
-  applyBaseElevation(instantiated, landResult.origins, grid, constants);
-  applyElevation(instantiated, grid, constants, landResult.origins, seed);
-  applyCliffs(instantiated, grid, constants, landResult.origins, seed);
+  const elevated = applyElevation(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    grown,
+  );
+  applyCliffs(
+    instantiated,
+    grid,
+    constants,
+    landResult.origins,
+    elevated.stream,
+  );
   applyTerrains(instantiated, grid, constants, landResult.origins, seed);
   applyConnections(instantiated, grid, constants, landResult.origins, seed);
   const objectsResult = applyObjects(
@@ -168,6 +183,7 @@ function fabricateOrigin(
     fromOriginFallback: false,
     borderTiles: { left: 0, right: 200, top: 0, bottom: 200 },
     generateMode: 0,
+    height: 0,
   };
 }
 

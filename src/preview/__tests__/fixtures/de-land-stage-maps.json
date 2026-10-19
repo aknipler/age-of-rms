@@ -1,5 +1,5 @@
 {
-  "source": "DE 101.103.54800.0, scenario editor, Tiny 120x120, read with AoE2ScenarioParser. Exported by RMS/de-disassembly/tests/export_golden.py. Letters: . base, D DESERT, S SNOW, F FOREST, R DIRT, W WATER. Terrain is run-length coded row by row from (0,0), x fastest.",
+  "source": "DE 101.103.54800.0, scenario editor, Tiny 120x120, read with AoE2ScenarioParser. Frozen measured data, not regenerated in this repo. Letters: . base, D DESERT, S SNOW, F FOREST, R DIRT, W WATER. Terrain is run-length coded row by row from (0,0), x fastest.",
   "scripts": [
     "<PLAYER_SETUP>\ngrouped_by_team\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",
     "<PLAYER_SETUP>\ndirect_placement\n<LAND_GENERATION>\nbase_terrain GRASS\ncreate_land { terrain_type DESERT base_size 3 number_of_tiles 40 assign_to_player 1 land_position 25 25 }\ncreate_land { terrain_type FOREST base_size 3 number_of_tiles 40 assign_to_player 2 land_position 75 75 }\ncreate_land { terrain_type DIRT base_size 3 number_of_tiles 40 assign_to_player 3 }\ncreate_land { terrain_type SNOW base_size 1 number_of_tiles 30 }\n",

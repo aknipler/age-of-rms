@@ -5,8 +5,8 @@
 // last growth step, and matching the game tile for tile means drawing the
 // same numbers in the same order. So this file is the game's generator
 // rather than a generator of our choosing. Everything here was established
-// by black-box tests against saved DE maps (RMS/de-disassembly, written up in
-// its notes/de-land-stage.md), and every step uses public algorithms only.
+// by black-box tests against saved DE maps (preview-design Sec.8 holds the
+// rules), and every step uses public algorithms only.
 //
 //   - WELL512, as Chris Lomont published it in "Random Number Generation"
 //     (2008). Sixteen 32-bit words of state and an index.

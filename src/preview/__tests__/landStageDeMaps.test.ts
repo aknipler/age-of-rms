@@ -2,8 +2,9 @@
 //
 // `fixtures/de-land-stage-maps.json` holds 111 maps DE generated from 35
 // probe scripts, at their own seeds and lobbies, read back tile by tile from
-// the saved scenarios (RMS/de-disassembly/tests/export_golden.py wrote it,
-// keeping only maps the land-stage write-up accounts for). Each one runs here
+// the saved scenarios with AoE2ScenarioParser, keeping only maps whose
+// alliances a lobby can produce. It is frozen measured data, and nothing in
+// the repo regenerates it. Each one runs here
 // through the real `generatePreview`, and every tile of the five probe
 // terrains has to come out where DE put it. One draw out of place anywhere
 // from the first rnd() to the last growth step moves tiles, so this gate

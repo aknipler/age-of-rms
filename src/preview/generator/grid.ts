@@ -279,6 +279,14 @@ export interface TerrainConstantForMasks {
   isBeach?: boolean;
   /** The terrain automatically written where THIS terrain borders anything deeper than itself, or null for a terrain that never grows a beach. Absent means fall back to `DEFAULT_BEACH_TERRAIN` for anything that is not open water, see `beachTerrainFor`. */
   beachTerrain?: number | null;
+  /** The dat's placement class bitfield, read through `terrainClass.ts`. */
+  placementClass?: number;
+  /** The dat's decoration slots, read through `terrainClass.ts`. */
+  decorations?: readonly {
+    objectId: number;
+    densityPerMille: number;
+    centered: boolean;
+  }[];
 }
 
 // ---------------------------------------------------------------------------

@@ -323,10 +323,7 @@ function LightbulbIcon() {
       >
         <path d="M8 1C4.9 1 3 3.3 3 5.9C3 7.7 3.9 8.8 4.8 9.9C5.3 10.5 5.5 11 5.5 11.7H10.5C10.5 11 10.7 10.5 11.2 9.9C12.1 8.8 13 7.7 13 5.9C13 3.3 11.1 1 8 1Z" />
         <path d="M5.9 13.4H10.1M6.7 14.9H9.3" />
-        <path
-          d="M8 8.6V11.7"
-          strokeWidth="0.5"
-        />
+        <path d="M8 8.6V11.7" strokeWidth="0.5" />
       </g>
       <g className={styles.bulbColour}>
         <path

@@ -461,11 +461,19 @@ describe("Sec.3.4 static contradictions (the two promoted comparisons)", () => {
     expect(findings[0].text).toContain("crashes");
   });
 
-  it("a min alone, exceeding the DEFAULTED maximum of 8, still fires and names the default", () => {
-    const { inst } = instantiate("<CLIFF_GENERATION>\nmin_number_of_cliffs 9");
+  // The default maximum is 9 since 2026-10-19, measured on a bare cliff
+  // header (preview-design Sec.6.3, rev 10). So min 9 alone draws exactly 9
+  // cliffs and is no contradiction, and 10 is the smallest min that is.
+  it("a min alone, exceeding the DEFAULTED maximum of 9, still fires and names the default", () => {
+    const { inst } = instantiate("<CLIFF_GENERATION>\nmin_number_of_cliffs 10");
     const findings = checkCliffsMinExceedsMax(inst);
     expect(findings).toHaveLength(1);
-    expect(findings[0].text).toContain("default maximum of 8");
+    expect(findings[0].text).toContain("default maximum of 9");
+  });
+
+  it("a min alone equal to the defaulted maximum reports nothing, since min equal to max draws exactly min", () => {
+    const { inst } = instantiate("<CLIFF_GENERATION>\nmin_number_of_cliffs 9");
+    expect(checkCliffsMinExceedsMax(inst)).toEqual([]);
   });
 
   it("min 3 / max 8 written explicitly reports nothing", () => {

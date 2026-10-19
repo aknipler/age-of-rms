@@ -1,7 +1,6 @@
 // The game's generator and the single-precision helpers, preview-design.md
 // Sec.8 (rev 9). The expected values were computed by the land-stage study's
-// own reference implementation (RMS/de-disassembly/tests/writeup_check.py),
-// which reproduces DE's maps, so a match here means this file draws the same
+// own reference implementation, which reproduced DE's maps, so a match here means this file draws the same
 // numbers the game draws. `landStageDeMaps.test.ts` then checks the numbers
 // are used in the game's order.
 

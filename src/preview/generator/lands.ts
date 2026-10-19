@@ -1,19 +1,20 @@
-// S1, the land stage, docs/preview-design.md Sec.6.1 (rev 9). PURE (CLAUDE.md
+// S1, the land stage, docs/preview-design.md Sec.6.1 (rev 10). PURE (CLAUDE.md
 // hard rule / preview-design Sec.2).
 //
-// REV 9 REPRODUCES THE GAME TILE FOR TILE. Every rule in this file was
-// measured against saved DE maps (RMS/de-disassembly, written up in its
-// notes/de-land-stage.md), and `landStageDeMaps.test.ts` holds this file to
-// 108 of those maps at their own seeds. So the order of every draw matters as
+// THIS FILE REPRODUCES THE GAME TILE FOR TILE. Every rule in it was measured
+// against saved DE maps (preview-design Sec.6.1 holds the rules), and `landStageDeMaps.test.ts` holds it to 111 of
+// those maps at their own seeds, `deElevationCliffMaps.test.ts` to 51 more
+// that go on through elevation and cliffs. So the order of every draw matters as
 // much as the rule it serves. One stream runs from the script's first rnd()
 // (instantiate.ts) through player setup, origins and growth, and a draw
 // added, dropped or moved anywhere here shifts every land after it.
 //
 // THE STEPS, in the order `index.ts` calls them. `placeLandOrigins` runs
 // player setup, places the remaining origins, takes the one draw nobody has
-// explained yet and stamps every land. `growLands` grows the lands and runs
-// the leftover fill. `paintLandTerrain` paints them and `cleanLandTerrain`
-// runs the cleanup pass. `applyBaseElevation` comes last.
+// explained yet and stamps every land. `growLands` grows the lands, writes
+// their heights and runs the leftover fill. `finishLandStage` paints them and
+// runs the cleanup pass, whose restored tiles spend draws too, and hands the
+// stream on to the elevation stage.
 //
 // Measured on Tiny maps only, and only through <LAND_GENERATION>. The rules
 // are written for any size, and Sec.15 lists what no map has exercised.
@@ -51,11 +52,17 @@ import {
 import { cosAt, sinAt } from "./rng";
 import { SINE_SCALE } from "./sineTable";
 import {
-  isWaterTerrain,
+  NO_LAYER,
   resolveTerrainId,
   WATER_NAME_PATTERN,
   type TerrainConstantForMasks,
 } from "./grid";
+import {
+  CLASS_FLAT_LAND,
+  classOf,
+  decorationDrawsOf,
+  terrainClassTable,
+} from "./terrainClass";
 import { pushFailure } from "./placement";
 
 const DEFAULT_BASE_SIZE = 3;
@@ -821,6 +828,28 @@ export interface LandPlacementResult {
   stream: DeStreamState;
 }
 
+/**
+ * The height a land writes (Sec.6.1, rev 10). A land whose terrain is
+ * water-like by the dat's placement class writes 0 whatever its
+ * `base_elevation` (lh1, a WATER land at 4 stayed at 0). For a terrain that
+ * resolves to nothing, the written name is the only evidence there is, so
+ * the water-name test decides.
+ */
+function landHeight(
+  constants: readonly TerrainConstantForMasks[],
+  terrainId: number | undefined,
+  terrainType: InstantiatedValue,
+  baseElevation: number | undefined,
+): number {
+  const water =
+    terrainId !== undefined
+      ? (classOf(terrainClassTable(constants), terrainId) & CLASS_FLAT_LAND) !==
+        0
+      : typeof terrainType === "string" && WATER_NAME_PATTERN.test(terrainType);
+  if (water || baseElevation === undefined) return 0;
+  return clampElevation(baseElevation);
+}
+
 function newOrigin(
   cmd: InstantiatedCommand,
   dim: number,
@@ -831,6 +860,14 @@ function newOrigin(
 ): LandOrigin {
   const terrainTypeValue = argValue(cmd, "terrain_type", 0);
   const baseElevationValue = argValue(cmd, "base_elevation", 0);
+  const terrainId = resolveTerrainId(
+    constants,
+    terrainTypeValue,
+    instantiated.symbols,
+    instantiated.aliases,
+  );
+  const baseElevation =
+    typeof baseElevationValue === "number" ? baseElevationValue : undefined;
   const declaredLandIdValue = argValue(cmd, "land_id", 0);
   const minPlacement = argValue(cmd, "min_placement_distance", 0);
   const playerCount = instantiated.teams.canonical.length;
@@ -849,14 +886,9 @@ function newOrigin(
       typeof terrainTypeValue === "number"
         ? terrainTypeValue
         : undefined,
-    terrainId: resolveTerrainId(
-      constants,
-      terrainTypeValue,
-      instantiated.symbols,
-      instantiated.aliases,
-    ),
-    baseElevation:
-      typeof baseElevationValue === "number" ? baseElevationValue : undefined,
+    terrainId,
+    baseElevation,
+    height: landHeight(constants, terrainId, terrainTypeValue, baseElevation),
     clumpingFactor: numAttr(cmd, "clumping_factor", 0, DEFAULT_CLUMPING_FACTOR),
     borderFuzziness: numAttr(
       cmd,
@@ -1227,7 +1259,11 @@ function borderChance(
  * `grid.zone`, and appends a `growthShortfall` to the land's command report
  * when it ends below its target.
  *
- * Expects `grid` exactly as `placeLandOrigins` left it.
+ * Expects `grid` exactly as `placeLandOrigins` left it. Also writes each
+ * land's `height` into `grid.elevation` where the game does (Sec.6.1, rev
+ * 10), on its stamp, on its claims and on every leftover cell whose roll
+ * passes, later writes winning. Returns the stream where growth left it,
+ * which the cleanup and the elevation and cliff stages continue.
  *
  * NO STEP CAP, and that is a fact about the work rather than an omission.
  * Every pop removes a queue entry, entries only come from seeding and from
@@ -1238,7 +1274,7 @@ export function growLands(
   grid: TileGrid,
   reports: readonly CommandReport[],
   streamState: DeStreamState,
-): void {
+): DeStreamState {
   const { dim } = grid;
   const tileCount = dim * dim;
   const stream = resumeDeStream(streamState);
@@ -1276,8 +1312,10 @@ export function growLands(
     const h = stampHalfSize(origin);
     for (let y = minY; y <= maxY; y++)
       for (let x = minX; x <= maxX; x++)
-        if (!origin.circularBase || inCircularStamp(origin, h, x, y))
+        if (!origin.circularBase || inCircularStamp(origin, h, x, y)) {
           zones[y * dim + x] = bytes[land];
+          grid.elevation[y * dim + x] = origin.height;
+        }
 
     // The counter is the clipped square, even for a circular stamp. Under
     // behavior_version 0 it is not this land's counter that is set but the
@@ -1390,6 +1428,7 @@ export function growLands(
       zones[tile] = own;
       grid.landId[tile] = land;
       grid.zone[tile] = origin.zone;
+      grid.elevation[tile] = origin.height;
       counters[land]++;
 
       // 6. Neighbours, left, right, up, down. A conformity roll for each,
@@ -1443,6 +1482,9 @@ export function growLands(
   // as growth left them, so one fill never enables another. Writing
   // `grid.landId` as well keeps it meaning "painted by this land in S1",
   // which `paintLandTerrain` and every later stage read [modelling choice].
+  //
+  // The height goes on every cell whose roll passes, terrain or not (lh2).
+  // That is why a raised land stands on a rim of raised base terrain.
   origins.forEach((origin, land) => {
     const own = bytes[land];
     const queue = queues[land];
@@ -1454,6 +1496,7 @@ export function growLands(
       const x = tile % dim;
       const y = (tile - x) / dim;
       if (!conforms(land, x, y)) continue;
+      grid.elevation[tile] = origin.height;
       const across =
         x >= 1 &&
         x < dim - 1 &&
@@ -1469,6 +1512,7 @@ export function growLands(
       grid.zone[tile] = origin.zone;
     }
   });
+  return stream.state();
 }
 
 /**
@@ -1561,18 +1605,55 @@ export function cleanTerrainAgainst(
 
 /**
  * The cleanup against `base_terrain`, after painting. A reverted tile takes
- * the base terrain back and leaves its land. `grid.layer` is untouched, since
- * lands never write it. A land painted in the base terrain, or one that
- * paints nothing, is invisible to this pass, which is what the engine does.
+ * the base terrain back and leaves its land. A land painted in the base
+ * terrain, or one that paints nothing, is invisible to this pass, which is
+ * what the engine does. The tile keeps its height and gets no layer back
+ * (Sec.6.1, rev 10).
+ *
+ * `restore` is the game's stream with the base terrain's decoration draws.
+ * Each restored tile spends them at once, 3 for GRASS and none for DESERT
+ * (gr1, four vanished 4-tile lands moved every hill and cliff on the map).
+ * Only the count of draws matters, since nothing reads them, so they are
+ * taken as raw draws in the cleanup's own order. Without `restore` no draw is
+ * taken, which is right for a test that stops at the land stage.
  */
 export function cleanLandTerrain(
   grid: TileGrid,
   baseTerrainId: number,
+  restore?: { stream: DeStream; draws: number },
 ): number {
   return cleanTerrainAgainst(grid, baseTerrainId, (i) => {
     grid.landId[i] = -1;
     grid.zone[i] = 0;
+    if (restore) for (let d = 0; d < restore.draws; d++) restore.stream.raw();
   });
+}
+
+/**
+ * The land stage's last steps as the game runs them (Sec.6.1, rev 10).
+ * Paints the lands, clears the layer on every painted tile and runs the
+ * cleanup against the base terrain, whose restored tiles spend the base
+ * terrain's decoration draws. Returns the stream after those draws, where
+ * the elevation stage starts.
+ *
+ * One function rather than three calls in `index.ts`, because the three only
+ * reproduce the game in this order and with the stream threaded through, and
+ * every test helper that runs the land stage needs exactly the same.
+ */
+export function finishLandStage(
+  origins: readonly LandOrigin[],
+  grid: TileGrid,
+  baseTerrainId: number,
+  constants: readonly TerrainConstantForMasks[],
+  streamState: DeStreamState,
+): DeStreamState {
+  paintLandTerrain(origins, grid);
+  const stream = resumeDeStream(streamState);
+  cleanLandTerrain(grid, baseTerrainId, {
+    stream,
+    draws: decorationDrawsOf(terrainClassTable(constants), baseTerrainId),
+  });
+  return stream.state();
 }
 
 /**
@@ -1653,25 +1734,23 @@ export function paintLandTerrain(
   // below is one array read per tile rather than a lookup per tile.
   // -1 = this land paints nothing.
   const terrainByLand = new Int32Array(origins.length).fill(-1);
-  let anyPainted = false;
   origins.forEach((origin, index) => {
-    if (origin.terrainId === undefined) return;
-    terrainByLand[index] = origin.terrainId;
-    anyPainted = true;
+    if (origin.terrainId !== undefined) terrainByLand[index] = origin.terrainId;
   });
-  if (!anyPainted) return; // skip the grid scan entirely, matching applyBaseElevation
-
+  // Every tile a land painted loses the base layer, which then marks only
+  // the tiles no land reached (ly1, DE's saved layers match tile for tile).
   for (let i = 0; i < grid.landId.length; i++) {
     const landIndex = grid.landId[i];
     if (landIndex < 0) continue;
+    grid.layer[i] = NO_LAYER;
     const terrainId = terrainByLand[landIndex];
     if (terrainId >= 0) grid.terrain[i] = terrainId;
   }
 }
 
 // ---------------------------------------------------------------------------
-// base_elevation (Sec.6.1), the last of this file's steps, deliberately
-// AFTER growth: "after growth, set elevation = H on the land's tiles."
+// base_elevation (Sec.6.1, rev 10). Growth writes the heights as it goes
+// (`LandOrigin.height`), so all that is left here is what to tell the author.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1688,70 +1767,25 @@ function clampElevation(h: number): number {
 }
 
 /**
- * Sec.6.1: `base_elevation H` sets every tile of a land's final footprint to
- * elevation `H`, with two conditions that skip it entirely (guide:952,
- * guide:959):
- *
- * - `H` is 0 or absent ("default 0 = not elevated"), a real no-op, not
- *   worth a grid write.
- * - The land's terrain_type is water ("doesn't work in HD/DE"), reuses
- *   grid.ts's water-name heuristic against the DECLARED terrain_type name
- *   rather than a second `/WATER/` literal.
- * - No `<ELEVATION_GENERATION>` section exists anywhere in the script (even
- *   an empty one satisfies the engine), base-elevation slopes silently
- *   fail without it, and the game crashes when the map is PLAYED. That
- *   crash is `validate()` territory (tracked in CLAUDE.md, not yet built);
- *   this function's job is only to match the silent-failure half so the
- *   preview doesn't show a slope the engine wouldn't actually render.
- *
- * Mutates `grid.elevation`; returns the notes for whichever lands hit the
- * missing-section case (one per land, since each names its own command span).
+ * One note per raised land in a script with no `<ELEVATION_GENERATION>`
+ * section. The heights still stand (lh2, DE saved them as written), but with
+ * no section nothing smooths them, so the land rises from the base in a sheer
+ * step. The guide also says the game crashes when such a map is played,
+ * which the scenario editor cannot show, so the note passes that on as the
+ * guide's claim.
  */
-export function applyBaseElevation(
+export function baseElevationNotes(
   instantiated: InstantiatedScript,
   origins: readonly LandOrigin[],
-  grid: TileGrid,
-  constants: readonly TerrainConstantForMasks[],
 ): SimulationNote[] {
-  const notes: SimulationNote[] = [];
-  const hasElevationSection = instantiated.sections.has("ELEVATION_GENERATION");
-  const targetByLand = new Int16Array(origins.length).fill(-1); // -1 = no elevation change for this land
-
-  origins.forEach((origin, index) => {
-    if (origin.baseElevation === undefined || origin.baseElevation === 0)
-      return;
-    // Prefer the reference data's own water flag over the name heuristic:
-    // the heuristic never saw DEEP_WATER or MED_WATER (absent from the data
-    // until 2026-08-07), and it still cannot see a land written as a bare id.
-    // The name test survives only for a terrain_type that resolves to nothing
-    // at all, where a name is the only evidence there is.
-    const isWater =
-      origin.terrainId !== undefined
-        ? isWaterTerrain(constants, origin.terrainId)
-        : typeof origin.terrainType === "string" &&
-          WATER_NAME_PATTERN.test(origin.terrainType);
-    if (isWater) return;
-    if (!hasElevationSection) {
-      notes.push({
-        key: `baseElevationNoSection:${origin.commandSpan.start}`,
-        prominence: "drawer",
-        stage: "S1",
-        span: origin.commandSpan,
-        text: "base_elevation has no effect without an <ELEVATION_GENERATION> section present in the script (even an empty one) — the game also crashes when the map is played without it.",
-      });
-      return;
-    }
-    targetByLand[index] = clampElevation(origin.baseElevation);
-  });
-
-  if (targetByLand.every((v) => v === -1)) return notes; // nothing to write, skip the grid scan entirely
-
-  for (let i = 0; i < grid.landId.length; i++) {
-    const landIndex = grid.landId[i];
-    if (landIndex < 0) continue;
-    const target = targetByLand[landIndex];
-    if (target !== -1) grid.elevation[i] = target;
-  }
-
-  return notes;
+  if (instantiated.sections.has("ELEVATION_GENERATION")) return [];
+  return origins
+    .filter((origin) => origin.height > 0)
+    .map((origin) => ({
+      key: `baseElevationNoSection:${origin.commandSpan.start}`,
+      prominence: "drawer" as const,
+      stage: "S1" as const,
+      span: origin.commandSpan,
+      text: "This land is raised with base_elevation, but the script has no <ELEVATION_GENERATION> section, so nothing smooths the slope and the land rises from the ground in one sheer step. The guide also warns that the game crashes when a map like this is played, and its fix is an <ELEVATION_GENERATION> section, which may be empty.",
+    }));
 }

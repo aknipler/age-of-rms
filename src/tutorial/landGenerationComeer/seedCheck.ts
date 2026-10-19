@@ -501,7 +501,7 @@ export function inspectSeed(deps: SeedCheckDeps, seed: number): SeedReport {
   // learner looks at it in, so the outline is the border box itself.
   // "Two of our three corners are chamfered", one against the map edge, and
   // a top_border of NEUTRAL_TOP_BORDER_FIX moves that cut off the map
-  // (de-disassembly notes/borders-corner-cut.md). One above it does not on
+  // (preview-design Sec.6.1 growth rule 7). One above it does not on
   // the widest box in the range, which is why the fix is that number and
   // the hint ladder steps by 1. The range's size claims hold over a sample
   // of seeds and not one, so they live in `inspectNeutralBorders`.

@@ -1,8 +1,8 @@
 // The automatic beach against DE itself.
 //
 // `fixtures/de-beach-maps.json` holds five maps DE generated, read back tile by
-// tile from the saved scenarios (RMS/de-disassembly/tests/export_beach_golden.py
-// wrote it). Each map's BEACH tiles are turned back into the land terrain they
+// tile from the saved scenarios with AoE2ScenarioParser. It is frozen measured
+// data, and nothing in the repo regenerates it. Each map's BEACH tiles are turned back into the land terrain they
 // were laid on, the preview's beach pass runs over the result, and every tile
 // has to come out as DE left it. That isolates the beach rule from the land
 // stage, so a land stage difference cannot hide or fake a beach difference.

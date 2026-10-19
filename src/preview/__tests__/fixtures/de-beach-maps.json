@@ -1,5 +1,5 @@
 {
-  "source": "DE 101.103.54800.0, scenario editor, read with AoE2ScenarioParser. Exported by RMS/de-disassembly/tests/export_beach_golden.py. Letters: G GRASS, R DIRT, D DESERT, W WATER, S SHALLOW, B BEACH. Terrain is run-length coded row by row from (0,0), x fastest. `land` is the terrain each map's beach was laid on.",
+  "source": "DE 101.103.54800.0, scenario editor, read with AoE2ScenarioParser. Frozen measured data, not regenerated in this repo. Letters: G GRASS, R DIRT, D DESERT, W WATER, S SHALLOW, B BEACH. Terrain is run-length coded row by row from (0,0), x fastest. `land` is the terrain each map's beach was laid on.",
   "maps": [
     {
       "name": "RMSTEST_15",

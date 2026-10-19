@@ -1,33 +1,33 @@
-// S2: elevation clumps, docs/preview-design.md Sec.6.2. PURE (CLAUDE.md hard
-// rule / preview-design Sec.2).
+// S2, the elevation stage, docs/preview-design.md Sec.6.2 (rev 10). PURE
+// (CLAUDE.md hard rule / preview-design Sec.2).
 //
-// Per `create_elevation MaxHeight { ... }`: pick `number_of_clumps` seed
-// tiles (terrain-matched, kept away from player-land origins, diagonally
-// biased per the measured seed study), grow each like a land region, then
-// stamp a concentric-ring height profile onto it.
+// THIS STAGE REPRODUCES THE GAME TILE FOR TILE. It is a port of the rules in
+// preview-design Sec.6.2, which 51 saved DE maps confirm, and `deElevationCliffMaps.test.ts` holds this file to all of
+// them. It continues the land stage's stream, so the order of every draw
+// matters as much as the rule it serves. One draw out of place moves every
+// hill on the map, and every cliff after it.
 //
-// `MaxHeight` IS AN ABSOLUTE CEILING, NOT AN INCREMENT. A command raises a
-// tile toward MaxHeight and never past it, and never lowers one already
-// higher. Two lands under the same `create_elevation 6`, one at
-// `base_elevation 2` and one at 5, therefore BOTH top out at 6. The first
-// gets tall-looking hills (2 -> 6), the second shallow ones (5 -> 6). Nothing
-// adds: not clumps within a command, not commands within a section, and not
-// `base_elevation` underneath. Corrected 2026-08-07; Sec.6.2's "heights add
-// on top of base_elevation" is withdrawn, and Sec.15 item 25 has the run that
-// confirms it.
+// THE MODEL, in brief.
+//   - `create_elevation H` is H LAYERS, run in script order. Layer k raises
+//     tiles from exactly k - 1 to k, so heights never add up and repeating a
+//     command only fills more of the same heights.
+//   - Each layer gathers its candidate tiles into one list, shuffles it with
+//     random buckets, seeds its clumps from the shuffled list and grows them
+//     round robin from per-clump priority lists.
+//   - Tiles near a player land's origin carry a weight. They are never seeds,
+//     and growth refuses them at random.
+//   - After every layer the whole map is smoothed, so neighbouring tiles end
+//     at most one level apart.
 //
-// DELIBERATELY NOT IMPLEMENTED, both cited at the point they'd apply:
-// growth's measured ~3% overshoot (Sec.6.2 itself calls implementing it
-// "optional and low priority", a plain stop-at-target is defensible) and
-// the density-amplification constant `A`'s exact fit (Sec.6.2: "the fit
-// targets the OUTPUT... run the generator, count elevated tiles, compare",
-// this file ships a first-pass value from one calibration run against its
-// own five-point table, not the iterated fit the spec describes as ideal;
-// see the build log for the run and where it landed against the table).
+// TWO ENGINE QUIRKS ARE KEPT ON PURPOSE, because DE has them and the maps
+// fail without them. Lists are emptied by forgetting their first entry only,
+// so old entries keep their links into the next layer (el7, all four maps fail
+// by over 5,000 tiles with clean lists). And the square a new seed takes out
+// of the lists has its bottom edge at x + r rather than y + r, which is the
+// whole of the "diagonal bias" the earlier statistical model fitted by hand.
 
 import type {
   CommandReport,
-  InstantiatedArg,
   InstantiatedCommand,
   InstantiatedScript,
   InstantiatedValue,
@@ -35,593 +35,672 @@ import type {
   PlacementFailure,
   TileGrid,
 } from "./types";
-import { createSubstream, nextFloat01, nextInt, type Rng } from "./rng";
-import { resolveTerrainId, scaleToMapArea } from "./grid";
-import { createSpacingIndex, type SpacingIndex } from "./spacingIndex";
+import { resumeDeStream, type DeStream, type DeStreamState } from "./deRandom";
+import { f32Div, f32Sqrt } from "./float32";
 import {
-  intersectCandidates,
-  ok,
-  fail,
-  pushFailure,
-  type AttributedPredicate,
-} from "./placement";
-import type { PlacementOutcome } from "./types";
+  NO_LAYER,
+  resolveTerrainId,
+  type TerrainConstantForMasks,
+} from "./grid";
+import { pushFailure } from "./placement";
+
+/** Clump lists per layer. `number_of_clumps` above this is read as this. */
+const MAX_CLUMPS = 999;
+/** Buckets the shuffle deals entries into. */
+const BUCKETS = 100;
+/** Layer heights stop at 16, however many layers a command has. */
+const MAX_LAYER_HEIGHT = 16;
+/** Smoothing raises tiles below this height and lowers tiles above it. */
+const SMOOTH_LIMIT = 8;
+/** A player land's origin weighs on every tile closer than this. */
+const AVOID_RADIUS = 13;
+/** Weight per tile of closeness. */
+const AVOID_WEIGHT = 20;
+/** The weight cap, which is also what a refused tile is set to. */
+const WEIGHT_CAP = 101;
 
 // ---------------------------------------------------------------------------
-// [tune] constants
+// Lists (preview-design Sec.6.2 rule 7)
 // ---------------------------------------------------------------------------
 
 /**
- * The frontier weight table `growClump` draws with. It lived in `lands.ts`
- * until preview-design rev 8 (2026-09-29) replaced land growth with a port of
- * genie-rms's land stage, which has no weight table at all. Sec.6.1 says to
- * move it here unchanged before deleting land growth, so that S2's output does
- * not move with no spec behind it. The values are exactly the rev 7 land
- * table's, and `growClump` only ever calls it at `CLUMP_GROWTH_CF`.
+ * Doubly linked lists over tile indices, every list sharing one set of link
+ * arrays, since an entry is in at most one list at a time. Typed arrays
+ * rather than objects with `prev`/`next` fields, so a Ludicrous map's 230,400
+ * tiles cost three allocations rather than 230,400.
  *
- * cf >= 0 gives weight(k) = 1 + steepness*(k-1) for neighborsOwned k in [1,4],
- * with steepness ramping from 0 to MAX_STEEPNESS as cf goes from 0 to 15 and
- * flat after that. At cf 0 every bucket weighs 1, and higher cf favours
- * infill more. [tune], since no measurement pins the magnitude.
+ * `prev` holds the entry before, `-1` for none, or `-2 - q` when the entry
+ * is first in list `q`. That last encoding is what lets a stale entry find
+ * the list it once headed, which is the quirk this stage depends on.
  */
-const MAX_STEEPNESS = 3;
+class TileLists {
+  readonly head: Int32Array;
+  readonly prev: Int32Array;
+  readonly next: Int32Array;
+  readonly cost: Int32Array;
 
-/** cf < 0 strongly favours neighborsOwned 1. Not exactly 0 elsewhere, so growth is never stuck when bucket 1 empties first. */
-const NEGATIVE_REGIME_WEIGHTS: readonly [number, number, number, number] = [
-  1, 0.05, 0.05, 0.05,
-];
-
-/** Exported for direct unit testing. */
-export function bucketWeights(
-  clumpingFactor: number,
-): readonly [number, number, number, number] {
-  if (clumpingFactor < 0) return NEGATIVE_REGIME_WEIGHTS;
-  const steepness = (Math.min(clumpingFactor, 15) / 15) * MAX_STEEPNESS;
-  return [1, 1 + steepness, 1 + 2 * steepness, 1 + 3 * steepness];
-}
-
-/** RMSTEST_14: default tile budget is `dim`, NOT area-scaled, "about 120 on tiny maps" scales with side length. */
-function defaultTileBudget(dim: number): number {
-  return dim;
-}
-
-/** RMSTEST_22a: overshoot grows sharply as a clump's share shrinks, "model it as max(6, share) before growth." */
-const MIN_TILES_PER_CLUMP = 6;
-
-/** guide:2857-adjacent measurement (RMSTEST_39): the direct SEED bias is 1.31:1, favouring y > x. */
-const SEED_BASE_RATIO = 1.3;
-
-/** Sec.6.2's density-amplification formula: seedRatio = clamp(BASE + A*max(0, density-d0), BASE, RMAX). */
-const DENSITY_KNEE = 250 / 40000; // ~250 clumps on a 200 map
-/**
- * [tune], NOT rigorously fitted, Sec.6.2 asks for this to be tuned by
- * running the generator and comparing its own tile ratio against the
- * five-point table (50/100/250/500/1000 clumps on a 200 map -> 1.45/1.88/
- * 3.74/7.01/14.88). One calibration pass against exactly that table (see the
- * build log) landed this value; it is a first-pass fit, not an iterated one.
- */
-const DENSITY_AMPLIFICATION = 900;
-const SEED_RATIO_MAX = 20; // Sec.6.2: "a real clamp and is not optional"
-
-/** guide: "elevation avoids the origins of player lands by about 9 tiles." */
-const PLAYER_ORIGIN_MIN_DISTANCE = 9;
-
-/** Sec.6.2: "Grow each clump like a land region (clumping weight fixed moderate [tune])", reuses lands.ts's cf=8 (the default/moderate regime) rather than inventing a second weight-shape formula. */
-const CLUMP_GROWTH_CF = 8;
-
-/** Bounded retries for a spacing-compliant seed draw, mirroring lands.ts's ORIGIN_ATTEMPTS convention. */
-const SEED_SPACING_ATTEMPTS = 100;
-
-// ---------------------------------------------------------------------------
-// Attribute reading (duplicated from lands.ts rather than imported, small,
-// stage-agnostic, and importing S1-named internals into an S2 file the other
-// direction reads oddly; see lands.ts's own copy for the same shape).
-// ---------------------------------------------------------------------------
-
-function argValue(
-  cmd: InstantiatedCommand,
-  name: string,
-  argIndex = 0,
-): InstantiatedValue {
-  const arg: InstantiatedArg | undefined =
-    cmd.attributes.get(name)?.[0]?.args[argIndex];
-  return arg?.value;
-}
-
-// BUG-021 / RMSTEST_69: `fallback` is for the argument being ABSENT, not for
-// a known symbol (a #define with no #const) that resolves to JS `undefined`
-// — that reads as 0, measured. See objects.ts's own copy for the full note.
-function numAttr(
-  cmd: InstantiatedCommand,
-  name: string,
-  argIndex: number,
-  fallback: number,
-): number {
-  const arg = cmd.attributes.get(name)?.[0]?.args[argIndex];
-  if (arg === undefined) return fallback;
-  if (typeof arg.value === "number") return arg.value;
-  return arg.value === undefined ? 0 : fallback;
-}
-
-/** guide:1257/1274: "only the LAST scale attribute applies" when a script writes both, resolved by source position, since Sec.3's attribute folding only dedupes repeats of the SAME name. */
-function lastScaleAttribute(
-  cmd: InstantiatedCommand,
-): "size" | "groups" | undefined {
-  const sizeAttr = cmd.attributes.get("set_scale_by_size")?.[0];
-  const groupsAttr = cmd.attributes.get("set_scale_by_groups")?.[0];
-  if (sizeAttr && groupsAttr)
-    return sizeAttr.span.start > groupsAttr.span.start ? "size" : "groups";
-  if (sizeAttr) return "size";
-  if (groupsAttr) return "groups";
-  return undefined;
-}
-
-/**
- * RMSTEST_14: the DEFAULT (`number_of_tiles` absent) is `dim`, measured
- * directly and NOT area-scaled, so an absent value skips the scaling
- * formula entirely, even if `set_scale_by_size` is present. Only an
- * EXPLICIT `number_of_tiles` goes through Sec.4's scaling.
- */
-export function resolveTileBudget(
-  cmd: InstantiatedCommand,
-  dim: number,
-): number {
-  const explicit = argValue(cmd, "number_of_tiles", 0);
-  if (typeof explicit !== "number") return defaultTileBudget(dim);
-  return lastScaleAttribute(cmd) === "size"
-    ? scaleToMapArea(explicit, dim)
-    : explicit;
-}
-
-/** `number_of_clumps` has no RMSTEST_14-style special default (it is plain `1`, guide-declared), so `set_scale_by_groups` applies to it whether declared or defaulted. */
-export function resolveClumpCount(
-  cmd: InstantiatedCommand,
-  dim: number,
-): number {
-  const declared = numAttr(cmd, "number_of_clumps", 0, 1);
-  const scaled =
-    lastScaleAttribute(cmd) === "groups"
-      ? scaleToMapArea(declared, dim)
-      : declared;
-  return Math.max(1, scaled);
-}
-
-/**
- * Sec.6.2's density-amplification formula. Below the knee (sparse clumps)
- * the ratio is the flat measured seed bias; above it, rises linearly with
- * clump density, clamped, "a real clamp... otherwise computes an unbounded
- * weight and empties the disfavoured half."
- */
-export function seedRatio(clumpCount: number, mapArea: number): number {
-  const density = clumpCount / mapArea;
-  const excess = Math.max(0, density - DENSITY_KNEE);
-  return Math.min(
-    SEED_RATIO_MAX,
-    SEED_BASE_RATIO + DENSITY_AMPLIFICATION * excess,
-  );
-}
-
-/** RMSTEST_22a: "model it as max(6, share) before growth", the overshoot floor for a clump's own tile share. */
-export function perClumpTarget(tileBudget: number, clumpCount: number): number {
-  return Math.max(MIN_TILES_PER_CLUMP, Math.floor(tileBudget / clumpCount));
-}
-
-// ---------------------------------------------------------------------------
-// Terrain constants, the narrow local shape, matching grid.ts/palette.ts's
-// own precedent (each consumer states what it needs from game-constants.json).
-// ---------------------------------------------------------------------------
-
-export interface TerrainConstantForElevation {
-  constId: number | null;
-  rmsConstant: string | null;
-  category: string;
-}
-
-// ---------------------------------------------------------------------------
-// Clump growth and the ring-height profile
-// ---------------------------------------------------------------------------
-
-function fourNeighbors(dim: number, tile: number): number[] {
-  const x = tile % dim;
-  const y = (tile - x) / dim;
-  const out: number[] = [];
-  if (x > 0) out.push(tile - 1);
-  if (x < dim - 1) out.push(tile + 1);
-  if (y > 0) out.push(tile - dim);
-  if (y < dim - 1) out.push(tile + dim);
-  return out;
-}
-
-/**
- * Frontier-weighted growth from one seed to `target` tiles, by the
- * bucket-by-neighborsOwned shape of `bucketWeights` above (the rev 7 land
- * table, kept here when land growth moved to the rev 8 port), at the fixed "moderate" regime Sec.6.2
- * specifies (no clumping_factor attribute exists on `create_elevation`, so
- * there is nothing per-command to read). No border/zone rejection: nothing
- * in Sec.6.2 or `create_elevation`'s attribute list gates growth candidates
- * beyond "still on the grid," unlike lands.ts's borders/zones.
- */
-export function growClump(
-  dim: number,
-  seed: number,
-  target: number,
-  rng: Rng,
-): Set<number> {
-  const owned = new Set<number>([seed]);
-  if (target <= 1) return owned;
-  const weights = bucketWeights(CLUMP_GROWTH_CF);
-  const buckets: [number[], number[], number[], number[]] = [[], [], [], []];
-  const inFrontier = new Set<number>();
-
-  function addFrontier(tile: number): void {
-    if (inFrontier.has(tile) || owned.has(tile)) return;
-    inFrontier.add(tile);
-    let neighborsOwned = 0;
-    for (const n of fourNeighbors(dim, tile))
-      if (owned.has(n)) neighborsOwned++;
-    const bucketIndex = Math.max(1, Math.min(4, neighborsOwned)) - 1;
-    buckets[bucketIndex].push(tile);
+  constructor(listCount: number, tileCount: number) {
+    this.head = new Int32Array(listCount).fill(-1);
+    this.prev = new Int32Array(tileCount).fill(-1);
+    this.next = new Int32Array(tileCount).fill(-1);
+    this.cost = new Int32Array(tileCount);
   }
 
-  for (const n of fourNeighbors(dim, seed)) addFrontier(n);
-
-  while (owned.size < target) {
-    const sizes = buckets.map((b) => b.length);
-    const totalWeight = sizes.reduce(
-      (sum, size, i) => sum + size * weights[i],
-      0,
-    );
-    if (totalWeight <= 0) break; // frontier exhausted (e.g. a tiny map), take what growth reached
-    let roll = nextFloat01(rng) * totalWeight;
-    let bucketIndex = 0;
-    for (; bucketIndex < 3; bucketIndex++) {
-      const contribution = sizes[bucketIndex] * weights[bucketIndex];
-      if (roll < contribution) break;
-      roll -= contribution;
-    }
-    const bucket = buckets[bucketIndex];
-    const pickIndex = nextInt(rng, 0, bucket.length - 1);
-    const tile = bucket[pickIndex];
-    bucket[pickIndex] = bucket[bucket.length - 1];
-    bucket.pop();
-    inFrontier.delete(tile);
-    owned.add(tile);
-    for (const n of fourNeighbors(dim, tile)) addFrontier(n);
+  /** Forget the first entry and touch nothing else, the main list's emptying. */
+  forgetHead(q: number): void {
+    this.head[q] = -1;
   }
 
-  return owned;
-}
-
-/**
- * Sec.6.2: "tile height = min(h, floor(distanceFromClumpEdge / spacing))",
- * concentric rings from the boundary inward. Multi-source BFS seeded from
- * every clump tile touching a non-clump tile OR the map edge (both count as
- * "the edge", there is no clump tile beyond either).
- */
-export function clumpEdgeDistances(
-  dim: number,
-  clumpTiles: ReadonlySet<number>,
-): Map<number, number> {
-  const dist = new Map<number, number>();
-  const queue: number[] = [];
-  for (const tile of clumpTiles) {
-    const neighbors = fourNeighbors(dim, tile);
-    const isBoundary =
-      neighbors.length < 4 || neighbors.some((n) => !clumpTiles.has(n));
-    if (isBoundary) {
-      dist.set(tile, 0);
-      queue.push(tile);
+  /** Forget the first entry and clear its link back to the list, the clump lists' emptying. */
+  dropHead(q: number): void {
+    const h = this.head[q];
+    if (h !== -1) {
+      this.prev[h] = -1;
+      this.head[q] = -1;
     }
   }
-  let head = 0;
-  while (head < queue.length) {
-    const tile = queue[head++];
-    const d = dist.get(tile)!;
-    for (const n of fourNeighbors(dim, tile)) {
-      if (clumpTiles.has(n) && !dist.has(n)) {
-        dist.set(n, d + 1);
-        queue.push(n);
+
+  remove(i: number): void {
+    const p = this.prev[i];
+    const n = this.next[i];
+    if (p <= -2) this.head[-2 - p] = n;
+    else if (p >= 0) this.next[p] = n;
+    if (n !== -1) this.prev[n] = p;
+    this.prev[i] = -1;
+    this.next[i] = -1;
+  }
+
+  pushFront(q: number, i: number): void {
+    this.remove(i);
+    const n = this.head[q];
+    this.prev[i] = -2 - q;
+    this.next[i] = n;
+    if (n !== -1) this.prev[n] = i;
+    this.head[q] = i;
+  }
+
+  /** Before the first entry whose cost is at least `c`, so a new entry lands before its equals. */
+  insert(q: number, i: number, c: number): void {
+    this.remove(i);
+    let p = -2 - q;
+    let cur = this.head[q];
+    while (cur !== -1 && this.cost[cur] < c) {
+      p = cur;
+      cur = this.next[cur];
+    }
+    this.prev[i] = p;
+    this.next[i] = cur;
+    this.cost[i] = c;
+    if (p <= -2) this.head[q] = i;
+    else this.next[p] = i;
+    if (cur !== -1) this.prev[cur] = i;
+  }
+
+  pop(q: number): number {
+    const h = this.head[q];
+    if (h !== -1) this.remove(h);
+    return h;
+  }
+}
+
+/**
+ * The shuffle both the elevation and the cliff stage use, two draws per entry.
+ * Each pass deals the list into 100 buckets at random, then gathers them back
+ * pairwise, alternating between the two buckets of a pair. Exported for
+ * `cliffs.ts`, which runs it on its own lists of cells.
+ */
+export function shuffleList(
+  lists: {
+    forgetHead(q: number): void;
+    pop(q: number): number;
+    pushFront(q: number, i: number): void;
+  },
+  main: number,
+  bucket0: number,
+  stream: DeStream,
+): void {
+  for (let b = 0; b < BUCKETS; b++) lists.forgetHead(bucket0 + b);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = lists.pop(main); i !== -1; i = lists.pop(main))
+      lists.pushFront(bucket0 + stream.bounded(BUCKETS), i);
+    for (let g = 0; g < BUCKETS; g += 4) {
+      for (const a of [g, g + 2]) {
+        for (;;) {
+          let moved = false;
+          for (const s of [bucket0 + a, bucket0 + a + 1]) {
+            const i = lists.pop(s);
+            if (i !== -1) {
+              lists.pushFront(main, i);
+              moved = true;
+            }
+          }
+          if (!moved) break;
+        }
       }
     }
   }
-  return dist;
 }
 
 // ---------------------------------------------------------------------------
-// Seed selection
+// Commands become layers (3.1)
 // ---------------------------------------------------------------------------
 
-function xyOf(dim: number, tile: number): { x: number; y: number } {
-  const x = tile % dim;
-  return { x, y: (tile - x) / dim };
+interface Layer {
+  /** The command the layer came from, for its report. */
+  cmd: InstantiatedCommand;
+  height: number;
+  /** Tiles grow only from this height. */
+  from: number;
+  tiles: number;
+  clumps: number;
+  spacing: number;
+  /** -1 when `base_terrain` resolves to nothing, which no tile matches. */
+  baseTerrain: number;
+  baseLayer: number;
+  balanced: boolean;
 }
 
-/** One command's static candidate set: Sec.7's two-predicate attribution (terrain match, then player-origin distance), reused directly from placement.ts rather than a hand-rolled filter. */
-export function eligibleSeedCandidates(
-  grid: TileGrid,
-  terrainId: number,
-  layerId: number | undefined,
-  playerOrigins: readonly LandOrigin[],
-): PlacementOutcome<Int32Array> {
-  const { dim } = grid;
-  const n = dim * dim;
-  const scratch = new Int32Array(n);
-  for (let i = 0; i < n; i++) scratch[i] = i;
-
-  const predicates: AttributedPredicate[] = [
-    {
-      bucket: "terrainAbsent",
-      test: (i) =>
-        grid.terrain[i] === terrainId &&
-        (layerId === undefined || grid.layer[i] === layerId),
-    },
-    {
-      bucket: "playerOriginAvoidance",
-      test: (i) => {
-        if (playerOrigins.length === 0) return true;
-        const { x, y } = xyOf(dim, i);
-        for (const origin of playerOrigins) {
-          const dx = x - origin.x;
-          const dy = y - origin.y;
-          if (
-            dx * dx + dy * dy <
-            PLAYER_ORIGIN_MIN_DISTANCE * PLAYER_ORIGIN_MIN_DISTANCE
-          )
-            return false;
-        }
-        return true;
-      },
-    },
-  ];
-
-  const result = intersectCandidates(scratch, n, predicates);
-  if (result.count === 0) {
-    return fail({
-      bucket: result.failedBucket ?? "noValidTiles",
-      commandSpan: { start: 0, end: 0 }, // filled in by the caller, which has the real span
-      stage: "S2",
-      entity: "elevation clump",
-      detail: "",
-    });
-  }
-  return ok(Int32Array.from(result.survivors));
+function attr(cmd: InstantiatedCommand, name: string): InstantiatedValue {
+  return cmd.attributes.get(name)?.[0]?.args[0]?.value;
 }
 
-/**
- * The candidate pool, split once by diagonal side, Sec.6.2's "weight ratio
- * favouring y > x, uniform with respect to distance from the map edge".
- *
- * Built ONCE PER COMMAND. `drawSeed` used to do this split itself, on every
- * call, which made each seed draw O(candidates), and a `create_elevation`
- * command asks for one draw per clump, so a command with thousands of clumps
- * over a 40,000-tile candidate set cost hundreds of millions of operations.
- * `AK_Namatjira.rms` spent 3.1 s in S2 alone on this before the split moved
- * out (measured 2026-08-07). The function's own doc comment already said
- * "split the pool by diagonal side once"; the implementation just did not.
- */
-export interface SeedPool {
-  favored: number[];
-  disfavored: number[];
+/** A number attribute, `fallback` when absent. A known symbol with no value reads as 0, as in every other stage (BUG-021). */
+function numAttr(
+  cmd: InstantiatedCommand,
+  name: string,
+  fallback: number,
+): number {
+  const arg = cmd.attributes.get(name)?.[0]?.args[0];
+  if (arg === undefined) return fallback;
+  if (typeof arg.value === "number") return Math.trunc(arg.value);
+  return arg.value === undefined ? 0 : fallback;
 }
 
-export function buildSeedPool(dim: number, candidates: Int32Array): SeedPool {
-  const favored: number[] = [];
-  const disfavored: number[] = [];
-  for (const tile of candidates) {
-    const { x, y } = xyOf(dim, tile);
-    (y > x ? favored : disfavored).push(tile);
-  }
-  return { favored, disfavored };
+/** The later of the two scale attributes by source position, since the later one wins. */
+function scaleOf(cmd: InstantiatedCommand): "size" | "groups" | undefined {
+  const size = cmd.attributes.get("set_scale_by_size")?.[0];
+  const groups = cmd.attributes.get("set_scale_by_groups")?.[0];
+  if (size && groups)
+    return size.span.start > groups.span.start ? "size" : "groups";
+  if (size) return "size";
+  if (groups) return "groups";
+  return undefined;
 }
 
-/**
- * One diagonally-biased, spacing-respecting seed draw from a prebuilt pool.
- * `placedSeeds` is the running index of seeds this command has already
- * accepted, a uniform grid rather than a list, for the same reason
- * `spacingIndex.ts` exists at all: the scan it replaces was quadratic in the
- * clump count.
- */
-export function drawSeed(
-  dim: number,
-  pool: SeedPool,
-  ratio: number,
-  placedSeeds: SpacingIndex,
-  rng: Rng,
-): number | undefined {
-  const pFavored = ratio / (ratio + 1);
-
-  for (let attempt = 0; attempt < SEED_SPACING_ATTEMPTS; attempt++) {
-    let side = nextFloat01(rng) < pFavored ? pool.favored : pool.disfavored;
-    if (side.length === 0)
-      side = pool.favored.length > 0 ? pool.favored : pool.disfavored;
-    if (side.length === 0) return undefined;
-    const tile = side[nextInt(rng, 0, side.length - 1)];
-    const { x, y } = xyOf(dim, tile);
-    if (!placedSeeds.tooClose(x, y)) return tile;
-  }
-  return undefined; // spacing kept rejecting every draw, reported as spacingConflict by the caller
-}
-
-// ---------------------------------------------------------------------------
-// Orchestration
-// ---------------------------------------------------------------------------
-
-export interface ElevationResult {
-  reports: CommandReport[];
-}
-
-/**
- * Sec.6.2: AST -> elevation clumps. Mutates `grid.elevation` (ADDING onto
- * whatever base_elevation already wrote, per "heights add on top of
- * base_elevation, DE-relative behaviour"); returns one `CommandReport` per
- * `create_elevation` command (Sec.7).
- */
-export function applyElevation(
+function buildLayers(
+  commands: readonly InstantiatedCommand[],
   instantiated: InstantiatedScript,
-  grid: TileGrid,
-  constants: readonly TerrainConstantForElevation[],
-  origins: readonly LandOrigin[],
-  masterSeed: number,
-): ElevationResult {
-  const commands = instantiated.sections.get("ELEVATION_GENERATION") ?? [];
-  const { dim } = grid;
-  const mapArea = dim * dim;
-  const playerOrigins = origins.filter((o) => o.player !== undefined);
-  const reports: CommandReport[] = [];
-  let ordinal = 0;
-  const nextSubstream = (): Rng => createSubstream(masterSeed, "S2", ordinal++);
-
+  constants: readonly TerrainConstantForMasks[],
+  dim: number,
+): Layer[] {
+  const area = dim * dim;
+  const layers: Layer[] = [];
   for (const cmd of commands) {
     if (cmd.name !== "create_elevation") continue;
-    // MaxHeight is create_elevation's own positional argument, not an attribute.
-    const maxHeight =
-      typeof cmd.args[0]?.value === "number" ? cmd.args[0].value : 0;
-    if (maxHeight <= 0) {
-      reports.push({
-        commandSpan: cmd.span,
-        stage: "S2",
-        attempted: 0,
-        placed: 0,
-        failures: [],
-      });
+    const h = cmd.args[0]?.value;
+    const count = typeof h === "number" ? Math.trunc(h) : 0;
+    // A negative count takes back the last layers made so far (untested).
+    if (count < 0) {
+      layers.splice(Math.max(0, layers.length + count));
       continue;
     }
-
-    const terrainRef = argValue(cmd, "base_terrain", 0) ?? "GRASS";
-    const layerRef = argValue(cmd, "base_layer", 0);
-    const terrainId = resolveTerrainId(
-      constants,
-      terrainRef,
-      instantiated.symbols,
-      instantiated.aliases,
-    );
-    const layerId =
-      layerRef !== undefined
-        ? resolveTerrainId(
+    const terrainRef = attr(cmd, "base_terrain") ?? "GRASS";
+    const layerRef = attr(cmd, "base_layer");
+    const baseTerrain =
+      resolveTerrainId(
+        constants,
+        terrainRef,
+        instantiated.symbols,
+        instantiated.aliases,
+      ) ?? -1;
+    const baseLayer =
+      layerRef === undefined
+        ? NO_LAYER
+        : (resolveTerrainId(
             constants,
             layerRef,
             instantiated.symbols,
             instantiated.aliases,
-          )
-        : undefined;
+          ) ?? -1);
+    let tiles = numAttr(cmd, "number_of_tiles", dim);
+    let clumps = Math.min(numAttr(cmd, "number_of_clumps", 1), MAX_CLUMPS);
+    // The scaling applies to the final values and truncates. The scaled
+    // clump count is not capped at 999 again, only its use is (growLayer).
+    const scale = scaleOf(cmd);
+    if (scale === "size")
+      tiles = Math.min(Math.floor((tiles * area) / 10000), area);
+    else if (scale === "groups") clumps = Math.floor((clumps * area) / 10000);
+    // `spacing` applies to layers 2 and up, and only when positive. Layer 1
+    // always keeps a spacing of 2.
+    const spacing = numAttr(cmd, "spacing", 0);
+    for (let k = 1; k <= count; k++) {
+      layers.push({
+        cmd,
+        height: Math.min(k, MAX_LAYER_HEIGHT),
+        from: k - 1,
+        tiles,
+        clumps,
+        spacing: k === 1 ? 2 : spacing > 0 ? spacing : 1,
+        baseTerrain,
+        baseLayer,
+        balanced: cmd.attributes.has("enable_balanced_elevation"),
+      });
+    }
+  }
+  return layers;
+}
 
-    const clumpCount = resolveClumpCount(cmd, dim);
-    const tileBudget = resolveTileBudget(cmd, dim);
-    const tilesPerClump = perClumpTarget(tileBudget, clumpCount);
-    const spacing = numAttr(cmd, "spacing", 0, 1);
-    const ratio = seedRatio(clumpCount, mapArea);
+// ---------------------------------------------------------------------------
+// The avoidance weight (3.2)
+// ---------------------------------------------------------------------------
 
+/**
+ * Every tile's weight from the player lands' origins. Only tiles within 13 of
+ * an origin can carry any, so each origin touches its own 27 x 27 box rather
+ * than the whole map, and the distances in that box come from one table.
+ */
+function buildWeights(origins: readonly LandOrigin[], dim: number): Uint8Array {
+  const weight = new Uint8Array(dim * dim);
+  const seen = new Set<number>();
+  const span = AVOID_RADIUS * 2 + 1;
+  const table = new Int32Array(span * span);
+  for (let dy = -AVOID_RADIUS; dy <= AVOID_RADIUS; dy++)
+    for (let dx = -AVOID_RADIUS; dx <= AVOID_RADIUS; dx++) {
+      const d = Math.floor(f32Sqrt(dx * dx + dy * dy));
+      table[(dy + AVOID_RADIUS) * span + dx + AVOID_RADIUS] = Math.max(
+        0,
+        AVOID_WEIGHT * (AVOID_RADIUS - d),
+      );
+    }
+  // Summed in a wider array and capped once at the end, as the game sums
+  // every origin's share before it caps.
+  const sum = new Int32Array(dim * dim);
+  for (const origin of origins) {
+    if (origin.player === undefined) continue;
+    const key = origin.y * dim + origin.x;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (let dy = -AVOID_RADIUS; dy <= AVOID_RADIUS; dy++) {
+      const y = origin.y + dy;
+      if (y < 0 || y >= dim) continue;
+      for (let dx = -AVOID_RADIUS; dx <= AVOID_RADIUS; dx++) {
+        const x = origin.x + dx;
+        if (x < 0 || x >= dim) continue;
+        sum[y * dim + x] +=
+          table[(dy + AVOID_RADIUS) * span + dx + AVOID_RADIUS];
+      }
+    }
+  }
+  for (let i = 0; i < sum.length; i++) weight[i] = Math.min(sum[i], WEIGHT_CAP);
+  return weight;
+}
+
+// ---------------------------------------------------------------------------
+// One layer (3.3, 3.4)
+// ---------------------------------------------------------------------------
+
+const MAIN = 0;
+const CLUMP0 = 1;
+const BUCKET0 = CLUMP0 + MAX_CLUMPS;
+const LIST_COUNT = BUCKET0 + BUCKETS;
+
+/** What one layer did, for its command's report. */
+interface LayerOutcome {
+  seeded: number;
+  clumps: number;
+}
+
+function growLayer(
+  layer: Layer,
+  grid: TileGrid,
+  weight: Uint8Array,
+  lists: TileLists,
+  stream: DeStream,
+): LayerOutcome {
+  const { dim, terrain, elevation } = grid;
+  const layerGrid = grid.layer;
+  const clumps = Math.min(layer.clumps, MAX_CLUMPS);
+  lists.forgetHead(MAIN);
+  for (let q = CLUMP0; q < CLUMP0 + clumps; q++) lists.forgetHead(q);
+
+  // 1. Candidates, row by row, each to the front of the main list.
+  for (let i = 0; i < dim * dim; i++)
+    if (
+      terrain[i] === layer.baseTerrain &&
+      elevation[i] === layer.from &&
+      layerGrid[i] === layer.baseLayer &&
+      weight[i] === 0
+    )
+      lists.pushFront(MAIN, i);
+  // 2. The shuffle.
+  shuffleList(lists, MAIN, BUCKET0, stream);
+
+  /** True when no tile in the square of radius `r` is off the base terrain, off the base layer or below the layer's start. */
+  const spacingOk = (x: number, y: number, r: number): boolean => {
+    for (let ny = Math.max(y - r, 0); ny <= Math.min(y + r, dim - 1); ny++)
+      for (let nx = Math.max(x - r, 0); nx <= Math.min(x + r, dim - 1); nx++) {
+        const j = ny * dim + nx;
+        if (
+          terrain[j] !== layer.baseTerrain ||
+          layerGrid[j] !== layer.baseLayer ||
+          elevation[j] < layer.from
+        )
+          return false;
+      }
+    return true;
+  };
+
+  // 3. Seeds. The root is taken in single precision, as the game does.
+  const unlink = Math.max(
+    Math.floor(
+      Math.floor(f32Sqrt(f32Div(layer.tiles, Math.max(layer.clumps, 1)))) / 2,
+    ),
+    2,
+  );
+  let placed = 0;
+  let seeded = 0;
+  while (seeded < clumps) {
+    const i = lists.pop(MAIN);
+    if (i === -1) break;
+    const x = i % dim;
+    const y = (i - x) / dim;
+    if (weight[i] !== 0 || !spacingOk(x, y, layer.spacing & 0xff)) continue;
+    if (!layer.balanced) {
+      // The quirk. The bottom edge is the clipped right edge, x + r, not
+      // y + r, so a seed far below the diagonal takes nothing out.
+      const x0 = Math.max(x - unlink, 0);
+      const x1 = Math.min(x + unlink, dim - 1);
+      const y0 = Math.max(y - unlink, 0);
+      const y1 = Math.min(x1, dim - 1);
+      for (let ny = y0; ny <= y1; ny++)
+        for (let nx = x0; nx <= x1; nx++) lists.remove(ny * dim + nx);
+    }
+    elevation[i] = layer.height;
+    placed++;
+    const q = CLUMP0 + seeded;
+    // Left, up, right, down, each before the last, so the list starts with
+    // the lower neighbour.
+    if (x > 0) lists.insert(q, i - 1, 0);
+    if (y > 0) lists.insert(q, i - dim, 0);
+    if (x + 1 < dim) lists.insert(q, i + 1, 0);
+    if (y + 1 < dim) lists.insert(q, i + dim, 0);
+    seeded++;
+  }
+
+  // 4. Growth, round robin over the clumps until the budget is met or a whole
+  // round pops nothing.
+  while (placed < layer.tiles) {
+    let popped = false;
+    for (let c = 0; c < clumps && placed < layer.tiles; c++) {
+      const q = CLUMP0 + c;
+      const i = lists.pop(q);
+      if (i === -1) continue;
+      popped = true;
+      const x = i % dim;
+      const y = (i - x) / dim;
+      if (weight[i] > stream.bounded(100)) {
+        weight[i] = WEIGHT_CAP;
+        continue;
+      }
+      if (!spacingOk(x, y, layer.spacing)) continue;
+      let n = 0;
+      for (let ny = Math.max(y - 2, 0); ny <= Math.min(y + 2, dim - 1); ny++)
+        for (let nx = Math.max(x - 2, 0); nx <= Math.min(x + 2, dim - 1); nx++)
+          if (elevation[ny * dim + nx] === layer.height) n++;
+      if (n === 0 || elevation[i] !== layer.from) continue;
+      elevation[i] = layer.height;
+      placed++;
+      const base = 250 - 15 * n;
+      if (x > 0 && elevation[i - 1] === layer.from)
+        lists.insert(q, i - 1, stream.bounded(100) + base);
+      if (x + 1 < dim && elevation[i + 1] === layer.from)
+        lists.insert(q, i + 1, stream.bounded(100) + base);
+      if (y > 0 && elevation[i - dim] === layer.from)
+        lists.insert(q, i - dim, stream.bounded(100) + base);
+      if (y + 1 < dim && elevation[i + dim] === layer.from)
+        lists.insert(q, i + dim, stream.bounded(100) + base);
+    }
+    if (!popped) break;
+  }
+  for (let q = CLUMP0; q < CLUMP0 + clumps; q++) lists.dropHead(q);
+  return { seeded, clumps };
+}
+
+// ---------------------------------------------------------------------------
+// Smoothing (3.5), no draws
+// ---------------------------------------------------------------------------
+
+/** Lowers every higher tile among the 8 neighbours to `h`. True when one changed. */
+function lowerHigher(
+  e: Uint8Array,
+  dim: number,
+  x: number,
+  y: number,
+  h: number,
+): boolean {
+  let changed = false;
+  for (let ny = Math.max(y - 1, 0); ny <= Math.min(y + 1, dim - 1); ny++)
+    for (let nx = Math.max(x - 1, 0); nx <= Math.min(x + 1, dim - 1); nx++) {
+      const j = ny * dim + nx;
+      if (e[j] > h) {
+        e[j] = h;
+        changed = true;
+      }
+    }
+  return changed;
+}
+
+/** A pinched tile goes up a level below 8, and pulls its higher neighbours down to it from 8 up. */
+function settle(e: Uint8Array, dim: number, x: number, y: number): boolean {
+  const i = y * dim + x;
+  if (e[i] < SMOOTH_LIMIT) {
+    e[i]++;
+    return true;
+  }
+  return lowerHigher(e, dim, x, y, e[i]);
+}
+
+function pinchPass(e: Uint8Array, dim: number): boolean {
+  let changed = false;
+  for (let y = 0; y < dim; y++)
+    for (let x = 0; x < dim; x++) {
+      const i = y * dim + x;
+      const h = e[i];
+      const up = y > 0 && e[i - dim] > h;
+      const down = y + 1 < dim && e[i + dim] > h;
+      const left = x > 0 && e[i - 1] > h;
+      const right = x + 1 < dim && e[i + 1] > h;
+      if ((up && down) || (left && right))
+        changed = settle(e, dim, x, y) || changed;
+    }
+  return changed;
+}
+
+/**
+ * The land cleanup's diagonal patterns (lands.ts `cleanTerrainAgainst`, pass
+ * 1) with "is higher" in place of "is the reference terrain".
+ */
+function topologyPass(e: Uint8Array, dim: number): boolean {
+  let changed = false;
+  const last = dim - 1;
+  for (let y = 0; y < dim; y++)
+    for (let x = 0; x < dim; x++) {
+      const i = y * dim + x;
+      const h = e[i];
+      const up = y > 0 && e[i - dim] > h;
+      const down = y < last && e[i + dim] > h;
+      const left = x > 0 && e[i - 1] > h;
+      const right = x < last && e[i + 1] > h;
+      const upLeft = y > 0 && x > 0 && e[i - dim - 1] > h;
+      const upRight = y > 0 && x < last && e[i - dim + 1] > h;
+      const downLeft = y < last && x > 0 && e[i + dim - 1] > h;
+      const downRight = y < last && x < last && e[i + dim + 1] > h;
+      const fill =
+        (upLeft &&
+          ((upRight && !up) ||
+            (right && !upRight) ||
+            (downLeft && !left) ||
+            (down && !downLeft) ||
+            (downRight && !down && !right))) ||
+        (upRight &&
+          ((downRight && !right) ||
+            (down && !downRight) ||
+            (upLeft && !up) ||
+            (left && !upLeft) ||
+            (downLeft && !left && !down))) ||
+        (downRight &&
+          ((downLeft && !down) ||
+            (left && !downLeft) ||
+            (upRight && !right) ||
+            (up && !upRight) ||
+            (upLeft && !left && !up))) ||
+        (downLeft &&
+          ((upLeft && !left) ||
+            (up && !upLeft) ||
+            (downRight && !down) ||
+            (right && !downRight) ||
+            (upRight && !right && !up)));
+      if (fill) changed = settle(e, dim, x, y) || changed;
+    }
+  return changed;
+}
+
+function slopePass(e: Uint8Array, dim: number): boolean {
+  let changed = false;
+  for (let y = 0; y < dim; y++)
+    for (let x = 0; x < dim; x++) {
+      const i = y * dim + x;
+      const h = e[i];
+      if (h === SMOOTH_LIMIT) continue;
+      const rising = h < SMOOTH_LIMIT;
+      const target = rising ? h + 1 : h - 1;
+      let steep = false;
+      for (
+        let ny = Math.max(y - 1, 0);
+        ny <= Math.min(y + 1, dim - 1) && !steep;
+        ny++
+      )
+        for (
+          let nx = Math.max(x - 1, 0);
+          nx <= Math.min(x + 1, dim - 1);
+          nx++
+        ) {
+          const v = e[ny * dim + nx];
+          if (rising ? v > target : v < target) {
+            steep = true;
+            break;
+          }
+        }
+      if (steep) {
+        e[i] = target;
+        changed = true;
+      }
+    }
+  return changed;
+}
+
+/**
+ * The whole-map smoothing after every layer. Every pass changes tiles in
+ * place, so a tile sees the changes of the tiles before it. Exported for its
+ * own tests.
+ */
+export function smoothElevation(e: Uint8Array, dim: number): void {
+  for (;;) {
+    while (pinchPass(e, dim));
+    const topology = topologyPass(e, dim);
+    const slope = slopePass(e, dim);
+    if (!topology && !slope) return;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The stage
+// ---------------------------------------------------------------------------
+
+export interface ElevationResult {
+  reports: CommandReport[];
+  /** The game's stream after this stage, where the cliff stage starts. */
+  stream: DeStreamState;
+}
+
+/**
+ * Sec.6.2, rev 10. Mutates `grid.elevation` and returns one `CommandReport`
+ * per `create_elevation` command, plus the stream.
+ *
+ * With no `<ELEVATION_GENERATION>` section nothing happens and no draw is
+ * taken. In particular the land heights stay as painted, sheer steps
+ * included (lh2). A present section burns one draw first, then runs every
+ * layer in script order, or smooths once when it has none.
+ */
+export function applyElevation(
+  instantiated: InstantiatedScript,
+  grid: TileGrid,
+  constants: readonly TerrainConstantForMasks[],
+  origins: readonly LandOrigin[],
+  streamState: DeStreamState,
+): ElevationResult {
+  const commands = instantiated.sections.get("ELEVATION_GENERATION");
+  if (commands === undefined) return { reports: [], stream: streamState };
+  const { dim } = grid;
+  const stream = resumeDeStream(streamState);
+  stream.raw(); // the burned draw, one per section, purpose unknown
+
+  const layers = buildLayers(commands, instantiated, constants, dim);
+  const weight = buildWeights(origins, dim);
+  // One set of lists for the whole section, so stale links survive from one
+  // layer to the next, as the game's do.
+  const lists = new TileLists(LIST_COUNT, dim * dim);
+  if (layers.length === 0) smoothElevation(grid.elevation, dim);
+
+  const outcomes = new Map<InstantiatedCommand, LayerOutcome[]>();
+  for (const layer of layers) {
+    const outcome = growLayer(layer, grid, weight, lists, stream);
+    smoothElevation(grid.elevation, dim);
+    const list = outcomes.get(layer.cmd) ?? [];
+    list.push(outcome);
+    outcomes.set(layer.cmd, list);
+  }
+
+  const reports: CommandReport[] = [];
+  for (const cmd of commands) {
+    if (cmd.name !== "create_elevation") continue;
+    const done = outcomes.get(cmd) ?? [];
     const failures: PlacementFailure[] = [];
-    let placed = 0;
-
-    if (terrainId === undefined) {
+    const terrainRef = attr(cmd, "base_terrain") ?? "GRASS";
+    if (
+      done.length > 0 &&
+      resolveTerrainId(
+        constants,
+        terrainRef,
+        instantiated.symbols,
+        instantiated.aliases,
+      ) === undefined
+    )
       pushFailure(failures, {
         bucket: "terrainAbsent",
         commandSpan: cmd.span,
         stage: "S2",
-        entity: "elevation clump",
-        detail: `This map's reference data doesn't know the terrain "${String(terrainRef)}", so no seed tile could be matched to it.`,
+        entity: "elevation layer",
+        detail: `This map's reference data doesn't know the terrain "${String(terrainRef)}", so no tile could be matched to it.`,
       });
-      reports.push({
-        commandSpan: cmd.span,
-        stage: "S2",
-        attempted: clumpCount,
-        placed: 0,
-        failures,
-      });
-      continue;
-    }
-
-    const candidateResult = eligibleSeedCandidates(
-      grid,
-      terrainId,
-      layerId,
-      playerOrigins,
-    );
-    if (!candidateResult.ok) {
-      pushFailure(failures, {
-        ...candidateResult.failure,
-        commandSpan: cmd.span,
-        detail:
-          candidateResult.failure.bucket === "terrainAbsent"
-            ? `No tile on the map currently has this clump's base_terrain ("${String(terrainRef)}"), so no seed could be placed.`
-            : `Every tile matching this clump's base_terrain sits within ${PLAYER_ORIGIN_MIN_DISTANCE} tiles of a player land's origin, so no seed could be placed.`,
-      });
-      reports.push({
-        commandSpan: cmd.span,
-        stage: "S2",
-        attempted: clumpCount,
-        placed: 0,
-        failures,
-      });
-      continue;
-    }
-    const pool = buildSeedPool(dim, candidateResult.value);
-
-    // Euclidean, matching the `dx*dx + dy*dy < spacing*spacing` this replaced
-    // (S6's own spacing rule is Chebyshev, the two attributes genuinely
-    // differ, which is why the index takes the metric as a parameter).
-    const placedSeeds = createSpacingIndex(dim, spacing, "euclidean");
-    for (let c = 0; c < clumpCount; c++) {
-      const rng = nextSubstream();
-      const seed = drawSeed(dim, pool, ratio, placedSeeds, rng);
-      if (seed === undefined) {
+    done.forEach((outcome, k) => {
+      if (outcome.seeded < outcome.clumps)
         pushFailure(failures, {
-          bucket: "spacingConflict",
+          bucket: "noValidTiles",
           commandSpan: cmd.span,
           stage: "S2",
-          entity: `elevation clump ${c + 1}`,
-          detail: `Could not find a seed at least ${spacing} tiles from every other clump in this command after ${SEED_SPACING_ATTEMPTS} attempts.`,
+          entity: `elevation layer ${k + 1}`,
+          detail: `Height ${k + 1} found room for ${outcome.seeded} of its ${outcome.clumps} clumps. A clump needs a tile at height ${k} on its base terrain, clear of player lands, with its spacing all on that terrain.`,
+          data: { seeded: outcome.seeded, clumps: outcome.clumps },
         });
-        continue;
-      }
-      placedSeeds.add(seed % dim, (seed - (seed % dim)) / dim);
-
-      const heightRng = nextSubstream();
-      const h = clumpCount === 1 ? maxHeight : nextInt(heightRng, 1, maxHeight);
-      const growthRng = nextSubstream();
-      const clumpTiles = growClump(dim, seed, tilesPerClump, growthRng);
-      const edgeDistances = clumpEdgeDistances(dim, clumpTiles);
-      for (const tile of clumpTiles) {
-        const ring = Math.min(
-          h,
-          Math.floor((edgeDistances.get(tile) ?? 0) / spacing),
-        );
-        // `MaxHeight` is an ABSOLUTE CEILING, not an increment. A command
-        // raises a tile toward `MaxHeight` and never past it, and never
-        // lowers one that is already higher.
-        //
-        // The consequence worth stating, because it is what makes this the
-        // right model rather than just a safe one: two lands under the SAME
-        // `create_elevation 6`, one sitting at `base_elevation 2` and one at
-        // 5, both end up topping out at 6. The hills on the first read as
-        // tall (2 -> 6) and on the second as shallow (5 -> 6). A land already
-        // above the ceiling is left alone.
-        //
-        // Two earlier readings were both wrong. `grid.elevation[tile] + ring`
-        // (summing) meant repeated commands stacked: `AD4 - Pag - v1.2.rms`
-        // writes `create_elevation 7 { number_of_tiles 230400 }` FIVE TIMES
-        // over one region -- 230,400 tiles on a 40,000-tile map, so each
-        // floods all of it -- plus a 180-clump `create_elevation 2`, summing
-        // to 37 and clamping: 36,877 of 40,000 tiles at elevation 16 on a map
-        // whose author asked for 7. Repeating a command is the coverage idiom
-        // every script uses for `create_terrain`, not a height multiplier.
-        // `baseElevation[tile] + ring` fixed the stacking but kept an
-        // increment, which would put a `base_elevation 5` land under a
-        // `create_elevation 6` at 11.
-        if (ring > grid.elevation[tile]) grid.elevation[tile] = ring;
-      }
-      placed++;
-    }
-
+    });
     reports.push({
       commandSpan: cmd.span,
       stage: "S2",
-      attempted: clumpCount,
-      placed,
+      attempted: done.reduce((sum, o) => sum + o.clumps, 0),
+      placed: done.reduce((sum, o) => sum + o.seeded, 0),
       failures,
     });
   }
-
-  return { reports };
+  return { reports, stream: stream.state() };
 }

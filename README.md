@@ -7,13 +7,14 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 - **Breakdown editor**, a beginner-friendly block-based view over your RMS code (Player Setup, Land, Elevation, Cliff, Terrain, Connection, Objects). Edit dropdowns and value fields instead of raw syntax.
 - **Code editor**, a full Monaco editor with RMS syntax highlighting, hover docs and search.
 - **Advanced Live Diagnostics**, 48 diagnostic codes covering unclosed blocks, unknown names, argument problems and semantic mistakes the game reports no error for. Several catch lines that parse cleanly and then do nothing in game, such as an attribute whose required partner is missing, or a command sitting in a section the engine will not run it from.
-- **Approximate map preview**, a canvas render of what your script generates including a notes drawer listing every approximation and placement failure.
+- **Tutorials**, step-by-step guides to help you learn how to write RMS using either the Breakdown editor or the Code editor.
+- **Map preview**, a canvas render of what your script generates including a notes drawer listing every approximation and placement failure.
 - **Reference panel**, look up terrains, objects, commands and the attributes each command accepts, and read a list of every create_object object in your script beside how many of it the last generation actually placed.
 - **Advanced Tools**, a pane of built-in tools that analyze or edit your script: a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. There is no plugin system for external tools, and none is planned. See "Contributing" below for how to add one.
 
 Code is always the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
-The preview is an approximation and can always be improved. It reproduces the engine's own rules where those have been measured in game, and marks what it cannot model rather than drawing a confident guess.
+The preview is an approximation and can always be improved. Currently the land generation, elevation and cliff sections are tile-for-tile with the engine. The rest of the preview reproduces the engine's own rules where those have been measured in game, and marks what it cannot model rather than drawing a confident guess.
 
 ## Status
 
@@ -67,7 +68,7 @@ Thanks to Zetnus for permission to adapt the Definitive Random Map Scripting Gui
 
 [genie-rms](https://github.com/genie-js/genie-rms) by Renée Kooi, an open source reimplementation of the original game's map generator, was a useful resource for how the map preview grows lands. It builds on reverse engineering of the original game by Yvan Burrie, JustTesting123 and others.
 
-[AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE) gave the first leads to how Definitive Edition draws the random numbers behind its lands. Every rule the preview's land stage uses was then tested against maps the game generated, and the code is written from those tests rather than from AoE2RMSIDE's. The generator itself is Chris Lomont's WELL512, seeded with a 32-bit xorshift and Robert Jenkins' integer hash.
+[AoE2RMSIDE](https://github.com/aoe2control/AoE2RMSIDE) gave the first leads to how Definitive Edition draws its random numbers. Every rule the preview uses was then tested against maps the game generated, and the code is written from those tests.
 
 ## Attribution
 
@@ -77,4 +78,4 @@ Age of Empires II © Microsoft Corporation. Age of RMS was created under Microso
 
 See `CONTRIBUTING.md`. This project is aimed at the AoE2 RMS community, including casual and first-time contributors.
 
-There is no external plugin system for Advanced Tools, and building one isn't planned — the existing built-in tools cover the current need, and a manifest-plus-process-plus-registry system is a lot of machinery to maintain for what would still be a handful of tools. Thinking about writing your own Advanced Tools tool anyway? It gets added as a built-in one, through a pull request, on the same contract the five tools already there use, see [`docs/tool-author-preview.md`](docs/tool-author-preview.md). Bigger ideas, including a plugin system if someone wants to build and maintain one, are welcome as a fork. Feature requests are always welcome as an issue, whether or not you plan to build it yourself.
+Wish there was a tool that isn't there right now? Feel free to fork, build it and submit a pull request. Feature requests are also welcome, whether or not you plan to build it yourself.

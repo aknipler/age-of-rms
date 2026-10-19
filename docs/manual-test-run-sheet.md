@@ -677,6 +677,23 @@ Section 20 is still owed too, and covers the Breakdown track.
 
 ---
 
+## 24. DE-exact hills and cliffs, 2026-10-19 (`preview-design.md` rev 10)
+
+1. Open a script with `<ELEVATION_GENERATION>` and `<CLIFF_GENERATION>` (for example
+   `AK_Vanguard_v1.2.rms` or Comeer's finished script) and confirm the preview renders without a
+   stall, with hills shaded and cliffs marked.
+2. Re-roll a few times and confirm hills and cliffs move with the seed, and that the same seed gives
+   the same picture twice.
+3. Hover the approximate badge, the seed chip and Team Positions, and confirm their HelpTips say
+   lands, hills and cliffs match the game.
+4. Open the Comeer tutorial and confirm its first picture loads.
+5. Optional, against the game. Copy one of the probe scripts in
+   `src/preview/__tests__/fixtures/de-elevation-cliff-maps.json` (its `scripts` list), generate it in
+   DE's scenario editor at a typed seed, Tiny, 2 players, set the same in the preview, and compare
+   the hills and the cliff lines.
+
+---
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

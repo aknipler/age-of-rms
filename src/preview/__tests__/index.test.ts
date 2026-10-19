@@ -147,15 +147,19 @@ describe("generatePreview: automatic beaches (engine behaviour, no command asks 
     expect(result.notes.some((n) => n.key === "automaticBeach")).toBe(true);
   });
 
-  it("the beach exists by the S1 snapshot, before any create_terrain command could match on it", () => {
-    // The ordering the first implementation got wrong. A single pass after
-    // S5 leaves S1 bare, and every `base_terrain BEACH` command in
-    // <TERRAIN_GENERATION> then matches an empty pool.
+  it("no beach yet when the land stage ends, and one by the end of the terrain stage (rev 10)", () => {
+    // DE grows hills on land beside water as if no beach were there (lh1, in
+    // deElevationCliffMaps.test.ts), so the first pass runs after the cliffs
+    // and before <TERRAIN_GENERATION>, not at the end of the land stage. The
+    // test below is the observable that keeps a pass before S4 at all.
     const result = run(coastline, 3, true);
-    const s1 = result.snapshots!.find((s) => s.stage === "S1")!;
-    expect(
-      Array.from(s1.terrain).filter((t) => t === BEACH).length,
-    ).toBeGreaterThan(0);
+    const beachIn = (stage: string) =>
+      Array.from(
+        result.snapshots!.find((s) => s.stage === stage)!.terrain,
+      ).filter((t) => t === BEACH).length;
+    expect(beachIn("S1")).toBe(0);
+    expect(beachIn("S3")).toBe(0);
+    expect(beachIn("S4")).toBeGreaterThan(0);
   });
 
   it("`base_terrain BEACH` therefore has tiles to match: the command places rather than reporting terrainAbsent", () => {
