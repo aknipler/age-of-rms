@@ -10,6 +10,7 @@ import { useParsedDocumentContext } from "../../ParsedDocumentContext";
 import { usePreviewResultContext } from "../../PreviewResultContext";
 import { usePreviewView } from "../preview/PreviewViewContext";
 import { HelpTip } from "../HelpTip";
+import { renderProse } from "../InlineCode";
 import { ScriptName } from "../ScriptName";
 import { buildObjectInventory } from "./objectInventory";
 import {
@@ -557,7 +558,7 @@ export function ReferenceTable() {
                           )}
                         </td>
                         <td>{command.section}</td>
-                        <td>{command.description ?? "—"}</td>
+                        <td>{renderProse(command.description ?? "—")}</td>
                       </tr>
                       {expanded &&
                         attributes.map((a) => (
@@ -574,7 +575,7 @@ export function ReferenceTable() {
                               )}
                             </td>
                             <td>—</td>
-                            <td>{a.description ?? "—"}</td>
+                            <td>{renderProse(a.description ?? "—")}</td>
                           </tr>
                         ))}
                     </Fragment>
@@ -598,7 +599,7 @@ export function ReferenceTable() {
                           )}
                         </td>
                         <td>—</td>
-                        <td>{a.description ?? "—"}</td>
+                        <td>{renderProse(a.description ?? "—")}</td>
                       </tr>
                     ))}
                   </>

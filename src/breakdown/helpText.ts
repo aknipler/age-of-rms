@@ -52,25 +52,35 @@ interface ArgumentLike {
 }
 
 /**
- * Hover text for a positional argument. Most positional args (unlike
- * attributes) have no dedicated language.json `description` today, the
- * fallback composes something from the type/range/default rather than a
- * bare "a positional argument" placeholder, so at minimum the type and
- * legal range are visible on hover even with no prose written yet.
+ * Hover text for one argument slot: what it means (the def's own
+ * `description`, when one is written), then its range and default. Returns
+ * undefined when there is nothing of that to say, and the caller passes
+ * `null` to HelpTip so no popup opens, a tip that only restates the argument's
+ * type or the command's name teaches nothing.
+ *
+ * Deliberately does not look the argument up in doc-strings.json. Argument
+ * names such as `percent` or `distance` repeat across dozens of attributes
+ * and mean something different in each, so a name-keyed lookup could only
+ * ever show the wrong one. `showName` prefixes the argument's name for an
+ * attribute with several slots (circle_radius takes a radius and a variance),
+ * where the tip would otherwise not say which box it is for.
  */
 export function argumentHelpText(
   arg: ArgumentLike | undefined,
-  contextName: string,
-): string {
-  if (!arg) return `A positional argument for "${contextName}".`;
-  const fromDocs = docSummary(arg.name) ?? arg.description;
-  if (fromDocs) return fromDocs;
-  const parts = [`A ${arg.type} argument for "${contextName}".`];
-  if (arg.min !== undefined || arg.max !== undefined) {
-    parts.push(`Range ${arg.min ?? "?"}–${arg.max ?? "?"}.`);
+  showName = false,
+): string | undefined {
+  if (!arg) return undefined;
+  const parts: string[] = [];
+  if (arg.description) parts.push(arg.description);
+  if (arg.min !== undefined && arg.max !== undefined) {
+    parts.push(`Range ${arg.min}–${arg.max}.`);
+  } else if (arg.min !== undefined) {
+    parts.push(`Min ${arg.min}.`);
+  } else if (arg.max !== undefined) {
+    parts.push(`Max ${arg.max}.`);
   }
-  if (arg.default !== undefined) {
-    parts.push(`Default ${arg.default}.`);
-  }
-  return parts.join(" ");
+  if (arg.default !== undefined) parts.push(`Default ${arg.default}.`);
+  if (parts.length === 0) return undefined;
+  const text = parts.join(" ");
+  return showName ? `Argument ${arg.name}. ${text}` : text;
 }

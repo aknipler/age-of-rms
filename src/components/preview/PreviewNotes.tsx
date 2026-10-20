@@ -7,6 +7,7 @@ import {
   type TerrainPalette,
 } from "../../preview/render/palette";
 import { HelpTip } from "../HelpTip";
+import { InlineCode, renderProse } from "../InlineCode";
 import styles from "./PreviewNotes.module.css";
 
 interface PreviewNotesProps {
@@ -98,7 +99,7 @@ export function PreviewNotes({
           {drawerNotes.map((note) => (
             <li key={note.key} className={styles.note}>
               <span className={styles.stage}>{note.stage}</span>
-              {note.text}
+              {renderProse(note.text)}
             </li>
           ))}
           {result.reports
@@ -111,7 +112,7 @@ export function PreviewNotes({
                     ×{failure.occurrences}
                   </span>
                 )}
-                {failure.detail}
+                {renderProse(failure.detail)}
               </li>
             ))}
           {drawerNotes.length === 0 && failureCount === 0 && (
@@ -134,11 +135,14 @@ export function PreviewNotes({
               A red ▲ marks a land the engine could not place where the script
               asked, so it sits at the map centre instead. Hover the marker for
               the detail. Lands that merely grew smaller than they asked for
-              carry no marker. That is the usual outcome of land_percent, and
-              the map is showing their real size.
+              carry no marker. That is the usual outcome of{" "}
+              <InlineCode>land_percent</InlineCode>, and the map is showing
+              their real size.
             </p>
           )}
-          <p className={styles.legendNote}>{COLOR_MODE_NOTES[palette.mode]}</p>
+          <p className={styles.legendNote}>
+            {renderProse(COLOR_MODE_NOTES[palette.mode])}
+          </p>
           <ul className={styles.legend}>
             {terrainsInUse.map((id) => {
               const source = palette.sourceFor(id);

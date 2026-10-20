@@ -1059,7 +1059,8 @@
           "type": "integer",
           "min": 0,
           "max": 2,
-          "default": 0
+          "default": 0,
+          "description": "0 is classic. 1 counts the base_size square inside number_of_tiles and land_percent, and stops land order changing the result. 2 may change object placement."
         }
       ],
       "verified": true
@@ -1075,7 +1076,7 @@
           "type": "integer",
           "min": 36,
           "max": 480,
-          "description": "Values outside this range are clamped."
+          "description": "Side length in tiles of a square map, replacing the lobby size. Values outside the range are clamped."
         }
       ],
       "verified": true
@@ -1091,7 +1092,8 @@
           "type": "integer",
           "min": 0,
           "max": 53,
-          "default": 0
+          "default": 0,
+          "description": "Civilization number for Gaia, which sets building style and unit looks. 0 is the default Gaia. Gaia effects stop working on units players can control."
         }
       ],
       "verified": true
@@ -1104,17 +1106,18 @@
       "arguments": [
         {
           "name": "mapType",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Ignored on DE, so write CUSTOM."
         },
         {
           "name": "isNomad",
           "type": "flag",
-          "description": "0 or 1."
+          "description": "1 for a nomad start with no town center. Always set it on nomad maps."
         },
         {
           "name": "isMichi",
           "type": "flag",
-          "description": "0 or 1."
+          "description": "1 if forest completely separates the players."
         },
         {
           "name": "showType",
@@ -1138,16 +1141,18 @@
         },
         {
           "name": "target",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Object, resource, technology or class constant the effect applies to."
         },
         {
           "name": "attribute",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Attribute constant to change."
         },
         {
           "name": "amount",
           "type": "integer",
-          "description": "DE treats this as a float."
+          "description": "Value to apply. DE reads it as a float."
         }
       ],
       "verified": true,
@@ -1165,15 +1170,18 @@
         },
         {
           "name": "target",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Object, resource, technology or class constant the effect applies to."
         },
         {
           "name": "attribute",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Attribute constant to change."
         },
         {
           "name": "amount",
-          "type": "integer"
+          "type": "integer",
+          "description": "Percent value, divided by 100, so decimals are possible."
         }
       ],
       "deprecated": "use effect_amount instead",
@@ -1188,11 +1196,13 @@
       "arguments": [
         {
           "name": "objectType",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Object or class constant. Use VILLAGER_CLASS for villagers, not VILLAGER."
         },
         {
           "name": "resourceType",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Resource amount constant."
         },
         {
           "name": "resourceDelta",
@@ -1205,7 +1215,8 @@
           "type": "integer",
           "min": 0,
           "max": 7,
-          "default": 0
+          "default": 0,
+          "description": "Add values together. 1 loses if you do not control the object, 2 trickles the resource while you do, 4 inverts the object requirement for the other flags."
         }
       ],
       "verified": true
@@ -1252,25 +1263,29 @@
           "name": "precipitationStyle",
           "type": "integer",
           "min": -4,
-          "max": 4
+          "max": 4,
+          "description": "0 none, 2 rain, 3 thunderstorm, 4 snow. Negative values run east to west."
         },
         {
           "name": "liveColor",
           "type": "integer",
           "min": 0,
-          "max": 255
+          "max": 255,
+          "description": "Terrain tint in revealed areas. 0 is none and 1 to 255 pick a palette color."
         },
         {
           "name": "fogColor",
           "type": "integer",
           "min": 0,
-          "max": 255
+          "max": 255,
+          "description": "Terrain tint in the fog of war. 0 is none and 1 to 255 pick a palette color."
         },
         {
           "name": "waterDirection",
           "type": "integer",
           "min": -1,
-          "max": 1
+          "max": 1,
+          "description": "0 is random, 1 runs west to east and -1 east to west."
         }
       ],
       "verified": true,
@@ -1285,7 +1300,8 @@
         {
           "name": "waterType",
           "type": "otherConstant",
-          "default": 0
+          "default": 0,
+          "description": "Water color-correction constant, defined with #const first. Not visible with Render 3D Water off."
         }
       ],
       "verified": true
@@ -1313,7 +1329,8 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Visual only terrain layered over base_terrain. Write it after base_terrain."
         }
       ],
       "verified": true
@@ -1327,7 +1344,8 @@
         {
           "name": "enabled",
           "type": "flag",
-          "default": 1
+          "default": 1,
+          "description": "0 turns off animated beach waves. They only show with Render Beach Waves on."
         }
       ],
       "verified": true
@@ -1411,7 +1429,8 @@
           "type": "integer",
           "min": 0,
           "max": 16,
-          "default": 0
+          "default": 0,
+          "description": "Tallest hill height. Small hills cannot reach it. Relative to a land's base_elevation in DE."
         }
       ],
       "attributes": [
@@ -1451,7 +1470,8 @@
         {
           "name": "count",
           "type": "integer",
-          "default": 3
+          "default": 3,
+          "description": "Fewest cliffs. The count is drawn from here up to one below max_number_of_cliffs."
         }
       ],
       "verified": true
@@ -1465,7 +1485,8 @@
         {
           "name": "count",
           "type": "integer",
-          "default": 9
+          "default": 9,
+          "description": "Upper bound, not included. The same value as the minimum gives exactly that many."
         }
       ],
       "verified": true,
@@ -1481,7 +1502,8 @@
           "name": "length",
           "type": "integer",
           "min": 3,
-          "default": 5
+          "default": 5,
+          "description": "Fewest cliff segments. 3 is 12 tiles, 4 is 15 and 5 is 18. Below 3 no cliffs appear."
         }
       ],
       "verified": true,
@@ -1497,7 +1519,8 @@
           "name": "length",
           "type": "integer",
           "min": 3,
-          "default": 9
+          "default": 9,
+          "description": "Longest cliff in segments, not included. Keep the minimum at or below it or the game crashes."
         }
       ],
       "verified": true
@@ -1513,7 +1536,8 @@
           "type": "percent",
           "min": 0,
           "max": 100,
-          "default": 36
+          "default": 36,
+          "description": "Chance a cliff changes direction at each segment. Low is straight, high is winding."
         }
       ],
       "verified": true,
@@ -1528,7 +1552,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "default": 2
+          "default": 2,
+          "description": "Cliff units between separate cliffs, 3 tiles each."
         }
       ],
       "verified": true,
@@ -1543,7 +1568,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "default": 2
+          "default": 2,
+          "description": "Cliff units kept from water, 3 tiles each. Only water from LAND_GENERATION counts."
         }
       ],
       "verified": true,
@@ -1557,7 +1583,8 @@
       "arguments": [
         {
           "name": "type",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Color correction constant. Not visible with Map Lighting off. Water is set by water_definition."
         }
       ],
       "verified": true,
@@ -1668,12 +1695,14 @@
         {
           "name": "zoneA",
           "type": "integer",
-          "max": 245
+          "max": 245,
+          "description": "First zone. Every land in it connects to every land in the second."
         },
         {
           "name": "zoneB",
           "type": "integer",
-          "max": 245
+          "max": 245,
+          "description": "Second zone. Player lands each have their own zone, player number minus 10."
         }
       ],
       "attributes": [
@@ -1815,7 +1844,8 @@
       "arguments": [
         {
           "name": "areaId",
-          "type": "integer"
+          "type": "integer",
+          "description": "ID that avoid_actor_area and actor_area_to_place_in use to refer to this area. 0 means no actor area."
         }
       ],
       "description": "Associates this placement with an actor area created by create_actor_area.",
@@ -1827,7 +1857,8 @@
       "arguments": [
         {
           "name": "radius",
-          "type": "integer"
+          "type": "integer",
+          "description": "Radius in tiles, so the default of 1 covers 3x3. Objects sharing an area all use the first one's radius."
         }
       ],
       "description": "Radius of the associated actor area.",
@@ -1839,7 +1870,8 @@
       "arguments": [
         {
           "name": "areaId",
-          "type": "integer"
+          "type": "integer",
+          "description": "ID of the actor area the object must be placed inside. An object can have only one."
         }
       ],
       "description": "Restricts placement to inside a specific actor area.",
@@ -1857,7 +1889,8 @@
           "name": "percent",
           "type": "percent",
           "min": 0,
-          "max": 99
+          "max": 99,
+          "description": "A weight, not a plain percent. The first member also gets whatever the weights leave over."
         }
       ],
       "description": "Adds an object type to the enclosing object group. Since the September 2026 update the weights are lopsided. The largest weight (capped at 99) is the share of draws split among the members by weight, and the first member also gets everything left over, so 50 50 plays as about 75 25. To set a member's chance, give the first member 0 and make the largest weight 100 minus the share you want the first member to keep.",
@@ -1875,19 +1908,22 @@
         },
         {
           "name": "number",
-          "type": "integer"
+          "type": "integer",
+          "description": "Player number or color (1 to 8), or a team number for AT_TEAM. A negative team means players NOT on it, and -10 means any player."
         },
         {
           "name": "mode",
           "type": "integer",
           "min": -1,
-          "max": 0
+          "max": 0,
+          "description": "0 picks at random and -1 goes in lobby order. Only matters for AT_TEAM."
         },
         {
           "name": "flags",
           "type": "integer",
           "min": 0,
-          "max": 3
+          "max": 3,
+          "description": "Add values together. 1 resets players already assigned, 2 does not remember this assignment."
         }
       ],
       "mutexWith": ["assign_to_player"],
@@ -1901,7 +1937,8 @@
           "name": "playerNumber",
           "type": "integer",
           "min": 1,
-          "max": 8
+          "max": 8,
+          "description": "Lobby position, not color. Lands for players who are not in the game are not created."
         }
       ],
       "mutexWith": ["assign_to"],
@@ -1913,7 +1950,8 @@
       "arguments": [
         {
           "name": "areaId",
-          "type": "integer"
+          "type": "integer",
+          "description": "ID of the actor area to stay out of. An object can avoid several."
         }
       ],
       "description": "Keeps placement away from a specific actor area.",
@@ -1933,7 +1971,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "optional": true
+          "optional": true,
+          "description": "Tiles to stay from cliffs. Use at least 2 to leave a visible gap. Omitting the number means 1."
         }
       ],
       "description": "Keeps placement away from cliff zones.",
@@ -1946,7 +1985,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "optional": true
+          "optional": true,
+          "description": "Tiles to stay from any tree. Sparse forests may need more. Omitting the number means 1."
         }
       ],
       "mutexWith": ["place_on_forest_zone"],
@@ -1960,7 +2000,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "optional": true
+          "optional": true,
+          "description": "Tiles to keep from the edge of the object's own land. Objects stay on that land even at 0 or less."
         }
       ],
       "description": "Keeps placement away from other zones' lands.",
@@ -1975,7 +2016,8 @@
           "type": "integer",
           "min": 0,
           "max": 16,
-          "default": 0
+          "default": 0,
+          "description": "Height the whole land is raised to, 0 is flat. Above 7 can cause rendering problems. Water lands ignore it."
         }
       ],
       "description": "Height this land is raised to, written on the land and a thin rim of base terrain around it. A water land ignores it. Needs an <ELEVATION_GENERATION> section, which may be empty. Without one the land still rises, but nothing smooths its edge into a slope, so it stands as a sheer step.",
@@ -1988,7 +2030,8 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Visual only terrain layered over base_terrain. Write it after base_terrain."
         }
       ],
       "description": "Sets a secondary base terrain layer for this block. DE only.",
@@ -2001,10 +2044,11 @@
         {
           "name": "radius",
           "type": "integer",
-          "default": 3
+          "default": 3,
+          "description": "Land starting width = 2*base_size + 1 (square), or radius = base_size (circle, with set_circular_base). Also the minimum distance from the map edge."
         }
       ],
-      "description": "Base radius of the land before growth/fuzziness is applied.",
+      "description": "Size of the land's starting square before growth.",
       "verified": true
     },
     {
@@ -2025,7 +2069,8 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Placed where this terrain meets water, BEACH by default. Anything else blocks docks there. Fails if a CONNECTION_GENERATION section exists."
         }
       ],
       "description": "Terrain used for the shoreline transition next to this terrain patch.",
@@ -2040,7 +2085,8 @@
           "type": "percent",
           "min": 0,
           "max": 100,
-          "default": 20
+          "default": 20,
+          "description": "100 sticks closest to the borders, and 0 respects them least."
         }
       ],
       "description": "Randomizes land edges instead of a hard border.",
@@ -2055,7 +2101,8 @@
           "max": 99,
           "default": 0,
           "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block.",
+          "description": "Percent of map width to keep land away from the bottom edge (southeast). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
       "description": "Minimum distance from the map's bottom edge.",
@@ -2083,13 +2130,14 @@
           "type": "percent",
           "min": -50,
           "max": 50,
-          "description": "Percent of MAP WIDTH (not half-width). Three distinct behaviours, all measured: positive = an explicit ring of that radius; 0 = disables circular positioning and falls back to the default ring (guide:844); NEGATIVE = a third behaviour that is neither (RMSTEST_27)."
+          "description": "Percent of map width, not half-width. 0 turns the ring off and uses the default one. Negative values scatter lands instead of ringing them."
         },
         {
           "name": "variance",
           "type": "integer",
           "default": 0,
-          "optional": true
+          "optional": true,
+          "description": "Random spread of each land's distance from the center. 0 is a perfect circle, and about 20 matches the default ring."
         }
       ],
       "description": "Radius (as a percent of map width) for circular player-land positioning, plus an optional variance. DE only. Zero and negative values are LEGAL and each mean something different - see the radiusPercent argument.",
@@ -2103,7 +2151,7 @@
           "name": "value",
           "type": "integer",
           "default": 8,
-          "description": "Higher = blobbier, rounder and CONNECTED; lower = stringier and may fragment. Measured (RMSTEST_38): a single land comes back in one piece at cf >= 20, in 1-2 pieces at the default 8, and in 6-10 pieces at cf -20. No min/max is declared deliberately - the conventional 1-15 is far too narrow, community testing reports about -100 to 99, and the corpus uses -20 through 100."
+          "description": "Higher is rounder and connected, lower is stringier and may fragment. 20 or more keeps a land in one piece. Useful range is about 0 to 40."
         }
       ],
       "description": "Controls how blobby vs. scattered a land/terrain's shape is.",
@@ -2115,7 +2163,8 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Replaces ALL terrain along the connection. Handy for seeing the paths while debugging."
         }
       ],
       "description": "Terrain used to pave connections by default.",
@@ -2169,10 +2218,11 @@
         {
           "name": "mode",
           "type": "flag",
-          "default": 0
+          "default": 0,
+          "description": "0 places lands in a cross-shaped area, never the corners. 1 allows anywhere, corners included. No effect on create_player_lands."
         }
       ],
-      "description": "Legacy generation-mode toggle. DE only.",
+      "description": "Lets lands be placed anywhere, corners included. DE only.",
       "verified": true
     },
     {
@@ -2180,7 +2230,8 @@
       "arguments": [
         {
           "name": "tiles",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles out from the group's center, so 3 is a 7x7 area. Turns grouping on. Default 3."
         }
       ],
       "description": "Keeps grouped objects within this many tiles of the group's center.",
@@ -2192,7 +2243,8 @@
       "arguments": [
         {
           "name": "value",
-          "type": "integer"
+          "type": "integer",
+          "description": "Each group's object count varies by up to this much, independently. A group always has at least 1 object."
         }
       ],
       "description": "Randomizes how many objects land in each group.",
@@ -2204,11 +2256,13 @@
       "arguments": [
         {
           "name": "min",
-          "type": "integer"
+          "type": "integer",
+          "description": "Lowest height the terrain may go on, inclusive. 0 is flat ground."
         },
         {
           "name": "max",
-          "type": "integer"
+          "type": "integer",
+          "description": "Highest height the terrain may go on, inclusive. 7 is the most create_elevation makes."
         }
       ],
       "description": "Restricts this terrain to a range of elevation levels.",
@@ -2233,7 +2287,8 @@
           "name": "percent",
           "type": "percent",
           "min": -1,
-          "max": 100
+          "max": 100,
+          "description": "Higher keeps the land closer to its base_size shape. 0 or any negative does nothing and 100 overrides base_size. Documented as buggy, so avoid it."
         }
       ],
       "description": "DE-only land-shape parameter. Noted as buggy in the source guide.",
@@ -2246,7 +2301,8 @@
         {
           "name": "id",
           "type": "integer",
-          "min": -10
+          "min": -10,
+          "description": "Label that place_on_specific_land_id uses. Lands can share one. Write it after assign_to_player or assign_to, which reset it."
         }
       ],
       "description": "Names this land so later commands (e.g. place_on_specific_land_id) can target it.",
@@ -2260,7 +2316,8 @@
           "type": "percent",
           "min": 0,
           "max": 100,
-          "default": 100
+          "default": 100,
+          "description": "Share of the map the land grows to. Borders and other lands can leave it smaller. Player lands split it between them."
         }
       ],
       "mutexWith": ["number_of_tiles"],
@@ -2274,13 +2331,15 @@
           "name": "x",
           "type": "percent",
           "min": 0,
-          "max": 99
+          "max": 99,
+          "description": "X of the land's origin as a percent of the map. Without land_position the origin is random and never in a corner. Outside the map can crash the game."
         },
         {
           "name": "y",
           "type": "percent",
           "min": 0,
-          "max": 99
+          "max": 99,
+          "description": "Y of the land's origin as a percent of the map. Outside the map can crash the game."
         }
       ],
       "description": "Fixes the land's position as a percentage of map dimensions. Ignores border settings.",
@@ -2291,7 +2350,8 @@
       "arguments": [
         {
           "name": "layer",
-          "type": "otherConstant"
+          "type": "otherConstant",
+          "description": "Only places on this layering terrain. Does not work with terrain_mask 2, use terrain_to_place_on there."
         }
       ],
       "description": "Restricts placement to a specific terrain layer.",
@@ -2307,7 +2367,8 @@
           "max": 99,
           "default": 0,
           "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block.",
+          "description": "Percent of map width to keep land away from the left edge (southwest). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
       "description": "Minimum distance from the map's left edge.",
@@ -2339,10 +2400,11 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Despite the name, the MINIMUM tiles objects stay from terrains they cannot be placed on, such as coastlines. Groups measure from their center."
         }
       ],
-      "description": "Maximum distance allowed from other zones.",
+      "description": "Minimum distance to keep from terrains the object cannot be placed on, despite the name.",
       "verified": false,
       "notes": "Name only — see create_object's notes."
     },
@@ -2351,7 +2413,8 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Furthest tiles from a player's origin. A negative value means no limit. Measured as a square unless set_circular_placement is used."
         }
       ],
       "description": "Maximum distance to allow from any player's starting area.",
@@ -2363,7 +2426,8 @@
       "arguments": [
         {
           "name": "count",
-          "type": "integer"
+          "type": "integer",
+          "description": "Smallest connected placeable area a group may sit in. A bug biases objects to the top left, so prefer avoid_forest_zone or max_distance_to_other_zones."
         }
       ],
       "description": "Minimum contiguous placeable area required.",
@@ -2383,7 +2447,8 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles that this command's objects and all later ones stay from each object. Small values keep different resources apart."
         }
       ],
       "description": "Minimum distance between separate placement groups.",
@@ -2395,7 +2460,8 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles objects stay from the map edge. Groups measure from their center."
         }
       ],
       "description": "Minimum distance to keep from the edge of the map.",
@@ -2407,7 +2473,8 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Closest tiles to a player's origin. Measured as a square unless set_circular_placement is used."
         }
       ],
       "description": "Minimum distance to keep from any player's starting area.",
@@ -2419,7 +2486,8 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles from the origins of earlier lands when picking a random origin. Falls back to other_zone_avoidance_distance. No effect with land_position."
         }
       ],
       "description": "Minimum distance between instances of this land. Defaults to other_zone_avoidance_distance's value.",
@@ -2431,7 +2499,8 @@
         {
           "name": "count",
           "type": "integer",
-          "default": 1
+          "default": 1,
+          "description": "How many separate clumps to make. Adjacent clumps can merge."
         }
       ],
       "description": "How many separate blobs to split the placement into.",
@@ -2442,7 +2511,8 @@
       "arguments": [
         {
           "name": "count",
-          "type": "integer"
+          "type": "integer",
+          "description": "How many groups of number_of_objects to place, so the total is number_of_objects * number_of_groups."
         }
       ],
       "description": "How many separate clusters to split the placement into.",
@@ -2454,7 +2524,8 @@
       "arguments": [
         {
           "name": "count",
-          "type": "integer"
+          "type": "integer",
+          "description": "How many to place. Keep it to 9320 or less with set_scaling_to_map_size."
         }
       ],
       "description": "How many of this object to place.",
@@ -2466,7 +2537,8 @@
       "arguments": [
         {
           "name": "count",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles the land grows by, on top of the base_size square. With behavior_version 1 the square counts inside it. Each player land gets this many."
         }
       ],
       "mutexWith": ["land_percent"],
@@ -2479,7 +2551,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "default": 0
+          "default": 0,
+          "description": "Tiles kept from lands in a different zone. Both lands need it and the smaller value wins. Also spaces random origins apart."
         }
       ],
       "description": "Minimum distance to keep from lands in other zones.",
@@ -2511,7 +2584,8 @@
       "arguments": [
         {
           "name": "landId",
-          "type": "integer"
+          "type": "integer",
+          "description": "The land_id to place on, and every land with that ID counts. -11 places anywhere on the map."
         }
       ],
       "mutexWith": ["set_place_for_every_player"],
@@ -2524,12 +2598,14 @@
       "arguments": [
         {
           "name": "from",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Terrain to replace. It is the terrain present when CONNECTION_GENERATION started, even if already replaced since."
         },
         {
           "name": "to",
           "type": "terrainConstant",
-          "leadIn": "with"
+          "leadIn": "with",
+          "description": "Terrain it becomes."
         }
       ],
       "description": "Replaces one terrain with another along the connection path.",
@@ -2543,7 +2619,8 @@
         {
           "name": "pathType",
           "type": "otherConstant",
-          "optional": true
+          "optional": true,
+          "description": "Deviation. 0 or omitted only rules out unreachable spots, 1 needs a mostly direct path, and higher allows more winding ones."
         }
       ],
       "description": "Requires a valid path of the given type to reach this placement.",
@@ -2555,7 +2632,8 @@
       "arguments": [
         {
           "name": "amount",
-          "type": "integer"
+          "type": "integer",
+          "description": "Added to each object's resource amount, and a negative value reduces it. Does not work on farms."
         }
       ],
       "description": "Adjusts the resource amount carried by placed objects.",
@@ -2571,7 +2649,8 @@
           "max": 99,
           "default": 0,
           "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block.",
+          "description": "Percent of map width to keep land away from the right edge (northeast). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
       "description": "Minimum distance from the map's right edge.",
@@ -2583,7 +2662,8 @@
       "arguments": [
         {
           "name": "type",
-          "type": "objectConstant"
+          "type": "objectConstant",
+          "description": "Object placed on top of the main one. An invisible placeholder as the main object bypasses terrain restrictions."
         }
       ],
       "description": "A secondary object type placed alongside the primary one.",
@@ -2596,7 +2676,8 @@
         {
           "name": "distance",
           "type": "integer",
-          "optional": true
+          "optional": true,
+          "description": "Tiles this terrain stays from player origins. Omitting the number means 13."
         }
       ],
       "description": "Keeps this terrain away from player starting areas.",
@@ -2626,7 +2707,8 @@
       "arguments": [
         {
           "name": "facet",
-          "type": "integer"
+          "type": "integer",
+          "description": "Sprite frame to draw, which for units is the direction they face. Below 0 gives the first frame. Does not work on buildings."
         }
       ],
       "description": "Sets the visual facet/rotation variant used for placed objects.",
@@ -2729,7 +2811,8 @@
           "name": "tiles",
           "type": "integer",
           "min": 1,
-          "default": 1
+          "default": 1,
+          "description": "Tiles per elevation level. Above 1 leaves rings of flat ground on a hill."
         }
       ],
       "description": "Minimum spacing between elevation clumps.",
@@ -2740,7 +2823,8 @@
       "arguments": [
         {
           "name": "tiles",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles to stay from other terrains already placed, and from cliffs. Does not apply to the same terrain, use a placeholder terrain for that."
         }
       ],
       "description": "Minimum spacing to keep from other terrain-generation patches.",
@@ -2752,11 +2836,13 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Terrain to keep away from. It cannot be the terrain being placed."
         },
         {
           "name": "tiles",
-          "type": "integer"
+          "type": "integer",
+          "description": "Tiles to stay from it. A larger spacing_to_other_terrain_types wins."
         }
       ],
       "description": "Minimum spacing to keep from a specific named terrain.",
@@ -2769,7 +2855,8 @@
       "arguments": [
         {
           "name": "distance",
-          "type": "integer"
+          "type": "integer",
+          "description": "Like min_distance_group_placement but only for this create_object. Good for scattering neutral resources and relics."
         }
       ],
       "description": "Temporary override of min_distance_group_placement for this placement only.",
@@ -2789,11 +2876,13 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Terrain whose cost for the connection is being set."
         },
         {
           "name": "cost",
-          "type": "integer"
+          "type": "integer",
+          "description": "Higher makes the connection route around the terrain, and equal costs give straight lines. 0 or less blocks it entirely."
         }
       ],
       "description": "Pathfinding cost weight for a terrain when routing this connection.",
@@ -2806,7 +2895,8 @@
       "arguments": [
         {
           "name": "mask",
-          "type": "integer"
+          "type": "integer",
+          "description": "1 masks over the base terrain and inherits its properties. 2 masks under it and brings new ones. 0 is no masking."
         }
       ],
       "description": "Restricts which underlying terrains this patch can be painted over.",
@@ -2818,18 +2908,21 @@
       "arguments": [
         {
           "name": "terrain",
-          "type": "terrainConstant"
+          "type": "terrainConstant",
+          "description": "Terrain the connection passes through."
         },
         {
-          "name": "width",
-          "type": "integer"
+          "name": "radius",
+          "type": "integer",
+          "description": "Tiles around each tile of this terrain that get replaced. 0 still replaces a one-tile path."
         },
         {
-          "name": "spacing",
-          "type": "integer"
+          "name": "variance",
+          "type": "integer",
+          "description": "Random change to the radius for each tile crossed. Bigger than the radius can shrink it to nothing."
         }
       ],
-      "description": "Width/spacing of a terrain band used along the connection path.",
+      "description": "Radius and variance of the area replaced where a connection crosses this terrain.",
       "verified": false,
       "repeatable": true,
       "notes": "Name only — see default_terrain_replacement's notes."
@@ -2867,7 +2960,8 @@
           "max": 99,
           "default": 0,
           "cautionBelow": 0,
-          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block."
+          "cautionMessage": "Negative border values are valid RMS. The guide's one condition is that the land origin still ends up inside the map, and it names two ways to ensure that: give the land an explicit land_position inside the map, or a base_size large enough. Check one of those is in this block.",
+          "description": "Percent of map width to keep land away from the top edge (northwest). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
       "description": "Minimum distance from the map's top edge.",
@@ -2879,7 +2973,8 @@
       "arguments": [
         {
           "name": "zoneId",
-          "type": "integer"
+          "type": "integer",
+          "description": "Lands in one zone can touch, and different zones keep apart if other_zone_avoidance_distance is set. Defaults are player number minus 10 for player lands and -10 for create_land."
         }
       ],
       "mutexWith": ["set_zone_by_team", "set_zone_randomly"],

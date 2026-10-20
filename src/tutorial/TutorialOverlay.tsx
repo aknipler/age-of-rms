@@ -12,6 +12,7 @@ import { HelpTip } from "../components/HelpTip";
 import { useTutorial } from "./TutorialContext";
 import { RMS_DISCORD_URL } from "./content/rmsBasics";
 import { SUPPORT_URL } from "../supportLink";
+import { renderProse } from "../components/InlineCode";
 import { StepBody } from "./StepBody";
 import type { Anchor, BodyBlock, StepContext, TutorialStep } from "./types";
 import type { TabId } from "../types";
@@ -971,7 +972,7 @@ function StepCallout({
       )}
       {showSupportButton && <SupportLinks />}
       {isCheck && !satisfied && step.hint && (
-        <p className={styles.hint}>{step.hint}</p>
+        <p className={styles.hint}>{renderProse(step.hint)}</p>
       )}
       {imagePlacement === "bottom" && imageElement}
       <div className={styles.controls}>

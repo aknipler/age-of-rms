@@ -4,6 +4,7 @@ import type { AttributeTarget } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
 import { addAbsentSlotIntent, filterSlots } from "../hideUnused";
 import { HelpTip } from "../../components/HelpTip";
+import { renderProse } from "../../components/InlineCode";
 import { useSearchListNav } from "../../hooks/useSearchListNav";
 import styles from "./AttributeSearch.module.css";
 
@@ -96,7 +97,7 @@ export function AttributeSearch({
             >
               <span className={styles.entryName}>{slot.name}</span>
               <span className={styles.entryDesc}>
-                {slot.def.description ?? ""}
+                {renderProse(slot.def.description ?? "")}
               </span>
             </button>
           ))}

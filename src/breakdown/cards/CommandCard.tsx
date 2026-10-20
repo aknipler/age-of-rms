@@ -97,13 +97,11 @@ function ArgRow({
   arg,
   argDef,
   argLabel,
-  commandName,
   diagnostics,
 }: {
   arg: ArgNode;
   argDef: Parameters<typeof argumentHelpText>[0];
   argLabel: string;
-  commandName: string;
   diagnostics: readonly Diagnostic[];
 }) {
   // Same per-field highlighting AttributeInstanceRow gets, a positional
@@ -141,7 +139,7 @@ function ArgRow({
       <span className={styles.argLabelSlot}>
         <HelpTip
           id="breakdown.commandCard.argumentName"
-          text={argumentHelpText(argDef, commandName)}
+          text={argumentHelpText(argDef) ?? null}
         >
           <span className={styles.argLabel}>{argLabel}</span>
         </HelpTip>
@@ -150,6 +148,7 @@ function ArgRow({
         arg={arg}
         type={argDef?.type ?? "string"}
         helpId="breakdown.commandCard.argument"
+        helpText={argumentHelpText(argDef) ?? null}
       />
     </div>
   );
@@ -580,7 +579,6 @@ export function CommandCard({ command }: CommandCardProps) {
                   arg={arg}
                   argDef={command.def?.arguments?.[i]}
                   argLabel={command.def?.arguments?.[i]?.name ?? `arg ${i + 1}`}
-                  commandName={name}
                   diagnostics={diagnostics}
                 />
               ))}

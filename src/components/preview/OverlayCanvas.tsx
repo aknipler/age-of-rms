@@ -32,6 +32,7 @@ import {
   type Viewport,
 } from "../../preview/render/projection";
 import { HelpTip } from "../HelpTip";
+import { renderProse } from "../InlineCode";
 import styles from "./PreviewCanvas.module.css";
 
 const ZOOM_STEP = 1.18;
@@ -583,7 +584,7 @@ export function OverlayCanvas({
             .filter((note) => note.prominence === "banner")
             .map((note) => (
               <span key={note.key} className={styles.banner}>
-                {note.text}
+                {renderProse(note.text)}
               </span>
             ))}
         </div>

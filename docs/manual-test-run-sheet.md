@@ -817,6 +817,34 @@ create_land { terrain_type DESERT land_position 99 0 base_size 0 land_percent 0 
 7. Optional, against the game. Generate the WATER script above in DE's scenario editor on Large and
    on Tiny and confirm the land is missing on Large and shows in the corner on Tiny.
 
+## 32. Argument tips and inline code, 2026-10-20 (`src/components/InlineCode.tsx`, `src/breakdown/helpText.ts`)
+
+Run `npm run tauri dev`, open a script and go to Breakdown with Help Tips on.
+
+1. Argument tips. Expand a `create_player_lands` card, add `border_fuzziness` and hover its value box.
+   Confirm the tip reads "100 sticks closest to the borders, and 0 respects them least. Range 0–100.
+   Default 20." and not the old sentence about committing on Enter.
+2. Two-slot attribute. Add `circle_radius` and hover each box. The first tip is the radius
+   description and range, the second starts "Argument variance."
+   Also hover `base_size` (square width 2*base_size + 1, circle radius base_size),
+   `generate_mode` (0 keeps lands out of the corners, 1 allows them) and `zone`. Each should fit a
+   tip popup without scrolling or running off screen.
+3. No filler. Hover a value box whose reference data has no description, range or default (a
+   constant slot with none of the three). Confirm no tip appears at all. A slot with only a default,
+   such as `terrain_type`, shows just "Default GRASS."
+4. Command arguments. Add `create_elevation` and hover each positional argument's name and its
+   value box. Both show the same specific sentence, or neither shows one.
+5. Summary click. With Settings > Breakdown > Summary click set to edit, click an attribute in a
+   collapsed card's summary and hover the inline box. Same tip as the expanded row.
+6. Inline code. Hover Add Command, the Notes drawer and any tip that names a command. Confirm names
+   such as `create_land` and `TEAM_POSITIONS` sit on a faint tinted chip in a monospace face, upright
+   even inside the italic tip. Check Light and Dark. The chip must read in both.
+7. Other surfaces. Confirm the same chip appears in the tutorial body and hint, a preview banner
+   note and the Notes drawer, the Command Picker and Add Attribute lists, the reference table's
+   description column and a diagnostic popup.
+8. Plain words stay plain. Confirm ordinary words (zone, RMS, a file name such as `my_map.rms`) are
+   not chipped. A revealed tutorial spoiler stays plain text on purpose.
+
 ---
 
 ## Not covered here

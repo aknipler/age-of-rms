@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { renderProse } from "./InlineCode";
 import { useHelpSettings } from "../help/HelpSettingsContext";
 import type { DiagnosticSeverity } from "../parser/types";
 import styles from "./DiagnosticTooltip.module.css";
@@ -71,7 +72,7 @@ export function DiagnosticPopup({
       className={`${styles.popup} ${styles[side]} ${actions ? styles.interactive : ""}`}
       style={{ borderColor: SEVERITY_BORDER[severity] }}
     >
-      {message}
+      {renderProse(message)}
       {actions}
     </div>
   );

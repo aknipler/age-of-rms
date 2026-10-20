@@ -3,6 +3,7 @@ import type { AttributeNode, CommandNode } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { useBreakdownSettings } from "../../settings/BreakdownSettingsContext";
 import { renderArgs } from "../renderValue";
+import { argumentHelpText } from "../helpText";
 import { HelpTip } from "../../components/HelpTip";
 import { AttributeValueEditor } from "./AttributeRow";
 import styles from "./SummaryAttributes.module.css";
@@ -137,6 +138,9 @@ export function SummaryAttributes({ command, attrs }: SummaryAttributesProps) {
               arg={node.args[0]}
               type={defArgs[0]?.type ?? "string"}
               helpId="breakdown.attributeRow.value"
+              helpText={
+                argumentHelpText(defArgs[0], defArgs.length > 1) ?? null
+              }
             />
           </span>
         ) : (

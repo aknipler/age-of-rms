@@ -36,6 +36,12 @@ interface ValueEditorProps {
   onCommit: (value: ArgValueInput, restoreFocusOnEnter: boolean) => void;
   disabled?: boolean;
   helpId: string;
+  /**
+   * What the field's tip says, overriding the shared `helpId` entry (which
+   * can only describe "an attribute's value" in general). `null` shows no
+   * tip, for a field with nothing specific to say.
+   */
+  helpText?: string | null;
   /** Sec.3.4's quoting round-trip, true only for a quoted filename slot, where internal spaces are legal RMS. */
   allowSpaces?: boolean;
   /**
@@ -60,6 +66,7 @@ export function ValueEditor({
   onCommit,
   disabled,
   helpId,
+  helpText,
   allowSpaces,
   hint: hintOverride,
 }: ValueEditorProps) {
@@ -127,7 +134,7 @@ export function ValueEditor({
           : [];
 
   return (
-    <HelpTip id={helpId}>
+    <HelpTip id={helpId} text={helpText}>
       <span className={styles.editorWrap}>
         {/* .fieldWrap exists so the clear button can sit INSIDE the field
             (beta feedback 2026-09-17), over the spot the native datalist

@@ -592,7 +592,7 @@ export interface TerrainSize {
   variance: number;
 }
 
-/** `terrain_size Terrain Radius Variance` (repeatable, language.json labels the last two args "width"/"spacing" but Sec.6.5's own prose calls them radius/variance, read positionally, the labels are cosmetic). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
+/** `terrain_size Terrain Radius Variance` (repeatable, read positionally). Absent entry -> radius 1, variance 0 (guide:1958/1960). */
 export function readTerrainSizes(
   cmd: InstantiatedCommand,
   constants: readonly TerrainConstantForMasks[],

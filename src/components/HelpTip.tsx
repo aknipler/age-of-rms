@@ -9,6 +9,7 @@ import {
 import { createPortal } from "react-dom";
 import { useHelpSettings } from "../help/HelpSettingsContext";
 import { helpTextFor } from "../help/uiHelpText";
+import { renderProse } from "./InlineCode";
 import styles from "./HelpTip.module.css";
 
 const HOVER_DELAY_MS = 600;
@@ -47,8 +48,11 @@ interface HelpTipProps {
    * surfaces never disagree, breakdown-design.md Sec.8). `id` is still
    * required and still used as the ui-help.json fallback if `text` is
    * itself undefined (e.g. no doc-string exists for this exact name).
+   *
+   * `null` means "there is nothing useful to say here": no popup is shown at
+   * all, rather than the ui-help.json fallback or a placeholder sentence.
    */
-  text?: string;
+  text?: string | null;
   /**
    * Hide the popup as soon as the user starts USING the wrapped element, and
    * do not show it again until the pointer leaves and comes back.
@@ -142,14 +146,16 @@ export function HelpTip({
   // (post-delay) or "alt-hover" (while ALT is held), mode "off" still
   // never shows a popup, just via an always-empty `visible` here instead
   // of skipping the wrapper entirely.
+  const content: string | null =
+    text === undefined ? (helpTextFor(id) ?? FALLBACK_TEXT) : text;
+
   const visible =
     mode !== "off" &&
+    content !== null &&
     hovering &&
     !dismissed &&
     !suppressed &&
     ((mode === "hover" && delayElapsed) || (mode === "alt-hover" && altHeld));
-
-  const content = text ?? helpTextFor(id) ?? FALLBACK_TEXT;
 
   // --- dismissOnInteract ----------------------------------------------------
   //
@@ -325,6 +331,7 @@ export function HelpTip({
     >
       {children}
       {visible &&
+        content !== null &&
         createPortal(
           <div
             ref={popupRef}
@@ -334,7 +341,7 @@ export function HelpTip({
             // it goes. `display: none` would measure as a 0x0 box.
             style={position ?? { visibility: "hidden", top: 0, left: 0 }}
           >
-            {content}
+            {renderProse(content)}
           </div>,
           document.body,
         )}

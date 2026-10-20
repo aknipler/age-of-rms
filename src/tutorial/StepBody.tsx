@@ -5,6 +5,7 @@
 
 import { Fragment, useId, useLayoutEffect, useRef, useState } from "react";
 import type { BodyBlock, Inline, Paragraph } from "./types";
+import { renderProse } from "../components/InlineCode";
 import styles from "./TutorialOverlay.module.css";
 
 interface StepBodyProps {
@@ -81,7 +82,7 @@ export function StepBody({
             // module would only restate it.
             return (
               <p key={i} style={{ textAlign: block.align }}>
-                {block.text}
+                {renderProse(block.text)}
               </p>
             );
         }
@@ -101,7 +102,7 @@ function ParagraphView({
   className?: string;
 }) {
   if (typeof paragraph === "string")
-    return <p className={className}>{paragraph}</p>;
+    return <p className={className}>{renderProse(paragraph)}</p>;
   return (
     <p className={className}>
       {paragraph.map((inline, j) => (
@@ -118,7 +119,7 @@ function InlinePiece({
   inline: Inline;
   onReveal: () => void;
 }) {
-  if (typeof inline === "string") return <>{inline}</>;
+  if (typeof inline === "string") return <>{renderProse(inline)}</>;
   return (
     <InlineSpoiler
       text={inline.spoiler}
@@ -166,6 +167,10 @@ function useAfterToggle(value: boolean, onChange: () => void): void {
  * take and a sentence could not.
  *
  * Revealing is one way.
+ *
+ * The revealed words are plain text, not renderProse: the bars were measured in
+ * the surrounding font, and a code chip's monospace face would change the
+ * widths the swap promises to keep.
  *
  * No HelpTip, on the owner's call (2026-10-06), an exception to CLAUDE.md's
  * every-control rule. The masked bar and its label say what it does, and a
@@ -292,7 +297,7 @@ function BlockSpoiler({
           </pre>
         ) : (
           <p id={textId} className={styles.spoilerText}>
-            {content.text}
+            {renderProse(content.text)}
           </p>
         ))}
     </div>

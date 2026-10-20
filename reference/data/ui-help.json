@@ -518,7 +518,7 @@
     },
     {
       "id": "breakdown.commandCard.argumentName",
-      "text": "This argument's name. Hover shows what it's for, sourced from the reference docs (falls back to type/range/default when no description is written yet)."
+      "text": "This argument's name. Hover shows what it means, its range and its default, where the reference data has them."
     },
     {
       "id": "breakdown.commandCard.attributeDragHandle",

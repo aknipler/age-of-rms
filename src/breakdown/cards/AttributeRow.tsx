@@ -8,7 +8,7 @@ import type { AttributeSlot } from "../attributeModel";
 import type { AttributeTarget } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
 import { renderArg } from "../renderValue";
-import { namedEntryHelpText } from "../helpText";
+import { argumentHelpText, namedEntryHelpText } from "../helpText";
 import { maxSeverityWithin, diagnosticsWithin } from "../diagnosticsForSpan";
 import { ValueEditor } from "./ValueEditor";
 import { HelpTip } from "../../components/HelpTip";
@@ -22,6 +22,8 @@ interface InstanceValueProps {
   arg: ArgNode;
   type: ArgumentType;
   helpId: string;
+  /** Per-argument tip text; `null` shows none, undefined falls back to `helpId`'s shared entry. */
+  helpText?: string | null;
 }
 
 // docs/breakdown-design.md Sec.3.4/Sec.4.11, set-value edits, commit on
@@ -32,6 +34,7 @@ export function AttributeValueEditor({
   arg,
   type,
   helpId,
+  helpText,
 }: InstanceValueProps) {
   const { tokens, applyEdit, requestFocus } = useBreakdownContext();
   const text = renderArg(arg, tokens);
@@ -63,6 +66,7 @@ export function AttributeValueEditor({
       type={isExpr ? "string" : type}
       anchorOffset={arg.span.start}
       helpId={helpId}
+      helpText={helpText}
       allowSpaces={isExpr || wasQuoted}
       onCommit={(value, restoreFocus) => {
         const result = applyEdit({ kind: "setArgValue", arg, value });
@@ -163,6 +167,9 @@ export function AttributeInstanceRow({
                   arg={arg}
                   type={defArgs[i]?.type ?? "string"}
                   helpId={helpId}
+                  helpText={
+                    argumentHelpText(defArgs[i], defArgs.length > 1) ?? null
+                  }
                 />
               </span>
             ))}
@@ -189,6 +196,7 @@ export function AttributeInstanceRow({
                   type={def.type}
                   anchorOffset={node.span.end + j}
                   helpId={helpId}
+                  helpText={argumentHelpText(def, defArgs.length > 1) ?? null}
                   onCommit={(value, restoreFocus) => {
                     if (value === "") return;
                     const result = applyEdit({

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { EditIntent, InsertTarget } from "./patch/intents";
 import { useBreakdownContext } from "./BreakdownContext";
 import { HelpTip } from "../components/HelpTip";
+import { renderProse } from "../components/InlineCode";
 import { useSearchListNav } from "../hooks/useSearchListNav";
 import styles from "./CommandPicker.module.css";
 
@@ -198,7 +199,9 @@ export function CommandPicker({
                 }
               >
                 <span className={styles.entryName}>{c.name}</span>
-                <span className={styles.entryDesc}>{c.description}</span>
+                <span className={styles.entryDesc}>
+                  {renderProse(c.description)}
+                </span>
                 {/* No verified chip. These are grammar, not reference
                     data, so there is nothing a chip could be reporting on. */}
                 <span className={styles.chip}>control flow</span>
@@ -213,7 +216,9 @@ export function CommandPicker({
                 onClick={() => onPick({ kind: "command", name: c.name })}
               >
                 <span className={styles.entryName}>{c.name}</span>
-                <span className={styles.entryDesc}>{c.description ?? ""}</span>
+                <span className={styles.entryDesc}>
+                  {renderProse(c.description ?? "")}
+                </span>
                 <span className={styles.chip}>
                   {c.verified ? "verified" : "unverified"}
                 </span>
