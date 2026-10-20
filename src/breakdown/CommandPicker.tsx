@@ -4,6 +4,7 @@ import { useBreakdownContext } from "./BreakdownContext";
 import { HelpTip } from "../components/HelpTip";
 import { renderProse } from "../components/InlineCode";
 import { useSearchListNav } from "../hooks/useSearchListNav";
+import { rankByQuery } from "./pickerRanking";
 import styles from "./CommandPicker.module.css";
 
 /**
@@ -86,27 +87,23 @@ export function CommandPicker({
   const [showAll, setShowAll] = useState(!defaultSection);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const matches = (c: { name: string; description?: string }) =>
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      (c.description ?? "").toLowerCase().includes(q);
-    const byName = (a: { name: string }, b: { name: string }) =>
-      a.name.localeCompare(b.name);
-    const commands = lang.data.commands
-      .filter((c) => showAll || c.section === defaultSection)
-      .filter(matches)
-      .sort(byName);
+    // Each group is ranked by how well it matches the query (name before
+    // description), then by name. Commands and directives stay two groups
+    // rather than one merged ranking, see below.
+    const commands = rankByQuery(
+      lang.data.commands.filter((c) => showAll || c.section === defaultSection),
+      query,
+    );
     // Directives are legal in every section, not only the preamble (beta
     // feedback 2026-09-17, "#const/#define should be available everywhere"),
     // so they bypass the section filter and sit after the commands, where a
     // tab's own vocabulary stays first. nonFunctional ones (#undefine,
     // #include, engine ghosts per parser-design Sec.7) are never offered.
     // Sec.3.6 badges them where they already exist, it doesn't hand them out.
-    const directives = lang.data.directives
-      .filter((d) => !d.nonFunctional)
-      .filter(matches)
-      .sort(byName);
+    const directives = rankByQuery(
+      lang.data.directives.filter((d) => !d.nonFunctional),
+      query,
+    );
     return [...commands, ...directives];
   }, [lang, query, showAll, defaultSection]);
   // Control flow is legal in every section, like directives, so it never
