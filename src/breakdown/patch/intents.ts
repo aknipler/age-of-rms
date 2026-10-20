@@ -166,13 +166,17 @@ export type EditIntent =
   // tab) line so reindenting cannot move it relative to its own line.
   // `setupText`, when present, is a second block in the same convention
   // that lands at the end of the last PLAYER_SETUP section (the preamble
-  // if the file has none) as EditResult.companion.
+  // if the file has none) as EditResult.companion. `headerText` is the same
+  // idea aimed at the file's header, the preamble before the first section,
+  // for a template that needs a `#define` there. It takes the companion slot,
+  // so a template sets one of the two, not both.
   | {
       kind: "insertText";
       at: InsertTarget;
       text: string;
       caretOffset: number;
       setupText?: string;
+      headerText?: string;
     }
   // Comments are trivia (parser-design Sec.2), not AST nodes, so unlike
   // every other intent here this doesn't target or produce an Item. It

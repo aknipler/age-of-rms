@@ -59,3 +59,32 @@ export function playerLandTerrain(result: ParseResult): string | undefined {
 export function definesSymbol(result: ParseResult, name: string): boolean {
   return result.symbols.some((s) => s.name === name);
 }
+
+/**
+ * The starting resources the script already changes through
+ * `effect_amount MOD_RESOURCE <resource> ...`, as the author wrote the
+ * resource name (AMOUNT_STARTING_WOOD, say). Searches the preamble and every
+ * section, so a cut written in the header is found. The quick-start template
+ * uses it to leave out a cut the script already makes, since a second one
+ * would stack on the first.
+ */
+export function startResourceCuts(result: ParseResult): string[] {
+  const text = (arg: { span: { start: number; end: number } }) =>
+    result.source.slice(arg.span.start, arg.span.end);
+  const found = new Set<string>();
+  const roots = [
+    result.script.preamble,
+    ...result.script.sections.map((s) => s.items),
+  ];
+  for (const items of roots) {
+    for (const item of walk(items)) {
+      if (item.kind !== "command") continue;
+      const name = item.def?.name ?? result.tokens[item.name]?.text;
+      if (name !== "effect_amount") continue;
+      const [kind, resource] = item.args;
+      if (kind && resource && text(kind) === "MOD_RESOURCE")
+        found.add(text(resource));
+    }
+  }
+  return [...found];
+}

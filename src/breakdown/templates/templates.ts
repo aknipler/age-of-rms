@@ -75,6 +75,12 @@ export interface RenderedTemplate {
    * template sets it.
    */
   setupText?: string;
+  /**
+   * Lines that belong in the file's header (the preamble before the first
+   * section), same convention as `text`. Becomes the insertText intent's
+   * `headerText`. Only the quick start sets it, for its `#define`.
+   */
+  headerText?: string;
 }
 
 /** A bare identifier, the only shape terrain_to_place_on's value can legally take. */
@@ -84,7 +90,15 @@ export function isValidIdentifier(s: string): boolean {
 
 // ---- T1: Standard Player Objects --------------------------------------
 
+/** The starting scout. HORSE is a different object, not a skin, see the dialog's help. */
+export type ScoutUnit = "SCOUT" | "HORSE";
+export const SCOUT_OPTIONS: { value: ScoutUnit; label: string }[] = [
+  { value: "SCOUT", label: "Scout" },
+  { value: "HORSE", label: "Horse" },
+];
+
 export interface T1Options {
+  scout: ScoutUnit;
   quickStart: boolean;
   /** Only read while quickStart is true; ignored otherwise. */
   advanced: boolean;
@@ -92,7 +106,99 @@ export interface T1Options {
   terrainToPlaceOn: string;
 }
 
+/** The label the quick-start branch tests. No engine label does this job. */
+export const QUICK_START_LABEL = "QUICK_START";
+
+export interface T1Context {
+  /** The script already has a `#define` or `#const` of QUICK_START. */
+  quickStartDefined: boolean;
+  /**
+   * Which of QUICK_START_KIT's names the script already defines. Each name's
+   * group of lines is left out, so a script with its own PH_NEUTRAL_OFF still
+   * gets the rest and no `#const` is written twice.
+   */
+  kitNamesDefined?: readonly string[];
+  /**
+   * Starting resources the script already changes with MOD_RESOURCE, see
+   * QUICK_START_RESOURCE_CUTS. A resource listed here gets no second cut.
+   */
+  startResourceCutsDefined?: readonly string[];
+}
+
+// The quick start puts six villagers on a sheep at once, so both variants cut
+// the starting stockpile to pay for it. Bulls_Eyes.rms makes the same two
+// cuts. They sit behind `if QUICK_START` in the header, so removing the
+// #define returns the script to the standard start.
+const QUICK_START_RESOURCE_CUTS: { resource: string; amount: number }[] = [
+  { resource: "AMOUNT_STARTING_WOOD", amount: -30 },
+  { resource: "AMOUNT_STARTING_FOOD", amount: -90 },
+];
+
+// Names the advanced quick start places that DE defines nowhere. Bulls_Eyes.rms
+// and Comeer v1.5.rms write these themselves; a script that leaves them out
+// hands create_object an unknown name and the game crashes on load. The ids are
+// the ones those two maps agree on. The male and female villagers are a flag
+// with no hitpoints that dies on placement and leaves the villager named by its
+// dead id, which is how each villager gets a random gender at a fixed spot.
+// The maps call these LAZY_MALE and LAZY_FEMALE, but constants.inc defines
+// those names too (as other objects), so the validator warns about the
+// redefinition. Names of our own avoid the question. HERDABLE_A is a pig that
+// starts dead with 30 less food, so the six villagers have something to gather
+// at once.
+export const QUICK_START_MALE = "QUICK_START_MALE";
+export const QUICK_START_FEMALE = "QUICK_START_FEMALE";
+
+/** One name the kit defines, with every line that goes with it. */
+const QUICK_START_KIT: { name: string; lines: string[] }[] = [
+  {
+    name: "PH_NEUTRAL_OFF",
+    lines: [
+      "#const PH_NEUTRAL_OFF 346 /* Off-grid object, only used for gaia objects */",
+    ],
+  },
+  {
+    name: "PH_PLAYER_OFF",
+    lines: [
+      "#const PH_PLAYER_OFF 647 /* Off-grid object, only used for player objects */",
+    ],
+  },
+  {
+    name: "THEMED_TREE1",
+    lines: ["#const THEMED_TREE1 1347 /* Cypress */"],
+  },
+  {
+    name: "HERDABLE_A",
+    lines: [
+      "#const HERDABLE_A 1245 /* Pig. Do not place it for gaia anywhere else */",
+      "effect_amount GAIA_ADD_ATTRIBUTE HERDABLE_A ATTR_STORAGE_VALUE -30",
+      "effect_amount GAIA_SET_ATTRIBUTE HERDABLE_A ATTR_HITPOINTS 0",
+    ],
+  },
+  {
+    name: QUICK_START_MALE,
+    lines: [
+      `#const ${QUICK_START_MALE} 1285 /* FE Flag, dies into a male villager */`,
+      `effect_amount SET_ATTRIBUTE ${QUICK_START_MALE} ATTR_DEAD_ID 83`,
+      `effect_amount SET_ATTRIBUTE ${QUICK_START_MALE} ATTR_HITPOINTS 0`,
+    ],
+  },
+  {
+    name: QUICK_START_FEMALE,
+    lines: [
+      `#const ${QUICK_START_FEMALE} 851 /* ES Flag, dies into a female villager */`,
+      `effect_amount SET_ATTRIBUTE ${QUICK_START_FEMALE} ATTR_DEAD_ID 293`,
+      `effect_amount SET_ATTRIBUTE ${QUICK_START_FEMALE} ATTR_HITPOINTS 0`,
+    ],
+  },
+];
+
+/** The names the dialog tests the script for, see T1Context.kitNamesDefined. */
+export const QUICK_START_KIT_NAMES: readonly string[] = QUICK_START_KIT.map(
+  (g) => g.name,
+);
+
 export const T1_DEFAULTS: T1Options = {
+  scout: "SCOUT",
   quickStart: false,
   advanced: false,
   terrainToPlaceOn: "",
@@ -147,23 +253,82 @@ export const BERRY_OPTIONS: { value: BerryType; label: string }[] = [
   { value: "PAPAYA_TREE", label: "Papaya tree" },
 ];
 
+/**
+ * The value a dropdown holds when its parameter is left out of the script.
+ * Lowercase and not in any option list, so it can't collide with a real
+ * constant name.
+ */
+export const NONE_VALUE = "none";
+export type OrNone<T extends string> = T | typeof NONE_VALUE;
+
+/** One gold or stone pile, left out entirely when `enabled` is false. */
+export interface PileOptions {
+  enabled: boolean;
+  /** Kept as typed text for the same reason T4's numbers are, see T4Options. */
+  count: string;
+}
+
 export interface T2Options {
   seasonal: boolean;
-  berryType: BerryType;
-  herdable: WildlifeHerdable;
-  huntable: WildlifeHuntable;
-  lurable: WildlifeLurable;
+  berryType: OrNone<BerryType>;
+  herdable: OrNone<WildlifeHerdable>;
+  huntable: OrNone<WildlifeHuntable>;
+  lurable: OrNone<WildlifeLurable>;
+  largeGold: PileOptions;
+  smallGold: PileOptions;
+  largeStone: PileOptions;
+  smallStone: PileOptions;
   terrainToPlaceOn: string;
 }
 
+// Pile sizes are DE's own: the NEAR_GS_STANDARD branch of F_NearGoldStone.inc
+// (resources/_common/drs/gamedata_x2) places 7 large gold, 4 small gold, 5
+// large stone and 4 small stone per player, all with set_gaia_object_only.
 export const T2_DEFAULTS: T2Options = {
   seasonal: false,
   berryType: "FORAGE_BUSH",
   herdable: "SHEEP",
   huntable: "DEER",
   lurable: "BOAR",
+  largeGold: { enabled: true, count: "7" },
+  smallGold: { enabled: true, count: "4" },
+  largeStone: { enabled: true, count: "5" },
+  smallStone: { enabled: true, count: "4" },
   terrainToPlaceOn: "",
 };
+
+/** Why Insert is unavailable, one plain sentence per problem, empty when it is fine. */
+export function playerResourcesProblems(o: T2Options): string[] {
+  const problems: string[] = [];
+  const piles: [string, PileOptions][] = [
+    ["Large gold", o.largeGold],
+    ["Small gold", o.smallGold],
+    ["Large stone", o.largeStone],
+    ["Small stone", o.smallStone],
+  ];
+  for (const [label, pile] of piles) {
+    if (pile.enabled && !isPositiveWholeNumber(pile.count))
+      problems.push(`${label} has to be a whole number above 0.`);
+  }
+  if (o.terrainToPlaceOn !== "" && !isValidIdentifier(o.terrainToPlaceOn))
+    problems.push("Terrain to place on has to be a single name.");
+  if (renderedBlockCount(o) === 0)
+    problems.push(
+      "Every resource is set to None, so there is nothing to insert.",
+    );
+  return problems;
+}
+
+function renderedBlockCount(o: T2Options): number {
+  return (
+    [o.berryType, o.herdable, o.huntable, o.lurable].filter(
+      (v) => v !== NONE_VALUE,
+    ).length +
+    [o.largeGold, o.smallGold, o.largeStone, o.smallStone].filter(
+      (p) => p.enabled,
+    ).length
+  );
+}
 
 // ---- T3: Standard Water Resources ---------------------------------------
 
@@ -218,6 +383,7 @@ function renderSimpleQuickStart(terrain: string): string[] {
         { name: "set_place_for_every_player" },
         { name: "min_distance_to_players", value: 4 },
         { name: "max_distance_to_players", value: 5 },
+        { name: "find_closest" },
         { name: "actor_area", value: 1 },
         { name: "actor_area_radius", value: 1 },
       ],
@@ -258,6 +424,7 @@ function renderSimpleQuickStart(terrain: string): string[] {
         { name: "number_of_objects", value: 2 },
         { name: "min_distance_to_players", value: 3 },
         { name: "max_distance_to_players", value: 5 },
+        { name: "find_closest" },
       ],
       terrain,
     ),
@@ -282,7 +449,7 @@ function renderSimpleQuickStart(terrain: string): string[] {
 // actor areas 5100/5101/5103/5104 claim the tiles at exactly distance 1 and
 // 2 from the player before anything else is placed, so the sheep (area 20)
 // and the six PH_PLAYER_OFF villagers (area 2, gendered by start_random
-// between LAZY_MALE/LAZY_FEMALE like the corpus does) land on tiles nothing
+// between two flag aliases like the corpus does) land on tiles nothing
 // else already claimed. The actor-area ids are copied from those two maps
 // unchanged, since this is meant to be pasted in and trusted rather than
 // re-derived.
@@ -382,9 +549,9 @@ function renderAdvancedQuickStart(terrain: string): string[] {
   const villagerAttrs: Attr[] = [
     { name: "start_random" },
     { name: "percent_chance", value: 50 },
-    { name: "second_object", value: "LAZY_MALE" },
+    { name: "second_object", value: QUICK_START_MALE },
     { name: "percent_chance", value: 50 },
-    { name: "second_object", value: "LAZY_FEMALE" },
+    { name: "second_object", value: QUICK_START_FEMALE },
     { name: "end_random" },
     { name: "set_place_for_every_player" },
     { name: "min_distance_to_players", value: 1 },
@@ -475,6 +642,7 @@ function renderAdvancedQuickStart(terrain: string): string[] {
 
 export function renderStandardPlayerObjects(
   options: T1Options,
+  context: T1Context = { quickStartDefined: false },
 ): RenderedTemplate {
   const { quickStart, advanced, terrainToPlaceOn: terrain } = options;
   const header = quickStart
@@ -493,12 +661,13 @@ export function renderStandardPlayerObjects(
     ),
   );
   const scout = block(
-    "SCOUT",
+    options.scout,
     withTerrain(
       [
         { name: "set_place_for_every_player" },
         { name: "min_distance_to_players", value: 7 },
         { name: "max_distance_to_players", value: 9 },
+        { name: "find_closest" },
       ],
       terrain,
     ),
@@ -509,49 +678,160 @@ export function renderStandardPlayerObjects(
   // TOWN_CENTER's own line, a top-level line with no leading tab.
   const caretOffset = header.length + 1;
 
+  const villagers = block(
+    "VILLAGER",
+    withTerrain(
+      [
+        { name: "set_place_for_every_player" },
+        { name: "number_of_objects", value: 3 },
+        { name: "min_distance_to_players", value: 6 },
+        { name: "max_distance_to_players", value: 6 },
+      ],
+      terrain,
+    ),
+  );
   if (!quickStart) {
-    const villagers = block(
-      "VILLAGER",
-      withTerrain(
-        [
-          { name: "set_place_for_every_player" },
-          { name: "number_of_objects", value: 3 },
-          { name: "min_distance_to_players", value: 6 },
-          { name: "max_distance_to_players", value: 6 },
-        ],
-        terrain,
-      ),
-    );
     const text = [header, townCenter, "", villagers, "", scout].join("\n");
     return { text, caretOffset };
   }
 
+  // The quick start sits behind `if QUICK_START` so one #define in the header
+  // switches it, with the plain three villagers as the else branch. Nothing
+  // in the engine defines this label (it is in no predefined label list, no
+  // DE script and no corpus map), so the template adds the #define itself
+  // unless the script already has one.
   const middle = advanced
     ? renderAdvancedQuickStart(terrain)
     : renderSimpleQuickStart(terrain);
-  const text = [header, townCenter, "", ...middle, "", scout].join("\n");
-  return { text, caretOffset };
+  const text = [
+    header,
+    townCenter,
+    "",
+    ...quickStartBranches(middle, [villagers]),
+    "",
+    scout,
+  ].join("\n");
+  const rendered: RenderedTemplate = { text, caretOffset };
+  const headerParts: string[] = [];
+  if (!context.quickStartDefined)
+    headerParts.push(
+      [
+        "/* Quick start. Remove this line to place the plain three villagers instead */",
+        `#define ${QUICK_START_LABEL}`,
+      ].join("\n"),
+    );
+  if (advanced) {
+    const defined = new Set(context.kitNamesDefined ?? []);
+    const kitLines = QUICK_START_KIT.filter(
+      (g) => !defined.has(g.name),
+    ).flatMap((g) => g.lines);
+    if (kitLines.length > 0)
+      headerParts.push(
+        [
+          "/* Off-grid placeholders and look-alike objects the advanced quick start places */",
+          ...kitLines,
+        ].join("\n"),
+      );
+  }
+  const cutsDefined = new Set(context.startResourceCutsDefined ?? []);
+  const cuts = QUICK_START_RESOURCE_CUTS.filter(
+    (c) => !cutsDefined.has(c.resource),
+  );
+  if (cuts.length > 0)
+    headerParts.push(
+      [
+        "/* Quick start costs: the extra villagers are paid for out of the starting stockpile */",
+        `if ${QUICK_START_LABEL}`,
+        ...cuts.map(
+          (c) =>
+            `\teffect_amount MOD_RESOURCE ${c.resource} ATTR_ADD ${c.amount}`,
+        ),
+        "endif",
+      ].join("\n"),
+    );
+  if (headerParts.length > 0) rendered.headerText = headerParts.join("\n\n");
+  return rendered;
+}
+
+/**
+ * `if QUICK_START`, the quick-start chunks, `else`, the standard chunks,
+ * `endif`, as lines. Every line inside a branch gains one indent level, blank
+ * lines stay blank. Shared by the objects template, where the branches are
+ * the villager groups, and the resources template, where they are the sheep.
+ */
+function quickStartBranches(
+  quickStart: string[],
+  standard: string[],
+): string[] {
+  const indent = (chunks: string[]): string[] =>
+    chunks
+      .flatMap((chunk) => chunk.split("\n"))
+      .map((line) => (line === "" ? line : `\t${line}`));
+  return [
+    `if ${QUICK_START_LABEL}`,
+    ...indent(quickStart),
+    "else",
+    ...indent(standard),
+    "endif",
+  ];
 }
 
 // ---- T2 renderer ----------------------------------------------------------
 
-function berryName(o: T2Options): string {
+// Each returns undefined when the parameter is set to None, which drops the
+// block from the output. Under Seasonal variation any choice other than None
+// maps to the seasons include's own placeholder.
+function berryName(o: T2Options): string | undefined {
+  if (o.berryType === NONE_VALUE) return undefined;
   return o.seasonal ? "BERRIES" : o.berryType;
 }
 // A distinct close-herdable name (guide/corpus convention: HERDABLE_A),
 // see docs/object-templates-brief.md's Sec.2 T2 seasonal note.
-function closeHerdName(o: T2Options): string {
+function closeHerdName(o: T2Options): string | undefined {
+  if (o.herdable === NONE_VALUE) return undefined;
   return o.seasonal ? "HERDABLE_A" : o.herdable;
 }
-function farHerdName(o: T2Options): string {
+function farHerdName(o: T2Options): string | undefined {
+  if (o.herdable === NONE_VALUE) return undefined;
   return o.seasonal ? "HERDABLE" : o.herdable;
 }
-function huntName(o: T2Options): string {
+function huntName(o: T2Options): string | undefined {
+  if (o.huntable === NONE_VALUE) return undefined;
   return o.seasonal ? "HUNTABLE" : o.huntable;
 }
-function lureName(o: T2Options): string {
+function lureName(o: T2Options): string | undefined {
+  if (o.lurable === NONE_VALUE) return undefined;
   return o.seasonal ? "LURABLE" : o.lurable;
 }
+
+// Actor areas of the player resources. The first five ids are Comeer v1.5's
+// own. Each is written as a `#const` at the top of the inserted text and used
+// by name, so a script reads AA_GOLD_LARGE and not 9999. The close herd's
+// 6001 is the one the template has always used.
+interface ActorArea {
+  name: string;
+  id: number;
+}
+const AA_BERRIES: ActorArea = { name: "AA_BERRIES", id: 9995 };
+const AA_GOLD_LARGE: ActorArea = { name: "AA_GOLD_LARGE", id: 9999 };
+const AA_STONE_LARGE: ActorArea = { name: "AA_STONE_LARGE", id: 9998 };
+const AA_GOLD_SMALL: ActorArea = { name: "AA_GOLD_SMALL", id: 9997 };
+const AA_STONE_SMALL: ActorArea = { name: "AA_STONE_SMALL", id: 9996 };
+const AA_HERDABLE: ActorArea = { name: "AA_HERDABLE", id: 9994 };
+const AA_HUNTABLE: ActorArea = { name: "AA_HUNTABLE", id: 9993 };
+const AA_LURABLE: ActorArea = { name: "AA_LURABLE", id: 9992 };
+const AA_HERDABLE_CLOSE: ActorArea = { name: "AA_HERDABLE_CLOSE", id: 6001 };
+const ACTOR_AREAS: readonly ActorArea[] = [
+  AA_BERRIES,
+  AA_GOLD_LARGE,
+  AA_STONE_LARGE,
+  AA_GOLD_SMALL,
+  AA_STONE_SMALL,
+  AA_HERDABLE,
+  AA_HUNTABLE,
+  AA_LURABLE,
+  AA_HERDABLE_CLOSE,
+];
 
 // Base numbers per docs/object-templates-brief.md Sec.2 T2, cross-checked
 // against "TC2 - Comeer v1.4.rms" (Large/Small gold and stone blocks,
@@ -560,166 +840,238 @@ export function renderStandardPlayerResources(
   options: T2Options,
 ): RenderedTemplate {
   const terrain = options.terrainToPlaceOn;
+  // Every block here is per player. Starting resources are never owned by a
+  // player, so each one is gaia-only, as in DE's own F_NearGoldStone.inc and
+  // F_Animals.inc. The one exception is the player's own sheep below, which
+  // passes gaia = false.
+  const place = (attrs: Attr[], gaia = true): Attr[] =>
+    withTerrain(
+      [
+        { name: "set_place_for_every_player" },
+        ...(gaia ? [{ name: "set_gaia_object_only" }] : []),
+        ...attrs,
+        // Every player takes the closest valid tile in their range, so the
+        // layout is the same for all of them rather than left to chance.
+        { name: "find_closest" },
+      ],
+      terrain,
+    );
+  // Each resource claims an actor area around itself and avoids the area of
+  // every resource placed before it, so no two sit within a radius of each
+  // other. Without this, find_closest sends every block to the same nearest
+  // tiles and they pile up in one line. Radii for the first five are
+  // Comeer v1.5's. `claim` is only called for a block that is actually
+  // written, in output order, so a None or unticked resource leaves no area
+  // to avoid. The quick start's two herd groups share AA_HERDABLE, so a
+  // block never avoids its own area.
+  const taken: ActorArea[] = [];
+  const claim = (area: ActorArea, radius: number): Attr[] => {
+    const attrs: Attr[] = [
+      { name: "set_circular_placement" },
+      ...taken
+        .filter((t) => t !== area)
+        .map((t): Attr => ({ name: "avoid_actor_area", value: t.name })),
+      { name: "actor_area", value: area.name },
+      { name: "actor_area_radius", value: radius },
+    ];
+    if (!taken.includes(area)) taken.push(area);
+    return attrs;
+  };
+  const pile = (
+    name: string,
+    p: PileOptions,
+    minDistance: number,
+    maxDistance: number,
+    area: ActorArea,
+    areaRadius: number,
+  ): string | undefined =>
+    p.enabled
+      ? block(
+          name,
+          place([
+            { name: "number_of_objects", value: p.count },
+            { name: "set_tight_grouping" },
+            { name: "min_distance_to_players", value: minDistance },
+            { name: "max_distance_to_players", value: maxDistance },
+            ...claim(area, areaRadius),
+          ]),
+        )
+      : undefined;
+  // A None parameter has no name, so it contributes no block at all.
+  const animal = (
+    name: string | undefined,
+    attrs: Attr[],
+    gaia = true,
+    label?: string,
+  ): string | undefined =>
+    name ? block(name, place(attrs, gaia), label) : undefined;
 
-  const berries = block(
-    berryName(options),
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 6 },
-        { name: "set_tight_grouping" },
-        { name: "min_distance_to_players", value: 10 },
-        { name: "max_distance_to_players", value: 12 },
-        { name: "min_distance_group_placement", value: 6 },
-      ],
-      terrain,
-    ),
+  const berryBlock = animal(berryName(options), [
+    { name: "number_of_objects", value: 6 },
+    { name: "set_tight_grouping" },
+    { name: "min_distance_to_players", value: 10 },
+    { name: "max_distance_to_players", value: 12 },
+    { name: "min_distance_group_placement", value: 6 },
+    ...(berryName(options) ? claim(AA_BERRIES, 5) : []),
+  ]);
+  // Built here, ahead of the animals, because claim() records areas in the
+  // order it is called and that has to be the order the blocks are written.
+  const goldLarge = labelled(
+    "Large gold",
+    pile("GOLD", options.largeGold, 12, 16, AA_GOLD_LARGE, 9),
   );
-  const largeGold = block(
-    "GOLD",
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 7 },
-        { name: "set_tight_grouping" },
-        { name: "min_distance_to_players", value: 12 },
-        { name: "max_distance_to_players", value: 16 },
-      ],
-      terrain,
-    ),
+  const stoneLarge = labelled(
+    "Large stone",
+    pile("STONE", options.largeStone, 14, 18, AA_STONE_LARGE, 10),
   );
-  const largeStone = block(
-    "STONE",
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 5 },
-        { name: "set_tight_grouping" },
-        { name: "min_distance_to_players", value: 14 },
-        { name: "max_distance_to_players", value: 18 },
-      ],
-      terrain,
-    ),
+  const goldSmall = labelled(
+    "Small gold",
+    pile("GOLD", options.smallGold, 18, 26, AA_GOLD_SMALL, 9),
   );
-  const smallGold = block(
-    "GOLD",
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 4 },
-        { name: "set_tight_grouping" },
-        { name: "min_distance_to_players", value: 18 },
-        { name: "max_distance_to_players", value: 26 },
-      ],
-      terrain,
-    ),
+  const stoneSmall = labelled(
+    "Small stone",
+    pile("STONE", options.smallStone, 20, 26, AA_STONE_SMALL, 6),
   );
-  const smallStone = block(
-    "STONE",
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 4 },
-        { name: "set_tight_grouping" },
-        { name: "min_distance_to_players", value: 20 },
-        { name: "max_distance_to_players", value: 26 },
-      ],
-      terrain,
-    ),
-  );
-  const sheepClose = block(
+  // The close herd is four animals, one the player owns and three gaia ones
+  // placed inside the owned animal's actor area, so they stand beside it.
+  const closeHerdArea = AA_HERDABLE_CLOSE.name;
+  const sheepOwned = animal(
     closeHerdName(options),
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 4 },
-        { name: "number_of_groups", value: 1 },
-        { name: "min_distance_to_players", value: 7 },
-        { name: "max_distance_to_players", value: 9 },
-      ],
-      terrain,
-    ),
+    [
+      { name: "number_of_objects", value: 1 },
+      { name: "min_distance_to_players", value: 7 },
+      { name: "max_distance_to_players", value: 9 },
+      { name: "actor_area", value: closeHerdArea },
+      { name: "actor_area_radius", value: 1 },
+    ],
+    false,
+    "owned by the player",
   );
-  const sheepFar = block(
-    farHerdName(options),
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 2 },
-        { name: "number_of_groups", value: 2 },
-        { name: "min_distance_to_players", value: 14 },
-        { name: "max_distance_to_players", value: 30 },
-      ],
-      terrain,
-    ),
+  const sheepClose = animal(
+    closeHerdName(options),
+    [
+      { name: "number_of_objects", value: 3 },
+      { name: "min_distance_to_players", value: 7 },
+      { name: "max_distance_to_players", value: 9 },
+      { name: "actor_area_to_place_in", value: closeHerdArea },
+    ],
+    true,
+    "gaia, beside the owned one",
   );
-  const deer = block(
-    huntName(options),
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 4 },
-        { name: "number_of_groups", value: 1 },
-        { name: "set_loose_grouping" },
-        { name: "min_distance_to_players", value: 14 },
-        { name: "max_distance_to_players", value: 30 },
-      ],
-      terrain,
-    ),
+  const sheepFar = animal(farHerdName(options), [
+    { name: "number_of_objects", value: 2 },
+    { name: "number_of_groups", value: 2 },
+    { name: "temp_min_distance_group_placement", value: 7 },
+    { name: "min_distance_to_players", value: 14 },
+    { name: "max_distance_to_players", value: 30 },
+    ...(farHerdName(options) ? claim(AA_HERDABLE, 3) : []),
+  ]);
+  // The quick start's herd, after Bulls_Eyes.rms (the "other 3 starting
+  // sheep" and its one far pair). The eating sheep under the town center
+  // comes from the objects template, so the close herd here is three owned
+  // animals a little closer in, and only one far pair is gaia.
+  const sheepQuickClose = animal(
+    closeHerdName(options),
+    [
+      { name: "number_of_objects", value: 3 },
+      { name: "set_loose_grouping" },
+      { name: "group_placement_radius", value: 2 },
+      { name: "min_distance_to_players", value: 5 },
+      { name: "max_distance_to_players", value: 6 },
+      { name: "set_circular_placement" },
+    ],
+    false,
+    "owned by the player, closer than the standard start",
   );
-  const boar = block(
-    lureName(options),
-    withTerrain(
-      [
-        { name: "set_place_for_every_player" },
-        { name: "number_of_objects", value: 2 },
-        { name: "number_of_groups", value: 2 },
-        { name: "min_distance_to_players", value: 16 },
-        { name: "max_distance_to_players", value: 22 },
-      ],
-      terrain,
-    ),
-  );
+  const sheepQuickFar = animal(farHerdName(options), [
+    { name: "number_of_objects", value: 2 },
+    { name: "number_of_groups", value: 1 },
+    { name: "set_tight_grouping" },
+    { name: "min_distance_to_players", value: 14 },
+    { name: "max_distance_to_players", value: 19 },
+    ...(farHerdName(options) ? claim(AA_HERDABLE, 3) : []),
+  ]);
+  // Both starts are in the script and `if QUICK_START` picks one, so a
+  // quick-start player gets Bulls_Eyes' herd and any other player the
+  // standard one. With no QUICK_START in the script the else branch runs,
+  // which is the standard start.
+  // All five are undefined together, when Herdable is None.
+  const spaced = (blocks: (string | undefined)[]): string[] =>
+    blocks
+      .filter((b): b is string => b !== undefined)
+      .flatMap((b, i) => (i === 0 ? [b] : ["", b]));
+  const herdStandard = spaced([sheepOwned, sheepClose, sheepFar]);
+  const herd =
+    herdStandard.length === 0
+      ? undefined
+      : quickStartBranches(
+          spaced([sheepQuickClose, sheepQuickFar]),
+          herdStandard,
+        ).join("\n");
+  const deer = animal(huntName(options), [
+    { name: "number_of_objects", value: 4 },
+    { name: "number_of_groups", value: 1 },
+    { name: "set_loose_grouping" },
+    { name: "min_distance_to_players", value: 14 },
+    { name: "max_distance_to_players", value: 30 },
+    ...(huntName(options) ? claim(AA_HUNTABLE, 3) : []),
+  ]);
+  // Two groups of one boar. The spacing keeps the two apart, since
+  // find_closest would otherwise put the second on the tile next to the first.
+  const boar = animal(lureName(options), [
+    { name: "number_of_objects", value: 1 },
+    { name: "number_of_groups", value: 2 },
+    { name: "temp_min_distance_group_placement", value: 7 },
+    { name: "min_distance_to_players", value: 16 },
+    { name: "max_distance_to_players", value: 22 },
+    ...(lureName(options) ? claim(AA_LURABLE, 2) : []),
+  ]);
+
+  // One entry per labelled section, in output order. A section whose
+  // parameter is None is simply absent, so no stray comment is left behind.
+  const sections: (string | undefined)[] = [
+    berryBlock,
+    goldLarge,
+    stoneLarge,
+    goldSmall,
+    stoneSmall,
+    labelled("Sheep", herd),
+    labelled("Deer", deer),
+    labelled("Boar", boar),
+  ];
 
   const header = options.seasonal
     ? "/* Standard player resources (seasonal) */"
     : "/* Standard player resources */";
   // #include_drs is a directive, legal anywhere a command is (not only the
   // preamble); it splices in place, so it sits right above the block that
-  // needs its HERDABLE/HUNTABLE/LURABLE/BERRIES consts.
-  const lead = options.seasonal
+  // needs its HERDABLE/HUNTABLE/LURABLE/BERRIES consts. It is skipped when
+  // every one of those is None, since nothing would read it.
+  const needsSeasons =
+    options.seasonal && [berryBlock, herd, deer, boar].some(Boolean);
+  const lead = needsSeasons
     ? ["#include_drs F_seasons.inc", "", header]
     : [header];
   const caretOffset = lead.join("\n").length + 1;
 
+  const present = sections.filter((s): s is string => !!s);
+  const body = present.join("\n\n");
+  // The constants for exactly the areas the text names, ahead of the blocks.
+  // Whole-word match, since AA_HERDABLE is a prefix of AA_HERDABLE_CLOSE.
+  const areaConsts = ACTOR_AREAS.filter((a) =>
+    new RegExp(`\\b${a.name}\\b`).test(body),
+  ).map((a) => `#const ${a.name} ${a.id}`);
   const text = [
     ...lead,
-    berries,
-    "",
-    "/* Large gold */",
-    largeGold,
-    "",
-    "/* Large stone */",
-    largeStone,
-    "",
-    "/* Small gold */",
-    smallGold,
-    "",
-    "/* Small stone */",
-    smallStone,
-    "",
-    "/* Sheep */",
-    sheepClose,
-    "",
-    sheepFar,
-    "",
-    "/* Deer */",
-    deer,
-    "",
-    "/* Boar */",
-    boar,
+    ...(areaConsts.length > 0 ? [...areaConsts, ""] : []),
+    body,
   ].join("\n");
   return { text, caretOffset };
+}
+
+/** A block under a one-line comment naming it, or undefined when it has no text. */
+function labelled(label: string, body: string | undefined): string | undefined {
+  return body ? `/* ${label} */\n${body}` : undefined;
 }
 
 // ---- T3 renderer ----------------------------------------------------------
@@ -927,7 +1279,7 @@ export function playerForestsObjectsProblems(
     problems.push("The stand-in object id has to be a whole number.");
   if (!context.setupPresent && !isNameOrId(o.forestTerrain))
     problems.push("The forest terrain has to be a single name or id.");
-  if (!isNameOrId(o.tree))
+  if (o.tree !== "" && !isNameOrId(o.tree))
     problems.push("The tree has to be a single name or id.");
   if (!isPositiveWholeNumber(o.forestsPerPlayer))
     problems.push("Forests per player has to be a whole number above 0.");
@@ -964,7 +1316,9 @@ export function renderPlayerForestsObjects(
     maker,
     withTerrain(
       [
-        { name: "second_object", value: o.tree },
+        // An empty tree is the dialog's None: the forest terrain is painted
+        // and no tree object is shown on top.
+        ...(o.tree === "" ? [] : [{ name: "second_object", value: o.tree }]),
         { name: "set_place_for_every_player" },
         { name: "set_gaia_object_only" },
         { name: "set_gaia_unconvertible" },

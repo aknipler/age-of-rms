@@ -32,17 +32,34 @@
   padding: 0.2rem 0;
 }
 
+/* The parameters flow into as many columns as fit, and each control sits
+   directly after its own title. The earlier single flex column stretched
+   every row to the full width and pushed the control to the far edge
+   (margin-left: auto), a long way from its label.
+
+   Every HelpTip wrapper is an inline-block span that the grid would otherwise
+   stretch to the column width, so justify-self keeps it as wide as its
+   content. */
 .options {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  column-gap: 2rem;
+  row-gap: 0.3rem;
+  align-content: start;
+  align-items: center;
   flex: 1;
   min-width: 0;
 }
 
-.options select,
-.options input[type="text"] {
-  margin-left: auto;
+.options > span {
+  justify-self: start;
+}
+
+/* Notes and problem lists are sentences, not parameters, so they take the
+   whole row. */
+.options > .note,
+.options > .problems {
+  grid-column: 1 / -1;
 }
 
 .invalidInput {

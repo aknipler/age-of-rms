@@ -8,6 +8,8 @@ import {
   HUNTABLE_OPTIONS,
   LURABLE_OPTIONS,
   FOREST_MAKER_CONST,
+  NONE_VALUE,
+  SCOUT_OPTIONS,
   T1_DEFAULTS,
   T2_DEFAULTS,
   T3_DEFAULTS,
@@ -18,6 +20,7 @@ import {
   isValidIdentifier,
   playerForestsObjectsProblems,
   playerForestsTerrainProblems,
+  playerResourcesProblems,
   renderPlayerForestsObjects,
   renderPlayerForestsTerrain,
   renderStandardPlayerObjects,
@@ -26,7 +29,10 @@ import {
   templatesFor,
   treeOptions,
   type NamedOption,
+  type OrNone,
+  type PileOptions,
   type RenderedTemplate,
+  type ScoutUnit,
   type T1Options,
   type T2Options,
   type T3Options,
@@ -43,6 +49,12 @@ export interface TemplateScriptContext {
   playerLand?: string;
   /** The script already defines MAKE_FOREST_TERRAIN, see T4Context. */
   forestSetupPresent: boolean;
+  /** The script already defines QUICK_START, see T1Context. */
+  quickStartDefined: boolean;
+  /** Which of the advanced quick start's names the script defines, see T1Context. */
+  kitNamesDefined: readonly string[];
+  /** Starting resources the script already cuts with MOD_RESOURCE, see T1Context. */
+  startResourceCutsDefined: readonly string[];
 }
 
 interface TemplateDialogProps {
@@ -119,7 +131,11 @@ export function TemplateDialog({
   const rendered = useMemo((): RenderedTemplate => {
     switch (selected) {
       case "standardPlayerObjects":
-        return renderStandardPlayerObjects(t1);
+        return renderStandardPlayerObjects(t1, {
+          quickStartDefined: script.quickStartDefined,
+          kitNamesDefined: script.kitNamesDefined,
+          startResourceCutsDefined: script.startResourceCutsDefined,
+        });
       case "standardPlayerResources":
         return renderStandardPlayerResources(t2);
       case "standardWaterResources":
@@ -131,31 +147,43 @@ export function TemplateDialog({
       case "playerForestsTerrain":
         return renderPlayerForestsTerrain(t5);
     }
-  }, [selected, t1, t2, t3, t4, t5, script.forestSetupPresent]);
+  }, [
+    selected,
+    t1,
+    t2,
+    t3,
+    t4,
+    t5,
+    script.forestSetupPresent,
+    script.quickStartDefined,
+    script.kitNamesDefined,
+    script.startResourceCutsDefined,
+  ]);
 
   // Sec.3's own rule: Insert is disabled while any field holds an invalid
   // value. T1-T3 can only go wrong in a terrain_to_place_on field; the
   // forest templates have number fields too, and say what is wrong in
   // words below the options rather than only greying the button out.
   const terrainInvalid =
-    (selected === "standardPlayerObjects" &&
-      t1.terrainToPlaceOn !== "" &&
-      !isValidIdentifier(t1.terrainToPlaceOn)) ||
-    (selected === "standardPlayerResources" &&
-      t2.terrainToPlaceOn !== "" &&
-      !isValidIdentifier(t2.terrainToPlaceOn));
+    selected === "standardPlayerObjects" &&
+    t1.terrainToPlaceOn !== "" &&
+    !isValidIdentifier(t1.terrainToPlaceOn);
   const problems =
-    selected === "playerForestsObjects"
-      ? playerForestsObjectsProblems(t4, t4Context)
-      : selected === "playerForestsTerrain"
-        ? playerForestsTerrainProblems(t5)
-        : [];
+    selected === "standardPlayerResources"
+      ? playerResourcesProblems(t2)
+      : selected === "playerForestsObjects"
+        ? playerForestsObjectsProblems(t4, t4Context)
+        : selected === "playerForestsTerrain"
+          ? playerForestsTerrainProblems(t5)
+          : [];
   const insertDisabled = terrainInvalid || problems.length > 0;
   // Only the preview labels where each part goes. The comments are not
   // inserted, onInsert gets `rendered` untouched.
   const previewText = rendered.setupText
     ? `/* Goes at the end of PLAYER_SETUP */\n${rendered.setupText}\n\n/* Goes here */\n${rendered.text}`
-    : rendered.text;
+    : rendered.headerText
+      ? `/* Goes in the header of the file */\n${rendered.headerText}\n\n/* Goes here */\n${rendered.text}`
+      : rendered.text;
 
   return (
     <div className={dialogStyles.overlay} onMouseDown={onClose}>
@@ -268,6 +296,23 @@ function T1Fields({
 }) {
   return (
     <>
+      <HelpTip id="template.t1.scout">
+        <label className={dialogStyles.optionRow}>
+          Scout
+          <select
+            value={options.scout}
+            onChange={(e) =>
+              onChange({ ...options, scout: e.target.value as ScoutUnit })
+            }
+          >
+            {SCOUT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </HelpTip>
       <HelpTip id="template.t1.quickStart">
         <label className={dialogStyles.optionRow}>
           <input
@@ -327,90 +372,66 @@ function T2Fields({
           Seasonal variation
         </label>
       </HelpTip>
-      <HelpTip id="template.t2.berryType">
-        <label className={dialogStyles.optionRow}>
-          Berry type
-          <select
-            value={options.berryType}
-            disabled={options.seasonal}
-            onChange={(e) =>
-              onChange({
-                ...options,
-                berryType: e.target.value as T2Options["berryType"],
-              })
-            }
-          >
-            {BERRY_OPTIONS.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </HelpTip>
-      <HelpTip id="template.t2.wildlife">
-        <label className={dialogStyles.optionRow}>
-          Herdable
-          <select
-            value={options.herdable}
-            disabled={options.seasonal}
-            onChange={(e) =>
-              onChange({
-                ...options,
-                herdable: e.target.value as T2Options["herdable"],
-              })
-            }
-          >
-            {HERDABLE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </HelpTip>
-      <HelpTip id="template.t2.wildlife">
-        <label className={dialogStyles.optionRow}>
-          Huntable
-          <select
-            value={options.huntable}
-            disabled={options.seasonal}
-            onChange={(e) =>
-              onChange({
-                ...options,
-                huntable: e.target.value as T2Options["huntable"],
-              })
-            }
-          >
-            {HUNTABLE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </HelpTip>
-      <HelpTip id="template.t2.wildlife">
-        <label className={dialogStyles.optionRow}>
-          Lurable
-          <select
-            value={options.lurable}
-            disabled={options.seasonal}
-            onChange={(e) =>
-              onChange({
-                ...options,
-                lurable: e.target.value as T2Options["lurable"],
-              })
-            }
-          >
-            {LURABLE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </HelpTip>
+      <NoneSelect
+        helpId="template.t2.berryType"
+        label="Berry type"
+        value={options.berryType}
+        options={BERRY_OPTIONS}
+        seasonal={options.seasonal}
+        seasonalLabel="BERRIES"
+        onChange={(v) => onChange({ ...options, berryType: v })}
+      />
+      <NoneSelect
+        helpId="template.t2.wildlife"
+        label="Herdable"
+        value={options.herdable}
+        options={HERDABLE_OPTIONS}
+        seasonal={options.seasonal}
+        seasonalLabel="HERDABLE"
+        onChange={(v) => onChange({ ...options, herdable: v })}
+      />
+      <NoneSelect
+        helpId="template.t2.wildlife"
+        label="Huntable"
+        value={options.huntable}
+        options={HUNTABLE_OPTIONS}
+        seasonal={options.seasonal}
+        seasonalLabel="HUNTABLE"
+        onChange={(v) => onChange({ ...options, huntable: v })}
+      />
+      <NoneSelect
+        helpId="template.t2.wildlife"
+        label="Lurable"
+        value={options.lurable}
+        options={LURABLE_OPTIONS}
+        seasonal={options.seasonal}
+        seasonalLabel="LURABLE"
+        onChange={(v) => onChange({ ...options, lurable: v })}
+      />
+      <PileField
+        helpId="template.t2.largeGold"
+        label="Large gold"
+        value={options.largeGold}
+        onChange={(p) => onChange({ ...options, largeGold: p })}
+      />
+      <PileField
+        helpId="template.t2.smallGold"
+        label="Small gold"
+        value={options.smallGold}
+        onChange={(p) => onChange({ ...options, smallGold: p })}
+      />
+      <PileField
+        helpId="template.t2.largeStone"
+        label="Large stone"
+        value={options.largeStone}
+        onChange={(p) => onChange({ ...options, largeStone: p })}
+      />
+      <PileField
+        helpId="template.t2.smallStone"
+        label="Small stone"
+        value={options.smallStone}
+        onChange={(p) => onChange({ ...options, smallStone: p })}
+      />
       <TerrainField
         helpId="template.t2.terrain"
         value={options.terrainToPlaceOn}
@@ -452,6 +473,111 @@ function T3Fields({
         </label>
       </HelpTip>
     </>
+  );
+}
+
+// The <option> value for "Seasonal" in a NoneSelect. Like CUSTOM_OPTION below
+// it can't be a real constant name, so it never collides with an option.
+const SEASONAL_OPTION = "(seasonal)";
+
+// A dropdown whose last entry is None, which leaves the parameter's block out
+// of the script. Generic over the option values so onChange hands back the
+// exact union the options field is typed with, no cast at the call site.
+//
+// Under Seasonal variation the object name is picked by the seasons include,
+// so the real choices collapse to two: use the include's placeholder, or
+// None. Picking the placeholder stores the first real option, which is only
+// what comes back if Seasonal is switched off again.
+function NoneSelect<T extends string>({
+  helpId,
+  label,
+  value,
+  options,
+  seasonal,
+  seasonalLabel,
+  onChange,
+}: {
+  helpId: string;
+  label: string;
+  value: OrNone<T>;
+  options: readonly { value: T; label: string }[];
+  seasonal: boolean;
+  seasonalLabel: string;
+  onChange: (next: OrNone<T>) => void;
+}) {
+  const shown = seasonal && value !== NONE_VALUE ? SEASONAL_OPTION : value;
+  return (
+    <HelpTip id={helpId}>
+      <label className={dialogStyles.optionRow}>
+        {label}
+        <select
+          value={shown}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (next === SEASONAL_OPTION) onChange(options[0].value);
+            else onChange(next as OrNone<T>);
+          }}
+        >
+          {seasonal ? (
+            <option value={SEASONAL_OPTION}>Seasonal ({seasonalLabel})</option>
+          ) : (
+            options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))
+          )}
+          <option value={NONE_VALUE}>None</option>
+        </select>
+      </label>
+    </HelpTip>
+  );
+}
+
+// A gold or stone pile: a checkbox that includes it and the number of objects
+// in the pile. Unchecking is this parameter's None, the block is not emitted.
+function PileField({
+  helpId,
+  label,
+  value,
+  onChange,
+}: {
+  helpId: string;
+  label: string;
+  value: PileOptions;
+  onChange: (next: PileOptions) => void;
+}) {
+  return (
+    <div className={dialogStyles.optionRow}>
+      <HelpTip id={helpId}>
+        <label className={dialogStyles.optionRow}>
+          <input
+            type="checkbox"
+            checked={value.enabled}
+            onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
+          />
+          {label}
+        </label>
+      </HelpTip>
+      <HelpTip id="template.t2.pileAmount">
+        <label className={dialogStyles.optionRow}>
+          Amount
+          <input
+            type="text"
+            className={`${styles.shortInput} ${
+              value.enabled && (notWhole(value.count) || value.count === "0")
+                ? styles.invalidInput
+                : ""
+            }`}
+            value={value.count}
+            disabled={!value.enabled}
+            onChange={(e) =>
+              onChange({ ...value, count: e.target.value.trim() })
+            }
+          />
+        </label>
+      </HelpTip>
+    </div>
   );
 }
 
@@ -506,6 +632,7 @@ function SelectField({
   onChange,
   disabled = false,
   customHelpId,
+  allowNone = false,
 }: {
   helpId: string;
   label: string;
@@ -515,7 +642,15 @@ function SelectField({
   disabled?: boolean;
   /** Set to offer a "Custom…" entry that opens a text box for any name or id. */
   customHelpId?: string;
+  /** Set to offer a first "None" entry, which holds the empty string. */
+  allowNone?: boolean;
 }) {
+  // None is an ordinary entry whose value is "". It joins the list before the
+  // custom-mode check below, so a stored "" opens on None, not on an empty
+  // custom box.
+  const choices = allowNone
+    ? [{ value: "", label: "None" }, ...options]
+    : options;
   // Custom mode is its own piece of local state rather than derived from
   // "is the value in the list". Derived, typing FOREST on the way to
   // FOREST_TERRAIN would match a list entry for one keystroke, flip the
@@ -523,7 +658,7 @@ function SelectField({
   // The initializer still derives it once, so a value that is already off
   // the list opens in custom mode when the template is reselected.
   const [custom, setCustom] = useState(
-    () => customHelpId !== undefined && !options.some((o) => o.value === value),
+    () => customHelpId !== undefined && !choices.some((o) => o.value === value),
   );
   return (
     <>
@@ -544,7 +679,7 @@ function SelectField({
               onChange(e.target.value);
             }}
           >
-            {options.map((o) => (
+            {choices.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -561,7 +696,7 @@ function SelectField({
           label="Name or id"
           value={value}
           onChange={onChange}
-          invalid={!isNameOrId(value)}
+          invalid={!isNameOrId(value) && !(allowNone && value === "")}
           disabled={disabled}
           placeholder="e.g. MY_FOREST"
         />
@@ -619,6 +754,7 @@ function T4Fields({
       <SelectField
         helpId="template.t4.tree"
         customHelpId="template.t4.treeCustom"
+        allowNone
         label="Tree"
         value={options.tree}
         options={trees}

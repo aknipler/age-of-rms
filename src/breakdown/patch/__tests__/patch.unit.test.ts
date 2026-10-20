@@ -710,6 +710,34 @@ describe("insertText (Object Templates, docs/object-templates-brief.md)", () => 
       });
     }
 
+    // headerText always takes the preamble, even when a PLAYER_SETUP exists,
+    // where setupText would have gone into that section instead.
+    it("headerText goes to the preamble even with a PLAYER_SETUP present", () => {
+      const src =
+        "#const X 1\n<PLAYER_SETUP>\nrandom_placement\n<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";
+      const a = parse(src);
+      const result = computeEdit(
+        a,
+        {
+          kind: "insertText",
+          at: { in: "section", section: a.script.sections[1] },
+          text: block,
+          caretOffset,
+          headerText: "#define QUICK_START",
+        },
+        lang,
+      );
+      const out = applyEditResult(src, result);
+      expect(
+        out.startsWith("#const X 1\n#define QUICK_START\n<PLAYER_SETUP>"),
+      ).toBe(true);
+      expect(out.slice(result.caret)).toMatch(/^create_object TOWN_CENTER/);
+      const b = parse(out);
+      expect(b.script.preamble).toHaveLength(2);
+      expect(b.script.sections[0].items).toHaveLength(1);
+      expect(b.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    });
+
     it("leaves companion unset without setupText", () => {
       const src =
         "<OBJECTS_GENERATION>\ncreate_object GOLD { number_of_objects 4 }";

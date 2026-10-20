@@ -10,8 +10,17 @@ import { useBreakdownSettings } from "../settings/BreakdownSettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
 import { HelpTip } from "../components/HelpTip";
 import { TemplateDialog } from "./templates/TemplateDialog";
-import { FOREST_MAKER_CONST, templatesFor } from "./templates/templates";
-import { definesSymbol, playerLandTerrain } from "./templates/scriptContext";
+import {
+  FOREST_MAKER_CONST,
+  QUICK_START_KIT_NAMES,
+  QUICK_START_LABEL,
+  templatesFor,
+} from "./templates/templates";
+import {
+  definesSymbol,
+  playerLandTerrain,
+  startResourceCuts,
+} from "./templates/scriptContext";
 import styles from "./SectionView.module.css";
 
 interface SectionViewProps {
@@ -287,16 +296,22 @@ export function SectionView({ tab }: SectionViewProps) {
           script={{
             playerLand: playerLandTerrain(parseResult),
             forestSetupPresent: definesSymbol(parseResult, FOREST_MAKER_CONST),
+            quickStartDefined: definesSymbol(parseResult, QUICK_START_LABEL),
+            startResourceCutsDefined: startResourceCuts(parseResult),
+            kitNamesDefined: QUICK_START_KIT_NAMES.filter((n) =>
+              definesSymbol(parseResult, n),
+            ),
           }}
           constants={gameConstants.constants}
           onClose={() => setTemplateDialogOpen(false)}
-          onInsert={({ text, caretOffset, setupText }) => {
+          onInsert={({ text, caretOffset, setupText, headerText }) => {
             const result = applyEdit({
               kind: "insertText",
               at: insertTarget,
               text,
               caretOffset,
               ...(setupText === undefined ? {} : { setupText }),
+              ...(headerText === undefined ? {} : { headerText }),
             });
             setTemplateDialogOpen(false);
             revealNew(result);

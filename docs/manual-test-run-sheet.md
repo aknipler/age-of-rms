@@ -945,6 +945,51 @@ map" for the picture.
 
 ---
 
+## 31. Add Template dialog, None options, resource piles and columns, 2026-10-20 (`object-templates-brief.md`)
+
+Run `npm run tauri dev`, open a script, go to Breakdown > Objects generation and press Add Template.
+
+1. Columns. Pick each of the five templates (Terrain generation tab for the terrain forests) and
+   confirm every parameter's control sits right after its own title, with the options flowing into
+   two or three columns and no control pushed to the far edge. Confirm the "Name or id" box that
+   appears under a Custom... choice sits in the grid and the red problem list spans the full width.
+2. Ownership. On Standard player resources confirm the preview shows set_gaia_object_only in every
+   block except the two close herds marked "owned by the player". Confirm the Sheep part is one
+   if QUICK_START / else / endif. Its if branch holds three owned sheep at 5 to 6 tiles and one
+   gaia pair, its else branch one owned sheep, three gaia sheep beside it and two gaia pairs. On
+   Standard player objects confirm no block has the line. Pick Horse in the Scout dropdown and
+   confirm the last block becomes create_object HORSE.
+   Insert the resources template alone into a script with no QUICK_START and generate a map. Each
+   player should have one owned sheep with three gaia sheep beside it, plus two pairs further out.
+   Then insert Standard player objects with Quick-start ticked (it adds the #define), regenerate
+   and confirm each player has the eating sheep under the town center, three owned sheep at 5 to 6
+   tiles and one gaia pair. Delete the #define and confirm the standard herd comes back.
+3. None. Set Berry type, Herdable, Huntable and Lurable to None in turn and confirm the matching
+   blocks (and the Sheep, Deer or Boar comment) leave the preview. Tick Seasonal variation and
+   confirm each of the four then offers only "Seasonal (...)" and None. Set all four to None and
+   untick all four piles and confirm Insert is disabled with a sentence saying why.
+4. Piles. Confirm the four piles start at 7, 4, 5 and 4. Untick Small gold and confirm its block
+   goes and its Amount box greys out. Type 0, then "x", in an Amount and confirm the box turns red,
+   the problem list names the pile and Insert is disabled. Type 9 and confirm "number_of_objects 9".
+   4b. Quick-start switch. On Standard player objects tick Quick-start and confirm the preview opens
+   with a "Goes in the header of the file" part holding #define QUICK_START, then the block with
+   the sheep, villagers and houses inside if QUICK_START and three plain villagers under else.
+   Insert it into a script that has a PLAYER_SETUP and confirm the #define lands in the header
+   above the first section, not in PLAYER_SETUP, and the caret lands on the TOWN_CENTER block.
+   Generate the preview and confirm the quick-start villagers appear. Delete the #define line,
+   regenerate and confirm each player now has three villagers. Open the dialog again on the same
+   script, tick Quick-start, and confirm the preview no longer shows a header part.
+   4c. find_closest. Insert both templates, generate a map and confirm each player's gold, stone,
+   berries and animals sit at the near edge of their distance ranges, the same for every player,
+   and the scout and starting villagers are placed without overlapping anything.
+5. Insert. Insert a block with a mix of None and unticked piles. Confirm the caret lands on the
+   first remaining command and the script shows no diagnostics.
+6. Forest tree. On Player forests (Objects generation) confirm Tree offers None first. Choose it,
+   confirm second_object leaves the preview and Insert still works. Choose Custom..., clear the box,
+   and confirm it reads as None, not as an error.
+7. Help tips. Hover each new control (Scout, the four pile checkboxes, Amount, the
+   Berry, Herdable, Huntable and Lurable dropdowns, Tree) and confirm a sentence appears.
+
 ## 32. Argument tips and inline code, 2026-10-20 (`src/components/InlineCode.tsx`, `src/breakdown/helpText.ts`)
 
 Run `npm run tauri dev`, open a script and go to Breakdown with Help Tips on.

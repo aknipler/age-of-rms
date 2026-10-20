@@ -373,8 +373,12 @@
       "text": "Inserts the previewed block into the script and selects its first command."
     },
     {
+      "id": "template.t1.scout",
+      "text": "The unit placed as each player's scout. Horse is a separate object from the scout cavalry unit, not a skin."
+    },
+    {
       "id": "template.t1.quickStart",
-      "text": "Swaps the plain villager block for a 9-villager quick start: six on a sheep next to the town center, three on the nearest forest, plus two houses."
+      "text": "Swaps the plain villager block for a 9-villager quick start: six on a sheep next to the town center, three on the nearest forest, plus two houses. Placed behind if QUICK_START, with the plain three villagers as the else branch, and a #define QUICK_START is added to the file's header unless it has one."
     },
     {
       "id": "template.t1.advanced",
@@ -390,11 +394,31 @@
     },
     {
       "id": "template.t2.berryType",
-      "text": "Which bush the berry block places. Disabled under Seasonal variation, which picks its own name."
+      "text": "Which bush the berry block places. None leaves the block out. Seasonal variation picks the name itself, so only Seasonal or None remain."
     },
     {
       "id": "template.t2.wildlife",
-      "text": "Which animal fills this role. Disabled under Seasonal variation, which picks its own name."
+      "text": "Which animal fills this role. None leaves its blocks out. Seasonal variation picks the name itself, so only Seasonal or None remain."
+    },
+    {
+      "id": "template.t2.largeGold",
+      "text": "Includes the large gold pile. DE's standard is 7 objects, 12 to 16 tiles from the player."
+    },
+    {
+      "id": "template.t2.smallGold",
+      "text": "Includes the small gold pile. DE's standard is 4 objects, placed further out."
+    },
+    {
+      "id": "template.t2.largeStone",
+      "text": "Includes the large stone pile. DE's standard is 5 objects, 14 to 18 tiles from the player."
+    },
+    {
+      "id": "template.t2.smallStone",
+      "text": "Includes the small stone pile. DE's standard is 4 objects, placed further out."
+    },
+    {
+      "id": "template.t2.pileAmount",
+      "text": "How many mines the pile holds (number_of_objects). A whole number above 0."
     },
     {
       "id": "template.t2.terrain",
@@ -430,7 +454,7 @@
     },
     {
       "id": "template.t4.tree",
-      "text": "The tree shown on each tile, placed with second_object."
+      "text": "The tree shown on each tile, placed with second_object. None leaves second_object out, so only the forest terrain is painted."
     },
     {
       "id": "template.t4.treeCustom",

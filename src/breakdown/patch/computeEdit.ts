@@ -737,7 +737,8 @@ export function computeEdit(
         };
       };
       const main = insertAt(intent.at, block(intent.text, intent.caretOffset));
-      if (intent.setupText === undefined) return main;
+      const companionText = intent.headerText ?? intent.setupText;
+      if (companionText === undefined) return main;
 
       // The companion lines go after everything already in the last
       // PLAYER_SETUP, so an effect the script already sets keeps its
@@ -745,11 +746,15 @@ export function computeEdit(
       // is where every corpus map using this idiom keeps them. A new
       // section is not synthesized, insertIntoNewSection appends at end of
       // file and PLAYER_SETUP there would come after the generation it
-      // has to precede.
-      const setupSection = [...result.script.sections]
-        .reverse()
-        .find((s) => s.name === "PLAYER_SETUP");
-      const setupBlock = block(intent.setupText, 0);
+      // has to precede. headerText skips the lookup and always takes the
+      // preamble.
+      const setupSection =
+        intent.headerText === undefined
+          ? [...result.script.sections]
+              .reverse()
+              .find((s) => s.name === "PLAYER_SETUP")
+          : undefined;
+      const setupBlock = block(companionText, 0);
       const companion = (
         setupSection
           ? insertIntoSection(setupSection, setupBlock)
