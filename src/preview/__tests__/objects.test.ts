@@ -1240,6 +1240,31 @@ describe("applyObjects: FailureBucket instrumentation", () => {
     expect(reports[0].failures[0].bucket).toBe("actorAreaMissing");
   });
 
+  // The Add Template quick start does exactly this: one sheep with an
+  // actor_area, then villagers placed in it. A plain placement used to skip the
+  // area bookkeeping, so the villagers reported the area as missing.
+  it("an area created by a plain single placement can be placed in by a later command", () => {
+    const { reports, objects } = bare(
+      "<OBJECTS_GENERATION>\ncreate_object HOUSE { actor_area 20 actor_area_radius 3 }\ncreate_object GOLD { number_of_objects 3 actor_area_to_place_in 20 }",
+    );
+    expect(reports[1].failures.map((f) => f.bucket)).not.toContain(
+      "actorAreaMissing",
+    );
+    expect(reports[1].placed).toBe(3);
+    const house = objects.find((o) => o.objectRef === "HOUSE")!;
+    for (const gold of objects.filter((o) => o.objectRef === "GOLD")) {
+      expect(Math.abs(gold.x - house.x)).toBeLessThanOrEqual(3);
+      expect(Math.abs(gold.y - house.y)).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("a plain placement that places nothing creates no area", () => {
+    const { reports } = bare(
+      "<OBJECTS_GENERATION>\ncreate_object HOUSE { terrain_to_place_on SNOW actor_area 20 }\ncreate_object GOLD { actor_area_to_place_in 20 }",
+    ); // grid is all GRASS, so the HOUSE finds no tile
+    expect(reports[1].failures[0].bucket).toBe("actorAreaMissing");
+  });
+
   it("zoneAvoidanceBlocked: avoid_other_land_zones with an unreachable buffer inside a small land", () => {
     const source =
       "<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_player_lands { base_size 3 land_percent 1 }\n<OBJECTS_GENERATION>\ncreate_object HOUSE { place_on_specific_land_id 1 avoid_other_land_zones 50 }";

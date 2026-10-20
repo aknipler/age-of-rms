@@ -300,7 +300,7 @@ describe("addCommand + placeholders (Sec.4.3/Sec.4.5, rev 4 pins)", () => {
       at: { in: "preamble" },
       name: "random_placement",
     });
-    expect(out).toBe("random_placement\n<PLAYER_SETUP>");
+    expect(out).toBe("random_placement\n\n\n<PLAYER_SETUP>");
   });
 
   it("addCommand with a directive name renders name + placeholders and parses as a directive anywhere", () => {
@@ -392,7 +392,7 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
     expect(b.script.sections[0].name).toBe("PLAYER_SETUP");
   });
 
-  it("appends after the last existing section, not woven in at its canonical slot", () => {
+  it("appends after the last existing section when none comes later canonically", () => {
     const src = "<PLAYER_SETUP>\nrandom_placement";
     const { out } = run(src, {
       kind: "addCommand",
@@ -400,7 +400,64 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
       name: "create_land",
     });
     expect(out).toBe(
-      "<PLAYER_SETUP>\nrandom_placement\n<LAND_GENERATION>\ncreate_land\n",
+      "<PLAYER_SETUP>\nrandom_placement\n\n\n<LAND_GENERATION>\ncreate_land\n",
+    );
+  });
+
+  // Objects added first, Land second: the order the bug report came from.
+  it("lands above a section that comes later canonically", () => {
+    const src = "<OBJECTS_GENERATION>\ncreate_object GOLD";
+    const { out, b } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "LAND_GENERATION" },
+      name: "create_land",
+    });
+    expect(out).toBe(
+      "<LAND_GENERATION>\ncreate_land\n\n\n<OBJECTS_GENERATION>\ncreate_object GOLD",
+    );
+    expect(b.script.sections.map((s) => s.name)).toEqual([
+      "LAND_GENERATION",
+      "OBJECTS_GENERATION",
+    ]);
+  });
+
+  it("slots between two existing sections", () => {
+    const src =
+      "<PLAYER_SETUP>\nrandom_placement\n<OBJECTS_GENERATION>\ncreate_object GOLD";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "LAND_GENERATION" },
+      name: "create_land",
+    });
+    expect(out).toBe(
+      "<PLAYER_SETUP>\nrandom_placement\n\n\n<LAND_GENERATION>\ncreate_land\n\n\n<OBJECTS_GENERATION>\ncreate_object GOLD",
+    );
+  });
+
+  it("goes above the first later section when several follow", () => {
+    const src =
+      "<TERRAIN_GENERATION>\ncreate_terrain GRASS\n<OBJECTS_GENERATION>\ncreate_object GOLD";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "LAND_GENERATION" },
+      name: "create_land",
+    });
+    expect(
+      out.startsWith(
+        "<LAND_GENERATION>\ncreate_land\n\n\n<TERRAIN_GENERATION>",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a preamble above the new section", () => {
+    const src = "#const FOO 5\n<OBJECTS_GENERATION>\ncreate_object GOLD";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "LAND_GENERATION" },
+      name: "create_land",
+    });
+    expect(out).toBe(
+      "#const FOO 5\n\n\n<LAND_GENERATION>\ncreate_land\n\n\n<OBJECTS_GENERATION>\ncreate_object GOLD",
     );
   });
 
@@ -411,7 +468,7 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
       at: { in: "newSection", name: "PLAYER_SETUP" },
       name: "random_placement",
     });
-    expect(out).toBe("#const FOO 5\n<PLAYER_SETUP>\nrandom_placement\n");
+    expect(out).toBe("#const FOO 5\n\n\n<PLAYER_SETUP>\nrandom_placement\n");
   });
 
   it("anchors after an empty existing section's header, not its (nonexistent) last item", () => {
@@ -421,20 +478,20 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
       at: { in: "newSection", name: "LAND_GENERATION" },
       name: "create_land",
     });
-    expect(out).toBe("<PLAYER_SETUP>\n<LAND_GENERATION>\ncreate_land\n");
+    expect(out).toBe("<PLAYER_SETUP>\n\n\n<LAND_GENERATION>\ncreate_land\n");
   });
 
   // The header comment scriptHeader.ts stamps on a new script is trivia with
   // no AST node, so the file reads as empty to the anchors above. It used
   // to get the new section inserted ABOVE it (beta feedback 2026-09-17).
-  it("a file holding only a leading comment gets the tag on the line after it", () => {
+  it("a file holding only a leading comment gets one blank line, then the tag", () => {
     const src = "/* File: x.rms */\n";
     const { out } = run(src, {
       kind: "addCommand",
       at: { in: "newSection", name: "PLAYER_SETUP" },
       name: "random_placement",
     });
-    expect(out).toBe("/* File: x.rms */\n<PLAYER_SETUP>\nrandom_placement\n");
+    expect(out).toBe("/* File: x.rms */\n\n<PLAYER_SETUP>\nrandom_placement\n");
   });
 
   it("a leading comment with no trailing newline still lands below it", () => {
@@ -444,17 +501,54 @@ describe("addCommand in:newSection (a canonical tab with no SectionNode yet)", (
       at: { in: "newSection", name: "PLAYER_SETUP" },
       name: "random_placement",
     });
-    expect(out).toBe("/* File: x.rms */\n<PLAYER_SETUP>\nrandom_placement\n");
+    expect(out).toBe("/* File: x.rms */\n\n<PLAYER_SETUP>\nrandom_placement\n");
   });
 
-  it("in:preamble on an empty preamble also lands below a leading comment", () => {
+  // useDocument stamps the comment followed by one blank line, so the run of
+  // blank lines already there is replaced, not added to.
+  it("a stamped comment keeps exactly one blank line above the first section", () => {
+    const src = "/* File: x.rms */\n\n";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "PLAYER_SETUP" },
+      name: "random_placement",
+    });
+    expect(out).toBe("/* File: x.rms */\n\n<PLAYER_SETUP>\nrandom_placement\n");
+  });
+
+  it("a new section above the first one keeps the starting comment on top, one blank line below it", () => {
+    const src = "/* File: x.rms */\n\n<OBJECTS_GENERATION>\ncreate_object GOLD";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "LAND_GENERATION" },
+      name: "create_land",
+    });
+    expect(out).toBe(
+      "/* File: x.rms */\n\n<LAND_GENERATION>\ncreate_land\n\n\n<OBJECTS_GENERATION>\ncreate_object GOLD",
+    );
+  });
+
+  it("a comment glued to the later header moves down with it", () => {
+    const src =
+      "<PLAYER_SETUP>\nrandom_placement\n\n\n/* Objects */\n<OBJECTS_GENERATION>\ncreate_object GOLD";
+    const { out } = run(src, {
+      kind: "addCommand",
+      at: { in: "newSection", name: "LAND_GENERATION" },
+      name: "create_land",
+    });
+    expect(out).toBe(
+      "<PLAYER_SETUP>\nrandom_placement\n\n\n<LAND_GENERATION>\ncreate_land\n\n\n/* Objects */\n<OBJECTS_GENERATION>\ncreate_object GOLD",
+    );
+  });
+
+  it("in:preamble on an empty preamble lands one blank line below a leading comment, two above the section", () => {
     const src = "/* File: x.rms */\n<PLAYER_SETUP>";
     const { out } = run(src, {
       kind: "addCommand",
       at: { in: "preamble" },
       name: "#define",
     });
-    expect(out).toBe("/* File: x.rms */\n#define TODO\n<PLAYER_SETUP>");
+    expect(out).toBe("/* File: x.rms */\n\n#define TODO\n\n\n<PLAYER_SETUP>");
   });
 });
 

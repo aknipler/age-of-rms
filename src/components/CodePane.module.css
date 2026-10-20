@@ -27,14 +27,15 @@
    else shares the row. Margin dropped to 0 on every side (UI pass
    2026-09-15) so the editor runs flush to the resizer, the pane's right
    edge, and the top/bottom of the tab, instead of floating with a gap.
-   No border-radius either now that nothing but the editor's own border
-   separates it from its neighbours on any side. */
+   No border-radius either. The frame has no border of its own: the map
+   header's border-bottom, the resizer's divider and the status bar's
+   border-top already draw the lines above, beside and below it, and an
+   editor border only doubled them. */
 .editorFrame {
   flex: 1;
   min-height: 0;
   min-width: 0;
   margin: 0;
-  border: 1px solid var(--border);
   display: flex;
   overflow: hidden;
 }

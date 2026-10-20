@@ -470,14 +470,13 @@ function drawObjects(
     ctx.fillStyle = cssColor(categoryColor(object.category));
     ctx.fill();
     if (outlined) {
-      // An owned object gets its owner's colour as a ring rather than as its
-      // fill: the fill has to keep saying WHAT the thing is, since that is
-      // the question the map is being read for.
-      ctx.strokeStyle =
-        object.player === undefined
-          ? "rgba(0, 0, 0, 0.55)"
-          : cssColor(playerColor(object.player));
-      ctx.lineWidth = object.player === undefined ? 1 : 1.5;
+      // Always a dark ring, never a player's colour. `object.player` is the
+      // player whose frame the object was placed for, and a gaia resource
+      // placed with set_place_for_every_player carries it too, so a coloured
+      // ring would call a gaia resource a player's. The fill keeps saying
+      // WHAT the thing is, which is the question the map is read for.
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
   }

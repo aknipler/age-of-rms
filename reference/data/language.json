@@ -2130,6 +2130,7 @@
           "type": "percent",
           "min": -50,
           "max": 50,
+          "default": 35,
           "description": "Percent of map width, not half-width. 0 turns the ring off and uses the default one. Negative values scatter lands instead of ringing them."
         },
         {

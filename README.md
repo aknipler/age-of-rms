@@ -14,7 +14,7 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 
 Code is always the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
-The preview is an approximation and can always be improved. Currently the land generation, elevation and cliff sections are tile-for-tile with the engine. The rest of the preview reproduces the engine's own rules where those have been measured in game, and marks what it cannot model rather than drawing a confident guess.
+The preview's land generation, elevation and cliff sections are tile-for-tile with the engine, the other sections are close approximations being improved upon.
 
 ## Status
 
@@ -22,7 +22,7 @@ Open Beta. The editor, the parser, the map preview (not 100% perfect, feedback a
 
 ## Installing
 
-Download the newest build from the [latest release](https://github.com/aknipler/age-of-rms/releases/latest). Pick the file for your system, where `<version>` is the release number, such as `0.8.0`.
+Download the newest build from the [latest release](https://github.com/aknipler/age-of-rms/releases/latest). The program has an automatic updater. Pick the file for your system, where `<version>` is the release number, such as `0.9.0`.
 
 | Your system                           | Download                              |
 | ------------------------------------- | ------------------------------------- |

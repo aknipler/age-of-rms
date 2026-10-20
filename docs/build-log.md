@@ -14288,3 +14288,34 @@ The release notes and the README's Installing section now name each file in full
 `Ctrl+Tab` / `Ctrl+Shift+Tab` (rebindable `cycleFocusedTabs`) swap the side panel between Preview and Reference when the press is in the panel, and step Breakdown's section tabs (wrapping) everywhere else in Breakdown. "In the panel" is `data-focus-region` on the panel plus the last click, because the preview canvas takes clicks but not focus (`settings/focusRegion.ts`). `` Ctrl+` `` (`cycleToolsTab`) flips between Advanced Tools and the last of Breakdown/Code. Pure parts tested (`cycleDirection`, `adjacentSectionId`, focus region). **Not run in the Tauri app**: WebView2 may swallow Ctrl+Tab or Ctrl+` before the page sees them, and Monaco focus was not tried.
 
 **Code tab (2026-10-21).** In Code, `Ctrl+Tab` / `Ctrl+Shift+Tab` scroll the next or previous `<SECTION>` header to the top of the editor (`editor/sectionJump.ts`, pixel-based because `scrollBeyondLastLine` is off and the last sections cannot reach the top; at the furthest scroll it wraps). Scrolls only, the cursor stays so the Current preview cut does not move. Pure math tested; **not run in the app**.
+
+## 2026-10-21, new sections land at their canonical slot
+
+A section created from an empty tab (`in: "newSection"`) was always appended at the end of the file. Adding Objects templates and then a land left `<LAND_GENERATION>` below `<OBJECTS_GENERATION>`. `insertIntoNewSection` (`computeEdit.ts`) now inserts above the first existing section that follows it in `CANONICAL_SECTION_ORDER`, and appends only when none does or the name is not canonical. The engine's own order never depended on file position, so this changes the text only. Four new unit tests in `patch.unit.test.ts` replace the old "appends, not woven in" pin. Patch suite 223/223, `tsc` and Prettier clean. **Not run in the app.**
+
+**Spacing (same day).** A header Breakdown writes now gets two blank lines above it, so the Code tab reads as separate blocks. The first thing under the file's starting comment gets one blank line, a section header included, so the comment is not followed by two. The blank run there is replaced, not added to, since `useDocument` already stamps the comment plus one blank line. A comment glued to the header below the new section moves down with that header, except the starting comment. The `insertText` merge of setup lines and a new section re-spaces the join to two blank lines. Only text Breakdown writes changes; a script already on disk keeps its spacing (the formatter tool is the way to normalise one).
+
+## 2026-10-21, no coloured ring on preview objects
+
+`drawObjects` (`preview/render/drawPreview.ts`) ringed any object with a `player` in that player's colour. `object.player` is the player whose frame the object was placed for, so a gaia resource placed with `set_place_for_every_player` carried it and read as a player's. The ring is now always the dark one, as the Golden Hill picture already had it. Render tests 21/21, `tsc` clean. **Not run in the app.**
+
+## 2026-10-21, an actor area made by a plain placement was never recorded
+
+The advanced quick start template reported "actor_area_to_place_in references area 20, which no create_actor_area (or prior placement) has created" for the six villagers and area 11 for the tree villagers, though the sheep and the straggler tree carry `actor_area 20` and `actor_area 11`. `applyObjects` (`preview/generator/objects.ts`) recorded a command's area at the end of its frame loop, and the ungrouped branch (a single placement or a plain `number_of_objects`) did `continue` before reaching it. Only grouped commands ever created an area. The bookkeeping is now `registerActorArea()`, called at the end of both paths and only when this frame placed something. Two tests in `objects.test.ts`. The template's file in the DE folder (`test.rms`) reproduced it on Tiny and Medium with 2 players.
+
+**Knock-on.** Comeer's pinned-seed failure snapshot lost its false "VILLAGER area 1500 missing" line and gained "MAKE_TERR_UNDERBRUSH_SNOW group 31 filled 2 of 6", since an area that now exists constrains a later `avoid_actor_area`. `public/tutorial/comeer.png` changed with the object positions. Both were regenerated (`UPDATE_COMEER_IMAGE=1`, `vitest -u` on `tutorial.test.ts`), so look at the new picture before release. A `vitest -u <path>` with the flag first ran every test file in update mode for a few seconds, so put the path first. Nothing else on disk changed, `tutorial.test.ts.snap` is the only snapshot file.
+
+**What's new.** `whats-new-0.9.0` added to `whatsNew.ts`, announcement only. `package.json` is still 0.8.0, so it shows once the version is bumped.
+
+**Open.** With the areas recorded, three of the six `PH_PLAYER_OFF` villagers and the tree villagers still fail in the preview with `spacingConflict`. Each area is one representative point per command (file header note 5), so the five tiles of the near positioner and the `PH_NEUTRAL_OFF` placeholders are not modelled the way the game holds them. Not investigated, so whether the game places all six is unconfirmed.
+
+## 2026-10-21, flush edges and doubled lines around the panes
+
+Four CSS fixes, all from the owner reading the running app.
+
+- **Preview map flush with the status bar.** `.pane` in `PreviewPane.module.css` pads 0.5rem on every side, and `.canvasFrame` only cancelled the left and right with `margin: 0 -0.5rem`, so a strip of panel background sat above the status bar. The margin is now `0 -0.5rem -0.5rem`.
+- **Preview map box borders.** The shared `.container` in `PreviewCanvas.module.css` has a 1px border on all four sides, which doubled the resizer's divider on the left, drew a stray line at the window edge on the right and doubled the status bar's border-top at the bottom. `.canvasFrame > :first-child` now zeroes the left, right and bottom border. The top stays to separate the map from the controls row. The shared box is untouched, so the Land Placement panel keeps its full border.
+- **Code editor frame.** `.editorFrame` in `CodePane.module.css` lost its border on every side. The map header's border-bottom, the resizer's divider and the status bar's border-top already draw those lines.
+- **Resizer under Monaco's sticky scroll header.** The resizer's hover bar overlaps the editor's left edge. The bar was `z-index: 3` and Monaco's `.sticky-widget` is `z-index: 4` in its own CSS, with no stacking context between them, so the header row drew over the bar while ordinary code drew under it. `SidePanelResizer.module.css` is now `z-index: 5`. The app's popovers sit at 100 and above.
+
+The owner confirmed all four in `npm run tauri dev`. Prettier clean on the four files.

@@ -33,10 +33,10 @@
   flex: 1 1 auto;
   /* The same 9rem floor the canvas box had. */
   min-height: 9rem;
-  /* Cancels .pane's 0.5rem side padding so the map runs edge to edge in the
-     side panel, flush against the vertical divider on its left. The controls
-     keep the padding. */
-  margin: 0 -0.5rem;
+  /* Cancels .pane's 0.5rem side and bottom padding so the map runs edge to
+     edge in the side panel, flush against the vertical divider on its left
+     and the status bar below. The controls keep the padding. */
+  margin: 0 -0.5rem -0.5rem;
 }
 
 /* The canvas box (PreviewCanvas.module.css's .container, shared with the Land
@@ -46,7 +46,12 @@
    frame's size whether or not a flex layout counts the frame's height as
    definite, which a percentage height would depend on. `:first-child` is
    that box (the overlays are later siblings), and the extra class makes this
-   win without !important. */
+   win without !important.
+
+   The box's 1px border is dropped on the left, right and bottom. The frame
+   runs flush against the resizer's own 1px divider, the window edge and the
+   status bar's top border, so a border there only doubled those lines. The
+   top one stays to separate the map from the controls row. */
 .canvasFrame > :first-child {
   position: absolute;
   inset: 0;
@@ -54,6 +59,9 @@
   height: auto;
   aspect-ratio: auto;
   min-height: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
 }
 
 /* The hovered or selected tile's details, in the map's top left corner. It

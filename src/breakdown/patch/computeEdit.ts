@@ -37,7 +37,8 @@ import {
   type InsertTarget,
   type TextEdit,
 } from "./intents";
-import { padCommentContent } from "../comments";
+import { extractComments, padCommentContent } from "../comments";
+import { CANONICAL_SECTION_ORDER } from "../sectionLabels";
 
 export function applyEdit(source: string, edit: TextEdit): string {
   return source.slice(0, edit.start) + edit.newText + source.slice(edit.end);
@@ -186,24 +187,41 @@ export function computeEdit(
   // stamps on every new script, so the comment sank to the bottom as the
   // script grew (beta feedback 2026-09-17). A leading comment is trivia
   // tokens with no AST node, so `preamble` is empty while the file is not.
-  // Land on the line after the last leading trivia token instead. A file
-  // with no leading trivia still answers offset 0.
-  function afterLeadingTrivia(): { at: number; prefix: string } {
-    let end = 0;
+  // Replace the blank run after the last leading trivia token instead, so the
+  // new text owns the spacing there: one empty line below the comment, however
+  // many the file had. A file with no leading trivia still answers offset 0.
+  //
+  // `[at, end)` is that blank run, ending at the start of the line of whatever
+  // follows (so an indented section header keeps its indent). `nextIsHeader`
+  // says something does follow, which with no preamble can only be a section.
+  // `hasComment` is false for a leading BOM, which is trivia but not a comment.
+  function afterLeadingComment(): {
+    at: number;
+    end: number;
+    hasComment: boolean;
+    nextIsHeader: boolean;
+  } {
+    let at = 0;
+    let hasComment = false;
     for (const t of tokens) {
       if (!t.isTrivia) break;
-      end = t.end;
+      at = t.end;
+      if (t.kind === "commentOpen") hasComment = true;
     }
-    if (end === 0) return { at: 0, prefix: "" };
-    // Prefer the start of the next line, so the insert does not share the
-    // comment's closing line. Fall back to "right after the trivia, on a
-    // fresh line" when something else already sits on that line (a section
-    // header glued to the comment) or the file ends without a newline.
-    const lineEnd = nextEolEnd(src, end);
-    if (lineEnd > end && src.slice(end, lineEnd).trim() === "")
-      return { at: lineEnd, prefix: "" };
-    return { at: end, prefix: eol };
+    let end = at;
+    while (end < src.length && /[ \t\r\n]/.test(src[end])) end++;
+    const nextIsHeader = end < src.length;
+    if (nextIsHeader) end = Math.max(at, lineStartOf(src, end));
+    return { at, end, hasComment, nextIsHeader };
   }
+
+  // Blank lines Breakdown leaves above a section header it writes: two, so the
+  // sections read as separate blocks in the Code tab. The separator between the
+  // previous line and the header is one newline more than the blank lines. The
+  // one exception is a header directly under the file's starting comment, which
+  // gets a single blank line (see insertIntoNewSection).
+  const HEADER_GAP = eol.repeat(3);
+  const COMMENT_GAP = eol.repeat(2);
 
   // The Header tab's fallback target when nothing is selected, mirrors
   // insertIntoSection. The empty case is reachable now that the Header tab
@@ -212,12 +230,14 @@ export function computeEdit(
   function insertIntoPreamble(renderable: Renderable): EditResult {
     const items = result.script.preamble;
     if (items.length === 0) {
-      const { at, prefix } = afterLeadingTrivia();
+      const { at, end, hasComment, nextIsHeader } = afterLeadingComment();
       const rendered = resolveRendered(renderable, "");
-      const newText = prefix + rendered.text + eol;
+      const lead = hasComment ? COMMENT_GAP : "";
+      // The first section follows with two blank lines above it, like any other.
+      const tail = nextIsHeader ? HEADER_GAP : eol;
       return {
-        edit: { start: at, end: at, newText },
-        caret: at + prefix.length + rendered.caretOffset,
+        edit: { start: at, end, newText: lead + rendered.text + tail },
+        caret: at + lead.length + rendered.caretOffset,
       };
     }
     const last = items[items.length - 1];
@@ -260,14 +280,15 @@ export function computeEdit(
 
   // A canonical tab whose section doesn't exist in the file at all yet (no
   // SectionNode, so no header token and no items to anchor to), the
-  // fallback for e.g. a brand-new file's PLAYER_SETUP tab. Appends
-  // `<name>` plus the rendered command after everything already in the
-  // file (last section, else preamble, else offset 0) as ONE insert.
-  // Doesn't hunt for a canonically-ordered slot among existing sections:
-  // the engine runs sections in canonical order regardless of file
-  // position (measured, docs/build-log.md), so there's no correctness
-  // reason to, and appending naturally lands in canonical order anyway
-  // for the common case of building a script front-to-back.
+  // fallback for e.g. a brand-new file's PLAYER_SETUP tab. Inserts `<name>`
+  // plus the rendered command as ONE insert, at the section's canonical slot:
+  // directly above the first existing section that comes after it in
+  // CANONICAL_SECTION_ORDER, else after everything already in the file (last
+  // section, else preamble, else offset 0). The engine runs sections in
+  // canonical order whatever their file position (measured, docs/build-log.md),
+  // so the slot is not a correctness matter. It is what keeps the file in the
+  // order the tab bar shows, which appending alone broke for a script built
+  // out of order (Objects first, Land second).
   function insertIntoNewSection(
     name: string,
     renderable: Renderable,
@@ -275,26 +296,94 @@ export function computeEdit(
     const rendered = resolveRendered(renderable, "");
     const sections = result.script.sections;
     const preamble = result.script.preamble;
+    const rank = CANONICAL_SECTION_ORDER.indexOf(name);
+    // A name outside the canonical list has no slot, so it appends as before.
+    const later =
+      rank === -1
+        ? undefined
+        : sections.find((s) => CANONICAL_SECTION_ORDER.indexOf(s.name) > rank);
+    const tag = `<${name}>`;
+    if (later) {
+      // Insert at the start of the later header's line, so the new section
+      // stays above any indent the header carries. A header sharing its line
+      // with other text is split onto a fresh line instead. A comment glued to
+      // that header (no blank line between) describes it, so the new section
+      // goes above the comment, except the file's starting comment, which is
+      // the script's own and stays at the top.
+      const headerStart = tokens[later.header].start;
+      let at = wsOnlyBefore(src, headerStart)
+        ? lineStartOf(src, headerStart)
+        : headerStart;
+      const firstReal = tokens.find((t) => !t.isTrivia);
+      const comments = extractComments(tokens);
+      for (;;) {
+        const glued = comments.find(
+          (c) =>
+            c.end <= at &&
+            /^[ \t]*(?:\r?\n)?$/.test(src.slice(c.end, at)) &&
+            wsOnlyBefore(src, c.start) &&
+            c.start > (firstReal?.start ?? 0),
+        );
+        if (!glued) break;
+        at = lineStartOf(src, glued.start);
+      }
+      // The blank run above is replaced, so the new section sets its own
+      // spacing: two blank lines above it, one when only the starting comment
+      // precedes it, none at the very top of the file. A BOM is not whitespace
+      // here, `\s` would count it.
+      const top = src.charCodeAt(0) === 0xfeff ? 1 : 0;
+      let runStart = at;
+      while (runStart > 0 && /[ \t\r\n]/.test(src[runStart - 1])) runStart--;
+      const onlyStartingComment = !tokens.some(
+        (t) => !t.isTrivia && t.end <= runStart,
+      );
+      const lead =
+        runStart <= top ? "" : onlyStartingComment ? COMMENT_GAP : HEADER_GAP;
+      return {
+        edit: {
+          start: runStart,
+          end: at,
+          newText: lead + tag + eol + rendered.text + HEADER_GAP,
+        },
+        caret:
+          runStart +
+          lead.length +
+          tag.length +
+          eol.length +
+          rendered.caretOffset,
+      };
+    }
     const lastSection = sections[sections.length - 1];
-    // Nothing in the file but (maybe) a leading comment, the new-script
-    // case, see afterLeadingTrivia.
-    const lead =
-      !lastSection && preamble.length === 0 ? afterLeadingTrivia() : undefined;
+    if (!lastSection && preamble.length === 0) {
+      // Nothing in the file but (maybe) a leading comment, the new-script
+      // case, see afterLeadingComment. The first section sits one blank line
+      // under that comment, not two.
+      const { at, end, hasComment } = afterLeadingComment();
+      const lead = hasComment ? COMMENT_GAP : "";
+      return {
+        edit: {
+          start: at,
+          end,
+          newText: lead + tag + eol + rendered.text + eol,
+        },
+        caret:
+          at + lead.length + tag.length + eol.length + rendered.caretOffset,
+      };
+    }
     const anchorEnd = lastSection
       ? lastSection.items.length > 0
         ? tokens[lastSection.items[lastSection.items.length - 1].lastToken].end
         : tokens[lastSection.header].end
-      : preamble.length > 0
-        ? tokens[preamble[preamble.length - 1].lastToken].end
-        : lead!.at;
-    const prefix = lead ? lead.prefix : eol;
-    const tag = `<${name}>`;
-    const newText = `${prefix}${tag}${eol}${rendered.text}${eol}`;
+      : tokens[preamble[preamble.length - 1].lastToken].end;
     return {
-      edit: { start: anchorEnd, end: anchorEnd, newText },
+      edit: {
+        start: anchorEnd,
+        end: anchorEnd,
+        newText: HEADER_GAP + tag + eol + rendered.text + eol,
+      },
       caret:
         anchorEnd +
-        prefix.length +
+        HEADER_GAP.length +
         tag.length +
         eol.length +
         rendered.caretOffset,
@@ -744,10 +833,9 @@ export function computeEdit(
       // PLAYER_SETUP, so an effect the script already sets keeps its
       // place. With no PLAYER_SETUP at all they go to the preamble, which
       // is where every corpus map using this idiom keeps them. A new
-      // section is not synthesized, insertIntoNewSection appends at end of
-      // file and PLAYER_SETUP there would come after the generation it
-      // has to precede. headerText skips the lookup and always takes the
-      // preamble.
+      // section is not synthesized, since the preamble already sits above
+      // every section and needs no slot of its own. headerText skips the
+      // lookup and always takes the preamble.
       const setupSection =
         intent.headerText === undefined
           ? [...result.script.sections]
@@ -767,15 +855,22 @@ export function computeEdit(
       // both start after the leading trivia. Merge them into one insert
       // with the setup lines first, since they belong above every section.
       // Refusing here used to close the dialog having inserted nothing.
-      if (companion.start === main.edit.start)
+      if (companion.start === main.edit.start) {
+        // Each edit spaces itself as if nothing else were beside it. Joined, the
+        // setup lines sit above the new section, so the section's own lead is
+        // swapped for the standard two blank lines.
+        const setupPart = companion.newText.replace(/(?:\r?\n)+$/, "");
+        const sectionPart = main.edit.newText.replace(/^(?:\r?\n)+/, "");
+        const leadLength = main.edit.newText.length - sectionPart.length;
         return {
           edit: {
             start: main.edit.start,
             end: main.edit.end,
-            newText: companion.newText + main.edit.newText,
+            newText: setupPart + HEADER_GAP + sectionPart,
           },
-          caret: main.caret + companion.newText.length,
+          caret: main.caret - leadLength + setupPart.length + HEADER_GAP.length,
         };
+      }
       // Original coordinates for both edits, final-text coordinates for the
       // caret. A companion above the main insert pushes the caret down by
       // its own length, one below it cannot reach it.

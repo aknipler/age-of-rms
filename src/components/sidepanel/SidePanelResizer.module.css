@@ -19,7 +19,10 @@
      7px collapse button here, so without this the line is 7px wide. */
   min-width: 0;
   position: relative;
-  z-index: 3;
+  /* Above Monaco's sticky scroll header (z-index 4 in its own CSS). The
+     hover bar overlaps the editor's left edge, and at 3 the header row drew
+     over it. */
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;

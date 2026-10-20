@@ -202,9 +202,48 @@ const whatsNew080: TutorialDefinition = {
   ],
 };
 
+// No new controls to point at, so the announcement is the whole tour.
+const whatsNew090: TutorialDefinition = {
+  id: "whats-new-0.9.0",
+  kind: "feature",
+  title: "What's new in 0.9",
+  blurb:
+    "Elevation and cliffs that match DE, hideable warnings, a tabbed preview with side names, a tidier Code tab, and more in Add template.",
+  version: "0.9.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.9",
+      body: [
+        "Hello!",
+        "",
+        "This one was largely Breakdown QOL and bug fixes which came from a very helpful tester, thank you J.",
+        "- Preview's elevation and cliffs sections now match DE's engine (as far as my testing goes). More testing is always appreciated, especially on larger maps.",
+        "- Add template has more capability. You can choose to exclude resources and edit gold and stone pile amounts.",
+        "- The preview and the reference table now share the panel as two tabs, so they have more space. Also labelled the map's sides (Left, Bottom, Right, Top) and put x and y axis labels with arrows because I kept forgetting what they were.",
+        "- Also, Ctrl+Tab steps through the section tabs (in both Breakdown and Code) or changes between preview and reference table, depending on what you last clicked/edited.",
+        "- Tutorial cards can now be minimized or dragged out of the way.",
+        "",
+        "What's next:",
+        "(1) improving the preview engine (terrain section),",
+        "(2) adding in community hub for sharing maps (this may take a while),",
+        "(3) more tutorials! (elevation section)",
+        "(4) improving the Advanced Land Placement tool,",
+        "(5) any of the bug fixes or small QOL improvements that you guys suggest along the way.",
+        "I would also like to start looking into supporting multiple languages. If anyone is interested in helping with that (or with anything else, like making tutorials), please reach out to me on GitHub or Discord. I would love to have a community of people helping to make this app accessible to everyone.",
+        "Thank you for the support!",
+        { kind: "text", text: "Happy scripting,", align: "right" },
+        { kind: "text", text: "Captain Kniples the Fourth", align: "right" },
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
   whatsNew070,
   whatsNew080,
+  whatsNew090,
 ];

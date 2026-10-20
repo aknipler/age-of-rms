@@ -2174,6 +2174,28 @@ export function applyObjects(
         emitSecondObject(x, y, frame.player, groupId);
       }
 
+      // Actor-area bookkeeping (file header note 5): one representative point per command, at its first successful placement this frame.
+      // A function so every placement path ends in it. The ungrouped path
+      // used to `continue` past the inline copy, so a plain single placement
+      // (the eating sheep, a straggler tree) never created its area and the
+      // command that reads it reported the area as missing.
+      const placedBeforeFrame = placed;
+      function registerActorArea(): void {
+        if (!cmd.attributes.has("actor_area") || placed === placedBeforeFrame)
+          return;
+        const idVal = argValue(cmd, "actor_area", 0);
+        if (typeof idVal !== "number") return;
+        const last = objects[objects.length - 1];
+        const existing = liveActorAreas.get(idVal);
+        const radius =
+          optionalNumAttr(cmd, "actor_area_radius", 1) ??
+          existing?.[0]?.radius ??
+          1;
+        const area = { x: last.x, y: last.y, radius };
+        if (existing) existing.push(area);
+        else liveActorAreas.set(idVal, [area]);
+      }
+
       if (attempted + declaredTotal > MAX_OBJECT_PLACEMENTS_PER_COMMAND) {
         iterationCapped = true;
       }
@@ -2196,6 +2218,7 @@ export function applyObjects(
           }
           commitPlacement(tile, undefined);
         }
+        registerActorArea();
         continue;
       }
 
@@ -2332,21 +2355,7 @@ export function applyObjects(
         }
       }
 
-      // Actor-area bookkeeping (file header note 5): one representative point per command, at its first successful placement this frame.
-      if (cmd.attributes.has("actor_area") && placed > 0) {
-        const idVal = argValue(cmd, "actor_area", 0);
-        if (typeof idVal === "number") {
-          const last = objects[objects.length - 1];
-          const existing = liveActorAreas.get(idVal);
-          const radius =
-            optionalNumAttr(cmd, "actor_area_radius", 1) ??
-            existing?.[0]?.radius ??
-            1;
-          const area = { x: last.x, y: last.y, radius };
-          if (existing) existing.push(area);
-          else liveActorAreas.set(idVal, [area]);
-        }
-      }
+      registerActorArea();
     }
 
     if (iterationCapped) {
