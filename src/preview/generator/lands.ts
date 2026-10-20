@@ -1527,12 +1527,22 @@ export function growLands(
  * `Map.js` with its asymmetries kept. Both passes match DE on every map in
  * the land-stage fixture (Sec.15 item 46 closed, rev 9).
  *
- * `onChange` runs for each changed tile, for the caller's bookkeeping.
+ * A neighbour off the map never counts as the reference. So a tile on the
+ * map's edge needs the reference on the side still inside the map and the
+ * pinch along the edge, and a corner tile is pinched by neither pair. DE does
+ * the same, since reading off-map neighbours as the reference puts 8 of the
+ * fixture's 111 maps out by 1 to 5 tiles (2026-10-20). This is why a
+ * one-tile land at `land_position 99 0` survives on Tiny, where 99% rounds
+ * to the last column, and vanishes from Medium up, where it rounds one
+ * column in and has the reference on both sides.
+ *
+ * `onChange` runs for each changed tile with the terrain it had, for the
+ * caller's bookkeeping.
  */
 export function cleanTerrainAgainst(
   grid: TileGrid,
   reference: number,
-  onChange?: (tile: number) => void,
+  onChange?: (tile: number, formerTerrain: number) => void,
 ): number {
   const { dim, terrain } = grid;
   const base = reference;
@@ -1592,8 +1602,9 @@ export function cleanTerrainAgainst(
                 (topRight && !right && !top);
           }
           if (!revert) continue;
+          const former = terrain[i];
           terrain[i] = base;
-          onChange?.(i);
+          onChange?.(i, former);
           changedCount++;
           changed = true;
         }
@@ -1616,18 +1627,31 @@ export function cleanTerrainAgainst(
  * Only the count of draws matters, since nothing reads them, so they are
  * taken as raw draws in the cleanup's own order. Without `restore` no draw is
  * taken, which is right for a test that stops at the land stage.
+ *
+ * `onRevert` hears each reverted tile with its terrain and land from before,
+ * since the tile has lost both by the time the pass returns.
  */
 export function cleanLandTerrain(
   grid: TileGrid,
   baseTerrainId: number,
   restore?: { stream: DeStream; draws: number },
+  onRevert?: CleanupListener,
 ): number {
-  return cleanTerrainAgainst(grid, baseTerrainId, (i) => {
+  return cleanTerrainAgainst(grid, baseTerrainId, (i, formerTerrain) => {
+    const formerLand = grid.landId[i];
     grid.landId[i] = -1;
     grid.zone[i] = 0;
     if (restore) for (let d = 0; d < restore.draws; d++) restore.stream.raw();
+    onRevert?.(i, formerTerrain, formerLand);
   });
 }
+
+/** One tile a cleanup pass changed, with the terrain and land index (-1 for none) it had. */
+export type CleanupListener = (
+  tile: number,
+  formerTerrain: number,
+  formerLand: number,
+) => void;
 
 /**
  * The land stage's last steps as the game runs them (Sec.6.1, rev 10).
@@ -1646,13 +1670,19 @@ export function finishLandStage(
   baseTerrainId: number,
   constants: readonly TerrainConstantForMasks[],
   streamState: DeStreamState,
+  onRevert?: CleanupListener,
 ): DeStreamState {
   paintLandTerrain(origins, grid);
   const stream = resumeDeStream(streamState);
-  cleanLandTerrain(grid, baseTerrainId, {
-    stream,
-    draws: decorationDrawsOf(terrainClassTable(constants), baseTerrainId),
-  });
+  cleanLandTerrain(
+    grid,
+    baseTerrainId,
+    {
+      stream,
+      draws: decorationDrawsOf(terrainClassTable(constants), baseTerrainId),
+    },
+    onRevert,
+  );
   return stream.state();
 }
 

@@ -44,7 +44,7 @@ import type {
 } from "./types";
 import { resumeDeStream, type DeStream, type DeStreamState } from "./deRandom";
 import { NO_LAYER, type TerrainConstantForMasks } from "./grid";
-import { cleanTerrainAgainst } from "./lands";
+import { cleanTerrainAgainst, type CleanupListener } from "./lands";
 import { pushFailure } from "./placement";
 import { shuffleList } from "./elevation";
 import {
@@ -828,15 +828,20 @@ function paintPath(
  * (co1). Then the cleanup against WATER runs, which turns a tile pinched
  * between water tiles into water and takes its layer. The beach pass that
  * follows is `applyAutomaticBeach`, which `index.ts` calls next.
+ *
+ * `onCleaned` hears each tile the cleanup turned into water. The tile keeps
+ * its land, so the listener reads `grid.landId` for it.
  */
 export function finishTerrainStage(
   grid: TileGrid,
   lineTiles: ReadonlyMap<number, number>,
   waterId: number | undefined,
+  onCleaned?: CleanupListener,
 ): void {
   for (const [i, earlier] of lineTiles) grid.terrain[i] = earlier;
   if (waterId !== undefined)
-    cleanTerrainAgainst(grid, waterId, (i) => {
+    cleanTerrainAgainst(grid, waterId, (i, formerTerrain) => {
       grid.layer[i] = NO_LAYER;
+      onCleaned?.(i, formerTerrain, grid.landId[i]);
     });
 }

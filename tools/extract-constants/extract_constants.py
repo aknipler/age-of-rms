@@ -1916,6 +1916,7 @@ CONSTANT_KEY_ORDER = [
     "decorations",
     "isHybrid",
     "isBeach",
+    "isUnbuildable",
     "beachTerrain",
     # The engine's own terrain table, then our five-value reading of it. Order
     # is the argument: the measurement comes first and the approximation second,

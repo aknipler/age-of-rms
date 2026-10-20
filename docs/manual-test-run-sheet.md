@@ -789,6 +789,36 @@ the "Your first random map" result. Open the Breakdown tab with a few command ca
 
 ---
 
+## 28. The cleanup note, 2026-10-20 (`preview-design.md` Sec.6.1 rule 11, Sec.6.4)
+
+Script for every step, in a saved file:
+
+```
+<LAND_GENERATION>
+base_terrain WATER
+create_land { terrain_type DESERT land_position 99 0 base_size 0 land_percent 0 }
+```
+
+1. Set the map size to Large. Open the preview's Notes drawer and confirm one S1 line reads
+   "Cleanup turned 1 tile into WATER (DESERT 1) because it sat between WATER tiles, erasing the
+   land on line 3. This shows because the terrain class changed, but the cleanup runs on every
+   map." Confirm no sand shows in the top corner of the map.
+2. Set the map size to Tiny. Confirm the cleanup line is gone from the drawer and a single tile of
+   land shows in the corner (the beach pass repaints it as beach).
+3. Change `base_terrain WATER` to `base_terrain GRASS`, still on Large. Confirm the desert tile is
+   gone and no cleanup line shows, since DESERT and GRASS are both land.
+4. Change `terrain_type DESERT` to `terrain_type DLC_ROCK` with the GRASS base. Confirm the line
+   comes back as "Cleanup turned 1 tile into GRASS (DLC_ROCK 1) because it sat between GRASS
+   tiles, erasing the land on line 3." followed by the same closing sentence.
+5. Back on the WATER base, change `land_percent 0` to `land_percent 6`. Confirm the land grows and
+   any cleanup line no longer says a land was erased.
+6. Open a water map from the corpus (for example Comeer's finished script) and read the cleanup
+   line, if one shows. Confirm it reads as one short entry in the drawer at the usual pane width.
+7. Optional, against the game. Generate the WATER script above in DE's scenario editor on Large and
+   on Tiny and confirm the land is missing on Large and shows in the corner on Tiny.
+
+---
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

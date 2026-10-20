@@ -62,6 +62,7 @@ import {
   type TerrainRestriction,
 } from "./forestTreeSuppression";
 import { computeResourceSummary } from "./resourceSummary";
+import { cleanupNote, createCleanupTally, recordCleanup } from "./cleanupNote";
 
 /**
  * The bundled reference data `generatePreview` needs, `instantiateScript`
@@ -299,6 +300,11 @@ export function generatePreview(
   // it this early also keeps the marks a statement about land generation
   // rather than about whatever S4 painted over the result.
   const landOutcomes = collectLandOutcomes(landResult.origins, grid);
+  // The cleanup note needs the same before-cleanup reading, to tell a land
+  // the cleanup erased from one it only trimmed.
+  const ownedAfterGrowth = countOwnedTiles(landResult.origins, grid);
+  const waterId = resolveTerrainId(constants, "WATER");
+  const cleanup = createCleanupTally(constants);
   // Sec.6.1 rules 9 to 11. Painting, then the cleanup, whose restored tiles
   // spend the base terrain's decoration draws. Heights were written during
   // growth, so base_elevation only has notes left to give.
@@ -308,6 +314,8 @@ export function generatePreview(
     baseTerrainId,
     constants,
     grown,
+    (_tile, formerTerrain, formerLand) =>
+      recordCleanup(cleanup, "S1", baseTerrainId, formerTerrain, formerLand),
   );
   const baseElevationNoteList = baseElevationNotes(
     instantiated,
@@ -355,7 +363,11 @@ export function generatePreview(
   finishTerrainStage(
     grid,
     cliffsResult.lineTiles,
-    resolveTerrainId(constants, "WATER"),
+    waterId,
+    waterId === undefined
+      ? undefined
+      : (_tile, formerTerrain, formerLand) =>
+          recordCleanup(cleanup, "S4", waterId, formerTerrain, formerLand),
   );
   const beachedAtTerrainEnd = applyAutomaticBeach(grid, constants);
   snapshot("S4");
@@ -465,6 +477,13 @@ export function generatePreview(
       baseFillNote,
       beachNote,
       landOutcomes.note,
+      cleanupNote(
+        cleanup,
+        landResult.origins,
+        ownedAfterGrowth,
+        constants,
+        parse.lineOffsets,
+      ),
       ...landResult.notes,
       ...baseElevationNoteList,
       ...cliffsResult.notes,
