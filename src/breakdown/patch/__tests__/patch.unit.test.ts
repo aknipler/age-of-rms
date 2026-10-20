@@ -498,6 +498,31 @@ describe("addComment (reuses addCommand's own InsertTarget resolution)", () => {
   });
 });
 
+describe("removeComment (a comment card's delete button)", () => {
+  it("removes a comment on its own line, newline included", () => {
+    const src = "<PLAYER_SETUP>\n/* note */\nrandom_placement";
+    const span = extractComments(parseRms(src, langData).tokens)[0];
+    const { out } = run(src, { kind: "removeComment", span });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement");
+  });
+
+  it("removes a comment sharing a line with code and one separator space", () => {
+    const src = "<PLAYER_SETUP>\nrandom_placement /* note */";
+    const span = extractComments(parseRms(src, langData).tokens)[0];
+    const { out } = run(src, { kind: "removeComment", span });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement");
+    expect(extractComments(parseRms(out, langData).tokens)).toHaveLength(0);
+  });
+
+  it("removes a multi-line comment whole and leaves its neighbours alone", () => {
+    const src =
+      "<PLAYER_SETUP>\nrandom_placement\n/* one\n   two */\nnomad_resources";
+    const span = extractComments(parseRms(src, langData).tokens)[0];
+    const { out } = run(src, { kind: "removeComment", span });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement\nnomad_resources");
+  });
+});
+
 describe("insertText (Object Templates, docs/object-templates-brief.md)", () => {
   // A tab-per-level canonical block, same shape templates.ts produces:
   // a header comment, then a create_object at indent 0 with one

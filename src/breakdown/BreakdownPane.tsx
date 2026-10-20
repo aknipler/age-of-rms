@@ -29,6 +29,7 @@ import {
   type CollapseMemory,
 } from "./scrollMemory";
 import { extractComments } from "./comments";
+import { useEditorFocusKeeper } from "./editorFocus";
 import type {
   DraggableCard,
   EditIntent,
@@ -37,7 +38,7 @@ import type {
 } from "./patch/intents";
 import type { SharedSelectionApi } from "../hooks/useSharedSelection";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
-import { matchesHotkey } from "../settings/hotkeys";
+import { isPlainDeleteKey, matchesHotkey } from "../settings/hotkeys";
 import { useBreakdownSettings } from "../settings/BreakdownSettingsContext";
 import {
   useCurrentFilePath,
@@ -161,6 +162,11 @@ export function BreakdownPane({
   const requestFocus = useCallback((offset: number) => {
     pendingFocusRef.current = offset;
   }, []);
+
+  // Gives focus back to the editor the user clicked into when the reparse
+  // after an earlier field's blur-commit replaced it (editorFocus.ts has the
+  // whole story). Fed from the pending-shift effect further down.
+  const focusKeeper = useEditorFocusKeeper(focusableRef);
 
   // Runs after every re-render driven by a fresh parseResult (i.e. after
   // a reparse following an edit), tries to resolve a pending focus
@@ -399,6 +405,9 @@ export function BreakdownPane({
     }
     const toApply = pending.slice(0, matchedUpTo + 1);
     pendingAnchorShiftsRef.current = pending.slice(matchedUpTo + 1);
+    // The new parse is on screen and its editors have registered, so a field
+    // that was replaced under the user's cursor can be focused again.
+    focusKeeper.restoreAfter(toApply.map((p) => p.edit));
     if (pendingAnchorShiftsRef.current.length === 0) {
       expectedSourceRef.current = null;
     }
@@ -447,7 +456,7 @@ export function BreakdownPane({
         pendingScrollAnchorRef.current = anchor;
       }
     }
-  }, [source, tabs]);
+  }, [source, tabs, focusKeeper]);
 
   const revealAfterEdit = useCallback(
     (offset: number, scroll: boolean, expand = true) => {
@@ -524,7 +533,13 @@ export function BreakdownPane({
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (recordingId !== null) return;
-      if (matchesHotkey(event, hotkeys.breakdownDeleteCard)) {
+      // The bound chord, or a plain Delete press (feedback 2026-10: "does
+      // clicking a card then pressing the delete button work?" It did not,
+      // only Ctrl+Alt+D did). Plain Delete stands down inside any text field.
+      if (
+        matchesHotkey(event, hotkeys.breakdownDeleteCard) ||
+        isPlainDeleteKey(event)
+      ) {
         const item = selection.selectedItem;
         if (!item || !canDeleteItem(item)) return;
         event.preventDefault();
@@ -671,7 +686,11 @@ export function BreakdownPane({
         duplicateItem,
       }}
     >
-      <div className={styles.pane}>
+      <div
+        className={styles.pane}
+        onFocusCapture={focusKeeper.onFocusCapture}
+        onBlurCapture={focusKeeper.onBlurCapture}
+      >
         <MapSidePanel />
         <div
           className={styles.main}

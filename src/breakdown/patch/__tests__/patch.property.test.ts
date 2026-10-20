@@ -193,6 +193,10 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
   // comment to replace the inner span of.
   if (pools.removables.length) kinds.push("addComment");
   if (pools.comments.length) kinds.push("editComment");
+  // removeComment (2026-10) is removeSpan on a comment's whole outer span,
+  // the same deletion rule removeNode runs on a node, so it draws on the
+  // same comment pool editComment does.
+  if (pools.comments.length) kinds.push("removeComment");
   if (pools.shortAttrs.length) kinds.push("appendArg");
   // 2026-09-18, the rearranging work. `before` mirrors `after` on the same
   // anchor pool; duplicate and the control-flow skeletons take the
@@ -264,6 +268,8 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
         construct: rand() < 0.5 ? "if" : "random",
       };
     }
+    case "removeComment":
+      return { kind: "removeComment", span: pick(pools.comments) };
     case "editComment": {
       const span = pick(pools.comments);
       const innerSpan = { start: span.start + 2, end: span.end - 2 };

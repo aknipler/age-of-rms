@@ -107,6 +107,13 @@
   outline: none;
 }
 
+/* Pinned to the card's right edge and never shrunk, like CommandCard's
+   .deleteSlot. */
+.deleteSlot {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .inlineError {
   display: block;
   color: var(--danger);

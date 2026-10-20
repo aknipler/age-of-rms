@@ -173,6 +173,53 @@ export function matchesHotkey(event: KeyboardEvent, hotkey: Hotkey): boolean {
   );
 }
 
+/** Input types that take no typed text, so a Delete press on them is not an edit of that field. */
+const NON_TEXT_INPUT_TYPES = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+]);
+
+/**
+ * True when a keydown's target is somewhere the user types, where Delete and
+ * Backspace belong to the field. A bare-key shortcut has to stand down there;
+ * the Ctrl/Alt bindings above never need this because no field uses them.
+ */
+export function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  if (target instanceof HTMLTextAreaElement) return true;
+  if (target instanceof HTMLSelectElement) return true;
+  if (target instanceof HTMLInputElement)
+    return !NON_TEXT_INPUT_TYPES.has(target.type);
+  return false;
+}
+
+/**
+ * The fixed Delete key for removing the selected card. It is not one of the
+ * rebindable hotkeys: a binding must carry Ctrl or Alt (hotkeyFromEvent), so
+ * a bare key can never be recorded, and this one is safe only because of the
+ * target check. Held-key repeats are ignored so a long press cannot walk
+ * down the list deleting whatever becomes selected next.
+ */
+export function isPlainDeleteKey(event: KeyboardEvent): boolean {
+  return (
+    event.key === "Delete" &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.metaKey &&
+    !event.repeat &&
+    !isTextEntryTarget(event.target)
+  );
+}
+
 const MODIFIER_KEYS = new Set(["control", "shift", "alt", "meta", "os"]);
 
 /**

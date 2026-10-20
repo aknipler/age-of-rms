@@ -746,6 +746,49 @@ Replaces "Move this out of the way". Run against "Your first random map" and the
 
 ---
 
+## 27. Breakdown feedback fixes, 2026-10-20 (`breakdown-design.md` Sec.3.3, 3.9, 3.11)
+
+Four fixes from the October beta feedback. Run against any map with several commands, for example
+the "Your first random map" result. Open the Breakdown tab with a few command cards.
+
+1. Focus after an edit. Open a `create_land` card with `land_percent` followed by other
+   attributes. Click into the `land_percent` value, change `30` to `100`, then click straight into
+   the next value below it. Confirm the caret stays in the second field and you can keep typing.
+   Repeat with the second field in a different card further down the list. Repeat once clicking
+   into a field in a card above the edited one. Before the fix the caret appeared and vanished.
+2. Focus stays put when you click away. Edit a value, then click empty space between cards.
+   Confirm nothing is focused afterwards and the edit is kept.
+3. Delete a comment. Add a comment (Add Comment), type some text, then press its trash button.
+   Confirm the comment goes and the lines around it close up. Hover the button and confirm the
+   HelpTip. Press Ctrl+Z and confirm the comment returns.
+4. Delete a comment mid edit. Click into a comment, type a few words without clicking away, then
+   press its trash button. Confirm it deletes on the first press and does not need a second.
+5. Delete a comment on a command line. In the Code tab, write `create_land /* note */ { }` style
+   input where a comment follows code on the same line, switch to Breakdown and delete it. Confirm
+   the code on that line is untouched.
+6. Delete key. Click a command card's header, then press Delete. Confirm the card is removed and
+   Ctrl+Z restores it. Repeat after clicking a value field inside the card, then clicking the card
+   header. Confirm Ctrl+Alt+D still works too.
+7. Delete key stands down while typing. Click into a value field and press Delete a few times.
+   Confirm it edits the field and no card is removed. Do the same inside a comment's text box and
+   inside the Add Command search box.
+8. Hold Delete with a card selected. Confirm only the one card is removed, not its neighbours.
+9. Collapse during a drag. Open three or four command cards. Press on one card's header and drag
+   a few pixels. Confirm every command card closes to its one line header while the drag is
+   running and the dragged card is dimmed. Drop it between two others and confirm the same cards
+   that were open before are open again, the moved card included.
+10. Cancel a drag. Open some cards and leave one closed. Start a drag, press Escape, and confirm
+    the open cards reopen and the closed one stays closed.
+11. A plain click on a card header must not close the others, only a drag does.
+12. Drag with a comment card. Start the drag from a comment card and confirm the command cards
+    close the same way, then reopen on drop.
+13. Hide Unused. Turn Hide Unused on, open a card, tick a flag so it shows, then drag any card and
+    drop it. Confirm the reopened card still shows the slots it showed before the drag.
+14. Watch the scroll position while the cards close. Note where the list lands after a drop and
+    report it if the dragged card ends up out of sight.
+
+---
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

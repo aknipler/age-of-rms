@@ -187,6 +187,11 @@ export type EditIntent =
   // would change how many comments the source contains, which no other
   // intent here does either.
   | { kind: "editComment"; innerSpan: Span; text: string }
+  // `span` is the whole comment, delimiters included (the span CommentCard
+  // already holds). Deletes it by the same whole-line-or-surgical rule as
+  // removeNode, which is why comments get their own intent instead of
+  // widening removeNode: that one is typed to AST nodes.
+  | { kind: "removeComment"; span: Span }
   | { kind: "setCondition"; branch: BranchRef; value: string }
   | { kind: "setChance"; branch: BranchRef; value: ArgValueInput }
   | {

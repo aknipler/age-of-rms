@@ -6,6 +6,7 @@ import type {
   Diagnostic,
 } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
+import { useCardDrag } from "../cardDrag";
 import { useBreakdownSettings } from "../../settings/BreakdownSettingsContext";
 import {
   buildCommandBreakdown,
@@ -183,7 +184,17 @@ export function CommandCard({ command }: CommandCardProps) {
     hideUnused,
     hideUnusedExceptions,
   } = useBreakdownSettings();
-  const expanded = isExpanded(command.span);
+  // Dragging any card closes every command card for the length of the drag
+  // (feedback 2026-10), so a long list shrinks to a column of one-line
+  // headers that are easy to aim at. The user's own open/closed choice is
+  // left alone in the expansion anchors, so ending the drag, by drop or
+  // cancel, puts every card back with no restore step to get wrong. This is
+  // a view-level override, not a second copy of the state. `expandedByUser`
+  // is what the Hide Unused snapshot below keys on: re-taking that snapshot
+  // after a drag would re-hide slots the user had filled in or unticked.
+  const { dragging } = useCardDrag();
+  const expandedByUser = isExpanded(command.span);
+  const expanded = expandedByUser && dragging === null;
   const name = tokens[command.name].text;
   const cardDiagnostics = diagnosticsWithin(diagnostics, command.span);
   const known = command.def !== undefined;
@@ -293,13 +304,13 @@ export function CommandCard({ command }: CommandCardProps) {
   // search bar shows at once while an unticked flag stays until reopen.
   const visibleSnapshot = useMemo(
     () =>
-      hideUnused && expanded
+      hideUnused && expandedByUser
         ? snapshotVisibleNames(orderedSlots, hideUnusedExceptions)
         : null,
     // orderedSlots deliberately left out: it changes on every reparse and
     // re-reading it would defeat the snapshot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hideUnused, expanded, hideUnusedExceptions, command.span.start],
+    [hideUnused, expandedByUser, hideUnusedExceptions, command.span.start],
   );
   const { shown: visibleSlots, hidden: hiddenSlots } = visibleSnapshot
     ? partitionSlots(displayedSlots, visibleSnapshot)

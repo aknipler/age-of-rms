@@ -677,6 +677,10 @@
       "text": "Expands or collapses this comment. Collapsed shows just its first line."
     },
     {
+      "id": "breakdown.commentCard.delete",
+      "text": "Removes this comment from the script. Undo with Ctrl+Z."
+    },
+    {
       "id": "breakdown.commentCard.nested",
       "text": "A comment containing another comment inside it. Shown for reference only. Switch to the Code tab to change it."
     },

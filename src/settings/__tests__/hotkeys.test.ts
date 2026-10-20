@@ -5,6 +5,8 @@ import {
   hotkeyFromEvent,
   hotkeysEqual,
   isHotkey,
+  isPlainDeleteKey,
+  isTextEntryTarget,
   matchesHotkey,
   type Hotkey,
 } from "../hotkeys";
@@ -150,5 +152,65 @@ describe("isHotkey", () => {
     expect(isHotkey({ key: "", ctrl: true, shift: false, alt: false })).toBe(
       false,
     );
+  });
+});
+
+// The fixed Delete key that removes the selected Breakdown card. The target
+// check is the whole safety story, so each kind of place the user types gets
+// its own case, and so does the place they do not.
+describe("isPlainDeleteKey / isTextEntryTarget", () => {
+  function pressOn(
+    el: HTMLElement,
+    init: Partial<KeyboardEventInit> = {},
+  ): KeyboardEvent {
+    document.body.appendChild(el);
+    let seen!: KeyboardEvent;
+    el.addEventListener("keydown", (e) => (seen = e));
+    el.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Delete", bubbles: true, ...init }),
+    );
+    el.remove();
+    return seen;
+  }
+
+  it("fires for Delete on a plain element such as a focused card button", () => {
+    expect(isPlainDeleteKey(pressOn(document.createElement("button")))).toBe(
+      true,
+    );
+    expect(isPlainDeleteKey(pressOn(document.createElement("div")))).toBe(true);
+  });
+
+  it("stands down in a text input, a textarea, a select and contenteditable", () => {
+    const input = document.createElement("input");
+    input.type = "text";
+    expect(isPlainDeleteKey(pressOn(input))).toBe(false);
+    expect(isPlainDeleteKey(pressOn(document.createElement("textarea")))).toBe(
+      false,
+    );
+    expect(isPlainDeleteKey(pressOn(document.createElement("select")))).toBe(
+      false,
+    );
+    const editable = document.createElement("div");
+    // jsdom does not compute isContentEditable from the attribute, so the
+    // property is set the way a real browser would report it.
+    Object.defineProperty(editable, "isContentEditable", { value: true });
+    expect(isPlainDeleteKey(pressOn(editable))).toBe(false);
+  });
+
+  it("still fires from a checkbox, which takes no typed text", () => {
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    expect(isTextEntryTarget(box)).toBe(false);
+    expect(isPlainDeleteKey(pressOn(box))).toBe(true);
+  });
+
+  it("ignores other keys, any modifier, and held-key repeats", () => {
+    const div = () => document.createElement("div");
+    expect(isPlainDeleteKey(pressOn(div(), { key: "Backspace" }))).toBe(false);
+    expect(isPlainDeleteKey(pressOn(div(), { ctrlKey: true }))).toBe(false);
+    expect(isPlainDeleteKey(pressOn(div(), { shiftKey: true }))).toBe(false);
+    expect(isPlainDeleteKey(pressOn(div(), { altKey: true }))).toBe(false);
+    expect(isPlainDeleteKey(pressOn(div(), { metaKey: true }))).toBe(false);
+    expect(isPlainDeleteKey(pressOn(div(), { repeat: true }))).toBe(false);
   });
 });

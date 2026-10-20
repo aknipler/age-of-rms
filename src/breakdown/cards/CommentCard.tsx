@@ -3,6 +3,7 @@ import type { Span } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { isInteractiveTarget, useCardDrag } from "../cardDrag";
 import { HelpTip } from "../../components/HelpTip";
+import { TrashIcon } from "../../components/TrashIcon";
 import cardStyles from "./cards.module.css";
 import styles from "./CommentCard.module.css";
 
@@ -188,6 +189,25 @@ export function CommentCard({ span }: CommentCardProps) {
             {error && <span className={styles.inlineError}>{error}</span>}
           </div>
         )}
+        <span className={styles.deleteSlot}>
+          <HelpTip id="breakdown.commentCard.delete">
+            <button
+              type="button"
+              className={cardStyles.deleteButton}
+              aria-label="Delete"
+              // Keeps focus where it is. A press that moved focus first would
+              // blur the textarea, and the blur commits any unsaved text as an
+              // edit of the very span this click is about to remove, which
+              // the patch queue then refuses as overlapping and the delete
+              // silently does nothing. Removing the comment makes the unsaved
+              // text moot anyway.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => applyEdit({ kind: "removeComment", span })}
+            >
+              <TrashIcon />
+            </button>
+          </HelpTip>
+        </span>
       </div>
     </div>
   );

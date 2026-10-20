@@ -567,6 +567,9 @@ export function computeEdit(
     case "removeNode":
       return removeSpan(intent.node.span);
 
+    case "removeComment":
+      return removeSpan(intent.span);
+
     case "duplicateNode": {
       assertClosed(intent.node, "duplicate");
       const range = carriedRange(intent.node);
