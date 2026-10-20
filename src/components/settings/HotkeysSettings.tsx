@@ -79,6 +79,16 @@ const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
     legend: "Code: Toggle Command Layout",
     hint: "Flips the command under the cursor between one line and one attribute per line. With a selection, every command it touches is toggled independently, each to the opposite of its own current shape, not to a shared target. Does nothing where flipping isn't safe, such as a block holding a nested if/start_random.",
   },
+  {
+    id: "cycleFocusedTabs",
+    legend: "Cycle Tabs",
+    hint: "Steps through the tabs of whatever has focus: Preview and Reference in the side panel, the section tabs in Breakdown, or in Code, scrolling the next section to the top. Adding Shift steps backwards.",
+  },
+  {
+    id: "cycleToolsTab",
+    legend: "Switch To/From Advanced Tools",
+    hint: "Flips between Advanced Tools and whichever of Breakdown or Code you were last in.",
+  },
 ];
 
 function HotkeyRow({

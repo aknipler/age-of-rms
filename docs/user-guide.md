@@ -107,17 +107,19 @@ with one hand on the left side of the keyboard (so your mouse hand never has
 to move) — the one exception is Open, which keeps the OS-conventional
 `Ctrl+O`.
 
-| Action                          | Default hotkey |
-| ------------------------------- | -------------- |
-| Save                            | `Ctrl+S`       |
-| Save As                         | `Ctrl+Shift+S` |
-| New File                        | `Ctrl+N`       |
-| Open File                       | `Ctrl+O`       |
-| Toggle Preview Current/Final    | `Ctrl+Alt+V`   |
-| Re-roll Preview seed            | `Ctrl+Alt+R`   |
-| Delete selected Breakdown card  | `Ctrl+Alt+D`   |
-| Add command (in Breakdown)      | `Ctrl+Alt+A`   |
-| Toggle command layout (in Code) | `Ctrl+Alt+F`   |
+| Action                                                                                                         | Default hotkey |
+| -------------------------------------------------------------------------------------------------------------- | -------------- |
+| Save                                                                                                           | `Ctrl+S`       |
+| Save As                                                                                                        | `Ctrl+Shift+S` |
+| New File                                                                                                       | `Ctrl+N`       |
+| Open File                                                                                                      | `Ctrl+O`       |
+| Toggle Preview Current/Final                                                                                   | `Ctrl+Alt+V`   |
+| Re-roll Preview seed                                                                                           | `Ctrl+Alt+R`   |
+| Delete selected Breakdown card                                                                                 | `Ctrl+Alt+D`   |
+| Add command (in Breakdown)                                                                                     | `Ctrl+Alt+A`   |
+| Toggle command layout (in Code)                                                                                | `Ctrl+Alt+F`   |
+| Cycle tabs (Preview/Reference, Breakdown sections, or scroll Code to the next section; add `Shift` to go back) | `Ctrl+Tab`     |
+| Switch to/from Advanced Tools                                                                                  | ``Ctrl+` ``    |
 
 ## Theming
 

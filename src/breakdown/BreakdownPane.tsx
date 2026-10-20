@@ -38,7 +38,12 @@ import type {
 } from "./patch/intents";
 import type { SharedSelectionApi } from "../hooks/useSharedSelection";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
-import { isPlainDeleteKey, matchesHotkey } from "../settings/hotkeys";
+import {
+  cycleDirection,
+  isPlainDeleteKey,
+  matchesHotkey,
+} from "../settings/hotkeys";
+import { isSidePanelKeyEvent } from "../settings/focusRegion";
 import { useBreakdownSettings } from "../settings/BreakdownSettingsContext";
 import {
   useCurrentFilePath,
@@ -47,7 +52,7 @@ import {
 import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
-import { buildSectionTabs } from "./sectionTabsModel";
+import { adjacentSectionId, buildSectionTabs } from "./sectionTabsModel";
 import { useRegisterNavigator } from "../tutorial/TutorialContext";
 import type { GameConstantsData } from "./gameConstants";
 import styles from "./BreakdownPane.module.css";
@@ -594,6 +599,35 @@ export function BreakdownPane({
   // "BreakdownPane unmounts on a top-tab switch" rule the engine's
   // navigate-application effect is already written against.
   useRegisterNavigator("breakdownSection", handleSelectTab);
+
+  // Cycle Tabs (Ctrl+Tab, Ctrl+Shift+Tab backwards) steps the section tabs.
+  // Not while the press belongs to the side panel, whose Preview/Reference
+  // tabs take the same chord (App.tsx). The `activeTabId` fallback mirrors
+  // `resolvedActiveId` below, which can't be read here, above the early
+  // returns.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      const step = cycleDirection(event, hotkeys.cycleFocusedTabs);
+      if (step === null || isSidePanelKeyEvent(event)) return;
+      const current =
+        activeTabId && tabs.some((t) => t.id === activeTabId)
+          ? activeTabId
+          : (tabs[0]?.id ?? null);
+      const next = adjacentSectionId(tabs, current, step);
+      if (next === null) return;
+      event.preventDefault();
+      handleSelectTab(next);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    hotkeys.cycleFocusedTabs,
+    recordingId,
+    activeTabId,
+    tabs,
+    handleSelectTab,
+  ]);
 
   // Post-3.9 cross-tab sync, mount-only: BreakdownPane mounting means the
   // user either just switched TO Breakdown (from Code, or app startup).

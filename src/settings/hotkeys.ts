@@ -59,7 +59,9 @@ export type HotkeyId =
   | "breakdownMoveCardUp"
   | "breakdownMoveCardDown"
   | "breakdownDuplicateCard"
-  | "codeToggleLayout";
+  | "codeToggleLayout"
+  | "cycleFocusedTabs"
+  | "cycleToolsTab";
 
 export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   save: DEFAULT_SAVE_HOTKEY,
@@ -85,6 +87,15 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   // Code tab's own namespace, Ctrl+Alt like Preview/Breakdown's. "F" for
   // Format, left-hand, unused elsewhere.
   codeToggleLayout: { key: "f", ctrl: true, shift: false, alt: true },
+  // Browser-style tab cycling, the same chord in two places: Ctrl+Tab steps
+  // through whichever tab strip has focus (the side panel's Preview/Reference,
+  // or Breakdown's section tabs), and Ctrl+Shift+Tab, the same binding with
+  // Shift added, steps the other way (cycleDirection below). Ctrl+` flips
+  // between Advanced Tools and whichever of Breakdown/Code was last open.
+  // Both are the one-handed rule's sanctioned exception for a convention
+  // everyone already has in their fingers (like Open).
+  cycleFocusedTabs: { key: "tab", ctrl: true, shift: false, alt: false },
+  cycleToolsTab: { key: "`", ctrl: true, shift: false, alt: false },
 };
 
 /** Where each binding is persisted in the app-settings store; see HotkeySettingsContext.tsx. */
@@ -101,6 +112,8 @@ export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   breakdownMoveCardDown: "breakdownMoveCardDownHotkey",
   breakdownDuplicateCard: "breakdownDuplicateCardHotkey",
   codeToggleLayout: "codeToggleLayoutHotkey",
+  cycleFocusedTabs: "cycleFocusedTabsHotkey",
+  cycleToolsTab: "cycleToolsTabHotkey",
 };
 
 /** Type guard for whatever the store handed back, a corrupted or pre-feature settings.json must not crash startup. */
@@ -171,6 +184,22 @@ export function matchesHotkey(event: KeyboardEvent, hotkey: Hotkey): boolean {
     event.shiftKey === hotkey.shift &&
     event.altKey === hotkey.alt
   );
+}
+
+/**
+ * Which way a tab-cycling press steps: `1` for the binding as bound, `-1` for
+ * the same binding with Shift added (Ctrl+Tab / Ctrl+Shift+Tab), `null` when
+ * the press is neither. A binding that already includes Shift has no
+ * reverse form, so only its exact match counts.
+ */
+export function cycleDirection(
+  event: KeyboardEvent,
+  hotkey: Hotkey,
+): 1 | -1 | null {
+  if (matchesHotkey(event, hotkey)) return 1;
+  if (!hotkey.shift && matchesHotkey(event, { ...hotkey, shift: true }))
+    return -1;
+  return null;
 }
 
 /** Input types that take no typed text, so a Delete press on them is not an edit of that field. */

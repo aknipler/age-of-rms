@@ -51,7 +51,7 @@ export function CreditsSettings() {
       </p>
       <p className={styles.creditThanks}>
         Thanks also to Big John for his work on AoE2RMSIDE, which gave the first
-        leads to how the game draws its random numbers. Every rule the preview 
+        leads to how the game draws its random numbers. Every rule the preview
         uses was then tested against maps the game itself generated.
       </p>
 

@@ -221,12 +221,20 @@
       "text": "The shortcut for toggling a command between one line and one attribute per line in the Code tab. Click Change and press a new combination. It must include Ctrl or Alt, so it can never collide with ordinary typing. Escape cancels without changing anything."
     },
     {
+      "id": "settings.hotkeys.cycleFocusedTabs",
+      "text": "Steps through the tabs of whatever has focus: Preview and Reference in the side panel, the section tabs in Breakdown, or in Code, scrolling the next section to the top. Adding Shift steps backwards. Click Change and press a new combination, which must include Ctrl or Alt."
+    },
+    {
+      "id": "settings.hotkeys.cycleToolsTab",
+      "text": "Flips between Advanced Tools and whichever of Breakdown or Code you were last in. Click Change and press a new combination, which must include Ctrl or Alt."
+    },
+    {
       "id": "settings.tab.general",
       "text": "Settings that apply across the whole app, including how these help popups behave."
     },
     {
       "id": "settings.tab.hotkeys",
-      "text": "Keyboard shortcuts: Save, Save As, New, Open, two Preview actions, two Breakdown card actions and the Code tab's layout toggle, all rebindable here."
+      "text": "Keyboard shortcuts: Save, Save As, New, Open, two Preview actions, two Breakdown card actions, the Code tab's layout toggle and two tab-cycling shortcuts, all rebindable here."
     },
     {
       "id": "settings.tab.theme",

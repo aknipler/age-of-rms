@@ -6,6 +6,10 @@ import { useSidePanelLayout } from "./SidePanelLayoutContext";
 import { SidePanelReopener, SidePanelResizer } from "./SidePanelResizer";
 import { useSidePanelTab } from "./SidePanelTabContext";
 import type { SidePanelTab } from "./sidePanelTabs";
+import {
+  FOCUS_REGION_ATTR,
+  SIDE_PANEL_REGION,
+} from "../../settings/focusRegion";
 import styles from "./MapSidePanel.module.css";
 
 /**
@@ -77,7 +81,12 @@ export function MapSidePanel() {
           case inline styles are for. The stylesheet still owns everything
           that does not change, including the max-width that keeps the panel
           from eating the editor on a narrow window. */}
-      <div ref={panelRef} className={styles.panel} style={{ width }}>
+      <div
+        ref={panelRef}
+        className={styles.panel}
+        style={{ width }}
+        {...{ [FOCUS_REGION_ATTR]: SIDE_PANEL_REGION }}
+      >
         <div
           className={styles.tabs}
           role="tablist"

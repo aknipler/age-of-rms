@@ -13,7 +13,9 @@ import { DOCUMENT_MODEL_PATH, getDocumentModel } from "../hooks/useDocument";
 import { usePreviewCut } from "../PreviewCutContext";
 import { usePreviewView } from "./preview/PreviewViewContext";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
-import { matchesHotkey } from "../settings/hotkeys";
+import { cycleDirection, matchesHotkey } from "../settings/hotkeys";
+import { isSidePanelKeyEvent } from "../settings/focusRegion";
+import { sectionJumpTop } from "../editor/sectionJump";
 import { useThemeSettings } from "../settings/ThemeSettingsContext";
 import { useCodeSettings } from "../settings/CodeSettingsContext";
 import {
@@ -388,6 +390,49 @@ export function CodePane({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hotkeys.codeToggleLayout, recordingId]);
+
+  // Cycle Tabs (Ctrl+Tab, Ctrl+Shift+Tab backwards) scrolls the next or
+  // previous <SECTION> header to the top of the editor, the Code tab's
+  // version of stepping Breakdown's section tabs. Scrolls only: the cursor
+  // stays put, since it also sets the preview's Current cut point and a jump
+  // to look at another section should not move that. Stands down for a press
+  // in the side panel, whose Preview/Reference tabs take the same chord.
+  const jumpSectionRef = useRef<(step: 1 | -1) => void>(() => {});
+  jumpSectionRef.current = (step) => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco || !parseResult) return;
+    const model = getDocumentModel();
+    // Same staleness guard as the layout toggle: header offsets from a parse
+    // one debounce cycle behind the buffer would land on the wrong lines.
+    if (model.getValue() !== parseResult.source) return;
+    const headerTops = parseResult.script.sections.map((section) =>
+      editor.getTopForLineNumber(
+        model.getPositionAt(section.span.start).lineNumber,
+      ),
+    );
+    const maxScrollTop =
+      editor.getScrollHeight() - editor.getLayoutInfo().height;
+    const target = sectionJumpTop(
+      headerTops,
+      editor.getScrollTop(),
+      maxScrollTop,
+      step,
+    );
+    if (target !== null)
+      editor.setScrollTop(target, monaco.editor.ScrollType.Immediate);
+  };
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      const step = cycleDirection(event, hotkeys.cycleFocusedTabs);
+      if (step === null || isSidePanelKeyEvent(event)) return;
+      event.preventDefault();
+      jumpSectionRef.current(step);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hotkeys.cycleFocusedTabs, recordingId]);
 
   useEffect(() => {
     applyMarkers(source, diagnostics);

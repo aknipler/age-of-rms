@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  DEFAULT_HOTKEYS,
   DEFAULT_SAVE_HOTKEY,
+  cycleDirection,
   formatHotkey,
   hotkeyFromEvent,
   hotkeysEqual,
@@ -212,5 +214,44 @@ describe("isPlainDeleteKey / isTextEntryTarget", () => {
     expect(isPlainDeleteKey(pressOn(div(), { altKey: true }))).toBe(false);
     expect(isPlainDeleteKey(pressOn(div(), { metaKey: true }))).toBe(false);
     expect(isPlainDeleteKey(pressOn(div(), { repeat: true }))).toBe(false);
+  });
+});
+
+describe("cycleDirection", () => {
+  const cycle = DEFAULT_HOTKEYS.cycleFocusedTabs;
+
+  it("steps forward on Ctrl+Tab and back on Ctrl+Shift+Tab", () => {
+    expect(cycleDirection(keydown({ key: "Tab", ctrlKey: true }), cycle)).toBe(
+      1,
+    );
+    expect(
+      cycleDirection(
+        keydown({ key: "Tab", ctrlKey: true, shiftKey: true }),
+        cycle,
+      ),
+    ).toBe(-1);
+  });
+
+  it("ignores a press without the binding's modifiers", () => {
+    expect(cycleDirection(keydown({ key: "Tab" }), cycle)).toBeNull();
+    expect(
+      cycleDirection(
+        keydown({ key: "Tab", ctrlKey: true, altKey: true }),
+        cycle,
+      ),
+    ).toBeNull();
+  });
+
+  it("gives a binding that already has Shift no reverse form", () => {
+    const withShift = { ...cycle, shift: true };
+    expect(
+      cycleDirection(
+        keydown({ key: "Tab", ctrlKey: true, shiftKey: true }),
+        withShift,
+      ),
+    ).toBe(1);
+    expect(
+      cycleDirection(keydown({ key: "Tab", ctrlKey: true }), withShift),
+    ).toBeNull();
   });
 });

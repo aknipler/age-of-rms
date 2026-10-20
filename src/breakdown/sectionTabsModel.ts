@@ -136,3 +136,23 @@ export function tabProblemSeverity(
   }
   return best;
 }
+
+/**
+ * The tab one step from `currentId` in the rendered order, wrapping at both
+ * ends, for the cycle hotkey. `null` when there is nothing to move to (no
+ * tabs, or the only one is already current). A current id that is not in the
+ * list (nothing chosen yet falls back to the first tab, see BreakdownPane)
+ * is treated as the first tab.
+ */
+export function adjacentSectionId(
+  tabs: readonly { id: string }[],
+  currentId: string | null,
+  step: 1 | -1,
+): string | null {
+  if (tabs.length < 2) return null;
+  const index = Math.max(
+    0,
+    tabs.findIndex((t) => t.id === currentId),
+  );
+  return tabs[(index + step + tabs.length) % tabs.length].id;
+}

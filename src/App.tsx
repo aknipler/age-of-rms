@@ -27,7 +27,12 @@ import {
   HotkeySettingsProvider,
   useHotkeySettings,
 } from "./settings/HotkeySettingsContext";
-import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
+import {
+  cycleDirection,
+  formatHotkey,
+  matchesHotkey,
+} from "./settings/hotkeys";
+import { isSidePanelKeyEvent, trackFocusRegion } from "./settings/focusRegion";
 import { BreakdownSettingsProvider } from "./settings/BreakdownSettingsContext";
 import { CodeSettingsProvider } from "./settings/CodeSettingsContext";
 import {
@@ -226,7 +231,7 @@ function AppContent() {
   // reason the app tab is: that component is unmounted on the inactive app
   // tab, and a step that switches app tab AND panel tab runs both
   // navigators in one pass, before the new MapSidePanel has mounted.
-  const { setTab: setSidePanelTab } = useSidePanelTab();
+  const { tab: sidePanelTab, setTab: setSidePanelTab } = useSidePanelTab();
   useRegisterNavigator("sidePanelTab", (target) =>
     setSidePanelTab(target as SidePanelTab),
   );
@@ -243,6 +248,18 @@ function AppContent() {
   const { saveFile, saveFileAs, newFile, openFile } = doc;
   const { hotkeys, recordingId } = useHotkeySettings();
   const { toggleView, reseed } = usePreviewView();
+
+  // Switch To/From Advanced Tools returns to whichever of Breakdown/Code was
+  // open before it. A ref, not state: the keydown listener below reads it at
+  // press time, and updating it must not re-render.
+  const lastEditorTabRef = useRef<TabId>("breakdown");
+  useEffect(() => {
+    if (activeTab !== "advanced-tools") lastEditorTabRef.current = activeTab;
+  }, [activeTab]);
+
+  // Remembers where the user last clicked or focused, for the cycle-tabs
+  // hotkey's side-panel check (focusRegion.ts).
+  useEffect(() => trackFocusRegion(), []);
 
   // The app-wide shortcuts: Save (default Ctrl+S, the original binding),
   // Save As, New/Open, and the two Preview actions that make sense regardless of
@@ -295,6 +312,24 @@ function AppContent() {
       } else if (matchesHotkey(event, hotkeys.previewReseed)) {
         event.preventDefault();
         reseed();
+      } else if (matchesHotkey(event, hotkeys.cycleToolsTab)) {
+        event.preventDefault();
+        setActiveTab(
+          activeTab === "advanced-tools"
+            ? lastEditorTabRef.current
+            : "advanced-tools",
+        );
+      } else if (
+        activeTab !== "advanced-tools" &&
+        cycleDirection(event, hotkeys.cycleFocusedTabs) !== null &&
+        isSidePanelKeyEvent(event)
+      ) {
+        // Only the side panel's half of Cycle Tabs lives here; Breakdown's
+        // section half is BreakdownPane's, where the section state is. The
+        // two are told apart by where the press happened, so no press
+        // reaches both. With two tabs, either direction is a swap.
+        event.preventDefault();
+        setSidePanelTab(sidePanelTab === "preview" ? "reference" : "preview");
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -308,6 +343,9 @@ function AppContent() {
     openFile,
     toggleView,
     reseed,
+    sidePanelTab,
+    setSidePanelTab,
+    activeTab,
   ]);
 
   // Undo/Redo act on the shared Monaco model directly, the same target
