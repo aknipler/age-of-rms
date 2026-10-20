@@ -398,7 +398,7 @@ describe("step body blocks", () => {
     expect(screen.queryByText("The answer.")).toBeNull();
   });
 
-  it("opens a block spoiler of several paragraphs whose own hidden words stay hidden until clicked, and hides them again on reopening", async () => {
+  it("opens a block spoiler of several paragraphs whose own hidden words stay hidden until clicked, and leaves them shown on reopening", async () => {
     await renderOverlay(
       tutorial("ladder", [
         manualStep("a", {
@@ -432,19 +432,34 @@ describe("step body blocks", () => {
     );
     fireEvent.click(toggle);
     fireEvent.click(toggle);
-    expect(screen.queryByText("Look left.")).toBeNull();
+    expect(screen.getByText("Look left.")).toBeTruthy();
   });
 
-  it("hides every spoiler again on the next step and on coming back", async () => {
-    // Both steps have both kinds at the same positions, so state that leaked
-    // across a step change would show. With different shapes the spoilers
-    // would remount anyway, whatever the engine did.
+  it("hides an inline spoiler again on one click of its words", async () => {
+    await renderOverlay(
+      tutorial("rehide", [
+        manualStep("a", { body: [["We pick ", { spoiler: "12" }, "."]] }),
+      ]),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Hidden text, click to show" }),
+    );
+    fireEvent.click(screen.getByText("12"));
+    expect(screen.queryByText("12")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Hidden text, click to show" }),
+    ).toBeTruthy();
+  });
+
+  it("keeps a step's opened spoilers open on coming back, and starts the next step with its own hidden", async () => {
+    // Both steps have both kinds at the same positions, so state shared
+    // between the steps would show. The memory is keyed by step.
     const body = (answer: string) => [
       ["We pick ", { spoiler: answer }, "."],
       { kind: "spoiler" as const, label: "Why", text: `Because ${answer}.` },
     ];
     const api = await renderOverlay(
-      tutorial("reset", [
+      tutorial("remember", [
         manualStep("a", { body: body("12") }),
         manualStep("b", { body: body("20") }),
       ]),
@@ -460,8 +475,29 @@ describe("step body blocks", () => {
     expect(screen.queryByText("Because 20.")).toBeNull();
 
     act(() => api().back());
-    expect(screen.queryByText("12")).toBeNull();
-    expect(screen.queryByText("Because 12.")).toBeNull();
+    expect(screen.getByText("12")).toBeTruthy();
+    expect(screen.getByText("Because 12.")).toBeTruthy();
+  });
+
+  it("forgets a closed spoiler, and every spoiler once the run ends", async () => {
+    const definition = tutorial("forget", [
+      manualStep("a", {
+        body: [{ kind: "spoiler", label: "Why", text: "Because." }],
+      }),
+      manualStep("b", { body: ["Second."] }),
+    ]);
+    const api = await renderOverlay(definition);
+    const why = () => screen.getByRole("button", { name: /Why/ });
+    fireEvent.click(why());
+    fireEvent.click(why());
+    act(() => api().next());
+    act(() => api().back());
+    expect(screen.queryByText("Because.")).toBeNull();
+
+    fireEvent.click(why());
+    act(() => api().exit());
+    act(() => api().start(definition.id));
+    expect(screen.queryByText("Because.")).toBeNull();
   });
 
   it.each([

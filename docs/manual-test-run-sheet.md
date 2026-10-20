@@ -909,6 +909,42 @@ Open any map with a few lands in the Breakdown tab. Run `npm run tauri dev`.
 
 ---
 
+## 30. Tutorial spoilers, minimize line and the Golden Hill picture, 2026-10-20 (`tutorial-design.md` Sec.4.2)
+
+Run `npm run tauri dev`, against "Land Generation (Comeer)" for the spoilers and "Your first random
+map" for the picture.
+
+1. Hidden words. On a Comeer step with a hidden number in a sentence, click the bar and confirm the
+   number shows. Click the number and confirm it turns back into a bar the same width, with the
+   sentence not moving. Reveal it again with the keyboard (Tab to it, Enter).
+2. Dropdown spoilers. Open one, click its label again, and confirm it closes on that single click.
+3. Remembering. Reveal a hidden number and open a dropdown on one step, press Next, then Back.
+   Confirm both are still open. Confirm the next step's own spoilers are shut, and that a
+   dropdown with a hidden word inside it still shows that word after closing and reopening the
+   dropdown.
+4. Restarting. Exit the tutorial from the Help menu, start it again, and confirm every spoiler is
+   shut on every step.
+5. Minimize. Confirm the minimize line in the card's top row is clearly visible in both themes,
+   about as heavy as the restore square, and that hovering it still shows its HelpTip. Compare
+   with the bar's restore button to confirm the two read as a pair.
+6. Golden Hill picture. Start "Your first random map" and confirm the first step shows a map with
+   a dirt hill in the middle, a road between two players, forest patches, a cluster of gold on the
+   hill and small food, stone and gold circles near each player, below the line about the hill.
+   Confirm no grey dots (units and buildings) are in it. Confirm the card is not so tall that it
+   covers the File menu when it opens, and that the picture is sharp enough to read at the card's
+   width. Open the preview on the finished script with 2 players, Tiny, no teams and seed 1 and
+   confirm it looks like the picture.
+7. Comeer picture. Open "Land Generation (Comeer)" and confirm its first step shows the two player
+   islands, four neutral islands and the resource circles, many of them white fish dots in the water,
+   and no grey dots. Confirm no object has a coloured ring (a dark ring only). Confirm the picture reads clearly at the card's width.
+8. Gold on the hill. In "Your first random map", reach "Gold on the hill" in both the Breakdown and
+   the Code track. Confirm the text asks for max_distance_to_players 10 and explains that
+   place_on_specific_land_id only sets where to measure from. Add the GOLD without the distance and
+   confirm the step does not complete, then add it and confirm it does. Regenerate the preview a
+   few times and confirm the gold stays in the middle of the hill.
+
+---
+
 ## 32. Argument tips and inline code, 2026-10-20 (`src/components/InlineCode.tsx`, `src/breakdown/helpText.ts`)
 
 Run `npm run tauri dev`, open a script and go to Breakdown with Help Tips on.

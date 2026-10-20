@@ -70,6 +70,7 @@ create_object GOLD {
   number_of_objects 8
   number_of_groups 4
   place_on_specific_land_id 10
+  max_distance_to_players 10
   set_gaia_object_only
 }
 

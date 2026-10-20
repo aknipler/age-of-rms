@@ -62,8 +62,8 @@ export const MAP_SIZES = [
 ] as const;
 export type MapSize = (typeof MAP_SIZES)[number];
 
-export const DEFAULT_PLAYER_COUNT = 8;
-export const DEFAULT_MAP_SIZE: MapSize = "Normal";
+export const DEFAULT_PLAYER_COUNT = 2;
+export const DEFAULT_MAP_SIZE: MapSize = "Tiny";
 
 export const MIN_PLAYER_COUNT = 2;
 export const MAX_PLAYER_COUNT = 8;

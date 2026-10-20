@@ -171,6 +171,25 @@ describe("rms-basics — every other check step is false before its own edit", (
     ).toBe(false);
   });
 
+  it("gold-on-the-hill is false while the GOLD has no max_distance_to_players, or the wrong one", () => {
+    // The frame alone does not keep the gold on the hill (preview-design
+    // Sec.6.6), so a GOLD block that leaves the distance out is not the step.
+    const line = "  max_distance_to_players 10\n";
+    const first = goldenHillSource.indexOf(line);
+    expect(first).toBeGreaterThan(-1);
+    const check = checkOf("gold-on-the-hill");
+    const without =
+      goldenHillSource.slice(0, first) +
+      goldenHillSource.slice(first + line.length);
+    const wrong =
+      goldenHillSource.slice(0, first) +
+      "  max_distance_to_players 11\n" +
+      goldenHillSource.slice(first + line.length);
+    expect(check(ctxFor(parseRms(goldenHillSource, lang)))).toBe(true);
+    expect(check(ctxFor(parseRms(without, lang)))).toBe(false);
+    expect(check(ctxFor(parseRms(wrong, lang)))).toBe(false);
+  });
+
   it("everyone-elses-resources is false before FORAGE_BUSH/STONE are added", () => {
     expect(
       checkOf("everyone-elses-resources")(

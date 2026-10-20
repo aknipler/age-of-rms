@@ -14,6 +14,7 @@ import { loadLanguage, REPO_ROOT } from "../../../parser/__tests__/testUtils";
 import type { ObjectConstant } from "../../../preview/generator/objects";
 import {
   createTerrainPalette,
+  playerColor,
   type TerrainConstant,
 } from "../../../preview/render/palette";
 import { PINNED_COMEER_SEED } from "../comeerValues";
@@ -21,11 +22,18 @@ import { finishedComeerScript } from "../finishedScript";
 import {
   decodePng,
   encodePng,
+  FOOD_COLOR,
+  isFish,
+  isPictureObject,
   renderComeerImage,
   type RgbaImage,
 } from "../renderImage";
 import { createSeedCheckDeps } from "../seedCheckGenerate";
 import { COMEER_IMAGE_SRC } from "../tutorial";
+
+/** The key the colour set below is built with. */
+const rgbKey = (c: { r: number; g: number; b: number }) =>
+  `${c.r},${c.g},${c.b}`;
 
 const lang = loadLanguage();
 const constants = (
@@ -53,6 +61,69 @@ function render(): RgbaImage {
   return renderComeerImage(result, palette);
 }
 
+describe("which objects the pictures draw", () => {
+  it("draws anything that carries a resource", () => {
+    for (const [objectRef, category] of [
+      ["GOLD", "resource-gold"],
+      ["STONE", "resource-stone"],
+      ["FORAGE_BUSH", "resource-food"],
+      ["SHORE_FISH", "resource-food"],
+      ["OAKTREE", "resource-wood"],
+    ]) {
+      expect(isPictureObject({ objectRef, category }), objectRef).toBe(true);
+    }
+  });
+
+  it("leaves out placeholders, whatever category they come with, and units and buildings", () => {
+    for (const [objectRef, category] of [
+      ["ONGRID_PLACEHOLDER", "object"],
+      ["ONGRID_PLACEHOLDER_AMPHIBIOUS", "object"],
+      ["ONGRID_PLACEHOLDER2", "resource-food"],
+      ["FISH_PLACEHOLDER", "resource-gold"],
+      ["TOWN_CENTER", "object"],
+      ["VILLAGER", "object"],
+      ["RELIC", "object"],
+    ]) {
+      expect(isPictureObject({ objectRef, category }), objectRef).toBe(false);
+    }
+  });
+});
+
+describe("food colour", () => {
+  it("is a lighter red than any player's, so food is not read as a player's", () => {
+    for (let player = 1; player <= 8; player++) {
+      const p = playerColor(player);
+      const distance = Math.hypot(
+        p.r - FOOD_COLOR.r,
+        p.g - FOOD_COLOR.g,
+        p.b - FOOD_COLOR.b,
+      );
+      expect(distance, `player ${player}`).toBeGreaterThan(60);
+    }
+    expect(FOOD_COLOR.r + FOOD_COLOR.g + FOOD_COLOR.b).toBeGreaterThan(
+      226 + 92 + 86,
+    );
+  });
+});
+
+describe("fish", () => {
+  it("are named as fish, and berries, herds, mines and trees are not", () => {
+    for (const name of ["SHORE_FISH", "TUNA", "FISH_SALMON", "MARLIN1"]) {
+      expect(isFish(name), name).toBe(true);
+    }
+    for (const name of [
+      "FORAGE",
+      "FORAGE_BUSH",
+      "SHEEP",
+      "DEER",
+      "GOLD",
+      "OAKTREE",
+    ]) {
+      expect(isFish(name), name).toBe(false);
+    }
+  });
+});
+
 describe("the Comeer picture", () => {
   const fresh = render();
 
@@ -67,8 +138,10 @@ describe("the Comeer picture", () => {
     // A diamond is half the square it sits in.
     expect(opaque).toBeGreaterThan(fresh.width * fresh.height * 0.4);
     // The two player marker colours are in the picture.
-    expect(seen.has("43,108,255")).toBe(true);
-    expect(seen.has("224,48,48")).toBe(true);
+    expect(seen.has(rgbKey(playerColor(1)))).toBe(true);
+    expect(seen.has(rgbKey(playerColor(2)))).toBe(true);
+    // Fish are white dots.
+    expect(seen.has("255,255,255")).toBe(true);
     // More than a flat fill, so the water and the land read differently.
     expect(seen.size).toBeGreaterThan(5);
   });

@@ -26,6 +26,14 @@ import { RMS_BASICS_CODE_TWINS } from "./rmsBasicsCode";
 
 export const RMS_DISCORD_URL: string = "https://discord.gg/BDvG8s5Hwt";
 
+/**
+ * The picture of the finished map on the first step. It is rendered from
+ * fixtures/goldenHill.rms by the preview itself, and goldenHillImage.test.ts
+ * fails when the committed file no longer matches that render.
+ */
+export const GOLDEN_HILL_IMAGE_SRC = "/tutorial/golden-hill.png";
+/** The seed the picture is generated with. */
+export const GOLDEN_HILL_IMAGE_SEED = 1;
 
 export const rmsBasicsTutorial: TutorialDefinition = {
   id: "rms-basics",
@@ -52,6 +60,11 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         body: [
           "We'll build this from nothing, so start a fresh file. Open the File menu, choose New, then Save As and call it something like golden_hill.",
           "This map will feature player lands and a hill in the middle with gold on it.",
+          {
+            kind: "image",
+            src: GOLDEN_HILL_IMAGE_SRC,
+            alt: "The finished Golden Hill map in the preview. A hill of dirt sits in the middle of a grass map with a road joining the two players, and patches of forest around it.",
+          },
           "Age of RMS needs the file on disk before the Breakdown editor will show it. If you have a map open already, it is safe to save it first. This will not touch it.",
         ],
         completion: {
@@ -508,8 +521,9 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         calloutMaxWidthPx: 380,
         navigate: { section: "OBJECTS_GENERATION" },
         body: [
-          "This is the bit the map is named after. Add create_object GOLD with number_of_objects 8, number_of_groups 4, set_gaia_object_only, and place_on_specific_land_id 10, the id you gave the hill in step 4.",
-          "There is more than one way to place gold on that hill: place_on_specific_land_id targets the land itself, terrain_to_place_on DIRT targets the terrain the hill is made of, and find_closest_to_map_center just works inward until it finds room. Which one is right depends on what you want to stay true every time the map regenerates.",
+          "This is the bit the map is named after. Add create_object GOLD with number_of_objects 8, number_of_groups 4, set_gaia_object_only, place_on_specific_land_id 10, the id you gave the hill in step 4, and max_distance_to_players 10.",
+          "place_on_specific_land_id only says where to measure from, which is the middle of the hill. It does not keep the gold on it. max_distance_to_players 10 does that, by keeping every group within 10 tiles of that point. Leave it out and the gold lands anywhere on the map.",
+          "terrain_to_place_on DIRT is another way, which follows the terrain the hill is made of and not the land. Which one is right depends on what you want to stay true every time the map regenerates.",
         ],
         completion: {
           kind: "check",
@@ -531,6 +545,13 @@ export const rmsBasicsTutorial: TutorialDefinition = {
               "GOLD",
               "number_of_groups",
               (args) => args[0] === "4",
+            ) &&
+            // The frame alone does not confine the gold. The distance band does.
+            hasObjectWithAttributeWhere(
+              ctx.parseResult,
+              "GOLD",
+              "max_distance_to_players",
+              (args) => args[0] === "10",
             ) &&
             hasObjectWith(ctx.parseResult, "GOLD", "set_gaia_object_only"),
         },

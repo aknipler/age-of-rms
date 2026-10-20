@@ -3,7 +3,14 @@
 // TutorialOverlay.tsx render a body, the running step and the feature-tour
 // announcement, and they must agree on what every block looks like.
 
-import { Fragment, useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import type { BodyBlock, Inline, Paragraph } from "./types";
 import { renderProse } from "../components/InlineCode";
 import styles from "./TutorialOverlay.module.css";
@@ -18,31 +25,68 @@ interface StepBodyProps {
   onContentResize: () => void;
   /** Called when a dropdown spoiler opens or closes. Defaults to `onContentResize`. */
   onDropdownToggle?: () => void;
+  /** Which spoilers the learner has opened. Without it, each starts shut on every mount. */
+  spoilerMemory?: SpoilerMemory;
 }
 
 /**
- * Hidden state for every spoiler lives inside the spoiler component, so it
- * resets whenever this body remounts. TutorialOverlay keys StepCallout by
- * the step, which remounts it on every step change, Back included. An answer
- * left open from the last visit would give it away before the learner tried.
+ * Which spoilers the learner opened, kept by the overlay for one tutorial run
+ * so they survive the remount that every step change causes (TutorialOverlay
+ * keys StepCallout by the step, Back included). `scope` names the step, and
+ * each spoiler adds its position in the body to form its own key.
+ *
+ * Plain mutable data and not state. Nothing renders from it directly. Each
+ * spoiler reads it once, when it mounts, and writes to it when toggled, so a
+ * change needs no re-render of anything else.
  */
+export interface SpoilerMemory {
+  opened: Set<string>;
+  scope: string;
+}
+
+/**
+ * A spoiler's open state, seeded from `memory` on mount and written back on
+ * every toggle. The state itself stays in the component, so a toggle renders
+ * as before. `memory` only decides the starting value.
+ */
+function useRememberedOpen(
+  memory: SpoilerMemory | undefined,
+  key: string,
+): [boolean, (open: boolean) => void] {
+  const full = memory ? `${memory.scope}#${key}` : null;
+  const [open, setOpenState] = useState(
+    () => full !== null && memory!.opened.has(full),
+  );
+  const setOpen = (value: boolean) => {
+    setOpenState(value);
+    if (full === null) return;
+    if (value) memory!.opened.add(full);
+    else memory!.opened.delete(full);
+  };
+  return [open, setOpen];
+}
+
 export function StepBody({
   blocks,
   onContentResize,
   onDropdownToggle = onContentResize,
+  spoilerMemory,
 }: StepBodyProps) {
   return (
     <div className={styles.body}>
       {blocks.map((block, i) => {
         // Index keys are right here and usually a smell. The blocks are
         // static content that never reorders while shown, so the index is
-        // a stable identity for each one.
+        // a stable identity for each one. They also name the spoiler in the
+        // memory, for the same reason.
         if (typeof block === "string" || Array.isArray(block))
           return (
             <ParagraphView
               key={i}
               paragraph={block}
               onReveal={onContentResize}
+              memory={spoilerMemory}
+              memoryKey={`${i}`}
             />
           );
         switch (block.kind) {
@@ -50,6 +94,8 @@ export function StepBody({
             return (
               <BlockSpoiler
                 key={i}
+                memory={spoilerMemory}
+                memoryKey={`${i}`}
                 label={block.label}
                 content={
                   "paragraphs" in block
@@ -95,10 +141,15 @@ export function StepBody({
 function ParagraphView({
   paragraph,
   onReveal,
+  memory,
+  memoryKey,
   className,
 }: {
   paragraph: Paragraph;
   onReveal: () => void;
+  memory: SpoilerMemory | undefined;
+  /** This paragraph's place in the body, extended with each inline spoiler's index. */
+  memoryKey: string;
   className?: string;
 }) {
   if (typeof paragraph === "string")
@@ -106,7 +157,13 @@ function ParagraphView({
   return (
     <p className={className}>
       {paragraph.map((inline, j) => (
-        <InlinePiece key={j} inline={inline} onReveal={onReveal} />
+        <InlinePiece
+          key={j}
+          inline={inline}
+          onReveal={onReveal}
+          memory={memory}
+          memoryKey={`${memoryKey}.${j}`}
+        />
       ))}
     </p>
   );
@@ -115,9 +172,13 @@ function ParagraphView({
 function InlinePiece({
   inline,
   onReveal,
+  memory,
+  memoryKey,
 }: {
   inline: Inline;
   onReveal: () => void;
+  memory: SpoilerMemory | undefined;
+  memoryKey: string;
 }) {
   if (typeof inline === "string") return <>{renderProse(inline)}</>;
   return (
@@ -125,6 +186,8 @@ function InlinePiece({
       text={inline.spoiler}
       maskAs={inline.maskAs}
       onReveal={onReveal}
+      memory={memory}
+      memoryKey={memoryKey}
     />
   );
 }
@@ -166,7 +229,7 @@ function useAfterToggle(value: boolean, onChange: () => void): void {
  * callout then changes width by a few pixels on reveal, which a number can
  * take and a sentence could not.
  *
- * Revealing is one way.
+ * A click on the revealed words hides them again.
  *
  * The revealed words are plain text, not renderProse: the bars were measured in
  * the surrounding font, and a code chip's monospace face would change the
@@ -180,12 +243,16 @@ function InlineSpoiler({
   text,
   maskAs,
   onReveal,
+  memory,
+  memoryKey,
 }: {
   text: string;
   maskAs?: string;
   onReveal: () => void;
+  memory: SpoilerMemory | undefined;
+  memoryKey: string;
 }) {
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useRememberedOpen(memory, memoryKey);
   const [widths, setWidths] = useState<number[] | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
   useAfterToggle(revealed, onReveal);
@@ -199,13 +266,35 @@ function InlineSpoiler({
     if (!context) return;
     context.font = getComputedStyle(el).font;
     setWidths(words.map((word) => context.measureText(word).width));
-    // `words` is derived from `maskText`.
+    // `words` is derived from `maskText`. `revealed` is a dependency because
+    // the bars are not in the DOM while the words show, and `ref` is empty
+    // then. A spoiler that mounts already revealed (remembered open) and is
+    // hidden by a click measures on that click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [maskText]);
+  }, [maskText, revealed]);
 
-  if (revealed) return <span className={styles.inlineRevealed}>{text}</span>;
   // A span, not a button, so the bars can wrap over lines with the sentence.
-  const reveal = () => setRevealed(true);
+  const toggle = () => setRevealed(!revealed);
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggle();
+    }
+  };
+  // No aria-label here. It would replace the words as the accessible name.
+  if (revealed)
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        className={styles.inlineRevealed}
+        title="Click to hide again"
+        onClick={toggle}
+        onKeyDown={onKeyDown}
+      >
+        {text}
+      </span>
+    );
   return (
     <span
       ref={ref}
@@ -213,13 +302,8 @@ function InlineSpoiler({
       tabIndex={0}
       className={styles.inlineSpoiler}
       aria-label="Hidden text, click to show"
-      onClick={reveal}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          reveal();
-        }
-      }}
+      onClick={toggle}
+      onKeyDown={onKeyDown}
     >
       {words.map((word, i) => (
         <Fragment key={i}>
@@ -254,14 +338,18 @@ function BlockSpoiler({
   content,
   onToggle,
   onReveal,
+  memory,
+  memoryKey,
 }: {
   label: string;
   content: { text: string; code: boolean } | { paragraphs: Paragraph[] };
   onToggle: () => void;
   /** For hidden words inside the opened paragraphs. */
   onReveal: () => void;
+  memory: SpoilerMemory | undefined;
+  memoryKey: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useRememberedOpen(memory, memoryKey);
   const textId = useId();
   useAfterToggle(open, onToggle);
 
@@ -272,21 +360,23 @@ function BlockSpoiler({
         className={styles.spoilerToggle}
         aria-expanded={open}
         aria-controls={textId}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(!open)}
       >
         <span aria-hidden="true">{open ? "▾" : "▸"}</span> {label}
       </button>
       {open &&
         ("paragraphs" in content ? (
-          // Each inline spoiler in here keeps its own revealed state, and
-          // closing the dropdown unmounts them, so reopening it hides every
-          // answer again. The same reset rule as a step change (StepBody).
+          // Each inline spoiler in here is remembered under this dropdown's
+          // key plus its own position, so closing and reopening the dropdown
+          // leaves a revealed answer revealed.
           <div id={textId}>
             {content.paragraphs.map((paragraph, i) => (
               <ParagraphView
                 key={i}
                 paragraph={paragraph}
                 onReveal={onReveal}
+                memory={memory}
+                memoryKey={`${memoryKey}.${i}`}
                 className={styles.spoilerText}
               />
             ))}

@@ -13,7 +13,7 @@ import { useTutorial } from "./TutorialContext";
 import { RMS_DISCORD_URL } from "./content/rmsBasics";
 import { SUPPORT_URL } from "../supportLink";
 import { renderProse } from "../components/InlineCode";
-import { StepBody } from "./StepBody";
+import { StepBody, type SpoilerMemory } from "./StepBody";
 import type { Anchor, BodyBlock, StepContext, TutorialStep } from "./types";
 import type { TabId } from "../types";
 import styles from "./TutorialOverlay.module.css";
@@ -238,10 +238,15 @@ export function TutorialOverlay({
   } | null>(null);
   // `runKey` alone cannot tell a restart of the same tutorial from the run
   // before it, so ending a run clears both drops.
+  // The spoilers the learner opened in this run, so paging Back to a step
+  // finds them open. A ref for the same reason as the drops above, and ending
+  // the run clears it so a restart begins with every answer hidden.
+  const spoilerMemoryRef = useRef(new Set<string>());
   useLayoutEffect(() => {
     if (runKey !== null) return;
     droppedCardRef.current = null;
     droppedBarRef.current = null;
+    spoilerMemoryRef.current.clear();
   }, [runKey]);
 
   // A dropdown spoiler opening grows an anchorless callout. Re-centring would
@@ -750,6 +755,10 @@ export function TutorialOverlay({
                 stepIndex={active.stepIndex}
                 total={active.steps.length}
                 tutorialId={active.definition.id}
+                spoilerMemory={{
+                  opened: spoilerMemoryRef.current,
+                  scope: stepKey ?? "",
+                }}
                 satisfied={satisfied}
                 onMinimize={() => setMinimized(true)}
                 onBack={back}
@@ -861,6 +870,7 @@ function StepCallout({
   stepIndex,
   total,
   tutorialId,
+  spoilerMemory,
   satisfied,
   onMinimize,
   onBack,
@@ -875,6 +885,7 @@ function StepCallout({
   stepIndex: number;
   total: number;
   tutorialId: string;
+  spoilerMemory: SpoilerMemory;
   satisfied: boolean;
   onMinimize: () => void;
   onBack: () => void;
@@ -941,7 +952,15 @@ function StepCallout({
             onClick={onMinimize}
             aria-label="Minimize"
           >
-            –
+            {/* A drawn line and not the "–" character, whose stroke is as thin
+                as the font makes it. The width here is the one to change. */}
+            <svg
+              className={styles.minimizeIcon}
+              viewBox="0 0 12 12"
+              aria-hidden="true"
+            >
+              <line x1="2" y1="6" x2="10" y2="6" />
+            </svg>
           </button>
         </HelpTip>
       </div>
@@ -958,6 +977,7 @@ function StepCallout({
         blocks={step.body}
         onContentResize={onContentResize}
         onDropdownToggle={onDropdownToggle}
+        spoilerMemory={spoilerMemory}
       />
       {showDiscordLink && (
         <HelpTip id="tutorial.discordLink">

@@ -99,6 +99,22 @@
   color: var(--text);
 }
 
+/* The minimize line. 2.5 of 12 units, about a fifth of the icon's height, in
+   the full text colour so it stands out from the card's muted header. */
+.minimizeIcon {
+  width: 0.9rem;
+  height: 0.9rem;
+  display: block;
+  margin: auto;
+  color: var(--text);
+}
+
+.minimizeIcon line {
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: square;
+}
+
 /* The minimized step. Same layer and surface as the card, one line high.
    Placed bottom right by TutorialOverlay.tsx unless the learner drags it. */
 .bar {
@@ -344,4 +360,6 @@
 .inlineRevealed {
   text-decoration: underline dotted var(--text-faint);
   text-underline-offset: 2px;
+  /* A click hides the words again. */
+  cursor: pointer;
 }

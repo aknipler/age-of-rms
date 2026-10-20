@@ -11,7 +11,12 @@
 
 import { deflateSync, inflateSync } from "node:zlib";
 import { buildTerrainBitmap } from "../../preview/render/terrainBitmap";
-import type { TerrainPalette } from "../../preview/render/palette";
+import {
+  categoryColor,
+  playerColor,
+  type Rgb,
+  type TerrainPalette,
+} from "../../preview/render/palette";
 import type { PreviewResult } from "../../preview/generator/types";
 
 /** Screen pixels per tile half width. 3 makes the 120 tile map 720 pixels across. */
@@ -24,11 +29,65 @@ export interface RgbaImage {
   data: Uint8Array;
 }
 
-/** Colours for the player markers, player 1 first. Plain, since the preview draws these as flags, not tiles. */
-const PLAYER_COLORS: readonly (readonly [number, number, number])[] = [
-  [43, 108, 255],
-  [224, 48, 48],
-];
+/**
+ * Object circles, in screen pixels of the finished picture. The preview sizes
+ * them from the zoom (drawObjects in drawPreview.ts), which at this scale
+ * would leave them under 2 px wide and lost in the terrain, so the picture
+ * uses a fixed, larger size and the same colours.
+ */
+const OBJECT_RADIUS = 3.2;
+/**
+ * Whether the picture draws this placed object. Anything that carries a
+ * resource does, whatever the resource (gold, stone, food or wood), judged by
+ * the category the preview gives it. Everything else is left out:
+ *
+ * - Placeholders (ONGRID_PLACEHOLDER and its kin) are scaffolding a script
+ *   places to claim ground or to carry an actor area. Comeer places over a
+ *   thousand, and none of them is on the finished map. They are refused by
+ *   name, ahead of the category test, so one can never be drawn whatever
+ *   category the preview gives it.
+ * - Units and buildings come out of the preview with no category, drawn as
+ *   one pale grey dot that says nothing in a picture.
+ */
+export function isPictureObject(object: {
+  objectRef: string;
+  category: string;
+}): boolean {
+  if (/PLACEHOLDER/i.test(object.objectRef)) return false;
+  return object.category.startsWith("resource");
+}
+
+/**
+ * Fish are food like berries and herds, so the preview paints them the same
+ * red. On an island map there are hundreds, and a white dot lets the water
+ * read as water and the land's own food stand out from it.
+ */
+const FISH_COLOR: Rgb = { r: 255, g: 255, b: 255 };
+const FISH_NAME =
+  /FISH|TUNA|SALMON|PERCH|SNAPPER|DORADO|MARLIN|DOLPHIN|WHALE|SHARK/;
+
+/** Whether the script's name for an object is a fish. */
+export function isFish(objectRef: string): boolean {
+  return FISH_NAME.test(objectRef);
+}
+
+/**
+ * Food, a lighter pink than the preview's red. The preview's food red is close
+ * to the second player's red, and in a picture of two players a berry bush
+ * next to a town reads as that player's.
+ */
+export const FOOD_COLOR: Rgb = { r: 244, g: 160, b: 156 };
+
+/** The fill of an object's circle. */
+function objectColor(object: { objectRef: string; category: string }): Rgb {
+  if (isFish(object.objectRef)) return FISH_COLOR;
+  if (object.category.startsWith("resource-food")) return FOOD_COLOR;
+  return categoryColor(object.category);
+}
+
+/** Width and colour of the ring around an object, as in the preview's outlined gaia objects. */
+const OBJECT_RING = 1;
+const OBJECT_RING_COLOR: Rgb = { r: 0, g: 0, b: 0 };
 
 export function renderComeerImage(
   result: PreviewResult,
@@ -60,10 +119,26 @@ export function renderComeerImage(
     }
   }
 
+  // One circle per shown object, in the preview's category colour with a dark
+  // ring. The ring is never an owner's colour. `object.player` is the player
+  // whose frame the object was placed for, which a gaia resource placed with
+  // set_place_for_every_player carries too, and the preview gives no way to
+  // tell that from a really owned object. Every object drawn here is a resource,
+  // and a coloured ring on a gaia one would call it a player's.
+  for (const object of result.objects) {
+    if (!isPictureObject(object)) continue;
+    const cx = (object.x + object.y + 1) * HALF_WIDTH;
+    const cy = (object.y - object.x) * HALF_WIDTH + dim * HALF_WIDTH;
+    const ring = OBJECT_RING_COLOR;
+    fillCircle(data, size, cx, cy, OBJECT_RADIUS + OBJECT_RING, ring);
+    fillCircle(data, size, cx, cy, OBJECT_RADIUS, objectColor(object));
+  }
+
   // A disc two tiles across at each player, drawn in tile space and then
   // projected, so it is a diamond like every other tile.
   for (const player of result.players) {
-    const color = PLAYER_COLORS[(player.player - 1) % PLAYER_COLORS.length];
+    const { r, g, b } = playerColor(player.player);
+    const color = [r, g, b];
     const radius = 2.5;
     for (
       let ty = Math.floor(player.y - radius);
@@ -105,6 +180,28 @@ export function renderComeerImage(
   }
 
   return { width: size, height: size, data };
+}
+
+/** A filled circle in image pixels, clipped to the image. */
+function fillCircle(
+  data: Uint8Array,
+  size: number,
+  cx: number,
+  cy: number,
+  radius: number,
+  color: Rgb,
+): void {
+  for (let y = Math.floor(cy - radius); y <= Math.ceil(cy + radius); y++) {
+    for (let x = Math.floor(cx - radius); x <= Math.ceil(cx + radius); x++) {
+      if (x < 0 || y < 0 || x >= size || y >= size) continue;
+      if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > radius * radius) continue;
+      const to = (y * size + x) * 4;
+      data[to] = color.r;
+      data[to + 1] = color.g;
+      data[to + 2] = color.b;
+      data[to + 3] = 255;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

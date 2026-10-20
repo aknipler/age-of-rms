@@ -173,14 +173,15 @@ export const RMS_BASICS_CODE_TWINS: readonly CodeTwin[] = [
     anchor: editor,
     navigate: { tab: "code" },
     body: [
-      "This is the bit the map is named after. Add create_object GOLD with number_of_objects 8, number_of_groups 4, set_gaia_object_only, and place_on_specific_land_id 10, the id you gave the hill earlier.",
+      "This is the bit the map is named after. Add create_object GOLD with number_of_objects 8, number_of_groups 4, set_gaia_object_only, place_on_specific_land_id 10, the id you gave the hill earlier, and max_distance_to_players 10.",
       {
         kind: "spoiler",
         label: "Answer",
         code: true,
-        text: "create_object GOLD {\n  number_of_objects 8\n  number_of_groups 4\n  set_gaia_object_only\n  place_on_specific_land_id 10\n}",
+        text: "create_object GOLD {\n  number_of_objects 8\n  number_of_groups 4\n  set_gaia_object_only\n  place_on_specific_land_id 10\n  max_distance_to_players 10\n}",
       },
-      "There is more than one way to place gold on that hill. place_on_specific_land_id targets the land itself, terrain_to_place_on DIRT targets the terrain the hill is made of, and find_closest_to_map_center works inward until it finds room. Which one is right depends on what you want to stay true every time the map regenerates.",
+      "place_on_specific_land_id only says where to measure from, which is the middle of the hill. It does not keep the gold on it. max_distance_to_players 10 does that, by keeping every group within 10 tiles of that point. Leave it out and the gold lands anywhere on the map.",
+      "terrain_to_place_on DIRT is another way, which follows the terrain the hill is made of and not the land. Which one is right depends on what you want to stay true every time the map regenerates.",
     ],
   },
   {
