@@ -14156,3 +14156,7 @@ On the owner's report that the tutorial card gets in the way. "Move this out of 
 `moveAsideCorner` is deleted from `TutorialStep` and its two uses. ui-help.json drops `tutorial.moveAside` and gains `tutorial.minimize`, `tutorial.restore` and `tutorial.drag`.
 
 **Suite.** `minimizeAndDrag.test.tsx`, 12 tests, stubbing layout and a PointerEvent for jsdom. The bar lift and the give-way rule were each mutated off and their tests went red. Full `npm test` 141 files, 3805 tests before the last test was added, floor passed. `tsc`, eslint on the changed files, Prettier and `validate:reference` clean. Never run in the real app, run sheet section 26.
+
+## 2026-10-20, install instructions name every download
+
+The release notes and the README's Installing section now name each file in full, in a table keyed on the reader's system. A new workflow step reads the version from the tag so the release notes print real names, spelled `Age.of.RMS_` because GitHub turns the spaces in the product name into dots on upload. Both say the `.sig` files, `latest.json` and the Source code archives can be ignored, give the Linux glibc 2.39 floor that the ubuntu-24.04 runner sets, the AppImage FUSE fix and the exact `chmod` and `apt install` commands, and link the issue tracker. The release notes say beta now, not alpha, matching the README's status. Not yet seen on a real release page, the next tag shows it.

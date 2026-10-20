@@ -120,6 +120,17 @@ jobs:
       #
       # THE DRAFT MUST BE PUBLISHED or the updater sees nothing. Its endpoint
       # resolves through /releases/latest/, which ignores drafts entirely.
+      # The release notes name every download in full, so they need the bare
+      # version. The tag is v0.8.0 and the files say 0.8.0. GitHub also turns
+      # the spaces in "Age of RMS" into dots when it uploads, which is why the
+      # names below spell it Age.of.RMS. Bash is set explicitly because the
+      # Windows leg would otherwise run this in PowerShell.
+      - name: Read version from tag
+        id: version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Build and draft release
         if: github.ref_type == 'tag'
         uses: tauri-apps/tauri-action@v1
@@ -136,28 +147,46 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Age of RMS ${{ github.ref_name }}
           releaseBody: |
-            Alpha build for Windows and Linux.
+            Beta build for Windows and Linux.
 
-            **Windows**: download the `-setup.exe`. It is not code signed, so
-            SmartScreen will show "Windows protected your PC" the first time you
-            run it. Choose "More info", then "Run anyway". It installs for the
-            current user only, into %LOCALAPPDATA%, with no administrator
-            prompt.
+            | Your system | Download |
+            | --- | --- |
+            | Windows 10 or 11, 64-bit | `Age.of.RMS_${{ steps.version.outputs.version }}_x64-setup.exe` |
+            | Linux, any distribution | `Age.of.RMS_${{ steps.version.outputs.version }}_amd64.AppImage` |
+            | Debian or Ubuntu, as a system package | `Age.of.RMS_${{ steps.version.outputs.version }}_amd64.deb` |
 
-            **Linux**: the `.AppImage` needs no install, just `chmod +x` it and
-            run. The `.deb` is for Debian and Ubuntu, and unlike the AppImage it
-            will not update itself.
+            You can ignore the `.sig` files, `latest.json` and the Source code
+            archives. The auto updater uses the first two, and the archives are
+            only for building from source.
 
-            **macOS**: no build yet. The app has no Windows-specific code, so it
-            can be built from source. See the README.
+            **Windows.** The installer is not code signed yet, so SmartScreen
+            will show "Windows protected your PC" the first time you run it.
+            Choose "More info", then "Run anyway". It installs for the current
+            user only, into %LOCALAPPDATA%, and never asks for administrator
+            rights.
 
-            Bug reports and feedback are welcome in the issue tracker.
+            **Linux.** Both packages need Ubuntu 24.04, Debian 13, Fedora 40 or
+            newer (glibc 2.39 or later). Make the AppImage executable with
+            `chmod +x Age.of.RMS_${{ steps.version.outputs.version }}_amd64.AppImage`
+            and run it. If it reports that FUSE is missing, install it with
+            `sudo apt install libfuse2t64` (other distributions name the
+            package differently). Install the .deb with
+            `sudo apt install ./Age.of.RMS_${{ steps.version.outputs.version }}_amd64.deb`.
+            The AppImage updates itself, the .deb does not.
+
+            **macOS.** No build yet. You can build it from source, see
+            [Installing](https://github.com/aknipler/age-of-rms#installing) in
+            the README.
+
+            Found a bug? [Open an issue](https://github.com/aknipler/age-of-rms/issues)
+            with your app version, your operating system and the .rms file if
+            one is involved.
           releaseDraft: true
           # NOT a prerelease, and that is a constraint rather than a preference.
           # GitHub's /releases/latest/ excludes prereleases as well as drafts,
           # so marking these would leave the updater endpoint resolving to
           # nothing while every build still looked fine. The 0.x version number
-          # is what says "alpha", along with the release notes.
+          # is what says "beta", along with the release notes.
           prerelease: false
           # Publishes latest.json beside the installers. This is the file the
           # updater endpoint in tauri.conf.json points at, and it carries one

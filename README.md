@@ -22,15 +22,25 @@ Open Beta. The editor, the parser, the map preview (not 100% perfect, feedback a
 
 ## Installing
 
-Builds can be found on the release page [releases page](https://github.com/aknipler/age-of-rms/releases).
+Download the newest build from the [latest release](https://github.com/aknipler/age-of-rms/releases/latest). Pick the file for your system, where `<version>` is the release number, such as `0.8.0`.
 
-**Windows.** Download the `-setup.exe`. It is not code signed yet, so SmartScreen will show "Windows protected your PC" the first time you run it. Choose "More info", then "Run anyway". It installs for the current user only and never asks for administrator rights.
+| Your system                           | Download                              |
+| ------------------------------------- | ------------------------------------- |
+| Windows 10 or 11, 64-bit              | `Age.of.RMS_<version>_x64-setup.exe`  |
+| Linux, any distribution               | `Age.of.RMS_<version>_amd64.AppImage` |
+| Debian or Ubuntu, as a system package | `Age.of.RMS_<version>_amd64.deb`      |
 
-**Linux.** The `.AppImage` needs no installation, just make it executable and run it. There is also a `.deb` for Debian and Ubuntu. The AppImage updates itself, the `.deb` does not.
+You can ignore the `.sig` files, `latest.json` and the Source code archives. The auto updater uses the first two, and the archives are only for building from source.
+
+**Windows.** The installer is not code signed yet, so SmartScreen will show "Windows protected your PC" the first time you run it. Choose "More info", then "Run anyway". It installs for the current user only, into `%LOCALAPPDATA%`, and never asks for administrator rights. Uninstall it from Settings, Apps, Installed apps.
+
+**Linux.** Both packages need Ubuntu 24.04, Debian 13, Fedora 40 or newer (glibc 2.39 or later). Make the AppImage executable with `chmod +x Age.of.RMS_<version>_amd64.AppImage` and run it. If it reports that FUSE is missing, install it with `sudo apt install libfuse2t64` (other distributions name the package differently). Install the .deb with `sudo apt install ./Age.of.RMS_<version>_amd64.deb`. The AppImage updates itself, the .deb does not.
 
 The app checks for a new version when it starts and offers to update. It never installs anything without being asked.
 
-**macOS.** There is no Mac build yet, because notarising one needs a paid Apple Developer account. Nothing in the app is Windows-specific though, so you can build your own. Install the [prerequisites](https://v2.tauri.app/start/prerequisites/), clone this repository, then run `npm install` and `npm run tauri build`. No config change is needed, since `bundle.targets` is already `"all"` and each platform builds whatever it supports. The `.dmg` and `.app` land in `src-tauri/target/release/bundle/`. macOS refuses to open an app it cannot verify, so right click and choose Open the first time rather than double clicking. Reports on whether this works are welcome in the issue tracker, and a signed build follows if there is demand.
+**macOS.** There is no Mac build yet, because notarising one needs a paid Apple Developer account. Nothing in the app is Windows-specific though, so you can build your own. Install the [prerequisites](https://v2.tauri.app/start/prerequisites/), clone this repository, then run `npm install` and `npm run tauri build`. No config change is needed, since `bundle.targets` is already `"all"` and each platform builds whatever it supports. The `.dmg` and `.app` land in `src-tauri/target/release/bundle/`. macOS refuses to open an app it cannot verify, so right click and choose Open the first time rather than double clicking. Reports on whether this works are welcome in the [issue tracker](https://github.com/aknipler/age-of-rms/issues), and a signed build follows if there is demand.
+
+Found a bug? [Open an issue](https://github.com/aknipler/age-of-rms/issues) with your app version, your operating system and the .rms file if one is involved.
 
 ## Tech stack
 
