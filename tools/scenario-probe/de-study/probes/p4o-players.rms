@@ -1,0 +1,13 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 }
+create_land { terrain_type SNOW base_size 1 number_of_tiles 30 }
+<OBJECTS_GENERATION>
+create_object VILLAGER {
+number_of_objects 1
+set_place_for_every_player
+min_distance_to_players 3
+max_distance_to_players 3
+}

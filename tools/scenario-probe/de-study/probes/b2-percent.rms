@@ -1,0 +1,7 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DESERT base_size 3 land_percent 4 }
+create_land { terrain_type SNOW base_size 2 land_percent 1 land_position 25 30 }
+create_land { terrain_type FOREST base_size 2 land_percent 2.5 land_position 75 30 }

@@ -124,6 +124,17 @@ describe("Advanced Tools help coverage", () => {
     expect(empty).toEqual([]);
   });
 
+  // The hidden-warning controls (RMS0318), new files outside the pane, named
+  // here so the gate covers them.
+  it("every HelpTip on the warning buttons and the Diagnostics settings tab has one too", () => {
+    const used = [
+      ...helpTipIdsIn("src/components/DismissDiagnosticButtons.tsx"),
+      ...helpTipIdsIn("src/components/settings/DiagnosticsSettings.tsx"),
+    ];
+    expect(used.length).toBe(5);
+    expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
   // The settings tab told the user the pane did not exist. It does now, and a
   // stale placeholder is the kind of thing that survives for months because
   // nothing reads it.

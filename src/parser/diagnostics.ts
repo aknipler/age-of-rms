@@ -13,7 +13,17 @@ import type { Diagnostic, DiagnosticSeverity, Span, Token } from "./types";
  */
 export const DIAGNOSTIC_CODES: Record<
   string,
-  { severity: DiagnosticSeverity; summary: string }
+  {
+    severity: DiagnosticSeverity;
+    summary: string;
+    /**
+     * The user may hide this one, per file or for good, from the warning
+     * itself (DiagnosticDismissalContext.tsx). Only for a warning about
+     * something that is legal and often meant, where repeating it on a script
+     * whose author already knows becomes noise. Never for an error.
+     */
+    dismissible?: true;
+  }
 > = {
   RMS0001: {
     severity: "warning",
@@ -293,7 +303,24 @@ export const DIAGNOSTIC_CODES: Record<
     severity: "warning",
     summary: "Unit class has no units in the current game data",
   },
+  // Added 2026-10-19 (preview-design rev 10). A <LAND_GENERATION> base_layer
+  // marks only the tiles no land paints, and a create_elevation grows only on
+  // tiles whose layer matches its own base_layer, so one written without a
+  // base_layer can no longer grow on the base area at all. Measured on DE's
+  // ly1 maps. Legal and sometimes exactly what the author wants, which is
+  // why it is the one dismissible code.
+  RMS0318: {
+    severity: "warning",
+    summary:
+      "A <LAND_GENERATION> base_layer keeps hills off the base area for a create_elevation without one",
+    dismissible: true,
+  },
 };
+
+/** Whether the user may hide this code from the warning itself. */
+export function isDismissible(code: string): boolean {
+  return DIAGNOSTIC_CODES[code]?.dismissible === true;
+}
 
 function toSpan(token: Token): Span {
   return { start: token.start, end: token.end };
@@ -1200,10 +1227,33 @@ export function nonFunctionalSyntax(
 }
 
 /**
+ * RMS0318. Placed on the <LAND_GENERATION> base_layer, since that is the line
+ * that changes what every create_elevation can reach, and it names the first
+ * create_elevation it affects by line so the reader can find it.
+ */
+export function landBaseLayerSplitsElevation(
+  token: Token,
+  layerText: string,
+  firstLine: number,
+  count: number,
+): Diagnostic {
+  const which =
+    count === 1
+      ? `the create_elevation on line ${firstLine} has none`
+      : `${count} create_elevation commands have none (the first on line ${firstLine})`;
+  return makeDiagnostic(
+    "RMS0318",
+    `This base_layer marks only the tiles no land paints, and a create_elevation grows only on tiles whose layer matches its own base_layer. Here ${which}, so its hills can grow only on the lands and never on the base area. To grow them on the base area instead, give the create_elevation base_layer ${layerText}.`,
+    toSpan(token),
+  );
+}
+
+/**
  * The one error-severity semantic check (spec Sec.10: error is a strong
  * claim). Both halves of the wording are deliberate. That the slopes don't
- * generate without the section is verified, in-game, Phase 4.1, by
- * RMSTEST_4_negelev.rms. That the map then crashes when played is a
+ * generate without the section is verified, in-game, by RMSTEST_4_negelev.rms,
+ * and the saved DE maps of preview-design rev 10 show the heights stay, as a
+ * sheer step (Sec.6.2 rule 9). That the map then crashes when played is a
  * second-hand report from the guide's author and is attributed, not asserted;
  * the check earns its severity from the first half alone.
  */
@@ -1213,7 +1263,7 @@ export function missingRequiredSection(
 ): Diagnostic {
   return makeDiagnostic(
     "RMS0311",
-    `"${token.text}" needs a <${requiredSection}> section, and this script has none. The map still generates and looks fine, but the setting never takes effect, and maps in this state have been reported to crash when actually played. The section can be completely empty; adding the header is the whole fix.`,
+    `"${token.text}" needs a <${requiredSection}> section, and this script has none. The map still generates, but nothing smooths the raised land into a slope, so it stands as a sheer step, and maps in this state have been reported to crash when actually played. The section can be completely empty, and adding the header is the whole fix.`,
     toSpan(token),
   );
 }

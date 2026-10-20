@@ -1,0 +1,85 @@
+/* range probe for seed 1000: weights sit on the roll boundary */
+start_random percent_chance 4 #define A0 percent_chance 96 #define B0 end_random
+start_random percent_chance 22 #define A1 percent_chance 78 #define B1 end_random
+start_random percent_chance 74 #define A2 percent_chance 26 #define B2 end_random
+start_random percent_chance 66 #define A3 percent_chance 34 #define B3 end_random
+start_random percent_chance 60 #define A4 percent_chance 40 #define B4 end_random
+start_random percent_chance 77 #define A5 percent_chance 23 #define B5 end_random
+start_random percent_chance 95 #define A6 percent_chance 5 #define B6 end_random
+start_random percent_chance 11 #define A7 percent_chance 89 #define B7 end_random
+start_random percent_chance 70 #define A8 percent_chance 30 #define B8 end_random
+start_random percent_chance 21 #define A9 percent_chance 79 #define B9 end_random
+start_random percent_chance 45 #define A10 percent_chance 55 #define B10 end_random
+start_random percent_chance 44 #define A11 percent_chance 56 #define B11 end_random
+start_random percent_chance 70 #define A12 percent_chance 30 #define B12 end_random
+start_random percent_chance 85 #define A13 percent_chance 15 #define B13 end_random
+start_random percent_chance 97 #define A14 percent_chance 3 #define B14 end_random
+start_random percent_chance 50 #define A15 percent_chance 50 #define B15 end_random
+start_random percent_chance 5 #define A16 percent_chance 95 #define B16 end_random
+start_random percent_chance 35 #define A17 percent_chance 65 #define B17 end_random
+start_random percent_chance 1 #define A18 percent_chance 99 #define B18 end_random
+start_random percent_chance 10 #define A19 percent_chance 90 #define B19 end_random
+start_random percent_chance 89 #define A20 percent_chance 11 #define B20 end_random
+start_random percent_chance 59 #define A21 percent_chance 41 #define B21 end_random
+start_random percent_chance 84 #define A22 percent_chance 16 #define B22 end_random
+start_random percent_chance 98 #define A23 percent_chance 2 #define B23 end_random
+start_random percent_chance 5 #define A24 percent_chance 95 #define B24 end_random
+start_random percent_chance 34 #define A25 percent_chance 66 #define B25 end_random
+start_random percent_chance 92 #define A26 percent_chance 8 #define B26 end_random
+start_random percent_chance 49 #define A27 percent_chance 51 #define B27 end_random
+start_random percent_chance 45 #define A28 percent_chance 55 #define B28 end_random
+start_random percent_chance 84 #define A29 percent_chance 16 #define B29 end_random
+start_random percent_chance 58 #define A30 percent_chance 42 #define B30 end_random
+start_random percent_chance 39 #define A31 percent_chance 61 #define B31 end_random
+start_random percent_chance 57 #define A32 percent_chance 43 #define B32 end_random
+start_random percent_chance 15 #define A33 percent_chance 85 #define B33 end_random
+start_random percent_chance 69 #define A34 percent_chance 31 #define B34 end_random
+start_random percent_chance 8 #define A35 percent_chance 92 #define B35 end_random
+start_random percent_chance 72 #define A36 percent_chance 28 #define B36 end_random
+start_random percent_chance 67 #define A37 percent_chance 33 #define B37 end_random
+start_random percent_chance 85 #define A38 percent_chance 15 #define B38 end_random
+start_random percent_chance 33 #define A39 percent_chance 67 #define B39 end_random
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { if A0 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 12 }
+create_land { if A1 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 12 }
+create_land { if A2 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 12 }
+create_land { if A3 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 12 }
+create_land { if A4 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 12 }
+create_land { if A5 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 12 }
+create_land { if A6 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 12 }
+create_land { if A7 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 12 }
+create_land { if A8 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 28 }
+create_land { if A9 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 28 }
+create_land { if A10 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 28 }
+create_land { if A11 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 28 }
+create_land { if A12 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 28 }
+create_land { if A13 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 28 }
+create_land { if A14 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 28 }
+create_land { if A15 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 28 }
+create_land { if A16 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 44 }
+create_land { if A17 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 44 }
+create_land { if A18 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 44 }
+create_land { if A19 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 44 }
+create_land { if A20 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 44 }
+create_land { if A21 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 44 }
+create_land { if A22 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 44 }
+create_land { if A23 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 44 }
+create_land { if A24 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 60 }
+create_land { if A25 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 60 }
+create_land { if A26 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 60 }
+create_land { if A27 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 60 }
+create_land { if A28 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 60 }
+create_land { if A29 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 60 }
+create_land { if A30 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 60 }
+create_land { if A31 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 60 }
+create_land { if A32 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 8 76 }
+create_land { if A33 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 20 76 }
+create_land { if A34 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 32 76 }
+create_land { if A35 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 44 76 }
+create_land { if A36 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 56 76 }
+create_land { if A37 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 68 76 }
+create_land { if A38 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 80 76 }
+create_land { if A39 terrain_type DESERT else terrain_type SNOW endif base_size 1 number_of_tiles 0 land_position 92 76 }

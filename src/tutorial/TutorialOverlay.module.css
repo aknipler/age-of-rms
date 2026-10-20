@@ -58,10 +58,82 @@
   max-width: 36rem;
 }
 
+/* The card's top row, and what it is dragged by (TutorialOverlay.tsx starts
+   a drag from any element marked data-drag-handle). */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+  cursor: grab;
+  user-select: none;
+}
+
 .counter {
   font-size: 0.75rem;
   color: var(--text-faint);
-  margin-bottom: 0.2rem;
+}
+
+.grip {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  line-height: 1;
+}
+
+/* Minimize and restore. Square, so the one character reads as an icon. */
+.iconButton {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* The minimized step. Same layer and surface as the card, one line high.
+   Placed bottom right by TutorialOverlay.tsx unless the learner drags it. */
+.bar {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 23rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+  padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+  z-index: 902;
+  pointer-events: auto;
+}
+
+.barLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+  cursor: grab;
+  user-select: none;
+}
+
+/* A long step title is cut short rather than widening the bar. */
+.barTitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .title {

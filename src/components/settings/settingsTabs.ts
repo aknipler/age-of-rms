@@ -4,6 +4,7 @@ import { HotkeysSettings } from "./HotkeysSettings";
 import { ThemeSettings } from "./ThemeSettings";
 import { BreakdownSettings } from "./BreakdownSettings";
 import { CodeSettings } from "./CodeSettings";
+import { DiagnosticsSettings } from "./DiagnosticsSettings";
 import { AdvancedToolsSettings } from "./AdvancedToolsSettings";
 import { CreditsSettings } from "./CreditsSettings";
 
@@ -13,6 +14,7 @@ export type SettingsTabId =
   | "theme"
   | "breakdown"
   | "code"
+  | "diagnostics"
   | "advanced-tools"
   | "credits";
 
@@ -63,6 +65,12 @@ export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
     label: "Code",
     helpId: "settings.tab.code",
     Panel: CodeSettings,
+  },
+  {
+    id: "diagnostics",
+    label: "Diagnostics",
+    helpId: "settings.tab.diagnostics",
+    Panel: DiagnosticsSettings,
   },
   {
     id: "advanced-tools",

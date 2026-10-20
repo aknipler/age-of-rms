@@ -1,0 +1,5 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DESERT base_size 3 land_percent 60 }

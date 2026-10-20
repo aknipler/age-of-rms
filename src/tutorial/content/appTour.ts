@@ -95,7 +95,6 @@ export const appTourTutorial: TutorialDefinition = {
       // This step's body talks about both, so both need to be in the
       // spotlight, not just the one `anchor` names.
       extraAnchors: [{ kind: "help", id: "statusBar.problems" }],
-      moveAsideCorner: "top-right",
       body: [
         "Live resource totals split into total, player and neutral, and a live problem count from advanced diagnostics.",
       ],

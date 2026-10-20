@@ -641,6 +641,30 @@
       "text": "Removes this directive line from the script."
     },
     {
+      "id": "settings.tab.diagnostics",
+      "text": "Warnings you have hidden, and the buttons that bring them back."
+    },
+    {
+      "id": "settings.diagnostics.turnedOff",
+      "text": "Warnings you turned off everywhere with \"Don't show me this again\". Each stays hidden in every file until you turn it back on here."
+    },
+    {
+      "id": "settings.diagnostics.turnBackOn",
+      "text": "Shows this warning again, in every file where it applies."
+    },
+    {
+      "id": "settings.diagnostics.hiddenInFiles",
+      "text": "Warnings you hid with Ok, which hides a warning in that one file only. Show them again brings back every one of them, in every file."
+    },
+    {
+      "id": "diagnostics.dismiss.ok",
+      "text": "Hides this warning in this file. It still appears in other files. Settings, Diagnostics brings it back."
+    },
+    {
+      "id": "diagnostics.dismiss.never",
+      "text": "Turns this warning off in every file. Settings, Diagnostics turns it back on."
+    },
+    {
       "id": "breakdown.diagnosticsRuler.tick",
       "text": "A problem somewhere in this card, coloured by its worst severity. Click to jump straight to it."
     },
@@ -1113,8 +1137,16 @@
       "text": "Ends the tutorial without marking it finished. Nothing you've written is touched."
     },
     {
-      "id": "tutorial.moveAside",
-      "text": "Parks this card in a corner, out of the way of what it's pointing at, and turns off the spotlight until the next step."
+      "id": "tutorial.minimize",
+      "text": "Shrinks this card to a small bar in the bottom right corner and turns off the spotlight, so you can work without it in the way. The next step opens it again."
+    },
+    {
+      "id": "tutorial.restore",
+      "text": "Opens the whole step again."
+    },
+    {
+      "id": "tutorial.drag",
+      "text": "Drag here to move this card. It keeps that spot for the rest of the tutorial, except on a step where it would cover what the step is pointing at."
     },
     {
       "id": "tutorial.autoFill",

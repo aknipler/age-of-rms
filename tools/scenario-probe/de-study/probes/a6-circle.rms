@@ -1,0 +1,6 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_player_lands { terrain_type DESERT base_size 3 number_of_tiles 40 circle_radius 35 0 }
+create_land { terrain_type SNOW base_size 1 number_of_tiles 30 }

@@ -1,0 +1,5 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT base_size 1 number_of_tiles 1000 land_position 50 50 }

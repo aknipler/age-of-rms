@@ -1,0 +1,8 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT base_size 6 number_of_tiles 0 land_position 25 25 set_circular_base }
+create_land { terrain_type SNOW base_size 3 number_of_tiles 60 land_position 75 25 set_circular_base }
+create_land { terrain_type FOREST base_size 8 number_of_tiles 100 land_position 25 75 set_circular_base }
+create_land { terrain_type DIRT base_size 3 number_of_tiles 60 land_position 75 75 }

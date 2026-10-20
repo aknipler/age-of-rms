@@ -1,0 +1,15 @@
+#const C1 rnd(10,90)
+#const C2 rnd(10,90)
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT base_size 1 number_of_tiles 0 land_position C1 C1 }
+create_land { terrain_type SNOW base_size 1 number_of_tiles 0 land_position rnd(10,90) rnd(10,90) }
+create_land { terrain_type FOREST base_size 1 number_of_tiles 0 land_position C2 rnd(10,90) }
+start_random
+percent_chance 50 #const U1 rnd(1,3)
+percent_chance 50 #const U2 rnd(1,3)
+end_random
+create_land { terrain_type DIRT base_size 1 number_of_tiles 0 land_position rnd(10,90) rnd(10,90) }
+create_land { terrain_type WATER base_size 1 number_of_tiles 0 }

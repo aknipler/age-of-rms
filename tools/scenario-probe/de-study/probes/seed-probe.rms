@@ -1,0 +1,159 @@
+/* Seed probe. All 25 random draws come first, back to back, before any section.
+   Then 25 fixed squares show the choices. Land 1 is x=12 y=12; x varies fastest. */
+start_random percent_chance 25 #define L1_W percent_chance 25 #define L1_D percent_chance 25 #define L1_S percent_chance 25 #define L1_F end_random
+start_random percent_chance 25 #define L2_W percent_chance 25 #define L2_D percent_chance 25 #define L2_S percent_chance 25 #define L2_F end_random
+start_random percent_chance 25 #define L3_W percent_chance 25 #define L3_D percent_chance 25 #define L3_S percent_chance 25 #define L3_F end_random
+start_random percent_chance 25 #define L4_W percent_chance 25 #define L4_D percent_chance 25 #define L4_S percent_chance 25 #define L4_F end_random
+start_random percent_chance 25 #define L5_W percent_chance 25 #define L5_D percent_chance 25 #define L5_S percent_chance 25 #define L5_F end_random
+start_random percent_chance 25 #define L6_W percent_chance 25 #define L6_D percent_chance 25 #define L6_S percent_chance 25 #define L6_F end_random
+start_random percent_chance 25 #define L7_W percent_chance 25 #define L7_D percent_chance 25 #define L7_S percent_chance 25 #define L7_F end_random
+start_random percent_chance 25 #define L8_W percent_chance 25 #define L8_D percent_chance 25 #define L8_S percent_chance 25 #define L8_F end_random
+start_random percent_chance 25 #define L9_W percent_chance 25 #define L9_D percent_chance 25 #define L9_S percent_chance 25 #define L9_F end_random
+start_random percent_chance 25 #define L10_W percent_chance 25 #define L10_D percent_chance 25 #define L10_S percent_chance 25 #define L10_F end_random
+start_random percent_chance 25 #define L11_W percent_chance 25 #define L11_D percent_chance 25 #define L11_S percent_chance 25 #define L11_F end_random
+start_random percent_chance 25 #define L12_W percent_chance 25 #define L12_D percent_chance 25 #define L12_S percent_chance 25 #define L12_F end_random
+start_random percent_chance 25 #define L13_W percent_chance 25 #define L13_D percent_chance 25 #define L13_S percent_chance 25 #define L13_F end_random
+start_random percent_chance 25 #define L14_W percent_chance 25 #define L14_D percent_chance 25 #define L14_S percent_chance 25 #define L14_F end_random
+start_random percent_chance 25 #define L15_W percent_chance 25 #define L15_D percent_chance 25 #define L15_S percent_chance 25 #define L15_F end_random
+start_random percent_chance 25 #define L16_W percent_chance 25 #define L16_D percent_chance 25 #define L16_S percent_chance 25 #define L16_F end_random
+start_random percent_chance 25 #define L17_W percent_chance 25 #define L17_D percent_chance 25 #define L17_S percent_chance 25 #define L17_F end_random
+start_random percent_chance 25 #define L18_W percent_chance 25 #define L18_D percent_chance 25 #define L18_S percent_chance 25 #define L18_F end_random
+start_random percent_chance 25 #define L19_W percent_chance 25 #define L19_D percent_chance 25 #define L19_S percent_chance 25 #define L19_F end_random
+start_random percent_chance 25 #define L20_W percent_chance 25 #define L20_D percent_chance 25 #define L20_S percent_chance 25 #define L20_F end_random
+start_random percent_chance 25 #define L21_W percent_chance 25 #define L21_D percent_chance 25 #define L21_S percent_chance 25 #define L21_F end_random
+start_random percent_chance 25 #define L22_W percent_chance 25 #define L22_D percent_chance 25 #define L22_S percent_chance 25 #define L22_F end_random
+start_random percent_chance 25 #define L23_W percent_chance 25 #define L23_D percent_chance 25 #define L23_S percent_chance 25 #define L23_F end_random
+start_random percent_chance 25 #define L24_W percent_chance 25 #define L24_D percent_chance 25 #define L24_S percent_chance 25 #define L24_F end_random
+start_random percent_chance 25 #define L25_W percent_chance 25 #define L25_D percent_chance 25 #define L25_S percent_chance 25 #define L25_F end_random
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { /* orientation marker: dirt, between land 1 and land 2, at the map edge; no random draws */
+  terrain_type DIRT land_position 21 3 base_size 1 number_of_tiles 0
+}
+create_land { /* land 1 */
+  if L1_W terrain_type WATER elseif L1_D terrain_type DESERT
+  elseif L1_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 12 12 base_size 3 number_of_tiles 0
+}
+create_land { /* land 2 */
+  if L2_W terrain_type WATER elseif L2_D terrain_type DESERT
+  elseif L2_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 31 12 base_size 3 number_of_tiles 0
+}
+create_land { /* land 3 */
+  if L3_W terrain_type WATER elseif L3_D terrain_type DESERT
+  elseif L3_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 50 12 base_size 3 number_of_tiles 0
+}
+create_land { /* land 4 */
+  if L4_W terrain_type WATER elseif L4_D terrain_type DESERT
+  elseif L4_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 69 12 base_size 3 number_of_tiles 0
+}
+create_land { /* land 5 */
+  if L5_W terrain_type WATER elseif L5_D terrain_type DESERT
+  elseif L5_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 88 12 base_size 3 number_of_tiles 0
+}
+create_land { /* land 6 */
+  if L6_W terrain_type WATER elseif L6_D terrain_type DESERT
+  elseif L6_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 12 31 base_size 3 number_of_tiles 0
+}
+create_land { /* land 7 */
+  if L7_W terrain_type WATER elseif L7_D terrain_type DESERT
+  elseif L7_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 31 31 base_size 3 number_of_tiles 0
+}
+create_land { /* land 8 */
+  if L8_W terrain_type WATER elseif L8_D terrain_type DESERT
+  elseif L8_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 50 31 base_size 3 number_of_tiles 0
+}
+create_land { /* land 9 */
+  if L9_W terrain_type WATER elseif L9_D terrain_type DESERT
+  elseif L9_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 69 31 base_size 3 number_of_tiles 0
+}
+create_land { /* land 10 */
+  if L10_W terrain_type WATER elseif L10_D terrain_type DESERT
+  elseif L10_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 88 31 base_size 3 number_of_tiles 0
+}
+create_land { /* land 11 */
+  if L11_W terrain_type WATER elseif L11_D terrain_type DESERT
+  elseif L11_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 12 50 base_size 3 number_of_tiles 0
+}
+create_land { /* land 12 */
+  if L12_W terrain_type WATER elseif L12_D terrain_type DESERT
+  elseif L12_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 31 50 base_size 3 number_of_tiles 0
+}
+create_land { /* land 13 */
+  if L13_W terrain_type WATER elseif L13_D terrain_type DESERT
+  elseif L13_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 50 50 base_size 3 number_of_tiles 0
+}
+create_land { /* land 14 */
+  if L14_W terrain_type WATER elseif L14_D terrain_type DESERT
+  elseif L14_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 69 50 base_size 3 number_of_tiles 0
+}
+create_land { /* land 15 */
+  if L15_W terrain_type WATER elseif L15_D terrain_type DESERT
+  elseif L15_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 88 50 base_size 3 number_of_tiles 0
+}
+create_land { /* land 16 */
+  if L16_W terrain_type WATER elseif L16_D terrain_type DESERT
+  elseif L16_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 12 69 base_size 3 number_of_tiles 0
+}
+create_land { /* land 17 */
+  if L17_W terrain_type WATER elseif L17_D terrain_type DESERT
+  elseif L17_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 31 69 base_size 3 number_of_tiles 0
+}
+create_land { /* land 18 */
+  if L18_W terrain_type WATER elseif L18_D terrain_type DESERT
+  elseif L18_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 50 69 base_size 3 number_of_tiles 0
+}
+create_land { /* land 19 */
+  if L19_W terrain_type WATER elseif L19_D terrain_type DESERT
+  elseif L19_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 69 69 base_size 3 number_of_tiles 0
+}
+create_land { /* land 20 */
+  if L20_W terrain_type WATER elseif L20_D terrain_type DESERT
+  elseif L20_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 88 69 base_size 3 number_of_tiles 0
+}
+create_land { /* land 21 */
+  if L21_W terrain_type WATER elseif L21_D terrain_type DESERT
+  elseif L21_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 12 88 base_size 3 number_of_tiles 0
+}
+create_land { /* land 22 */
+  if L22_W terrain_type WATER elseif L22_D terrain_type DESERT
+  elseif L22_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 31 88 base_size 3 number_of_tiles 0
+}
+create_land { /* land 23 */
+  if L23_W terrain_type WATER elseif L23_D terrain_type DESERT
+  elseif L23_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 50 88 base_size 3 number_of_tiles 0
+}
+create_land { /* land 24 */
+  if L24_W terrain_type WATER elseif L24_D terrain_type DESERT
+  elseif L24_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 69 88 base_size 3 number_of_tiles 0
+}
+create_land { /* land 25 */
+  if L25_W terrain_type WATER elseif L25_D terrain_type DESERT
+  elseif L25_S terrain_type SNOW else terrain_type FOREST endif
+  land_position 88 88 base_size 3 number_of_tiles 0
+}

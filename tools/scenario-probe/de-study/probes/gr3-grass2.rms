@@ -1,0 +1,13 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS2
+create_land { terrain_type DESERT land_position 8 8 number_of_tiles 4 base_size 0 }
+create_land { terrain_type DESERT land_position 8 92 number_of_tiles 4 base_size 0 }
+create_land { terrain_type DESERT land_position 92 8 number_of_tiles 4 base_size 0 }
+create_land { terrain_type DESERT land_position 92 92 number_of_tiles 4 base_size 0 }
+<ELEVATION_GENERATION>
+create_elevation 2 { base_terrain GRASS2 number_of_tiles 500 number_of_clumps 4 }
+<CLIFF_GENERATION>
+min_number_of_cliffs 5
+max_number_of_cliffs 9

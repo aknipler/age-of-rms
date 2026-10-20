@@ -1,0 +1,7 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_player_lands { terrain_type SNOW base_size 3 number_of_tiles 40 }
+<ELEVATION_GENERATION>
+create_elevation 2 { base_terrain DESERT number_of_tiles 1500 number_of_clumps 6 }

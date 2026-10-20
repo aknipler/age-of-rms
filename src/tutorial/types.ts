@@ -250,14 +250,6 @@ export interface TutorialStep {
    * which is the whole point. See Sec.5.5.
    */
   bypass?: { label: string };
-  /**
-   * Which corner "Move this out of the way" parks the callout in, for a step
-   * whose anchor sits low enough on screen that the default (bottom-right)
-   * would land near or on the anchor itself, the status bar steps are the
-   * case this exists for. Only consulted while the step is anchored; default
-   * is bottom-right.
-   */
-  moveAsideCorner?: "bottom-right" | "top-right";
 }
 
 export interface TutorialDefinition {

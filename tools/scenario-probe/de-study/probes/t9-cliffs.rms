@@ -1,0 +1,15 @@
+#const CLIFFLINE 16
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type SNOW base_size 1 number_of_tiles 0 land_position 1 1 }
+<CLIFF_GENERATION>
+min_number_of_cliffs 20
+max_number_of_cliffs 26
+min_length_of_cliff 5
+max_length_of_cliff 9
+min_distance_cliffs 1
+<TERRAIN_GENERATION>
+create_terrain FOREST { base_terrain DESERT land_percent 30 number_of_clumps 20 spacing_to_other_terrain_types 2 }
+create_terrain DIRT { base_terrain CLIFFLINE land_percent 100 number_of_clumps 999 }

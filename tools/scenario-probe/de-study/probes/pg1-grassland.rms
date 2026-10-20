@@ -1,0 +1,11 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type GRASS land_position 50 50 number_of_tiles 3000 base_size 3 }
+<CLIFF_GENERATION>
+min_number_of_cliffs 20
+max_number_of_cliffs 26
+min_length_of_cliff 5
+max_length_of_cliff 9
+min_distance_cliffs 1

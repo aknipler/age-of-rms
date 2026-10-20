@@ -3,6 +3,8 @@ import {
   DiagnosticPopup,
   useDiagnosticHover,
 } from "../../components/DiagnosticTooltip";
+import { DismissDiagnosticButtons } from "../../components/DismissDiagnosticButtons";
+import { isDismissible } from "../../parser/diagnostics";
 import styles from "./cards.module.css";
 
 const SEVERITY_LABEL: Record<DiagnosticSeverity, string> = {
@@ -64,6 +66,13 @@ export function ProblemBadge({
   // to show one static ui-help.json sentence regardless of which
   // diagnostic, or how many, applied).
   const diagHover = useDiagnosticHover();
+  // Buttons only for a lone dismissible warning. With several diagnostics the
+  // popup shows a count rather than one message, and a button there would not
+  // say which warning it hides.
+  const dismissible =
+    diagnostics.length === 1 && isDismissible(diagnostics[0].code)
+      ? diagnostics[0].code
+      : undefined;
 
   return (
     <span className={styles.problemBadgeWrapper} {...diagHover.handlers}>
@@ -72,6 +81,11 @@ export function ProblemBadge({
           message={message}
           severity={severity}
           side={diagHover.side}
+          actions={
+            dismissible ? (
+              <DismissDiagnosticButtons code={dismissible} />
+            ) : undefined
+          }
         />
       )}
       <span

@@ -15,6 +15,7 @@ import {
   type ValidateReferenceDb,
 } from "../validate";
 import type { Diagnostic } from "../types";
+import { isDismissible } from "../diagnostics";
 import { loadLanguage, REPO_ROOT } from "./testUtils";
 
 const lang = loadLanguage();
@@ -899,6 +900,52 @@ describe("RMS0311 — base_elevation without <ELEVATION_GENERATION>", () => {
     const source =
       "<LAND_GENERATION>\ncreate_land { base_elevation 4 }\n<ELEVATION_GENERATION>\n";
     expect(codes(source)).not.toContain("RMS0311");
+  });
+});
+
+describe("RMS0318, a <LAND_GENERATION> base_layer with a create_elevation that has none", () => {
+  const LAND = "<LAND_GENERATION>\nbase_terrain DESERT\nbase_layer SNOW\n";
+
+  it("warns on the base_layer, naming the create_elevation's line, and is dismissible", () => {
+    const found = only(
+      LAND +
+        "<ELEVATION_GENERATION>\ncreate_elevation 2 { base_terrain DESERT }\n",
+      "RMS0318",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe("warning");
+    expect(found[0].message).toContain("on line 5");
+    expect(found[0].message).toContain("base_layer SNOW");
+    expect(isDismissible("RMS0318")).toBe(true);
+    expect(isDismissible("RMS0311")).toBe(false);
+  });
+
+  it("counts every create_elevation without one, in a single warning", () => {
+    const found = only(
+      LAND +
+        "<ELEVATION_GENERATION>\ncreate_elevation 1 { }\ncreate_elevation 2 { base_layer SNOW }\ncreate_elevation 3 { }\n",
+      "RMS0318",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("2 create_elevation commands");
+  });
+
+  it("stays quiet when every create_elevation gives a base_layer, even inside a branch", () => {
+    expect(
+      codes(
+        LAND +
+          "<ELEVATION_GENERATION>\ncreate_elevation 1 { base_layer SNOW }\ncreate_elevation 2 {\nif TINY_MAP\nbase_layer SNOW\nendif\n}\n",
+      ),
+    ).not.toContain("RMS0318");
+  });
+
+  it("stays quiet with no base_layer in <LAND_GENERATION>, or no elevation at all", () => {
+    expect(
+      codes(
+        "<LAND_GENERATION>\nbase_terrain DESERT\n<ELEVATION_GENERATION>\ncreate_elevation 1 { }\n",
+      ),
+    ).not.toContain("RMS0318");
+    expect(codes(LAND)).not.toContain("RMS0318");
   });
 });
 

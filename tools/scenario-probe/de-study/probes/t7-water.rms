@@ -1,0 +1,10 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type SNOW base_size 1 number_of_tiles 0 land_position 1 1 }
+<ELEVATION_GENERATION>
+create_elevation 3 { base_terrain DESERT number_of_tiles 1500 number_of_clumps 4 }
+<TERRAIN_GENERATION>
+create_terrain WATER { base_terrain DESERT number_of_tiles 1500 number_of_clumps 6 spacing_to_other_terrain_types 1 }
+create_terrain DIRT { base_terrain DESERT land_percent 100 number_of_clumps 300 beach_terrain DLC_BEACH2 }

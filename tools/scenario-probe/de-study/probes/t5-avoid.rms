@@ -1,0 +1,8 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_player_lands { terrain_type SNOW base_size 3 number_of_tiles 40 }
+<TERRAIN_GENERATION>
+create_terrain FOREST { base_terrain DESERT land_percent 40 number_of_clumps 25 set_avoid_player_start_areas }
+create_terrain DIRT { base_terrain DESERT land_percent 20 number_of_clumps 10 set_avoid_player_start_areas 25 }

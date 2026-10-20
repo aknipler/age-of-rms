@@ -39,6 +39,10 @@ import type { SharedSelectionApi } from "../hooks/useSharedSelection";
 import { useHotkeySettings } from "../settings/HotkeySettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
 import { useBreakdownSettings } from "../settings/BreakdownSettingsContext";
+import {
+  useCurrentFilePath,
+  useDiagnosticDismissal,
+} from "../settings/DiagnosticDismissalContext";
 import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
@@ -114,6 +118,16 @@ export function BreakdownPane({
     [parseResult],
   );
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  // The warnings the user has not hidden, the same filter App applies for the
+  // Code tab and the status bar (DiagnosticDismissalContext.tsx). Every badge,
+  // the ruler and the section tabs read this list, so a hidden warning leaves
+  // all of them at once.
+  const dismissal = useDiagnosticDismissal();
+  const filePath = useCurrentFilePath();
+  const diagnostics = useMemo(
+    () => dismissal.visible(parseResult?.diagnostics ?? [], filePath),
+    [dismissal, parseResult, filePath],
+  );
 
   // Sec.6.3 expansion anchors: a set of source offsets captured at
   // expand-time (a card's span.start). A card renders expanded iff some
@@ -635,7 +649,7 @@ export function BreakdownPane({
       value={{
         tokens: parseResult.tokens,
         lang: languageIndex,
-        diagnostics: parseResult.diagnostics,
+        diagnostics,
         source,
         gameConstants,
         parseResult,
@@ -672,7 +686,7 @@ export function BreakdownPane({
             tabs={tabs}
             activeId={resolvedActiveId ?? ""}
             onSelect={handleSelectTab}
-            diagnostics={parseResult.diagnostics}
+            diagnostics={diagnostics}
           />
           {activeTab ? (
             <SectionView tab={activeTab} />

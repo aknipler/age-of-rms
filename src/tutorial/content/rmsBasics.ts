@@ -638,7 +638,6 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         id: "resources-at-a-glance",
         title: "Resources at a glance",
         anchor: { kind: "region", id: "statusBar.resources" },
-        moveAsideCorner: "top-right",
         body: [
           "Totals for the whole map, split into what players start with and what is neutral. They update as you edit, and are useful for ensuring that players have good starting resources.",
         ],

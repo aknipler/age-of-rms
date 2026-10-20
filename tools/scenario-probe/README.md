@@ -85,6 +85,59 @@ the run is measuring something other than what it thinks it is.
 carrying its predictions in its own header. See `rmstest/README.md` for the run
 sheet.
 
+## Adding a map to the DE gate
+
+`export_de_fixture.py` turns a saved scenario into a record of
+`src/preview/__tests__/fixtures/de-elevation-cliff-maps.json`, the fixture
+`deElevationCliffMaps.test.ts` holds the preview to tile for tile
+(preview-design Sec.13). Use it to test a new rule of the land, elevation or
+cliff stages against the game, or to grow the gate at other map sizes and
+lobbies.
+
+```bash
+python export_de_fixture.py check "<scenario>"
+python export_de_fixture.py add "<scenario>" --script probe.rms --seed 1000
+```
+
+`check` prints the lobby the scenario saved. `add` writes the record, replacing
+one of the same name, and needs the script and the seed, since a scenario
+stores neither. Players and teams come from the scenario. Pass
+`--no-team-positions` when the editor's Team Positions box was unticked. After
+adding, run Prettier on the fixture and then the gate.
+
+How to make a map worth adding.
+
+1. **Write the probe and predict first.** Keep the script to the sections the
+   preview reproduces exactly, `<PLAYER_SETUP>`, `<LAND_GENERATION>`,
+   `<ELEVATION_GENERATION>` and `<CLIFF_GENERATION>`. `add` refuses any other
+   section unless given `--force`, because the gate compares the finished map.
+   Use a DESERT base unless decoration draws are the point, since DESERT has
+   none to hide among the other draws. Run the script through the preview at
+   the seeds you will use and note what it predicts before generating in DE.
+   For a question with two possible answers, work out what each answer
+   produces (a local change to the preview, run and then undone), so the map
+   can decide between them.
+2. **Clear the alliances.** In the editor's diplomacy, make sure no unused slot
+   is allied with anybody. The editor builds teams from all 8 slots, unused ones
+   included, which no lobby does, and stale alliances left over from an earlier
+   setup moved players on 12 of the study's maps. `check` and `add` refuse such
+   a map, and also alliances that are not whole teams.
+3. **Generate.** Map > Random Map location > the script, tick Seed Map, type the
+   seed, set players and teams, Generate Map, Save As. Name the file
+   `RMSTEST_<script>_<seed>_n<players>` (adding `_size-<n>` off Tiny) so the
+   seed is not lost.
+4. **Add it and run the gate.** A match is evidence for every rule the script
+   exercised. A mismatch is a finding. Find the first draw or tile where they
+   part before changing any rule, and add a map that tells the readings apart
+   if the existing ones cannot.
+
+`de-study/` holds the probe scripts and saved maps behind all three DE fixtures,
+so any of them can be exported again (`de-study/README.md`).
+
+The other two DE fixtures, `de-land-stage-maps.json` and `de-beach-maps.json`,
+use an older letter encoding and are frozen. New land-stage maps go into the
+elevation and cliff fixture, which holds every tile anyway.
+
 ## Reading the output
 
 Terrain and object ids resolve through the repo's own

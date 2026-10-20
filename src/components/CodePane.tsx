@@ -16,6 +16,11 @@ import { useHotkeySettings } from "../settings/HotkeySettingsContext";
 import { matchesHotkey } from "../settings/hotkeys";
 import { useThemeSettings } from "../settings/ThemeSettingsContext";
 import { useCodeSettings } from "../settings/CodeSettingsContext";
+import {
+  useCurrentFilePath,
+  useDiagnosticDismissal,
+} from "../settings/DiagnosticDismissalContext";
+import { setDiagnosticActionHandlers } from "../editor/diagnosticActions";
 import type { Diagnostic, Item, ParseResult } from "../parser/types";
 import styles from "./CodePane.module.css";
 
@@ -191,6 +196,20 @@ export function CodePane({
   // needed here the way the theme colours (a Monaco THEME DEFINITION, not
   // an editor option) require one.
   const { tabSize, insertSpaces } = useCodeSettings();
+  // The hover's "Ok" and "Don't show me this again" links run Monaco
+  // commands registered once for the whole app (diagnosticActions.ts). This
+  // hands them the current file and the dismissal callbacks while the pane
+  // is mounted, and the cleanup takes them back, so a stale closure from an
+  // earlier file can never be the one a click reaches.
+  const { hideForFile, turnOff } = useDiagnosticDismissal();
+  const filePath = useCurrentFilePath();
+  useEffect(() => {
+    setDiagnosticActionHandlers({
+      hideForFile: (code) => hideForFile(code, filePath),
+      turnOff,
+    });
+    return () => setDiagnosticActionHandlers(null);
+  }, [hideForFile, turnOff, filePath]);
   // Belongs to ONE editor instance and dies with it, so it is a ref that is
   // reset on unmount rather than a value that outlives the mount.
   const cutDecorationsRef =

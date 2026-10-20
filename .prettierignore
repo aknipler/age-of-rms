@@ -1,6 +1,11 @@
 # Local-only, deliberately untracked; never reformat it.
 CLAUDE.md
 
+# The DE study's written evidence, archived as it was written
+# (tools/scenario-probe/de-study/README.md). Reformatting would change the
+# record it exists to keep.
+tools/scenario-probe/de-study/evidence
+
 # Cargo's build output. Prettier reads only this file and the root .gitignore,
 # not src-tauri/.gitignore, so it walked into target/ and tried to read the
 # multi-hundred-megabyte age_of_rms_lib.lib files as text.

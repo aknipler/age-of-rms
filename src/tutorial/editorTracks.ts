@@ -71,9 +71,8 @@ export const CODE_EDITOR_ANCHOR = {
  * `preview`, `image`. A `body` can also be a function of the twin's body, for
  * a Code step that says the same and then adds an answer to type.
  * Never taken from the twin, because they place the callout over Breakdown
- * controls: `anchor`, `extraAnchors`, `calloutNudge`, `calloutMaxWidthPx`,
- * `moveAsideCorner` and `navigate`. They default to the code editor and the
- * Code tab.
+ * controls: `anchor`, `extraAnchors`, `calloutNudge`, `calloutMaxWidthPx`
+ * and `navigate`. They default to the code editor and the Code tab.
  */
 export type CodeTwin = Omit<
   TutorialStep,

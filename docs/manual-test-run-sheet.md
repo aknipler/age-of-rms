@@ -608,8 +608,7 @@ Nothing in this change has run in the real app. Every check below is owed agains
 3. Press "Use Code". Confirm the app switches to the Code tab and "The order of a map" shows the
    seven headers as a boxed block in a fixed width font, line breaks kept.
 4. On each Code typing step, confirm where the callout sits. It should land bottom right. Confirm
-   it does not cover the lines being typed at the top of an empty file, and that "Move this out of
-   the way" parks it. If it covers the side panel's preview at "Watch it appear", note it.
+   it does not cover the lines being typed at the top of an empty file, and that minimize (section 26) shrinks it out of the way. If it covers the side panel's preview at "Watch it appear", note it.
 5. Type the text each step asks for. Confirm each step ticks and moves on by itself, including when
    the text is typed in a different order or with different indentation.
 6. On "A hill in the middle", confirm a red underline appears under base_elevation and its hover
@@ -691,6 +690,59 @@ Section 20 is still owed too, and covers the Breakdown track.
    `src/preview/__tests__/fixtures/de-elevation-cliff-maps.json` (its `scripts` list), generate it in
    DE's scenario editor at a typed seed, Tiny, 2 players, set the same in the preview, and compare
    the hills and the cliff lines.
+
+---
+
+## 25. The base_layer warning and hidden warnings, 2026-10-19 (`parser-design.md` RMS0318)
+
+Script for every step, in a saved file:
+
+```
+<LAND_GENERATION>
+base_terrain DESERT
+base_layer SNOW
+<ELEVATION_GENERATION>
+create_elevation 2 { base_terrain DESERT }
+```
+
+1. In Code, confirm a warning squiggle on `base_layer`. Hover it and confirm the message names line 5,
+   with "Ok" and "Don't show me this again" links under it. Do the same with Help set to Off in
+   Preferences, and confirm the links still show.
+2. Click "Ok". Confirm the squiggle and the status bar count go, and that Breakdown's card for
+   `base_layer` loses its badge. Open a second file with the same script and confirm it still warns
+   there. Close and reopen the app, and confirm the first file still has no warning.
+3. In Breakdown on the second file, hover the `base_layer` card's warning badge, move the pointer into
+   the popup, and confirm it stays open and both buttons and their HelpTips work. Click "Don't show me
+   this again" and confirm the warning goes in both files.
+4. Open Settings, Diagnostics. Confirm the warning is listed under "Warnings turned off" and that
+   "Show them again" says one file has a warning hidden. Click "Turn back on" and confirm the warning
+   returns in the second file only, then "Show them again" and confirm it returns in the first.
+5. Add `base_layer SNOW` to the `create_elevation` block and confirm the warning goes by itself.
+
+---
+
+## 26. Minimizing and dragging the tutorial card, 2026-10-20 (`tutorial-design.md` Sec.5.2)
+
+Replaces "Move this out of the way". Run against "Your first random map" and the app tour.
+
+1. On the first step, which has no anchor, confirm the card's top row shows a grip, the step
+   counter and a minimize button. Hover the grip and the button and confirm each HelpTip.
+2. Press minimize. Confirm the card becomes a one line bar in the bottom right corner, naming the
+   step, with Next and a restore button, and that the spotlight and dimming go. Press restore and
+   confirm the card comes back where it was.
+3. On a typing step, open an Answer, minimize, type the answer, and confirm the bar shows a tick.
+   Confirm the step moves on and opens full size. Go Back, open the Answer, minimize, restore, and
+   confirm the Answer is still open.
+4. On the choice step "Breakdown or Code", minimize and confirm the bar has no Next.
+5. In the app tour, on "Resources and problems", minimize. Confirm the bar sits just above the
+   status bar and does not cover the resource totals or the problems triangle.
+6. Drag the card by its top row to the left side. Confirm it follows the pointer without selecting
+   text, and that it cannot be dragged off screen. Press Next and confirm the next card opens in the
+   same spot, unless it would cover what that step points at, in which case it goes beside it.
+7. Minimize, drag the bar to the top of the window, and restore. Confirm the card returns to its
+   own dragged spot. Minimize again and confirm the bar returns to where it was dragged.
+8. Exit the tutorial and start it again. Confirm the card and the bar are back to their automatic
+   places.
 
 ---
 

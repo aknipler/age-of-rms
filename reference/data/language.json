@@ -1309,7 +1309,7 @@
       "name": "base_layer",
       "section": "LAND_GENERATION",
       "kind": "standalone",
-      "description": "Sets a secondary base terrain layer. DE only.",
+      "description": "Marks every tile no land paints with a second terrain layer. DE only. This also splits where hills can grow. A create_elevation with the same base_layer grows only on those unpainted tiles, and one without a base_layer grows only on tiles a land painted, even a land of the base terrain itself.",
       "arguments": [
         {
           "name": "terrain",
@@ -1978,7 +1978,7 @@
           "default": 0
         }
       ],
-      "description": "Elevation level this land starts at. Requires an <ELEVATION_GENERATION> section to be present.",
+      "description": "Height this land is raised to, written on the land and a thin rim of base terrain around it. A water land ignores it. Needs an <ELEVATION_GENERATION> section, which may be empty. Without one the land still rises, but nothing smooths its edge into a slope, so it stands as a sheer step.",
       "requiresSection": "ELEVATION_GENERATION",
       "verified": true,
       "notes": "requiresSection established 2026-07-30 during Phase 4.1 engine verification: the section may be completely empty, its mere presence is enough (guide:952, confirmed in-game by RMSTEST_4_negelev.rms). Without it the map generates and looks correct while the slopes silently do nothing, and the guide's author reports in a public Discord message that the map then crashes when played — that second half is second-hand and is attributed, not asserted, in the RMS0311 message. min corrected 1 -> 0 on 2026-07-31: guide:954 reads \"Height - number (1-16) (default: 0 - not elevated)\", so the same line that supplies the range also documents 0 as the legal value meaning flat. Transcribing only the parenthesised range made min contradict default, and RMS0203 then false-warned on all 461 corpus uses of \"base_elevation 0\" — the second-largest diagnostic source in the tool. Negative values are also legal (guide:957, maximally elevate; confirmed in-game as 16 by RMSTEST_4) and still draw RMS0203; leave that until a negative shows up in a real script, since the corpus has none."

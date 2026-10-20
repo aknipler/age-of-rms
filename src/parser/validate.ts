@@ -284,6 +284,12 @@ class Validator {
   // use of each attribute that's missing its section, not all forty.
   private readonly reportedMissingSections = new Set<string>();
 
+  // RMS0318's two halves, collected during the walk and compared after it,
+  // since the base_layer and the create_elevation commands sit in different
+  // sections and either can come first in the file.
+  private landBaseLayer: CommandNode | undefined;
+  private readonly elevationsWithoutLayer: CommandNode[] = [];
+
   // The conditions guarding the item currently being walked, innermost last.
   // An `if A` contributes "A" to its own branch; every later branch of that
   // chain inherits "!A". Two definitions with an IDENTICAL guard stack sit on
@@ -398,6 +404,7 @@ class Validator {
     // collects, and a path is only known once its whole subtree has been
     // visited.
     this.checkRedefinitions();
+    this.checkLandBaseLayer();
 
     // Emit in source order. The parser's diagnostics come out in token order
     // for free; these don't (file-level checks run first), and the Breakdown
@@ -816,6 +823,7 @@ class Validator {
       case "command":
         this.checkDeprecated(item);
         this.checkWrongSection(item);
+        this.recordBaseLayerUse(item);
         this.checkArgs(item.args);
         if (item.block) {
           this.checkBlockContents(item.block);
@@ -936,6 +944,56 @@ class Validator {
     if (section.name === item.def.section) return;
     this.diagnostics.push(
       d.wrongSection(this.tokens[item.name], item.def.section, section.name),
+    );
+  }
+
+  /**
+   * RMS0318's walk half. Notes the first `base_layer` in <LAND_GENERATION>
+   * and every `create_elevation` whose block gives no `base_layer`. A command
+   * is matched by its definition rather than its written word, so a `#const`
+   * alias of either counts too.
+   */
+  private recordBaseLayerUse(item: CommandNode): void {
+    const name = item.def?.name;
+    const section = this.currentSection?.name;
+    if (name === "base_layer" && section === "LAND_GENERATION") {
+      this.landBaseLayer ??= item;
+      return;
+    }
+    if (name !== "create_elevation" || section !== "ELEVATION_GENERATION")
+      return;
+    const hasLayer = (items: readonly Item[]): boolean =>
+      items.some((inner) => {
+        if (inner.kind === "attribute") return inner.def?.name === "base_layer";
+        if (inner.kind === "if" || inner.kind === "random")
+          return inner.branches.some((branch) => hasLayer(branch.items));
+        return false;
+      });
+    if (!hasLayer(item.block?.items ?? []))
+      this.elevationsWithoutLayer.push(item);
+  }
+
+  /**
+   * RMS0318. Only when the split bites, a base_layer in <LAND_GENERATION>
+   * together with a create_elevation that gives none, which then cannot grow
+   * on the base area (preview-design Sec.6.1 growth rule 10, measured on
+   * DE's ly1 maps). A create_elevation with a different base_layer is left
+   * alone, because a `#const` can make two different words the same terrain.
+   */
+  private checkLandBaseLayer(): void {
+    const layer = this.landBaseLayer;
+    const first = this.elevationsWithoutLayer[0];
+    if (layer === undefined || first === undefined) return;
+    const arg = layer.args[0];
+    const layerText =
+      arg === undefined ? "" : (this.tokens[arg.firstToken]?.text ?? "");
+    this.diagnostics.push(
+      d.landBaseLayerSplitsElevation(
+        this.tokens[layer.name],
+        layerText,
+        this.lineOf(this.tokens[first.name].start),
+        this.elevationsWithoutLayer.length,
+      ),
     );
   }
 

@@ -1,4 +1,10 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
@@ -45,6 +51,42 @@ function resolveAnchor(anchor: Anchor): HTMLElement | null {
 interface Placement {
   top: number;
   left: number;
+}
+
+/**
+ * Where the learner last dropped the card or the minimized bar, and on which
+ * step. `runKey` scopes it to one tutorial run, so starting another tutorial
+ * goes back to automatic placement. `stepKey` decides how firmly it holds.
+ * On the step it was dropped on it always wins, and on a later step it gives
+ * way when it would cover that step's spotlight.
+ */
+interface DroppedPlacement {
+  runKey: string;
+  stepKey: string | null;
+  pos: Placement;
+}
+
+/** Keeps a box of the given size fully on screen, with the usual margin. */
+function clampToViewport(
+  pos: Placement,
+  size: { width: number; height: number },
+): Placement {
+  return {
+    top: Math.min(
+      Math.max(pos.top, VIEWPORT_MARGIN_PX),
+      Math.max(
+        VIEWPORT_MARGIN_PX,
+        window.innerHeight - size.height - VIEWPORT_MARGIN_PX,
+      ),
+    ),
+    left: Math.min(
+      Math.max(pos.left, VIEWPORT_MARGIN_PX),
+      Math.max(
+        VIEWPORT_MARGIN_PX,
+        window.innerWidth - size.width - VIEWPORT_MARGIN_PX,
+      ),
+    ),
+  };
 }
 
 /** tutorial-design.md Sec.5.2, the engine, spotlight geometry and the two callout kinds (a running step, and Sec.11's standalone announcement). */
@@ -152,26 +194,54 @@ export function TutorialOverlay({
   const anchor = step?.anchor;
   const extraAnchors = step?.extraAnchors;
 
-  // "Move this out of the way" (Sec.5.5-adjacent, a named, deliberate
-  // escape hatch, same philosophy as `bypass`). Tracked against the step's
-  // own key rather than a plain boolean so it always resets on any step
-  // transition, including paging back to a step you'd previously moved
-  // aside on. "moved aside" describes what you're doing right now, not a
-  // preference that should survive leaving the step.
-  const [asideState, setAsideState] = useState<{
+  // Minimize shrinks the card to a one line bar and turns the spotlight off,
+  // so the learner can work unobstructed. Tracked against the step's own key
+  // rather than a plain boolean so it resets on every step transition,
+  // including paging back to a step that was minimized before. A new step
+  // has new instructions, so it opens at full size. This is React's
+  // "adjusting state during render" pattern, the same one `arrival` uses.
+  const [minimizeState, setMinimizeState] = useState<{
     key: string | null;
-    aside: boolean;
+    minimized: boolean;
   }>({
     key: null,
-    aside: false,
+    minimized: false,
   });
-  if (stepKey !== asideState.key) {
-    setAsideState({ key: stepKey, aside: false });
+  if (stepKey !== minimizeState.key) {
+    setMinimizeState({ key: stepKey, minimized: false });
   }
-  const movedAside = asideState.aside;
-  const moveAside = useCallback(() => {
-    setAsideState({ key: stepKey, aside: true });
-  }, [stepKey]);
+  const minimized = minimizeState.minimized;
+  const setMinimized = useCallback(
+    (value: boolean) => {
+      setMinimizeState({ key: stepKey, minimized: value });
+    },
+    [stepKey],
+  );
+
+  // Dragging. One tutorial run is the scope a dropped position lives in. The
+  // card and the bar each keep their own, since a learner who parks the bar
+  // in a corner may still want the card elsewhere. The announcement has no
+  // drag handle, its "Not now" already gets it out of the way.
+  const runKey = active ? active.definition.id : null;
+  // Refs, not state. `place()` reads these on every pointermove and every
+  // animation frame, and nothing renders from them directly (`position` is
+  // what renders). As state, each write would recreate `place` and re-run
+  // the placement effect below, tearing down and re-adding its listeners
+  // dozens of times a second during a drag.
+  const droppedCardRef = useRef<DroppedPlacement | null>(null);
+  const droppedBarRef = useRef<DroppedPlacement | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  // `runKey` alone cannot tell a restart of the same tutorial from the run
+  // before it, so ending a run clears both drops.
+  useLayoutEffect(() => {
+    if (runKey !== null) return;
+    droppedCardRef.current = null;
+    droppedBarRef.current = null;
+  }, [runKey]);
 
   // A dropdown spoiler opening grows an anchorless callout. Re-centring would
   // shift its top edge, so those re-placements keep the top where it was and
@@ -188,28 +258,6 @@ export function TutorialOverlay({
     if (!callout) return;
     const calloutBox = callout.getBoundingClientRect();
 
-    if (movedAside) {
-      // Parked in a corner, independent of the anchor entirely; no
-      // spotlight, nothing dimmed (the request this exists to satisfy: the
-      // user asked to work unobstructed, so nothing should still be marked
-      // as "look here").
-      setSpotlightRects([]);
-      const corner = step?.moveAsideCorner ?? "bottom-right";
-      const top =
-        corner === "top-right"
-          ? VIEWPORT_MARGIN_PX
-          : Math.max(
-              VIEWPORT_MARGIN_PX,
-              window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
-            );
-      const left = Math.max(
-        VIEWPORT_MARGIN_PX,
-        window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
-      );
-      setPosition({ top, left });
-      return;
-    }
-
     const anchorEl = anchor ? resolveAnchor(anchor) : null;
     const anchorBox = anchorEl?.getBoundingClientRect() ?? null;
     const rects: DOMRect[] = [];
@@ -218,6 +266,53 @@ export function TutorialOverlay({
       const extraBox = resolveAnchor(extra)?.getBoundingClientRect();
       if (extraBox) rects.push(extraBox);
     }
+
+    /** A drop from this run, or null for one left over from another run. */
+    function droppedInThisRun(
+      dropped: DroppedPlacement | null,
+    ): DroppedPlacement | null {
+      return dropped && dropped.runKey === runKey ? dropped : null;
+    }
+
+    if (minimized) {
+      // No spotlight and nothing dimmed. The learner asked to work
+      // unobstructed, so nothing should still be marked as "look here". The
+      // rects are still measured above, because the bar keeps clear of them.
+      setSpotlightRects([]);
+      const dropped = droppedInThisRun(droppedBarRef.current);
+      if (dropped) {
+        setPosition(clampToViewport(dropped.pos, calloutBox));
+        return;
+      }
+      // Bottom right by default. A step pointing at the status bar has its
+      // spotlight right there, so the bar lifts above whatever it would
+      // cover. One pass is enough, since lifting above the highest
+      // overlapping rect clears every rect that overlapped.
+      let top = Math.max(
+        VIEWPORT_MARGIN_PX,
+        window.innerHeight - calloutBox.height - VIEWPORT_MARGIN_PX,
+      );
+      const left = Math.max(
+        VIEWPORT_MARGIN_PX,
+        window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
+      );
+      const covered = rects.filter(
+        (r) =>
+          left < r.right &&
+          left + calloutBox.width > r.left &&
+          top < r.bottom &&
+          top + calloutBox.height > r.top,
+      );
+      if (covered.length > 0) {
+        top = Math.max(
+          VIEWPORT_MARGIN_PX,
+          Math.min(...covered.map((r) => r.top)) - GAP_PX - calloutBox.height,
+        );
+      }
+      setPosition({ top, left });
+      return;
+    }
+
     setSpotlightRects(rects);
 
     // A step's `calloutNudge` (Sec.5.2-adjacent) shifts the otherwise-computed
@@ -310,6 +405,23 @@ export function TutorialOverlay({
     // normal way, fall back to `belowSpotlight()` if it still overlaps.
     function commitPosition(pos: Placement): void {
       setPosition(overlapsSpotlight(pos) ? belowSpotlight() : pos);
+    }
+
+    // A card the learner dragged stays where they put it for the rest of the
+    // run, ahead of every automatic rule below. On the step it was dropped
+    // on it wins outright, even over the spotlight, because the learner
+    // chose that spot while looking at it. On a later step it gives way for
+    // that step only when it would cover what the step points at. The
+    // obvious alternative, resetting on every step like minimize does, would
+    // have the learner drag the card away again on every step of a long
+    // tutorial.
+    const droppedCard = droppedInThisRun(droppedCardRef.current);
+    if (droppedCard) {
+      const pos = clampToViewport(droppedCard.pos, calloutBox);
+      if (droppedCard.stepKey === stepKey || !overlapsSpotlight(pos)) {
+        setPosition(pos);
+        return;
+      }
     }
 
     // Inside the anchor's corner, ahead of every beside/below rule. Those
@@ -428,7 +540,7 @@ export function TutorialOverlay({
       window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
     );
     commitPosition(applyNudge({ top, left }));
-  }, [anchor, extraAnchors, movedAside, step]);
+  }, [anchor, extraAnchors, minimized, step, runKey, stepKey]);
 
   const showingCallout = active !== null || announcement !== null;
 
@@ -445,10 +557,10 @@ export function TutorialOverlay({
     // Sec.5.2, poll while a check step is pending, because the anchor can
     // move for reasons neither event fires on (a card list growing as the
     // user adds commands). Cancelled the moment the step is satisfied,
-    // manual, this is the announcement, or the callout has been moved
-    // aside, parked in a corner, it no longer tracks the anchor at all.
+    // manual, or this is the announcement. It keeps running while minimized,
+    // since the bar still keeps clear of the anchor.
     let frame: number | null = null;
-    if (!movedAside && step?.completion.kind === "check" && !satisfied) {
+    if (step?.completion.kind === "check" && !satisfied) {
       const loop = () => {
         place();
         frame = requestAnimationFrame(loop);
@@ -471,12 +583,59 @@ export function TutorialOverlay({
     // no such loop, so its spotlight would otherwise never resolve. Once
     // `navigate.tab` actually flips `activeTab` a render later, this effect
     // re-runs and re-resolves against the now-mounted DOM.
-  }, [showingCallout, place, step, satisfied, movedAside, activeTab]);
+  }, [showingCallout, place, step, satisfied, minimized, activeTab]);
 
   const placeKeepingTop = useCallback(() => {
     keepTopRef.current = true;
     place();
   }, [place]);
+
+  // Dragging uses pointer capture. After `setPointerCapture`, every move and
+  // the final release go to the callout itself even when the pointer races
+  // ahead of it or leaves the window, so no document level listeners are
+  // needed and none can leak. A drag starts only from an element marked
+  // `data-drag-handle`, and never from a button inside one.
+  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const target = event.target as Element;
+    if (!target.closest("[data-drag-handle]") || target.closest("button"))
+      return;
+    const box = event.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - box.left,
+      offsetY: event.clientY - box.top,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    // Stops the browser selecting the step's text as the pointer moves.
+    event.preventDefault();
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !runKey) return;
+    const pos = clampToViewport(
+      {
+        top: event.clientY - drag.offsetY,
+        left: event.clientX - drag.offsetX,
+      },
+      event.currentTarget.getBoundingClientRect(),
+    );
+    // Written on every move, not only on release, because a check step's
+    // animation frame loop calls `place()` throughout the drag. Reading the
+    // ref, it lands on this same spot instead of pulling the card back.
+    const dropped = { runKey, stepKey, pos };
+    if (minimized) droppedBarRef.current = dropped;
+    else droppedCardRef.current = dropped;
+    setPosition(pos);
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  }
 
   if (!showingCallout) return null;
 
@@ -485,9 +644,15 @@ export function TutorialOverlay({
     top: 0,
     left: 0,
   };
-  const calloutStyle = step?.calloutMaxWidthPx
-    ? { ...positionStyle, maxWidth: step.calloutMaxWidthPx }
-    : positionStyle;
+  const calloutStyle =
+    step?.calloutMaxWidthPx && !minimized
+      ? { ...positionStyle, maxWidth: step.calloutMaxWidthPx }
+      : positionStyle;
+  const calloutClass = minimized
+    ? styles.bar
+    : wide
+      ? `${styles.callout} ${styles.calloutWide}`
+      : styles.callout;
 
   return createPortal(
     <>
@@ -547,10 +712,12 @@ export function TutorialOverlay({
       )}
       <div
         ref={calloutRef}
-        className={
-          wide ? `${styles.callout} ${styles.calloutWide}` : styles.callout
-        }
+        className={calloutClass}
         style={calloutStyle}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
         {announcement ? (
           <AnnouncementCallout
@@ -561,30 +728,46 @@ export function TutorialOverlay({
             onNotNow={dismissAnnouncement}
           />
         ) : active && step ? (
-          <StepCallout
-            key={stepKey}
-            step={step}
-            stepIndex={active.stepIndex}
-            total={active.steps.length}
-            tutorialId={active.definition.id}
-            satisfied={satisfied}
-            movedAside={movedAside}
-            onMoveAside={moveAside}
-            onBack={back}
-            onNext={next}
-            onChoose={choose}
-            onExit={exit}
-            onContentResize={place}
-            onDropdownToggle={placeKeepingTop}
-            onAutoFill={
-              step.autoFill
-                ? () => {
-                    const edit = step.autoFill?.buildEdit(stepContext);
-                    if (edit) applyTextEdits([edit]);
-                  }
-                : undefined
-            }
-          />
+          <>
+            {minimized && (
+              <MinimizedBar
+                step={step}
+                stepIndex={active.stepIndex}
+                total={active.steps.length}
+                satisfied={satisfied}
+                onNext={next}
+                onRestore={() => setMinimized(false)}
+              />
+            )}
+            {/* Hidden rather than unmounted while minimized, so a spoiler
+                the learner opened is still open when the card comes back.
+                Unmounting would throw away StepBody's local state. */}
+            <div hidden={minimized}>
+              <StepCallout
+                key={stepKey}
+                step={step}
+                stepIndex={active.stepIndex}
+                total={active.steps.length}
+                tutorialId={active.definition.id}
+                satisfied={satisfied}
+                onMinimize={() => setMinimized(true)}
+                onBack={back}
+                onNext={next}
+                onChoose={choose}
+                onExit={exit}
+                onContentResize={place}
+                onDropdownToggle={placeKeepingTop}
+                onAutoFill={
+                  step.autoFill
+                    ? () => {
+                        const edit = step.autoFill?.buildEdit(stepContext);
+                        if (edit) applyTextEdits([edit]);
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          </>
         ) : null}
       </div>
     </>,
@@ -678,8 +861,7 @@ function StepCallout({
   total,
   tutorialId,
   satisfied,
-  movedAside,
-  onMoveAside,
+  onMinimize,
   onBack,
   onNext,
   onChoose,
@@ -693,8 +875,7 @@ function StepCallout({
   total: number;
   tutorialId: string;
   satisfied: boolean;
-  movedAside: boolean;
-  onMoveAside: () => void;
+  onMinimize: () => void;
   onBack: () => void;
   onNext: () => void;
   onChoose: (track: string) => void;
@@ -746,8 +927,22 @@ function StepCallout({
 
   return (
     <>
-      <div className={styles.counter}>
-        {stepIndex + 1} / {total}
+      <div className={styles.header} data-drag-handle>
+        <DragGrip />
+        <span className={styles.counter}>
+          {stepIndex + 1} / {total}
+        </span>
+        <span className={styles.spacer} />
+        <HelpTip id="tutorial.minimize">
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={onMinimize}
+            aria-label="Minimize"
+          >
+            –
+          </button>
+        </HelpTip>
       </div>
       {imagePlacement === "top" && imageElement}
       <h3 className={styles.title}>
@@ -791,17 +986,6 @@ function StepCallout({
           </button>
         </HelpTip>
         <span className={styles.spacer} />
-        {step.anchor && !movedAside && (
-          <HelpTip id="tutorial.moveAside">
-            <button
-              type="button"
-              className={styles.button}
-              onClick={onMoveAside}
-            >
-              Move this out of the way
-            </button>
-          </HelpTip>
-        )}
         {step.autoFill && onAutoFill && !satisfied && (
           <HelpTip id="tutorial.autoFill">
             <button
@@ -855,6 +1039,78 @@ function StepCallout({
           </button>
         </HelpTip>
       </div>
+    </>
+  );
+}
+
+/** The handle a learner drags the card or the bar by. Its parent carries `data-drag-handle`, so the whole header drags, and the grip is what says so. */
+function DragGrip() {
+  return (
+    <HelpTip id="tutorial.drag">
+      <span className={styles.grip} aria-hidden="true">
+        ⠿
+      </span>
+    </HelpTip>
+  );
+}
+
+/**
+ * The step shrunk to one line. It names the step, shows the tick once a
+ * check step is done, and keeps Next, so a learner can finish a step and
+ * move on without opening the card again. A choice step has no Next (its
+ * options stand in for it), so the learner opens the card to pick.
+ */
+function MinimizedBar({
+  step,
+  stepIndex,
+  total,
+  satisfied,
+  onNext,
+  onRestore,
+}: {
+  step: TutorialStep;
+  stepIndex: number;
+  total: number;
+  satisfied: boolean;
+  onNext: () => void;
+  onRestore: () => void;
+}) {
+  const isLast = stepIndex === total - 1;
+  return (
+    <>
+      <div className={styles.barLabel} data-drag-handle>
+        <DragGrip />
+        <span className={styles.counter}>
+          {stepIndex + 1} / {total}
+        </span>
+        <span className={styles.barTitle}>{step.title}</span>
+        {step.completion.kind === "check" && satisfied && (
+          <span className={styles.tick} aria-label="done">
+            ✓
+          </span>
+        )}
+      </div>
+      {!step.choice && (
+        <HelpTip id="tutorial.next">
+          <button
+            type="button"
+            className={`${styles.button} ${styles.primary}`}
+            onClick={onNext}
+          >
+            {isLast ? "Finish" : "Next"}
+          </button>
+        </HelpTip>
+      )}
+      <HelpTip id="tutorial.restore">
+        <button
+          type="button"
+          className={styles.iconButton}
+          onClick={onRestore}
+          aria-label="Show the whole step"
+        >
+          ▢
+        </button>
+      </HelpTip>
     </>
   );
 }

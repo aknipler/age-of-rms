@@ -31,6 +31,11 @@ import { formatHotkey, matchesHotkey } from "./settings/hotkeys";
 import { BreakdownSettingsProvider } from "./settings/BreakdownSettingsContext";
 import { CodeSettingsProvider } from "./settings/CodeSettingsContext";
 import {
+  CurrentFileProvider,
+  DiagnosticDismissalProvider,
+  useDiagnosticDismissal,
+} from "./settings/DiagnosticDismissalContext";
+import {
   GenerationSettingsProvider,
   useGenerationSettings,
 } from "./generationSettings/GenerationSettingsContext";
@@ -352,6 +357,15 @@ function AppContent() {
   // reset when switching tabs. Problems/Breakdown both reflect the last
   // known parse, like most editors' Problems panels.
   const parsed = useParsedDocument(doc.content);
+  // The warnings the user has not hidden (DiagnosticDismissalContext.tsx),
+  // for the Code tab and the status bar. Breakdown filters its own copy from
+  // the parse result. useMemo keeps the array's identity stable between
+  // renders, so CodePane's marker effect only reruns when the list changes.
+  const dismissal = useDiagnosticDismissal();
+  const visibleDiagnostics = useMemo(
+    () => dismissal.visible(parsed.diagnostics, doc.filePath),
+    [dismissal, parsed.diagnostics, doc.filePath],
+  );
   // One selection anchor shared by both panes,
   // lifted here (rather than living inside BreakdownPane, which unmounts
   // on every tab switch) specifically so it survives Breakdown <-> Code.
@@ -435,64 +449,65 @@ function AppContent() {
           data dependency on the other four, so its position in the nesting
           is arbitrary; it sits innermost only because it is ToolsPane's own
           concern alone. */}
-      <ParsedDocumentProvider parseResult={parsed.parseResult}>
-        <PreviewCutProvider
-          cursorOffset={selection.selectedAnchor}
-          source={parsed.source}
-          parseResult={parsed.parseResult}
-        >
-          <PreviewResultProviders parseResult={parsed.parseResult}>
-            <ToolHostProvider>
-              {/* The Land Placement panel's own AlpModel + selection, lifted
+      <CurrentFileProvider filePath={doc.filePath}>
+        <ParsedDocumentProvider parseResult={parsed.parseResult}>
+          <PreviewCutProvider
+            cursorOffset={selection.selectedAnchor}
+            source={parsed.source}
+            parseResult={parsed.parseResult}
+          >
+            <PreviewResultProviders parseResult={parsed.parseResult}>
+              <ToolHostProvider>
+                {/* The Land Placement panel's own AlpModel + selection, lifted
                   above the tab switch for the same reason ToolHost itself is
                   (land-placement-design.md Sec.3.6(b)), landPlacementModel.tsx. */}
-              <LandPlacementModelProvider>
-                <main className={styles.main}>
-                  {activeTab === "breakdown" && (
-                    <BreakdownPane
-                      hasFile={doc.filePath !== null}
-                      source={parsed.source}
-                      parseResult={parsed.parseResult}
-                      applyTextEdits={doc.applyTextEdits}
-                      reparseNow={parsed.reparseNow}
-                      selection={selection}
-                    />
-                  )}
-                  {activeTab === "code" && (
-                    <CodePane
-                      hasFile={doc.filePath !== null}
-                      source={parsed.source}
-                      diagnostics={parsed.diagnostics}
-                      parseResult={parsed.parseResult}
-                      applyTextEdits={doc.applyTextEdits}
-                      selectedItem={selection.selectedItem}
-                      onCursorOffsetChange={selection.setAnchor}
-                      onEditorReady={handleCodeEditorReady}
-                    />
-                  )}
-                  {activeTab === "advanced-tools" && (
-                    <ToolsPane
-                      filePath={doc.filePath}
-                      source={parsed.source}
-                      reparseNow={parsed.reparseNow}
-                      applyTextEdits={doc.applyTextEdits}
-                      onJumpToOffset={selection.setAnchor}
-                    />
-                  )}
-                </main>
-                {/* Sibling of <main>, still inside ParsedDocumentProvider so
+                <LandPlacementModelProvider>
+                  <main className={styles.main}>
+                    {activeTab === "breakdown" && (
+                      <BreakdownPane
+                        hasFile={doc.filePath !== null}
+                        source={parsed.source}
+                        parseResult={parsed.parseResult}
+                        applyTextEdits={doc.applyTextEdits}
+                        reparseNow={parsed.reparseNow}
+                        selection={selection}
+                      />
+                    )}
+                    {activeTab === "code" && (
+                      <CodePane
+                        hasFile={doc.filePath !== null}
+                        source={parsed.source}
+                        diagnostics={visibleDiagnostics}
+                        parseResult={parsed.parseResult}
+                        applyTextEdits={doc.applyTextEdits}
+                        selectedItem={selection.selectedItem}
+                        onCursorOffsetChange={selection.setAnchor}
+                        onEditorReady={handleCodeEditorReady}
+                      />
+                    )}
+                    {activeTab === "advanced-tools" && (
+                      <ToolsPane
+                        filePath={doc.filePath}
+                        source={parsed.source}
+                        reparseNow={parsed.reparseNow}
+                        applyTextEdits={doc.applyTextEdits}
+                        onJumpToOffset={selection.setAnchor}
+                      />
+                    )}
+                  </main>
+                  {/* Sibling of <main>, still inside ParsedDocumentProvider so
                     a check step's completion test can read the live parse
                     (tutorial-design.md Sec.5.4). Portals to document.body,
                     so its position here is about context access, not
                     layout. */}
-                <TutorialOverlay
-                  hasFile={doc.filePath !== null}
-                  activeTab={activeTab}
-                  applyTextEdits={doc.applyTextEdits}
-                />
-              </LandPlacementModelProvider>
-            </ToolHostProvider>
-            {/* Moved inside PreviewResultProviders (status-bar accuracy pass):
+                  <TutorialOverlay
+                    hasFile={doc.filePath !== null}
+                    activeTab={activeTab}
+                    applyTextEdits={doc.applyTextEdits}
+                  />
+                </LandPlacementModelProvider>
+              </ToolHostProvider>
+              {/* Moved inside PreviewResultProviders (status-bar accuracy pass):
                 StatusBarContainer reads the document's PreviewResultProvider
                 context directly, which does not exist above this point.
                 UpdatePrompt moves with it, directly above the status bar so
@@ -500,19 +515,20 @@ function AppContent() {
                 app's chrome rather than over the work — `.app` is a flex
                 column and neither provider renders DOM of its own, so this
                 is layout-neutral. */}
-            <UpdatePrompt
-              state={update.state}
-              onInstall={update.install}
-              onDismiss={update.dismiss}
-            />
-            <StatusBarContainer
-              diagnostics={parsed.diagnostics}
-              onReportBug={reportBug}
-              onSuggestFeature={suggestFeature}
-            />
-          </PreviewResultProviders>
-        </PreviewCutProvider>
-      </ParsedDocumentProvider>
+              <UpdatePrompt
+                state={update.state}
+                onInstall={update.install}
+                onDismiss={update.dismiss}
+              />
+              <StatusBarContainer
+                diagnostics={visibleDiagnostics}
+                onReportBug={reportBug}
+                onSuggestFeature={suggestFeature}
+              />
+            </PreviewResultProviders>
+          </PreviewCutProvider>
+        </ParsedDocumentProvider>
+      </CurrentFileProvider>
       {settingsOpen && (
         <SettingsDialog onClose={() => setSettingsOpen(false)} />
       )}
@@ -559,45 +575,51 @@ function App() {
                   Breakdown sibling above — CodePane.tsx reads it to set
                   Monaco's own tabSize/insertSpaces options. */}
               <CodeSettingsProvider>
-                <GenerationSettingsProvider>
-                  {/* Above AppContent, so the preview's seed/view/colour and its
+                {/* Same store again, its own context: the warnings the user
+                    has hidden (DiagnosticDismissalContext.tsx). Above
+                    AppContent so the Settings dialog, the Code tab and
+                    Breakdown all read one copy. */}
+                <DiagnosticDismissalProvider>
+                  <GenerationSettingsProvider>
+                    {/* Above AppContent, so the preview's seed/view/colour and its
                       canvas zoom/pan survive the tab switch that unmounts the pane
                       holding them. Two providers, not one context, so a drag or wheel
                       tick (which changes viewport on every frame) doesn't re-render
                       the seed/colour-mode controls; see PreviewViewContext.tsx. */}
-                  <PreviewViewProvider>
-                    <PreviewViewportProvider>
-                      {/* Also above the tab switch, and for the same reason: both tabs
+                    <PreviewViewProvider>
+                      <PreviewViewportProvider>
+                        {/* Also above the tab switch, and for the same reason: both tabs
                           render their own MapSidePanel and the inactive one is
                           unmounted, so a width held inside it would be two widths that
                           reset on every switch (CREATION_PLAN 4.4). Unlike the two
                           above, this one IS persisted. A layout choice should still be
                           there tomorrow, where a seed should not. */}
-                      <SidePanelLayoutProvider>
-                        {/* One level in from the side panel's own width/collapse,
+                        <SidePanelLayoutProvider>
+                          {/* One level in from the side panel's own width/collapse,
                             same persisted-and-shared-across-tabs reasoning, one
                             layer down: this one is the preview/reference split
                             WITHIN that panel rather than the panel's own width
                             (previewReferenceSplit.ts). */}
-                        <PreviewReferenceSplitProvider>
-                          {/* The Land Placement panel's own seed (PreviewResultProviders,
+                          <PreviewReferenceSplitProvider>
+                            {/* The Land Placement panel's own seed (PreviewResultProviders,
                               above), same "survive the tab switch" reasoning as
                               PreviewViewProvider, deliberately its own context rather
                               than a field on that one (panelPreviewSeed.tsx). */}
-                          <PanelPreviewSeedProvider>
-                            {/* Innermost of the App()-level providers
+                            <PanelPreviewSeedProvider>
+                              {/* Innermost of the App()-level providers
                                 (tutorial-design.md Sec.5.4), a future step can
                                 read generation settings or preview state, and
                                 nothing above it needs to read tutorial state. */}
-                            <TutorialProvider>
-                              <AppContent />
-                            </TutorialProvider>
-                          </PanelPreviewSeedProvider>
-                        </PreviewReferenceSplitProvider>
-                      </SidePanelLayoutProvider>
-                    </PreviewViewportProvider>
-                  </PreviewViewProvider>
-                </GenerationSettingsProvider>
+                              <TutorialProvider>
+                                <AppContent />
+                              </TutorialProvider>
+                            </PanelPreviewSeedProvider>
+                          </PreviewReferenceSplitProvider>
+                        </SidePanelLayoutProvider>
+                      </PreviewViewportProvider>
+                    </PreviewViewProvider>
+                  </GenerationSettingsProvider>
+                </DiagnosticDismissalProvider>
               </CodeSettingsProvider>
             </BreakdownSettingsProvider>
           </HotkeySettingsProvider>

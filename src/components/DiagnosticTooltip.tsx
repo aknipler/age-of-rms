@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useHelpSettings } from "../help/HelpSettingsContext";
 import type { DiagnosticSeverity } from "../parser/types";
 import styles from "./DiagnosticTooltip.module.css";
@@ -50,19 +50,29 @@ interface DiagnosticPopupProps {
   message: string;
   severity: DiagnosticSeverity;
   side: "above" | "below";
+  /**
+   * Buttons under the message, for a warning the user may hide
+   * (DismissDiagnosticButtons.tsx). A popup with actions takes the pointer,
+   * which a plain one deliberately does not (see above), and bridges the gap
+   * to its row so the pointer can travel into it without the row's
+   * mouseleave closing it first.
+   */
+  actions?: ReactNode;
 }
 
 export function DiagnosticPopup({
   message,
   severity,
   side,
+  actions,
 }: DiagnosticPopupProps) {
   return (
     <div
-      className={`${styles.popup} ${styles[side]}`}
+      className={`${styles.popup} ${styles[side]} ${actions ? styles.interactive : ""}`}
       style={{ borderColor: SEVERITY_BORDER[severity] }}
     >
       {message}
+      {actions}
     </div>
   );
 }

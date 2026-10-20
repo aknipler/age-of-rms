@@ -24,3 +24,40 @@
   bottom: 100%;
   margin-bottom: 4px;
 }
+
+/* A popup with buttons takes the pointer, and a transparent strip covers the
+   gap between it and its row, so moving into the popup never leaves the row
+   that keeps it open. */
+.interactive {
+  pointer-events: auto;
+}
+
+.interactive::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 8px;
+}
+
+.interactive.below::before {
+  bottom: 100%;
+}
+
+.interactive.above::before {
+  top: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  white-space: normal;
+}
+
+.actionButton {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+}

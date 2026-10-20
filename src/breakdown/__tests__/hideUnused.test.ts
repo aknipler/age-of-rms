@@ -108,4 +108,28 @@ describe("Hide Unused (Sec.3.3.1, 2026-09-17 amendment)", () => {
       filterSlots(slots, "base_size description").map((s) => s.name),
     ).toEqual(["base_size"]);
   });
+
+  it("filterSlots ranks name prefix, then name word start, then name substring, then description only", () => {
+    // direct_placement lists first and only matches "ran" through its
+    // description ("arrangement"). The name matches must beat it.
+    const ranked = [
+      {
+        ...slot("direct_placement"),
+        def: {
+          ...slot("x").def,
+          name: "direct_placement",
+          description: "in a fixed arrangement",
+        },
+      },
+      slot("strand_size"),
+      slot("random_placement"),
+      slot("my_random_thing"),
+    ];
+    expect(filterSlots(ranked, "ran").map((s) => s.name)).toEqual([
+      "random_placement",
+      "my_random_thing",
+      "strand_size",
+      "direct_placement",
+    ]);
+  });
 });

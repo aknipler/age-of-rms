@@ -1,0 +1,6 @@
+/* Growth probe. One one-tile land (base_size 0) in the middle of the map, wanting 25 tiles. */
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type DESERT base_size 0 number_of_tiles 25 land_position 50 50 }

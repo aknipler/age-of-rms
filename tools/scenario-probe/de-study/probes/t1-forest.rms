@@ -1,0 +1,7 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type SNOW base_size 1 number_of_tiles 0 land_position 1 1 }
+<TERRAIN_GENERATION>
+create_terrain FOREST { number_of_tiles 600 number_of_clumps 6 }

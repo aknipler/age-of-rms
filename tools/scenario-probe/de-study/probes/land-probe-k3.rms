@@ -1,0 +1,13 @@
+/* Land probe, shift K=3: K header blocks, then 5 neutral lands with random positions. */
+start_random percent_chance 25 #define H1_A percent_chance 25 #define H1_B percent_chance 25 #define H1_C percent_chance 25 #define H1_D end_random
+start_random percent_chance 25 #define H2_A percent_chance 25 #define H2_B percent_chance 25 #define H2_C percent_chance 25 #define H2_D end_random
+start_random percent_chance 25 #define H3_A percent_chance 25 #define H3_B percent_chance 25 #define H3_C percent_chance 25 #define H3_D end_random
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain GRASS
+create_land { terrain_type WATER base_size 2 number_of_tiles 0 generate_mode 1 other_zone_avoidance_distance 0 }
+create_land { terrain_type DESERT base_size 2 number_of_tiles 0 generate_mode 1 other_zone_avoidance_distance 0 }
+create_land { terrain_type SNOW base_size 2 number_of_tiles 0 generate_mode 1 other_zone_avoidance_distance 0 }
+create_land { terrain_type FOREST base_size 2 number_of_tiles 0 generate_mode 1 other_zone_avoidance_distance 0 }
+create_land { terrain_type DIRT base_size 2 number_of_tiles 0 generate_mode 1 other_zone_avoidance_distance 0 }

@@ -1,0 +1,12 @@
+<PLAYER_SETUP>
+random_placement
+<LAND_GENERATION>
+base_terrain DESERT
+create_land { terrain_type SNOW base_size 1 number_of_tiles 0 land_position 1 1 }
+<CLIFF_GENERATION>
+min_number_of_cliffs 10
+max_number_of_cliffs 14
+min_length_of_cliff 8
+max_length_of_cliff 12
+cliff_curliness 100
+min_distance_cliffs 1

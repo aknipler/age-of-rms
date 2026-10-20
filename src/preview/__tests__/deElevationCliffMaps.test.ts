@@ -1,10 +1,12 @@
 // preview-design.md Sec.13, the rev 10 gate for elevation and cliffs against DE.
 //
-// `fixtures/de-elevation-cliff-maps.json` holds 51 maps DE generated from the
-// 22 probe scripts it carries, at their own seeds and three map sizes, read
-// back from the saved scenarios with AoE2ScenarioParser. It is frozen measured
-// data, and nothing in the repo regenerates it. Each one runs here through the real `generatePreview`, and the
-// finished map has to match DE on every tile's elevation, terrain and layer
+// `fixtures/de-elevation-cliff-maps.json` held 51 maps DE generated from 22
+// probe scripts when rev 10 landed, at their own seeds and three map sizes,
+// read back from the saved scenarios with AoE2ScenarioParser. The fixture
+// carries its scripts, and `tools/scenario-probe/export_de_fixture.py` adds
+// more maps from new saved scenarios. Each one runs here through the real
+// `generatePreview` at its own seed and lobby, and the finished map has to
+// match DE on every tile's elevation, terrain and layer
 // and on every cliff object's type, position and facing.
 //
 // The stream runs unbroken from the script's first draw to the last cliff, so
@@ -28,6 +30,7 @@ import {
   DEFAULT_TEAMS,
   MAP_SIZES,
   type MapSize,
+  type TeamNumber,
 } from "../../generationSettings/generationSettingsConstants";
 
 const lang = loadLanguage();
@@ -48,6 +51,10 @@ interface DeMap {
   seed: number;
   size: number;
   players: number;
+  /** The lobby's teams, 8 entries, 0 for none. Absent means no teams. */
+  teams?: TeamNumber[];
+  /** The editor's Team Positions box. Absent means ticked. */
+  teamPositions?: boolean;
   elevation: string;
   terrain: string;
   layer: string;
@@ -110,8 +117,13 @@ const pieceKey = (id: number, x: number, y: number, facing: number): string =>
   `${id}@${x.toFixed(4)},${y.toFixed(4)}/${facing}`;
 
 describe("elevation and cliffs match DE tile for tile (Sec.13, rev 10)", () => {
+  // At least the 51 maps rev 10 was built against, so a fixture cut short
+  // goes red. New maps from export_de_fixture.py only add to it.
   it("covers every saved map in the fixture", () => {
-    expect(fixture.maps.length).toBe(51);
+    expect(fixture.maps.length).toBeGreaterThanOrEqual(51);
+    expect(new Set(fixture.maps.map((m) => m.name)).size).toBe(
+      fixture.maps.length,
+    );
   });
 
   it.each(fixture.maps.map((m) => [m.name, m] as const))("%s", (_name, map) => {
@@ -121,8 +133,8 @@ describe("elevation and cliffs match DE tile for tile (Sec.13, rev 10)", () => {
       {
         playerCount: map.players,
         mapSize: mapSizeOf(map.size),
-        teams: DEFAULT_TEAMS,
-        teamPositions: true,
+        teams: map.teams ?? DEFAULT_TEAMS,
+        teamPositions: map.teamPositions ?? true,
       },
       { seed: map.seed, collectSnapshots: false },
     );

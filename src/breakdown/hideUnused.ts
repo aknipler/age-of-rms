@@ -57,16 +57,29 @@ export function addAbsentSlotIntent(
   return { kind: "addAttribute", target, name: slot.name, value };
 }
 
-/** Case-insensitive substring match on name or description, for the search bar. */
+/**
+ * Case-insensitive substring match on name or description, for the search
+ * bar. Best matches first: name prefix, then a name word starting with the
+ * query ("placement" in random_placement), then any name substring, then
+ * description-only. Ties keep the original slot order.
+ */
 export function filterSlots(
   slots: readonly AttributeSlot[],
   query: string,
 ): AttributeSlot[] {
   const q = query.trim().toLowerCase();
   if (!q) return [...slots];
-  return slots.filter(
-    (s) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.def.description ?? "").toLowerCase().includes(q),
-  );
+  const rank = (s: AttributeSlot): number => {
+    const name = s.name.toLowerCase();
+    if (name.startsWith(q)) return 0;
+    if (name.includes("_" + q)) return 1;
+    if (name.includes(q)) return 2;
+    if ((s.def.description ?? "").toLowerCase().includes(q)) return 3;
+    return -1;
+  };
+  return slots
+    .map((slot, order) => ({ slot, order, r: rank(slot) }))
+    .filter((e) => e.r >= 0)
+    .sort((a, b) => a.r - b.r || a.order - b.order)
+    .map((e) => e.slot);
 }
