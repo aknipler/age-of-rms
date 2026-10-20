@@ -26,6 +26,7 @@ import { RMS_BASICS_CODE_TWINS } from "./rmsBasicsCode";
 
 export const RMS_DISCORD_URL: string = "https://discord.gg/BDvG8s5Hwt";
 
+
 export const rmsBasicsTutorial: TutorialDefinition = {
   id: "rms-basics",
   kind: "rms",
@@ -215,8 +216,9 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         id: "watch-it-appear",
         title: "Watch it appear",
         anchor: { kind: "region", id: "sidePanel.preview" },
+        navigate: { sidePanel: "preview" },
         body: [
-          "The preview regenerates as you edit. Your player lands and the centre hill should be there now. It is an approximation, not the exact same as the game engine. The notes drawer lists everything it could not model exactly.",
+          "The preview regenerates as you edit. Your player lands and the centre hill should be there now. It is an approximation, not the exact same as the game engine. The Notes button on the map lists everything it could not model exactly.",
         ],
         completion: { kind: "manual" },
       },
@@ -628,7 +630,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         id: "looking-things-up",
         title: "Looking things up",
         anchor: { kind: "region", id: "sidePanel.reference" },
-        navigate: { tab: "code" },
+        navigate: { tab: "code", sidePanel: "reference" },
         body: [
           "Terrains, objects, commands and the attributes each command takes. The Preview Obj. List tab is the useful one when something did not appear. It lists every object your script asks for beside how many the last generation actually placed.",
         ],
@@ -647,6 +649,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         id: "player-count-and-map-size",
         title: "Player count and map size",
         anchor: { kind: "help", id: "preview.generationSettings" },
+        navigate: { sidePanel: "preview" },
         body: [
           "The cog sets the player count, map size and team layout that the preview and those totals are calculated for. They belong to the script you are writing rather than to the app, which is why they live here and not in Settings.",
         ],

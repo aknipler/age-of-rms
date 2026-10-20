@@ -777,10 +777,6 @@
       "text": "Sets the point Current stops at. Put your cursor where you want the map to stop, then click this to hold the preview there while you keep editing and moving around; click it again to let go, and Current follows your cursor instead. Everything after that point is dimmed in the code and left out of the map, down to the individual attribute, so you can watch a land take shape as you add lines to it. A pin sticks to the code it was set in, so edits above it move it along with them."
     },
     {
-      "id": "preview.approximateBadge",
-      "text": "This is a re-creation of what your script might generate, not the game's own map generator. The lands, hills and cliffs are drawn the way the game draws them, and on every map checked against the game so far they match it tile for tile at the same seed. Everything after the cliffs (terrain patches, connections and objects) is plausible rather than predictive, so always test in game before publishing a map."
-    },
-    {
       "id": "preview.mapSummary",
       "text": "The map size this preview was drawn at, in tiles, and the player count it was generated for. Both come from the generation settings (the gear button), except that a script using override_map_size changes the size here mid-script, so this can differ from the size you picked."
     },
@@ -793,12 +789,12 @@
       "text": "Draws a new seed and generates a fresh arrangement. Rolling through several is how you tell a layout that holds up from one that got lucky once."
     },
     {
-      "id": "preview.canvasResizer",
-      "text": "Drag the bottom edge of the map up or down to change its height. The width already follows the side panel, so this is how you get a bigger map. Growing it pushes the reference table down to make room. Arrow keys resize it once it has focus, and double click puts it back to a square. The height is remembered between sessions."
-    },
-    {
       "id": "preview.exportPng",
       "text": "Saves exactly what the map preview is currently showing as a PNG image: this zoom, this pan, this Current/Final view. Opens a save dialog first, so nothing is written until you pick a location."
+    },
+    {
+      "id": "preview.helpButton",
+      "text": "Shows how to use the map: click a tile to pin it, drag to pan, wheel to zoom, double click to fit. Click again to close."
     },
     {
       "id": "preview.notesDrawer",
@@ -806,7 +802,7 @@
     },
     {
       "id": "preview.failureCount",
-      "text": "How many placements the preview could not make. A failure usually means the script asked for something the map cannot supply, such as a resource on a terrain that was never generated. The notes drawer lists one line per command per kind of failure, with a count beside it, rather than one line per attempt. A single command can fail tens of thousands of times and they all have the same cause."
+      "text": "How many placements the preview could not make. A failure usually means the script asked for something the map cannot supply, such as a resource on a terrain that was never generated. The Notes box lists one line per command per kind of failure, with a count beside it, rather than one line per attempt. A single command can fail tens of thousands of times and they all have the same cause."
     },
     {
       "id": "preview.colorMode",
@@ -837,12 +833,12 @@
       "text": "Brings the map panel back at the width you last left it."
     },
     {
-      "id": "sidePanel.previewReferenceResizer",
-      "text": "Drag to change how much room the map preview and the reference table below it each get. The ▴ button hides the preview entirely, giving the reference table the whole panel; ▾ does the same to the reference table. Dragging the bar all the way to either edge does the same thing. The split is shared by the Breakdown and Code tabs and is remembered between sessions."
+      "id": "sidePanel.tabPreview",
+      "text": "Shows the map preview. The reference table keeps its search and mode while it is hidden."
     },
     {
-      "id": "sidePanel.previewReferenceReopen",
-      "text": "Brings back the pane you hid, at the split you last left it."
+      "id": "sidePanel.tabReference",
+      "text": "Shows the reference table: terrains, objects, commands, and the objects your script places. The preview keeps its zoom and pan while it is hidden."
     },
     {
       "id": "preview.objectList",

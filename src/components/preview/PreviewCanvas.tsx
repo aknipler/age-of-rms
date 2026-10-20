@@ -1,3 +1,4 @@
+import { useMemo, useState, type ReactNode } from "react";
 import type {
   PreviewWireResult,
   StageSnapshot,
@@ -6,6 +7,12 @@ import type { TerrainPalette } from "../../preview/render/palette";
 import type { TilePoint } from "../../preview/render/projection";
 import { usePreviewViewport } from "./PreviewViewContext";
 import { OverlayCanvas } from "./OverlayCanvas";
+import {
+  PreviewBarControls,
+  PreviewPanel,
+  summarizePreviewResult,
+  type PreviewPanelSection,
+} from "./PreviewNotes";
 
 interface PreviewCanvasProps {
   result: PreviewWireResult;
@@ -30,6 +37,10 @@ interface PreviewCanvasProps {
   hiddenObjects: ReadonlySet<string>;
   /** The settings' player count for the badge's "200×200, 6 players" line; see `OverlayCanvasProps.playerCount` for why it is not read off `result`. */
   playerCount: number;
+  /** Terrain ids actually on the drawn grid, for the Legend box. */
+  terrainsInUse: readonly number[];
+  /** Drawn in the map's top left corner under any banner notes. The pane puts the hovered or selected tile's details here. */
+  topLeft?: ReactNode;
 }
 
 /**
@@ -49,11 +60,22 @@ export function PreviewCanvas({
   onTileClick,
   hiddenObjects,
   playerCount,
+  terrainsInUse,
+  topLeft,
 }: PreviewCanvasProps) {
   // Held above the tab switch (PreviewViewContext.tsx) so zoom/pan survive
   // Breakdown <-> Code instead of resetting to "fit" on every remount.
   const { viewport, setViewport, userFramed, setUserFramed } =
     usePreviewViewport();
+
+  // Which box is open over the map, if any. Local: it means nothing once the
+  // pane is gone, the same reasoning as the hovered tile.
+  const [openSection, setOpenSection] = useState<PreviewPanelSection | null>(
+    null,
+  );
+  const summary = useMemo(() => summarizePreviewResult(result), [result]);
+  const toggleSection = (section: PreviewPanelSection) =>
+    setOpenSection((current) => (current === section ? null : section));
 
   return (
     <OverlayCanvas
@@ -70,6 +92,26 @@ export function PreviewCanvas({
       showApproximateBadge
       playerCount={playerCount}
       showExportButton
+      showOrientation="full"
+      topLeft={topLeft}
+      bottomControls={
+        <PreviewBarControls
+          summary={summary}
+          open={openSection}
+          onToggle={toggleSection}
+        />
+      }
+      bottomPanel={
+        openSection !== null && (
+          <PreviewPanel
+            section={openSection}
+            result={result}
+            summary={summary}
+            palette={palette}
+            terrainsInUse={terrainsInUse}
+          />
+        )
+      }
     />
   );
 }

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { usePreviewView } from "./PreviewViewContext";
 import { useGenerationSettings } from "../../generationSettings/GenerationSettingsContext";
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
@@ -11,8 +11,6 @@ import { usePreviewCut } from "../../PreviewCutContext";
 import type { TilePoint } from "../../preview/render/projection";
 import { HelpTip } from "../HelpTip";
 import { ScriptName } from "../ScriptName";
-import { usePreviewReferenceSplit } from "../sidepanel/PreviewReferenceSplitContext";
-import { CanvasResizer } from "./CanvasResizer";
 import { PreviewCanvas } from "./PreviewCanvas";
 import {
   describeTile,
@@ -21,7 +19,6 @@ import {
   tallyObjects,
   type TileInfo,
 } from "./tileInfo";
-import { PreviewNotes } from "./PreviewNotes";
 import styles from "./PreviewPane.module.css";
 
 // Same double-cast reasoning as parserWorker.ts: resolveJsonModule infers a
@@ -218,11 +215,6 @@ export function PreviewPane() {
   // position means nothing once you have switched tabs. The SELECTION lives in
   // the context above the tab switch, for the same reason the seed does.
   const [hovered, setHovered] = useState<TilePoint | null>(null);
-  // The canvas's remembered height, null while it is still the default square.
-  // CanvasResizer owns changing it; this pane only applies it.
-  const { canvasHeight } = usePreviewReferenceSplit();
-  const paneRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
 
   // `pending` is true from the moment a generation request is sent until its
   // response lands (usePreviewResult.ts). It does NOT cover the 300ms
@@ -316,14 +308,9 @@ export function PreviewPane() {
       </div>
     ) : null;
   }
-  const dim = result.dim;
 
   return (
-    <div
-      ref={paneRef}
-      className={styles.pane}
-      data-tutorial-anchor="sidePanel.preview"
-    >
+    <div className={styles.pane} data-tutorial-anchor="sidePanel.preview">
       <div className={styles.controls}>
         {/* Left cluster: settings, view toggle, pin, colour mode. Right
             cluster: seed + re-roll. Two flex children of `.controls`
@@ -425,15 +412,7 @@ export function PreviewPane() {
           container is the obvious box to centre over. That container
           belongs to OverlayCanvas, which the Land Placement panel renders
           too, and the label is this pane's business alone. */}
-      <div
-        ref={frameRef}
-        className={
-          canvasHeight === null
-            ? styles.canvasFrame
-            : `${styles.canvasFrame} ${styles.canvasFrameSized}`
-        }
-        style={canvasHeight === null ? undefined : { height: canvasHeight }}
-      >
+      <div className={styles.canvasFrame}>
         <PreviewCanvas
           result={result}
           snapshot={snapshot}
@@ -443,6 +422,42 @@ export function PreviewPane() {
           onTileClick={toggleSelectedTile}
           hiddenObjects={hiddenObjects}
           playerCount={playerCount}
+          terrainsInUse={terrainsInUse}
+          topLeft={
+            tile !== null && (
+              <div
+                className={
+                  selectedTile !== null
+                    ? `${styles.tileOverlay} ${styles.tileOverlayPinned}`
+                    : styles.tileOverlay
+                }
+              >
+                <div className={styles.readoutHeader}>
+                  <span
+                    className={
+                      selectedTile !== null
+                        ? styles.readoutPinned
+                        : styles.readoutHint
+                    }
+                  >
+                    {selectedTile !== null ? "Selected tile" : "Hovered tile"}
+                  </span>
+                  {selectedTile !== null && (
+                    <HelpTip id="preview.clearSelection">
+                      <button
+                        type="button"
+                        className={styles.clearSelection}
+                        onClick={clearSelectedTile}
+                      >
+                        Clear
+                      </button>
+                    </HelpTip>
+                  )}
+                </div>
+                <TileReadout tile={tile} />
+              </div>
+            )
+          }
         />
         {/* Mounted only while pending, so its fade in (and the delay
             before it, see .generating) replays from the start on every
@@ -452,49 +467,7 @@ export function PreviewPane() {
             <span className={styles.generatingLabel}>Generating...</span>
           </div>
         )}
-        <CanvasResizer frameRef={frameRef} paneRef={paneRef} />
       </div>
-
-      <div className={styles.readout}>
-        {tile === null ? (
-          <span className={styles.readoutHint}>
-            {dim}×{dim} · click a tile to pin it · drag to pan · wheel to zoom ·
-            double-click to fit
-          </span>
-        ) : (
-          <>
-            <div className={styles.readoutHeader}>
-              <span
-                className={
-                  selectedTile !== null
-                    ? styles.readoutPinned
-                    : styles.readoutHint
-                }
-              >
-                {selectedTile !== null ? "Selected tile" : "Hovered tile"}
-              </span>
-              {selectedTile !== null && (
-                <HelpTip id="preview.clearSelection">
-                  <button
-                    type="button"
-                    className={styles.clearSelection}
-                    onClick={clearSelectedTile}
-                  >
-                    Clear
-                  </button>
-                </HelpTip>
-              )}
-            </div>
-            <TileReadout tile={tile} />
-          </>
-        )}
-      </div>
-
-      <PreviewNotes
-        result={result}
-        palette={palette}
-        terrainsInUse={terrainsInUse}
-      />
     </div>
   );
 }

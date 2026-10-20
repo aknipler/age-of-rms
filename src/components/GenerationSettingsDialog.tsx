@@ -5,13 +5,28 @@ import {
   MAX_PLAYER_COUNT,
   MIN_PLAYER_COUNT,
 } from "../generationSettings/generationSettingsConstants";
+import languageDataRaw from "../../reference/data/language.json";
+import type { LanguageData } from "../parser/language";
+import { resolveMapDim } from "../preview/generator/mapDimensions";
 import { HelpTip } from "./HelpTip";
 import { TeamSection } from "./TeamSection";
 import styles from "./dialog.module.css";
 import genStyles from "./GenerationSettingsDialog.module.css";
 
+// Same double-cast as ReferenceTable.tsx and parserWorker.ts: the JSON import
+// infers a literal type that does not always overlap the hand-written
+// interface, and `npm run validate:reference` is the real guarantee.
+const predefinedLabels = (languageDataRaw as unknown as LanguageData)
+  .predefinedLabels;
+
 interface GenerationSettingsDialogProps {
   onClose: () => void;
+}
+
+/** "Normal (200)": the picker's name plus the grid's side length, resolved from language.json. */
+function mapSizeLabel(size: (typeof MAP_SIZES)[number]): string {
+  const dim = resolveMapDim(size, predefinedLabels);
+  return dim === null ? size : `${size} (${dim})`;
 }
 
 // Mirrors SettingsDialog's shape (overlay + fixed box, reuses the shared
@@ -116,7 +131,11 @@ export function GenerationSettingsDialog({
                 >
                   {MAP_SIZES.map((size) => (
                     <option key={size} value={size}>
-                      {size}
+                      {/* The tile count comes from the same lookup the
+                          preview uses to size the grid, never typed here
+                          (mapDimensions.ts). A size the data cannot answer
+                          shows its bare name rather than a made-up number. */}
+                      {mapSizeLabel(size)}
                     </option>
                   ))}
                 </select>

@@ -1,53 +1,63 @@
-.notes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.68rem;
-}
-
-.summaryRow {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.failureOk,
-.failureBad {
+/* The placement notice, a dark chip like the canvas's other overlays so it
+   reads over any terrain, with the status carried by the text colour. */
+.notice {
+  display: inline-block;
+  padding: 0.12rem 0.34rem;
+  font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.66);
+  border-radius: 2px;
+  white-space: nowrap;
 }
 
 .failureOk {
-  color: var(--success);
+  color: #9be39b;
 }
 
 .failureBad {
-  color: var(--danger);
+  color: #ff8f84;
   font-weight: 600;
 }
 
-.drawerButton {
-  font-size: 0.66rem;
-  padding: 0.05rem 0.3rem;
-  background: var(--surface-raised);
-  border: 1px solid var(--border-muted);
+/* Help, Notes and Legend. Same look as OverlayCanvas's Export button (the
+   shared `.exportButton` rule in PreviewCanvas.module.css), so the row reads
+   as one set of controls. */
+.barButton {
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.62rem;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 2px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.drawerButton[aria-expanded="true"] {
-  background: var(--surface-hover);
+.barButton:hover {
+  background: rgba(0, 0, 0, 0.82);
 }
 
+.barButton[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* The box's own scrolling is on the panel that holds these
+   (PreviewCanvas.module.css's .panel), so the lists do not scroll too. */
 .noteList,
 .legend {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 8rem;
-  overflow-y: auto;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-raised);
+  font-size: 0.68rem;
+}
+
+/* One line of text, wrapping only when the panel is too narrow for it. */
+.helpLine {
+  margin: 0;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.66rem;
 }
 
 .note {

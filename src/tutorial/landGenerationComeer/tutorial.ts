@@ -548,7 +548,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         title: "Four borders shape",
         track: BREAKDOWN_TRACK,
         ...LOOK_AT_PREVIEW,
-        navigate: { section: LAND },
+        navigate: { section: LAND, sidePanel: "preview" },
         body: [
           `(You may have noticed this already) Before you change anything, predict what shape the land will have if you raise all four borders to ${BORDER_CORNER_TEST}. Then do it and look at the preview.`,
           [
@@ -673,6 +673,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         id: "something-is-wrong",
         title: "Spot the problem",
         ...LOOK_AT_PREVIEW,
+        navigate: { sidePanel: "preview" },
         preview: PINNED_PREVIEW,
         body: [
           "The preview has just moved to a different seed. Look closely at it. Something is wrong. See if you can figure it out yourself before you open a hint.",
@@ -825,7 +826,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         title: "Box in the neutral island",
         track: BREAKDOWN_TRACK,
         ...LOOK_AT_PREVIEW,
-        navigate: { section: LAND },
+        navigate: { section: LAND, sidePanel: "preview" },
         body: [
           "If you would like to constrain the island further, you could use borders. As before, set land_percent to 100 and add border_fuzziness 100 to the neutral island, so the preview shows exactly where each border sits. Then add right_border and bottom_border and play around with them until the borders are in a place you are happy with.",
           rangeSentence(

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type Dispatch,
+  type ReactNode,
   type SetStateAction,
 } from "react";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -147,11 +148,11 @@ export interface OverlayCanvasProps {
   overlayShapes?: readonly OverlayShape[];
   /** Which `HelpTip` id names this canvas, since two surfaces render this component under two different ids. */
   helpTipId: string;
-  /** The "≈ Approximate preview" badge and banner notes. Meaningful only alongside `base`, since a caller with no generation has nothing for the banner to report on. */
+  /** The banner notes, and the map size chip beside the buttons. Meaningful only alongside `base`, since a caller with no generation has nothing for the banner to report on. */
   showApproximateBadge?: boolean;
   /**
-   * The lobby player count this generation ran with, drawn under the badge
-   * as "200×200, 6 players". The dim half of that line is this component's
+   * The lobby player count this generation ran with, drawn at the left of
+   * the bottom row as "200×200, 6 players". The dim half of that line is this component's
    * own `dim` (post-`override_map_size`, so it is what was actually drawn,
    * not the lobby size). The player half cannot be read off the result:
    * `result.players` is the markers a script managed to PLACE, which is
@@ -167,6 +168,31 @@ export interface OverlayCanvasProps {
    * document, nothing meaningful to export), which never passes it.
    */
   showExportButton?: boolean;
+  /**
+   * Draws the x/y axis arrows at the origin over the map. "full" adds the
+   * side names (Left, Bottom, Right, Top) too. Absent draws neither, for a
+   * caller that wants the canvas as it was.
+   */
+  showOrientation?: "axes" | "full";
+  /**
+   * Content for the top left corner, under any banner notes. The app's
+   * preview puts the hovered or selected tile's details here. This component
+   * does not know what it is, and its pointer events are the caller's call
+   * (the corner column ignores them so the map under it still pans).
+   */
+  topLeft?: ReactNode;
+  /**
+   * Extra controls for the left end of the bottom-right button row, before
+   * Export. The app's preview puts its placement notice and its Help, Notes
+   * and Legend buttons here. This component does not know what they are.
+   */
+  bottomControls?: ReactNode;
+  /**
+   * A box laid over the bottom of the canvas, just above that button row.
+   * Absent draws nothing. The caller owns when it is open, since the buttons
+   * that open it are `bottomControls`.
+   */
+  bottomPanel?: ReactNode;
 }
 
 export function OverlayCanvas({
@@ -186,6 +212,10 @@ export function OverlayCanvas({
   showApproximateBadge,
   playerCount,
   showExportButton,
+  showOrientation,
+  topLeft,
+  bottomControls,
+  bottomPanel,
 }: OverlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -327,10 +357,22 @@ export function OverlayCanvas({
             }
           : undefined,
       overlayShapes,
+      orientation: showOrientation
+        ? { dim, sideNames: showOrientation === "full" }
+        : undefined,
       highlight,
       selection: selected,
     });
-  }, [viewport, base, terrain, overlayShapes, highlight, selected]);
+  }, [
+    viewport,
+    base,
+    terrain,
+    overlayShapes,
+    showOrientation,
+    dim,
+    highlight,
+    selected,
+  ]);
 
   // --- Zoom ---------------------------------------------------------------
 
@@ -567,94 +609,116 @@ export function OverlayCanvas({
           onDoubleClick={resetView}
         />
       </HelpTip>
-      {showApproximateBadge && (
+      {(showApproximateBadge || topLeft) && (
         <div className={styles.overlay}>
-          <HelpTip id="preview.approximateBadge">
-            <span className={styles.badge}>≈ Approximate preview</span>
-          </HelpTip>
-          {playerCount !== undefined && (
-            <HelpTip id="preview.mapSummary">
-              <span className={styles.badge}>
-                {dim}×{dim}, {playerCount}{" "}
-                {playerCount === 1 ? "player" : "players"}
-              </span>
-            </HelpTip>
-          )}
-          {base?.result.notes
-            .filter((note) => note.prominence === "banner")
-            .map((note) => (
-              <span key={note.key} className={styles.banner}>
-                {renderProse(note.text)}
-              </span>
-            ))}
+          {showApproximateBadge &&
+            base?.result.notes
+              .filter((note) => note.prominence === "banner")
+              .map((note) => (
+                <span key={note.key} className={styles.banner}>
+                  {renderProse(note.text)}
+                </span>
+              ))}
+          {/* Below any banner, in the same column, so the two never overlap. */}
+          {topLeft}
         </div>
       )}
-      <div className={styles.zoomControls}>
-        {showExportButton && (
-          <HelpTip id="preview.exportPng">
-            <button
-              type="button"
-              className={styles.exportButton}
-              onClick={exportPng}
-            >
-              Export
-            </button>
-          </HelpTip>
+      {/* One column anchored to the canvas's bottom edge: the caller's box on
+          top, then the button row. A column rather than two absolutely
+          positioned things, so the box always sits directly above the row
+          however many lines the row wraps to on a narrow panel. Its own
+          pointer events are off so the map under the gaps still pans, and
+          each child turns them back on. */}
+      <div className={styles.bottomArea}>
+        {bottomPanel !== undefined && bottomPanel !== null && (
+          <div className={styles.panel}>{bottomPanel}</div>
         )}
-        <HelpTip id="preview.zoomOut">
-          <button
-            type="button"
-            className={styles.zoomButton}
-            aria-label="Zoom out"
-            onClick={() => {
-              markUserFramed();
-              setViewport((previous) =>
-                previous === null
-                  ? previous
-                  : zoomAt(
-                      previous,
-                      1 / ZOOM_STEP,
-                      previous.width / 2,
-                      previous.height / 2,
-                    ),
-              );
-            }}
-          >
-            −
-          </button>
-        </HelpTip>
-        <HelpTip id="preview.zoomFit">
-          <button
-            type="button"
-            className={styles.zoomButton}
-            aria-label="Fit map"
-            onClick={resetView}
-          >
-            ⤢
-          </button>
-        </HelpTip>
-        <HelpTip id="preview.zoomIn">
-          <button
-            type="button"
-            className={styles.zoomButton}
-            aria-label="Zoom in"
-            onClick={() => {
-              markUserFramed();
-              setViewport((previous) =>
-                previous === null
-                  ? previous
-                  : zoomAt(
-                      previous,
-                      ZOOM_STEP,
-                      previous.width / 2,
-                      previous.height / 2,
-                    ),
-              );
-            }}
-          >
-            +
-          </button>
-        </HelpTip>
+        <div className={styles.bottomRow}>
+          {/* The map size, left-aligned on the row. Drawn with the badge, so
+              it follows the same condition. `dim` is post override_map_size,
+              what was actually drawn, and the player half is the settings
+              value (see `playerCount`'s own doc). */}
+          {showApproximateBadge && playerCount !== undefined && (
+            <div className={styles.mapSize}>
+              <HelpTip id="preview.mapSummary">
+                <span className={styles.badge}>
+                  {dim}×{dim}, {playerCount}{" "}
+                  {playerCount === 1 ? "player" : "players"}
+                </span>
+              </HelpTip>
+            </div>
+          )}
+          <div className={styles.zoomControls}>
+            {bottomControls}
+            {showExportButton && (
+              <HelpTip id="preview.exportPng">
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  onClick={exportPng}
+                >
+                  Export
+                </button>
+              </HelpTip>
+            )}
+            <div className={styles.zoomGroup}>
+              <HelpTip id="preview.zoomOut">
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Zoom out"
+                  onClick={() => {
+                    markUserFramed();
+                    setViewport((previous) =>
+                      previous === null
+                        ? previous
+                        : zoomAt(
+                            previous,
+                            1 / ZOOM_STEP,
+                            previous.width / 2,
+                            previous.height / 2,
+                          ),
+                    );
+                  }}
+                >
+                  −
+                </button>
+              </HelpTip>
+              <HelpTip id="preview.zoomFit">
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Fit map"
+                  onClick={resetView}
+                >
+                  ⤢
+                </button>
+              </HelpTip>
+              <HelpTip id="preview.zoomIn">
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Zoom in"
+                  onClick={() => {
+                    markUserFramed();
+                    setViewport((previous) =>
+                      previous === null
+                        ? previous
+                        : zoomAt(
+                            previous,
+                            ZOOM_STEP,
+                            previous.width / 2,
+                            previous.height / 2,
+                          ),
+                    );
+                  }}
+                >
+                  +
+                </button>
+              </HelpTip>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

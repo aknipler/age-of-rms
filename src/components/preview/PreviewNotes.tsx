@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { PreviewWireResult } from "../../preview/generator/types";
 import {
   COLOR_MODE_NOTES,
@@ -10,38 +9,23 @@ import { HelpTip } from "../HelpTip";
 import { InlineCode, renderProse } from "../InlineCode";
 import styles from "./PreviewNotes.module.css";
 
-interface PreviewNotesProps {
-  result: PreviewWireResult;
-  palette: TerrainPalette;
-  /** Terrain ids actually present on the drawn grid, for the legend. */
-  terrainsInUse: readonly number[];
-}
+/** Which box is open over the preview's bottom edge. At most one. */
+export type PreviewPanelSection = "help" | "notes" | "legend";
 
 /**
- * The honesty surface: how many placements failed, what the preview did not
- * simulate, and what the colours mean.
+ * The counts the button row and the Notes box share. Computed once here so
+ * the failure notice, the "Notes (n)" label and the box agree.
  *
- * Sec.9 splits notes by `prominence`. "banner" notes are lifted onto the
- * canvas (PreviewCanvas draws those) and the rest live here in a drawer with
- * a count badge, so a script with twenty caveats does not bury the map.
+ * Failures are coalesced per command per bucket (generator/placement.ts), so
+ * the headline number has to sum `occurrences` rather than count records.
+ * A script can genuinely produce a quarter of a million failed placements
+ * from a handful of records, and reporting "6 placements failed" for it
+ * would be worse than the pre-coalescing wall of text.
  */
-export function PreviewNotes({
-  result,
-  palette,
-  terrainsInUse,
-}: PreviewNotesProps) {
-  const [openSection, setOpenSection] = useState<"notes" | "legend" | null>(
-    null,
-  );
-
+export function summarizePreviewResult(result: PreviewWireResult) {
   const drawerNotes = result.notes.filter(
     (note) => note.prominence === "drawer",
   );
-  // Failures are coalesced per command per bucket (generator/placement.ts), so
-  // the headline number has to sum `occurrences` rather than count records.
-  // A script can genuinely produce a quarter of a million failed placements
-  // from a handful of records, and reporting "6 placements failed" for it
-  // would be worse than the pre-coalescing wall of text.
   const failureCount = result.reports.reduce(
     (total, report) =>
       total +
@@ -56,126 +40,195 @@ export function PreviewNotes({
     (total, report) => total + report.placed,
     0,
   );
+  return { drawerNotes, failureCount, attempted, placed };
+}
 
-  const toggle = (section: "notes" | "legend") =>
-    setOpenSection((current) => (current === section ? null : section));
+export type PreviewSummary = ReturnType<typeof summarizePreviewResult>;
 
+interface PreviewBarControlsProps {
+  summary: PreviewSummary;
+  open: PreviewPanelSection | null;
+  onToggle: (section: PreviewPanelSection) => void;
+}
+
+/**
+ * The preview's own buttons for the bottom row of the canvas: the placement
+ * notice, then Help, Notes and Legend. `OverlayCanvas` puts them beside its
+ * Export and zoom buttons (its `bottomControls` slot).
+ *
+ * The honesty surface: how many placements failed, what the preview did not
+ * simulate, and what the colours mean. Sec.9 splits notes by `prominence`.
+ * "banner" notes are lifted onto the canvas (OverlayCanvas draws those) and
+ * the rest live in the Notes box with a count, so a script with twenty
+ * caveats does not bury the map.
+ */
+export function PreviewBarControls({
+  summary,
+  open,
+  onToggle,
+}: PreviewBarControlsProps) {
+  const { drawerNotes, failureCount, placed } = summary;
   return (
-    <div className={styles.notes}>
-      <div className={styles.summaryRow}>
-        <HelpTip id="preview.failureCount">
-          <span
-            className={failureCount > 0 ? styles.failureBad : styles.failureOk}
-          >
-            {failureCount === 0
-              ? `${placed} placed`
-              : `${failureCount} placement${failureCount === 1 ? "" : "s"} failed`}
-          </span>
-        </HelpTip>
-        <HelpTip id="preview.notesDrawer">
-          <button
-            type="button"
-            className={styles.drawerButton}
-            aria-expanded={openSection === "notes"}
-            onClick={() => toggle("notes")}
-          >
-            Notes ({drawerNotes.length})
-          </button>
-        </HelpTip>
-        <HelpTip id="preview.legend">
-          <button
-            type="button"
-            className={styles.drawerButton}
-            aria-expanded={openSection === "legend"}
-            onClick={() => toggle("legend")}
-          >
-            Legend
-          </button>
-        </HelpTip>
-      </div>
+    <>
+      <HelpTip id="preview.failureCount">
+        <span
+          className={`${styles.notice} ${
+            failureCount > 0 ? styles.failureBad : styles.failureOk
+          }`}
+        >
+          {failureCount === 0
+            ? `${placed} placed`
+            : `${failureCount} placement${failureCount === 1 ? "" : "s"} failed`}
+        </span>
+      </HelpTip>
+      <HelpTip id="preview.helpButton">
+        <button
+          type="button"
+          className={styles.barButton}
+          aria-expanded={open === "help"}
+          aria-label="How to use the map"
+          onClick={() => onToggle("help")}
+        >
+          ?
+        </button>
+      </HelpTip>
+      <HelpTip id="preview.notesDrawer">
+        <button
+          type="button"
+          className={styles.barButton}
+          aria-expanded={open === "notes"}
+          onClick={() => onToggle("notes")}
+        >
+          Notes ({drawerNotes.length})
+        </button>
+      </HelpTip>
+      <HelpTip id="preview.legend">
+        <button
+          type="button"
+          className={styles.barButton}
+          aria-expanded={open === "legend"}
+          onClick={() => onToggle("legend")}
+        >
+          Legend
+        </button>
+      </HelpTip>
+    </>
+  );
+}
 
-      {openSection === "notes" && (
-        <ul className={styles.noteList}>
-          {drawerNotes.map((note) => (
-            <li key={note.key} className={styles.note}>
-              <span className={styles.stage}>{note.stage}</span>
-              {renderProse(note.text)}
+interface PreviewPanelProps {
+  section: PreviewPanelSection;
+  result: PreviewWireResult;
+  summary: PreviewSummary;
+  palette: TerrainPalette;
+  /** Terrain ids actually present on the drawn grid, for the legend. */
+  terrainsInUse: readonly number[];
+}
+
+/**
+ * The box that opens over the bottom of the map when Help, Notes or Legend is
+ * clicked (`OverlayCanvas`'s `bottomPanel` slot). It sits on the map and
+ * covers part of it, so the button that opened it is the way to close it.
+ */
+export function PreviewPanel({
+  section,
+  result,
+  summary,
+  palette,
+  terrainsInUse,
+}: PreviewPanelProps) {
+  const { drawerNotes, failureCount, attempted } = summary;
+
+  if (section === "help") {
+    return (
+      <p className={styles.helpLine}>
+        Click a tile to pin · drag to pan · wheel to zoom · double-click to fit
+      </p>
+    );
+  }
+
+  if (section === "notes") {
+    return (
+      <ul className={styles.noteList}>
+        {drawerNotes.map((note) => (
+          <li key={note.key} className={styles.note}>
+            <span className={styles.stage}>{note.stage}</span>
+            {renderProse(note.text)}
+          </li>
+        ))}
+        {result.reports
+          .flatMap((report) => report.failures)
+          .map((failure, index) => (
+            <li key={`${failure.bucket}-${index}`} className={styles.note}>
+              <span className={styles.bucket}>{failure.bucket}</span>
+              {(failure.occurrences ?? 1) > 1 && (
+                <span className={styles.occurrences}>
+                  ×{failure.occurrences}
+                </span>
+              )}
+              {renderProse(failure.detail)}
             </li>
           ))}
-          {result.reports
-            .flatMap((report) => report.failures)
-            .map((failure, index) => (
-              <li key={`${failure.bucket}-${index}`} className={styles.note}>
-                <span className={styles.bucket}>{failure.bucket}</span>
-                {(failure.occurrences ?? 1) > 1 && (
-                  <span className={styles.occurrences}>
-                    ×{failure.occurrences}
-                  </span>
-                )}
-                {renderProse(failure.detail)}
-              </li>
-            ))}
-          {drawerNotes.length === 0 && failureCount === 0 && (
-            <li className={styles.note}>
-              Nothing flagged. {attempted} placements attempted.
-            </li>
-          )}
-        </ul>
-      )}
+        {drawerNotes.length === 0 && failureCount === 0 && (
+          <li className={styles.note}>
+            Nothing flagged. {attempted} placements attempted.
+          </li>
+        )}
+      </ul>
+    );
+  }
 
-      {openSection === "legend" && (
-        <>
-          {/*
-            Shown only when there is at least one on the map. A key entry for a
-            glyph that is not on screen teaches the reader to look for
-            something that is not there.
-          */}
-          {result.failureMarks.length > 0 && (
-            <p className={styles.legendNote}>
-              A red ▲ marks a land the engine could not place where the script
-              asked, so it sits at the map centre instead. Hover the marker for
-              the detail. Lands that merely grew smaller than they asked for
-              carry no marker. That is the usual outcome of{" "}
-              <InlineCode>land_percent</InlineCode>, and the map is showing
-              their real size.
-            </p>
-          )}
-          <p className={styles.legendNote}>
-            {renderProse(COLOR_MODE_NOTES[palette.mode])}
-          </p>
-          <ul className={styles.legend}>
-            {terrainsInUse.map((id) => {
-              const source = palette.sourceFor(id);
-              return (
-                <li key={id} className={styles.legendRow}>
-                  <span
-                    className={styles.swatch}
-                    style={{ background: cssColor(palette.colorFor(id)) }}
-                    aria-hidden="true"
-                  />
-                  {palette.nameFor(id) ?? `terrain ${id}`}
-                  {/*
-                    Marked only when the colour did NOT come from the selected
-                    mode. Labelling every row would be noise; labelling none is
-                    how an arbitrary colour passes for a real one.
-                  */}
-                  {source !== palette.mode && (
-                    <span className={styles.legendSource}>
-                      {source === "hashed" || source === "unknown"
-                        ? "no colour in data"
-                        : `${source} colour`}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {terrainsInUse.some((id) => {
-            const source = palette.sourceFor(id);
-            return source === "hashed" || source === "unknown";
-          }) && <p className={styles.legendNote}>{HASHED_COLOR_NOTE}</p>}
-        </>
+  return (
+    <>
+      {/*
+        Shown only when there is at least one on the map. A key entry for a
+        glyph that is not on screen teaches the reader to look for
+        something that is not there.
+      */}
+      {result.failureMarks.length > 0 && (
+        <p className={styles.legendNote}>
+          A red ▲ marks a land the engine could not place where the script
+          asked, so it sits at the map centre instead. Hover the marker for the
+          detail. Lands that merely grew smaller than they asked for carry no
+          marker. That is the usual outcome of{" "}
+          <InlineCode>land_percent</InlineCode>, and the map is showing their
+          real size.
+        </p>
       )}
-    </div>
+      <p className={styles.legendNote}>
+        {renderProse(COLOR_MODE_NOTES[palette.mode])}
+      </p>
+      <ul className={styles.legend}>
+        {terrainsInUse.map((id) => {
+          const source = palette.sourceFor(id);
+          return (
+            <li key={id} className={styles.legendRow}>
+              <span
+                className={styles.swatch}
+                style={{ background: cssColor(palette.colorFor(id)) }}
+                aria-hidden="true"
+              />
+              {palette.nameFor(id) ?? `terrain ${id}`}
+              {/*
+                Marked only when the colour did NOT come from the selected
+                mode. Labelling every row would be noise; labelling none is
+                how an arbitrary colour passes for a real one.
+              */}
+              {source !== palette.mode && (
+                <span className={styles.legendSource}>
+                  {source === "hashed" || source === "unknown"
+                    ? "no colour in data"
+                    : `${source} colour`}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {terrainsInUse.some((id) => {
+        const source = palette.sourceFor(id);
+        return source === "hashed" || source === "unknown";
+      }) && <p className={styles.legendNote}>{HASHED_COLOR_NOTE}</p>}
+    </>
   );
 }

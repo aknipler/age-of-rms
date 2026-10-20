@@ -544,6 +544,7 @@ export function LandPlacementCanvas({
         helpTipId="landPlacement.canvas"
         showApproximateBadge={base !== undefined}
         playerCount={playerCount}
+        showOrientation="axes"
       />
       {dragDecline !== null && <p role="alert">{dragDecline}</p>}
     </>

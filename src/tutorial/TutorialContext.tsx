@@ -24,7 +24,7 @@ import {
 } from "./registry";
 import type { PreviewPinner, TutorialDefinition, TutorialStep } from "./types";
 
-export type NavigatorKey = "appTab" | "breakdownSection";
+export type NavigatorKey = "appTab" | "breakdownSection" | "sidePanelTab";
 
 /**
  * Run state. `steps` is derived from `definition` and `track`, never stored,
@@ -307,11 +307,19 @@ export function TutorialProvider({
     // pinned seed again. Reading `step.preview` here, and not earlier, is
     // what lets a step define its seed as a getter (StepPreviewPin).
     const pin = step?.preview;
-    if (pin) pinnerRef.current?.apply(pin);
+    if (pin) {
+      pinnerRef.current?.apply(pin);
+      // A pinned seed is something the learner is meant to look at, so show
+      // the preview. A step that names a different panel tab in its own
+      // `navigate` wins, since that runs after this.
+      navigatorsRef.current.get("sidePanelTab")?.("preview");
+    }
 
     const nav = step?.navigate;
     if (!nav) return;
     if (nav.tab) navigatorsRef.current.get("appTab")?.(nav.tab);
+    if (nav.sidePanel)
+      navigatorsRef.current.get("sidePanelTab")?.(nav.sidePanel);
     if (nav.section) {
       const section = nav.section;
       if (nav.tab) {

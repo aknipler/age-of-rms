@@ -66,10 +66,68 @@
   border-radius: 2px;
 }
 
-.zoomControls {
+/* The bottom edge: an optional box over a row. It spans the canvas's whole
+   height (top and bottom both set) so the box's percentage max-height below
+   has a definite height to measure against, and `justify-content: flex-end`
+   packs its contents to the bottom. The box comes first in the markup, so it
+   sits above the row. */
+.bottomArea {
   position: absolute;
-  right: 0.3rem;
-  bottom: 0.3rem;
+  inset: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+.bottomArea > * {
+  pointer-events: auto;
+}
+
+/* The box that Help, Notes and Legend open. Theme colours rather than the
+   dark chips the rest of the overlay uses, since it holds paragraphs and the
+   legend's own styles are written for the app's themes. Capped so a long
+   note list scrolls inside it instead of covering the whole map. */
+.panel {
+  max-height: 60%;
+  overflow-y: auto;
+  /* Scrolling past the end of the box does not scroll the page behind it. */
+  overscroll-behavior: contain;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+/* One wrapping row of flat items: the map size chip, then every button. The
+   chip's `margin-right: auto` pushes the buttons to the right edge, and
+   `flex-end` keeps any wrapped line right-aligned. The buttons are direct
+   items of this row (`.zoomControls` below is `display: contents`) so they
+   fill the space beside the chip before a new line starts. When they were
+   one nested flex item, that item's full single-line width was what had to
+   fit beside the chip, so the chip sat alone on the first line and the
+   buttons wrapped by themselves underneath. */
+.bottomRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.25rem 0.15rem;
+}
+
+.mapSize {
+  margin-right: auto;
+}
+
+/* Only here to group the buttons in the markup. Its children take part in
+   `.bottomRow`'s layout directly. */
+.zoomControls {
+  display: contents;
+}
+
+/* The three zoom buttons stay together when the row wraps. */
+.zoomGroup {
   display: flex;
   gap: 0.15rem;
 }

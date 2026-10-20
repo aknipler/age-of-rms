@@ -45,7 +45,11 @@ import {
   usePreviewView,
 } from "./components/preview/PreviewViewContext";
 import { SidePanelLayoutProvider } from "./components/sidepanel/SidePanelLayoutContext";
-import { PreviewReferenceSplitProvider } from "./components/sidepanel/PreviewReferenceSplitContext";
+import {
+  SidePanelTabProvider,
+  useSidePanelTab,
+} from "./components/sidepanel/SidePanelTabContext";
+import type { SidePanelTab } from "./components/sidepanel/sidePanelTabs";
 import { UpdatePrompt } from "./components/UpdatePrompt";
 import { useUpdateCheck } from "./update/useUpdateCheck";
 import { buildBugReportUrl, FEATURE_REQUEST_URL } from "./bugReport";
@@ -217,6 +221,15 @@ function AppContent() {
   // is the same trust the type Anchor/navigate fields already put in
   // hand-written content (Sec.5.1).
   useRegisterNavigator("appTab", (target) => setActiveTab(target as TabId));
+  // The side panel's Preview / Reference tabs, driven by a step's
+  // `navigate.sidePanel`. Registered here and not in MapSidePanel for the
+  // reason the app tab is: that component is unmounted on the inactive app
+  // tab, and a step that switches app tab AND panel tab runs both
+  // navigators in one pass, before the new MapSidePanel has mounted.
+  const { setTab: setSidePanelTab } = useSidePanelTab();
+  useRegisterNavigator("sidePanelTab", (target) =>
+    setSidePanelTab(target as SidePanelTab),
+  );
   // A step's pinned seed, team preset and map size (tutorial-islands-design.md
   // Sec.4.3). Here for the same reason as the navigator above, the contexts
   // it writes to are only reachable below their providers.
@@ -597,10 +610,11 @@ function App() {
                         <SidePanelLayoutProvider>
                           {/* One level in from the side panel's own width/collapse,
                             same persisted-and-shared-across-tabs reasoning, one
-                            layer down: this one is the preview/reference split
-                            WITHIN that panel rather than the panel's own width
-                            (previewReferenceSplit.ts). */}
-                          <PreviewReferenceSplitProvider>
+                            layer down: this one is which tab (preview or
+                            reference) the panel shows,
+                            rather than the panel's own width
+                            (sidePanelTabs.ts). */}
+                          <SidePanelTabProvider>
                             {/* The Land Placement panel's own seed (PreviewResultProviders,
                               above), same "survive the tab switch" reasoning as
                               PreviewViewProvider, deliberately its own context rather
@@ -614,7 +628,7 @@ function App() {
                                 <AppContent />
                               </TutorialProvider>
                             </PanelPreviewSeedProvider>
-                          </PreviewReferenceSplitProvider>
+                          </SidePanelTabProvider>
                         </SidePanelLayoutProvider>
                       </PreviewViewportProvider>
                     </PreviewViewProvider>

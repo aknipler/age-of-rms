@@ -817,6 +817,98 @@ create_land { terrain_type DESERT land_position 99 0 base_size 0 land_percent 0 
 7. Optional, against the game. Generate the WATER script above in DE's scenario editor on Large and
    on Tiny and confirm the land is missing on Large and shows in the corner on Tiny.
 
+---
+
+## 29. Preview pane polish, 2026-10-20 (`preview-design.md` Sec.4)
+
+Open any map with a few lands in the Breakdown tab. Run `npm run tauri dev`.
+
+1. The map fills the panel. On the Preview tab confirm the map takes all the height below the
+   controls row, with nothing underneath it and no grip or handle on its bottom edge. Resize the
+   app window taller and shorter and confirm the map grows and shrinks with it, refitting itself
+   unless you have zoomed or panned.
+2. Width does not need height. Drag the side panel's left edge much wider, then much narrower.
+   Confirm the map box keeps filling the height, the map stays a square on its corner (a
+   diamond), and empty bands fill the spare space to its left and right, or above and below when
+   the panel is narrower than it is tall.
+3. Short window. Make the app window very short and confirm the map stops shrinking at a small
+   minimum and the Preview tab scrolls instead of squashing the map.
+4. Old settings. If the settings file still holds a `previewCanvasHeight` from an earlier build,
+   confirm the app opens normally and ignores it.
+5. Zoom and pan stay. Zoom in, pan, then resize the window. Confirm the zoom is kept and only
+   the visible window changes. Double click the map and confirm it refits inside the box.
+6. Tabs. Confirm the panel has a Preview tab and a Reference tab at the top, and the divider bar
+   between the two panes is gone. Click Reference and confirm the table fills the whole panel.
+   Click Preview and confirm the map is back with the zoom and pan it had.
+7. Tabs keep their state. On Reference, pick Preview Obj. List, type a search and untick one
+   object. Switch to Preview and confirm that object is gone from the map. Switch back and
+   confirm the list, the search text and the unticked box are as you left them.
+8. Tab keys. Focus a tab and press Left or Right. Confirm the other tab opens and keeps focus.
+9. Tab is remembered. Choose Reference, switch to the Code tab and confirm the panel there also
+   shows Reference. Restart the app and confirm it still does.
+10. Tutorials. Start the app tour from the Help menu with Reference showing. Confirm the preview
+    steps switch to Preview on their own, and the reference table step switches to Reference.
+    Start the Land Generation (Comeer) tutorial with Reference showing and confirm its first
+    preview step switches to Preview.
+11. Side names. Confirm Left, Bottom, Right and Top sit just OUTSIDE the four sides of the
+    diamond, in the empty space around it, never over the map. Each runs parallel to its side
+    and reads upright, in white with a dark outline. Left is the lower left side, Bottom the lower
+    right, Right the upper right and Top the upper left. Add `left_border 20` to a land with
+    `land_percent 100` and confirm it is cut off along the Left side.
+12. Axis arrows. Confirm a white "x" arrow beside the upper left side, near the leftmost corner,
+    pointing up and to the right, and a white "y" arrow beside the lower left side pointing down
+    and to the right. Both are outside the map, run parallel to their side, and have no colour.
+    Add a land with `land_position 0 0` and confirm it grows from the leftmost corner. Change it
+    to `land_position 100 0` and confirm it moves to the topmost corner, the way the x arrow
+    points. Change it to `land_position 0 100` and confirm it moves to the bottommost corner, the
+    way the y arrow points.
+13. Aids at small sizes. Shrink the box until the map is about 240 px across and confirm the side
+    names go first while the arrows stay. Shrink it further and confirm the arrows go too instead
+    of crowding. Zoom right in and confirm they stay with their sides and simply scroll out of
+    view. Pan the map toward a canvas edge and confirm a label that ends up over the map is still
+    readable.
+14. Export. Click Export and confirm the saved PNG includes the side names and arrows.
+15. Land Placement panel. Open the Advanced Tools tab, choose Land Placement and confirm its
+    canvas shows the two white arrows outside the map and no side names. Confirm the arrows do
+    not get in the way of dragging a land circle near the leftmost corner.
+16. Map size picker. Open Generation Settings from the cog in the preview controls. Confirm the
+    Map size list reads Tiny (120), Small (144), Medium (168), Normal (200), Large (220), Huge
+    (240), Giant (252), and that picking one changes the map to that many tiles across (the
+    "200×200" line under the badge matches).
+17. Help tips. Hover both tabs and the map size list and confirm each shows a tip.
+18. Bottom row of the map. Confirm the map's bottom edge has one row holding, from the left, the map
+    size chip ("200×200, 6 players"), then on the right the placement notice, a "?" button, Notes
+    (n), Legend, Export and the three zoom buttons. On a narrow panel the row may wrap onto a
+    second line, with the three zoom buttons staying together. Drag the panel narrower and confirm the map size chip shares its line with as many buttons as fit, rather than sitting alone. Confirm there is no
+    "Approximate preview" chip anywhere on the map, and the map size chip is not in the top left.
+19. Help button. Confirm the line of hint text under the map is gone. Click "?" and confirm a box
+    opens over the bottom of the map, above the row, as a single line of text that reads
+    "Click a tile to pin · drag to pan · wheel to zoom · double-click to fit" (it may wrap onto a
+    second line on a narrow panel). Click "?" again and confirm it closes.
+20. Notes and Legend. Click Notes and confirm the box shows the notes and failed placements, and
+    that "?" and Legend give way to it (only one box is open at a time). Click Legend and
+    confirm the terrain swatches. Click the open button again to close it. Confirm a long list
+    scrolls inside the box and the box never covers more than about the lower 60 percent of the
+    map.
+21. Panning under the box. With a box open, drag on the map above the box and confirm it still
+    pans. Wheel over the box and confirm it scrolls the box and does not zoom the map.
+22. Placement notice. Open a script with failed placements and confirm the notice reads "N
+    placements failed" in red beside "?". Open one with none and confirm it reads "N placed" in
+    green. Hover it and confirm its tip.
+23. Tile readout. Hover a tile and confirm its details appear in a box over the map's top left
+    corner, and that the map does not resize or jump as the box comes and goes. Move off the map
+    and confirm the box disappears. Click a tile and confirm the box stays with a Clear button
+    that works, and that a tile with several objects scrolls inside the box instead of covering
+    the map.
+24. Tutorial. Run the app tour to the Notes step and confirm it spotlights the Notes button on the
+    map without asking you to scroll.
+25. Scroll chaining. Open Notes with enough content to scroll, scroll to its bottom and keep
+    scrolling. Confirm nothing else on screen moves. Do the same in the Reference tab's list, in a
+    pinned tile's readout with many objects, and on the Preview tab in a very short window.
+    Confirm the whole window never scrolls or bounces.
+
+---
+
 ## 32. Argument tips and inline code, 2026-10-20 (`src/components/InlineCode.tsx`, `src/breakdown/helpText.ts`)
 
 Run `npm run tauri dev`, open a script and go to Breakdown with Help Tips on.

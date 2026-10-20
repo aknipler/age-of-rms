@@ -51,7 +51,7 @@ export const appTourTutorial: TutorialDefinition = {
       id: "preview",
       title: "The map preview",
       anchor: { kind: "region", id: "sidePanel.preview" },
-      navigate: { tab: "breakdown" },
+      navigate: { tab: "breakdown", sidePanel: "preview" },
       body: [
         "An approximate render of what your script generates, updated as you edit. It reproduces the engine's rules where those have been measured in game, and marks what it cannot model rather than drawing a confident guess. Drag to pan, wheel to zoom, click a tile for its terrain, elevation and objects.",
       ],
@@ -61,6 +61,7 @@ export const appTourTutorial: TutorialDefinition = {
       id: "current-vs-final",
       title: "Current vs Final",
       anchor: { kind: "help", id: "breakdown.sidePanel.previewToggle" },
+      navigate: { sidePanel: "preview" },
       body: [
         "Final generates the whole script. Current generates only up to the line you are on, so you can watch the map being built stage by stage. Current also let's you Pin a line, essentially commenting out the script after the pin.",
       ],
@@ -68,10 +69,11 @@ export const appTourTutorial: TutorialDefinition = {
     },
     {
       id: "notes-drawer",
-      title: "The notes drawer",
+      title: "The Notes button",
       anchor: { kind: "help", id: "preview.notesDrawer" },
+      navigate: { sidePanel: "preview" },
       body: [
-        "Every approximation the preview made, and every placement that failed. You may need to scroll down in the preview pane to see this. Perhaps too much information, please provide feedback on ways to highlight the critical information.",
+        "Every approximation the preview made, and every placement that failed. The Notes button is on the bottom row of the map, beside Legend and Export. The failed placement count sits next to it. Perhaps too much information, please provide feedback on ways to highlight the critical information.",
       ],
       completion: { kind: "manual" },
     },
@@ -79,6 +81,7 @@ export const appTourTutorial: TutorialDefinition = {
       id: "reference-table",
       title: "The reference table",
       anchor: { kind: "region", id: "sidePanel.reference" },
+      navigate: { sidePanel: "reference" },
       body: [
         "Terrains, objects and commands with the attributes each one takes, searchable. Also a list of all the objects placed, their count and you can unselect them to make them invisible in the preview generation.",
       ],
@@ -104,6 +107,7 @@ export const appTourTutorial: TutorialDefinition = {
       id: "generation-settings",
       title: "Generation settings",
       anchor: { kind: "help", id: "preview.generationSettings" },
+      navigate: { sidePanel: "preview" },
       body: [
         "Properties of the script (player count, map size and team layout) are available here. Everything above is computed for whatever you set here.",
       ],

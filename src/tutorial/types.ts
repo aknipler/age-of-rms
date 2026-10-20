@@ -200,7 +200,12 @@ export interface TutorialStep {
   /** Overrides the callout's default max-width (320px, TutorialOverlay.module.css) for one step. */
   calloutMaxWidthPx?: number;
   /** View state this step needs. Applied once when the step becomes active. */
-  navigate?: { tab?: TabId; section?: string };
+  navigate?: {
+    tab?: TabId;
+    section?: string;
+    /** Which tab of the map side panel to show, for a step that points at the preview or at the reference table. */
+    sidePanel?: "preview" | "reference";
+  };
   /**
    * A picture outside the body (tutorial-islands-design.md Sec.4.1), above
    * the title ("top", the default) or just above the buttons ("bottom"). A

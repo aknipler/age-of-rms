@@ -1,7 +1,14 @@
 import type { OverlayRole, OverlayShape } from "../../../tools-api/index";
 import type { PreviewWireResult, StageSnapshot } from "../generator/types";
 import { categoryColor, cssColor, playerColor, type Rgb } from "./palette";
-import { halfHeightOf, tileToScreen, type Viewport } from "./projection";
+import {
+  halfHeightOf,
+  latticeToScreen,
+  tileToScreen,
+  type ScreenPoint,
+  type TilePoint,
+  type Viewport,
+} from "./projection";
 import type { TerrainBitmap } from "./terrainBitmap";
 
 // The canvas half of the renderer. Everything that touches a 2D context lives
@@ -101,6 +108,16 @@ export interface PreviewScene {
    * highlight, so a shape sits above the base map but below either outline.
    */
   overlayShapes?: readonly OverlayShape[];
+  /**
+   * Draws the map's orientation aids over everything else: the x and y axes
+   * at the origin and, with `sideNames`, a name on each side. `dim` is the
+   * map's side length, which the aids need and the scene does not otherwise
+   * carry when there is no `base`. Off by default so a canvas that does not
+   * ask stays as it was. The app's own preview asks for both, the Land
+   * Placement panel for the axes only, since its own overlay shapes already
+   * mark the map and the side names would sit under its circles.
+   */
+  orientation?: { dim: number; sideNames: boolean };
   /** Tile under the pointer, drawn with an outline. */
   highlight?: { x: number; y: number } | null;
   /** Tile the user clicked, drawn with its own heavier outline and kept until they click it again. */
@@ -134,6 +151,14 @@ export function drawPreview(
   }
   if (scene.overlayShapes && scene.overlayShapes.length > 0) {
     drawOverlay(ctx, viewport, scene.overlayShapes);
+  }
+  if (scene.orientation) {
+    drawOrientation(
+      ctx,
+      viewport,
+      scene.orientation.dim,
+      scene.orientation.sideNames,
+    );
   }
   if (scene.highlight) {
     drawTileOutline(
@@ -211,6 +236,221 @@ function drawMapEdge(
   ctx.strokeStyle = MAP_EDGE;
   ctx.lineWidth = 1;
   ctx.stroke();
+}
+
+/** Below this on-screen map width the axis arrows would crowd the map and the canvas, so they are left out. */
+const MIN_AXES_MAP_WIDTH = 180;
+/**
+ * Below this the side names are left out but the axes stay. A side is only
+ * about 0.7 of the map's width long, and the axis letters sit 66 px along it
+ * from the origin, so on a smaller map the letters run into the names of the
+ * left and top sides.
+ */
+const MIN_SIDE_NAMES_MAP_WIDTH = 240;
+/** Text size of the side names and the axis letters, in CSS pixels. */
+const ORIENTATION_FONT_PX = 14;
+/** How far outside the map's edge the centre of a label or an arrow sits. Clears the outline and half the text height. */
+const ORIENTATION_OFFSET = 15;
+const AXIS_ARROW_LENGTH = 30;
+const AXIS_ARROW_HEAD = 8;
+/** How far along its side from the origin corner an axis arrow starts. Far enough that the arrow and its offset stay on the canvas at the corner, where the map nearly touches the canvas edge. */
+const AXIS_ARROW_START = 26;
+/** Gap between an arrow's head and its letter. */
+const AXIS_LETTER_GAP = 10;
+/** Neutral on purpose. The aids sit on the canvas background, outside the map, and a colour would read as a map layer. */
+const ORIENTATION_INK = "rgba(255, 255, 255, 0.95)";
+
+/** Unit vector on screen. */
+function normalized(x: number, y: number): ScreenPoint {
+  const length = Math.hypot(x, y) || 1;
+  return { x: x / length, y: y / length };
+}
+
+/**
+ * Text with a dark halo under the fill, centred on (x, y) and turned by
+ * `angle` radians so it runs along a direction. The halo keeps it readable if
+ * the map is panned until a label lies over terrain.
+ */
+function drawRotatedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  angle: number,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
+  ctx.strokeText(text, 0, 0);
+  ctx.fillStyle = ORIENTATION_INK;
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+/**
+ * The angle that turns text to run along `direction`, kept readable: a
+ * direction pointing left would draw the text upside down, so it flips to
+ * the opposite one.
+ */
+function readableAngle(direction: ScreenPoint): number {
+  const angle = Math.atan2(direction.y, direction.x);
+  if (angle > Math.PI / 2) return angle - Math.PI;
+  if (angle <= -Math.PI / 2) return angle + Math.PI;
+  return angle;
+}
+
+/**
+ * An arrow from `from` to `to`, haloed like the text. The head is a filled
+ * triangle; the shaft stops at its base so the round line cap does not poke
+ * through the point.
+ */
+function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  from: ScreenPoint,
+  to: ScreenPoint,
+): void {
+  const direction = normalized(to.x - from.x, to.y - from.y);
+  const baseX = to.x - direction.x * AXIS_ARROW_HEAD;
+  const baseY = to.y - direction.y * AXIS_ARROW_HEAD;
+  // Perpendicular to the shaft, half a head wide on each side.
+  const wingX = -direction.y * AXIS_ARROW_HEAD * 0.55;
+  const wingY = direction.x * AXIS_ARROW_HEAD * 0.55;
+  const trace = () => {
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(baseX, baseY);
+  };
+  const head = () => {
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y);
+    ctx.lineTo(baseX + wingX, baseY + wingY);
+    ctx.lineTo(baseX - wingX, baseY - wingY);
+    ctx.closePath();
+  };
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  // Halo pass, then ink pass.
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
+  ctx.lineWidth = 4.5;
+  trace();
+  ctx.stroke();
+  head();
+  ctx.stroke();
+  ctx.strokeStyle = ORIENTATION_INK;
+  ctx.fillStyle = ORIENTATION_INK;
+  ctx.lineWidth = 2;
+  trace();
+  ctx.stroke();
+  head();
+  ctx.fill();
+}
+
+/**
+ * Orientation aids, all drawn OUTSIDE the map's outline: the x and y axis
+ * arrows beside the two sides that meet at the origin, and, when `sideNames`
+ * is set, a name beside each of the four sides. Every piece is turned to run
+ * parallel to the side it belongs to. None is drawn on the map itself, which
+ * stays unmarked.
+ *
+ * Every position and direction here comes from `latticeToScreen`, the same
+ * function the terrain and objects go through, and none is typed in as "up
+ * and to the right". If the projection's squash or rotation is ever revised
+ * (projection.ts keeps TILE_ASPECT as the one knob), these follow it.
+ *
+ * The sides are named the way RMS names its borders: left_border is the
+ * x = 0 side (south west on screen), bottom_border the y = max side (south
+ * east), right_border the x = max side (north east) and top_border the y = 0
+ * side (north west). The origin, land_position 0 0, is the corner where the
+ * left and top sides meet. +x grows along the top side and +y along the left
+ * side, so the x arrow runs beside the top side and the y arrow beside the
+ * left one.
+ */
+function drawOrientation(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  dim: number,
+  sideNames: boolean,
+): void {
+  const mapWidth = 2 * dim * viewport.halfWidth;
+  if (dim <= 0 || mapWidth < MIN_AXES_MAP_WIDTH) return;
+  const showNames = sideNames && mapWidth >= MIN_SIDE_NAMES_MAP_WIDTH;
+  const origin = latticeToScreen(viewport, 0, 0);
+  const centre = latticeToScreen(viewport, dim / 2, dim / 2);
+
+  ctx.save();
+  ctx.font = `bold ${ORIENTATION_FONT_PX}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // A side is the segment between two lattice corners. Its name sits at the
+  // middle, pushed away from the map centre, and runs along the segment.
+  const side = (from: TilePoint, to: TilePoint) => {
+    const a = latticeToScreen(viewport, from.x, from.y);
+    const b = latticeToScreen(viewport, to.x, to.y);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    return {
+      mid,
+      along: normalized(b.x - a.x, b.y - a.y),
+      outward: normalized(mid.x - centre.x, mid.y - centre.y),
+    };
+  };
+  const top = side({ x: 0, y: 0 }, { x: dim, y: 0 });
+  const left = side({ x: 0, y: 0 }, { x: 0, y: dim });
+  const bottom = side({ x: 0, y: dim }, { x: dim, y: dim });
+  const right = side({ x: dim, y: 0 }, { x: dim, y: dim });
+
+  if (showNames) {
+    const names: [string, typeof top][] = [
+      ["Left", left],
+      ["Bottom", bottom],
+      ["Right", right],
+      ["Top", top],
+    ];
+    for (const [name, edge] of names) {
+      drawRotatedText(
+        ctx,
+        name,
+        edge.mid.x + edge.outward.x * ORIENTATION_OFFSET,
+        edge.mid.y + edge.outward.y * ORIENTATION_OFFSET,
+        readableAngle(edge.along),
+      );
+    }
+  }
+
+  // +x runs along the top side from the origin, +y along the left side, so
+  // each arrow lies beside its own side, shifted out of the map.
+  const axes = [
+    { name: "x", edge: top },
+    { name: "y", edge: left },
+  ];
+  for (const { name, edge } of axes) {
+    const start = {
+      x:
+        origin.x +
+        edge.along.x * AXIS_ARROW_START +
+        edge.outward.x * ORIENTATION_OFFSET,
+      y:
+        origin.y +
+        edge.along.y * AXIS_ARROW_START +
+        edge.outward.y * ORIENTATION_OFFSET,
+    };
+    const tip = {
+      x: start.x + edge.along.x * AXIS_ARROW_LENGTH,
+      y: start.y + edge.along.y * AXIS_ARROW_LENGTH,
+    };
+    drawArrow(ctx, start, tip);
+    drawRotatedText(
+      ctx,
+      name,
+      tip.x + edge.along.x * AXIS_LETTER_GAP,
+      tip.y + edge.along.y * AXIS_LETTER_GAP,
+      readableAngle(edge.along),
+    );
+  }
+  ctx.restore();
 }
 
 function drawObjects(

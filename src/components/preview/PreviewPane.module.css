@@ -1,6 +1,12 @@
+/* `flex: 1 0 auto` makes the pane at least as tall as the preview slot
+   (MapSidePanel's .previewSlot, itself the whole panel below the tab strip),
+   so the map frame inside can take the leftover height. `0` for shrink: a
+   window too short for the controls and the map's own minimum height scrolls
+   the slot instead of squashing the map. */
 .pane {
   display: flex;
   flex-direction: column;
+  flex: 1 0 auto;
   gap: 0.3rem;
   padding: 0.5rem;
 }
@@ -19,26 +25,62 @@
   font-size: 0.8rem;
 }
 
-/* Only here to be the positioned box .generating centres itself in. */
+/* Takes all the height the controls row leaves. Nothing sits below it, so
+   the map uses the whole panel. The frame is also the positioned box that
+   .generating places itself in. */
 .canvasFrame {
   position: relative;
+  flex: 1 1 auto;
+  /* The same 9rem floor the canvas box had. */
+  min-height: 9rem;
   /* Cancels .pane's 0.5rem side padding so the map runs edge to edge in the
      side panel, flush against the vertical divider on its left. The controls
-     and readout keep the padding. */
+     keep the padding. */
   margin: 0 -0.5rem;
 }
 
-/* Once the user has dragged the canvas's bottom edge (CanvasResizer), the
-   frame has an explicit height and the canvas fills it instead of staying
-   square. The canvas box is PreviewCanvas.module.css's .container, shared
-   with the Land Placement panel, so it is overridden from here rather than
-   changed there. `:first-child` is that box (.generating is a later
-   sibling), and the extra class makes this win without !important. Its
-   width stays 100%, so it keeps following the side panel's width. */
-.canvasFrame.canvasFrameSized > :first-child {
+/* The canvas box (PreviewCanvas.module.css's .container, shared with the Land
+   Placement panel) fills this frame. Overridden from here rather than changed
+   there, because that file gives the box `aspect-ratio: 1`, which would tie
+   its height to the panel's width. Absolutely positioned so it takes the
+   frame's size whether or not a flex layout counts the frame's height as
+   definite, which a percentage height would depend on. `:first-child` is
+   that box (the overlays are later siblings), and the extra class makes this
+   win without !important. */
+.canvasFrame > :first-child {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
   aspect-ratio: auto;
-  height: 100%;
   min-height: 0;
+}
+
+/* The hovered or selected tile's details, in the map's top left corner. It
+   is a child of OverlayCanvas's corner column (below any banner note), so it
+   needs no position of its own. Pointer events are off while it is only a
+   hover, so it can never take the pointer off the tile it describes and
+   flicker. A pinned tile turns them on for its Clear button. Themed surface
+   colours because the readout's own text styles are written for the app's
+   themes. */
+.tileOverlay {
+  max-width: 70%;
+  max-height: calc(100% - 3.5rem);
+  overflow: hidden;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.tileOverlayPinned {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
 }
 
 /* Centred over the map while a newer generation is in flight. The previous
@@ -173,18 +215,6 @@
   padding: 0;
   cursor: pointer;
   line-height: 1.3;
-}
-
-/* Deliberately NOT `white-space: nowrap` with an ellipsis, which is what this
-   was. The column is narrow and a tile with a few objects on it always
-   overflowed, so the interesting half of the readout was the half that got
-   cut, and a stacked tile is usually the reason you looked. It wraps now,
-   and the pane grows by a line instead of hiding content. */
-.readout {
-  font-size: 0.66rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  min-height: 1em;
 }
 
 .readoutHint {

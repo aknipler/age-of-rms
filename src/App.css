@@ -58,6 +58,14 @@ body,
   margin: 0;
 }
 
+/* The app is a fixed-size shell of panes that scroll for themselves. Scrolling
+   past the end of one must not move the whole window, so the page itself never
+   takes the leftover scroll. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 /* Every component stylesheet sizes itself in rem, which resolves against
    THIS element's font-size, not body's — so scaling it here (Theme
    Settings' "UI size" slider, ThemeSettingsContext's uiFontScale) scales

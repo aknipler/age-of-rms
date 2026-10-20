@@ -59,11 +59,11 @@ const whatsNew050: TutorialDefinition = {
     },
     {
       id: "preview-reference-split",
-      title: "Resize preview and reference",
-      anchor: { kind: "help", id: "sidePanel.previewReferenceResizer" },
+      title: "Preview and reference tabs",
+      anchor: { kind: "help", id: "sidePanel.tabReference" },
       navigate: { tab: "breakdown" },
       body: [
-        "Drag the divider between the preview and the reference table to give either one more room, or collapse it out of the way entirely.",
+        "The preview and the reference table take turns in the same panel. Click a tab to switch between them.",
       ],
       completion: { kind: "manual" },
     },
@@ -71,9 +71,9 @@ const whatsNew050: TutorialDefinition = {
       id: "export-png",
       title: "Export the preview as PNG",
       anchor: { kind: "help", id: "preview.exportPng" },
-      navigate: { tab: "breakdown" },
+      navigate: { tab: "breakdown", sidePanel: "preview" },
       body: [
-        "Save exactly what the preview is showing right now, at its current zoom, pan, and seed, as a PNG file. You may need to scroll down in the preview pane to see this button (at the bottom right of the generated preview).",
+        "Save exactly what the preview is showing right now, at its current zoom, pan, and seed, as a PNG file. The button is on the bottom row of the map.",
       ],
       completion: { kind: "manual" },
     },
@@ -81,7 +81,7 @@ const whatsNew050: TutorialDefinition = {
       id: "reference-sort",
       title: "Sort the reference table",
       anchor: { kind: "help", id: "breakdown.sidePanel.referenceSort" },
-      navigate: { tab: "breakdown" },
+      navigate: { tab: "breakdown", sidePanel: "reference" },
       body: [
         "The Terrain and Objects tabs can now sort by name, constant, or id, ascending or descending.",
       ],

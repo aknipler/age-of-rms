@@ -17,6 +17,8 @@
   gap: 0.4rem;
   padding: 0.6rem;
   overflow-y: auto;
+  /* Scrolling past the end stops here instead of passing to the page. */
+  overscroll-behavior: contain;
   flex: 1;
   min-height: 0;
 }
