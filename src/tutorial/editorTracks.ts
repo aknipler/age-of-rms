@@ -16,7 +16,13 @@
 // words name a Breakdown control, so an inherited body that later gains one is
 // caught.
 
-import type { BodyBlock, Paragraph, TutorialStep } from "./types";
+import type {
+  Anchor,
+  BodyBlock,
+  Paragraph,
+  SpoilerParagraph,
+  TutorialStep,
+} from "./types";
 
 export const BREAKDOWN_TRACK = "breakdown";
 export const CODE_TRACK = "code";
@@ -64,15 +70,26 @@ export const CODE_EDITOR_ANCHOR = {
 } as const;
 
 /**
+ * The map preview. It sits in the side panel, which both tabs show, so a
+ * Code step keeps it lit when its Breakdown step does (`joinTwin`).
+ */
+export const PREVIEW_ANCHOR = {
+  kind: "region",
+  id: "sidePanel.preview",
+} as const;
+
+/**
  * A Code step before it is joined to its twin.
  *
  * Always taken from the twin, never written here: `completion`, `autoFill`.
  * Taken from the twin unless written here: `title`, `body`, `hint`, `bypass`,
- * `preview`, `image`. A `body` can also be a function of the twin's body, for
+ * `preview`, `image`, `kind`. A `body` can also be a function of the twin's body, for
  * a Code step that says the same and then adds an answer to type.
  * Never taken from the twin, because they place the callout over Breakdown
- * controls: `anchor`, `extraAnchors`, `calloutNudge`, `calloutMaxWidthPx`
- * and `navigate`. They default to the code editor and the Code tab.
+ * controls: `anchor`, `calloutNudge`, `calloutMaxWidthPx` and `navigate`.
+ * They default to the code editor and the Code tab. Of the twin's
+ * `extraAnchors` and `lookFirst`, only the preview is taken, since it is the
+ * one that is on screen in both tabs.
  */
 export type CodeTwin = Omit<
   TutorialStep,
@@ -90,13 +107,20 @@ export function paragraphText(paragraph: Paragraph): string {
   return paragraph.map((p) => (typeof p === "string" ? p : p.spoiler)).join("");
 }
 
+/** Every word or script line of a spoiler's entry. */
+function spoilerParagraphText(entry: SpoilerParagraph): string {
+  if (typeof entry === "string" || Array.isArray(entry))
+    return paragraphText(entry);
+  return entry.text;
+}
+
 /** Every word of a block, hidden or not, for finding it by a phrase. */
 function blockText(block: BodyBlock): string {
   if (typeof block === "string" || Array.isArray(block))
     return paragraphText(block);
   if (block.kind === "spoiler")
     return "paragraphs" in block
-      ? [block.label, ...block.paragraphs.map(paragraphText)].join(" ")
+      ? [block.label, ...block.paragraphs.map(spoilerParagraphText)].join(" ")
       : `${block.label} ${block.text}`;
   if (block.kind === "code" || block.kind === "text") return block.text;
   return block.alt;
@@ -139,6 +163,19 @@ export function insertAfterBlock(
   return body.flatMap((b) => (b === hit ? [b, ...added] : [b]));
 }
 
+/**
+ * The preview, if `anchors` names it, as the one anchor a Code step can take
+ * from its Breakdown step. Undefined otherwise, rather than an empty list,
+ * so a twin that lit nothing extra stays exactly as it was.
+ */
+function previewOnly(
+  anchors: readonly Anchor[] | undefined,
+): Anchor[] | undefined {
+  return anchors?.some((a) => a.kind === "region" && a.id === PREVIEW_ANCHOR.id)
+    ? [PREVIEW_ANCHOR]
+    : undefined;
+}
+
 function joinTwin(
   twin: TutorialStep,
   code: Omit<CodeTwin, "twinOf">,
@@ -147,6 +184,10 @@ function joinTwin(
   const anchor = rest.anchor ?? CODE_EDITOR_ANCHOR;
   return {
     title: twin.title,
+    // The same task in the other tab, so the same kind of step. Taken here
+    // rather than written on each twin, where a twin that forgot it would
+    // lose its chip on one track only.
+    kind: twin.kind,
     hint: twin.hint,
     bypass: twin.bypass,
     preview: twin.preview,
@@ -158,6 +199,10 @@ function joinTwin(
       anchor.kind === "region" && anchor.id === CODE_EDITOR_ANCHOR.id
         ? "bottom-right"
         : undefined,
+    // A step that has the learner watch the preview needs it lit on either
+    // track, whether it stays lit or is shown first and then fades.
+    extraAnchors: previewOnly(twin.extraAnchors),
+    lookFirst: previewOnly(twin.lookFirst),
     navigate: { tab: "code" },
     ...rest,
     body:

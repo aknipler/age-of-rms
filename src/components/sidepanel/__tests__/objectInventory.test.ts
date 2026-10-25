@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { parseRms } from "../../../parser/parser";
 import { loadLanguage } from "../../../parser/__tests__/testUtils";
 import type { PlacedObject } from "../../../preview/generator/types";
-import { buildObjectInventory, tallySpawned } from "../objectInventory";
+import {
+  buildObjectInventory,
+  compareInventoryRows,
+  tallySpawned,
+} from "../objectInventory";
 
 const lang = loadLanguage();
 const parse = (source: string) => parseRms(source, lang);
@@ -106,5 +110,32 @@ describe("buildObjectInventory", () => {
 
   it("returns nothing before the first parse", () => {
     expect(buildObjectInventory(null, [])).toEqual([]);
+  });
+});
+
+describe("compareInventoryRows", () => {
+  const rows = [
+    { objectRef: "GOLD", spawned: 4 },
+    { objectRef: "BOAR", spawned: 9 },
+    { objectRef: "DEER", spawned: 4 },
+  ];
+
+  it("sorts by name", () => {
+    const sorted = [...rows].sort((a, b) => compareInventoryRows("name", a, b));
+    expect(sorted.map((r) => r.objectRef)).toEqual(["BOAR", "DEER", "GOLD"]);
+  });
+
+  it("sorts by count, breaking ties by name", () => {
+    const sorted = [...rows].sort((a, b) =>
+      compareInventoryRows("spawned", a, b),
+    );
+    expect(sorted.map((r) => r.objectRef)).toEqual(["DEER", "GOLD", "BOAR"]);
+  });
+
+  it("puts the larger count first once negated for descending", () => {
+    const sorted = [...rows].sort(
+      (a, b) => -compareInventoryRows("spawned", a, b),
+    );
+    expect(sorted.map((r) => r.objectRef)).toEqual(["BOAR", "GOLD", "DEER"]);
   });
 });

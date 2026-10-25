@@ -62,6 +62,18 @@ export const MAP_SIZES = [
 ] as const;
 export type MapSize = (typeof MAP_SIZES)[number];
 
+/**
+ * The player count the game's lobby names beside a size (language.json's
+ * MAPSIZE_* descriptions, "Tiny (2 player)"). Huge and Giant carry none.
+ */
+export const MAP_SIZE_DEFAULT_PLAYERS: Partial<Record<MapSize, number>> = {
+  Tiny: 2,
+  Small: 3,
+  Medium: 4,
+  Normal: 6,
+  Large: 8,
+};
+
 export const DEFAULT_PLAYER_COUNT = 2;
 export const DEFAULT_MAP_SIZE: MapSize = "Tiny";
 

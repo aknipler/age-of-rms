@@ -2,7 +2,7 @@ import type { Item, ParseResult, ScriptNode } from "../../parser/types";
 import type { PlacedObject } from "../../preview/generator/types";
 
 /**
- * One row of the Preview Obj. List: an object the script names, and how many
+ * One row of the preview's Obj. List: an object the script names, and how many
  * of it the current generation actually put on the map.
  */
 export interface ObjectInventoryRow {
@@ -131,4 +131,31 @@ export function buildObjectInventory(
   return [...names]
     .sort((a, b) => a.localeCompare(b))
     .map((objectRef) => ({ objectRef, spawned: counts.get(objectRef) ?? 0 }));
+}
+
+/** The Obj. List's sort choices. */
+export type InventorySortKey = "name" | "spawned";
+
+export const INVENTORY_SORT_LABELS: Record<InventorySortKey, string> = {
+  name: "Object",
+  spawned: "Total Spawned",
+};
+
+/**
+ * Comparator for the Obj. List under a sort key, ascending.
+ *
+ * Name stays the default for the reason `buildObjectInventory` gives. Sorting
+ * by count is opt in, for finding what spawned zero or what floods the map,
+ * and it accepts that a re-roll can move rows. Equal counts fall back to the
+ * name, so the order is total and two objects with the same count never swap
+ * places between generations.
+ */
+export function compareInventoryRows(
+  sortKey: InventorySortKey,
+  a: ObjectInventoryRow,
+  b: ObjectInventoryRow,
+): number {
+  const byName = a.objectRef.localeCompare(b.objectRef);
+  if (sortKey === "name") return byName;
+  return a.spawned - b.spawned || byName;
 }

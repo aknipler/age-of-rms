@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGenerationSettings } from "../generationSettings/GenerationSettingsContext";
 import {
   MAP_SIZES,
+  MAP_SIZE_DEFAULT_PLAYERS,
   MAX_PLAYER_COUNT,
   MIN_PLAYER_COUNT,
 } from "../generationSettings/generationSettingsConstants";
@@ -27,6 +28,81 @@ interface GenerationSettingsDialogProps {
 function mapSizeLabel(size: (typeof MAP_SIZES)[number]): string {
   const dim = resolveMapDim(size, predefinedLabels);
   return dim === null ? size : `${size} (${dim})`;
+}
+
+/**
+ * A custom dropdown rather than a native <select>: an <option> holds plain
+ * text only, so two aligned columns (name with tiles, then the size's default
+ * player count) need real elements. The tile count comes from the lookup the
+ * preview uses to size the grid (mapDimensions.ts).
+ */
+function MapSizePicker({
+  value,
+  onChange,
+}: {
+  value: (typeof MAP_SIZES)[number];
+  onChange: (size: (typeof MAP_SIZES)[number]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const players = (size: (typeof MAP_SIZES)[number]) => {
+    const n = MAP_SIZE_DEFAULT_PLAYERS[size];
+    return n === undefined ? "" : `${n}p`;
+  };
+
+  return (
+    <div
+      className={genStyles.sizePicker}
+      ref={rootRef}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && open) {
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        id="generation-map-size"
+        className={genStyles.sizeButton}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {mapSizeLabel(value)}
+        <span aria-hidden="true"> &#9662;</span>
+      </button>
+      {open && (
+        <ul className={genStyles.sizeList} role="listbox">
+          {MAP_SIZES.map((size) => (
+            <li
+              key={size}
+              role="option"
+              aria-selected={size === value}
+              className={`${genStyles.sizeItem} ${size === value ? genStyles.sizeItemActive : ""}`}
+              onClick={() => {
+                onChange(size);
+                setOpen(false);
+              }}
+            >
+              <span>{mapSizeLabel(size)}</span>
+              <span className={genStyles.sizePlayers}>{players(size)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 // Mirrors SettingsDialog's shape (overlay + fixed box, reuses the shared
@@ -62,6 +138,16 @@ export function GenerationSettingsDialog({
   useEffect(() => {
     setDraft(String(playerCount));
   }, [playerCount]);
+
+  // Escape closes the dialog. The map size list stops propagation of its own
+  // Escape while open, so that press closes only the list.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   return (
     <div className={styles.overlay} onMouseDown={onClose}>
@@ -122,23 +208,7 @@ export function GenerationSettingsDialog({
             <HelpTip id="generationSettings.mapSize">
               <div className={styles.optionRow}>
                 <label htmlFor="generation-map-size">Map size</label>
-                <select
-                  id="generation-map-size"
-                  value={mapSize}
-                  onChange={(event) =>
-                    setMapSize(event.target.value as (typeof MAP_SIZES)[number])
-                  }
-                >
-                  {MAP_SIZES.map((size) => (
-                    <option key={size} value={size}>
-                      {/* The tile count comes from the same lookup the
-                          preview uses to size the grid, never typed here
-                          (mapDimensions.ts). A size the data cannot answer
-                          shows its bare name rather than a made-up number. */}
-                      {mapSizeLabel(size)}
-                    </option>
-                  ))}
-                </select>
+                <MapSizePicker value={mapSize} onChange={setMapSize} />
               </div>
             </HelpTip>
 

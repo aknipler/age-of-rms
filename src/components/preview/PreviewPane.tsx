@@ -197,20 +197,13 @@ export function PreviewPane() {
   // unmounts on every tab switch and none of it may (PreviewViewContext for
   // the controls, PreviewResultContext for the generated map itself).
   const {
-    view,
-    setView,
-    seed,
-    setSeed,
-    reseed,
     colorMode,
-    setColorMode,
     selectedTile,
     toggleSelectedTile,
     clearSelectedTile,
     hiddenObjects,
   } = usePreviewView();
-  const { openDialog: openGenerationSettings, playerCount } =
-    useGenerationSettings();
+  const { playerCount } = useGenerationSettings();
   // Hover is local because it dies with the pane and should: a pointer
   // position means nothing once you have switched tabs. The SELECTION lives in
   // the context above the tab switch, for the same reason the seed does.
@@ -311,103 +304,6 @@ export function PreviewPane() {
 
   return (
     <div className={styles.pane} data-tutorial-anchor="sidePanel.preview">
-      <div className={styles.controls}>
-        {/* Left cluster: settings, view toggle, pin, colour mode. Right
-            cluster: seed + re-roll. Two flex children of `.controls`
-            (itself `justify-content: space-between`) rather than one flat
-            row, so the right cluster sits pinned to the pane's right edge
-            regardless of how many controls are in the left one
-            (2026-09-16, beta feedback: these used to be two separate
-            rows). */}
-        <div className={styles.controlsGroup}>
-          {/*
-            Beta feedback: the status bar's settings cog was hard to find, and
-            testers expected map size / player count controls to live in the
-            preview pane itself, since that's what they change. Placed before
-            the View toggle rather than in a row of its own, since it opens a
-            dialog and does not need to show any state inline.
-          */}
-          <HelpTip id="preview.generationSettings">
-            <button
-              type="button"
-              className={styles.settingsButton}
-              onClick={openGenerationSettings}
-              aria-label="Generation settings"
-            >
-              ⚙
-            </button>
-          </HelpTip>
-          {/*
-            The id is the existing `breakdown.sidePanel.previewToggle` rather
-            than a new `preview.toggle`. Sec.5 lists the latter "if the pane
-            hosts its own toggle distinct from the Breakdown side panel". It
-            does not; this IS that toggle, in that panel, and a second id for
-            one control would leave the audit checking two entries for the same
-            thing.
-          */}
-          <HelpTip id="breakdown.sidePanel.previewToggle">
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={view === "current"}
-                onChange={(event) =>
-                  setView(event.target.checked ? "current" : "final")
-                }
-              />
-              Current
-            </label>
-          </HelpTip>
-          {view === "current" && <PinControl />}
-          {/*
-            Two real colour sources, not a cosmetic skin. Each resolves what the
-            other collapses (see palette.ts's header). Game is the default, so
-            unticked is Game and ticked is Minimap, the game data's own coarser
-            colour class.
-          */}
-          <HelpTip id="preview.colorMode">
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={colorMode === "minimap"}
-                onChange={(event) =>
-                  setColorMode(event.target.checked ? "minimap" : "game")
-                }
-              />
-              Minimap
-            </label>
-          </HelpTip>
-        </div>
-
-        <div className={styles.controlsGroup}>
-          <HelpTip id="preview.seedChip">
-            <label className={styles.seed}>
-              Seed
-              <input
-                type="number"
-                className={styles.seedInput}
-                value={seed}
-                min={0}
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  if (Number.isFinite(next))
-                    setSeed(Math.max(0, Math.trunc(next)));
-                }}
-              />
-            </label>
-          </HelpTip>
-          <HelpTip id="preview.reroll">
-            <button
-              type="button"
-              className={styles.reroll}
-              onClick={reseed}
-              aria-label="Re-roll"
-            >
-              🎲
-            </button>
-          </HelpTip>
-        </div>
-      </div>
-
       {/* A wrapper of its own rather than a prop on PreviewCanvas, whose
           container is the obvious box to centre over. That container
           belongs to OverlayCanvas, which the Land Placement panel renders
@@ -467,6 +363,121 @@ export function PreviewPane() {
             <span className={styles.generatingLabel}>Generating...</span>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The preview's settings, Current, pin, Minimap, seed and re-roll.
+ *
+ * Its own component, rendered by MapSidePanel in the panel's top row beside
+ * the Preview and Reference tabs, rather than inside PreviewPane above the
+ * map. Every value it shows comes from context, so moving it needed no
+ * props. It also shows before the first map exists, which the old place did
+ * not, since PreviewPane returns early until then.
+ */
+export function PreviewControls() {
+  const { view, setView, seed, setSeed, reseed, colorMode, setColorMode } =
+    usePreviewView();
+  const { openDialog: openGenerationSettings } = useGenerationSettings();
+
+  return (
+    <div className={styles.controls}>
+      {/* Left cluster: settings, view toggle, pin, colour mode. Right
+          cluster: seed + re-roll. Two flex children of `.controls` (itself
+          `justify-content: space-between`) rather than one flat row, so the
+          right cluster sits pinned to the row's right edge regardless of how
+          many controls are in the left one. */}
+      <div className={styles.controlsGroup}>
+        {/*
+            Beta feedback: the status bar's settings cog was hard to find, and
+            testers expected map size / player count controls to live in the
+            preview pane itself, since that's what they change. Placed before
+            the View toggle rather than in a row of its own, since it opens a
+            dialog and does not need to show any state inline.
+          */}
+        <HelpTip id="preview.generationSettings">
+          <button
+            type="button"
+            className={styles.settingsButton}
+            onClick={openGenerationSettings}
+            aria-label="Generation settings"
+          >
+            ⚙
+          </button>
+        </HelpTip>
+        {/*
+            The id is the existing `breakdown.sidePanel.previewToggle` rather
+            than a new `preview.toggle`. Sec.5 lists the latter "if the pane
+            hosts its own toggle distinct from the Breakdown side panel". It
+            does not; this IS that toggle, in that panel, and a second id for
+            one control would leave the audit checking two entries for the same
+            thing.
+          */}
+        <HelpTip id="breakdown.sidePanel.previewToggle">
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={view === "current"}
+              onChange={(event) =>
+                setView(event.target.checked ? "current" : "final")
+              }
+            />
+            Current
+          </label>
+        </HelpTip>
+        {view === "current" && <PinControl />}
+        {/*
+            Two real colour sources, not a cosmetic skin. Each resolves what the
+            other collapses (see palette.ts's header). Game is the default, so
+            unticked is Game and ticked is Minimap, the game data's own coarser
+            colour class.
+          */}
+        <HelpTip id="preview.colorMode">
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={colorMode === "minimap"}
+              onChange={(event) =>
+                setColorMode(event.target.checked ? "minimap" : "game")
+              }
+            />
+            Minimap
+          </label>
+        </HelpTip>
+      </div>
+
+      <div className={styles.controlsGroup}>
+        <HelpTip id="preview.seedChip">
+          {/* The word is back (2026-10-24). It stays on one line (.seed is
+              nowrap), which is what the earlier wrap onto a second row
+              needed. */}
+          <label className={styles.seed}>
+            Seed
+            <input
+              type="number"
+              className={styles.seedInput}
+              value={seed}
+              min={0}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (Number.isFinite(next))
+                  setSeed(Math.max(0, Math.trunc(next)));
+              }}
+            />
+          </label>
+        </HelpTip>
+        <HelpTip id="preview.reroll">
+          <button
+            type="button"
+            className={styles.reroll}
+            onClick={reseed}
+            aria-label="Re-roll"
+          >
+            🎲
+          </button>
+        </HelpTip>
       </div>
     </div>
   );

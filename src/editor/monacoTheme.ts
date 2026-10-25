@@ -1,5 +1,10 @@
 import type * as monacoNs from "monaco-editor";
 import { DEFAULT_LIGHT_THEME, type ThemeTokens } from "../settings/theme";
+import {
+  DARK_SYNTAX,
+  LIGHT_SYNTAX,
+  relativeLuminance,
+} from "../settings/derivedPalette";
 
 // Monaco is <canvas>-rendered. It never reads the app's CSS custom
 // properties (settings/theme.ts's `var(--token-name)` mechanism), so the
@@ -17,21 +22,8 @@ export const AOE2_RMS_MONACO_THEME = "aoe2-rms-dynamic";
 // explicitly) should inherit from "vs" or "vs-dark". Custom themes are
 // arbitrary colors a user picked with no obligation to be "light" or
 // "dark" in name, so this is read from the color itself rather than from
-// which built-in/custom theme it came from.
-function relativeLuminance(hex: string): number {
-  const match = /^#([0-9a-fA-F]{6})$/.exec(hex);
-  // An unparseable value (a custom theme's draft token mid-edit, e.g. the
-  // user is still typing a hex code) falls back to light rather than
-  // throwing, the same "don't crash on user-editable data" reasoning as
-  // sanitizeThemeTokens.
-  if (!match) return 1;
-  const channel = (offset: number) =>
-    parseInt(match[1].slice(offset, offset + 2), 16) / 255;
-  const linearize = (c: number) =>
-    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  const [r, g, b] = [0, 2, 4].map((offset) => linearize(channel(offset)));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
+// which built-in/custom theme it came from. The function lives in
+// derivedPalette.ts, which the Breakdown's syntax colours read too.
 
 // Syntax colors, unlike editor chrome, can't just be read off the app
 // theme's tokens. There's no "keyword color" token in theme.ts, and
@@ -43,24 +35,32 @@ function relativeLuminance(hex: string): number {
 // chrome above, so a custom theme gets whichever set actually stays
 // readable against the background color the user chose.
 const LIGHT_SYNTAX_RULES: monacoNs.editor.ITokenThemeRule[] = [
-  { token: "comment", foreground: "6A737D", fontStyle: "italic" },
+  {
+    token: "comment",
+    foreground: LIGHT_SYNTAX.comment.slice(1),
+    fontStyle: "italic",
+  },
   { token: "tag", foreground: "22863A", fontStyle: "bold" },
   { token: "keyword.directive", foreground: "6F42C1" },
   { token: "keyword.control", foreground: "005CC5", fontStyle: "bold" },
   { token: "keyword", foreground: "B31D28", fontStyle: "bold" },
-  { token: "type.identifier", foreground: "E36209" },
-  { token: "constant", foreground: "0B7285" },
+  { token: "type.identifier", foreground: LIGHT_SYNTAX.attribute.slice(1) },
+  { token: "constant", foreground: LIGHT_SYNTAX.constant.slice(1) },
   { token: "number", foreground: "24292E", fontStyle: "bold" },
 ];
 
 const DARK_SYNTAX_RULES: monacoNs.editor.ITokenThemeRule[] = [
-  { token: "comment", foreground: "8B949E", fontStyle: "italic" },
+  {
+    token: "comment",
+    foreground: DARK_SYNTAX.comment.slice(1),
+    fontStyle: "italic",
+  },
   { token: "tag", foreground: "7EE787", fontStyle: "bold" },
   { token: "keyword.directive", foreground: "D2A8FF" },
   { token: "keyword.control", foreground: "79C0FF", fontStyle: "bold" },
   { token: "keyword", foreground: "FF7B72", fontStyle: "bold" },
-  { token: "type.identifier", foreground: "FFA657" },
-  { token: "constant", foreground: "56D4DD" },
+  { token: "type.identifier", foreground: DARK_SYNTAX.attribute.slice(1) },
+  { token: "constant", foreground: DARK_SYNTAX.constant.slice(1) },
   { token: "number", foreground: "E6EDF3", fontStyle: "bold" },
 ];
 
@@ -93,6 +93,11 @@ export function defineAoe2RmsMonacoTheme(
       "editorWidget.background": tokens.surfaceRaised,
       "editorWidget.border": tokens.border,
       "editorGutter.background": tokens.surface,
+      // Line and block prediction (name-lookup-design.md Sec.13.5). Monaco's
+      // own ghost grey is fixed and ignores the theme, so a dark or custom
+      // theme gets the muted text colour instead. CodePane turns the ghost
+      // text's syntax colouring off so this colour is the one drawn.
+      "editorGhostText.foreground": tokens.textMuted,
     },
   });
   // Redefining the currently active theme's data doesn't repaint on its

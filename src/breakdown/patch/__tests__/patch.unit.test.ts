@@ -617,6 +617,19 @@ describe("removeComment (a comment card's delete button)", () => {
   });
 });
 
+describe("removeRaw (a raw card's delete button)", () => {
+  it("removes the raw region's line and leaves its neighbours alone", () => {
+    const src =
+      "<PLAYER_SETUP>\nrandom_placement\nbogus_word 12\nnomad_resources";
+    const raw = parse(src).script.sections[0].items.find(
+      (i) => i.kind === "raw",
+    );
+    expect(raw).toBeDefined();
+    const { out } = run(src, { kind: "removeRaw", span: raw!.span });
+    expect(out).toBe("<PLAYER_SETUP>\nrandom_placement\nnomad_resources");
+  });
+});
+
 describe("insertText (Object Templates, docs/object-templates-brief.md)", () => {
   // A tab-per-level canonical block, same shape templates.ts produces:
   // a header comment, then a create_object at indent 0 with one
@@ -1062,6 +1075,84 @@ describe("CRLF files (Sec.4.3 eol detection)", () => {
     });
     expect(out).toBe(
       "<LAND_GENERATION>\r\ncreate_land\r\n{\r\n\tland_percent 30\r\n\tbase_size 7\r\n}",
+    );
+  });
+});
+
+describe("addConst (name-lookup-design.md Sec.7.3)", () => {
+  it("writes the line directly above the command, inside its branch, at its indent", () => {
+    const src =
+      "<LAND_GENERATION>\nif TINY_MAP\n  create_land { terrain_type MY_FOREST }\nendif";
+    const ifNode = parse(src).script.sections[0].items[0] as IfNode;
+    const command = ifNode.branches[0].items[0];
+    const { out, caret } = run(src, {
+      kind: "addConst",
+      at: { before: command },
+      name: "MY_FOREST",
+      value: 10,
+    });
+    expect(out).toBe(
+      "<LAND_GENERATION>\nif TINY_MAP\n  #const MY_FOREST 10\n  create_land { terrain_type MY_FOREST }\nendif",
+    );
+    // On the value, so the Code tab can select it for typing over.
+    expect(out.slice(caret, caret + 2)).toBe("10");
+  });
+
+  it("writes the line after a #const row, the table's add button", () => {
+    const src = "<PLAYER_SETUP>\n#const A 1\nrandom_placement";
+    const row = parse(src).script.sections[0].items[0];
+    const { out, caret } = run(src, {
+      kind: "addConst",
+      at: { after: row },
+      name: "NEW_CONST",
+      value: 0,
+    });
+    expect(out).toBe(
+      "<PLAYER_SETUP>\n#const A 1\n#const NEW_CONST 0\nrandom_placement",
+    );
+    expect(out.slice(caret, caret + 1)).toBe("0");
+  });
+
+  it("writes the header line at the end of the preamble", () => {
+    const src = "#const A 1\n<LAND_GENERATION>\ncreate_land { terrain_type B }";
+    const { out } = run(src, {
+      kind: "addConst",
+      at: { in: "preamble" },
+      name: "B",
+      value: 0,
+    });
+    expect(out).toBe(
+      "#const A 1\n#const B 0\n<LAND_GENERATION>\ncreate_land { terrain_type B }",
+    );
+  });
+});
+
+describe("addDefine (breakdown-design Sec.3.14)", () => {
+  it("writes the line after a #define row with the caret on the name", () => {
+    const src = "<PLAYER_SETUP>\n#define A\nrandom_placement";
+    const row = parse(src).script.sections[0].items[0];
+    const { out, caret } = run(src, {
+      kind: "addDefine",
+      at: { after: row },
+      name: "NEW_DEFINE",
+    });
+    expect(out).toBe(
+      "<PLAYER_SETUP>\n#define A\n#define NEW_DEFINE\nrandom_placement",
+    );
+    expect(out.slice(caret, caret + "NEW_DEFINE".length)).toBe("NEW_DEFINE");
+  });
+
+  it("writes inside a branch at its indent", () => {
+    const src = "<LAND_GENERATION>\nif TINY_MAP\n  #define A\nendif";
+    const ifNode = parse(src).script.sections[0].items[0] as IfNode;
+    const row = ifNode.branches[0].items[0];
+    const { out } = run(src, {
+      kind: "addDefine",
+      at: { after: row },
+      name: "B",
+    });
+    expect(out).toBe(
+      "<LAND_GENERATION>\nif TINY_MAP\n  #define A\n  #define B\nendif",
     );
   });
 });

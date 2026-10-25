@@ -243,6 +243,55 @@
   min-width: 0;
 }
 
+/* RmsSuggestInput wraps the input in a span that holds the suggestion list.
+   The span is the flex item now, so it takes the input old share, and the
+   two-class selector beats the wrapper own display rule. */
+.formulaFieldRow .formulaInputWrap {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.formulaFieldRow .formulaInputWrap input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* The resolve flash (name-lookup-design.md Sec.6.2), the same 700 ms fade as
+   the Code tab and the Breakdown. */
+.resolveFlash {
+  animation: formulaResolveFlash 700ms ease-out;
+}
+
+@keyframes formulaResolveFlash {
+  from {
+    background-color: var(--success-bg);
+  }
+  to {
+    background-color: var(--surface-raised, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resolveFlash {
+    animation: none;
+    background-color: var(--success-bg);
+  }
+}
+
+.unsetNames {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.unsetList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+
 .formulaError {
   color: #e23e32;
   font-size: 0.75rem;

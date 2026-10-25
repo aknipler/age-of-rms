@@ -1,0 +1,10 @@
+/* The Code tab's attribute and constant colours (syntaxColor.tsx). With no
+   theme applied yet the properties are unset and the text keeps its
+   inherited colour. */
+.attribute {
+  color: var(--syntax-attribute);
+}
+
+.constant {
+  color: var(--syntax-constant);
+}

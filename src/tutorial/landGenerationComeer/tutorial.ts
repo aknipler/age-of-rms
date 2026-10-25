@@ -51,6 +51,7 @@ import {
 import {
   BREAKDOWN_TRACK,
   editorChoiceStep,
+  PREVIEW_ANCHOR,
   withCodeTrack,
 } from "../editorTracks";
 import { COMEER_CODE_TWINS } from "./codeTrack";
@@ -240,23 +241,66 @@ function hasRndInRange(
 // ---------------------------------------------------------------------------
 
 /**
- * The "add a command" layout Tutorial A uses. The picker's panel opens where
- * the default callout placement would land, so the callout is nudged clear
- * (rmsBasics.ts "random-or-direct" has the measurements).
+ * The layout of a step that edits the script in Breakdown. The callout sits
+ * in the bottom right corner of the Breakdown pane, the spot the Code track
+ * uses for the code editor, so the card stays put from step to step. The pane
+ * is lit, since the learner works in it, except on a step that shows the
+ * preview first (`EDIT_AND_WATCH` below). The Add command button is
+ * lit only for a step that adds a command or a #const, and the preview only
+ * for a step that asks the learner to watch it. A step that only changes
+ * attributes leaves the button dark, because the attribute rows are on the
+ * card.
+ *
+ * Anchored on the whole pane rather than on the button, as this layout used
+ * to be. Beside placement next to the button found no room and fell to the
+ * bottom right of the window anyway, and a step anchored on the preview put
+ * its callout over the pane the learner had to type in.
  */
-const ADD_COMMAND: Pick<
+function editorLayout(lit: {
+  addCommand?: true;
+  preview?: true;
+}): Pick<
   TutorialStep,
-  "anchor" | "extraAnchors" | "calloutNudge" | "calloutMaxWidthPx"
-> = {
-  anchor: { kind: "help", id: "breakdown.addCommand" },
-  extraAnchors: [{ kind: "region", id: "breakdown.main" }],
-  calloutNudge: { x: 368 },
-  calloutMaxWidthPx: 380,
-};
+  "anchor" | "extraAnchors" | "calloutInsideAnchor" | "calloutMaxWidthPx"
+> {
+  return {
+    anchor: { kind: "region", id: "breakdown.main" },
+    extraAnchors: [
+      ...(lit.addCommand
+        ? [{ kind: "help", id: "breakdown.addCommand" } as const]
+        : []),
+      ...(lit.preview ? [PREVIEW_ANCHOR] : []),
+    ],
+    calloutInsideAnchor: "bottom-right",
+    calloutMaxWidthPx: 380,
+  };
+}
 
-/** A step that asks the learner to read the preview. */
+/** A step that adds a command or a #const. */
+const ADD_COMMAND = editorLayout({ addCommand: true });
+
+/** A step that adds a command and then has the learner watch the preview. */
+const ADD_COMMAND_AND_WATCH = editorLayout({ addCommand: true, preview: true });
+
+/**
+ * A step that changes attributes on a card and has the learner watch the
+ * preview. The preview alone is lit when the step opens, so the learner
+ * knows where to look. Then the spotlight fades (types.ts, `lookFirst`), and
+ * the Breakdown pane is no longer dimmed while they work in it. The callout
+ * keeps the editor layout's corner.
+ */
+const EDIT_AND_WATCH: Pick<
+  TutorialStep,
+  | "anchor"
+  | "extraAnchors"
+  | "calloutInsideAnchor"
+  | "calloutMaxWidthPx"
+  | "lookFirst"
+> = { ...editorLayout({}), lookFirst: [PREVIEW_ANCHOR] };
+
+/** A step that only asks the learner to read the preview. */
 const LOOK_AT_PREVIEW: Pick<TutorialStep, "anchor"> = {
-  anchor: { kind: "region", id: "sidePanel.preview" },
+  anchor: PREVIEW_ANCHOR,
 };
 
 /**
@@ -330,6 +374,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "player-placement",
         title: "Player Setup",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         ...ADD_COMMAND,
         // The tab too, since this is the first Breakdown step. A learner who
@@ -360,6 +405,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "water-first",
         title: "base_terrain",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         ...ADD_COMMAND,
         navigate: { section: LAND },
@@ -386,7 +432,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "player-lands",
         title: "One island per player",
+        kind: "build",
         track: BREAKDOWN_TRACK,
+        ...ADD_COMMAND_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "How will you create one island per player, at the distances and of the size we are looking for? Give it a go first.",
@@ -443,8 +491,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         // place. seedCheck.ts proves the islands shrink on the pinned seed.
         id: "does-the-square-count",
         title: "Does the square count?",
+        kind: "investigate",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...ADD_COMMAND_AND_WATCH,
         navigate: { section: "PLAYER_SETUP" },
         body: [
           "There is one more setting that changes how big these islands are, and it lives in Player Setup. Each island starts as a square with a radius of base_size (an edge of twice the base_size plus one), then grows to land_percent. Does that starting square count as part of the land_percent, or is the growth added on top of it?",
@@ -482,8 +531,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "player-land-avoidance",
         title: "Keep the player lands apart",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "Look at the two player lands. They are huge, and they are too close together. Before you open one of these hints, think about which setting on a land could keep other lands away from it.",
@@ -522,8 +572,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "show-the-border",
         title: "Use borders to constrain lands",
+        kind: "investigate",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           `Borders keep land away from the edge of the map. Add left_border, right_border, top_border and bottom_border to the create_player_lands command with a number value. Also add border_fuzziness 100.`,
@@ -546,8 +597,11 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         // land_percent 100, which is the state the learner is already in.
         id: "border-corners",
         title: "Four borders shape",
+        kind: "investigate",
         track: BREAKDOWN_TRACK,
-        ...LOOK_AT_PREVIEW,
+        // The learner raises the borders on the card, so the callout stays
+        // off the preview and the spotlight fades before they type.
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND, sidePanel: "preview" },
         body: [
           `(You may have noticed this already) Before you change anything, predict what shape the land will have if you raise all four borders to ${BORDER_CORNER_TEST}. Then do it and look at the preview.`,
@@ -570,8 +624,10 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "name-the-border",
         title: "Name a value once",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        // The #const comes from the Add command picker.
+        ...ADD_COMMAND_AND_WATCH,
         navigate: { section: LAND },
         body: [
           `Manually editing the same value in multiple places is a) annoying and b) error-prone. Give it a name instead. Add a #const called ${BORDER_CONSTANT}, then set all four borders to ${BORDER_CONSTANT}. One constant now moves all four borders together.`,
@@ -605,8 +661,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "ragged-edges",
         title: "Muddying border edges",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "At 100 the borders are perfectly straight, which looks artificial. Lower the border_fuzziness so the land can drift a little past the border. The edges turn ragged, and every seed gives a different outline. That makes the map both prettier and less predictable (therefore more fun and more replayable).",
@@ -631,8 +688,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "player-land-growth",
         title: "Player land growth",
+        kind: "investigate",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           `Lands have an initial size (base_size), which they then grow from. They will try to grow to their land_percent or number_of_tiles size, but can be stopped by constraints. Re-roll a few times with different base_size values (explore between 1-${OVERSIZED_BASE_SIZE}) and then set base_size to ${OVERSIZED_BASE_SIZE} and explore different land_percent values (like 0, ${NO_GROWTH_PERCENT}, ${NO_GROWTH_PERCENT + 1}, ${NO_GROWTH_PERCENT + 2}, ${NO_GROWTH_PERCENT + 3} and 20, and predict which of these will change the island). This should build your understanding of how these parameters affect land growth. `,
@@ -672,6 +730,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "something-is-wrong",
         title: "Spot the problem",
+        kind: "investigate",
         ...LOOK_AT_PREVIEW,
         navigate: { sidePanel: "preview" },
         preview: PINNED_PREVIEW,
@@ -695,7 +754,7 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
           [
             "What happened: ",
             {
-              spoiler: `If you turn land_percent to 0 you should immediately see what the issue is. The two islands join into one. Every land starts as a square, like you saw earlier. The width of the square is 2*base_size + 1 = ${2 * OVERSIZED_BASE_SIZE + 1} tiles across at base_size ${OVERSIZED_BASE_SIZE}, before any checks are done. At this seed the two players sit on a diagonal, close enough that the corners of their squares overlap. other_zone_avoidance_distance is only checked while a land grows, so it cannot pull apart squares that already overlap due to their base_size. The tiles that are too close will not grow, but the rest of the tiles will. Make sure you turn land_percent back to 25 before the next step, if you changed it.`,
+              spoiler: `If you turn land_percent to 0 you should immediately see what the issue is. The two islands join into one. Every land starts as a square, like you saw earlier. The width of the square is 2*base_size + 1 = ${2 * OVERSIZED_BASE_SIZE + 1} tiles across at base_size ${OVERSIZED_BASE_SIZE}, before any checks are done. At this seed the two players are lined up one above the other, or side by side, so their squares meet corner to corner. They are close enough that those corners overlap. other_zone_avoidance_distance is only checked while a land grows, so it cannot pull apart squares that already overlap due to their base_size. The tiles that are too close will not grow, but the rest of the tiles will. Make sure you turn land_percent back to 25 before the next step, if you changed it.`,
             },
           ],
         ],
@@ -704,14 +763,26 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "keep-them-apart",
         title: "Fixing the island-joining problem",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
+        // Wide enough for the two map pictures to be read side by side.
+        calloutMaxWidthPx: 420,
         navigate: { section: LAND },
         preview: PINNED_PREVIEW,
         body: [
           "Change base_size so the two islands are separate again. Try several values and find the biggest one that still leaves a clear channel of water the whole way between them.",
+          // startSquareDiagram.ts draws this to scale from the overlap rule,
+          // and its test checks the left picture's lining up against the
+          // pinned seed.
+          {
+            kind: "diagram",
+            name: "start-square-overlap",
+            alt: "Two copies of the diamond map, each with two players on the same ring the same distance apart. On the left the players are one above the other and their starting squares overlap at the corners. On the right they are lined up along an edge of the map and water separates their squares.",
+          },
+          "Both pictures have the players the same distance apart. A starting square follows the tile grid, so on the diamond map its corners point up, down, left and right. On the left the players are lined up one above the other. Their squares meet corner to corner and overlap, shown in red. On the right the players are lined up along an edge of the map. Their squares face each other side to side, with water between them.",
           [
-            "Test your value on other seeds. Players on a ring are not always diagonally opposite each other like this, so this problem is rare. Press Re-roll in the preview until two islands sit on a diagonal again. Do they still merge? Is anything else impacted? Hint: ",
+            "Test your value on other seeds. Only a few seeds line the players up like the left picture, one above the other or side by side, so this problem is rare. Press Re-roll in the preview until the players line up that way again. Do they still merge? Is anything else impacted? Hint: ",
             { spoiler: "What about land growth?" },
           ],
           [
@@ -742,8 +813,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "first-neutral-island",
         title: "A neutral island",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...ADD_COMMAND_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "Now the neutral islands. Make a snow neutral island that takes up 6% of the map, positioned in the left corner. Think about what attributes you should use/add.",
@@ -786,8 +858,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "shape-the-island",
         title: "Shape the island",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "Two more attributes decide what an island looks like. base_size sets how big it starts (which means less growth, so less deviation from the shape of a square or circle), and clumping_factor affects the growth behaviour. Add both to the neutral island.",
@@ -824,8 +897,11 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         // fill the map.
         id: "neutral-island-borders",
         title: "Box in the neutral island",
+        // Investigate, since the borders it adds are optional and the
+        // finished Comeer leaves them out.
+        kind: "investigate",
         track: BREAKDOWN_TRACK,
-        ...LOOK_AT_PREVIEW,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND, sidePanel: "preview" },
         body: [
           "If you would like to constrain the island further, you could use borders. As before, set land_percent to 100 and add border_fuzziness 100 to the neutral island, so the preview shows exactly where each border sits. Then add right_border and bottom_border and play around with them until the borders are in a place you are happy with.",
@@ -837,6 +913,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
           {
             kind: "spoiler",
             label: "Notice something?",
+            // Easy to skip as an aside, and it holds the half of the step
+            // that moves the corner cut off the map.
+            warn: true,
             paragraphs: [
               "Two of our three corners are being chamfered (cut off at a slant, like the octagon from earlier), and one is not. Weird. What's going on?",
               [
@@ -890,8 +969,10 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "four-corners",
         title: "Four corners",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        anchor: { kind: "region", id: "breakdown.cardList" },
+        // Duplicate is on the card's own menu, so no Add command.
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "Right-click the neutral island card in the Breakdown editor and choose Duplicate. Do it three times so there are four neutral islands, then move each one to its own corner.",
@@ -948,8 +1029,9 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
       {
         id: "one-random-number",
         title: "A little chance",
+        kind: "build",
         track: BREAKDOWN_TRACK,
-        ...ADD_COMMAND,
+        ...EDIT_AND_WATCH,
         navigate: { section: LAND },
         body: [
           "Every number so far is fixed, but we can inject some additional randomness into the map in a controlled, fair way. A good map balances fixed and random to be reasonably fair while also providing a unique experience each time the map is played. The fixed parts allow for consistent approach and fairness between players, and the random parts stop every game from feeling the same.",
@@ -983,42 +1065,19 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
         hint: "Waiting on an rnd() on base_size or clumping_factor, with both numbers in the range that works.",
       },
       {
+        // The last step. Finishing the map and the review questions share
+        // it, since a separate "write the rest" step followed by one more
+        // step read as if the tutorial had ended a step early.
         id: "the-rest",
-        title: "Finish the map",
+        title: "You made Comeer",
+        kind: "build",
         track: BREAKDOWN_TRACK,
         anchor: { kind: "region", id: "breakdown.sectionTabs" },
         body: [
-          "The land generation section is now done. The map still needs hills, forests and starting objects. You can have those sections automatically added to the end of your script now, or write it yourself.",
+          "That is the land section of a tournament map. The map still needs hills, forests and starting objects. Fill in the rest for me adds those sections to the end of your script, or you can write them yourself after you press Finish.",
           "The added script paints its snow terrain and forests on top of your islands, and its gold uses land_id 100 to find the neutral islands, which is why all four of yours share that land_id.",
           "Writing them is good practice. Add a create_elevation in Elevation Generation, a create_terrain FOREST in Terrain Generation, and a town centre and some resources in Objects Generation. Tutorial A has a worked example of each.",
-        ],
-        completion: {
-          kind: "check",
-          test: (ctx) =>
-            hasCommand(
-              ctx.parseResult,
-              "ELEVATION_GENERATION",
-              "create_elevation",
-            ) &&
-            hasCommand(
-              ctx.parseResult,
-              "TERRAIN_GENERATION",
-              "create_terrain",
-            ) &&
-            hasObject(ctx.parseResult, "TOWN_CENTER"),
-        },
-        autoFill: {
-          label: "Fill in the rest for me",
-          buildEdit: (ctx) =>
-            ctx.parseResult ? appendRestOfScript(ctx.parseResult) : null,
-        },
-        bypass: { label: "I'll write the rest myself" },
-      },
-      {
-        id: "you-made-comeer",
-        title: "You made Comeer",
-        body: [
-          "That is the land section of a tournament map. Before you go, here are some questions about what you've learnt.",
+          "Before you go, here are some questions about what you've learnt.",
           {
             kind: "spoiler",
             label:
@@ -1044,7 +1103,32 @@ export const landGenerationComeerTutorial: TutorialDefinition = {
             text: "A shared land_id lets one later command, such as the gold, treat the four as a group. Regarding zones, other_zone_avoidance_distance only keeps lands in different zones apart, so the neutral islands need a zone of their own to stay apart from the players.",
           },
         ],
-        completion: { kind: "manual" },
+        // Ticks once the sections are in, but never advances by itself. On
+        // the last step an advance is the end of the tutorial, which would
+        // close the card the moment the fill in button ran, before the
+        // questions were read. Finish ends it whether or not the check
+        // passed, so a learner writing the rest later needs no extra button.
+        completion: {
+          kind: "check",
+          autoAdvance: false,
+          test: (ctx) =>
+            hasCommand(
+              ctx.parseResult,
+              "ELEVATION_GENERATION",
+              "create_elevation",
+            ) &&
+            hasCommand(
+              ctx.parseResult,
+              "TERRAIN_GENERATION",
+              "create_terrain",
+            ) &&
+            hasObject(ctx.parseResult, "TOWN_CENTER"),
+        },
+        autoFill: {
+          label: "Fill in the rest for me",
+          buildEdit: (ctx) =>
+            ctx.parseResult ? appendRestOfScript(ctx.parseResult) : null,
+        },
       },
     ],
     COMEER_CODE_TWINS,

@@ -10,7 +10,7 @@ import { InlineCode, renderProse } from "../InlineCode";
 import styles from "./PreviewNotes.module.css";
 
 /** Which box is open over the preview's bottom edge. At most one. */
-export type PreviewPanelSection = "help" | "notes" | "legend";
+export type PreviewPanelSection = "help" | "objects" | "notes" | "legend";
 
 /**
  * The counts the button row and the Notes box share. Computed once here so
@@ -49,12 +49,14 @@ interface PreviewBarControlsProps {
   summary: PreviewSummary;
   open: PreviewPanelSection | null;
   onToggle: (section: PreviewPanelSection) => void;
+  /** How many objects the Obj. List has unticked, for the warning on its button. */
+  hiddenObjectCount: number;
 }
 
 /**
  * The preview's own buttons for the bottom row of the canvas: the placement
- * notice, then Help, Notes and Legend. `OverlayCanvas` puts them beside its
- * Export and zoom buttons (its `bottomControls` slot).
+ * notice, then Help, Obj. List, Notes and Legend. `OverlayCanvas` puts them
+ * beside its Export and zoom buttons (its `bottomControls` slot).
  *
  * The honesty surface: how many placements failed, what the preview did not
  * simulate, and what the colours mean. Sec.9 splits notes by `prominence`.
@@ -66,6 +68,7 @@ export function PreviewBarControls({
   summary,
   open,
   onToggle,
+  hiddenObjectCount,
 }: PreviewBarControlsProps) {
   const { drawerNotes, failureCount, placed } = summary;
   return (
@@ -90,6 +93,29 @@ export function PreviewBarControls({
           onClick={() => onToggle("help")}
         >
           ?
+        </button>
+      </HelpTip>
+      <HelpTip id="preview.objectList">
+        <button
+          type="button"
+          className={styles.barButton}
+          aria-expanded={open === "objects"}
+          onClick={() => onToggle("objects")}
+        >
+          Obj. List
+          {/* Objects missing from the map is an effect that shows somewhere
+              other than the control causing it, so the button says so even
+              while its box is closed. */}
+          {hiddenObjectCount > 0 && (
+            <span
+              className={styles.hiddenWarning}
+              title="Some objects are hidden from the preview"
+              aria-label="Some objects are hidden from the preview"
+            >
+              {" "}
+              ⚠
+            </span>
+          )}
         </button>
       </HelpTip>
       <HelpTip id="preview.notesDrawer">
@@ -117,7 +143,8 @@ export function PreviewBarControls({
 }
 
 interface PreviewPanelProps {
-  section: PreviewPanelSection;
+  /** Every section but the Obj. List, which PreviewCanvas renders itself since it holds that list's settings. */
+  section: Exclude<PreviewPanelSection, "objects">;
   result: PreviewWireResult;
   summary: PreviewSummary;
   palette: TerrainPalette;

@@ -23,6 +23,27 @@
   gap: 12px;
 }
 
+/* The controls as rendered into the left column's top row (ToolsSlots.tsx):
+   one line, the picker taking the spare width. */
+.columnControls {
+  flex: 1;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.columnControls .field {
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+}
+
+.columnControls .select {
+  flex: 1;
+  min-width: 0;
+}
+
 .field {
   display: flex;
   flex-direction: column;

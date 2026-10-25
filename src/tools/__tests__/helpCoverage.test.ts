@@ -60,12 +60,27 @@ describe("Advanced Tools help coverage", () => {
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
 
-  // The Breakdown card menu (2026-09-18) is a new file whose four entries
-  // are the only HelpTips in it, so like the Land Placement dialog above
-  // it is named here rather than left for the regex scan to miss.
+  // The Breakdown card menu (2026-09-18) is a new file whose entries are
+  // the only HelpTips in it, so like the Land Placement dialog above it is
+  // named here rather than left for the regex scan to miss. Five since
+  // Comment out joined on 2026-10-22.
   it("every HelpTip in the Breakdown card menu has a ui-help.json entry", () => {
     const used = helpTipIdsIn("src/breakdown/cards/CardMenu.tsx");
-    expect(used.length).toBe(4);
+    expect(used.length).toBe(5);
+    expect(used.filter((id) => !ids.has(id))).toEqual([]);
+  });
+
+  // The comment toggle (2026-10-22) picks its tip at runtime, so a literal
+  // `id="..."` scan never sees it. Every quoted id in the button must exist.
+  it("every id the comment toggle can show has a ui-help.json entry", () => {
+    const button = readFileSync(
+      join(REPO_ROOT, "src/breakdown/cards/CommentOutButton.tsx"),
+      "utf8",
+    );
+    const used = [...button.matchAll(/"(breakdown\.[\w.]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(used.length).toBe(2);
     expect(used.filter((id) => !ids.has(id))).toEqual([]);
   });
 

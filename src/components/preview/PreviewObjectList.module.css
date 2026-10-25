@@ -1,0 +1,102 @@
+/* Fills the box over the map (PreviewCanvas.module.css's .panel, a flex
+   column with a max height). `min-height: 0` lets this shrink to that cap,
+   so the table scrolls inside .scroll while the controls stay put. */
+.list {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Search, sort and Show all. Outside the scroll area, so they never move. */
+.controls {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* The HelpTip wrapper shrink-wraps, so the row is what stretches and the
+   input fills it. */
+.findRow {
+  display: flex;
+  width: 100%;
+}
+
+.findInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.showAll {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+/* No top padding on purpose. A sticky header sticks at the top of the
+   content box, so padding here would leave a strip above the header where
+   rows scroll past in view. */
+.scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.2rem 0.35rem;
+  text-align: left;
+}
+
+/* `z-index` because each checkbox sits in HelpTip's positioned wrapper,
+   which would otherwise paint over the header (positioned elements at
+   `z-index: auto` paint in DOM order). */
+.table th {
+  background: var(--surface-hover);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Each name on one line, whole. The other two columns give way first, since
+   their headers wrap at spaces. A panel too narrow even for that scrolls the
+   table sideways (.scroll's overflow) rather than splitting a name. */
+.name {
+  white-space: nowrap;
+}
+
+/* An object the script asked for and the generator never placed. Amber
+   rather than red: it is usually a real restriction doing its job. */
+.zeroCount {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.68rem;
+  color: var(--text-faint);
+}

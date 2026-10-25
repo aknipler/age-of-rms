@@ -77,12 +77,30 @@ export function applyEditIntent(
     ? rebaseEdit(result.companion, priorEdits)
     : undefined;
   if (rebasedCompanion === null) return null;
+  // A multi-card intent's remaining edits (removeNodes, moveNodes), each
+  // rebased on its own like the two halves above. One that overlaps an
+  // edit still in flight makes the whole action unavailable, never half
+  // applied.
+  const rebasedOthers: OffsetEdit[] = [];
+  for (const e of result.others ?? []) {
+    const r = rebaseEdit(e, priorEdits);
+    if (r === null) return null;
+    rebasedOthers.push(r);
+  }
   const rebasedCaret = shiftPointThroughEdits(result.caret, priorEdits);
   const rebased: EditResult = {
     edit: rebasedEdit,
     caret: rebasedCaret,
     ...(rebasedRemoval ? { removal: rebasedRemoval } : {}),
     ...(rebasedCompanion ? { companion: rebasedCompanion } : {}),
+    ...(result.others ? { others: rebasedOthers } : {}),
+    ...(result.selection
+      ? {
+          selection: result.selection.map((p) =>
+            shiftPointThroughEdits(p, priorEdits),
+          ),
+        }
+      : {}),
   };
   applyTextEdits(editsOf(rebased));
   return rebased;

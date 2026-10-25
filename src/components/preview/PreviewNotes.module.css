@@ -43,6 +43,13 @@
   background: rgba(255, 255, 255, 0.28);
 }
 
+/* The Obj. List button's warning while objects are hidden. A fixed amber
+   rather than the theme's --warning, since the button is a dark chip in
+   every theme. */
+.hiddenWarning {
+  color: #ffc94d;
+}
+
 /* The box's own scrolling is on the panel that holds these
    (PreviewCanvas.module.css's .panel), so the lists do not scroll too. */
 .noteList,

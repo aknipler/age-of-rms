@@ -8,6 +8,8 @@ import {
   matchesQuery,
   matchingCommandRows,
   orphanAttributeRows,
+  sortAttributesByName,
+  sortCommandRows,
   type ConstantSortKey,
 } from "../referenceRows";
 import type {
@@ -332,5 +334,120 @@ describe("orphanAttributeRows", () => {
     expect(orphanAttributeRows([commandA], [foo, bar, ghost], "")).toEqual([
       bar,
     ]);
+  });
+});
+
+describe("sortCommandRows", () => {
+  const SECTIONS = ["PLAYER_SETUP", "LAND_GENERATION", "OBJECTS_GENERATION"];
+  const zeta = attribute({ name: "zeta" });
+  const alpha = attribute({ name: "alpha" });
+  // Listed out of section order and out of name order, so neither key can
+  // pass by returning the input unchanged.
+  const objects = command({
+    name: "create_object",
+    section: "OBJECTS_GENERATION",
+  });
+  const land = command({ name: "create_land", section: "LAND_GENERATION" });
+  const setup = command({ name: "random_placement", section: "PLAYER_SETUP" });
+  const base = command({ name: "base_terrain", section: "LAND_GENERATION" });
+  const rows = [
+    { command: objects, attributes: [zeta, alpha] },
+    { command: land, attributes: [] },
+    { command: setup, attributes: [] },
+    { command: base, attributes: [] },
+  ];
+  const names = (sorted: { command: CommandDef }[]) =>
+    sorted.map((r) => r.command.name);
+
+  it("groups by section in script order, keeping the listed order inside a section", () => {
+    expect(names(sortCommandRows(rows, "section", "asc", SECTIONS))).toEqual([
+      "random_placement",
+      "create_land",
+      "base_terrain",
+      "create_object",
+    ]);
+  });
+
+  it("reverses the whole list when descending", () => {
+    expect(names(sortCommandRows(rows, "section", "desc", SECTIONS))).toEqual([
+      "create_object",
+      "base_terrain",
+      "create_land",
+      "random_placement",
+    ]);
+  });
+
+  it("sorts a section missing from the order last", () => {
+    const stray = command({ name: "aaa", section: "NOT_A_SECTION" });
+    const sorted = sortCommandRows(
+      [{ command: stray, attributes: [] }, ...rows],
+      "section",
+      "asc",
+      SECTIONS,
+    );
+    expect(names(sorted).at(-1)).toBe("aaa");
+  });
+
+  it("sorts by name, and sorts each command's attributes by name too", () => {
+    const sorted = sortCommandRows(rows, "name", "asc", SECTIONS);
+    expect(names(sorted)).toEqual([
+      "base_terrain",
+      "create_land",
+      "create_object",
+      "random_placement",
+    ]);
+    expect(sorted[2].attributes.map((a) => a.name)).toEqual(["alpha", "zeta"]);
+  });
+
+  it("keeps attributes in their listed order when sorting by section", () => {
+    const sorted = sortCommandRows(rows, "section", "asc", SECTIONS);
+    expect(sorted.at(-1)?.attributes.map((a) => a.name)).toEqual([
+      "zeta",
+      "alpha",
+    ]);
+  });
+
+  it("does not reorder the input array", () => {
+    sortCommandRows(rows, "name", "asc", SECTIONS);
+    expect(names(rows)[0]).toBe("create_object");
+    expect(rows[0].attributes.map((a) => a.name)).toEqual(["zeta", "alpha"]);
+  });
+
+  it("orders the real commands by language.json's own section list", () => {
+    const real = languageData.commands.map((c) => ({
+      command: c,
+      attributes: [],
+    }));
+    const sorted = sortCommandRows(
+      real,
+      "section",
+      "asc",
+      languageData.sections,
+    );
+    const ranks = sorted.map((r) =>
+      languageData.sections.indexOf(r.command.section),
+    );
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+});
+
+describe("sortAttributesByName", () => {
+  it("sorts in either direction without touching the input", () => {
+    const input = [
+      attribute({ name: "b" }),
+      attribute({ name: "c" }),
+      attribute({ name: "a" }),
+    ];
+    expect(sortAttributesByName(input, "asc").map((a) => a.name)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(sortAttributesByName(input, "desc").map((a) => a.name)).toEqual([
+      "c",
+      "b",
+      "a",
+    ]);
+    expect(input.map((a) => a.name)).toEqual(["b", "c", "a"]);
   });
 });

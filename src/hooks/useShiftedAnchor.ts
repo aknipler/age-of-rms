@@ -54,7 +54,24 @@ export function useShiftedAnchor(
   Dispatch<SetStateAction<number | null>>,
   (offset: number) => void,
 ] {
-  const [anchor, setAnchor] = useState<number | null>(null);
+  return useShiftedValue<number | null>(source, null, shift);
+}
+
+/**
+ * The same queue for any value made of offsets (2026-10-21). Multi-select
+ * keeps a LIST of extra card anchors beside the single primary one, and
+ * the list has exactly the anchor's problem, so this is the anchor's own
+ * implementation with the value's type as a parameter (a *generic* hook).
+ * The alternative, a second hand copy of the BUG-001 queue for arrays, is
+ * the duplication the extraction above was made to end. `T` is whatever the
+ * caller's `shift` knows how to move; the hook itself never looks inside.
+ */
+export function useShiftedValue<T>(
+  source: string,
+  initial: T,
+  shift: (value: T, edit: OffsetEdit) => T,
+): [T, Dispatch<SetStateAction<T>>, (value: T) => void] {
+  const [anchor, setAnchor] = useState<T>(initial);
   // An offset to adopt once every queued shift has been applied
   // (2026-09-18, the card-move work). A move deletes the card's old text,
   // so the anchor inside it is dropped by the shift below, and the new
@@ -62,8 +79,9 @@ export function useShiftedAnchor(
   // it eagerly would hand a post-edit offset to a shift that still expects a
   // pre-edit one, and the queue would move it a second time. So the caller
   // parks it here and the resolving effect adopts it after the shifts, in
-  // the same state update.
-  const afterPendingRef = useRef<number | null>(null);
+  // the same state update. Boxed, since `null` is a real value for the
+  // anchor (nothing selected) and cannot also mean "nothing parked".
+  const afterPendingRef = useRef<{ value: T } | null>(null);
 
   // Latest-callback ref, the same pattern CodePane uses for
   // onCursorOffsetChange: the effect below must call the CURRENT `shift`
@@ -121,7 +139,7 @@ export function useShiftedAnchor(
       pendingRef.current.length === 0 ? afterPendingRef.current : null;
     if (adopt !== null) afterPendingRef.current = null;
     setAnchor((prev) => {
-      if (adopt !== null) return adopt;
+      if (adopt !== null) return adopt.value;
       let next = prev;
       for (const { edits } of toApply) {
         for (const edit of edits) next = shiftRef.current(next, edit);
@@ -130,9 +148,9 @@ export function useShiftedAnchor(
     });
   }, [source]);
 
-  const setAfterPending = useCallback((offset: number) => {
-    if (pendingRef.current.length === 0) setAnchor(offset);
-    else afterPendingRef.current = offset;
+  const setAfterPending = useCallback((value: T) => {
+    if (pendingRef.current.length === 0) setAnchor(() => value);
+    else afterPendingRef.current = { value };
   }, []);
 
   return [anchor, setAnchor, setAfterPending];

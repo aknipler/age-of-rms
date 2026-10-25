@@ -11,6 +11,7 @@ import type {
   MapSize,
   TeamNumber,
 } from "./generationSettings/generationSettingsConstants";
+import { perfLog, perfTime } from "./perfTrace";
 
 // docs/preview-design.md Sec.10. Mirrors useParsedDocument.ts's shape
 // closely on purpose (same worker lifecycle, same request-id staleness
@@ -105,6 +106,8 @@ export function usePreviewResult(
   // ids are monotonic, so the map is cleared whenever a new request is sent
   // rather than growing for the life of the session.
   const retriesRef = useRef<Map<number, number>>(new Map());
+  // When the latest request was posted, for src/perfTrace.ts only.
+  const previewSentAtRef = useRef(0);
 
   const settings: PreviewSettings = useMemo(
     () => ({ playerCount, mapSize, teams, teamPositions }),
@@ -125,7 +128,14 @@ export function usePreviewResult(
         // Stale response (a newer request has since been sent, or the
         // watchdog already reposted this one under a fresh id) -- drop it,
         // same discard-by-id rule as useParsedDocument.ts.
-        if (data.id !== latestRequestIdRef.current) return;
+        if (data.id !== latestRequestIdRef.current) {
+          perfLog(`preview #${data.id} back but superseded, dropped`);
+          return;
+        }
+        perfLog(
+          `preview #${data.id} back`,
+          `${(performance.now() - previewSentAtRef.current).toFixed(1)} ms after it was sent (queue + generate + transfer)`,
+        );
         clearWatchdog();
         setPending(false);
         if (data.ok) setResult(data.result);
@@ -188,7 +198,12 @@ export function usePreviewResult(
 
   const postRequest = useCallback(
     (request: PreviewRequest): void => {
-      workerRef.current?.postMessage(request);
+      // postMessage clones the whole ParseResult synchronously, on this
+      // (main) thread, before it returns. That clone is what perfTime sees.
+      previewSentAtRef.current = performance.now();
+      perfTime(`preview #${request.id} sent, main thread serialize`, () =>
+        workerRef.current?.postMessage(request),
+      );
       armWatchdog(request);
     },
     [armWatchdog],

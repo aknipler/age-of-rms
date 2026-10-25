@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { SlotKind } from "../../parser/nameLookup";
 import type { RandomNode } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { BlockList } from "../BlockList";
@@ -7,10 +8,20 @@ import { CommandPicker, intentForPick } from "../CommandPicker";
 import { renderArg } from "../renderValue";
 import { HelpTip } from "../../components/HelpTip";
 import { TrashIcon } from "../../components/TrashIcon";
+import { CommentOutButton } from "./CommentOutButton";
 import { ProblemBadge } from "./ProblemBadge";
 import { diagnosticsWithin } from "../diagnosticsForSpan";
 import cardStyles from "./cards.module.css";
 import styles from "./ConditionalCard.module.css";
+
+// A percent_chance reads like any percent argument, so a #const holding a
+// chance suggests, flashes and offers to be created the same way. The def is
+// the card's own, since percent_chance is a control keyword and language.json
+// carries no argument list for it (parser-design Sec.5.1's pinned exception).
+const CHANCE_SLOT: SlotKind = {
+  kind: "argument",
+  def: { name: "chance", type: "percent" },
+};
 
 // docs/breakdown-design.md Sec.3.5, same shape as ConditionalCard, one
 // segment per percent_chance branch, wired to the patch engine (setChance,
@@ -25,8 +36,8 @@ export function RandomCard({ node }: { node: RandomNode }) {
   const cardDiagnostics = diagnosticsWithin(diagnostics, node.span);
 
   return (
-    <div className={cardStyles.card}>
-      <div className={styles.title}>
+    <div className={cardStyles.card} data-card>
+      <div className={styles.title} data-card-header>
         <HelpTip id="breakdown.randomCard">
           <span>Random (start_random / percent_chance)</span>
         </HelpTip>
@@ -42,10 +53,12 @@ export function RandomCard({ node }: { node: RandomNode }) {
           {cardDiagnostics.length > 0 && (
             <ProblemBadge diagnostics={cardDiagnostics} />
           )}
+          <CommentOutButton card={node} disabled={node.end === undefined} />
           <HelpTip id="breakdown.randomCard.delete">
             <button
               type="button"
               className={cardStyles.deleteButton}
+              data-quiet
               onClick={(e) => {
                 e.stopPropagation();
                 applyEdit({ kind: "removeNode", node });
@@ -109,6 +122,7 @@ export function RandomCard({ node }: { node: RandomNode }) {
                 // value. This example-value hint fills the resulting gap,
                 // the same idea as ValueEditor's own constant-type hints.
                 hint="e.g. 50"
+                names={isExprChance ? null : CHANCE_SLOT}
                 allowSpaces={isExprChance}
                 onCommit={(value, restoreFocus) => {
                   const result = applyEdit({
@@ -117,6 +131,7 @@ export function RandomCard({ node }: { node: RandomNode }) {
                     value,
                   });
                   if (result && restoreFocus) requestFocus(result.caret);
+                  return result;
                 }}
               />
               {node.branches.length > 1 && (

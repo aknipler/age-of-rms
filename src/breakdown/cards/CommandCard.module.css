@@ -107,6 +107,10 @@
 .deleteSlot {
   margin-left: auto;
   flex-shrink: 0;
+  /* The comment toggle sits beside Delete (2026-10-22). */
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .body {
@@ -268,4 +272,19 @@
   font-size: 0.75rem;
   font-style: italic;
   color: var(--text-muted);
+}
+
+/* The add-inline-comment button (2026-10-21, InlineComment.tsx), shown only
+   while the pointer is on the header or the button has focus. Hidden with
+   visibility rather than opacity, so the empty spot cannot be clicked by
+   accident. */
+.inlineAddSlot {
+  visibility: hidden;
+  flex-shrink: 0;
+  margin-left: 0.4rem;
+}
+
+.header:hover .inlineAddSlot,
+.inlineAddSlot:focus-within {
+  visibility: visible;
 }

@@ -1,0 +1,2046 @@
+{
+  "maps": 57,
+  "skeletons": [
+    {
+      "key": "create_connect_all_lands",
+      "maps": 5,
+      "attributes": [
+        { "name": "replace_terrain", "values": ["BEACH", "BEACH_TERRAIN"] },
+        { "name": "terrain_size", "values": ["BASE_TERRAIN", "1000", "0"] },
+        { "name": "terrain_cost", "values": ["BEACH", "1"] }
+      ]
+    },
+    {
+      "key": "create_connect_all_players_land",
+      "maps": 6,
+      "attributes": [
+        { "name": "replace_terrain", "values": ["DESERT", "DIRT"] },
+        { "name": "terrain_cost", "values": ["BASE_TERRAIN", "1"] },
+        { "name": "terrain_size", "values": ["EDGE_FOREST", "1", "0"] }
+      ]
+    },
+    {
+      "key": "create_connect_to_nonplayer_land",
+      "maps": 4,
+      "attributes": [
+        {
+          "name": "replace_terrain",
+          "values": ["CENTER_FOREST_TERRAIN", "CENTER_NONBUILDABLE_TERRAIN"]
+        },
+        { "name": "terrain_cost", "values": ["10"] },
+        {
+          "name": "terrain_size",
+          "values": ["CENTER_NONBUILDABLE_TERRAIN", "1", "1"]
+        }
+      ]
+    },
+    {
+      "key": "create_elevation",
+      "maps": 43,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "number_of_tiles", "values": ["(256 * MAPSCALE_AREA)"] },
+        { "name": "enable_balanced_elevation", "values": [] },
+        { "name": "number_of_clumps", "values": ["27"] }
+      ]
+    },
+    {
+      "key": "create_elevation 1",
+      "maps": 8,
+      "attributes": [
+        { "name": "base_terrain", "values": ["GRASS"] },
+        {
+          "name": "number_of_tiles",
+          "values": ["(MIDDLE_ELEVATION_TILES * MAPSCALE_AREA)"]
+        },
+        { "name": "enable_balanced_elevation", "values": [] },
+        {
+          "name": "number_of_clumps",
+          "values": ["(MIDDLE_ELEVATION_CLUMPS * MAPSCALE_AREA)"]
+        }
+      ]
+    },
+    {
+      "key": "create_elevation 2",
+      "maps": 10,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "number_of_tiles", "values": ["(256 * MAPSCALE_AREA)"] },
+        { "name": "enable_balanced_elevation", "values": [] },
+        { "name": "number_of_clumps", "values": ["3"] }
+      ]
+    },
+    {
+      "key": "create_elevation 3",
+      "maps": 15,
+      "attributes": [
+        { "name": "base_terrain", "values": ["CIRCLE_TERRAIN"] },
+        { "name": "enable_balanced_elevation", "values": [] },
+        { "name": "number_of_tiles", "values": ["(256 * MAPSCALE_AREA)"] },
+        {
+          "name": "number_of_clumps",
+          "values": ["(FOREST_ELEVATION_CLUMPS * MAPSCALE_AREA)"]
+        }
+      ]
+    },
+    {
+      "key": "create_elevation 4",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["PLAYER_TEMP_TERR"] },
+        {
+          "name": "number_of_tiles",
+          "values": ["(SPAWN_ELEVATION_TILES * PLAYER_COUNT)"]
+        },
+        {
+          "name": "number_of_clumps",
+          "values": ["(SPAWN_ELEVATION_CLUMPS * PLAYER_COUNT)"]
+        },
+        { "name": "enable_balanced_elevation", "values": [] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_elevation 5",
+      "maps": 8,
+      "attributes": [
+        { "name": "enable_balanced_elevation", "values": [] },
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        {
+          "name": "number_of_tiles",
+          "values": ["(OUTSIDE_ELEVATION_TILES * MAPSCALE_AREA)"]
+        },
+        {
+          "name": "number_of_clumps",
+          "values": ["(OUTSIDE_ELEVATION_CLUMPS * MAPSCALE_AREA)"]
+        }
+      ]
+    },
+    {
+      "key": "create_elevation 7",
+      "maps": 8,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "number_of_tiles", "values": ["1000000"] },
+        { "name": "number_of_clumps", "values": ["(32 * MAPSCALE_AREA)"] },
+        { "name": "enable_balanced_elevation", "values": [] }
+      ]
+    },
+    {
+      "key": "create_land",
+      "maps": 50,
+      "attributes": [
+        { "name": "terrain_type", "values": ["BASE_TERRAIN"] },
+        { "name": "base_size", "values": ["1"] },
+        { "name": "land_position", "values": ["50", "50"] }
+      ]
+    },
+    {
+      "key": "create_object",
+      "maps": 53,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object 9V_SHEEP",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_players", "values": ["1"] },
+        { "name": "find_closest", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object 9V_STRAGGLER",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["7"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "enable_tile_shuffling", "values": [] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "actor_area", "values": ["AA_9V_STRAGGLER"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["AA_9V_HOUSE"] }
+      ]
+    },
+    {
+      "key": "create_object ANIMAL_SKELETON",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1024"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["12"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "actor_area", "values": ["502"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["110"] }
+      ]
+    },
+    {
+      "key": "create_object BARRACKS",
+      "maps": 9,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["1310"] },
+        { "name": "actor_area_radius", "values": ["4"] },
+        { "name": "avoid_actor_area", "values": ["702"] }
+      ]
+    },
+    {
+      "key": "create_object BIRDS_A",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "set_scaling_to_map_size", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object BIRD_A",
+      "maps": 13,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["rnd(3,5)"] },
+        { "name": "set_scaling_to_map_size", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object BIRD_B",
+      "maps": 12,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["rnd(3,5)"] },
+        { "name": "set_scaling_to_map_size", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object BLACKSMITH",
+      "maps": 7,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["1320"] },
+        { "name": "actor_area_radius", "values": ["4"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object BLANKOBJECT",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "actor_area", "values": ["940"] },
+        { "name": "actor_area_radius", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object BOAR",
+      "maps": 14,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["DIRT"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "min_distance_to_players", "values": ["16"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "temp_min_distance_group_placement", "values": ["7"] },
+        { "name": "min_distance_group_placement", "values": ["2"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "set_circular_placement", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object BUSH_B",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_groups", "values": ["999"] },
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["22"] }
+      ]
+    },
+    {
+      "key": "create_object CASTLE",
+      "maps": 6,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["10"] },
+        { "name": "max_distance_to_players", "values": ["10"] }
+      ]
+    },
+    {
+      "key": "create_object CORNER_PIECE",
+      "maps": 3,
+      "attributes": [
+        { "name": "second_object", "values": ["WALL"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["64"] },
+        { "name": "min_distance_to_players", "values": ["16"] },
+        { "name": "max_distance_to_players", "values": ["16"] },
+        { "name": "actor_area", "values": ["4"] },
+        { "name": "actor_area_radius", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_object DEER",
+      "maps": 9,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_groups", "values": ["2"] },
+        { "name": "terrain_to_place_on", "values": ["DIRT"] },
+        { "name": "min_distance_to_players", "values": ["14"] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "max_distance_to_players", "values": ["20"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "avoid_actor_area", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object DLC_ANIMALSKELETON",
+      "maps": 6,
+      "attributes": [
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "number_of_objects", "values": ["rnd(0,6)"] },
+        { "name": "min_distance_to_players", "values": ["35"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_DEADTREE",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "terrain_to_place_on", "values": ["DLC_CRACKED"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_scaling_to_map_size", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_GOAT",
+      "maps": 6,
+      "attributes": [
+        { "name": "number_of_groups", "values": ["2"] },
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["DESERT"] },
+        { "name": "min_distance_to_players", "values": ["15"] },
+        { "name": "avoid_forest_zone", "values": ["3"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["18"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "avoid_actor_area", "values": ["6001"] }
+      ]
+    },
+    {
+      "key": "create_object DLC_IBEX",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "number_of_groups", "values": ["105"] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["DESERT"] },
+        { "name": "temp_min_distance_group_placement", "values": ["10"] },
+        { "name": "avoid_actor_area", "values": ["14"] },
+        { "name": "avoid_forest_zone", "values": ["1"] },
+        { "name": "min_distance_to_players", "values": ["15"] },
+        { "name": "find_closest", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_KOMODO",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "number_of_groups", "values": ["105"] },
+        { "name": "terrain_to_place_on", "values": ["DIRT_SNOW"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "temp_min_distance_group_placement", "values": ["19"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_ORANGEBUSH",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["5"] },
+        { "name": "number_of_groups", "values": ["3699"] },
+        { "name": "terrain_to_place_on", "values": ["DLC_DRYGRASS"] },
+        { "name": "temp_min_distance_group_placement", "values": ["15"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "avoid_forest_zone", "values": ["3"] }
+      ]
+    },
+    {
+      "key": "create_object DLC_OSTRICH",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_groups", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["BEACH"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "min_distance_to_players", "values": ["11"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "min_distance_group_placement", "values": ["2"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "avoid_actor_area", "values": ["1234"] },
+        { "name": "set_circular_placement", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_STORK",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "set_scaling_to_map_size", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_VULTURE",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["7"] },
+        { "name": "set_scaling_to_map_size", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DLC_ZEBRA",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["rnd(3,4)"] },
+        { "name": "terrain_to_place_on", "values": ["DESERT"] },
+        { "name": "number_of_groups", "values": ["105"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "avoid_forest_zone", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["1"] },
+        { "name": "temp_min_distance_group_placement", "values": ["22"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "min_distance_to_players", "values": ["25"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object DOCK",
+      "maps": 3,
+      "attributes": [
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_gaia_unconvertible", "values": [] },
+        { "name": "make_indestructible", "values": [] },
+        { "name": "actor_area_to_place_in", "values": ["1998"] },
+        { "name": "temp_min_distance_group_placement", "values": ["10"] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "actor_area", "values": ["1999"] },
+        { "name": "actor_area_radius", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_object ESCALATION_REVEALER",
+      "maps": 6,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["0"] },
+        { "name": "max_distance_to_players", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object EW_REVEALER",
+      "maps": 3,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["0"] },
+        { "name": "max_distance_to_players", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object FARM",
+      "maps": 7,
+      "attributes": [
+        { "name": "second_object", "values": ["VILLAGER"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "find_closest", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object FORAGE",
+      "maps": 19,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["6"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "group_placement_radius", "values": ["1"] },
+        { "name": "min_distance_group_placement", "values": ["4"] },
+        { "name": "min_distance_to_players", "values": ["10"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "max_distance_to_players", "values": ["14"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "avoid_actor_area", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object FORAGE_BUSH",
+      "maps": 7,
+      "attributes": [
+        { "name": "second_object", "values": ["PLANT_DEAD"] },
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "number_of_groups", "values": ["1024"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["1"] },
+        { "name": "min_distance_to_players", "values": ["32"] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["28"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["8"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "min_distance_to_map_edge", "values": ["6"] },
+        { "name": "actor_area", "values": ["1000"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object FURBEARER_B",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "number_of_groups", "values": ["1024"] },
+        { "name": "set_loose_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["22"] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["28"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["6"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "actor_area", "values": ["1060"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object GOLD",
+      "maps": 45,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "number_of_groups", "values": ["2"] },
+        { "name": "group_placement_radius", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "min_distance_to_players", "values": ["10"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "min_distance_group_placement", "values": ["3"] },
+        { "name": "temp_min_distance_group_placement", "values": ["24"] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["9999"] },
+        { "name": "avoid_actor_area", "values": ["20"] },
+        { "name": "actor_area_radius", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_object HERDABLE",
+      "maps": 6,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["14"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "max_distance_to_other_zones", "values": ["1"] },
+        { "name": "max_distance_to_players", "values": ["19"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "find_closest", "values": [] },
+        { "name": "set_circular_placement", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object HERDABLE_A",
+      "maps": 11,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "set_loose_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["5"] },
+        { "name": "max_distance_to_players", "values": ["6"] },
+        { "name": "actor_area", "values": ["1113"] },
+        { "name": "actor_area_radius", "values": ["3"] },
+        { "name": "avoid_actor_area", "values": ["21"] }
+      ]
+    },
+    {
+      "key": "create_object HERDABLE_B",
+      "maps": 7,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "number_of_groups", "values": ["1"] },
+        { "name": "set_loose_grouping", "values": [] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["12"] },
+        { "name": "min_distance_to_players", "values": ["14"] },
+        { "name": "max_distance_to_other_zones", "values": ["1"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object HOUSE",
+      "maps": 13,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "min_distance_to_players", "values": ["8"] },
+        { "name": "temp_min_distance_group_placement", "values": ["8"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "min_distance_group_placement", "values": ["3"] },
+        { "name": "actor_area", "values": ["1300"] },
+        { "name": "avoid_actor_area", "values": ["1113"] }
+      ]
+    },
+    {
+      "key": "create_object HUNTABLE",
+      "maps": 11,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "number_of_groups", "values": ["3"] },
+        { "name": "terrain_to_place_on", "values": ["LAND_FINAL"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "min_distance_group_placement", "values": ["2"] },
+        { "name": "temp_min_distance_group_placement", "values": ["24"] },
+        { "name": "min_distance_to_players", "values": ["14"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object HUNTABLE_B",
+      "maps": 7,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "number_of_groups", "values": ["1024"] },
+        { "name": "set_loose_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["40"] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["32"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["6"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "actor_area", "values": ["1045"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object HUNTABLE_SMALL_B",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "number_of_groups", "values": ["1024"] },
+        { "name": "set_loose_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["22"] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["12"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["6"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "actor_area", "values": ["1040"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object ITALIAN_PINETREE",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["10"] },
+        { "name": "terrain_to_place_on", "values": ["PALM_DESERT"] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object KING",
+      "maps": 14,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["6"] },
+        { "name": "max_distance_to_players", "values": ["12"] }
+      ]
+    },
+    {
+      "key": "create_object LARGE_TEMP_REVEALER",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_players", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object LUMBER_CAMP",
+      "maps": 6,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "place_on_forest_zone", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["OUTSIDE_TERRAIN"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "actor_area", "values": ["1020"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["10"] }
+      ]
+    },
+    {
+      "key": "create_object LURABLE",
+      "maps": 6,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "number_of_groups", "values": ["2"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "min_distance_group_placement", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["16"] },
+        { "name": "temp_min_distance_group_placement", "values": ["11"] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "max_distance_to_players", "values": ["16"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "avoid_actor_area", "values": ["2816"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_circular_placement", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object LUREABLE_A",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "find_closest", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["12"] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["30"] },
+        { "name": "actor_area_radius", "values": ["4"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object MAKE_FOREST_TERRAIN",
+      "maps": 3,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["4056"] },
+        { "name": "number_of_groups", "values": ["4"] },
+        {
+          "name": "terrain_to_place_on",
+          "values": ["CENTER_NONBUILDABLE_TERRAIN"]
+        },
+        { "name": "temp_min_distance_group_placement", "values": ["76"] },
+        { "name": "second_object", "values": ["FOREST_STRAGGLERS"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "avoid_forest_zone", "values": ["20"] },
+        { "name": "set_gaia_unconvertible", "values": [] },
+        { "name": "ignore_terrain_restrictions", "values": [] },
+        { "name": "min_distance_to_players", "values": ["30"] }
+      ]
+    },
+    {
+      "key": "create_object MARKET",
+      "maps": 3,
+      "attributes": [
+        { "name": "terrain_to_place_on", "values": ["DIRT2"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_gaia_unconvertible", "values": [] },
+        { "name": "make_indestructible", "values": [] },
+        { "name": "ignore_terrain_restrictions", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object MELKARYBA",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["12"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object MILL",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["2"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["1001"] },
+        { "name": "actor_area_radius", "values": ["3"] },
+        { "name": "actor_area_to_place_in", "values": ["70"] },
+        { "name": "avoid_actor_area", "values": ["802"] }
+      ]
+    },
+    {
+      "key": "create_object MINING_CAMP",
+      "maps": 6,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["2"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["1011"] },
+        { "name": "actor_area_radius", "values": ["3"] },
+        { "name": "actor_area_to_place_in", "values": ["80"] },
+        { "name": "avoid_actor_area", "values": ["702"] }
+      ]
+    },
+    {
+      "key": "create_object NERITIC_A",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4096"] },
+        { "name": "temp_min_distance_group_placement", "values": ["12"] },
+        { "name": "actor_area", "values": ["400"] },
+        { "name": "actor_area_radius", "values": ["1"] },
+        { "name": "avoid_actor_area", "values": ["70"] }
+      ]
+    },
+    {
+      "key": "create_object ONGRID_PLACEHOLDER",
+      "maps": 11,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "actor_area_to_place_in", "values": ["2800"] },
+        { "name": "actor_area", "values": ["7000"] },
+        { "name": "actor_area_radius", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object OYSTERS",
+      "maps": 6,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "number_of_groups", "values": ["2"] },
+        { "name": "temp_min_distance_group_placement", "values": ["13"] },
+        { "name": "terrain_to_place_on", "values": ["WATER"] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "min_distance_group_placement", "values": ["2"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object O_STRAGGLER",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["12"] },
+        { "name": "min_distance_to_players", "values": ["16"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["2"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "avoid_forest_zone", "values": ["1"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["60"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["30"] }
+      ]
+    },
+    {
+      "key": "create_object PALMTREE",
+      "maps": 6,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["DIRT"] },
+        { "name": "number_of_groups", "values": ["2"] },
+        { "name": "temp_min_distance_group_placement", "values": ["3"] },
+        { "name": "min_distance_to_players", "values": ["4"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "max_distance_to_players", "values": ["5"] }
+      ]
+    },
+    {
+      "key": "create_object PH_GENERIC_OFF",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "min_distance_to_players", "values": ["0"] },
+        { "name": "max_distance_to_players", "values": ["0"] },
+        { "name": "actor_area", "values": ["10000"] },
+        { "name": "actor_area_radius", "values": ["23"] }
+      ]
+    },
+    {
+      "key": "create_object PH_GENERIC_ON",
+      "maps": 3,
+      "attributes": [
+        { "name": "second_object", "values": ["DOCK"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["WATER_A"] },
+        { "name": "min_distance_group_placement", "values": ["3"] },
+        { "name": "max_distance_to_other_zones", "values": ["2"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "actor_area_to_place_in", "values": ["1030"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["1030"] },
+        { "name": "actor_area_radius", "values": ["1"] },
+        { "name": "avoid_actor_area", "values": ["1130"] }
+      ]
+    },
+    {
+      "key": "create_object PH_NEUTRAL_OFF",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "number_of_objects", "values": ["5"] },
+        { "name": "min_distance_to_players", "values": ["1"] },
+        { "name": "max_distance_to_players", "values": ["1"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "actor_area", "values": ["20"] },
+        { "name": "actor_area_radius", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object PH_PLAYER_OFF",
+      "maps": 4,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["1"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "actor_area_to_place_in", "values": ["20"] },
+        { "name": "actor_area", "values": ["2"] },
+        { "name": "actor_area_radius", "values": ["0"] },
+        { "name": "avoid_actor_area", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_object PLACEHOLDER_GENERIC",
+      "maps": 9,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1024"] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] },
+        { "name": "actor_area_to_place_in", "values": ["1000"] },
+        { "name": "actor_area", "values": ["7000"] },
+        { "name": "actor_area_radius", "values": ["6"] }
+      ]
+    },
+    {
+      "key": "create_object PLANT_BUSH",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1024"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["4"] },
+        { "name": "actor_area_to_place_in", "values": ["7001"] },
+        { "name": "actor_area", "values": ["0"] },
+        { "name": "actor_area_radius", "values": ["0"] },
+        { "name": "avoid_actor_area", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object PLANT_FLOWERS",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1024"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["4"] },
+        { "name": "actor_area_to_place_in", "values": ["7001"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "actor_area", "values": ["0"] },
+        { "name": "actor_area_radius", "values": ["0"] },
+        { "name": "avoid_actor_area", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object PLANT_WEEDS",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["24"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "min_distance_to_players", "values": ["18"] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["MIDDLE_TERRAIN"] },
+        { "name": "actor_area", "values": ["8004"] },
+        { "name": "actor_area_radius", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object PREDATOR_A",
+      "maps": 9,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["24"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["35"] },
+        { "name": "actor_area", "values": ["50"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "avoid_actor_area", "values": ["22"] }
+      ]
+    },
+    {
+      "key": "create_object RED_FOX",
+      "maps": 3,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "number_of_groups", "values": ["1"] },
+        { "name": "temp_min_distance_group_placement", "values": ["13"] },
+        { "name": "min_distance_to_players", "values": ["30"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "enable_tile_shuffling", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object RELIC",
+      "maps": 38,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["MIDDLE_TERRAIN"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "temp_min_distance_group_placement", "values": ["16"] },
+        { "name": "min_distance_to_players", "values": ["24"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object ROCK",
+      "maps": 6,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["9320"] },
+        { "name": "number_of_groups", "values": ["300"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["DIRT"] }
+      ]
+    },
+    {
+      "key": "create_object ROCK2",
+      "maps": 4,
+      "attributes": [
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "number_of_groups", "values": ["3699"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["DLC_BLACK"] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] },
+        { "name": "avoid_actor_area", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_object SCOUT",
+      "maps": 26,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["7"] },
+        { "name": "max_distance_to_players", "values": ["9"] }
+      ]
+    },
+    {
+      "key": "create_object SEA_ROCKS_1",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "number_of_groups", "values": ["20000"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["MED_WATER"] },
+        { "name": "temp_min_distance_group_placement", "values": ["16"] }
+      ]
+    },
+    {
+      "key": "create_object SEA_ROCKS_2",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "number_of_groups", "values": ["20000"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "terrain_to_place_on", "values": ["MED_WATER"] },
+        { "name": "temp_min_distance_group_placement", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object SEA_ROCKS_A",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["64"] },
+        { "name": "max_distance_to_other_zones", "values": ["2"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "actor_area", "values": ["8000"] },
+        { "name": "actor_area_radius", "values": ["4"] },
+        { "name": "avoid_actor_area", "values": ["1230"] }
+      ]
+    },
+    {
+      "key": "create_object SEA_ROCKS_B",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["24"] },
+        { "name": "max_distance_to_other_zones", "values": ["2"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "min_distance_to_map_edge", "values": ["2"] },
+        { "name": "actor_area", "values": ["8000"] },
+        { "name": "actor_area_radius", "values": ["4"] },
+        { "name": "avoid_actor_area", "values": ["1230"] }
+      ]
+    },
+    {
+      "key": "create_object SHEEP",
+      "maps": 8,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "terrain_to_place_on", "values": ["DIRT"] },
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "min_distance_to_players", "values": ["6"] },
+        { "name": "max_distance_to_players", "values": ["8"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "set_circular_placement", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object SHORE_FISH",
+      "maps": 11,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["200"] },
+        { "name": "terrain_to_place_on", "values": ["WATER"] },
+        { "name": "temp_min_distance_group_placement", "values": ["6"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object SHRUB",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "number_of_objects", "values": ["6"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["1"] },
+        { "name": "temp_min_distance_group_placement", "values": ["16"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "find_closest", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["70"] },
+        { "name": "actor_area_radius", "values": ["10"] },
+        { "name": "avoid_actor_area", "values": ["4"] }
+      ]
+    },
+    {
+      "key": "create_object SKELETON",
+      "maps": 10,
+      "attributes": [
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "number_of_objects", "values": ["2"] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object STONE",
+      "maps": 44,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "number_of_groups", "values": ["1024"] },
+        { "name": "group_placement_radius", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "set_tight_grouping", "values": [] },
+        { "name": "min_distance_to_players", "values": ["12"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "min_distance_group_placement", "values": ["3"] },
+        { "name": "temp_min_distance_group_placement", "values": ["20"] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["1020"] },
+        { "name": "avoid_actor_area", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_object STRAGGLER",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["15"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "avoid_actor_area", "values": ["66"] },
+        { "name": "avoid_forest_zone", "values": ["3"] }
+      ]
+    },
+    {
+      "key": "create_object STUMP",
+      "maps": 5,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1024"] },
+        { "name": "set_scaling_to_map_size", "values": [] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["BASE_TERRAIN"] },
+        { "name": "avoid_actor_area", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object S_STRAGGLER",
+      "maps": 5,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "find_closest", "values": [] },
+        { "name": "resource_delta", "values": ["1"] },
+        { "name": "temp_min_distance_group_placement", "values": ["4"] },
+        { "name": "max_distance_to_other_zones", "values": ["2"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["10"] },
+        { "name": "actor_area_radius", "values": ["1"] },
+        { "name": "avoid_actor_area", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_object THEMED_TREE1",
+      "maps": 3,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "find_closest", "values": [] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "actor_area", "values": ["11"] },
+        { "name": "min_distance_to_players", "values": ["5"] },
+        { "name": "actor_area_radius", "values": ["1"] },
+        { "name": "actor_area_to_place_in", "values": ["2805"] },
+        { "name": "avoid_actor_area", "values": ["1113"] }
+      ]
+    },
+    {
+      "key": "create_object TOWN_CENTER",
+      "maps": 27,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["0"] },
+        { "name": "max_distance_to_players", "values": ["0"] },
+        { "name": "actor_area", "values": ["2800"] },
+        { "name": "actor_area_radius", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_object TREE_REEDS",
+      "maps": 3,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["1024"] },
+        { "name": "min_distance_to_players", "values": ["16"] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "temp_min_distance_group_placement", "values": ["16"] },
+        { "name": "avoid_forest_zone", "values": ["2"] },
+        { "name": "terrain_to_place_on", "values": ["BEACH_TERRAIN"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area_radius", "values": ["2"] },
+        { "name": "actor_area", "values": ["420"] },
+        { "name": "avoid_actor_area", "values": ["420"] }
+      ]
+    },
+    {
+      "key": "create_object TUNA",
+      "maps": 8,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["200000"] },
+        { "name": "terrain_to_place_on", "values": ["WATER"] },
+        { "name": "temp_min_distance_group_placement", "values": ["8"] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "set_gaia_object_only", "values": [] }
+      ]
+    },
+    {
+      "key": "create_object UNGULATE_B",
+      "maps": 4,
+      "attributes": [
+        { "name": "number_of_objects", "values": ["4"] },
+        { "name": "number_of_groups", "values": ["1024"] },
+        { "name": "set_loose_grouping", "values": [] },
+        { "name": "group_placement_radius", "values": ["2"] },
+        { "name": "temp_min_distance_group_placement", "values": ["1"] },
+        { "name": "min_distance_group_placement", "values": ["1"] },
+        { "name": "max_distance_to_other_zones", "values": ["4"] },
+        { "name": "avoid_forest_zone", "values": ["1"] },
+        { "name": "avoid_cliff_zone", "values": ["2"] },
+        { "name": "actor_area", "values": ["140"] },
+        { "name": "actor_area_radius", "values": ["12"] }
+      ]
+    },
+    {
+      "key": "create_object VILLAGER",
+      "maps": 33,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["3"] },
+        { "name": "min_distance_to_players", "values": ["6"] }
+      ]
+    },
+    {
+      "key": "create_object WALL",
+      "maps": 4,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "min_distance_to_players", "values": ["16"] },
+        { "name": "max_distance_to_players", "values": ["16"] },
+        { "name": "actor_area", "values": ["4"] },
+        { "name": "actor_area_radius", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_object WOLF",
+      "maps": 4,
+      "attributes": [
+        { "name": "set_place_for_every_player", "values": [] },
+        { "name": "number_of_objects", "values": ["1"] },
+        { "name": "terrain_to_place_on", "values": ["DIRT"] },
+        { "name": "set_gaia_object_only", "values": [] },
+        { "name": "max_distance_to_other_zones", "values": ["3"] },
+        { "name": "set_circular_placement", "values": [] },
+        { "name": "min_distance_to_players", "values": ["26"] },
+        { "name": "max_distance_to_players", "values": ["37"] }
+      ]
+    },
+    {
+      "key": "create_object_group",
+      "maps": 8,
+      "attributes": [{ "name": "add_object", "values": ["HARE_A", "50"] }]
+    },
+    {
+      "key": "create_player_lands",
+      "maps": 32,
+      "attributes": [
+        { "name": "terrain_type", "values": ["SPAWN_TERRAIN"] },
+        { "name": "land_percent", "values": ["0"] },
+        { "name": "base_size", "values": ["12"] },
+        { "name": "clumping_factor", "values": ["15"] },
+        { "name": "circle_radius", "values": ["32", "0"] }
+      ]
+    },
+    {
+      "key": "create_terrain",
+      "maps": 53,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_BLEND_A",
+      "maps": 14,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["8"] },
+        { "name": "number_of_clumps", "values": ["12"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_BLEND_B",
+      "maps": 13,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["4"] },
+        { "name": "number_of_clumps", "values": ["12"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_BLEND_C",
+      "maps": 11,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["4"] },
+        { "name": "number_of_clumps", "values": ["12"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_BLEND_D",
+      "maps": 7,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "number_of_clumps", "values": ["24"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_EDGE",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "number_of_tiles", "values": ["128"] },
+        { "name": "number_of_clumps", "values": ["24"] },
+        { "name": "set_scale_by_size", "values": [] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_FOREST",
+      "maps": 12,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "number_of_clumps", "values": ["18"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "spacing_to_other_terrain_types", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_FOREST_BLEND",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_FOREST"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_FOREST_VARIATION",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_FOREST"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "number_of_clumps", "values": ["128"] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain BASE_TERRAIN",
+      "maps": 16,
+      "attributes": [
+        { "name": "base_terrain", "values": ["PLACEHOLDER_TERRAIN_A"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] }
+      ]
+    },
+    {
+      "key": "create_terrain BEACH",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["MUD"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["99999"] }
+      ]
+    },
+    {
+      "key": "create_terrain DEEP_WATER",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["MED_WATER"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["3"] },
+        { "name": "number_of_clumps", "values": ["9999"] }
+      ]
+    },
+    {
+      "key": "create_terrain DESERT",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DIRT2"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DIRT",
+      "maps": 7,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DESERT"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["9320"] }
+      ]
+    },
+    {
+      "key": "create_terrain DIRT2",
+      "maps": 9,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DESERT"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DIRT3",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_ROCK"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_ACACIAFOREST",
+      "maps": 3,
+      "attributes": [
+        { "name": "land_percent", "values": ["1"] },
+        { "name": "base_terrain", "values": ["DESERT"] },
+        { "name": "number_of_clumps", "values": ["30"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_BLACK",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DIRT"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["9320"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_CRACKED",
+      "maps": 5,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DIRT2"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["4056"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_DESERTGRAVEL",
+      "maps": 5,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_DRYGRASS"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_DIRT4",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DIRT"] },
+        { "name": "land_percent", "values": ["1"] },
+        { "name": "number_of_clumps", "values": ["1"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_DRYGRASS",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DESERT"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1000"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_MANGROVESHALLOW",
+      "maps": 5,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BEACH"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_RAINFOREST",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["ISLES_TERRAIN"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "terrain_mask", "values": ["1"] },
+        { "name": "number_of_clumps", "values": ["20"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_ROCK",
+      "maps": 8,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_B"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1000"] }
+      ]
+    },
+    {
+      "key": "create_terrain DLC_WATER5",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_NEWSHALLOW"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_tiles", "values": ["30"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain FOREST",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["PINE_FOREST"] },
+        { "name": "number_of_tiles", "values": ["(MAPAREA / 100 * 4)"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["2"] },
+        { "name": "number_of_clumps", "values": ["17"] }
+      ]
+    },
+    {
+      "key": "create_terrain FOREST_TERRAIN",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["FOREST_EDGE"] },
+        { "name": "land_percent", "values": ["(EXT_WOOD_LAND_PERCENT / 2)"] },
+        { "name": "number_of_tiles", "values": ["(368 * MAPSCALE_SIDE)"] },
+        { "name": "number_of_clumps", "values": ["(EXT_WOOD_CLUMPS / 2)"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain GRASS",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SNOW"] },
+        { "name": "number_of_clumps", "values": ["1000"] },
+        { "name": "land_percent", "values": ["100"] }
+      ]
+    },
+    {
+      "key": "create_terrain GRASS2",
+      "maps": 9,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SNOW"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10"] }
+      ]
+    },
+    {
+      "key": "create_terrain GRASS3",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["GRASS"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] },
+        { "name": "number_of_clumps", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain GRAVEL",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BEACH_BUILDABLE"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["9320"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain ICE",
+      "maps": 5,
+      "attributes": [
+        { "name": "base_terrain", "values": ["ICE"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1000"] }
+      ]
+    },
+    {
+      "key": "create_terrain LAYER_A",
+      "maps": 10,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_B"] },
+        { "name": "number_of_clumps", "values": ["1000"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "terrain_mask", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_terrain LAYER_B",
+      "maps": 10,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_A"] },
+        { "name": "number_of_clumps", "values": ["1000"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["0"] },
+        { "name": "land_percent", "values": ["100"] }
+      ]
+    },
+    {
+      "key": "create_terrain LAYER_C",
+      "maps": 10,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_A"] },
+        { "name": "number_of_clumps", "values": ["24"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["0"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "set_scale_by_size", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain LAYER_E",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_A"] },
+        { "name": "number_of_clumps", "values": ["20"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["0"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "set_scale_by_size", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain LAYER_F",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_A"] },
+        { "name": "number_of_clumps", "values": ["14"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["0"] },
+        { "name": "land_percent", "values": ["1"] },
+        { "name": "set_scale_by_size", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain LEAVES",
+      "maps": 9,
+      "attributes": [
+        { "name": "base_terrain", "values": ["GRASS"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["3"] }
+      ]
+    },
+    {
+      "key": "create_terrain MEDITERRANEAN_FOREST",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_DRAGONFOREST"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["80"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["0"] }
+      ]
+    },
+    {
+      "key": "create_terrain MED_WATER",
+      "maps": 10,
+      "attributes": [
+        { "name": "base_terrain", "values": ["WATER"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["5"] }
+      ]
+    },
+    {
+      "key": "create_terrain MIDDLE_TERRAIN",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["PLACEHOLDER_TERRAIN_A"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain MUD",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["GRASS2"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain PALM_DESERT",
+      "maps": 8,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DIRT"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] },
+        { "name": "set_avoid_player_start_areas", "values": ["18"] }
+      ]
+    },
+    {
+      "key": "create_terrain PINE_FOREST",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_ROCK"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] },
+        { "name": "set_avoid_player_start_areas", "values": ["15"] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain PLACEHOLDER_TERRAIN",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["WATER_SHALLOW"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["3"] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain PLACEHOLDER_TERRAIN_A",
+      "maps": 8,
+      "attributes": [
+        { "name": "base_terrain", "values": ["WATER_SHALLOW"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "spacing_to_other_terrain_types", "values": ["2"] }
+      ]
+    },
+    {
+      "key": "create_terrain PLACEHOLDER_TERRAIN_B",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["MIDDLE_EDGE"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] }
+      ]
+    },
+    {
+      "key": "create_terrain POWDER_LIGHT",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "number_of_clumps", "values": ["24"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain ROAD",
+      "maps": 9,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_B"] },
+        { "name": "number_of_clumps", "values": ["1000"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["2"] },
+        { "name": "land_percent", "values": ["100"] }
+      ]
+    },
+    {
+      "key": "create_terrain SLOPE_TERRAIN",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1024"] },
+        { "name": "height_limits", "values": ["0", "2"] }
+      ]
+    },
+    {
+      "key": "create_terrain SNOW",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["GRASS"] },
+        { "name": "number_of_clumps", "values": ["100"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain SNOW_FOREST",
+      "maps": 5,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SNOW"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["4"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "set_avoid_player_start_areas", "values": [] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain SNOW_LIGHT",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["1"] },
+        { "name": "number_of_clumps", "values": ["12"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain SPAWN_BLEND",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SPAWN_TERRAIN"] },
+        { "name": "number_of_tiles", "values": ["(40 * PLAYER_COUNT)"] },
+        { "name": "number_of_clumps", "values": ["(6 * PLAYER_COUNT)"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain SPAWN_BLEND_A",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SPAWN_TERRAIN"] },
+        { "name": "land_percent", "values": ["2"] },
+        { "name": "number_of_tiles", "values": ["(128 * PLAYER_COUNT)"] },
+        { "name": "number_of_clumps", "values": ["(16 * PLAYER_COUNT)"] },
+        { "name": "set_scale_by_groups", "values": [] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain SPAWN_BLEND_B",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SPAWN_TERRAIN"] },
+        { "name": "number_of_tiles", "values": ["(256 * PLAYER_COUNT)"] },
+        { "name": "number_of_clumps", "values": ["(12 * PLAYER_COUNT)"] },
+        { "name": "terrain_mask", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain SPAWN_FOREST",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["SPAWN_TERRAIN"] },
+        { "name": "set_avoid_player_start_areas", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain SPAWN_TERRAIN",
+      "maps": 9,
+      "attributes": [
+        { "name": "base_terrain", "values": ["PLACEHOLDER_TERRAIN_A"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] }
+      ]
+    },
+    {
+      "key": "create_terrain TEMP_TERRAIN",
+      "maps": 5,
+      "attributes": [
+        { "name": "base_terrain", "values": ["BASE_TERRAIN"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain VODA",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_ROCK"] },
+        { "name": "number_of_clumps", "values": ["100"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain WATER",
+      "maps": 10,
+      "attributes": [
+        { "name": "base_terrain", "values": ["DLC_WATER5"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["10000"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] }
+      ]
+    },
+    {
+      "key": "create_terrain WATER_MEDIUM",
+      "maps": 3,
+      "attributes": [
+        { "name": "base_terrain", "values": ["WATER_SHALLOW"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain WATER_SHALLOW",
+      "maps": 4,
+      "attributes": [
+        { "name": "base_terrain", "values": ["PLACEHOLDER_TERRAIN_A"] },
+        { "name": "land_percent", "values": ["100"] },
+        { "name": "number_of_clumps", "values": ["512"] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain WOODIES",
+      "maps": 8,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_A"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["1"] },
+        { "name": "land_percent", "values": ["7"] },
+        { "name": "number_of_clumps", "values": ["10"] },
+        { "name": "set_avoid_player_start_areas", "values": [] },
+        { "name": "set_scale_by_groups", "values": [] }
+      ]
+    },
+    {
+      "key": "create_terrain WOODIES_B",
+      "maps": 6,
+      "attributes": [
+        { "name": "base_terrain", "values": ["LAYER_B"] },
+        { "name": "spacing_to_other_terrain_types", "values": ["0"] },
+        { "name": "land_percent", "values": ["3"] },
+        { "name": "number_of_clumps", "values": ["1000"] },
+        { "name": "set_avoid_player_start_areas", "values": [] }
+      ]
+    }
+  ]
+}

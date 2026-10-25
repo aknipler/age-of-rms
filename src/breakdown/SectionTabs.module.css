@@ -55,3 +55,51 @@
   font-weight: 700;
   line-height: 1.2;
 }
+
+/* A tab and its show checkbox (2026-10-21). The box sits in the tab's top
+   right corner, so the tab keeps room for it on the right. */
+.tabSlot {
+  position: relative;
+  display: inline-flex;
+}
+
+.tabSlot .tab {
+  padding-right: 1.2rem;
+}
+
+.showSlot {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.15rem;
+  line-height: 0;
+}
+
+.showBox {
+  margin: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  cursor: pointer;
+}
+
+.showBox:disabled {
+  cursor: default;
+}
+
+/* A section left out of the stacked view. */
+.tabHidden {
+  opacity: 0.45;
+}
+
+.showAll {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.showAll:hover {
+  background: var(--surface-hover);
+}

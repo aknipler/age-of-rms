@@ -2,6 +2,7 @@ import {
   useCodeSettings,
   TAB_SIZE_OPTIONS,
 } from "../../settings/CodeSettingsContext";
+import { useAppSettings } from "../../settings/AppSettingsContext";
 import { HelpTip } from "../HelpTip";
 import dialogStyles from "../dialog.module.css";
 import settingsStyles from "./SettingsDialog.module.css";
@@ -10,6 +11,8 @@ import styles from "./BreakdownSettings.module.css";
 export function CodeSettings() {
   const { tabSize, setTabSize, insertSpaces, setInsertSpaces } =
     useCodeSettings();
+  const { resolveFlash, setResolveFlash, codePrediction, setCodePrediction } =
+    useAppSettings();
 
   return (
     <>
@@ -50,6 +53,34 @@ export function CodeSettings() {
             <label htmlFor="code-indent-tabs">Insert tabs</label>
           </div>
         </fieldset>
+      </HelpTip>
+
+      <HelpTip id="settings.code.resolveFlash">
+        <div className={dialogStyles.optionRow}>
+          <input
+            type="checkbox"
+            id="code-resolve-flash"
+            checked={resolveFlash}
+            onChange={(event) => setResolveFlash(event.target.checked)}
+          />
+          <label htmlFor="code-resolve-flash">
+            Flash a name green when it resolves
+          </label>
+        </div>
+      </HelpTip>
+
+      <HelpTip id="settings.code.prediction">
+        <div className={dialogStyles.optionRow}>
+          <input
+            type="checkbox"
+            id="code-prediction"
+            checked={codePrediction}
+            onChange={(event) => setCodePrediction(event.target.checked)}
+          />
+          <label htmlFor="code-prediction">
+            Predict the rest of a line and whole blocks
+          </label>
+        </div>
       </HelpTip>
     </>
   );

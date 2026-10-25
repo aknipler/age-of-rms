@@ -1,0 +1,32 @@
+/* Mirrors MapSidePanel's panel and top row so the Advanced Tools title row
+   reads as one band, the same as it does on the editor tabs. */
+.column {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  max-width: 70%;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  min-height: var(--workspace-header-height);
+  padding: 0rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+  overflow: auto;
+  padding: 12px;
+}

@@ -629,7 +629,9 @@ describe("the copy", () => {
     }
     if (block.kind === "spoiler") {
       // Every word inside a dropdown is hidden until it opens, its plain
-      // paragraphs included, so all of them count as spoiler text.
+      // paragraphs included, so all of them count as spoiler text. A code
+      // entry among them is a `{ kind: "code" }`, which the branch below
+      // turns into nothing, so script text in an Answer is exempt here too.
       const hidden =
         "paragraphs" in block
           ? block.paragraphs.flatMap(pieces).map((p) => p.text)
@@ -660,6 +662,21 @@ describe("the copy", () => {
       expect(text.trimEnd()).not.toMatch(/[—–;]|:[\s\S]/);
       expect(text).not.toMatch(/ - /);
     }
+  });
+
+  it("exempts a code entry inside a spoiler from the prose rules, and still reads the prose around it", () => {
+    // Script text may hold the colons and semicolons prose may not. A code
+    // entry read as prose would fail the punctuation test above.
+    expect(
+      pieces({
+        kind: "spoiler",
+        label: "Answer",
+        paragraphs: [{ kind: "code", text: "a: b; c" }, "Prose after."],
+      }),
+    ).toEqual([
+      { text: "Answer", spoiler: false },
+      { text: "Prose after.", spoiler: true },
+    ]);
   });
 
   it("has unique step ids and a registered definition", () => {
@@ -731,6 +748,104 @@ describe("the copy", () => {
   });
 });
 
+// The engine additions from the 2026-10 feedback round, as this tutorial
+// uses them (feedback/2026-10-comeer-feedback-sessions.md, session 1).
+describe("step kinds, the warning and the diagram", () => {
+  const breakdownStep = (id: string) =>
+    tutorial.steps.find((s) => s.id === id)!;
+
+  // Pinned, so a step added without a kind, or a kind changed by accident,
+  // shows up here. The Code track's twins are checked against these by
+  // describeEditorTracks.
+  it("tags every step with the kind of work it asks for", () => {
+    const kinds = Object.fromEntries(
+      tutorial.steps
+        .filter((s) => s.track !== "code")
+        .map((s) => [s.id, s.kind ?? null]),
+    );
+    expect(kinds).toEqual({
+      "what-we-build": null,
+      "start-new-file": null,
+      "breakdown-or-code": null,
+      "player-placement": "build",
+      "water-first": "build",
+      "player-lands": "build",
+      "does-the-square-count": "investigate",
+      "player-land-avoidance": "build",
+      "show-the-border": "investigate",
+      "border-corners": "investigate",
+      "name-the-border": "build",
+      "ragged-edges": "build",
+      "player-land-growth": "investigate",
+      "something-is-wrong": "investigate",
+      "keep-them-apart": "build",
+      "first-neutral-island": "build",
+      "shape-the-island": "build",
+      "neutral-island-borders": "investigate",
+      "four-corners": "build",
+      "one-random-number": "build",
+      "the-rest": "build",
+    });
+  });
+
+  it("marks Notice something? on Box in the neutral island, and no other spoiler", () => {
+    const warned = tutorial.steps.flatMap((s) =>
+      s.body.flatMap((b) =>
+        typeof b === "object" &&
+        !Array.isArray(b) &&
+        b.kind === "spoiler" &&
+        b.warn
+          ? [`${s.id}: ${b.label}`]
+          : [],
+      ),
+    );
+    expect(warned).toEqual([
+      "neutral-island-borders: Notice something?",
+      "neutral-island-borders-code: Notice something?",
+    ]);
+  });
+
+  it("shows the start square diagram on Fixing the island-joining problem, before the paragraph that sends the learner to re-roll", () => {
+    const body = breakdownStep("keep-them-apart").body;
+    const diagram = body.findIndex(
+      (b) =>
+        typeof b === "object" &&
+        !Array.isArray(b) &&
+        b.kind === "diagram" &&
+        b.name === "start-square-overlap",
+    );
+    const reroll = body.findIndex((b) =>
+      pieceText(b).includes("Press Re-roll"),
+    );
+    expect(diagram).toBeGreaterThan(-1);
+    expect(reroll).toBeGreaterThan(diagram);
+  });
+
+  // "Diagonal" means one thing on the tile grid and another on the diamond
+  // the preview draws, which is what confused a tester. The two steps that
+  // describe the lined-up players use the picture's words instead.
+  it("says lined up, never diagonal, where the players' positions are described", () => {
+    for (const id of ["something-is-wrong", "keep-them-apart"]) {
+      const text = breakdownStep(id).body.map(pieceText).join(" ");
+      expect(text, id).not.toMatch(/diagonal/i);
+      expect(text, id).toMatch(/one above the other,? or side by side/);
+    }
+  });
+});
+
+/** Every word of a block, hidden or not, for searching the copy. */
+function pieceText(block: BodyBlock): string {
+  if (typeof block === "string") return block;
+  if (Array.isArray(block))
+    return block.map((p) => (typeof p === "string" ? p : p.spoiler)).join("");
+  if (block.kind === "spoiler")
+    return "paragraphs" in block
+      ? block.paragraphs.map(pieceText).join(" ")
+      : block.text;
+  if (block.kind === "code" || block.kind === "text") return block.text;
+  return block.alt;
+}
+
 // tutorial-design.md Sec.9.2. The tests every Breakdown and Code tutorial
 // shares. Each Code Answer is typed into the stage script before its step.
 describeEditorTracks(tutorial, {
@@ -756,7 +871,6 @@ describeEditorTracks(tutorial, {
     "four-corners",
     "one-random-number",
     "the-rest",
-    "you-made-comeer",
   ],
   ctxFor: (source) => ctxFor(source),
   typedInto: {

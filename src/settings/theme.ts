@@ -4,6 +4,8 @@
 // list, the two built-in palettes and the light/dark <-> custom persistence
 // shape are all ordinary data, testable without mounting anything.
 
+import { applyDerivedPalette } from "./derivedPalette";
+
 /** Every themeable token. Adding one is this list plus one entry in `THEME_TOKEN_GROUPS`. */
 export type ThemeTokenId =
   | "bg"
@@ -324,12 +326,13 @@ function camelToKebab(id: string): string {
   return id.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
-/** The one place that writes theme tokens onto the page, every stylesheet reads them back via `var(--token-name)`. */
+/** The one place that writes theme tokens onto the page, every stylesheet reads them back via `var(--token-name)`. Also writes the colours derived from them (derivedPalette.ts), so the two never disagree. */
 export function applyThemeTokens(tokens: ThemeTokens): void {
   const root = document.documentElement.style;
   for (const id of THEME_TOKEN_IDS) {
     root.setProperty(`--${camelToKebab(id)}`, tokens[id]);
   }
+  applyDerivedPalette(tokens);
 }
 
 export function themeTokensEqual(a: ThemeTokens, b: ThemeTokens): boolean {

@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { HelpTip } from "../../components/HelpTip";
+import {
+  RmsSuggestInput,
+  type SuggestRow,
+} from "../../components/RmsSuggestInput";
+import {
+  getStaticNameIndex,
+  scriptIndexFor,
+} from "../../editor/staticNameIndex";
+import { describeSuggestion, suggest } from "../../parser/nameLookup";
+import type { ParseResult } from "../../parser/types";
 import dialogStyles from "../../components/dialog.module.css";
 import styles from "./TemplateDialog.module.css";
 import {
@@ -55,7 +65,28 @@ export interface TemplateScriptContext {
   kitNamesDefined: readonly string[];
   /** Starting resources the script already cuts with MOD_RESOURCE, see T1Context. */
   startResourceCutsDefined: readonly string[];
+  /**
+   * The script's parse, so a terrain field can suggest the script's own
+   * `#const`s as well as the built-in terrains (name-lookup-design.md Sec.4.4).
+   * Absent, the field suggests built-in terrains only.
+   */
+  parse?: ParseResult;
 }
+
+/** The terrain slot a template's terrain field takes, the same def shape `terrain_type` has. */
+const TERRAIN_SLOT = {
+  kind: "argument",
+  def: { name: "terrain", type: "terrainConstant" },
+} as const;
+
+/**
+ * Rows for the terrain fields, shared by context rather than threaded through
+ * five field components that otherwise have no use for the script. Context is
+ * React's tool for a value many descendants read and few levels write.
+ */
+const TerrainRowsContext = createContext<
+  ((word: string) => SuggestRow[]) | null
+>(null);
 
 interface TemplateDialogProps {
   /** Which tab opened the dialog. Each offers its own templates. */
@@ -112,6 +143,25 @@ export function TemplateDialog({
   );
   const trees = useMemo(() => treeOptions(constants), [constants]);
   const t4Context = { setupPresent: script.forestSetupPresent };
+  // Sec.4.4. No flash and no create offer here, since nothing is in the script
+  // until Insert writes it. The position is the end of the script, so every
+  // `#const` counts as defined above, which is how a template's lines will see
+  // them wherever they land.
+  const parse = script.parse;
+  const terrainRows = useMemo(
+    () =>
+      parse
+        ? (word: string): SuggestRow[] =>
+            suggest(
+              getStaticNameIndex(),
+              scriptIndexFor(parse),
+              word,
+              parse.source.length,
+              TERRAIN_SLOT,
+            ).map((r) => ({ name: r.name, detail: describeSuggestion(r) }))
+        : null,
+    [parse],
+  );
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -186,104 +236,106 @@ export function TemplateDialog({
       : rendered.text;
 
   return (
-    <div className={dialogStyles.overlay} onMouseDown={onClose}>
-      <div
-        className={`${dialogStyles.dialog} ${styles.wide}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add a template"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <h2 className={dialogStyles.title}>Add Template</h2>
+    <TerrainRowsContext.Provider value={terrainRows}>
+      <div className={dialogStyles.overlay} onMouseDown={onClose}>
+        <div
+          className={`${dialogStyles.dialog} ${styles.wide}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add a template"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <h2 className={dialogStyles.title}>Add Template</h2>
 
-        <div className={styles.body}>
-          <div
-            className={styles.templateList}
-            role="radiogroup"
-            aria-label="Template"
-          >
-            {templates.map((t) => (
-              <HelpTip key={t.id} id={`template.choice.${t.id}`}>
-                <label className={styles.templateOption}>
-                  <input
-                    type="radio"
-                    name="template"
-                    checked={selected === t.id}
-                    onChange={() => setSelected(t.id)}
-                  />
-                  {t.label}
-                </label>
-              </HelpTip>
-            ))}
+          <div className={styles.body}>
+            <div
+              className={styles.templateList}
+              role="radiogroup"
+              aria-label="Template"
+            >
+              {templates.map((t) => (
+                <HelpTip key={t.id} id={`template.choice.${t.id}`}>
+                  <label className={styles.templateOption}>
+                    <input
+                      type="radio"
+                      name="template"
+                      checked={selected === t.id}
+                      onChange={() => setSelected(t.id)}
+                    />
+                    {t.label}
+                  </label>
+                </HelpTip>
+              ))}
+            </div>
+
+            <div className={styles.options}>
+              {selected === "standardPlayerObjects" && (
+                <T1Fields options={t1} onChange={setT1} />
+              )}
+              {selected === "standardPlayerResources" && (
+                <T2Fields options={t2} onChange={setT2} />
+              )}
+              {selected === "standardWaterResources" && (
+                <T3Fields options={t3} onChange={setT3} />
+              )}
+              {selected === "playerForestsObjects" && (
+                <T4Fields
+                  options={t4}
+                  onChange={setT4}
+                  setupPresent={script.forestSetupPresent}
+                  forestTerrains={forestTerrains}
+                  trees={trees}
+                />
+              )}
+              {selected === "playerForestsTerrain" && (
+                <T5Fields
+                  options={t5}
+                  onChange={setT5}
+                  imported={script.playerLand}
+                  forestTerrains={forestTerrains}
+                />
+              )}
+              {problems.length > 0 && (
+                <ul className={styles.problems}>
+                  {problems.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
-          <div className={styles.options}>
-            {selected === "standardPlayerObjects" && (
-              <T1Fields options={t1} onChange={setT1} />
-            )}
-            {selected === "standardPlayerResources" && (
-              <T2Fields options={t2} onChange={setT2} />
-            )}
-            {selected === "standardWaterResources" && (
-              <T3Fields options={t3} onChange={setT3} />
-            )}
-            {selected === "playerForestsObjects" && (
-              <T4Fields
-                options={t4}
-                onChange={setT4}
-                setupPresent={script.forestSetupPresent}
-                forestTerrains={forestTerrains}
-                trees={trees}
-              />
-            )}
-            {selected === "playerForestsTerrain" && (
-              <T5Fields
-                options={t5}
-                onChange={setT5}
-                imported={script.playerLand}
-                forestTerrains={forestTerrains}
-              />
-            )}
-            {problems.length > 0 && (
-              <ul className={styles.problems}>
-                {problems.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            )}
+          <HelpTip id="template.preview">
+            <pre className={styles.preview}>{previewText}</pre>
+          </HelpTip>
+
+          <div className={dialogStyles.actions}>
+            <HelpTip id="template.cancel">
+              <button
+                type="button"
+                className={dialogStyles.closeButton}
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+            </HelpTip>
+            <HelpTip id="template.insert">
+              <button
+                type="button"
+                className={`${dialogStyles.closeButton} ${styles.primary}`}
+                disabled={insertDisabled}
+                onClick={() => {
+                  if (insertDisabled) return;
+                  onInsert(rendered);
+                }}
+              >
+                Insert
+              </button>
+            </HelpTip>
           </div>
-        </div>
-
-        <HelpTip id="template.preview">
-          <pre className={styles.preview}>{previewText}</pre>
-        </HelpTip>
-
-        <div className={dialogStyles.actions}>
-          <HelpTip id="template.cancel">
-            <button
-              type="button"
-              className={dialogStyles.closeButton}
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-          </HelpTip>
-          <HelpTip id="template.insert">
-            <button
-              type="button"
-              className={`${dialogStyles.closeButton} ${styles.primary}`}
-              disabled={insertDisabled}
-              onClick={() => {
-                if (insertDisabled) return;
-                onInsert(rendered);
-              }}
-            >
-              Insert
-            </button>
-          </HelpTip>
         </div>
       </div>
-    </div>
+    </TerrainRowsContext.Provider>
   );
 }
 
@@ -592,6 +644,7 @@ function TextField({
   invalid = false,
   disabled = false,
   placeholder,
+  terrainNames = false,
 }: {
   helpId: string;
   label: string;
@@ -600,12 +653,16 @@ function TextField({
   invalid?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  /** Suggest terrain names while typing, for a field that takes one. */
+  terrainNames?: boolean;
 }) {
+  const terrainRows = useContext(TerrainRowsContext);
   return (
     <HelpTip id={helpId}>
       <label className={dialogStyles.optionRow}>
         {label}
-        <input
+        <RmsSuggestInput
+          rowsFor={terrainNames ? terrainRows : null}
           type="text"
           className={`${styles.shortInput} ${invalid ? styles.invalidInput : ""}`}
           value={value}
@@ -820,6 +877,7 @@ function T5Fields({
         onChange={set("playerLand")}
         invalid={options.playerLand === ""}
         placeholder="e.g. GRASS"
+        terrainNames
       />
       <p className={styles.note}>
         {imported === undefined
@@ -878,11 +936,13 @@ function TerrainField({
   onChange: (next: string) => void;
 }) {
   const invalid = value !== "" && !isValidIdentifier(value);
+  const terrainRows = useContext(TerrainRowsContext);
   return (
     <HelpTip id={helpId}>
       <label className={dialogStyles.optionRow}>
         Terrain to place on
-        <input
+        <RmsSuggestInput
+          rowsFor={terrainRows}
           type="text"
           placeholder="e.g. GRASS"
           className={invalid ? styles.invalidInput : undefined}

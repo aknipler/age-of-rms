@@ -59,6 +59,7 @@ export type HotkeyId =
   | "breakdownMoveCardUp"
   | "breakdownMoveCardDown"
   | "breakdownDuplicateCard"
+  | "breakdownToggleComment"
   | "codeToggleLayout"
   | "cycleFocusedTabs"
   | "cycleToolsTab";
@@ -84,6 +85,10 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
     alt: true,
   },
   breakdownDuplicateCard: { key: "c", ctrl: true, shift: false, alt: true },
+  // Ctrl+/ is the toggle comment binding Monaco uses in the Code tab, so the
+  // same keys comment out a card here and a line there (2026-10-22). An
+  // exception to the one-handed rule on the same grounds as Alt+arrows.
+  breakdownToggleComment: { key: "/", ctrl: true, shift: false, alt: false },
   // Code tab's own namespace, Ctrl+Alt like Preview/Breakdown's. "F" for
   // Format, left-hand, unused elsewhere.
   codeToggleLayout: { key: "f", ctrl: true, shift: false, alt: true },
@@ -111,6 +116,7 @@ export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   breakdownMoveCardUp: "breakdownMoveCardUpHotkey",
   breakdownMoveCardDown: "breakdownMoveCardDownHotkey",
   breakdownDuplicateCard: "breakdownDuplicateCardHotkey",
+  breakdownToggleComment: "breakdownToggleCommentHotkey",
   codeToggleLayout: "codeToggleLayoutHotkey",
   cycleFocusedTabs: "cycleFocusedTabsHotkey",
   cycleToolsTab: "cycleToolsTabHotkey",

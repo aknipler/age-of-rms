@@ -5,6 +5,7 @@ import {
 } from "../../settings/BreakdownSettingsContext";
 import type { AttributeOrderMode } from "../../breakdown/attributeModel";
 import { useState } from "react";
+import { useAppSettings } from "../../settings/AppSettingsContext";
 import languageDataRaw from "../../../reference/data/language.json";
 import { HelpTip } from "../HelpTip";
 import settingsStyles from "./SettingsDialog.module.css";
@@ -54,6 +55,9 @@ export function BreakdownSettings() {
     hideUnusedExceptions,
     setHideUnusedExceptions,
   } = useBreakdownSettings();
+  // One switch for both editors (name-lookup-design.md Sec.6.3). It lives in
+  // AppSettings rather than here, and Settings > Code shows the same value.
+  const { resolveFlash, setResolveFlash } = useAppSettings();
   // Draft text for the exclusion-list input. Local state, committed on
   // Enter or the Add button, so a half-typed name is never persisted.
   const [exceptionDraft, setExceptionDraft] = useState("");
@@ -116,6 +120,20 @@ export function BreakdownSettings() {
               onChange={(event) => setScrollToAddedCard(event.target.checked)}
             />
             Scroll to a card when it is added
+          </label>
+        </fieldset>
+      </HelpTip>
+
+      <HelpTip id="settings.breakdown.resolveFlash">
+        <fieldset className={settingsStyles.fieldset}>
+          <legend className={settingsStyles.legend}>Names</legend>
+          <label className={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={resolveFlash}
+              onChange={(event) => setResolveFlash(event.target.checked)}
+            />
+            Flash a name green when it resolves
           </label>
         </fieldset>
       </HelpTip>

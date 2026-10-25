@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { PlaceholderPane } from "./PlaceholderPane";
-import { MapSidePanel } from "./sidepanel/MapSidePanel";
 import {
   AOE2_RMS_MONACO_THEME,
   defineAoe2RmsMonacoTheme,
@@ -23,8 +22,24 @@ import {
   useDiagnosticDismissal,
 } from "../settings/DiagnosticDismissalContext";
 import { setDiagnosticActionHandlers } from "../editor/diagnosticActions";
+import {
+  setNameLookupParse,
+  wordResolvesToConst,
+} from "../editor/aoe2RmsCompletion";
+import { attachResolveFlash } from "../editor/resolveFlash";
+import { setCodePredictionEnabled } from "../editor/aoe2RmsPrediction";
+import { setConstActionHandlers } from "../editor/constActions";
+import { useAppSettings } from "../settings/AppSettingsContext";
 import type { Diagnostic, Item, ParseResult } from "../parser/types";
 import styles from "./CodePane.module.css";
+import {
+  PERF_TRACE,
+  perfAfterPaint,
+  perfFirstTokens,
+  perfLog,
+  perfLogSinceOpen,
+  perfTime,
+} from "../perfTrace";
 
 // A stable "owner" id for our diagnostics, so setModelMarkers only ever
 // replaces markers this feature added, never Monaco's own built-in
@@ -151,6 +166,9 @@ export function CodePane({
 }: CodePaneProps) {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
+  // A ref's initial value is only used on the first render, so this holds
+  // when this CodePane instance first rendered (src/perfTrace.ts reads it).
+  const firstRenderAtRef = useRef(performance.now());
   // Read inside a mount-only listener (handleMount runs once per mount),
   // mirrored into a ref so that listener always calls the LATEST callback
   // rather than whichever one was passed in at mount time (same stale-
@@ -158,6 +176,21 @@ export function CodePane({
   const onCursorOffsetChangeRef = useRef(onCursorOffsetChange);
   onCursorOffsetChangeRef.current = onCursorOffsetChange;
   const cursorSubscriptionRef = useRef<Monaco.IDisposable | null>(null);
+  // The resolve flash (name-lookup-design.md Sec.6) lives as long as the
+  // editor does, so its handle is a ref disposed on unmount. The setting is
+  // mirrored into a ref because the flash reads it from a listener set up
+  // once at mount, the same stale closure concern as the ref above.
+  const resolveFlashRef = useRef<Monaco.IDisposable | null>(null);
+  const { resolveFlash, codePrediction } = useAppSettings();
+  const resolveFlashOnRef = useRef(resolveFlash);
+  resolveFlashOnRef.current = resolveFlash;
+  // Line and block prediction (Sec.13) is a provider registered once for
+  // the app, so the setting reaches it through a module variable rather
+  // than a ref here. An effect, not a write during render, because it
+  // changes state outside React.
+  useEffect(() => {
+    setCodePredictionEnabled(codePrediction);
+  }, [codePrediction]);
 
   // Same ref-mirrors-latest-props pattern as onCursorOffsetChangeRef above,
   // and for the same reason: this can run long after the render that
@@ -212,6 +245,32 @@ export function CodePane({
     });
     return () => setDiagnosticActionHandlers(null);
   }, [hideForFile, turnOff, filePath]);
+  // The name lookup's providers (completion, hover, #const actions) are
+  // registered once for the app and read the parse through this bridge.
+  useEffect(() => {
+    setNameLookupParse(parseResult);
+  }, [parseResult]);
+  useEffect(() => () => setNameLookupParse(null), []);
+  // The #const code actions apply through the same one-undo-step path as
+  // everything else, then select the new value for typing over.
+  useEffect(() => {
+    setConstActionHandlers({
+      apply: (edits, select) => {
+        applyTextEdits(edits);
+        const editor = editorRef.current;
+        const monaco = monacoRef.current;
+        if (!select || !editor || !monaco) return;
+        const model = getDocumentModel();
+        const a = model.getPositionAt(select.start);
+        const b = model.getPositionAt(select.start + select.length);
+        editor.setSelection(
+          new monaco.Range(a.lineNumber, a.column, b.lineNumber, b.column),
+        );
+        editor.focus();
+      },
+    });
+    return () => setConstActionHandlers(null);
+  }, [applyTextEdits]);
   // Belongs to ONE editor instance and dies with it, so it is a ref that is
   // reset on unmount rather than a value that outlives the mount.
   const cutDecorationsRef =
@@ -232,12 +291,17 @@ export function CodePane({
       // be ahead of it, applying markers against a mismatched source
       // would point squiggles at the wrong characters. Skip and wait for
       // the next (matching) result instead of showing something wrong.
-      if (model.getValue() !== currentSource) return;
-      monaco.editor.setModelMarkers(
-        model,
-        MARKER_OWNER,
+      if (model.getValue() !== currentSource) {
+        perfLog("markers skipped, model is ahead of this parse");
+        return;
+      }
+      const markers = perfTime("diagnosticsToMarkers", () =>
         diagnosticsToMarkers(model, currentDiagnostics),
       );
+      perfTime(`setModelMarkers (${markers.length})`, () =>
+        monaco.editor.setModelMarkers(model, MARKER_OWNER, markers),
+      );
+      perfAfterPaint("squiggles painted");
     },
     [],
   );
@@ -293,6 +357,19 @@ export function CodePane({
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    if (PERF_TRACE) {
+      perfLogSinceOpen(
+        "code editor mounted",
+        `${(performance.now() - firstRenderAtRef.current).toFixed(1)} ms after the Code tab first rendered`,
+      );
+      // Highlighting is Monaco's own tokenizer, not the parser worker, so it
+      // gets its own clock, measured from this mount.
+      perfFirstTokens(
+        getDocumentModel(),
+        "after editor mount, first highlighted",
+        performance.now(),
+      );
+    }
     activeEditor = editor;
     // A stable wrapper, set once here rather than re-set on every render:
     // it only ever calls through the ref, so it never goes stale on its own.
@@ -365,6 +442,13 @@ export function CodePane({
     cursorSubscriptionRef.current = editor.onDidChangeCursorSelection((e) => {
       const offset = getDocumentModel().getOffsetAt(e.selection.getPosition());
       onCursorOffsetChangeRef.current?.(offset);
+    });
+
+    resolveFlashRef.current?.dispose();
+    resolveFlashRef.current = attachResolveFlash(editor, {
+      className: styles.resolveFlash,
+      isEnabled: () => resolveFlashOnRef.current,
+      resolves: wordResolvesToConst,
     });
 
     onEditorReady?.();
@@ -466,6 +550,8 @@ export function CodePane({
     return () => {
       cursorSubscriptionRef.current?.dispose();
       cursorSubscriptionRef.current = null;
+      resolveFlashRef.current?.dispose();
+      resolveFlashRef.current = null;
       // The collection is owned by the editor being torn down; dropping the
       // reference stops the next mount from writing into a dead one.
       cutDecorationsRef.current = null;
@@ -488,22 +574,8 @@ export function CodePane({
 
   return (
     <div className={styles.pane}>
-      {/*
-        The same preview + reference column the Breakdown tab carries. Both
-        are useful while reading code, the preview to see what a terrain
-        command actually produced, the table to look up a constant without
-        leaving the editor, and there was no reason beyond history for them
-        to be Breakdown-only.
-
-        It is rendered per-tab rather than lifted to App because the two tabs
-        frame their content differently (Code insets its editor in a bordered
-        box; Breakdown does not) and because the Advanced Tools tab wants
-        neither. What must NOT live per-tab is the preview's own state: the
-        pane fully unmounts on every tab switch, so seed, view and colour mode
-        are held in PreviewViewContext above the switch. Without that, walking
-        to Code and back would silently reset a seed you had re-rolled to.
-      */}
-      <MapSidePanel />
+      {/* The preview + reference column sits beside this pane, rendered once
+          by App as a full-height column next to the header. */}
       <div className={styles.editorFrame} data-tutorial-anchor="code.editor">
         <Editor
           height="100%"
@@ -521,6 +593,15 @@ export function CodePane({
             scrollBeyondLastLine: false,
             tabSize,
             insertSpaces,
+            // name-lookup-design.md Sec.4.1. Word suggestions would mix in
+            // every word of the file, comments included. Enter always makes
+            // a new line, only Tab accepts (owner's choice, Q1).
+            wordBasedSuggestions: "off",
+            acceptSuggestionOnEnter: "off",
+            // Sec.13.5. Ghost text is drawn in the theme's muted colour
+            // (monacoTheme.ts). Monaco's default colours it like real code
+            // at lower opacity, which reads as typed text on some themes.
+            inlineSuggest: { syntaxHighlightingEnabled: false },
           }}
         />
       </div>

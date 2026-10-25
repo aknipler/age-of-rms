@@ -1,0 +1,62 @@
+/* Neutral on purpose (name-lookup-design.md Sec.7.1): an offer is not a
+   warning, so it takes the surface colours and no status colour. */
+.strip {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  font-size: 0.8rem;
+  min-width: 22rem;
+}
+
+.message,
+.warning {
+  margin: 0;
+}
+
+.warning {
+  color: var(--text-muted);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.valueInput {
+  width: 6rem;
+  border: 1px solid var(--border-muted);
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85rem;
+  background: var(--surface-raised);
+}
+
+.meaning {
+  color: var(--text-muted);
+}
+
+.select,
+.button {
+  border: 1px solid var(--border-muted);
+  background: var(--surface-raised);
+  font-size: 0.8rem;
+  padding: 0.05rem 0.4rem;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

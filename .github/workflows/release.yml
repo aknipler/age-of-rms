@@ -56,6 +56,14 @@ jobs:
       # One platform failing should not cancel the other. A Linux packaging
       # problem is not a reason to lose a working Windows installer.
       fail-fast: false
+      # One leg at a time. tauri-action creates the draft if none exists for
+      # the tag and otherwise appends to it, which is a check-then-create that
+      # two parallel legs can both pass. v0.9.0 shipped as two drafts, one per
+      # platform, for exactly that reason. The same race exists on latest.json:
+      # each leg downloads it, adds its own platforms and uploads it back, so
+      # the later upload would erase the earlier leg's entries. Running the
+      # legs in sequence removes both. It costs the time of the shorter leg.
+      max-parallel: 1
       matrix:
         include:
           - platform: windows-latest

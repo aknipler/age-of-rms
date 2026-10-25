@@ -39,3 +39,27 @@
   display: flex;
   overflow: hidden;
 }
+
+/* The resolve flash (name-lookup-design.md Sec.6.2), a 700 ms green tint on
+   a typed name that resolves. Reuses the theme's success background rather
+   than a new token, so every theme already has a readable value for it. */
+.resolveFlash {
+  animation: resolveFlash 700ms ease-out;
+}
+
+@keyframes resolveFlash {
+  from {
+    background-color: var(--success-bg);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* Sec.6.3. No fade under reduced motion, a flat tint for the same time. */
+@media (prefers-reduced-motion: reduce) {
+  .resolveFlash {
+    animation: none;
+    background-color: var(--success-bg);
+  }
+}

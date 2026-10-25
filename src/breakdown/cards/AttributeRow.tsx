@@ -1,12 +1,15 @@
 import type { AttributeNode, ArgNode } from "../../parser/types";
 import {
   CONSTANT_ARGUMENT_TYPES,
+  type ArgumentDef,
   type ArgumentType,
 } from "../../parser/language";
 import { addAbsentSlotIntent } from "../hideUnused";
 import type { AttributeSlot } from "../attributeModel";
 import type { AttributeTarget } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
+import { ENTER_ADD, ENTER_SCOPE } from "../enterNav";
+import { namesSlotOf } from "../constReview";
 import { renderArg } from "../renderValue";
 import { argumentHelpText, namedEntryHelpText } from "../helpText";
 import { maxSeverityWithin, diagnosticsWithin } from "../diagnosticsForSpan";
@@ -21,6 +24,13 @@ import styles from "./AttributeRow.module.css";
 interface InstanceValueProps {
   arg: ArgNode;
   type: ArgumentType;
+  /**
+   * The argument's whole definition, when there is one. Present, it turns on
+   * name suggestions, the resolve flash and the create strip for this field
+   * (docs/name-lookup-design.md), since those read the def's type, default
+   * and min, not just the type.
+   */
+  def?: ArgumentDef;
   helpId: string;
   /** Per-argument tip text; `null` shows none, undefined falls back to `helpId`'s shared entry. */
   helpText?: string | null;
@@ -33,10 +43,11 @@ interface InstanceValueProps {
 export function AttributeValueEditor({
   arg,
   type,
+  def,
   helpId,
   helpText,
 }: InstanceValueProps) {
-  const { tokens, applyEdit, requestFocus } = useBreakdownContext();
+  const { tokens, applyEdit, requestFocus, noteCommit } = useBreakdownContext();
   const text = renderArg(arg, tokens);
   // Sec.3.4's 2026-09-18 amendment. A math expression arg is edited as raw
   // text now, where it used to render as a read-only pill. The field is
@@ -68,9 +79,13 @@ export function AttributeValueEditor({
       helpId={helpId}
       helpText={helpText}
       allowSpaces={isExpr || wasQuoted}
+      names={isExpr ? null : namesSlotOf(def)}
       onCommit={(value, restoreFocus) => {
         const result = applyEdit({ kind: "setArgValue", arg, value });
+        if (result && typeof value === "string")
+          noteCommit?.(value, result.caret);
         if (result && restoreFocus) requestFocus(result.caret);
+        return result;
       }}
     />
   );
@@ -84,7 +99,7 @@ export function AttributeInstanceRow({
   node: AttributeNode;
   helpId: string;
 }) {
-  const { tokens, applyEdit, diagnostics, requestFocus } =
+  const { tokens, applyEdit, diagnostics, requestFocus, noteCommit } =
     useBreakdownContext();
   const name = tokens[node.name].text;
   const defArgs = node.def?.arguments ?? [];
@@ -166,6 +181,7 @@ export function AttributeInstanceRow({
                 <AttributeValueEditor
                   arg={arg}
                   type={defArgs[i]?.type ?? "string"}
+                  def={defArgs[i]}
                   helpId={helpId}
                   helpText={
                     argumentHelpText(defArgs[i], defArgs.length > 1) ?? null
@@ -197,6 +213,7 @@ export function AttributeInstanceRow({
                   anchorOffset={node.span.end + j}
                   helpId={helpId}
                   helpText={argumentHelpText(def, defArgs.length > 1) ?? null}
+                  names={namesSlotOf(def)}
                   onCommit={(value, restoreFocus) => {
                     if (value === "") return;
                     const result = applyEdit({
@@ -205,7 +222,10 @@ export function AttributeInstanceRow({
                       index: node.args.length + j,
                       value,
                     });
+                    if (result && typeof value === "string")
+                      noteCommit?.(value, result.caret);
                     if (result && restoreFocus) requestFocus(result.caret);
+                    return result;
                   }}
                 />
               </span>
@@ -340,8 +360,14 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
     (slot.def.maxRepeats === undefined ||
       slot.instances.length < slot.def.maxRepeats);
 
+  // A repeatable slot is an Enter group (enterNav.ts). Enter walks its
+  // fields and ends on "+ add another", so a run of replace_terrain rows
+  // is typed with Enter alone.
   return (
-    <div className={styles.slot}>
+    <div
+      className={styles.slot}
+      {...(canAddAnother ? { [ENTER_SCOPE]: true } : {})}
+    >
       {slot.instances.map((node) => (
         <AttributeInstanceRow
           key={node.span.start}
@@ -363,6 +389,7 @@ export function AttributeRow({ slot, target }: AttributeRowProps) {
           <button
             type="button"
             className={styles.addAnotherButton}
+            {...{ [ENTER_ADD]: true }}
             onClick={() => {
               const result = applyEdit(addAbsentSlotIntent(slot, target));
               if (result) requestFocus(result.caret);

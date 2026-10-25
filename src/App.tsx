@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
 import { MapHeader } from "./components/MapHeader";
 import { TabBar } from "./components/TabBar";
+import { MapSidePanel } from "./components/sidepanel/MapSidePanel";
 import { ToolsPane } from "./tools/ToolsPane";
+import { ToolsSideColumn, ToolsSlotsProvider } from "./tools/ToolsSlots";
 import {
   CodePane,
   getActiveCodeEditor,
@@ -480,9 +482,6 @@ function AppContent() {
         saveAsHotkeyLabel={formatHotkey(hotkeys.saveAs)}
         toggleLayoutHotkeyLabel={formatHotkey(hotkeys.codeToggleLayout)}
       />
-      <MapHeader mapName={doc.mapName} lastSavedAt={doc.lastSavedAt}>
-        <TabBar activeTab={activeTab} onSelect={setActiveTab} />
-      </MapHeader>
       {/* All five providers sit above the tab switch so what they hold
           survives it. ParsedDocumentProvider makes parsed.parseResult
           reachable from inside MapSidePanel without threading a prop through
@@ -508,56 +507,90 @@ function AppContent() {
             parseResult={parsed.parseResult}
           >
             <PreviewResultProviders parseResult={parsed.parseResult}>
-              <ToolHostProvider>
-                {/* The Land Placement panel's own AlpModel + selection, lifted
+              {/* Two columns. The map panel on the left runs the full height
+                  from the menu bar to the status bar, and the header (map
+                  name, tabs, last saved) sits over the editor in the right
+                  column only. The panel is rendered once here rather than
+                  inside BreakdownPane and CodePane, since a column that spans
+                  the header row cannot belong to a pane below that row. It
+                  shows on the two editor tabs with a file open, the same set
+                  that used to render it. Being one element for both tabs
+                  also means a Breakdown <-> Code switch no longer remounts
+                  it, so the reference table keeps its search and sort. */}
+              <ToolsSlotsProvider>
+                <div className={styles.workspace}>
+                  {doc.filePath !== null && activeTab !== "advanced-tools" && (
+                    <MapSidePanel />
+                  )}
+                  {/* Advanced Tools takes the panel's place, so the title row
+                    reads as one band with the tool picker and Run in its left
+                    half (ToolsSlots.tsx). */}
+                  {doc.filePath !== null && activeTab === "advanced-tools" && (
+                    <ToolsSideColumn />
+                  )}
+                  <div className={styles.workspaceMain}>
+                    <MapHeader
+                      mapName={doc.mapName}
+                      lastSavedAt={doc.lastSavedAt}
+                    >
+                      <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+                    </MapHeader>
+                    <ToolHostProvider>
+                      {/* The Land Placement panel's own AlpModel + selection, lifted
                   above the tab switch for the same reason ToolHost itself is
                   (land-placement-design.md Sec.3.6(b)), landPlacementModel.tsx. */}
-                <LandPlacementModelProvider>
-                  <main className={styles.main}>
-                    {activeTab === "breakdown" && (
-                      <BreakdownPane
-                        hasFile={doc.filePath !== null}
-                        source={parsed.source}
-                        parseResult={parsed.parseResult}
-                        applyTextEdits={doc.applyTextEdits}
-                        reparseNow={parsed.reparseNow}
-                        selection={selection}
-                      />
-                    )}
-                    {activeTab === "code" && (
-                      <CodePane
-                        hasFile={doc.filePath !== null}
-                        source={parsed.source}
-                        diagnostics={visibleDiagnostics}
-                        parseResult={parsed.parseResult}
-                        applyTextEdits={doc.applyTextEdits}
-                        selectedItem={selection.selectedItem}
-                        onCursorOffsetChange={selection.setAnchor}
-                        onEditorReady={handleCodeEditorReady}
-                      />
-                    )}
-                    {activeTab === "advanced-tools" && (
-                      <ToolsPane
-                        filePath={doc.filePath}
-                        source={parsed.source}
-                        reparseNow={parsed.reparseNow}
-                        applyTextEdits={doc.applyTextEdits}
-                        onJumpToOffset={selection.setAnchor}
-                      />
-                    )}
-                  </main>
-                  {/* Sibling of <main>, still inside ParsedDocumentProvider so
+                      <LandPlacementModelProvider>
+                        <main className={styles.main}>
+                          {activeTab === "breakdown" && (
+                            <BreakdownPane
+                              hasFile={doc.filePath !== null}
+                              source={parsed.source}
+                              parseResult={parsed.parseResult}
+                              applyTextEdits={doc.applyTextEdits}
+                              reparseNow={parsed.reparseNow}
+                              selection={selection}
+                            />
+                          )}
+                          {activeTab === "code" && (
+                            <CodePane
+                              hasFile={doc.filePath !== null}
+                              // The source the diagnostics belong to, which on a
+                              // big document runs ahead of parsed.source while the
+                              // tree is still on its way (useParsedDocument.ts).
+                              source={parsed.diagnosticsSource}
+                              diagnostics={visibleDiagnostics}
+                              parseResult={parsed.parseResult}
+                              applyTextEdits={doc.applyTextEdits}
+                              selectedItem={selection.selectedItem}
+                              onCursorOffsetChange={selection.setAnchor}
+                              onEditorReady={handleCodeEditorReady}
+                            />
+                          )}
+                          {activeTab === "advanced-tools" && (
+                            <ToolsPane
+                              filePath={doc.filePath}
+                              source={parsed.source}
+                              reparseNow={parsed.reparseNow}
+                              applyTextEdits={doc.applyTextEdits}
+                              onJumpToOffset={selection.setAnchor}
+                            />
+                          )}
+                        </main>
+                        {/* Sibling of <main>, still inside ParsedDocumentProvider so
                     a check step's completion test can read the live parse
                     (tutorial-design.md Sec.5.4). Portals to document.body,
                     so its position here is about context access, not
                     layout. */}
-                  <TutorialOverlay
-                    hasFile={doc.filePath !== null}
-                    activeTab={activeTab}
-                    applyTextEdits={doc.applyTextEdits}
-                  />
-                </LandPlacementModelProvider>
-              </ToolHostProvider>
+                        <TutorialOverlay
+                          hasFile={doc.filePath !== null}
+                          activeTab={activeTab}
+                          applyTextEdits={doc.applyTextEdits}
+                        />
+                      </LandPlacementModelProvider>
+                    </ToolHostProvider>
+                  </div>
+                </div>
+              </ToolsSlotsProvider>
               {/* Moved inside PreviewResultProviders (status-bar accuracy pass):
                 StatusBarContainer reads the document's PreviewResultProvider
                 context directly, which does not exist above this point.
@@ -639,10 +672,10 @@ function App() {
                       the seed/colour-mode controls; see PreviewViewContext.tsx. */}
                     <PreviewViewProvider>
                       <PreviewViewportProvider>
-                        {/* Also above the tab switch, and for the same reason: both tabs
-                          render their own MapSidePanel and the inactive one is
-                          unmounted, so a width held inside it would be two widths that
-                          reset on every switch (CREATION_PLAN 4.4). Unlike the two
+                        {/* Also above the tab switch, and for the same reason. MapSidePanel
+                          unmounts on Advanced Tools and with no file open, so a width
+                          held inside it would reset every time it came back
+                          (CREATION_PLAN 4.4). Unlike the two
                           above, this one IS persisted. A layout choice should still be
                           there tomorrow, where a seed should not. */}
                         <SidePanelLayoutProvider>

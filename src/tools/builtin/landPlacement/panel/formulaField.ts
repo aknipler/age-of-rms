@@ -24,9 +24,16 @@ import type { Expr } from "../../../../../tools-api/index";
 import { evalExpr, isLeaf, sym } from "../compiler/expr";
 import { emitCells, formatConstLine, type NamedCell } from "../compiler/emit";
 import { NameAllocator } from "../compiler/naming";
-import { parseFormula, type ParseError } from "../compiler/frontend";
+import { matchRank } from "../../../../breakdown/pickerRanking";
+import {
+  FORMULA_FUNCTIONS,
+  parseFormula,
+  type ParseError,
+} from "../compiler/frontend";
 import { expandTrig } from "../compiler/trig";
-import type { SymbolInfo } from "../../../../parser/types";
+import { lineNumberOfOffset } from "../../../../parser/lineIndex";
+import type { ParseResult, SymbolInfo } from "../../../../parser/types";
+import type { AlpModel } from "../fence";
 
 export interface FormulaFeedback {
   /** `false`, a parse error, with the position to underline. */
@@ -351,29 +358,112 @@ export function findUnknownNames(
 ): UnknownName[] {
   const parsed = parseFormula(source);
   if (!parsed.ok) return [];
+  return unknownNamesOfExprs(
+    [bindParamLabels(parsed.expr, params.idByLabel)],
+    resolveSym,
+    scriptSymbols,
+  );
+}
+
+/** The script names a formula's text uses, once each in order of first use. Empty when it does not parse. A random parameter's label is bound first and is not a script name. */
+export function formulaNames(
+  source: string,
+  params: FormulaParamEnv,
+): string[] {
+  const parsed = parseFormula(source);
+  if (!parsed.ok) return [];
   const names: string[] = [];
-  const collect = (e: Expr): void => {
-    switch (e.k) {
-      case "sym":
-        if (!names.includes(e.name)) names.push(e.name);
-        return;
-      case "neg":
-      case "sin":
-      case "cos":
-        collect(e.e);
-        return;
-      case "bin":
-        collect(e.l);
-        collect(e.r);
-        return;
-      default:
-        return;
-    }
-  };
-  collect(bindParamLabels(parsed.expr, params.idByLabel));
+  symNames(bindParamLabels(parsed.expr, params.idByLabel), names);
+  return names;
+}
+
+/** The `sym` names inside `e`, once each, in order of first use. */
+function symNames(e: Expr, into: string[]): void {
+  switch (e.k) {
+    case "sym":
+      if (!into.includes(e.name)) into.push(e.name);
+      return;
+    case "neg":
+    case "sin":
+    case "cos":
+      symNames(e.e, into);
+      return;
+    case "bin":
+      symNames(e.l, into);
+      symNames(e.r, into);
+      return;
+    default:
+      return;
+  }
+}
+
+/** The part of `findUnknownNames` that works on parsed Exprs, shared with `collectUnsetNames`, which has Exprs and no text. */
+function unknownNamesOfExprs(
+  exprs: readonly Expr[],
+  resolveSym: (name: string) => number | undefined,
+  scriptSymbols: readonly SymbolInfo[],
+): UnknownName[] {
+  const names: string[] = [];
+  for (const e of exprs) symNames(e, names);
   return names
     .filter((name) => resolveSym(name) === undefined)
     .map((name) => ({ name, reason: unknownNameReason(name, scriptSymbols) }));
+}
+
+/** The kinds an `Expr` node can have. A `Ref` is `name` or `id`, so the two never collide. */
+const EXPR_KINDS: ReadonlySet<string> = new Set([
+  "num",
+  "inf",
+  "sym",
+  "param",
+  "node",
+  "neg",
+  "sin",
+  "cos",
+  "bin",
+]);
+
+/**
+ * Every top-level `Expr` anywhere inside `value`, in document order. A
+ * structural walk and not a hand-written list of the model's fields, so a
+ * field a later session adds is covered the day it exists. That is the lesson
+ * landCommand.ts records about two independently written lists staying in
+ * sync: a list of fields here would go stale silently, and the notice would
+ * miss exactly the field nobody remembered to add. The walk stops at an Expr
+ * and does not enter it, since `symNames` already reads the whole tree.
+ */
+export function exprsIn(value: unknown, into: Expr[] = []): Expr[] {
+  if (Array.isArray(value)) {
+    for (const item of value) exprsIn(item, into);
+  } else if (value !== null && typeof value === "object") {
+    const k = (value as { k?: unknown }).k;
+    if (typeof k === "string" && EXPR_KINDS.has(k)) {
+      into.push(value as Expr);
+    } else {
+      for (const item of Object.values(value)) exprsIn(item, into);
+    }
+  }
+  return into;
+}
+
+/**
+ * Names the model uses that have no value at the settings being previewed,
+ * across every formula in it (docs/name-lookup-design.md Sec.4.3.1). Each
+ * name once, in order of first use, with the reason `findUnknownNames` gives.
+ * A random parameter's label is bound first, as in the per field check, so
+ * `ROTATION_AUX` is never reported as unset.
+ */
+export function collectUnsetNames(
+  model: AlpModel,
+  resolveSym: (name: string) => number | undefined,
+  params: FormulaParamEnv,
+  scriptSymbols: readonly SymbolInfo[],
+): UnknownName[] {
+  return unknownNamesOfExprs(
+    exprsIn(model).map((e) => bindParamLabels(e, params.idByLabel)),
+    resolveSym,
+    scriptSymbols,
+  );
 }
 
 function unknownNameReason(
@@ -407,4 +497,145 @@ export function describeUnknownName({ name, reason }: UnknownName): string {
     case "noNumber":
       return `${name} is defined in this script but has no number at the settings being previewed, so ${effect}.`;
   }
+}
+
+// ---------------------------------------------------------------------------
+// The unset names notice after Apply (docs/name-lookup-design.md Sec.4.3.1).
+//
+// The panel only writes inside its own fence, so it cannot define a missing
+// name itself. It says what to set and hands over the lines to copy.
+// ---------------------------------------------------------------------------
+
+export interface UnsetNameNote {
+  name: string;
+  reason: UnknownNameReason;
+  /** The line to copy for this name, or null where writing one would do harm (Sec.4.3.1's table). */
+  line: string | null;
+  /** What to tell the person, in words. */
+  text: string;
+}
+
+/**
+ * One note per unset name. A name earns a snippet line only when the panel can
+ * write one safely, and the table in the design says which. A `#const` header
+ * line for a name defined inside a branch would win as the first definition
+ * and silently override the branch's own values, so those get words only.
+ *
+ * `parse` supplies the line numbers the words quote. The first definition of
+ * the kind that matters is the one named: the first `#define` for a
+ * `defineOnly` name, the first `#const` otherwise.
+ */
+export function describeUnsetNames(
+  names: readonly UnknownName[],
+  parse: ParseResult,
+): UnsetNameNote[] {
+  const lineOf = (name: string, kind: SymbolInfo["directiveKind"]) => {
+    const def = parse.symbols.find(
+      (s) => s.name === name && s.directiveKind === kind,
+    );
+    return def
+      ? lineNumberOfOffset(parse.lineOffsets, parse.tokens[def.nameToken].start)
+      : undefined;
+  };
+  return names.map(({ name, reason }): UnsetNameNote => {
+    switch (reason) {
+      case "notInScript":
+        return {
+          name,
+          reason,
+          line: `#const ${name} 0`,
+          text: `${name} has no value.`,
+        };
+      case "defineOnly":
+        return {
+          name,
+          reason,
+          line: `#const ${name} 0`,
+          text: `${name} is a #define on line ${lineOf(name, "define")}, which has no number. Replace that line with this one.`,
+        };
+      case "conditional":
+        return {
+          name,
+          reason,
+          line: null,
+          text: `${name} is only defined inside the branch on line ${lineOf(name, "const")}. Define it on every path, or move this layout into that branch.`,
+        };
+      case "noNumber":
+        return {
+          name,
+          reason,
+          line: null,
+          text: `${name} is defined on line ${lineOf(name, "const")} but has no number at these settings.`,
+        };
+    }
+  });
+}
+
+/** The lines to copy, one per name that has one, in the order the names were used. */
+export function unsetNameSnippet(notes: readonly UnsetNameNote[]): string {
+  return notes
+    .map((n) => n.line)
+    .filter((l): l is string => l !== null)
+    .join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Name suggestions (docs/name-lookup-design.md Sec.4.3)
+// ---------------------------------------------------------------------------
+
+/** One suggestion row, the shape RmsSuggestInput shows. */
+export interface FormulaRow {
+  name: string;
+  detail?: string;
+}
+
+/** What a formula field can name, gathered by the panel from the places `resolveSym` reads. */
+export interface FormulaNameSources {
+  /** The names this model's own emission writes, which `resolveSym` reads first. */
+  emittedNames: readonly string[];
+  /** RandomParam labels, which bind to their params on commit. */
+  paramLabels: readonly string[];
+  /** The script's own `#const` rows from `nameLookup`'s `suggest` for a formula slot, already ranked. */
+  scriptRows: readonly FormulaRow[];
+}
+
+/**
+ * The rows under a formula field for `query`. Sec.4.3's sources in
+ * `resolveSym`'s own order (the model's names, then the script's), with
+ * random parameter labels and the formula functions after. A name offered by
+ * an earlier source is not repeated by a later one. Matching and tiers are
+ * `matchRank`'s, the rule every other list uses, so a prefix beats a name
+ * that merely contains the text.
+ */
+export function formulaRows(
+  query: string,
+  sources: FormulaNameSources,
+  limit = 100,
+): FormulaRow[] {
+  const q = query.trim().toLowerCase();
+  const seen = new Set<string>();
+  const ranked: { row: FormulaRow; tier: number; order: number }[] = [];
+  const add = (row: FormulaRow, order: number) => {
+    if (seen.has(row.name)) return;
+    const tier = matchRank({ name: row.name }, q);
+    if (tier === null) return;
+    seen.add(row.name);
+    ranked.push({ row, tier, order });
+  };
+  for (const name of sources.emittedNames)
+    add({ name, detail: "from this layout" }, 0);
+  // Script rows arrive ranked, and `sort` below is stable, so their relative
+  // order is kept within a tier.
+  for (const row of sources.scriptRows) add(row, 1);
+  for (const name of sources.paramLabels)
+    add({ name, detail: "random value" }, 2);
+  for (const name of FORMULA_FUNCTIONS) add({ name, detail: "function" }, 3);
+  ranked.sort(
+    (a, b) =>
+      a.tier - b.tier ||
+      a.order - b.order ||
+      a.row.name.length - b.row.name.length ||
+      a.row.name.localeCompare(b.row.name),
+  );
+  return ranked.slice(0, limit).map((r) => r.row);
 }

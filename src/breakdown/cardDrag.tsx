@@ -61,12 +61,19 @@ export type DropIndicator =
 export interface CardDragApi {
   /** The card under the pointer, once the press has become a drag. */
   dragging: DraggableCard | null;
+  /**
+   * Every card travelling with it when the press was on one of several
+   * selected cards (2026-10-21, multi-select), the pressed card included.
+   * null for an ordinary one-card drag.
+   */
+  draggingGroup: readonly DraggableCard[] | null;
   /** Where a release would put it, or null over nothing droppable. */
   indicator: DropIndicator | null;
   /** ItemCard/CommentCard call this on a primary-button press on card chrome. */
   beginDrag: (
     item: DraggableCard,
     event: ReactPointerEvent<HTMLElement>,
+    group?: readonly DraggableCard[],
   ) => void;
   /** A container with no cards registers itself as a drop target; returns the id its element must carry as `data-drop-zone`. */
   registerDropZone: (target: InsertTarget) => number;
@@ -85,6 +92,7 @@ const CardDragCtx = createContext<CardDragApi | null>(null);
  */
 const INERT_API: CardDragApi = {
   dragging: null,
+  draggingGroup: null,
   indicator: null,
   beginDrag: () => {},
   registerDropZone: () => 0,
@@ -96,8 +104,21 @@ export function useCardDrag(): CardDragApi {
   return useContext(CardDragCtx) ?? INERT_API;
 }
 
+/**
+ * Turns dragging off for every card inside it. The cards of commented-out
+ * code (CommentedCode.tsx) are drawn from the comment's own text, so their
+ * spans are offsets into that text, and the pane's drag layer would read
+ * them as offsets into the document.
+ */
+export function NoCardDrag({ children }: { children: ReactNode }) {
+  return (
+    <CardDragCtx.Provider value={INERT_API}>{children}</CardDragCtx.Provider>
+  );
+}
+
 interface PendingDrag {
   item: DraggableCard;
+  group: readonly DraggableCard[] | null;
   pointerId: number;
   startX: number;
   startY: number;
@@ -121,8 +142,19 @@ export function CardDragProvider({
   scrollContainerRef: RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
-  const { moveItem, comments } = useBreakdownContext();
+  const { moveItem, moveItems, comments } = useBreakdownContext();
   const [dragging, setDragging] = useState<DraggableCard | null>(null);
+  const [draggingGroup, setDraggingGroup] = useState<
+    readonly DraggableCard[] | null
+  >(null);
+  const groupRef = useRef<readonly DraggableCard[] | null>(null);
+  // This provider's own stretch of the DOM. The stacked view (2026-10-21)
+  // puts one provider per section in one scroll container, and a comment
+  // card or empty branch from another section is under the pointer just as
+  // easily as one from this section. Items already resolve against this
+  // section's own list; comments and drop zones are checked against this
+  // element instead, which is the same question asked of the page.
+  const scopeRef = useRef<HTMLDivElement>(null);
   const [indicator, setIndicator] = useState<DropIndicator | null>(null);
   // Refs for everything the window listeners read. They are attached once
   // per press and would otherwise close over the state of the render they
@@ -157,7 +189,10 @@ export function CardDragProvider({
     if (!node) return null;
     const under = document.elementFromPoint(x, y);
     const el = under?.closest<HTMLElement>("[data-drop-zone], [data-anchor]");
-    if (!el) return null;
+    if (!el || !scopeRef.current?.contains(el)) return null;
+    // Everything that moves: the group, or the one card.
+    const moving: readonly { span: { start: number; end: number } }[] =
+      groupRef.current ?? [node];
     const zoneAttr = el.dataset.dropZone;
     if (zoneAttr !== undefined) {
       const zoneId = Number(zoneAttr);
@@ -165,7 +200,10 @@ export function CardDragProvider({
       // A zone inside the card being dragged (its own empty branch) is not
       // a place it can go. computeEdit refuses that too, but the line
       // should not promise what the drop will not do.
-      if (!target || el.closest(`[data-anchor="${node.span.start}"]`))
+      if (
+        !target ||
+        moving.some((m) => el.closest(`[data-anchor="${m.span.start}"]`))
+      )
         return null;
       return { indicator: { kind: "zone", zoneId }, target };
     }
@@ -184,10 +222,12 @@ export function CardDragProvider({
       (commentSpan ? { kind: "comment", span: commentSpan } : undefined);
     if (!target) return null;
     if (
-      target.span.start >= node.span.start &&
-      target.span.end <= node.span.end
+      moving.some(
+        (m) =>
+          target.span.start >= m.span.start && target.span.end <= m.span.end,
+      )
     )
-      return null; // the card itself, or a card inside it
+      return null; // a moving card itself, or a card inside one
     const rect = el.getBoundingClientRect();
     const edge: "before" | "after" =
       y < rect.top + rect.height / 2 ? "before" : "after";
@@ -214,6 +254,7 @@ export function CardDragProvider({
     (drop: boolean) => {
       const pending = pendingRef.current;
       const node = draggingRef.current;
+      const group = groupRef.current;
       const hit = hitRef.current;
       if (pending) {
         try {
@@ -224,6 +265,7 @@ export function CardDragProvider({
       }
       pendingRef.current = null;
       draggingRef.current = null;
+      groupRef.current = null;
       hitRef.current = null;
       if (node) {
         // A real drag happened, so the click the browser fires after this
@@ -232,10 +274,14 @@ export function CardDragProvider({
         document.body.classList.remove("breakdown-dragging");
       }
       setDragging(null);
+      setDraggingGroup(null);
       setIndicator(null);
-      if (drop && node && hit) moveItem(node, hit.target);
+      if (drop && node && hit) {
+        if (group && moveItems) moveItems(group, hit.target);
+        else moveItem(node, hit.target);
+      }
     },
-    [moveItem],
+    [moveItem, moveItems],
   );
 
   // Window-level listeners live for the duration of one press. Attaching
@@ -243,11 +289,16 @@ export function CardDragProvider({
   // than a mount-time effect) means an idle pane has no pointermove
   // listener at all.
   const beginDrag = useCallback(
-    (item: DraggableCard, event: ReactPointerEvent<HTMLElement>) => {
+    (
+      item: DraggableCard,
+      event: ReactPointerEvent<HTMLElement>,
+      group?: readonly DraggableCard[],
+    ) => {
       if (event.button !== 0 || pendingRef.current) return;
       const captureEl = event.currentTarget;
       pendingRef.current = {
         item,
+        group: group && group.length > 1 ? group : null,
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
@@ -263,7 +314,9 @@ export function CardDragProvider({
             Math.abs(e.clientY - pending.startY);
           if (travel < DRAG_SLOP_PX) return;
           draggingRef.current = pending.item;
+          groupRef.current = pending.group;
           setDragging(pending.item);
+          setDraggingGroup(pending.group);
           document.body.classList.add("breakdown-dragging");
           // Capture only once it IS a drag, so an ordinary click on card
           // chrome never has its pointer taken from the element it pressed.
@@ -317,6 +370,7 @@ export function CardDragProvider({
   const api = useMemo<CardDragApi>(
     () => ({
       dragging,
+      draggingGroup,
       indicator,
       beginDrag,
       registerDropZone,
@@ -325,6 +379,7 @@ export function CardDragProvider({
     }),
     [
       dragging,
+      draggingGroup,
       indicator,
       beginDrag,
       registerDropZone,
@@ -333,7 +388,16 @@ export function CardDragProvider({
     ],
   );
 
-  return <CardDragCtx.Provider value={api}>{children}</CardDragCtx.Provider>;
+  // `display: contents` keeps this wrapper out of layout entirely, so the
+  // card list lays out as if it were not there, while the DOM still has an
+  // element whose contains() answers "is this inside my section".
+  return (
+    <CardDragCtx.Provider value={api}>
+      <div ref={scopeRef} style={{ display: "contents" }}>
+        {children}
+      </div>
+    </CardDragCtx.Provider>
+  );
 }
 
 /**

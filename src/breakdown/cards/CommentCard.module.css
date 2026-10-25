@@ -1,6 +1,22 @@
+/* Comment cards are margin notes (2026-10-23), so a note between cards
+   never reads as another card. No box and no background, set in from the
+   cards around it, with a solid bar down the left edge in the Code tab's
+   comment colour (derivedPalette.ts, --syntax-comment). The bar is as wide
+   as a one line note is tall, so a short note shows a square and a longer
+   one a taller block. Tinted down from the full comment colour so it marks
+   the note without pulling the eye. These rules win over cards.module.css's
+   .card because this stylesheet is imported after it (CommentCard.tsx).
+
+   An inverse colour card (ink on light, parchment on dark) was tried first
+   the same day and dropped as too far from the background. */
 .card {
-  background: var(--surface-raised);
-  border-style: dashed;
+  border: none;
+  border-left: 1.5rem solid
+    color-mix(in srgb, var(--syntax-comment, #6a737d) 35%, transparent);
+  border-radius: 0;
+  background: transparent;
+  margin: -2px 0 -2px 12px;
+  padding: 1px 0 1px 8px;
   /* Containing block for .dropBefore/.dropAfter's absolutely positioned
      pseudo-elements below, same reasoning as ItemCard.module.css's
      .selectable. */
@@ -54,20 +70,29 @@
   align-items: flex-start;
 }
 
+/* Small and frameless, so the note's own bar is the strongest shape on
+   it. The button's box keeps the old 1.5rem height, which is what the bar
+   width is matched to. */
 .toggle {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  width: 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  width: 1rem;
   height: 1.5rem;
+  padding: 0;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.toggle:hover {
+  color: var(--text);
 }
 
 .summary {
   flex: 1;
   font-size: 0.85rem;
   font-style: italic;
-  color: var(--text-muted);
+  color: var(--syntax-comment, var(--text-muted));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -92,7 +117,7 @@
   width: 100%;
   margin: 0;
   font-style: italic;
-  color: var(--text-muted);
+  color: var(--syntax-comment, var(--text-muted));
   font-family: inherit;
   font-size: 0.85rem;
   background: transparent;
@@ -112,10 +137,47 @@
 .deleteSlot {
   margin-left: auto;
   flex-shrink: 0;
+  /* The comment toggle sits beside Delete (2026-10-22). */
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .inlineError {
   display: block;
   color: var(--danger);
   font-size: 0.75rem;
+}
+
+/* Commented-out code (CommentedCode.tsx). The cards inside are the
+   ordinary ones beside the note's bar, set in italics so they still read
+   as switched off. Form controls do not inherit font-style by
+   default, so they are named here. */
+.commentedCode,
+.commentedCode input,
+.commentedCode textarea,
+.commentedCode button,
+.commentedCode select {
+  font-style: italic;
+}
+
+/* Commenting out a card that is already inside a comment would nest one.
+   The comment card's own uncomment button sits outside this box. */
+.commentedCode [data-comment-toggle] {
+  display: none;
+}
+
+/* Switches commented-out code between its cards and its plain text. */
+.viewToggle {
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+}
+
+.viewToggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }

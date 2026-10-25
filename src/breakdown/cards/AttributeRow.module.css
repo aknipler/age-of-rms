@@ -63,8 +63,10 @@
   min-width: 12rem;
 }
 
+/* The Code tab's attribute colour (syntaxColor.tsx). */
 .label {
   font-size: 0.85rem;
+  color: var(--syntax-attribute);
 }
 
 .values {
@@ -96,6 +98,12 @@
   background: var(--surface-raised);
 }
 
+/* ValueEditor sets data-constant while the text is one all caps word. */
+.textInput[data-constant],
+.numberInput[data-constant] {
+  color: var(--syntax-constant);
+}
+
 .flagCheckbox {
   cursor: default;
 }
@@ -125,8 +133,36 @@
 
 .editorWrap {
   display: inline-flex;
+  /* Wraps so the create strip (ConstOfferStrip) can take a full line under
+     the field instead of squeezing in beside it. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
+}
+
+/* The resolve flash (name-lookup-design.md Sec.6.2), the Breakdown's copy of
+   CodePane.module.css's. It fades from the theme's success background back to
+   the input's own, rather than to transparent, since an input draws its own
+   surface and a transparent end frame would flicker. */
+.resolveFlash {
+  animation: valueResolveFlash 700ms ease-out;
+}
+
+@keyframes valueResolveFlash {
+  from {
+    background-color: var(--success-bg);
+  }
+  to {
+    background-color: var(--surface-raised);
+  }
+}
+
+/* Sec.6.3. No fade under reduced motion, a flat tint for the same time. */
+@media (prefers-reduced-motion: reduce) {
+  .resolveFlash {
+    animation: none;
+    background-color: var(--success-bg);
+  }
 }
 
 .inlineError {

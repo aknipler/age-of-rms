@@ -653,7 +653,7 @@ export const rmsBasicsTutorial: TutorialDefinition = {
         anchor: { kind: "region", id: "sidePanel.reference" },
         navigate: { tab: "code", sidePanel: "reference" },
         body: [
-          "Terrains, objects, commands and the attributes each command takes. The Preview Obj. List tab is the useful one when something did not appear. It lists every object your script asks for beside how many the last generation actually placed.",
+          "Terrains, objects, commands and the attributes each command takes. When something did not appear, open Obj. List under the preview map. It lists every object your script asks for beside how many the last generation actually placed.",
         ],
         completion: { kind: "manual" },
       },

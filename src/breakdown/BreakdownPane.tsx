@@ -12,9 +12,9 @@ import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { buildLanguageIndex, type LanguageData } from "../parser/language";
 import type { ParseResult, Span } from "../parser/types";
 import { PlaceholderPane } from "../components/PlaceholderPane";
-import { BreakdownProvider } from "./BreakdownContext";
+import { BreakdownProvider, type CommitNote } from "./BreakdownContext";
 import { applyEditIntent, type ApplyTextEdits } from "./applyEdit";
-import { canDeleteItem, canRearrangeItem } from "./cardKind";
+import { canActOnCard, canRearrangeItem } from "./cardKind";
 import { editsOf } from "./patch/computeEdit";
 import { siblingMoveTarget } from "./selectionResolve";
 import {
@@ -41,6 +41,7 @@ import { useHotkeySettings } from "../settings/HotkeySettingsContext";
 import {
   cycleDirection,
   isPlainDeleteKey,
+  isTextEntryTarget,
   matchesHotkey,
 } from "../settings/hotkeys";
 import { isSidePanelKeyEvent } from "../settings/focusRegion";
@@ -49,10 +50,23 @@ import {
   useCurrentFilePath,
   useDiagnosticDismissal,
 } from "../settings/DiagnosticDismissalContext";
-import { MapSidePanel } from "../components/sidepanel/MapSidePanel";
 import { SectionTabs } from "./SectionTabs";
 import { SectionView } from "./SectionView";
 import { adjacentSectionId, buildSectionTabs } from "./sectionTabsModel";
+import {
+  rememberFocusId,
+  rememberShownIds,
+  rememberedFocusId,
+  rememberedShownIds,
+  resolveShownIds,
+  shownAfterTabClick,
+  shownAfterToggle,
+} from "./viewScope";
+import {
+  nextSelection,
+  type ClickMode,
+  type SelectableCard,
+} from "./multiSelect";
 import { useRegisterNavigator } from "../tutorial/TutorialContext";
 import type { GameConstantsData } from "./gameConstants";
 import styles from "./BreakdownPane.module.css";
@@ -123,7 +137,70 @@ export function BreakdownPane({
     () => (parseResult ? extractComments(parseResult.tokens) : []),
     [parseResult],
   );
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  // Which sections are on screen and which one Add writes to (2026-10-21,
+  // Sec.3.1.1 and viewScope.ts). Seeded from the session memory, since this
+  // component unmounts on every switch to the Code tab, and written back on
+  // every change through the two setters below rather than in an effect,
+  // so the memory is never a render behind.
+  const [shownIdsState, setShownIdsState] = useState<readonly string[]>(
+    () => rememberedShownIds() ?? [],
+  );
+  const [focusIdState, setFocusIdState] = useState<string | null>(() =>
+    rememberedFocusId(),
+  );
+  const setShownIds = useCallback((ids: readonly string[]) => {
+    rememberShownIds(ids);
+    setShownIdsState(ids);
+  }, []);
+  const setFocusId = useCallback((id: string | null) => {
+    rememberFocusId(id);
+    setFocusIdState(id);
+  }, []);
+  // Derived every render from the tabs this parse produced, so a remembered
+  // id this file lacks simply drops out (resolveShownIds).
+  const shownIds = useMemo(
+    () =>
+      resolveShownIds(
+        tabs.map((t) => t.id),
+        shownIdsState.length > 0 ? shownIdsState : null,
+      ),
+    [tabs, shownIdsState],
+  );
+  const shownTabs = useMemo(
+    () => tabs.filter((t) => shownIds.includes(t.id)),
+    [tabs, shownIds],
+  );
+  /** The tab a card offset belongs to, or null. */
+  // A comment card's offset is in no item (2026-10-22, comment cards became
+  // selectable), so it is found by the section span holding it, and before
+  // the first section it is the Header tab's.
+  const tabIdAt = useCallback(
+    (offset: number) => {
+      const byItem = tabs.find((t) => findItemAtOffset(t.items, offset));
+      if (byItem) return byItem.id;
+      const bySection = tabs.find((t) =>
+        t.sections.some((s) => offset >= s.span.start && offset < s.span.end),
+      );
+      if (bySection) return bySection.id;
+      const first = parseResult?.script.sections[0];
+      return !first || offset < first.span.start ? "header" : null;
+    },
+    [tabs, parseResult],
+  );
+  // Focus follows the selected card when it is on screen, else the section
+  // last clicked, else the first shown one. Derived rather than stored, so
+  // the selection and the "Terrain:" label can never disagree.
+  const selectedTabId = selection.primaryCard
+    ? tabIdAt(selection.primaryCard.span.start)
+    : null;
+  const focusTab =
+    shownTabs.find((t) => t.id === selectedTabId) ??
+    shownTabs.find((t) => t.id === focusIdState) ??
+    shownTabs[0] ??
+    null;
+  // A tab click in the stacked view scrolls to that section's heading once
+  // it has rendered.
+  const pendingSectionScrollRef = useRef<string | null>(null);
   // The warnings the user has not hidden, the same filter App applies for the
   // Code tab and the status bar (DiagnosticDismissalContext.tsx). Every badge,
   // the ruler and the section tabs read this list, so a hidden warning leaves
@@ -154,7 +231,9 @@ export function BreakdownPane({
   // from the next parse (computeEdit's `caret` is already a valid
   // NEW-source offset, see applyEdit call site below).
   const focusableRef = useRef(new Map<number, HTMLElement>());
-  const pendingFocusRef = useRef<number | null>(null);
+  const pendingFocusRef = useRef<number | (() => HTMLElement | null) | null>(
+    null,
+  );
 
   const registerFocusable = useCallback(
     (offset: number, el: HTMLElement | null) => {
@@ -164,9 +243,12 @@ export function BreakdownPane({
     [],
   );
 
-  const requestFocus = useCallback((offset: number) => {
-    pendingFocusRef.current = offset;
-  }, []);
+  const requestFocus = useCallback(
+    (target: number | (() => HTMLElement | null)) => {
+      pendingFocusRef.current = target;
+    },
+    [],
+  );
 
   // Gives focus back to the editor the user clicked into when the reparse
   // after an earlier field's blur-commit replaced it (editorFocus.ts has the
@@ -180,9 +262,12 @@ export function BreakdownPane({
   // still-collapsed card), the request is silently dropped rather than
   // guessing.
   useEffect(() => {
-    const offset = pendingFocusRef.current;
-    if (offset === null) return;
-    const el = focusableRef.current.get(offset);
+    const target = pendingFocusRef.current;
+    if (target === null) return;
+    const el =
+      typeof target === "function"
+        ? target()
+        : focusableRef.current.get(target);
     if (el) {
       el.focus();
       // Selects the placeholder text (ValueEditor's default value, or
@@ -324,7 +409,13 @@ export function BreakdownPane({
       edit: OffsetEdit;
       expectedSource: string;
       /** revealAfterEdit's request, an offset in expectedSource's coordinates, applied once the shift lands. */
-      reveal?: { offset: number; scroll: boolean; expand: boolean };
+      reveal?: {
+        offset: number;
+        scroll: boolean;
+        expand: boolean;
+        /** More cards to open in the same commit, a group move's other open cards. */
+        alsoExpand?: readonly number[];
+      };
     }[]
   >([]);
   const expectedSourceRef = useRef<string | null>(null);
@@ -383,6 +474,44 @@ export function BreakdownPane({
     [parseResult, applyTextEdits, source, reparseNow],
   );
 
+  // Name lookup, slice C. The note ties a committed name to the source its
+  // offset belongs to, so the field can flash or show the create strip once
+  // that source has rendered (BreakdownContext.tsx, CommitNote). `matched`
+  // records that the note's source has been on screen, which is what lets the
+  // effect below tell "the parse has not landed yet" from "the document has
+  // moved on".
+  const [constNote, setConstNote] = useState<CommitNote | null>(null);
+  const constNoteMatchedRef = useRef(false);
+  const [announcement, setAnnouncement] = useState("");
+
+  const noteCommit = useCallback(
+    (name: string, anchor: number) => {
+      // Called straight after applyEdit, which has just advanced
+      // expectedSourceRef to the source this edit produces.
+      constNoteMatchedRef.current = false;
+      setConstNote({
+        name,
+        anchor,
+        source: expectedSourceRef.current ?? source,
+      });
+    },
+    [source],
+  );
+  const clearConstNote = useCallback(() => setConstNote(null), []);
+  const announce = useCallback(
+    (message: string) => setAnnouncement(message),
+    [],
+  );
+
+  // A note is read only while its source is the rendered one. Once it has
+  // been, any later source (another edit, an undo) retires it, so an undo
+  // that happens to land on the same text does not bring a strip back.
+  useEffect(() => {
+    if (!constNote) return;
+    if (constNote.source === source) constNoteMatchedRef.current = true;
+    else if (constNoteMatchedRef.current) setConstNote(null);
+  }, [constNote, source]);
+
   const { hotkeys, recordingId } = useHotkeySettings();
   const { density } = useBreakdownSettings();
 
@@ -428,6 +557,10 @@ export function BreakdownPane({
         next = new Set(next);
         next.add(reveal.offset);
       }
+      if (reveal?.alsoExpand?.length) {
+        next = new Set(next);
+        for (const o of reveal.alsoExpand) next.add(o);
+      }
       return next;
     });
     if (reveal?.scroll) {
@@ -464,10 +597,15 @@ export function BreakdownPane({
   }, [source, tabs, focusKeeper]);
 
   const revealAfterEdit = useCallback(
-    (offset: number, scroll: boolean, expand = true) => {
+    (
+      offset: number,
+      scroll: boolean,
+      expand = true,
+      alsoExpand?: readonly number[],
+    ) => {
       const pending = pendingAnchorShiftsRef.current;
       const last = pending[pending.length - 1];
-      if (last) last.reveal = { offset, scroll, expand };
+      if (last) last.reveal = { offset, scroll, expand, alsoExpand };
     },
     [],
   );
@@ -509,8 +647,94 @@ export function BreakdownPane({
     },
     [selection, applyEdit, expandedAnchors, revealAfterEdit],
   );
+  // A group drop (2026-10-21, Sec.3.12). Every moved card keeps its own
+  // open or closed state and the whole group stays selected, both through
+  // the same after-the-parse queues moveItem uses.
+  const moveItems = useCallback(
+    (items: readonly DraggableCard[], to: InsertTarget) => {
+      if (items.length === 1) {
+        moveItem(items[0], to);
+        return;
+      }
+      const wasExpanded = items.map((i) =>
+        isAnchoredWithin(expandedAnchors, i.span),
+      );
+      const result = applyEdit({ kind: "moveNodes", nodes: [...items], to });
+      if (!result?.selection) return;
+      const starts = result.selection;
+      revealAfterEdit(
+        result.caret,
+        true,
+        wasExpanded[0],
+        starts.filter((_, k) => k > 0 && wasExpanded[k]),
+      );
+      selection.selectManyAfterEdit(starts);
+    },
+    [selection, applyEdit, expandedAnchors, revealAfterEdit, moveItem],
+  );
+  // Delete every selected card that carries a Delete button of its own,
+  // as one intent and so one undo entry. A selection of one takes the
+  // removeNode path it always took. Selected comment cards go too
+  // (2026-10-22), each by its own span.
+  const deleteSelected = useCallback(() => {
+    const cards = selection.selectedCards.filter(canActOnCard);
+    if (cards.length === 0) return;
+    const [only] = cards;
+    if (cards.length > 1) applyEdit({ kind: "removeNodes", nodes: cards });
+    else if (only.kind === "comment")
+      applyEdit({ kind: "removeComment", span: only.span });
+    else applyEdit({ kind: "removeNode", node: only });
+  }, [selection.selectedCards, applyEdit]);
+  // Comment cards out, or back in (2026-10-22, Sec.3.13). One intent, so one
+  // undo entry however many cards. Re-selecting the results goes through the
+  // after-the-parse queue for the same reason a move does: the old anchors
+  // sit at an insert or inside a removal, and the new cards only exist once
+  // the parse lands.
+  const toggleCommentOut = useCallback(
+    (cards: readonly DraggableCard[], reselect: boolean) => {
+      if (cards.length === 0) return;
+      const result = applyEdit({ kind: "toggleCommentOut", cards: [...cards] });
+      if (reselect && result?.selection)
+        selection.selectManyAfterEdit(result.selection);
+    },
+    [applyEdit, selection],
+  );
+  // A click on a card's chrome, with its modifier keys (ItemCard.tsx,
+  // CommentCard.tsx). A selection never spans two sections
+  // (multiSelect.ts's sameScope), so the section the clicked card is in
+  // becomes the focus section.
+  const clickCard = useCallback(
+    (card: SelectableCard, mode: ClickMode) => {
+      if (!parseResult) return;
+      const sameScope = (a: SelectableCard, b: SelectableCard) =>
+        tabIdAt(a.span.start) === tabIdAt(b.span.start);
+      selection.setSelection(
+        nextSelection<SelectableCard>(
+          parseResult.script,
+          selection.primaryCard,
+          [...selection.extraItems, ...selection.extraComments],
+          card,
+          mode,
+          sameScope,
+          selection.places,
+        ),
+      );
+      setFocusId(tabIdAt(card.span.start));
+    },
+    [parseResult, selection, tabIdAt, setFocusId],
+  );
+  const selectCard = useCallback(
+    (span: Span) => {
+      selection.selectCard(span);
+      setFocusId(tabIdAt(span.start));
+    },
+    [selection, tabIdAt, setFocusId],
+  );
   const rearrangeSelected = useCallback(
     (action: "up" | "down" | "duplicate") => {
+      // One-card actions, so they stand down while several are selected,
+      // comment cards counted.
+      if (selection.selectedCards.length > 1) return;
       const item = selection.selectedItem;
       if (!item || !canRearrangeItem(item) || !parseResult) return;
       if (action === "duplicate") {
@@ -520,7 +744,13 @@ export function BreakdownPane({
       const to = siblingMoveTarget(parseResult.script, item, action);
       if (to) moveItem(item, to);
     },
-    [selection.selectedItem, parseResult, moveItem, duplicateItem],
+    [
+      selection.selectedItem,
+      selection.selectedCards,
+      parseResult,
+      moveItem,
+      duplicateItem,
+    ],
   );
 
   // Breakdown's own card hotkeys (delete, and since 2026-09-18 move up,
@@ -545,10 +775,21 @@ export function BreakdownPane({
         matchesHotkey(event, hotkeys.breakdownDeleteCard) ||
         isPlainDeleteKey(event)
       ) {
-        const item = selection.selectedItem;
-        if (!item || !canDeleteItem(item)) return;
+        if (!selection.selectedCards.some(canActOnCard)) return;
         event.preventDefault();
-        applyEdit({ kind: "removeNode", node: item });
+        deleteSelected();
+        return;
+      }
+      // Comment out or uncomment the selection (2026-10-22). Stands down
+      // inside a text field, where the field's own unsaved text would commit
+      // on blur as an edit overlapping this one, and the patch queue would
+      // refuse whichever came second.
+      if (matchesHotkey(event, hotkeys.breakdownToggleComment)) {
+        if (isTextEntryTarget(event.target)) return;
+        const cards = selection.selectedCards.filter(canActOnCard);
+        if (cards.length === 0) return;
+        event.preventDefault();
+        toggleCommentOut(cards, true);
         return;
       }
       // The rearranging hotkeys share this listener and the same
@@ -571,9 +812,11 @@ export function BreakdownPane({
     hotkeys.breakdownMoveCardUp,
     hotkeys.breakdownMoveCardDown,
     hotkeys.breakdownDuplicateCard,
+    hotkeys.breakdownToggleComment,
     recordingId,
-    selection.selectedItem,
-    applyEdit,
+    selection.selectedCards,
+    deleteSelected,
+    toggleCommentOut,
     rearrangeSelected,
   ]);
 
@@ -583,12 +826,51 @@ export function BreakdownPane({
   // Breakdown, distinct from the top-level Breakdown/Code tab switch,
   // which must NOT clear it (that's the whole point of lifting selection
   // to App).
+  //
+  // Since 2026-10-21 a tab click also decides what is shown
+  // (viewScope.ts's shownAfterTabClick). A shown tab stays in the stacked
+  // view and the list scrolls to it, a faded one becomes the only section
+  // shown. Either way it becomes the focus section.
   const handleSelectTab = useCallback(
     (id: string) => {
-      setActiveTabId(id);
+      const next = shownAfterTabClick(shownIds, id);
+      setShownIds(next);
+      setFocusId(id);
+      selection.clearSelection();
+      if (next.length > 1) pendingSectionScrollRef.current = id;
+    },
+    [selection, shownIds, setShownIds, setFocusId],
+  );
+  const handleToggleShown = useCallback(
+    (id: string) => {
+      const next = shownAfterToggle(
+        shownIds,
+        id,
+        tabs.map((t) => t.id),
+      );
+      setShownIds(next);
+      // A selection left in a section that just went away would be an
+      // insert anchor nobody can see.
+      if (selectedTabId !== null && !next.includes(selectedTabId))
+        selection.clearSelection();
+    },
+    [shownIds, tabs, setShownIds, selectedTabId, selection],
+  );
+  const handleShowAll = useCallback(() => {
+    const all = tabs.map((t) => t.id);
+    if (shownIds.length === all.length) {
+      setShownIds(focusTab ? [focusTab.id] : all.slice(0, 1));
+    } else {
+      setShownIds(all);
+    }
+  }, [tabs, shownIds, setShownIds, focusTab]);
+  // A section heading, or empty space inside a section, was clicked.
+  const handleFocusSection = useCallback(
+    (id: string) => {
+      setFocusId(id);
       selection.clearSelection();
     },
-    [selection],
+    [setFocusId, selection],
   );
 
   // tutorial-design.md Sec.5.3, a step whose `navigate.section` names a
@@ -610,11 +892,10 @@ export function BreakdownPane({
       if (recordingId !== null) return;
       const step = cycleDirection(event, hotkeys.cycleFocusedTabs);
       if (step === null || isSidePanelKeyEvent(event)) return;
-      const current =
-        activeTabId && tabs.some((t) => t.id === activeTabId)
-          ? activeTabId
-          : (tabs[0]?.id ?? null);
-      const next = adjacentSectionId(tabs, current, step);
+      // With several sections shown the chord steps the focus through
+      // them, with one it switches tabs as it always did.
+      const ring = shownTabs.length > 1 ? shownTabs : tabs;
+      const next = adjacentSectionId(ring, focusTab?.id ?? null, step);
       if (next === null) return;
       event.preventDefault();
       handleSelectTab(next);
@@ -624,7 +905,8 @@ export function BreakdownPane({
   }, [
     hotkeys.cycleFocusedTabs,
     recordingId,
-    activeTabId,
+    shownTabs,
+    focusTab,
     tabs,
     handleSelectTab,
   ]);
@@ -656,7 +938,17 @@ export function BreakdownPane({
     const anchor = item.span.start;
     for (const tab of tabs) {
       if (findItemAtOffset(tab.items, anchor)) {
-        setActiveTabId(tab.id);
+        // Added to whatever is shown rather than replacing it, so a chosen
+        // set survives a trip to the Code tab.
+        if (!shownIds.includes(tab.id))
+          setShownIds(
+            shownAfterToggle(
+              shownIds,
+              tab.id,
+              tabs.map((t) => t.id),
+            ),
+          );
+        setFocusId(tab.id);
         pendingScrollAnchorRef.current = anchor;
         return;
       }
@@ -674,7 +966,17 @@ export function BreakdownPane({
       el.scrollIntoView({ block: "center" });
       pendingScrollAnchorRef.current = null;
     }
-  }, [activeTabId, parseResult]);
+  }, [shownIds, parseResult]);
+
+  // Runs after every render, cheap when nothing is queued.
+  useEffect(() => {
+    const id = pendingSectionScrollRef.current;
+    if (id === null) return;
+    pendingSectionScrollRef.current = null;
+    document
+      .querySelector(`[data-section-heading="${id}"]`)
+      ?.scrollIntoView({ block: "start" });
+  });
 
   if (!hasFile) {
     return (
@@ -684,14 +986,6 @@ export function BreakdownPane({
   if (!parseResult) {
     return <PlaceholderPane description="Parsing…" />;
   }
-
-  // Default active tab: Header if present, else the first canonical
-  // section, falling back to whatever tab exists.
-  const resolvedActiveId =
-    activeTabId && tabs.some((t) => t.id === activeTabId)
-      ? activeTabId
-      : (tabs[0]?.id ?? null);
-  const activeTab = tabs.find((t) => t.id === resolvedActiveId) ?? null;
 
   return (
     <BreakdownProvider
@@ -711,13 +1005,24 @@ export function BreakdownPane({
         requestFocus,
         registerFocusable,
         isSelected: selection.isSelected,
-        selectCard: selection.selectCard,
+        selectCard,
         clearSelection: selection.clearSelection,
         selectedItem: selection.selectedItem,
         comments,
         expandedAnchors,
         moveItem,
         duplicateItem,
+        clickCard,
+        selectedItems: selection.selectedItems,
+        selectedCards: selection.selectedCards,
+        selectedComment: selection.selectedComment,
+        moveItems,
+        deleteSelected,
+        toggleCommentOut,
+        constNote,
+        noteCommit,
+        clearConstNote,
+        announce,
       }}
     >
       <div
@@ -725,7 +1030,11 @@ export function BreakdownPane({
         onFocusCapture={focusKeeper.onFocusCapture}
         onBlurCapture={focusKeeper.onBlurCapture}
       >
-        <MapSidePanel />
+        {/* Sec.6.3. Always mounted, so a screen reader has registered the
+            region before its text changes, which is what makes it speak. */}
+        <div role="status" aria-live="polite" className={styles.liveRegion}>
+          {announcement}
+        </div>
         <div
           className={styles.main}
           data-tutorial-anchor="breakdown.main"
@@ -737,12 +1046,19 @@ export function BreakdownPane({
         >
           <SectionTabs
             tabs={tabs}
-            activeId={resolvedActiveId ?? ""}
+            activeId={focusTab?.id ?? ""}
             onSelect={handleSelectTab}
             diagnostics={diagnostics}
+            shownIds={shownIds}
+            onToggleShown={handleToggleShown}
+            onShowAll={handleShowAll}
           />
-          {activeTab ? (
-            <SectionView tab={activeTab} />
+          {focusTab ? (
+            <SectionView
+              tabs={shownTabs}
+              focusTab={focusTab}
+              onFocusSection={handleFocusSection}
+            />
           ) : (
             <PlaceholderPane description="No sections found." />
           )}

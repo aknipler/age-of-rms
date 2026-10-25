@@ -6,6 +6,8 @@ import { renderArgs } from "../renderValue";
 import { argumentHelpText } from "../helpText";
 import { HelpTip } from "../../components/HelpTip";
 import { AttributeValueEditor } from "./AttributeRow";
+import { AttributeName, ConstantsColoured } from "../syntaxColor";
+import syntaxStyles from "../syntaxColor.module.css";
 import styles from "./SummaryAttributes.module.css";
 
 /** How long a struck-through flag stays in the summary before it is dropped. */
@@ -113,7 +115,18 @@ export function SummaryAttributes({ command, attrs }: SummaryAttributesProps) {
     const name = tokens[node.name].text;
     const defArgs = node.def?.arguments ?? [];
     const isFlag = node.args.length === 0 && defArgs.length === 0;
-    const label = `${name} ${renderArgs(node.args, tokens)}`.trim();
+    const argsText = renderArgs(node.args, tokens);
+    // A bare name (a flag) takes the attribute colour on the button itself,
+    // so the button's own text stays one node. Only an entry with values
+    // needs spans to colour its name and its constants apart.
+    const label = argsText ? (
+      <>
+        <AttributeName>{name}</AttributeName>{" "}
+        <ConstantsColoured text={argsText} />
+      </>
+    ) : (
+      name
+    );
     const editing =
       summaryClick === "edit" &&
       !isFlag &&
@@ -133,10 +146,11 @@ export function SummaryAttributes({ command, attrs }: SummaryAttributesProps) {
             onClick={(e) => e.stopPropagation()}
             onBlur={() => setEditingAnchor(null)}
           >
-            {name}{" "}
+            <AttributeName>{name}</AttributeName>{" "}
             <AttributeValueEditor
               arg={node.args[0]}
               type={defArgs[0]?.type ?? "string"}
+              def={defArgs[0]}
               helpId="breakdown.attributeRow.value"
               helpText={
                 argumentHelpText(defArgs[0], defArgs.length > 1) ?? null
@@ -147,7 +161,9 @@ export function SummaryAttributes({ command, attrs }: SummaryAttributesProps) {
           <HelpTip id="breakdown.commandCard.summaryAttribute">
             <button
               type="button"
-              className={styles.attrButton}
+              className={`${styles.attrButton} ${
+                argsText ? "" : syntaxStyles.attribute
+              }`}
               onClick={(e) => {
                 e.stopPropagation();
                 if (summaryClick === "open") {
@@ -179,7 +195,7 @@ export function SummaryAttributes({ command, attrs }: SummaryAttributesProps) {
       <HelpTip id="breakdown.commandCard.summaryGhost">
         <button
           type="button"
-          className={`${styles.attrButton} ${styles.ghost}`}
+          className={`${styles.attrButton} ${styles.ghost} ${syntaxStyles.attribute}`}
           onClick={(e) => {
             e.stopPropagation();
             restoreFlag(ghost.name);

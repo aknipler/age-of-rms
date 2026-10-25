@@ -103,3 +103,52 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/* The in-focus section's name ahead of the Add buttons, only while more
+   than one section is shown (2026-10-21). */
+.focusLabel {
+  align-self: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* One shown section in the stacked view: its heading, then its cards. */
+.sectionGroup {
+  padding-top: 0.4rem;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0 0 0.3rem;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  /* Clears the sticky Add bar when a tab click scrolls here. */
+  scroll-margin-top: 3rem;
+}
+
+.sectionHeading:hover {
+  background: var(--surface-hover);
+}
+
+.sectionGroupFocused .sectionHeading {
+  background: var(--accent-bg-subtle);
+  border-bottom-color: var(--accent);
+}
+
+.sectionCount {
+  border-radius: 999px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-muted);
+  padding: 0.05rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 400;
+}

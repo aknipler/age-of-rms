@@ -14,6 +14,11 @@
   flex-shrink: 0;
 }
 
+.deleteSlot {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .kindLabel {
   font-size: 0.8rem;
   font-weight: 600;

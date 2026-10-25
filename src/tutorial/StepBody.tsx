@@ -11,8 +11,10 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import type { BodyBlock, Inline, Paragraph } from "./types";
+import type { BodyBlock, Inline, Paragraph, SpoilerParagraph } from "./types";
 import { renderProse } from "../components/InlineCode";
+import { TutorialDiagram } from "./diagrams";
+import { WarnIcon } from "./tutorialIcons";
 import styles from "./TutorialOverlay.module.css";
 
 interface StepBodyProps {
@@ -97,6 +99,7 @@ export function StepBody({
                 memory={spoilerMemory}
                 memoryKey={`${i}`}
                 label={block.label}
+                warn={block.warn === true}
                 content={
                   "paragraphs" in block
                     ? { paragraphs: block.paragraphs }
@@ -115,6 +118,12 @@ export function StepBody({
                 alt={block.alt}
                 onLoad={onContentResize}
               />
+            );
+          case "diagram":
+            // Inline SVG has its size from the first render, so unlike an
+            // image it needs no onLoad to place the callout again.
+            return (
+              <TutorialDiagram key={i} name={block.name} alt={block.alt} />
             );
           case "code":
             return (
@@ -335,6 +344,7 @@ function InlineSpoiler({
  */
 function BlockSpoiler({
   label,
+  warn,
   content,
   onToggle,
   onReveal,
@@ -342,7 +352,9 @@ function BlockSpoiler({
   memoryKey,
 }: {
   label: string;
-  content: { text: string; code: boolean } | { paragraphs: Paragraph[] };
+  /** Shows a warning triangle before the label. */
+  warn: boolean;
+  content: { text: string; code: boolean } | { paragraphs: SpoilerParagraph[] };
   onToggle: () => void;
   /** For hidden words inside the opened paragraphs. */
   onReveal: () => void;
@@ -362,24 +374,36 @@ function BlockSpoiler({
         aria-controls={textId}
         onClick={() => setOpen(!open)}
       >
-        <span aria-hidden="true">{open ? "▾" : "▸"}</span> {label}
+        <span aria-hidden="true">{open ? "▾" : "▸"}</span>{" "}
+        {warn && <WarnIcon />}
+        {label}
       </button>
       {open &&
         ("paragraphs" in content ? (
           // Each inline spoiler in here is remembered under this dropdown's
           // key plus its own position, so closing and reopening the dropdown
           // leaves a revealed answer revealed.
+          // A code entry is told apart by its `kind`, after the two tests
+          // that pick out a paragraph, the same order StepBody reads a block
+          // in. A code entry keeps its index in the key sequence, so adding
+          // one never shifts the remembered state of the paragraphs after it.
           <div id={textId}>
-            {content.paragraphs.map((paragraph, i) => (
-              <ParagraphView
-                key={i}
-                paragraph={paragraph}
-                onReveal={onReveal}
-                memory={memory}
-                memoryKey={`${memoryKey}.${i}`}
-                className={styles.spoilerText}
-              />
-            ))}
+            {content.paragraphs.map((entry, i) =>
+              typeof entry === "string" || Array.isArray(entry) ? (
+                <ParagraphView
+                  key={i}
+                  paragraph={entry}
+                  onReveal={onReveal}
+                  memory={memory}
+                  memoryKey={`${memoryKey}.${i}`}
+                  className={styles.spoilerText}
+                />
+              ) : (
+                <pre key={i} className={`${styles.code} ${styles.spoilerCode}`}>
+                  {entry.text}
+                </pre>
+              ),
+            )}
           </div>
         ) : content.code ? (
           <pre id={textId} className={`${styles.code} ${styles.spoilerCode}`}>

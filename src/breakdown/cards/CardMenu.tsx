@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { RearrangeableNode } from "../patch/intents";
 import { useBreakdownContext } from "../BreakdownContext";
 import { siblingMoveTarget } from "../selectionResolve";
+import { canActOnCard } from "../cardKind";
 import { useHotkeySettings } from "../../settings/HotkeySettingsContext";
 import { formatHotkey } from "../../settings/hotkeys";
 import { HelpTip } from "../../components/HelpTip";
@@ -20,7 +21,8 @@ interface CardMenuProps {
 
 /**
  * The right-click menu on a card (2026-09-18, breakdown-design Sec.3.11).
- * Four entries, each a shortcut for something that already exists
+ * Five entries since Comment out joined on 2026-10-22, each a shortcut for
+ * something that already exists
  * elsewhere in the pane. Duplicate and the two moves call the same
  * context functions the hotkeys do, and Delete is the card's own trash
  * button. So the menu adds discoverability and nothing else, which is the
@@ -35,8 +37,24 @@ interface CardMenuProps {
  * wrong thing).
  */
 export function CardMenu({ item, at, onClose }: CardMenuProps) {
-  const { parseResult, moveItem, duplicateItem, applyEdit } =
-    useBreakdownContext();
+  const {
+    parseResult,
+    moveItem,
+    duplicateItem,
+    applyEdit,
+    selectedCards,
+    deleteSelected,
+    toggleCommentOut,
+  } = useBreakdownContext();
+  // Opened on one of several selected cards (2026-10-21, Sec.3.12). Delete
+  // then acts on every selected card, and the one-card entries step aside,
+  // since "duplicate" or "move up" for a scattered group has no single
+  // obvious meaning. Selected comment cards count (2026-10-22).
+  const group =
+    (selectedCards?.length ?? 0) > 1 &&
+    selectedCards!.some((s) => s.span.start === item.span.start)
+      ? selectedCards!.filter(canActOnCard)
+      : null;
   const { hotkeys } = useHotkeySettings();
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState(at);
@@ -107,6 +125,7 @@ export function CardMenu({ item, at, onClose }: CardMenuProps) {
           type="button"
           role="menuitem"
           className={styles.entry}
+          disabled={group !== null}
           onClick={run(() => duplicateItem(item))}
         >
           <span>Duplicate</span>
@@ -120,7 +139,7 @@ export function CardMenu({ item, at, onClose }: CardMenuProps) {
           type="button"
           role="menuitem"
           className={styles.entry}
-          disabled={!upTarget}
+          disabled={!upTarget || group !== null}
           onClick={run(() => upTarget && moveItem(item, upTarget))}
         >
           <span>Move up</span>
@@ -134,12 +153,33 @@ export function CardMenu({ item, at, onClose }: CardMenuProps) {
           type="button"
           role="menuitem"
           className={styles.entry}
-          disabled={!downTarget}
+          disabled={!downTarget || group !== null}
           onClick={run(() => downTarget && moveItem(item, downTarget))}
         >
           <span>Move down</span>
           <kbd className={styles.key}>
             {formatHotkey(hotkeys.breakdownMoveCardDown)}
+          </kbd>
+        </button>
+      </HelpTip>
+      <HelpTip id="breakdown.cardMenu.commentOut">
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.entry}
+          onClick={run(() => {
+            // The menu only opens on an Item, so this always comments out.
+            // Its comments stay as they are (toggleCommentOut's rule).
+            const cards = group ?? [item];
+            if (toggleCommentOut) toggleCommentOut(cards, true);
+            else applyEdit({ kind: "toggleCommentOut", cards });
+          })}
+        >
+          <span>
+            {group ? `Comment out ${group.length} cards` : "Comment out"}
+          </span>
+          <kbd className={styles.key}>
+            {formatHotkey(hotkeys.breakdownToggleComment)}
           </kbd>
         </button>
       </HelpTip>
@@ -149,9 +189,13 @@ export function CardMenu({ item, at, onClose }: CardMenuProps) {
           type="button"
           role="menuitem"
           className={`${styles.entry} ${styles.danger}`}
-          onClick={run(() => applyEdit({ kind: "removeNode", node: item }))}
+          onClick={run(() =>
+            group && deleteSelected
+              ? deleteSelected()
+              : applyEdit({ kind: "removeNode", node: item }),
+          )}
         >
-          <span>Delete</span>
+          <span>{group ? `Delete ${group.length} cards` : "Delete"}</span>
           <kbd className={styles.key}>
             {formatHotkey(hotkeys.breakdownDeleteCard)}
           </kbd>

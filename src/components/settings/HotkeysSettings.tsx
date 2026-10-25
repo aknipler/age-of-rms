@@ -75,6 +75,11 @@ const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
     hint: "Inserts a copy of the selected card directly below it, text for text, and selects the copy.",
   },
   {
+    id: "breakdownToggleComment",
+    legend: "Breakdown: Comment Out / Uncomment",
+    hint: "Wraps each selected card in /* */ so the game skips it, or takes the /* */ off when every selected card is a comment. Does nothing while you are typing in a field.",
+  },
+  {
     id: "codeToggleLayout",
     legend: "Code: Toggle Command Layout",
     hint: "Flips the command under the cursor between one line and one attribute per line. With a selection, every command it touches is toggled independently, each to the opposite of its own current shape, not to a shared target. Does nothing where flipping isn't safe, such as a block holding a nested if/start_random.",

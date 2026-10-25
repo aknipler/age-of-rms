@@ -10,6 +10,8 @@ import type {
   Item,
   RandomNode,
 } from "../parser/types";
+import type { DraggableCard } from "./patch/intents";
+import type { SelectableCard } from "./multiSelect";
 
 export type CardKind =
   | "command" // CommandNode -> CommandCard
@@ -83,4 +85,15 @@ export function canRearrangeItem(
   item: Item,
 ): item is CommandNode | DirectiveNode | IfNode | RandomNode {
   return canDeleteItem(item);
+}
+
+/**
+ * A selected card the group actions may act on (2026-10-22, comment cards
+ * became selectable): a comment card, or an Item canDeleteItem allows.
+ * Group delete, group drag and the comment toggle hotkey all filter the
+ * selection through this, so a stray attribute, a shared block or a raw
+ * node in it is left alone, the rule each action already had for Items.
+ */
+export function canActOnCard(card: SelectableCard): card is DraggableCard {
+  return card.kind === "comment" || canDeleteItem(card);
 }

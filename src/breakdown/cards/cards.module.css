@@ -93,3 +93,68 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+/* The comment toggle beside Delete (CommentOutButton.tsx). Same frame as
+   Delete so the two read as a pair, in monospace so `/*` looks like the
+   code it writes. Uncomment draws the same `/*` struck through, since it
+   takes the marker away. Its hover is the accent, not Delete's red, as
+   nothing is lost. */
+.commentToggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 14px;
+}
+
+.commentToggle:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.commentToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.uncomment {
+  text-decoration: line-through;
+}
+
+/* Quiet card buttons. A card's Delete and comment toggle (marked
+   data-quiet) sit dimmed until that card is hovered, holds focus or is
+   selected, so a long list reads as content rather than a column of
+   trash cans. A disabled button never brightens.
+
+   The cards nest (an if card holds command cards), and a pointer over a
+   command inside an if is also over the if. :has() picks the innermost
+   card only, the one with no hovered card inside it. The buttons are
+   then looked up only through that card's own header row, which never
+   holds another card, so the cards nested in its body stay quiet.
+   Doing this in React with onMouseEnter state would re-render a card on
+   every pointer move between cards and still need the same innermost
+   rule written by hand.
+
+   Attribute selectors, since CSS modules rename classes per file and
+   these cards come from several. Written as .deleteButton[data-quiet]
+   so it outranks .deleteButton:disabled above. */
+.deleteButton[data-quiet],
+.commentToggle[data-quiet] {
+  opacity: 0.35;
+  transition: opacity 120ms;
+}
+
+[data-card]:hover:not(:has([data-card]:hover))
+  > [data-card-header]
+  [data-quiet]:not(:disabled),
+[data-card]:focus-within:not(:has([data-card]:focus-within))
+  > [data-card-header]
+  [data-quiet]:not(:disabled),
+[data-selected] > [data-card] > [data-card-header] [data-quiet]:not(:disabled) {
+  opacity: 1;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HelpTip } from "../components/HelpTip";
+import { Logo } from "../components/Logo";
 import { useTutorial } from "./TutorialContext";
 import { getTutorial, TUTORIALS } from "./registry";
 import { WELCOME_SKIP_PHRASES } from "./welcomePhrases";
@@ -52,6 +53,9 @@ export function WelcomeDialog({ tutorials = TUTORIALS }: WelcomeDialogProps) {
         className={dialogStyles.dialog}
         onMouseDown={(event) => event.stopPropagation()}
       >
+        <div className={styles.logo}>
+          <Logo width={150} />
+        </div>
         <h2 className={dialogStyles.title}>Welcome to Age of RMS</h2>
         <p className={styles.intro}>
           A free tool for writing Age of Empires II random map scripts. Where

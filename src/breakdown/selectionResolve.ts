@@ -105,6 +105,48 @@ export function siblingsOf(
 }
 
 /**
+ * Every card list on the way down to `item`, outermost first: the section
+ * body (or preamble) and then one branch list per if/start_random it sits
+ * inside, each paired with the card in that list that holds `item` (the
+ * if or random card itself, then finally `item`). Same descent as
+ * siblingsOf, whose answer is the last entry's list. Empty when `item` is
+ * not a card-list item of this script.
+ */
+export function listPathOf(
+  script: ScriptNode,
+  item: Item,
+): { items: readonly Item[]; holder: Item }[] {
+  const search = (
+    items: readonly Item[],
+  ): { items: readonly Item[]; holder: Item }[] | undefined => {
+    for (const candidate of items) {
+      if (candidate === item) return [{ items, holder: candidate }];
+      if (candidate.span.start > item.span.start) break;
+      if (candidate.span.end <= item.span.start) continue;
+      const lists =
+        candidate.kind === "if"
+          ? candidate.branches.map((b) => b.items)
+          : candidate.kind === "random"
+            ? [candidate.preamble, ...candidate.branches.map((b) => b.items)]
+            : [];
+      for (const list of lists) {
+        const found = search(list);
+        if (found) return [{ items, holder: candidate }, ...found];
+      }
+    }
+    return undefined;
+  };
+  for (const list of [
+    script.preamble,
+    ...script.sections.map((s) => s.items),
+  ]) {
+    const found = search(list);
+    if (found) return found;
+  }
+  return [];
+}
+
+/**
  * Where "move up" or "move down" puts a card, as an InsertTarget the
  * patch engine accepts, or undefined at the edge of its container. A move
  * never leaves the container it started in, since jumping out of a

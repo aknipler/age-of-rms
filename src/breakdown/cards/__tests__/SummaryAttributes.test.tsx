@@ -87,7 +87,7 @@ describe("SummaryAttributes", () => {
   it("open mode: a click expands the card and focuses that attribute's editor", async () => {
     const { command, attrs, expandCard, requestFocus } = setup("open");
     await settled();
-    fireEvent.click(screen.getByText("land_percent 30"));
+    fireEvent.click(screen.getByRole("button", { name: "land_percent 30" }));
     expect(expandCard).toHaveBeenCalledWith(command.span);
     expect(requestFocus).toHaveBeenCalledWith(attrs[0].args[0].span.start);
   });
@@ -103,7 +103,7 @@ describe("SummaryAttributes", () => {
   it("edit mode: a value click swaps in an editor instead of opening the card", async () => {
     const { expandCard } = setup("edit");
     await settled();
-    fireEvent.click(screen.getByText("land_percent 30"));
+    fireEvent.click(screen.getByRole("button", { name: "land_percent 30" }));
     expect(expandCard).not.toHaveBeenCalled();
     expect(screen.getByDisplayValue("30")).toBeTruthy();
   });

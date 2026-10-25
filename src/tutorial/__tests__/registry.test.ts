@@ -8,6 +8,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../parser/__tests__/testUtils";
 import { TUTORIALS } from "../registry";
+import type { TutorialStep } from "../types";
+
+/** Every anchor a step names, the lit-first regions included. */
+function stepAnchors(step: TutorialStep) {
+  return [step.anchor, ...(step.extraAnchors ?? []), ...(step.lookFirst ?? [])];
+}
 
 const uiHelp = JSON.parse(
   readFileSync(join(REPO_ROOT, "reference", "data", "ui-help.json"), "utf8"),
@@ -74,7 +80,7 @@ describe("tutorial registry", () => {
     const missing: string[] = [];
     for (const t of TUTORIALS) {
       for (const step of t.steps) {
-        for (const anchor of [step.anchor, ...(step.extraAnchors ?? [])]) {
+        for (const anchor of stepAnchors(step)) {
           if (
             anchor?.kind === "help" &&
             !helpTipIdsInSource.has(anchor.id) &&
@@ -92,7 +98,7 @@ describe("tutorial registry", () => {
     const missing: string[] = [];
     for (const t of TUTORIALS) {
       for (const step of t.steps) {
-        for (const anchor of [step.anchor, ...(step.extraAnchors ?? [])]) {
+        for (const anchor of stepAnchors(step)) {
           if (
             anchor?.kind === "region" &&
             !regionAnchorIdsInSource.has(anchor.id)
@@ -109,7 +115,7 @@ describe("tutorial registry", () => {
     const offenders: string[] = [];
     for (const t of TUTORIALS) {
       for (const step of t.steps) {
-        for (const anchor of [step.anchor, ...(step.extraAnchors ?? [])]) {
+        for (const anchor of stepAnchors(step)) {
           if (anchor?.kind === "selector") offenders.push(`${t.id}/${step.id}`);
         }
       }

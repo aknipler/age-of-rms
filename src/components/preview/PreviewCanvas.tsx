@@ -8,6 +8,10 @@ import type { TilePoint } from "../../preview/render/projection";
 import { usePreviewViewport } from "./PreviewViewContext";
 import { OverlayCanvas } from "./OverlayCanvas";
 import {
+  PreviewObjectList,
+  type ObjectListSettings,
+} from "./PreviewObjectList";
+import {
   PreviewBarControls,
   PreviewPanel,
   summarizePreviewResult,
@@ -76,6 +80,14 @@ export function PreviewCanvas({
   const summary = useMemo(() => summarizePreviewResult(result), [result]);
   const toggleSection = (section: PreviewPanelSection) =>
     setOpenSection((current) => (current === section ? null : section));
+  // The Obj. List's search and order. Here rather than inside the list,
+  // which unmounts whenever its box closes (PreviewObjectList.tsx).
+  const [objectListSettings, setObjectListSettings] =
+    useState<ObjectListSettings>({
+      query: "",
+      sortKey: "name",
+      direction: "asc",
+    });
 
   return (
     <OverlayCanvas
@@ -99,17 +111,25 @@ export function PreviewCanvas({
           summary={summary}
           open={openSection}
           onToggle={toggleSection}
+          hiddenObjectCount={hiddenObjects.size}
         />
       }
       bottomPanel={
-        openSection !== null && (
-          <PreviewPanel
-            section={openSection}
-            result={result}
-            summary={summary}
-            palette={palette}
-            terrainsInUse={terrainsInUse}
+        openSection === "objects" ? (
+          <PreviewObjectList
+            settings={objectListSettings}
+            onSettingsChange={setObjectListSettings}
           />
+        ) : (
+          openSection !== null && (
+            <PreviewPanel
+              section={openSection}
+              result={result}
+              summary={summary}
+              palette={palette}
+              terrainsInUse={terrainsInUse}
+            />
+          )
         )
       }
     />

@@ -204,6 +204,11 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
   if (pools.removables.length) kinds.push("addCmdBefore");
   if (pools.rearrangeables.length) kinds.push("duplicate");
   if (pools.rearrangeables.length) kinds.push("addControlFlow");
+  // 2026-10-22, the unknown const offer (name-lookup-design.md Sec.7.3).
+  // Above a card or at the end of the header, the two places it writes to.
+  if (pools.rearrangeables.length) kinds.push("addConst");
+  // 2026-10-23, the #define table's add button. Same places as addConst.
+  if (pools.rearrangeables.length) kinds.push("addDefine");
   if (kinds.length === 0) return undefined;
   switch (pick(kinds)) {
     case "set": {
@@ -266,6 +271,30 @@ function makeIntent(pools: Pools, rand: () => number): EditIntent | undefined {
         kind: "addControlFlow",
         at: rand() < 0.5 ? { after: anchor } : { before: anchor },
         construct: rand() < 0.5 ? "if" : "random",
+      };
+    }
+    case "addConst":
+      return {
+        kind: "addConst",
+        at:
+          rand() < 0.5
+            ? { before: pick(pools.rearrangeables) }
+            : { in: "preamble" },
+        name: "AOE2RMS_GATE_CONST",
+        // A number and a name, the two kinds of value a default can be.
+        value: rand() < 0.5 ? 10 : "GRASS",
+      };
+    case "addDefine": {
+      const anchor = pick(pools.rearrangeables);
+      return {
+        kind: "addDefine",
+        at:
+          rand() < 0.33
+            ? { before: anchor }
+            : rand() < 0.5
+              ? { after: anchor }
+              : { in: "preamble" },
+        name: "AOE2RMS_GATE_DEFINE",
       };
     }
     case "removeComment":

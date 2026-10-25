@@ -3,6 +3,7 @@ import { useBreakdownContext } from "../BreakdownContext";
 import { diagnosticsWithin } from "../diagnosticsForSpan";
 import { HelpTip } from "../../components/HelpTip";
 import { TrashIcon } from "../../components/TrashIcon";
+import { CommentOutButton } from "./CommentOutButton";
 import { AttributeValueEditor } from "./AttributeRow";
 import { ProblemBadge } from "./ProblemBadge";
 import cardStyles from "./cards.module.css";
@@ -23,8 +24,8 @@ export function DirectiveCard({ directive }: DirectiveCardProps) {
   const known = directive.def !== undefined;
 
   return (
-    <div className={cardStyles.card}>
-      <div className={styles.header}>
+    <div className={cardStyles.card} data-card>
+      <div className={styles.header} data-card-header>
         {/* Only the static name gets its own HelpTip here, each arg's
             AttributeValueEditor (-> ValueEditor) already wraps its own
             input in a HelpTip with the same id, and nesting a second
@@ -38,6 +39,7 @@ export function DirectiveCard({ directive }: DirectiveCardProps) {
             <AttributeValueEditor
               arg={a}
               type={directive.def?.arguments?.[i]?.type ?? "string"}
+              def={directive.def?.arguments?.[i]}
               helpId="breakdown.directiveCard"
             />
           </span>
@@ -63,10 +65,12 @@ export function DirectiveCard({ directive }: DirectiveCardProps) {
             moves in the flex layout, not anything set inside HelpTip's
             children. */}
         <span className={styles.deleteSlot}>
+          <CommentOutButton card={directive} />
           <HelpTip id="breakdown.directiveCard.delete">
             <button
               type="button"
               className={cardStyles.deleteButton}
+              data-quiet
               onClick={(e) => {
                 e.stopPropagation();
                 applyEdit({ kind: "removeNode", node: directive });

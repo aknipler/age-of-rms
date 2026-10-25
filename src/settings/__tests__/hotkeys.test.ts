@@ -255,3 +255,26 @@ describe("cycleDirection", () => {
     ).toBeNull();
   });
 });
+
+// 2026-10-22, when Breakdown's comment toggle took Ctrl+/. Two actions on
+// one default would leave the second unreachable until someone rebinds it.
+describe("default bindings", () => {
+  it("never share a combination", () => {
+    const seen = new Map<string, string>();
+    for (const [id, hotkey] of Object.entries(DEFAULT_HOTKEYS)) {
+      const label = formatHotkey(hotkey);
+      expect(seen.get(label), `${id} and ${seen.get(label)}`).toBeUndefined();
+      seen.set(label, id);
+    }
+  });
+
+  it("comment toggle is Ctrl+/, the Code tab's own keys", () => {
+    expect(formatHotkey(DEFAULT_HOTKEYS.breakdownToggleComment)).toBe("Ctrl+/");
+    expect(
+      matchesHotkey(
+        keydown({ key: "/", ctrlKey: true }),
+        DEFAULT_HOTKEYS.breakdownToggleComment,
+      ),
+    ).toBe(true);
+  });
+});

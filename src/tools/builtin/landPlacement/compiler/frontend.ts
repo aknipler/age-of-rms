@@ -194,6 +194,14 @@ class Parser {
   }
 }
 
+/**
+ * The call forms `parseCall` accepts, spelled the way a person types them.
+ * Exported for the formula field's suggestion list, so the list offers what
+ * the parser takes and nothing else. A test parses each one, so adding a
+ * form to `parseCall` without adding it here fails there.
+ */
+export const FORMULA_FUNCTIONS = ["SIN", "COS", "rnd"] as const;
+
 /** Parses ordinary infix maths, Sec.5.2, into an Expr tree. */
 export function parseFormula(source: string): ParseFormulaResult {
   try {

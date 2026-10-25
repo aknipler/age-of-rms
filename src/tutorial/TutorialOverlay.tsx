@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -14,9 +15,32 @@ import { RMS_DISCORD_URL } from "./content/rmsBasics";
 import { SUPPORT_URL } from "../supportLink";
 import { renderProse } from "../components/InlineCode";
 import { StepBody, type SpoilerMemory } from "./StepBody";
-import type { Anchor, BodyBlock, StepContext, TutorialStep } from "./types";
+import { StepKindIcon } from "./tutorialIcons";
+import type {
+  Anchor,
+  BodyBlock,
+  StepContext,
+  StepKind,
+  TutorialStep,
+} from "./types";
 import type { TabId } from "../types";
 import styles from "./TutorialOverlay.module.css";
+
+/**
+ * The class that sets `--step-kind`, the colour a step's chip and edge stripe
+ * share. A lookup table rather than a template like `styles[`kind${kind}`]`,
+ * so a renamed class is a compile error here and not a silent `undefined`.
+ */
+const KIND_CLASS: Record<StepKind, string> = {
+  investigate: styles.kindInvestigate,
+  build: styles.kindBuild,
+};
+
+/** The chip's word for each kind. */
+const KIND_LABEL: Record<StepKind, string> = {
+  investigate: "Investigate",
+  build: "Build",
+};
 
 /** Gap between the anchor and the callout, and the callout's minimum clearance from the viewport edge, same values HelpTip's popup uses. */
 const GAP_PX = 8;
@@ -24,6 +48,14 @@ const VIEWPORT_MARGIN_PX = 8;
 
 /** How long the tick shows before a freshly-satisfied check step auto-advances (Sec.5.5), long enough to read as a reward, not a dismissal. A step with `autoAdvance: false` never does. */
 const AUTO_ADVANCE_DELAY_MS = 1100;
+
+/**
+ * How long a `lookFirst` step keeps its spotlight before fading it, if the
+ * learner has not clicked or typed outside the card by then. Long enough to
+ * read the card and find the lit region. The fade itself is a CSS
+ * transition, `.spotlightFaded` in the stylesheet.
+ */
+export const LOOK_FIRST_FADE_DELAY_MS = 12000;
 
 interface TutorialOverlayProps {
   hasFile: boolean;
@@ -194,6 +226,7 @@ export function TutorialOverlay({
   // standalone callout, not a step in a running tutorial.
   const anchor = step?.anchor;
   const extraAnchors = step?.extraAnchors;
+  const lookFirst = step?.lookFirst;
 
   // Minimize shrinks the card to a one line bar and turns the spotlight off,
   // so the learner can work unobstructed. Tracked against the step's own key
@@ -218,6 +251,43 @@ export function TutorialOverlay({
     },
     [stepKey],
   );
+
+  // A `lookFirst` step's spotlight fades once, after a delay or at the
+  // learner's first click or key outside the card, whichever comes first.
+  // Reset on every step transition like minimize above, so the next step,
+  // or Back to this one, opens with the spotlight showing again. Storing
+  // only "the key that faded" would not do that, since coming Back to a
+  // step brings back the same key and it would open already faded.
+  const [fadeState, setFadeState] = useState<{
+    key: string | null;
+    faded: boolean;
+  }>({ key: null, faded: false });
+  if (stepKey !== fadeState.key) {
+    setFadeState({ key: stepKey, faded: false });
+  }
+  const spotlightFaded = lookFirst !== undefined && fadeState.faded;
+  useEffect(() => {
+    if (lookFirst === undefined || stepKey === null || fadeState.faded) return;
+    const fade = () => setFadeState({ key: stepKey, faded: true });
+    const timer = window.setTimeout(fade, LOOK_FIRST_FADE_DELAY_MS);
+    // Capture phase, so a control that stops its event from bubbling, such
+    // as Monaco swallowing keys, still counts as the learner starting work.
+    // A click or key on the card itself is reading, not working.
+    const onAction = (event: Event) => {
+      if (calloutRef.current?.contains(event.target as Node)) return;
+      fade();
+    };
+    document.addEventListener("pointerdown", onAction, true);
+    document.addEventListener("keydown", onAction, true);
+    // The cleanup is what makes this safe to re-run. Without it a step left
+    // before its timer fired would still fade, and every visit would add
+    // another pair of listeners.
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("pointerdown", onAction, true);
+      document.removeEventListener("keydown", onAction, true);
+    };
+  }, [lookFirst, stepKey, fadeState.faded]);
 
   // Dragging. One tutorial run is the scope a dropped position lives in. The
   // card and the bar each keep their own, since a learner who parks the bar
@@ -266,11 +336,20 @@ export function TutorialOverlay({
 
     const anchorEl = anchor ? resolveAnchor(anchor) : null;
     const anchorBox = anchorEl?.getBoundingClientRect() ?? null;
+    // What is lit. A `lookFirst` list replaces the anchor and its extras,
+    // while `anchor` still decides where the callout goes below.
     const rects: DOMRect[] = [];
-    if (anchorBox) rects.push(anchorBox);
-    for (const extra of extraAnchors ?? []) {
-      const extraBox = resolveAnchor(extra)?.getBoundingClientRect();
-      if (extraBox) rects.push(extraBox);
+    if (lookFirst) {
+      for (const region of lookFirst) {
+        const box = resolveAnchor(region)?.getBoundingClientRect();
+        if (box) rects.push(box);
+      }
+    } else {
+      if (anchorBox) rects.push(anchorBox);
+      for (const extra of extraAnchors ?? []) {
+        const extraBox = resolveAnchor(extra)?.getBoundingClientRect();
+        if (extraBox) rects.push(extraBox);
+      }
     }
 
     /** A drop from this run, or null for one left over from another run. */
@@ -546,7 +625,7 @@ export function TutorialOverlay({
       window.innerWidth - calloutBox.width - VIEWPORT_MARGIN_PX,
     );
     commitPosition(applyNudge({ top, left }));
-  }, [anchor, extraAnchors, minimized, step, runKey, stepKey]);
+  }, [anchor, extraAnchors, lookFirst, minimized, step, runKey, stepKey]);
 
   const showingCallout = active !== null || announcement !== null;
 
@@ -654,11 +733,18 @@ export function TutorialOverlay({
     step?.calloutMaxWidthPx && !minimized
       ? { ...positionStyle, maxWidth: step.calloutMaxWidthPx }
       : positionStyle;
-  const calloutClass = minimized
+  const baseClass = minimized
     ? styles.bar
     : wide
       ? `${styles.callout} ${styles.calloutWide}`
       : styles.callout;
+  // The edge stripe goes on the card and on the minimized bar alike, so the
+  // kind still shows while the learner works with the card out of the way.
+  // The announcement is never a running step, so it never has one.
+  const stepKind = !announcement && step?.kind ? step.kind : null;
+  const calloutClass = stepKind
+    ? `${baseClass} ${styles.kindStripe} ${KIND_CLASS[stepKind]}`
+    : baseClass;
 
   return createPortal(
     <>
@@ -672,7 +758,17 @@ export function TutorialOverlay({
               sit inside spotlight B's "everything but B" bands. A mask with
               one hole per rect is the only way multiple disjoint cutouts
               compose correctly. */}
-          <svg className={styles.dimSvg} aria-hidden="true">
+          {/* Faded by a class rather than unmounted, so the opacity
+              transition has an element to play on. Both layers already let
+              clicks through, so a faded spotlight blocks nothing. */}
+          <svg
+            className={
+              spotlightFaded
+                ? `${styles.dimSvg} ${styles.spotlightFaded}`
+                : styles.dimSvg
+            }
+            aria-hidden="true"
+          >
             <mask
               id="tutorial-spotlight-mask"
               maskUnits="userSpaceOnUse"
@@ -705,7 +801,11 @@ export function TutorialOverlay({
           {spotlightRects.map((r, i) => (
             <div
               key={i}
-              className={styles.ring}
+              className={
+                spotlightFaded
+                  ? `${styles.ring} ${styles.spotlightFaded}`
+                  : styles.ring
+              }
               style={{
                 top: r.top,
                 left: r.left,
@@ -966,6 +1066,7 @@ function StepCallout({
       </div>
       {imagePlacement === "top" && imageElement}
       <h3 className={styles.title}>
+        {step.kind && <StepKindChip kind={step.kind} />}
         {step.title}
         {isCheck && satisfied && (
           <span className={styles.tick} aria-label="done">
@@ -1061,6 +1162,28 @@ function StepCallout({
         </HelpTip>
       </div>
     </>
+  );
+}
+
+/**
+ * What the step asks of the learner, before its title. The icon and the word
+ * together, since an icon alone takes a few steps to learn. Not interactive,
+ * but a HelpTip still explains it in help mode, the way the drag grip's does.
+ */
+function StepKindChip({ kind }: { kind: StepKind }) {
+  return (
+    <HelpTip
+      id={
+        kind === "investigate"
+          ? "tutorial.kindInvestigate"
+          : "tutorial.kindBuild"
+      }
+    >
+      <span className={styles.kindChip}>
+        <StepKindIcon kind={kind} />
+        {KIND_LABEL[kind]}
+      </span>
+    </HelpTip>
   );
 }
 

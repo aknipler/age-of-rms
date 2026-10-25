@@ -55,6 +55,11 @@ export function CreditsSettings() {
         uses was then tested against maps the game itself generated.
       </p>
 
+      <p className={styles.creditThanks}>
+        Headings and the logo use the Cinzel typeface, © 2020 The Cinzel Project
+        Authors, under the SIL Open Font License 1.1.
+      </p>
+
       {/* Required by the Game Content Usage Rules, which are what let this app
           ship the extracted reference data at all. The rules ask for the notice
           wherever the item is distributed, so it appears here and in NOTICE at

@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import type { ParseResult } from "../parser/types";
 import type { SectionTab } from "./sectionTabsModel";
+import { findItemAtOffset } from "./selectionResolve";
 import { BlockList } from "./BlockList";
 import { CommandPicker, intentForPick } from "./CommandPicker";
 import { CardDragProvider } from "./cardDrag";
@@ -24,7 +26,39 @@ import {
 import styles from "./SectionView.module.css";
 
 interface SectionViewProps {
-  tab: SectionTab;
+  /** Every shown section, in tab order (viewScope.ts). One for the classic single-section view. */
+  tabs: SectionTab[];
+  /** The in-focus section among them: the one Add, Add Comment and Add Template write to. */
+  focusTab: SectionTab;
+  /** A section heading, or empty space inside a section, was clicked. */
+  onFocusSection: (id: string) => void;
+}
+
+/**
+ * Where a comment trailing this tab's own item list has to end, for
+ * BlockList's benefit (comments.ts): the Header tab ends at the first real
+ * <SECTION>, any other tab ends at whichever SectionNode comes after ITS last
+ * physical section in file order (tab.items can aggregate more than one
+ * same-named SectionNode, sectionTabsModel.ts's duplicate-section rule), or
+ * end of file if nothing follows either way. undefined (no boundary, no
+ * trailing comments render) only when this tab has no SectionNode at all
+ * yet, since there's nothing to be trailing WITHIN. A plain function since
+ * the stacked view (2026-10-21) needs it once per shown section.
+ */
+function trailingBoundaryOf(
+  tab: SectionTab,
+  parseResult: ParseResult,
+): number | undefined {
+  const { tokens, source } = parseResult;
+  if (tab.id === "header") {
+    const firstSection = parseResult.script.sections[0];
+    return firstSection ? tokens[firstSection.header].start : source.length;
+  }
+  const last = tab.sections[tab.sections.length - 1];
+  if (!last) return undefined;
+  const index = parseResult.script.sections.indexOf(last);
+  const next = parseResult.script.sections[index + 1];
+  return next ? tokens[next.header].start : source.length;
 }
 
 // docs/breakdown-design.md Sec.3.2: an "Add" button opening a command
@@ -48,15 +82,27 @@ interface SectionViewProps {
 // picked command as one insert. Closed 2026-09-01; previously the button
 // just stayed disabled and every disabled tab's tooltip claimed to be the
 // Header tab specifically, whichever tab it actually was.
-export function SectionView({ tab }: SectionViewProps) {
+//
+// The stacked view (2026-10-21, Sec.3.1.1). Every shown section renders in
+// one scrolling list under a heading of its own, empty ones included, and
+// the one sticky Add bar serves whichever section is in focus, named at its
+// start ("Terrain:"). Focus follows the selected card, and clicking a
+// heading or the empty space in a section focuses that section, which is
+// how an empty section gets its first command. `tab` below is the focus
+// section, so everything the Add bar does reads exactly as it did when only
+// one section was ever on screen.
+export function SectionView({
+  tabs,
+  focusTab: tab,
+  onFocusSection,
+}: SectionViewProps) {
   const {
-    source,
-    tokens,
     parseResult,
     applyEdit,
     requestFocus,
     revealAfterEdit,
     selectedItem,
+    selectedComment,
     clearSelection,
     gameConstants,
   } = useBreakdownContext();
@@ -101,8 +147,33 @@ export function SectionView({ tab }: SectionViewProps) {
   // on every render, a plain object literal here would be a new reference
   // every time regardless of whether selectedItem/targetSection actually
   // changed.
+  //
+  // The selected card only counts when it is in the focus section. Focus
+  // follows the selection, so this only differs from "is anything
+  // selected" when the selection sits in a section the view does not show
+  // (set from the Code tab's cursor), where inserting after it would write
+  // somewhere off screen.
+  //
+  // A selected comment card (2026-10-22) counts the same way, found by the
+  // section spans this tab covers, since a comment is in no item. Add then
+  // lands right below the comment.
+  const selectedCardHere =
+    selectedItem && findItemAtOffset(tab.items, selectedItem.span.start)
+      ? selectedItem
+      : selectedComment &&
+          (tab.id === "header"
+            ? selectedComment.span.end <=
+              (parseResult.script.sections[0]?.span.start ??
+                parseResult.source.length)
+            : tab.sections.some(
+                (s) =>
+                  selectedComment.span.start >= s.span.start &&
+                  selectedComment.span.end <= s.span.end,
+              ))
+        ? selectedComment
+        : undefined;
   const insertTarget = useMemo(() => {
-    if (selectedItem) return { after: selectedItem };
+    if (selectedCardHere) return { after: selectedCardHere };
     if (targetSection)
       return { in: "section" as const, section: targetSection };
     if (tab.id === "header") return { in: "preamble" as const };
@@ -113,27 +184,16 @@ export function SectionView({ tab }: SectionViewProps) {
     if (tab.isCanonicalOrHeader)
       return { in: "newSection" as const, name: tab.id };
     return null;
-  }, [selectedItem, targetSection, tab.id, tab.isCanonicalOrHeader]);
+  }, [selectedCardHere, targetSection, tab.id, tab.isCanonicalOrHeader]);
 
-  // Where a comment trailing this tab's own item list has to end, for
-  // BlockList's benefit (comments.ts): the Header tab ends at the first
-  // real <SECTION>, any other tab ends at whichever SectionNode comes
-  // after ITS last physical section in file order (tab.items can
-  // aggregate more than one same-named SectionNode, sectionTabsModel.ts's
-  // duplicate-section rule), or end of file if nothing follows either
-  // way. undefined (no boundary, no trailing comments render) only when
-  // this tab has no SectionNode at all yet, matching insertTarget's own
-  // "newSection" fallback above, since there's nothing to be trailing WITHIN.
-  const trailingBoundary = useMemo(() => {
-    if (tab.id === "header") {
-      const firstSection = parseResult.script.sections[0];
-      return firstSection ? tokens[firstSection.header].start : source.length;
-    }
-    if (!targetSection) return undefined;
-    const index = parseResult.script.sections.indexOf(targetSection);
-    const next = parseResult.script.sections[index + 1];
-    return next ? tokens[next.header].start : source.length;
-  }, [tab.id, targetSection, parseResult, tokens, source.length]);
+  const stacked = tabs.length > 1;
+  // The ruler maps every card on screen, whichever section it is in.
+  const rulerItems = useMemo(() => tabs.flatMap((t) => t.items), [tabs]);
+  // The picker was opened for one section. When focus moves to another,
+  // it closes rather than silently retargeting under the pointer.
+  useEffect(() => {
+    setPickerOpen(false);
+  }, [tab.id]);
 
   // Add Command's own hotkey, toggles the same picker the button does,
   // with the same insertTarget rule (after the selection, else appended to
@@ -168,6 +228,9 @@ export function SectionView({ tab }: SectionViewProps) {
               sized to its own content (2026-09-15) rather than stretched
               to fill half the row each. */}
           <div className={styles.buttonRow}>
+            {/* Which section the buttons write to, only needed once more
+                than one section is on screen. */}
+            {stacked && <span className={styles.focusLabel}>{tab.label}:</span>}
             <HelpTip
               id="breakdown.addCommand"
               // insertTarget now resolves for every real tab (selection,
@@ -275,18 +338,56 @@ export function SectionView({ tab }: SectionViewProps) {
           )}
         </div>
         <div className={styles.content}>
-          {/* The drag layer is per tab, like the diagnostics ruler, since
-              a drop resolves against this tab's own items and autoscrolls
-              this tab's own container. */}
-          <CardDragProvider
-            items={tab.items}
-            scrollContainerRef={scrollContainerRef}
-          >
-            <BlockList items={tab.items} trailingBoundary={trailingBoundary} />
-          </CardDragProvider>
+          {tabs.map((shown) => {
+            // The drag layer is per section, since a drop resolves against
+            // that section's own items. In the stacked view that keeps a
+            // drag inside the section it started in, as it always was when
+            // sections were separate tabs (Sec.3.11's "not across sections").
+            const body = (
+              <CardDragProvider
+                items={shown.items}
+                scrollContainerRef={scrollContainerRef}
+              >
+                <BlockList
+                  items={shown.items}
+                  trailingBoundary={trailingBoundaryOf(shown, parseResult)}
+                />
+              </CardDragProvider>
+            );
+            if (!stacked) return <Fragment key={shown.id}>{body}</Fragment>;
+            const focused = shown.id === tab.id;
+            return (
+              <section
+                key={shown.id}
+                className={`${styles.sectionGroup} ${focused ? styles.sectionGroupFocused : ""}`}
+                // Empty space inside a section focuses it. Cards stop their
+                // own clicks (ItemCard.tsx), so only the gaps, the empty
+                // placeholder and the heading reach here.
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFocusSection(shown.id);
+                }}
+              >
+                <HelpTip id="breakdown.sectionHeading">
+                  <button
+                    type="button"
+                    className={styles.sectionHeading}
+                    data-section-heading={shown.id}
+                    aria-pressed={focused}
+                  >
+                    {shown.number}. {shown.label}
+                    <span className={styles.sectionCount}>
+                      {shown.items.length}
+                    </span>
+                  </button>
+                </HelpTip>
+                {body}
+              </section>
+            );
+          })}
         </div>
       </div>
-      <DiagnosticsRuler items={tab.items} containerRef={scrollContainerRef} />
+      <DiagnosticsRuler items={rulerItems} containerRef={scrollContainerRef} />
       {templateDialogOpen && insertTarget && templateSection && (
         <TemplateDialog
           section={templateSection}
@@ -294,6 +395,7 @@ export function SectionView({ tab }: SectionViewProps) {
           // walks. The dialog copies playerLand into its own state on mount,
           // see its lazy useState.
           script={{
+            parse: parseResult,
             playerLand: playerLandTerrain(parseResult),
             forestSetupPresent: definesSymbol(parseResult, FOREST_MAKER_CONST),
             quickStartDefined: definesSymbol(parseResult, QUICK_START_LABEL),

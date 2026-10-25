@@ -17,9 +17,11 @@
     "check:generated-types": "node scripts/generate-published-types.mjs --check",
     "check:breakdown-prereqs": "node scripts/check-breakdown-prereqs.mjs",
     "measure:checker": "vitest run --config vitest.measure.config.ts --disableConsoleIntercept",
+    "generate:skeletons": "vitest run --config vitest.skeletons.config.ts --disableConsoleIntercept",
     "test:raw": "vitest run"
   },
   "dependencies": {
+    "@fontsource/cinzel": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",

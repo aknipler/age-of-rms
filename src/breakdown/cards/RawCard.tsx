@@ -3,6 +3,7 @@ import { useBreakdownContext } from "../BreakdownContext";
 import { diagnosticsWithin } from "../diagnosticsForSpan";
 import { BlockList } from "../BlockList";
 import { HelpTip } from "../../components/HelpTip";
+import { TrashIcon } from "../../components/TrashIcon";
 import { ProblemBadge } from "./ProblemBadge";
 import cardStyles from "./cards.module.css";
 import styles from "./RawCard.module.css";
@@ -60,6 +61,25 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
         {firstLine && <span className={styles.rawPreview}>{firstLine}</span>}
         {nodeDiagnostics.length > 0 && (
           <ProblemBadge diagnostics={nodeDiagnostics} />
+        )}
+        {/* A raw node only. A shared block's contents are real cards and its
+            span is an approximation of the construct. */}
+        {rawNode && (
+          <span className={styles.deleteSlot}>
+            <HelpTip id="breakdown.rawCard.delete">
+              <button
+                type="button"
+                className={cardStyles.deleteButton}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  applyEdit({ kind: "removeRaw", span: rawNode.span });
+                }}
+                aria-label="Delete"
+              >
+                <TrashIcon />
+              </button>
+            </HelpTip>
+          </span>
         )}
       </div>
       {expanded && (

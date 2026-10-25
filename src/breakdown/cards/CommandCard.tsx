@@ -20,6 +20,7 @@ import { diagnosticsWithin, maxSeverityWithin } from "../diagnosticsForSpan";
 import { argumentHelpText } from "../helpText";
 import { HelpTip } from "../../components/HelpTip";
 import { TrashIcon } from "../../components/TrashIcon";
+import { CommentOutButton } from "./CommentOutButton";
 import {
   DiagnosticPopup,
   useDiagnosticHover,
@@ -30,6 +31,8 @@ import { partitionSlots, snapshotVisibleNames } from "../hideUnused";
 import { SummaryAttributes } from "./SummaryAttributes";
 import { OtherContentsRow } from "./OtherContentsRow";
 import { ProblemBadge } from "./ProblemBadge";
+import { ConstantsColoured } from "../syntaxColor";
+import { AddInlineCommentButton, InlineComments } from "./InlineComment";
 import cardStyles from "./cards.module.css";
 import styles from "./CommandCard.module.css";
 
@@ -147,6 +150,7 @@ function ArgRow({
       <AttributeValueEditor
         arg={arg}
         type={argDef?.type ?? "string"}
+        def={argDef}
         helpId="breakdown.commandCard.argument"
         helpText={argumentHelpText(argDef) ?? null}
       />
@@ -445,7 +449,7 @@ export function CommandCard({ command }: CommandCardProps) {
   }
 
   return (
-    <div className={`${cardStyles.card} ${styles.card}`}>
+    <div className={`${cardStyles.card} ${styles.card}`} data-card>
       {/* The collapse strip (beta feedback 2026-09-17). The whole left
           edge of an open card closes it, so a long attribute list can be
           closed from the bottom without scrolling back up to the toggle.
@@ -469,7 +473,7 @@ export function CommandCard({ command }: CommandCardProps) {
           </HelpTip>
         </span>
       )}
-      <div className={styles.header}>
+      <div className={styles.header} data-card-header>
         <HelpTip id="breakdown.commandCard.expand">
           <button
             type="button"
@@ -497,7 +501,19 @@ export function CommandCard({ command }: CommandCardProps) {
                   end where it belongs. */}
               <span className={styles.summaryLabel}>
                 {name}
-                {posArgsText ? ` ${posArgsText}` : ""}
+                {posArgsText && (
+                  <>
+                    {" "}
+                    <ConstantsColoured text={posArgsText} />
+                  </>
+                )}
+              </span>
+              {/* Right after the name and arguments, where the comment sits
+                  in the code (2026-10-21, InlineComment.tsx). The add
+                  button only shows while the pointer is on the row. */}
+              <InlineComments command={command} />
+              <span className={styles.inlineAddSlot}>
+                <AddInlineCommentButton command={command} />
               </span>
               {/* Deliberately not gated on summaryAttrs.length > 0: a flag
                   clicked from this very summary line removes it from the
@@ -546,10 +562,17 @@ export function CommandCard({ command }: CommandCardProps) {
         {/* Pinned to the right edge and never shrunk, whatever the summary
             does. */}
         <span className={styles.deleteSlot}>
+          <CommentOutButton
+            card={command}
+            disabled={
+              command.block !== undefined && command.block.close === undefined
+            }
+          />
           <HelpTip id="breakdown.commandCard.delete">
             <button
               type="button"
               className={cardStyles.deleteButton}
+              data-quiet
               onClick={(e) => {
                 // Deleting a card must never change selection by itself. Only
                 // deleting the card that IS currently selected should clear it

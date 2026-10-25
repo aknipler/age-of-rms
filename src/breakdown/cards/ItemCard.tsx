@@ -9,9 +9,10 @@ import type {
   RandomNode,
   RawNode,
 } from "../../parser/types";
-import { canRearrangeItem, cardKindForItem } from "../cardKind";
+import { canActOnCard, canRearrangeItem, cardKindForItem } from "../cardKind";
 import { useBreakdownContext } from "../BreakdownContext";
 import { isInteractiveTarget, useCardDrag } from "../cardDrag";
+import { clickModeOf } from "../multiSelect";
 import { usePreviewCut } from "../../PreviewCutContext";
 import { usePreviewView } from "../../components/preview/PreviewViewContext";
 import { CardMenu } from "./CardMenu";
@@ -67,8 +68,10 @@ function renderInner(item: Item) {
  * inside a branch drags that command and never the conditional around it.
  */
 export function ItemCard({ item }: { item: Item }) {
-  const { isSelected, selectCard } = useBreakdownContext();
-  const { dragging, indicator, beginDrag, consumeDragClick } = useCardDrag();
+  const { isSelected, selectCard, clickCard, selectedCards } =
+    useBreakdownContext();
+  const { dragging, draggingGroup, indicator, beginDrag, consumeDragClick } =
+    useCardDrag();
   const { cutOffset } = usePreviewCut();
   const { view } = usePreviewView();
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
@@ -85,7 +88,18 @@ export function ItemCard({ item }: { item: Item }) {
   const ignoredByPreview =
     view === "current" && cutOffset !== null && item.span.start >= cutOffset;
   const isDragSource =
-    dragging !== null && dragging.span.start === item.span.start;
+    (dragging !== null && dragging.span.start === item.span.start) ||
+    (draggingGroup?.some((g) => g.span.start === item.span.start) ?? false);
+  // Multi-select (2026-10-21, Sec.3.12). Pressing on one of several
+  // selected cards drags them all, the way a file list does. The group is
+  // the selection's movable cards, selected comment cards included since
+  // 2026-10-22, and only counts when it holds this one.
+  const inMultiSelection =
+    (selectedCards?.length ?? 0) > 1 &&
+    (selectedCards?.some((s) => s.span.start === item.span.start) ?? false);
+  const dragGroup = inMultiSelection
+    ? selectedCards!.filter(canActOnCard)
+    : undefined;
   const dropEdge =
     indicator?.kind === "edge" && indicator.anchor === item.span.start
       ? indicator.edge
@@ -96,7 +110,13 @@ export function ItemCard({ item }: { item: Item }) {
     // must never reach the ancestor card's own handler and pick THAT up.
     e.stopPropagation();
     if (!rearrangeable || isInteractiveTarget(e.target)) return;
-    beginDrag(item, e);
+    beginDrag(
+      item,
+      e,
+      dragGroup?.some((g) => g.span.start === item.span.start)
+        ? dragGroup
+        : undefined,
+    );
   };
 
   return (
@@ -113,6 +133,9 @@ export function ItemCard({ item }: { item: Item }) {
       // layer reads it back off the element under the pointer to find the
       // drop target (cardDrag.tsx).
       data-anchor={item.span.start}
+      // Read by cards.module.css to show this card's Delete and comment
+      // buttons at full strength while it is selected.
+      data-selected={selected || undefined}
       onPointerDown={onPointerDown}
       // Capture phase, so the click that ends a drag is swallowed before
       // any header toggle or value editor inside the card can see it.
@@ -122,9 +145,19 @@ export function ItemCard({ item }: { item: Item }) {
           e.preventDefault();
         }
       }}
+      // Shift and a press on card chrome would otherwise start a browser
+      // text selection across every card in between.
+      onMouseDown={(e) => {
+        if (e.shiftKey && !isInteractiveTarget(e.target)) e.preventDefault();
+      }}
       onClick={(e) => {
         e.stopPropagation();
-        selectCard(item.span);
+        // A click into a field is someone starting to edit, never a
+        // selection gesture, so modifiers there (Shift extends a text
+        // selection inside an input) leave the card selection plain.
+        const mode = isInteractiveTarget(e.target) ? "replace" : clickModeOf(e);
+        if (clickCard) clickCard(item, mode);
+        else selectCard(item.span);
       }}
       onContextMenu={(e) => {
         // Only the cards the menu can act on take over the right click.
@@ -132,7 +165,9 @@ export function ItemCard({ item }: { item: Item }) {
         if (!rearrangeable) return;
         e.preventDefault();
         e.stopPropagation();
-        selectCard(item.span);
+        // A right click inside a multi-selection keeps it, so the menu's
+        // Delete can act on all of it.
+        if (!inMultiSelection) selectCard(item.span);
         setMenuAt({ x: e.clientX, y: e.clientY });
       }}
     >

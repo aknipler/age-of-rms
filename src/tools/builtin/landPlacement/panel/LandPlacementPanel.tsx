@@ -10,12 +10,20 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../../../../components/HelpTip";
+import { RmsSuggestInput } from "../../../../components/RmsSuggestInput";
 import { TrashIcon } from "../../../../components/TrashIcon";
+import {
+  getStaticNameIndex,
+  scriptIndexFor,
+} from "../../../../editor/staticNameIndex";
+import { describeSuggestion, suggest } from "../../../../parser/nameLookup";
+import { useResolveFlashEnabled } from "../../../../settings/AppSettingsContext";
 import {
   MAX_PLAYER_COUNT,
   type MapSize,
@@ -36,12 +44,19 @@ import {
 import { parseFormula } from "../compiler/frontend";
 import {
   bindParamLabels,
+  collectUnsetNames,
   computeFormulaFeedback,
   describeUnknownName,
+  describeUnsetNames,
   exprToFormulaText,
   findUnknownNames,
+  formulaNames,
+  formulaRows,
   NO_PARAMS,
+  unsetNameSnippet,
   type FormulaParamEnv,
+  type FormulaRow,
+  type UnsetNameNote,
 } from "./formulaField";
 import { locateFence, readFenceModel } from "../fence";
 import type { AlpModel } from "../fence";
@@ -144,7 +159,15 @@ const FormulaEnvContext = createContext<{
   onChangeModel: ((updater: (prev: AlpModel) => AlpModel) => void) | null;
   /** Every `#const` and `#define` in the document, whichever branch it sits in, for `findUnknownNames`. */
   scriptSymbols: readonly SymbolInfo[];
-}>({ params: NO_PARAMS, model: null, onChangeModel: null, scriptSymbols: [] });
+  /** The rows under a formula field for the name being typed (name-lookup-design.md Sec.4.3). Null where there is no panel around it. */
+  rowsFor: ((query: string) => FormulaRow[]) | null;
+}>({
+  params: NO_PARAMS,
+  model: null,
+  onChangeModel: null,
+  scriptSymbols: [],
+  rowsFor: null,
+});
 
 /**
  * The warning under a formula box for each name it uses that has no value
@@ -174,6 +197,62 @@ function UnknownNameNotes({
         </span>
       ))}
     </>
+  );
+}
+
+/**
+ * The consolidated list of names the model uses that have no value, with the
+ * lines to set them (name-lookup-design.md Sec.4.3.1). It is read only: the
+ * panel writes inside its own fence and nowhere else (Q4), so the lines are
+ * copied, never inserted.
+ *
+ * Worked out from the live parse on every render by the caller, which is what
+ * makes it shrink as the person adds lines and vanish once nothing is left.
+ */
+function UnsetNamesNotice({ notes }: { notes: readonly UnsetNameNote[] }) {
+  const [copied, setCopied] = useState<"idle" | "done" | "failed">("idle");
+  if (notes.length === 0) return null;
+  const snippet = unsetNameSnippet(notes);
+  const copy = () => {
+    // The button's own click is the user gesture clipboard access needs. The
+    // promise can reject (a webview that denies clipboard access), and the
+    // snippet is on screen to select by hand, so that is reported, not hidden.
+    navigator.clipboard.writeText(snippet).then(
+      () => setCopied("done"),
+      () => setCopied("failed"),
+    );
+  };
+  return (
+    <div className={styles.unsetNames} role="group" aria-label="Unset names">
+      <p className={styles.applyReport}>
+        These names have no value yet, so the layouts that use them will not
+        generate as drawn. Set them in Code or Breakdown.
+      </p>
+      <ul className={styles.unsetList}>
+        {notes.map((n) => (
+          <li key={n.name}>{n.text}</li>
+        ))}
+      </ul>
+      {snippet !== "" && (
+        <>
+          <pre className={styles.code}>{snippet}</pre>
+          <HelpTip id="landPlacement.unsetNames.copy">
+            <button type="button" onClick={copy}>
+              Copy
+            </button>
+          </HelpTip>
+          {copied === "done" && (
+            <span className={styles.applyReport}> Copied.</span>
+          )}
+          {copied === "failed" && (
+            <span className={styles.formulaError}>
+              {" "}
+              Copy was blocked. Select the lines above instead.
+            </span>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -362,21 +441,56 @@ export function LandPlacementPanel({
         : "Up to date"
       : `${fenceExists ? "Update" : "Apply"} (${editCount} change${editCount === 1 ? "" : "s"})`;
 
+  // What a formula field knows about the model's RandomParams, and the check
+  // behind the unset names notice. Both sit above the early return below
+  // because they are hooks, and a hook after a conditional return is a
+  // different number of hooks on the first render than the second, which
+  // React forbids.
+  const paramEnv = useMemo<FormulaParamEnv>(
+    () => ({
+      labelOf: (id) => model.randomParams.find((p) => p.id === id)?.label,
+      idByLabel: new Map(model.randomParams.map((p) => [p.label, p.id])),
+      previewOf: (id) =>
+        emission?.ok ? emission.paramPreview.get(id) : undefined,
+    }),
+    [model.randomParams, emission],
+  );
+  const unsetNotes = useMemo(
+    () =>
+      storeModel === null
+        ? []
+        : describeUnsetNames(
+            collectUnsetNames(model, resolveSym, paramEnv, parseResult.symbols),
+            parseResult,
+          ),
+    [storeModel, model, resolveSym, paramEnv, parseResult],
+  );
+
   if (storeModel === null) {
     return <p className={styles.pane}>Loading…</p>;
   }
 
   const formulaEnv = {
-    params: {
-      labelOf: (id: string) =>
-        model.randomParams.find((p) => p.id === id)?.label,
-      idByLabel: new Map(model.randomParams.map((p) => [p.label, p.id])),
-      previewOf: (id: string) =>
-        emission?.ok ? emission.paramPreview.get(id) : undefined,
-    },
+    params: paramEnv,
     model,
     onChangeModel: setModel as (updater: (prev: AlpModel) => AlpModel) => void,
     scriptSymbols: parseResult.symbols,
+    // A plain function, rebuilt each render. RmsSuggestInput reads it when a
+    // key is typed and nothing memoises on it, so a new identity costs nothing.
+    rowsFor: (query: string): FormulaRow[] =>
+      formulaRows(query, {
+        emittedNames: emission?.ok ? emission.emittedNames : [],
+        paramLabels: model.randomParams.map((p) => p.label),
+        // Sec.4.3, the script's own #consts with no position test, which is
+        // the formula slot's rule (Sec.9), ranked by nameLookup.
+        scriptRows: suggest(
+          getStaticNameIndex(),
+          scriptIndexFor(parseResult),
+          query,
+          parseResult.source.length,
+          { kind: "formula" },
+        ).map((r) => ({ name: r.name, detail: describeSuggestion(r) })),
+      }),
   };
 
   return (
@@ -707,6 +821,7 @@ export function LandPlacementPanel({
                 {applyLabel}
               </button>
             </HelpTip>
+            <UnsetNamesNotice notes={unsetNotes} />
             {applied && (
               <p className={styles.applyReport}>
                 Written to the script: {describeApplyReport(lastApply.report)}.
@@ -1713,6 +1828,14 @@ function FormulaField({
   );
   const [text, setText] = useState(initialText);
   const [dirty, setDirty] = useState(false);
+  // The resolve flash (name-lookup-design.md Sec.6). The timer is a ref so
+  // the unmount cleanup below is the only thing that cancels it.
+  const flashEnabled = useResolveFlashEnabled();
+  const [flashing, setFlashing] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
 
   // Re-seed from a value changed OUTSIDE this field (a group re-expand, an
   // undo, a sibling edit), but only while the user hasn't started typing
@@ -1728,18 +1851,36 @@ function FormulaField({
   const canCommit = feedback.parse.ok && feedback.unsupportedReason === null;
 
   const commit = () => {
+    const edited = dirty;
     setDirty(false);
     if (!canCommit) return; // an invalid draft is simply not applied; never coerced, never silently discarded from view
     const reparsed = parseFormula(text);
     if (!reparsed.ok) return;
     onCommit(commitFormulaExpr(reparsed.expr, fieldSuffix, env));
+    // Sec.6.1, a flash confirms what the person just typed, so it needs an
+    // edit (a blur on an untouched field says nothing), at least one name
+    // (a bare number resolves to nothing), and every name resolving.
+    const names = formulaNames(text, env.params);
+    if (
+      edited &&
+      flashEnabled &&
+      names.length > 0 &&
+      names.every((n) => resolveSym(n) !== undefined)
+    ) {
+      setFlashing(true);
+      clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlashing(false), 700);
+    }
   };
 
   return (
     <div className={styles.formulaField}>
       <div className={styles.formulaFieldRow}>
         <label>{label}</label>
-        <input
+        <RmsSuggestInput
+          rowsFor={env.rowsFor}
+          wrapClassName={styles.formulaInputWrap}
+          className={flashing ? styles.resolveFlash : undefined}
           type="text"
           value={text}
           onChange={(e) => {

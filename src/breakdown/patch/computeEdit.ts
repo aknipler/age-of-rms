@@ -8,6 +8,7 @@ import type {
   CommandNode,
   ParseResult,
   SectionNode,
+  Span,
 } from "../../parser/types";
 import type { DraggableCard, InsertAnchor } from "./intents";
 import type { LanguageIndex } from "../../parser/language";
@@ -37,8 +38,13 @@ import {
   type InsertTarget,
   type TextEdit,
 } from "./intents";
-import { extractComments, padCommentContent } from "../comments";
+import {
+  extractComments,
+  inlineCommentInsertOffset,
+  padCommentContent,
+} from "../comments";
 import { CANONICAL_SECTION_ORDER } from "../sectionLabels";
+import { outermostInOrder } from "../multiSelect";
 
 export function applyEdit(source: string, edit: TextEdit): string {
   return source.slice(0, edit.start) + edit.newText + source.slice(edit.end);
@@ -56,6 +62,7 @@ export function editsOf(result: EditResult): TextEdit[] {
   const edits = [result.edit];
   if (result.removal) edits.push(result.removal);
   if (result.companion) edits.push(result.companion);
+  if (result.others) edits.push(...result.others);
   return edits.sort((x, y) => y.start - x.start);
 }
 
@@ -451,7 +458,12 @@ export function computeEdit(
         );
       }
     }
-    const anchorEnd = item.span.end;
+    // After the anchor's same-line trailing comment, not at its span end.
+    // Inserting `eol + text` at the span end pushed that comment onto the
+    // new line, so `random_placement /* r */` gained a new command and lost
+    // its comment to it (found 2026-10-21 with the inline comment work,
+    // which shows that comment as part of the card's own row).
+    const anchorEnd = carriedRange(item).end;
     const next = firstNonTriviaFrom(anchorEnd);
     if (next?.kind === "openBrace") {
       throw new PatchError(
@@ -578,20 +590,76 @@ export function computeEdit(
   //
   // A CommentRef carries no `lastToken` to glom trailing trivia onto (it
   // IS trivia), so it skips straight to its own span, unchanged.
-  function carriedRange(node: DraggableCard): {
+  //
+  // Whole comments only (2026-10-21). The walk used to stop at the first
+  // trivia token on a later line, which for a comment that starts on the
+  // card's line and runs onto the next (`foo /* a` then `b */`) ended the
+  // range inside the comment, so a move carried half of it away. A comment
+  // that STARTS on the card's line is carried whole, wherever it ends.
+  function carriedRange(node: InsertAnchor): {
     start: number;
     end: number;
   } {
     if (node.kind === "comment")
       return { start: node.span.start, end: node.span.end };
     let end = node.span.end;
+    let depth = 0;
     for (let i = node.lastToken + 1; i < tokens.length; i++) {
       const t = tokens[i];
       if (!t.isTrivia) break;
-      if (/\n/.test(src.slice(end, t.start))) break;
-      end = t.end;
+      if (depth === 0) {
+        if (t.kind !== "commentOpen") break;
+        if (/\n/.test(src.slice(end, t.start))) break;
+      }
+      if (t.kind === "commentOpen") depth++;
+      else if (t.kind === "commentClose" && depth > 0) depth--;
+      if (depth === 0) end = t.end;
     }
     return { start: node.span.start, end };
+  }
+
+  // What deleting a card removes. A command with no block also takes its
+  // inline comments (comments.ts's inlineCommentsOf), which trail its span
+  // on the same line, since the card's own row shows them as part of it and
+  // deleting the card should not leave them behind as a comment card. A
+  // block command's inline comments are inside its span already.
+  function removedRange(node: { kind: string; span: Span }): Span {
+    if (node.kind === "command" && !(node as CommandNode).block)
+      return carriedRange(node as CommandNode);
+    return node.span;
+  }
+
+  // The removals of a multi-card delete or move, in source order, with any
+  // that touch or overlap merged. Two cards on one line each take a
+  // separating space by removeSpan's surgical rule and can claim the same
+  // one, and Monaco refuses overlapping edits in one push.
+  function mergeRemovals(edits: TextEdit[]): TextEdit[] {
+    const sorted = [...edits].sort((x, y) => x.start - y.start);
+    const out: TextEdit[] = [];
+    for (const e of sorted) {
+      const last = out[out.length - 1];
+      if (last && e.start <= last.end) last.end = Math.max(last.end, e.end);
+      else out.push({ start: e.start, end: e.end, newText: "" });
+    }
+    return out;
+  }
+
+  // A directive whose next argument slot is still empty and accepts a known
+  // name (a bare `#const NAME`, the same case insertAfterItem refuses as an
+  // anchor) takes whatever word follows it as its value. Where it sits now
+  // something safe follows, but a move puts something else after it, and
+  // `#const SIZE` dropped above `effect_amount ...` turned that command into
+  // a raw node (found 2026-10-21 by multiCard.test.ts's corpus sweep, in
+  // 24hr_Mont Saint Michel.rms; the one-card moveNode had the same hole).
+  // Refused until the value is filled in.
+  function assertMovable(node: DraggableCard): void {
+    if (
+      node.kind === "directive" &&
+      node.def?.arguments?.[node.args.length]?.acceptsKnownName
+    )
+      throw new PatchError(
+        "fill in this directive's value before moving it, or it would take the next word as its value",
+      );
   }
 
   function assertClosed(node: DraggableCard, verb: string): void {
@@ -607,6 +675,76 @@ export function computeEdit(
       throw new PatchError(
         `cannot ${verb} an unclosed construct, finish it in the Code tab first`,
       );
+  }
+
+  // ---- 2026-10-22, commenting cards out (Sec.4.15) ----
+
+  // Wrapping a range in `/* */` is only safe when every comment marker in it
+  // is paired. A stray `*/` (RMS0002, still a commentClose token) would end
+  // the new comment early and leave the rest of the card as code.
+  function assertBalancedComments(range: { start: number; end: number }) {
+    let depth = 0;
+    for (const t of tokens) {
+      if (t.start < range.start || !t.isTrivia) continue;
+      if (t.start >= range.end) break;
+      if (t.kind === "commentOpen") depth++;
+      else if (t.kind === "commentClose") {
+        if (depth === 0) depth = -1;
+        else depth--;
+      }
+      if (depth < 0) break;
+    }
+    if (depth !== 0)
+      throw new PatchError(
+        "this card holds an unpaired comment marker, fix it in the Code tab first",
+      );
+  }
+
+  // The two removals that take a comment's delimiters off, and where the
+  // code it held starts. A comment this engine wrote is `/* ` and ` */`
+  // around the code, and taking one space off each side gives back the
+  // original bytes. A hand written block whose `/*` and `*/` each sit on a
+  // line of their own loses those two lines whole, so no blank line or
+  // stray indent is left where they were. A newline is never taken on its
+  // own, since joining two lines could change what a command's arguments
+  // are.
+  function uncommentEdits(span: Span): {
+    open: TextEdit;
+    close: TextEdit;
+    codeStart: number;
+  } {
+    const innerStart = span.start + 2;
+    const innerEnd = span.end - 2;
+    const inner = src.slice(innerStart, innerEnd);
+    const first = inner.search(/\S/);
+    if (first === -1)
+      throw new PatchError("this comment is empty, there is no code in it");
+    const openLine = /^[ \t]*\r?\n/.exec(inner);
+    const open: TextEdit =
+      openLine && wsOnlyBefore(src, span.start)
+        ? {
+            start: lineStartOf(src, span.start),
+            end: innerStart + openLine[0].length,
+            newText: "",
+          }
+        : {
+            start: span.start,
+            end: WS.has(src[innerStart]) ? innerStart + 1 : innerStart,
+            newText: "",
+          };
+    const lastNl = inner.lastIndexOf("\n");
+    const lineEnd = nextEolEnd(src, span.end);
+    const close: TextEdit =
+      lastNl !== -1 &&
+      /^[ \t]*$/.test(inner.slice(lastNl + 1)) &&
+      /^[ \t]*\r?\n?$/.test(src.slice(span.end, lineEnd))
+        ? { start: innerStart + lastNl + 1, end: lineEnd, newText: "" }
+        : {
+            start: WS.has(src[innerEnd - 1]) ? innerEnd - 1 : innerEnd,
+            end: span.end,
+            newText: "",
+          };
+    return { open, close, codeStart: innerStart + first };
   }
 
   /** The node's own text, with continuation lines re-aligned to whatever indent the insert helper picks. */
@@ -654,10 +792,162 @@ export function computeEdit(
     }
 
     case "removeNode":
-      return removeSpan(intent.node.span);
+      return removeSpan(removedRange(intent.node));
+
+    case "removeNodes": {
+      const nodes = outermostInOrder(intent.nodes);
+      if (nodes.length === 0) throw new PatchError("nothing to delete");
+      const edits = mergeRemovals(
+        nodes.map((n) => removeSpan(removedRange(n)).edit),
+      );
+      return {
+        edit: edits[0],
+        caret: edits[0].start,
+        ...(edits.length > 1 ? { others: edits.slice(1) } : {}),
+      };
+    }
+
+    case "moveNodes": {
+      const nodes = outermostInOrder(intent.nodes);
+      if (nodes.length === 0) throw new PatchError("nothing to move");
+      const to = intent.to;
+      const anchor =
+        "after" in to ? to.after : "before" in to ? to.before : null;
+      if (
+        anchor &&
+        nodes.some(
+          (n) =>
+            anchor.span.start >= n.span.start && anchor.span.end <= n.span.end,
+        )
+      )
+        throw new PatchError("cannot move cards beside one of themselves");
+      for (const n of nodes) {
+        assertClosed(n, "move");
+        assertMovable(n);
+      }
+      const ranges = nodes.map(carriedRange);
+      const removals = mergeRemovals(ranges.map((r) => removeSpan(r).edit));
+      // Each card's own text, re-aligned to the destination, one per line.
+      // Where each one begins inside the joined text is recorded as it is
+      // built, since the indent is only known once the insert helper
+      // resolves the renderable.
+      let starts: number[] = [];
+      const joined: Renderable = (indent) => {
+        starts = [];
+        let text = "";
+        nodes.forEach((n, k) => {
+          if (k > 0) text += eol + indent;
+          starts.push(text.length);
+          text += relocateSlice(
+            src.slice(ranges[k].start, ranges[k].end),
+            lineIndentOf(src, n.span.start),
+            indent,
+            eol,
+          );
+        });
+        return { text, caretOffset: 0 };
+      };
+      const insert = insertAt(to, joined);
+      const at = insert.edit.start;
+      if (removals.some((r) => at > r.start && at < r.end))
+        throw new PatchError("cannot move cards into one of themselves");
+      // An insert that lands exactly on the edge of a removed run (the
+      // cards dropped just above or below one of themselves) would be two
+      // edits touching at one offset, whose result depends on which is
+      // applied first. Folding the insert into that removal makes it one
+      // replace instead.
+      const edge = removals.findIndex((r) => at === r.start || at === r.end);
+      const lead = insert.caret - insert.edit.start;
+      let edits: TextEdit[];
+      let finalStart: number;
+      const removedBefore = (pos: number) =>
+        removals
+          .filter((r) => r.end <= pos)
+          .reduce((sum, r) => sum + (r.end - r.start), 0);
+      if (edge !== -1) {
+        const r = removals[edge];
+        edits = removals.map((x, i) =>
+          i === edge ? { ...x, newText: insert.edit.newText } : x,
+        );
+        finalStart = r.start - removedBefore(r.start);
+      } else {
+        edits = [...removals, insert.edit];
+        finalStart = at - removedBefore(at);
+      }
+      const selection = starts.map((s) => finalStart + lead + s);
+      const [first, ...rest] = edits;
+      return {
+        edit: first,
+        caret: selection[0],
+        selection,
+        ...(rest.length > 0 ? { others: rest } : {}),
+      };
+    }
+
+    case "addInlineComment": {
+      const at = inlineCommentInsertOffset(intent.command, tokens);
+      // The caret is the comment's own start, which is where the row's
+      // inline field registers itself for focus (CommandCard.tsx), the same
+      // convention addComment follows for a comment card.
+      return { edit: { start: at, end: at, newText: " /* */" }, caret: at + 1 };
+    }
+
+    case "addConst": {
+      const value = renderValue(intent.value);
+      const text = `#const ${intent.name} ${value}`;
+      return insertAt(intent.at, {
+        text,
+        caretOffset: text.length - value.length,
+      });
+    }
+
+    case "addDefine": {
+      const text = `#define ${intent.name}`;
+      return insertAt(intent.at, {
+        text,
+        caretOffset: text.length - intent.name.length,
+      });
+    }
 
     case "removeComment":
+    case "removeRaw":
       return removeSpan(intent.span);
+
+    case "toggleCommentOut": {
+      const cards = outermostInOrder(intent.cards);
+      const uncomment = cards.every((c) => c.kind === "comment");
+      const targets = uncomment
+        ? cards
+        : cards.filter((c) => c.kind !== "comment");
+      if (targets.length === 0) throw new PatchError("nothing to comment out");
+      const edits: TextEdit[] = [];
+      const selection: number[] = [];
+      // The cards are disjoint and in source order, so every edit of an
+      // earlier card sits before a later card's start. `shift` is what those
+      // edits added or took away, which turns an original offset into one
+      // in the new text.
+      let shift = 0;
+      for (const card of targets) {
+        if (uncomment) {
+          const { open, close, codeStart } = uncommentEdits(card.span);
+          edits.push(open, close);
+          selection.push(codeStart - (open.end - open.start) + shift);
+          shift -= open.end - open.start + (close.end - close.start);
+        } else {
+          assertClosed(card, "comment out");
+          const range = carriedRange(card);
+          assertBalancedComments(range);
+          edits.push(
+            { start: range.start, end: range.start, newText: "/* " },
+            { start: range.end, end: range.end, newText: " */" },
+          );
+          selection.push(range.start + shift);
+          shift += 6;
+        }
+      }
+      const [first, ...rest] = edits;
+      return { edit: first, caret: selection[0], selection, others: rest };
+    }
 
     case "duplicateNode": {
       assertClosed(intent.node, "duplicate");
@@ -670,6 +960,7 @@ export function computeEdit(
 
     case "moveNode": {
       assertClosed(intent.node, "move");
+      assertMovable(intent.node);
       const range = carriedRange(intent.node);
       const removal = removeSpan(range).edit;
       const insert = insertAt(intent.to, sliceRenderable(intent.node, range));

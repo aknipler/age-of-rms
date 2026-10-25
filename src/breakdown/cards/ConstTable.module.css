@@ -1,0 +1,39 @@
+/* One frame around a run of #const or #define rows (ConstTable.tsx). The
+   rows are ordinary directive cards with their own frame taken off. The
+   left padding matches ItemCard's negative margin, so a selected row's
+   accent bar sits just inside the table's border. */
+.table {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 0 0 0 0.4rem;
+}
+
+.rows [data-card] {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.rows > * + * {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.addRow {
+  border-top: 1px solid var(--border-subtle);
+  padding: 0.25rem 0.6rem 0.3rem 0.2rem;
+}
+
+.addButton {
+  border: 1px solid var(--border-muted);
+  background: var(--surface);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.1rem 0.5rem;
+}
+
+.addButton:hover,
+.addButton:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}

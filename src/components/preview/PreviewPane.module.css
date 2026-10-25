@@ -1,14 +1,13 @@
 /* `flex: 1 0 auto` makes the pane at least as tall as the preview slot
-   (MapSidePanel's .previewSlot, itself the whole panel below the tab strip),
+   (MapSidePanel's .previewSlot, itself the whole panel below the top row),
    so the map frame inside can take the leftover height. `0` for shrink: a
-   window too short for the controls and the map's own minimum height scrolls
-   the slot instead of squashing the map. */
+   window too short for the map's own minimum height scrolls the slot
+   instead of squashing the map. No padding, since the map runs edge to edge
+   and its controls now sit in the panel's top row (PreviewControls). */
 .pane {
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
-  gap: 0.3rem;
-  padding: 0.5rem;
 }
 
 /* The pane before its first map exists. `flex: 1` fills the preview slot
@@ -25,18 +24,14 @@
   font-size: 0.8rem;
 }
 
-/* Takes all the height the controls row leaves. Nothing sits below it, so
-   the map uses the whole panel. The frame is also the positioned box that
+/* Takes the whole pane, flush against the resizer's divider, the status bar
+   below and the top row above. The frame is also the positioned box that
    .generating places itself in. */
 .canvasFrame {
   position: relative;
   flex: 1 1 auto;
   /* The same 9rem floor the canvas box had. */
   min-height: 9rem;
-  /* Cancels .pane's 0.5rem side and bottom padding so the map runs edge to
-     edge in the side panel, flush against the vertical divider on its left
-     and the status bar below. The controls keep the padding. */
-  margin: 0 -0.5rem -0.5rem;
 }
 
 /* The canvas box (PreviewCanvas.module.css's .container, shared with the Land
@@ -48,10 +43,10 @@
    that box (the overlays are later siblings), and the extra class makes this
    win without !important.
 
-   The box's 1px border is dropped on the left, right and bottom. The frame
-   runs flush against the resizer's own 1px divider, the window edge and the
-   status bar's top border, so a border there only doubled those lines. The
-   top one stays to separate the map from the controls row. */
+   The box's 1px border is dropped on every side. The frame runs flush
+   against the resizer's own 1px divider, the window edge, the status bar's
+   top border and the top row's bottom border, so a border here only doubled
+   those lines. */
 .canvasFrame > :first-child {
   position: absolute;
   inset: 0;
@@ -59,9 +54,7 @@
   height: auto;
   aspect-ratio: auto;
   min-height: 0;
-  border-left: 0;
-  border-right: 0;
-  border-bottom: 0;
+  border: 0;
 }
 
 /* The hovered or selected tile's details, in the map's top left corner. It
@@ -131,7 +124,12 @@
   }
 }
 
+/* `flex: 1` so it fills the top row beside the Preview / Reference tabs,
+   which is what lets space-between push the seed group to the panel's right
+   edge. */
 .controls {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -151,7 +149,7 @@
 .controlsGroup {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
   flex-wrap: wrap;
 }
 
@@ -197,10 +195,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
 }
 
 .seedInput {
-  width: 3.5rem;
+  width: 3rem;
   font-size: 0.7rem;
   padding: 0.05rem 0.2rem;
   /* No stepper arrows: nobody spins a seed up/down one at a time, the field
@@ -220,9 +220,17 @@
    room. */
 .reroll {
   font-size: 0.8rem;
-  padding: 0;
+  padding: 0.05rem 0.2rem;
+  border: none;
+  background: transparent;
+  border-radius: 3px;
   cursor: pointer;
   line-height: 1.3;
+}
+
+.reroll:hover,
+.reroll:focus-visible {
+  background: var(--surface-hover);
 }
 
 .readoutHint {

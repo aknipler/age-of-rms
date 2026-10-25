@@ -51,6 +51,22 @@ export interface EditResult {
    * from here" would be wrong about this one.
    */
   companion?: TextEdit;
+  /**
+   * The rest of a multi-card intent's edits (2026-10-21, multi-select).
+   * `removeNodes` deletes N cards and `moveNodes` lifts N cards out before
+   * inserting them together, so both need any number of edits. Same
+   * contract as `removal`, original coordinates, never overlapping each
+   * other or `edit`, all pushed as one undo entry. A list here, after
+   * `removal` and `companion` stayed single named fields, because this is
+   * the first case whose count is not fixed by the intent's kind.
+   */
+  others?: TextEdit[];
+  /**
+   * Where each card a multi-card move left in place now starts, in the NEW
+   * text, in source order, so the pane can select the whole group again
+   * once the parse lands. `caret` is the first of them.
+   */
+  selection?: number[];
 }
 
 /**
@@ -196,6 +212,11 @@ export type EditIntent =
   // removeNode, which is why comments get their own intent instead of
   // widening removeNode: that one is typed to AST nodes.
   | { kind: "removeComment"; span: Span }
+  // `removeRaw` deletes a raw card's whole span by the same rule (2026-10-23).
+  // A raw region is text the parser could not shape, so it cannot be moved or
+  // duplicated, but a person who wants it gone can remove it. Only the
+  // card's own span goes, never anything beside it.
+  | { kind: "removeRaw"; span: Span }
   | { kind: "setCondition"; branch: BranchRef; value: string }
   | { kind: "setChance"; branch: BranchRef; value: ArgValueInput }
   | {
@@ -250,7 +271,55 @@ export type EditIntent =
   // addBranch uses, so a fresh conditional reads exactly like a fresh
   // elseif, and the caret lands on the placeholder (or, for percent_chance,
   // right after the keyword, see RandomCard.tsx's blank-with-hint field).
-  | { kind: "addControlFlow"; at: InsertTarget; construct: "if" | "random" };
+  | { kind: "addControlFlow"; at: InsertTarget; construct: "if" | "random" }
+  // ---- 2026-10-21, multi-select and inline comments ----
+  //
+  // `removeNodes` deletes every selected card in one undo entry, each by
+  // removeNode's own rule. Removals that touch or overlap (two cards
+  // sharing a line) are merged, since Monaco refuses overlapping edits in
+  // one call. A node inside another selected node is dropped first, its
+  // text goes with the outer one. Widened to DraggableCard (2026-10-22) once
+  // comment cards became selectable, so a selected comment goes with the
+  // group. A comment's removed range is its own span.
+  | { kind: "removeNodes"; nodes: DraggableCard[] }
+  // `moveNodes` lifts every selected card out and inserts them together at
+  // `to`, in source order, one per line at the destination's indent. Each
+  // card carries its text the way moveNode's does (carriedRange,
+  // relocateSlice). Refused when `to` lies inside any of them. Widened to
+  // DraggableCard with removeNodes, a comment carrying its own span.
+  | { kind: "moveNodes"; nodes: DraggableCard[]; to: InsertTarget }
+  // `addInlineComment` writes ` /* */` after a command's last argument (or
+  // its name), comments.ts's inlineCommentInsertOffset. Editing and
+  // deleting one reuse editComment and removeComment, which already work on
+  // any comment span.
+  | { kind: "addInlineComment"; command: CommandNode }
+  // ---- 2026-10-22, the unknown const offer (name-lookup-design.md Sec.7.3) ----
+  //
+  // `addConst` writes `#const NAME VALUE` at an InsertTarget, `{ before }`
+  // the command that holds the use for "Above this command", or
+  // `{ in: "preamble" }` for "In the header" (the place insertText's
+  // headerText already means by the header). The caret lands on the value,
+  // so the Code tab can select it for typing over.
+  | { kind: "addConst"; at: InsertTarget; name: string; value: ArgValueInput }
+  // ---- 2026-10-23, the #define table's add button (breakdown-design Sec.3.14) ----
+  //
+  // `addDefine` writes `#define NAME` at an InsertTarget, the same way
+  // addConst writes its line. The caret lands on the name, the only thing
+  // the line has to type over.
+  | { kind: "addDefine"; at: InsertTarget; name: string }
+  // ---- 2026-10-22, commenting cards out (breakdown-design Sec.3.13) ----
+  //
+  // `toggleCommentOut` takes the delimiters off every card when each one is
+  // a comment, and otherwise wraps every card that is not a comment in
+  // `/* */`, leaving the comments as they are. That is the rule a code
+  // editor's toggle comment follows for a mixed selection, so a second
+  // press always undoes the first. Each card is its own comment, wrapped
+  // around its carried range so a trailing same-line comment goes inside
+  // (DE nests comments, parser-design Sec.2). The edits are two inserts or
+  // two removals per card and the card's own text is never touched, so
+  // uncommenting gives back the original bytes. EditResult.selection holds
+  // where each resulting card starts, for re selection.
+  | { kind: "toggleCommentOut"; cards: DraggableCard[] };
 
 /**
  * The card kinds a person can move or duplicate: exactly the kinds that

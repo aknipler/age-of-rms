@@ -1,3 +1,9 @@
+.logo {
+  display: flex;
+  justify-content: center;
+  margin: 0.2rem 0 0.9rem;
+}
+
 .intro {
   margin: 0 0 0.9rem;
   font-size: 0.85rem;

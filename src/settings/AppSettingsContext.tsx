@@ -40,7 +40,22 @@ export interface AppSettingsValue {
   /** Who the stamped script header names as the author (see hooks/scriptHeader.ts). Empty until someone fills it in. */
   authorName: string;
   setAuthorName: (name: string) => void;
+  /**
+   * Flash a typed name green when it resolves to a real const
+   * (name-lookup-design.md Sec.6.3). Here rather than in Code or Breakdown
+   * settings because one toggle governs both editors.
+   */
+  resolveFlash: boolean;
+  setResolveFlash: (on: boolean) => void;
+  /** Ghost text for the rest of a line and whole blocks in the Code tab (name-lookup-design.md Sec.13.5). On by default (Q7). */
+  codePrediction: boolean;
+  setCodePrediction: (on: boolean) => void;
 }
+
+const RESOLVE_FLASH_KEY = "resolveFlash";
+const DEFAULT_RESOLVE_FLASH = true;
+const CODE_PREDICTION_KEY = "codePrediction";
+const DEFAULT_CODE_PREDICTION = true;
 
 const AppSettingsContext = createContext<AppSettingsValue | null>(null);
 
@@ -49,6 +64,10 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     DEFAULT_SHORTEN_LONG_NAMES,
   );
   const [authorName, setAuthorState] = useState(DEFAULT_AUTHOR_NAME);
+  const [resolveFlash, setResolveFlashState] = useState(DEFAULT_RESOLVE_FLASH);
+  const [codePrediction, setCodePredictionState] = useState(
+    DEFAULT_CODE_PREDICTION,
+  );
   const [store, setStore] = useState<Store | null>(null);
 
   // `cancelled` guards the async settle against an unmount between the load
@@ -70,6 +89,13 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
         if (!cancelled && typeof savedAuthor === "string") {
           setAuthorState(savedAuthor.slice(0, AUTHOR_NAME_MAX_LENGTH));
         }
+        const savedFlash = await loadedStore.get<unknown>(RESOLVE_FLASH_KEY);
+        if (!cancelled && typeof savedFlash === "boolean")
+          setResolveFlashState(savedFlash);
+        const savedPrediction =
+          await loadedStore.get<unknown>(CODE_PREDICTION_KEY);
+        if (!cancelled && typeof savedPrediction === "boolean")
+          setCodePredictionState(savedPrediction);
       },
     );
     return () => {
@@ -97,14 +123,43 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setResolveFlash = useCallback(
+    (next: boolean) => {
+      setResolveFlashState(next);
+      void store?.set(RESOLVE_FLASH_KEY, next);
+    },
+    [store],
+  );
+
+  const setCodePrediction = useCallback(
+    (next: boolean) => {
+      setCodePredictionState(next);
+      void store?.set(CODE_PREDICTION_KEY, next);
+    },
+    [store],
+  );
+
   const value = useMemo<AppSettingsValue>(
     () => ({
       shortenLongNames,
       setShortenLongNames,
       authorName,
       setAuthorName,
+      resolveFlash,
+      setResolveFlash,
+      codePrediction,
+      setCodePrediction,
     }),
-    [shortenLongNames, setShortenLongNames, authorName, setAuthorName],
+    [
+      shortenLongNames,
+      setShortenLongNames,
+      authorName,
+      setAuthorName,
+      resolveFlash,
+      setResolveFlash,
+      codePrediction,
+      setCodePrediction,
+    ],
   );
 
   return (
@@ -121,4 +176,14 @@ export function useAppSettings(): AppSettingsValue {
       "useAppSettings must be used within an AppSettingsProvider",
     );
   return ctx;
+}
+
+/**
+ * Whether the resolve flash is on, readable where no provider is mounted (a
+ * card rendered alone in a test harness) without throwing. Absent means the
+ * default, on. `useAppSettings` stays strict for the settings screens, where
+ * a missing provider is a bug worth a loud error.
+ */
+export function useResolveFlashEnabled(): boolean {
+  return useContext(AppSettingsContext)?.resolveFlash ?? DEFAULT_RESOLVE_FLASH;
 }

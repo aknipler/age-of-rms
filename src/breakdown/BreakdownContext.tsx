@@ -9,12 +9,34 @@ import type {
 import type { LanguageIndex } from "../parser/language";
 import type { GameConstantsData } from "./gameConstants";
 import type {
+  CommentRef,
   DraggableCard,
   EditIntent,
   EditResult,
   InsertTarget,
   RearrangeableNode,
 } from "./patch/intents";
+import type { ClickMode, SelectableCard } from "./multiSelect";
+
+/**
+ * A name the person just committed in a value field (docs/name-lookup-design.md
+ * Sec.6.1 and Sec.7.2). It is what lets the field flash, or show the create
+ * strip, once the parse of the edited source has rendered.
+ *
+ * Pane state rather than the field's own, for the same reason focus restore
+ * is (editorFocus.ts). A field that was empty has no argument yet, so the
+ * editor that took the commit is replaced by a different component when the
+ * argument appears, and local state would go with it. An offset in the
+ * post-edit source survives that, and `source` is how a reader knows the
+ * offset is in the coordinates of the parse it is looking at.
+ */
+export interface CommitNote {
+  name: string;
+  /** Start offset of the committed argument in `source`. */
+  anchor: number;
+  /** The source this note's offset belongs to. A note is read only while the rendered parse has exactly this source. */
+  source: string;
+}
 
 export interface BreakdownContextValue {
   tokens: readonly Token[];
@@ -62,8 +84,12 @@ export interface BreakdownContextValue {
    * focus land on the editor whose current span contains `offset` once
    * the pane re-renders from the next parse. Editors register themselves
    * via `registerFocusable` keyed by their own current span start.
+   *
+   * A function instead of an offset finds the element itself once that
+   * render lands, for a target an offset cannot name (Enter moving to the
+   * next field of a group, enterNav.ts).
    */
-  requestFocus: (offset: number) => void;
+  requestFocus: (target: number | (() => HTMLElement | null)) => void;
   /** An editor calls this on mount/update with its own current anchor offset (typically its ArgNode's span.start) so requestFocus can find it. Call with `null` on unmount. */
   registerFocusable: (offset: number, el: HTMLElement | null) => void;
   /**
@@ -109,6 +135,52 @@ export interface BreakdownContextValue {
   moveItem: (item: DraggableCard, to: InsertTarget) => void;
   /** Copy a card directly below itself. The copy takes the selection. */
   duplicateItem: (item: RearrangeableNode) => void;
+  // ---- Name lookup (2026-10-23, name-lookup-design.md slice C) ----
+  //
+  // Optional for the reason the multi-select members are: a card rendered
+  // alone in a test harness has no pane behind it, and a missing one means
+  // "no flash, no create strip", which is how a field behaved before these.
+  /** The last committed name awaiting its parse, or null. */
+  constNote?: CommitNote | null;
+  /**
+   * Remember `name` as just committed at `anchor`, an offset in the source
+   * the edit that was JUST applied produced. Call right after `applyEdit`, so
+   * the pane can pair the offset with the source it queued.
+   */
+  noteCommit?: (name: string, anchor: number) => void;
+  /** Drop the note: a flash was taken, the strip was dismissed or acted on. */
+  clearConstNote?: () => void;
+  /** Say something to a screen reader through the pane's polite live region (Sec.6.3). */
+  announce?: (message: string) => void;
+  // ---- Multi-select (2026-10-21, Sec.3.12) ----
+  //
+  // Optional, so a card rendered alone in a test harness without a pane
+  // behind it still type-checks, the same reasoning cardDrag.tsx gives for
+  // its inert api. A missing one means "single select only", which is
+  // exactly how a card behaved before these existed.
+  /** A click on a card's chrome, with the modifier keys read off the event (multiSelect.ts's clickModeOf). A comment card passes its CommentRef (2026-10-22). */
+  clickCard?: (card: SelectableCard, mode: ClickMode) => void;
+  /** Every selected Item, outermost only, in source order (one entry for an ordinary selection). */
+  selectedItems?: readonly Item[];
+  /** Every selected card, comment cards included (2026-10-22), outermost only, in source order. */
+  selectedCards?: readonly SelectableCard[];
+  /** The selected comment card when the primary selection is one, so Add inserts after it. */
+  selectedComment?: CommentRef;
+  /** Move several cards to one InsertTarget together, keeping their order. The drag layer's group drop. */
+  moveItems?: (items: readonly DraggableCard[], to: InsertTarget) => void;
+  /** Delete every selected card that has a Delete button of its own, as one undo entry. */
+  deleteSelected?: () => void;
+  /**
+   * Comment out the given cards, or uncomment them when every one is a
+   * comment (2026-10-22, Sec.3.13), as one undo entry. The cards' toggle
+   * buttons and the hotkey end here. `reselect` selects the resulting cards
+   * once the parse lands, which the hotkey wants and a button only wants
+   * when its card was the whole selection.
+   */
+  toggleCommentOut?: (
+    cards: readonly DraggableCard[],
+    reselect: boolean,
+  ) => void;
 }
 
 const BreakdownCtx = createContext<BreakdownContextValue | null>(null);

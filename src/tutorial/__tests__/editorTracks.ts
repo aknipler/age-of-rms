@@ -39,6 +39,8 @@ export function prose(block: BodyBlock): string[] {
   if (block.kind === "spoiler") {
     // Piece by piece, as for an Inline[] block above, so a "Hint 1: " label
     // is read on its own and not as a colon inside the sentence after it.
+    // A code entry among the paragraphs is a `{ kind: "code" }` like a code
+    // block, so `prose` gives it nothing, the same exemption.
     if ("paragraphs" in block)
       return [block.label, ...block.paragraphs.flatMap(prose)];
     return block.code ? [block.label] : [block.label, block.text];
@@ -48,17 +50,23 @@ export function prose(block: BodyBlock): string[] {
   return [block.alt];
 }
 
-/** The script text a step shows, as code blocks and code spoilers, joined. */
+/**
+ * The script text a step shows, joined. That is code blocks, code spoilers,
+ * and the code entries inside a spoiler's `paragraphs`. A code entry is read
+ * as script to type like the other two, so an Answer written that way is
+ * held to the step's check too.
+ */
 export function typedText(step: TutorialStep): string {
   return step.body
-    .flatMap((b) =>
-      typeof b === "object" &&
-      !Array.isArray(b) &&
-      (b.kind === "code" ||
-        (b.kind === "spoiler" && !("paragraphs" in b) && b.code))
-        ? [b.text]
-        : [],
-    )
+    .flatMap((b): string[] => {
+      if (typeof b !== "object" || Array.isArray(b)) return [];
+      if (b.kind === "code") return [b.text];
+      if (b.kind !== "spoiler") return [];
+      if (!("paragraphs" in b)) return b.code ? [b.text] : [];
+      return b.paragraphs.flatMap((p) =>
+        typeof p === "object" && !Array.isArray(p) ? [p.text] : [],
+      );
+    })
     .join("\n\n");
 }
 
@@ -112,6 +120,14 @@ export function describeEditorTracks(
         if (!step.track) return;
         expect(code[i].completion).toBe(step.completion);
         expect(code[i].autoFill).toBe(step.autoFill);
+      });
+    });
+
+    // editorTracks.ts copies the kind in `joinTwin`, so a twin never has to
+    // repeat it and cannot lose its chip on one track only.
+    it("gives every Code step its Breakdown twin's kind", () => {
+      breakdown.forEach((step, i) => {
+        expect(code[i].kind, code[i].id).toBe(step.kind);
       });
     });
 

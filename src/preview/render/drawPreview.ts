@@ -85,7 +85,7 @@ export interface PreviewBaseLayer {
   /** Output of createBitmapCanvas for that snapshot. */
   terrain: HTMLCanvasElement;
   /**
-   * Object names to leave undrawn (the reference table's Preview Obj. List).
+   * Object names to leave undrawn (the preview's Obj. List).
    *
    * A VIEW filter and nothing more: the objects are still in `result.objects`,
    * still counted in the table, still in the tile readout. Hiding them here

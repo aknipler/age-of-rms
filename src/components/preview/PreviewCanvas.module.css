@@ -92,6 +92,13 @@
 .panel {
   max-height: 60%;
   overflow-y: auto;
+  /* A flex column so a child with `min-height: 0` (the Obj. List) can shrink
+     to this max height and scroll inside itself, keeping its search and sort
+     in view. The other boxes' children keep `min-height: auto`, cannot
+     shrink below their content, and overflow into this box's own scroll as
+     before. */
+  display: flex;
+  flex-direction: column;
   /* Scrolling past the end of the box does not scroll the page behind it. */
   overscroll-behavior: contain;
   background: var(--surface);

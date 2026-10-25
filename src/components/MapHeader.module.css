@@ -1,8 +1,12 @@
+/* No vertical padding: the height comes from `--workspace-header-height`
+   (App.module.css), shared with the map panel's top row so the two line up,
+   and the content is centred in it. */
 .mapHeader {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.5rem 1.25rem;
+  min-height: var(--workspace-header-height);
+  padding: 0 1.25rem;
   border-bottom: 1px solid var(--border);
 }
 

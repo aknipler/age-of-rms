@@ -139,9 +139,13 @@ describe("CommandCard collapsed summary line", () => {
     render(<Harness initialSource={manySrc} />);
     await settled();
 
-    expect(screen.getByText("land_percent 30")).toBeTruthy();
-    expect(screen.getByText("number_of_tiles 50")).toBeTruthy();
-    expect(screen.getByText("base_size 5")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "land_percent 30" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "number_of_tiles 50" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "base_size 5" })).toBeTruthy();
     expect(screen.getByText("set_circular_base")).toBeTruthy();
   });
 });

@@ -6,6 +6,7 @@ import { ValueEditor } from "./ValueEditor";
 import { CommandPicker, intentForPick } from "../CommandPicker";
 import { HelpTip } from "../../components/HelpTip";
 import { TrashIcon } from "../../components/TrashIcon";
+import { CommentOutButton } from "./CommentOutButton";
 import { ProblemBadge } from "./ProblemBadge";
 import { diagnosticsWithin } from "../diagnosticsForSpan";
 import cardStyles from "./cards.module.css";
@@ -30,8 +31,8 @@ export function ConditionalCard({ node }: { node: IfNode }) {
   const cardDiagnostics = diagnosticsWithin(diagnostics, node.span);
 
   return (
-    <div className={cardStyles.card}>
-      <div className={styles.title}>
+    <div className={cardStyles.card} data-card>
+      <div className={styles.title} data-card-header>
         <HelpTip id="breakdown.conditionalCard">
           <span>Conditional (if / elseif / else)</span>
         </HelpTip>
@@ -50,10 +51,12 @@ export function ConditionalCard({ node }: { node: IfNode }) {
           {cardDiagnostics.length > 0 && (
             <ProblemBadge diagnostics={cardDiagnostics} />
           )}
+          <CommentOutButton card={node} disabled={node.endif === undefined} />
           <HelpTip id="breakdown.conditionalCard.delete">
             <button
               type="button"
               className={cardStyles.deleteButton}
+              data-quiet
               onClick={(e) => {
                 e.stopPropagation();
                 applyEdit({ kind: "removeNode", node });
@@ -84,6 +87,7 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                   text={conditionText}
                   type="otherConstant"
                   hint="a #define name"
+                  names={{ kind: "condition" }}
                   anchorOffset={anchor}
                   helpId="breakdown.conditionalCard.condition"
                   onCommit={(value, restoreFocus) => {
@@ -94,6 +98,7 @@ export function ConditionalCard({ node }: { node: IfNode }) {
                       value,
                     });
                     if (result && restoreFocus) requestFocus(result.caret);
+                    return result;
                   }}
                 />
               )}

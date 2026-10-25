@@ -16,7 +16,9 @@ import {
   useMemo,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { HelpTip } from "../components/HelpTip";
 import { useParsedDocumentContext } from "../ParsedDocumentContext";
@@ -47,6 +49,7 @@ import { registeredTools, WORKER_RUNTIME_TOOL_IDS } from "./registry";
 import { workerRunner } from "./workerRunner";
 import { useLandPlacementModel } from "./builtin/landPlacement/panel/landPlacementModel";
 import { LandPlacementPanel } from "./builtin/landPlacement/panel/LandPlacementPanel";
+import { useToolsSlots } from "./ToolsSlots";
 import styles from "./ToolsPane.module.css";
 
 const lang = languageData as unknown as LanguageData;
@@ -303,6 +306,17 @@ export function ToolsPane({
     }
   }, [pendingRun, parseResult, source, startRun]);
 
+  // The left column App mounts beside the map header, when it is there. The
+  // tool picker and Run go in its top row, the description and parameters in
+  // its body (ToolsSlots.tsx). With no column (a test, or any caller outside
+  // App) everything stays inline in the pane.
+  const slots = useToolsSlots();
+  const inColumn = slots.header !== null && slots.body !== null;
+  const intoHeader = (node: ReactNode) =>
+    slots.header ? createPortal(node, slots.header) : node;
+  const intoBody = (node: ReactNode) =>
+    slots.body ? createPortal(node, slots.body) : node;
+
   const canApply = host.canApply(source);
   const stale = state.edits !== null && state.edits.length > 0 && !canApply;
 
@@ -362,27 +376,31 @@ export function ToolsPane({
     const PanelComponent = tool.component as typeof LandPlacementPanel;
     return (
       <div className={styles.pane} data-tutorial-anchor="tools.pane">
-        <div className={styles.controls}>
-          <HelpTip id="tools.select">
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="tool-select">
-                Tool
-              </label>
-              <select
-                id="tool-select"
-                className={styles.select}
-                value={selectedId}
-                onChange={(e) => selectTool(e.target.value)}
-              >
-                {tools.map((t) => (
-                  <option key={t.manifest.id} value={t.manifest.id}>
-                    {t.manifest.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </HelpTip>
-        </div>
+        {intoHeader(
+          <div
+            className={`${styles.controls} ${inColumn ? styles.columnControls : ""}`}
+          >
+            <HelpTip id="tools.select">
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="tool-select">
+                  Tool
+                </label>
+                <select
+                  id="tool-select"
+                  className={styles.select}
+                  value={selectedId}
+                  onChange={(e) => selectTool(e.target.value)}
+                >
+                  {tools.map((t) => (
+                    <option key={t.manifest.id} value={t.manifest.id}>
+                      {t.manifest.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </HelpTip>
+          </div>,
+        )}
         {parseResult ? (
           <PanelComponent
             parseResult={parseResult}
@@ -403,90 +421,98 @@ export function ToolsPane({
 
   return (
     <div className={styles.pane} data-tutorial-anchor="tools.pane">
-      <div className={styles.controls}>
-        <HelpTip id="tools.select">
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="tool-select">
-              Tool
-            </label>
-            <select
-              id="tool-select"
-              className={styles.select}
-              value={selectedId}
-              onChange={(e) => selectTool(e.target.value)}
-            >
-              {tools.map((t) => (
-                <option key={t.manifest.id} value={t.manifest.id}>
-                  {t.manifest.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </HelpTip>
-
-        {panelBlockedMessage && (
-          <p className={styles.staleNote}>{panelBlockedMessage}</p>
-        )}
-
-        {panelClosedByDocumentChange ? (
-          <button
-            type="button"
-            className={`${styles.button} ${styles.primary}`}
-            onClick={() => void selectTool(tool!.manifest.id)}
-          >
-            Reopen {tool!.manifest.name}
-          </button>
-        ) : busy ? (
-          <HelpTip id="tools.cancel">
-            <button
-              type="button"
-              className={styles.button}
-              onClick={() => host.cancel()}
-              disabled={state.phase === "cancelling"}
-            >
-              {state.phase === "cancelling" ? "Stopping…" : "Cancel"}
-            </button>
+      {intoHeader(
+        <div
+          className={`${styles.controls} ${inColumn ? styles.columnControls : ""}`}
+        >
+          <HelpTip id="tools.select">
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="tool-select">
+                Tool
+              </label>
+              <select
+                id="tool-select"
+                className={styles.select}
+                value={selectedId}
+                onChange={(e) => selectTool(e.target.value)}
+              >
+                {tools.map((t) => (
+                  <option key={t.manifest.id} value={t.manifest.id}>
+                    {t.manifest.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </HelpTip>
-        ) : (
-          <HelpTip id="tools.run">
+
+          {panelBlockedMessage && (
+            <p className={styles.staleNote}>{panelBlockedMessage}</p>
+          )}
+
+          {panelClosedByDocumentChange ? (
             <button
               type="button"
               className={`${styles.button} ${styles.primary}`}
-              onClick={run}
-              disabled={!tool || !parseResult || !submittable}
+              onClick={() => void selectTool(tool!.manifest.id)}
             >
-              {pendingRun ? "Parsing…" : "Run"}
+              Reopen {tool!.manifest.name}
             </button>
-          </HelpTip>
-        )}
+          ) : busy ? (
+            <HelpTip id="tools.cancel">
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => host.cancel()}
+                disabled={state.phase === "cancelling"}
+              >
+                {state.phase === "cancelling" ? "Stopping…" : "Cancel"}
+              </button>
+            </HelpTip>
+          ) : (
+            <HelpTip id="tools.run">
+              <button
+                type="button"
+                className={`${styles.button} ${styles.primary}`}
+                onClick={run}
+                disabled={!tool || !parseResult || !submittable}
+              >
+                {pendingRun ? "Parsing…" : "Run"}
+              </button>
+            </HelpTip>
+          )}
 
-        {canApply && (
-          <HelpTip id="tools.apply">
-            <button type="button" className={styles.button} onClick={apply}>
-              Apply {state.edits?.length} change
-              {state.edits?.length === 1 ? "" : "s"}
-            </button>
-          </HelpTip>
-        )}
-      </div>
-
-      {tool && (
-        <p className={styles.description}>{tool.manifest.description}</p>
+          {canApply && (
+            <HelpTip id="tools.apply">
+              <button type="button" className={styles.button} onClick={apply}>
+                Apply {state.edits?.length} change
+                {state.edits?.length === 1 ? "" : "s"}
+              </button>
+            </HelpTip>
+          )}
+        </div>,
       )}
 
-      {tool?.manifest.params && tool.manifest.params.length > 0 && (
-        <HelpTip id="tools.params">
-          <div className={styles.params}>
-            {tool.manifest.params.map((def) => (
-              <ParamRow
-                key={def.key}
-                def={def}
-                value={submitted[def.key]}
-                onChange={(v) => setParam(def.key, v)}
-              />
-            ))}
-          </div>
-        </HelpTip>
+      {intoBody(
+        <>
+          {tool && (
+            <p className={styles.description}>{tool.manifest.description}</p>
+          )}
+
+          {tool?.manifest.params && tool.manifest.params.length > 0 && (
+            <HelpTip id="tools.params">
+              <div className={styles.params}>
+                {tool.manifest.params.map((def) => (
+                  <ParamRow
+                    key={def.key}
+                    def={def}
+                    value={submitted[def.key]}
+                    onChange={(v) => setParam(def.key, v)}
+                  />
+                ))}
+              </div>
+            </HelpTip>
+          )}
+        </>,
       )}
 
       {busy && (

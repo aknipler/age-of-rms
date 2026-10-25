@@ -86,8 +86,7 @@ export interface PreviewViewValue {
   toggleSelectedTile: (tile: TilePoint) => void;
   clearSelectedTile: () => void;
   /**
-   * Object names the canvas must not draw, chosen in the reference table's
-   * Preview Obj. List.
+   * Object names the canvas must not draw, chosen in the preview's Obj. List.
    *
    * A set of HIDDEN names rather than a map of visible ones, because the
    * default is "draw everything": an empty set is the whole default state, and

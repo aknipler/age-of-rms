@@ -188,3 +188,72 @@ export function orphanAttributeRows(
       matchesQuery(query, [a.name, a.description]),
   );
 }
+
+/** Which way a sorted table runs. Shared by every sort control in the side panel and the preview's Obj. List. */
+export type SortDirection = "asc" | "desc";
+
+/** The Commands / Attributes tab's sort choices. */
+export type CommandSortKey = "section" | "name";
+
+export const COMMAND_SORT_LABELS: Record<CommandSortKey, string> = {
+  section: "Section",
+  name: "Command",
+};
+
+/**
+ * The Commands / Attributes rows in the chosen order.
+ *
+ * "section" groups commands by the order sections run in a script
+ * (`sectionOrder`, language.json's own `sections`), and inside a section
+ * keeps the order language.json lists them in, which follows the guide. A
+ * section missing from `sectionOrder` sorts last rather than first.
+ *
+ * "name" sorts commands alphabetically and also sorts the attributes nested
+ * under each one, since a reader who asked for alphabetical order is
+ * scanning names, and a block's attributes in guide order would break that.
+ * Under "section" the attributes keep their guide order.
+ *
+ * Descending reverses the whole list, the way the direction arrow does for
+ * every other table here. Ties fall back to the input position, written out
+ * rather than left to the sort's stability, so the comparator is a total
+ * order on its own.
+ */
+export function sortCommandRows(
+  rows: readonly CommandAttributeRow[],
+  sortKey: CommandSortKey,
+  direction: SortDirection,
+  sectionOrder: readonly string[],
+): CommandAttributeRow[] {
+  const sign = direction === "asc" ? 1 : -1;
+  const rank = (section: string) => {
+    const index = sectionOrder.indexOf(section);
+    return index === -1 ? sectionOrder.length : index;
+  };
+  const indexed = rows.map((row, index) => ({ row, index }));
+  indexed.sort((a, b) => {
+    const primary =
+      sortKey === "section"
+        ? rank(a.row.command.section) - rank(b.row.command.section)
+        : a.row.command.name.localeCompare(b.row.command.name);
+    return sign * (primary || a.index - b.index);
+  });
+  return indexed.map(({ row }) =>
+    sortKey === "name"
+      ? { ...row, attributes: sortAttributesByName(row.attributes, direction) }
+      : row,
+  );
+}
+
+/**
+ * Attributes sorted by name in the given direction. Used for the attributes
+ * nested under a command and for the "Other attributes" rows when the
+ * Commands tab is sorted by name. Copies first, since `.sort()` mutates and
+ * these arrays can be language.json's own.
+ */
+export function sortAttributesByName(
+  attributes: readonly AttributeDef[],
+  direction: SortDirection,
+): AttributeDef[] {
+  const sign = direction === "asc" ? 1 : -1;
+  return [...attributes].sort((a, b) => sign * a.name.localeCompare(b.name));
+}

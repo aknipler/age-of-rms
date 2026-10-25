@@ -18,6 +18,7 @@ const FILES = [
   { schema: "language.schema.json", data: "language.json" },
   { schema: "doc-strings.schema.json", data: "doc-strings.json" },
   { schema: "ui-help.schema.json", data: "ui-help.json" },
+  { schema: "block-skeletons.schema.json", data: "block-skeletons.json" },
 ];
 
 function readJson(relativePath) {
@@ -29,6 +30,7 @@ const ajv = new Ajv2020({ allErrors: true, strict: true });
 let hadError = false;
 let languageData = null;
 let gameConstantsData = null;
+let skeletonData = null;
 
 for (const { schema, data } of FILES) {
   const schemaPath = path.join("reference/schemas", schema);
@@ -63,6 +65,46 @@ for (const { schema, data } of FILES) {
   }
   if (data === "game-constants.json") {
     gameConstantsData = dataJson;
+  }
+  if (data === "block-skeletons.json") {
+    skeletonData = dataJson;
+  }
+}
+
+// Block skeletons (name-lookup-design.md Sec.13.4.1) name commands and
+// attributes the editor writes into a script, so each name must be one
+// language.json knows. A key's command must be a block command, since the
+// template only follows one. The generator already keeps only known names,
+// so this catches a language.json rename the committed file has not caught
+// up with.
+if (skeletonData && languageData) {
+  const blockCommands = new Set(
+    languageData.commands.filter((c) => c.kind === "block").map((c) => c.name),
+  );
+  const attributeNames = new Set(languageData.attributes.map((a) => a.name));
+  let skeletonsOk = true;
+  for (const entry of skeletonData.skeletons) {
+    const command = entry.key.split(" ")[0];
+    if (!blockCommands.has(command)) {
+      hadError = true;
+      skeletonsOk = false;
+      console.error(
+        `✗ block-skeletons.json: "${entry.key}" starts with "${command}", which is not a block command in language.json`,
+      );
+    }
+    for (const attr of entry.attributes) {
+      if (attributeNames.has(attr.name)) continue;
+      hadError = true;
+      skeletonsOk = false;
+      console.error(
+        `✗ block-skeletons.json: "${entry.key}" lists "${attr.name}", which is not an attribute in language.json`,
+      );
+    }
+  }
+  if (skeletonsOk) {
+    console.log(
+      "✓ block-skeletons.json: every command and attribute name is in language.json",
+    );
   }
 }
 

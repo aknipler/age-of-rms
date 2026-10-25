@@ -16,6 +16,10 @@ import {
 } from "../parser/validate";
 import type { LanguageData } from "../parser/language";
 import type { Diagnostic, ParseResult } from "../parser/types";
+import {
+  EARLY_DIAGNOSTICS_MIN_TOKENS,
+  type ParseDiagnosticsMessage,
+} from "./parseResponses";
 
 // Double-cast rather than a direct `as LanguageData`: the JSON's
 // TS-inferred literal type (from resolveJsonModule) doesn't necessarily
@@ -50,11 +54,26 @@ export interface ParseRequestMessage {
   source: string;
 }
 
-export interface ParseResponseMessage {
+/** The full reply. For a big document a ParseDiagnosticsMessage comes just before it (parseResponses.ts). */
+export interface ParseResultMessage {
+  kind: "result";
   requestId: number;
   diagnostics: Diagnostic[];
   tokenCount: number;
   parseTimeMs: number;
+  /**
+   * The split behind parseTimeMs, read only by src/perfTrace.ts. Always sent,
+   * since three numbers cost nothing to clone and the worker has no access to
+   * the main thread's localStorage flag.
+   */
+  lexParseMs: number;
+  validateMs: number;
+  /**
+   * When the worker called postMessage, as `performance.timeOrigin + now()`.
+   * A worker's performance.now() counts from the WORKER's start, not the
+   * page's, so only the timeOrigin sum compares across the two threads.
+   */
+  postedAtEpochMs: number;
   /**
    * Full ParseResult (docs/breakdown-design.md Sec.6.2: "one parse, in the
    * worker". Breakdown needs the whole AST, not just diagnostics, and
@@ -62,12 +81,20 @@ export interface ParseResponseMessage {
    * parse). Plain data (token indices/numbers/strings, no class instances
    * or cycles), so it structured-clones without special handling.
    *
-   * Sec.6.2's `wantAst` payload-size flag is a measured optimization
-   * trigger, not built preemptively. Profile against AK_Vanguard_v1.2.rms
-   * (~49.7k tokens) before adding it.
+   * The copy of this field is most of the reply's cost on a big map
+   * (docs/diagnostics-latency-report.md). Sending the diagnostics ahead of
+   * it is how squiggles stop waiting for it, see breakdown-design.md
+   * Sec.6.2's note of 2026-10-22.
    */
   parseResult: ParseResult;
 }
+
+/**
+ * Everything this worker posts. A *discriminated union* on `kind`, so the
+ * main thread's handler (createParseResponseRouter) is made by the compiler
+ * to tell the two apart before it reads a field only one of them has.
+ */
+export type ParseResponseMessage = ParseDiagnosticsMessage | ParseResultMessage;
 
 self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   const { requestId, source } = event.data;
@@ -80,6 +107,7 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
     commentOpenAliases: COMMENT_OPEN_ALIASES,
     builtinConstants: BUILTIN_CONSTANTS,
   });
+  const parsedAt = performance.now();
   // The semantic pass (docs/parser-design.md Sec.8) runs here, in the worker,
   // for the same reason the parse does: it's another whole-file walk, and the
   // UI thread should never do one. Its diagnostics are ADDITIVE. The parser's
@@ -98,13 +126,33 @@ self.onmessage = (event: MessageEvent<ParseRequestMessage>) => {
   const allDiagnostics = [...result.diagnostics, ...semanticDiagnostics];
   // Covers parse + validate: it's the whole off-thread turnaround, which is
   // the number worth watching against the Sec.9 budget.
-  const parseTimeMs = performance.now() - startedAt;
+  const finishedAt = performance.now();
+  const parseTimeMs = finishedAt - startedAt;
 
-  const response: ParseResponseMessage = {
+  // A big result takes tens to hundreds of ms to copy, on both threads. The
+  // diagnostics are a few KB, so they go first on their own and the
+  // squiggles do not wait for the tree. The two posts are back to back on
+  // the same channel, which keeps their order, and the main thread's router
+  // relies on that order (parseResponses.ts). Small results stay one message,
+  // see EARLY_DIAGNOSTICS_MIN_TOKENS for why.
+  if (result.tokens.length >= EARLY_DIAGNOSTICS_MIN_TOKENS) {
+    const early: ParseDiagnosticsMessage = {
+      kind: "diagnostics",
+      requestId,
+      diagnostics: allDiagnostics,
+    };
+    self.postMessage(early);
+  }
+
+  const response: ParseResultMessage = {
+    kind: "result",
     requestId,
     diagnostics: allDiagnostics,
     tokenCount: result.tokens.length,
     parseTimeMs,
+    lexParseMs: parsedAt - startedAt,
+    validateMs: finishedAt - parsedAt,
+    postedAtEpochMs: performance.timeOrigin + performance.now(),
     parseResult: { ...result, diagnostics: allDiagnostics },
   };
   self.postMessage(response);

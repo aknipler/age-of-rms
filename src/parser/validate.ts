@@ -34,6 +34,7 @@
 import * as d from "./diagnostics";
 import { lineNumberOfOffset } from "./lineIndex";
 import { NUMERIC_ARGUMENT_TYPES } from "./language";
+import { isDefinedAbove } from "./scope";
 import { editDistanceCapped } from "./parser";
 import type { ArgumentType, LanguageData, PredefinedLabel } from "./language";
 import type {
@@ -95,7 +96,7 @@ const VERIFIED_PROVENANCE: ReadonlySet<string> = new Set([
  * (Sec.6, "#const's value slot is otherConstant, not integer", because one
  * item may carry several constants), so there is no category to be wrong about.
  */
-const CONSTANT_SLOT_CATEGORY: Partial<Record<ArgumentType, string>> = {
+export const CONSTANT_SLOT_CATEGORY: Partial<Record<ArgumentType, string>> = {
   terrainConstant: "terrain",
   objectConstant: "object",
 };
@@ -110,7 +111,7 @@ const CONSTANT_SLOT_CATEGORY: Partial<Record<ArgumentType, string>> = {
  * every alias-only name (BUSH_A, SEAGULLS, BONFIRE, ...) false-fires RMS0205
  * on its own, completely ordinary use.
  */
-const CATEGORY_ALIAS_OF: Partial<Record<string, string>> = {
+export const CATEGORY_ALIAS_OF: Partial<Record<string, string>> = {
   object: "objectAlias",
   terrain: "terrainAlias",
 };
@@ -149,7 +150,7 @@ export const COMMENT_OPEN_ID = 69;
  * data. A per-row provenance flag would be needed to keep it exact if that
  * ever changes, this is a known gap, not an oversight.
  */
-const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set([
+export const NON_AMBIENT_CONSTANT_CATEGORIES: ReadonlySet<string> = new Set([
   "terrainAlias",
   "objectAlias",
 ]);
@@ -1050,8 +1051,7 @@ class Validator {
 
     const definitions = this.symbolsByName.get(token.text);
     if (definitions) {
-      const above = definitions.filter((s) => s.nameToken < index);
-      if (above.length === 0) {
+      if (!isDefinedAbove(definitions, index)) {
         this.diagnostics.push(
           d.usedBeforeDefinition(
             token,
@@ -1316,7 +1316,7 @@ class Validator {
   private checkUseBeforeDefinition(token: Token, tokenIndex: number): void {
     const definitions = this.symbolsByName.get(token.text);
     if (!definitions) return;
-    if (definitions.some((s) => s.nameToken < tokenIndex)) return;
+    if (isDefinedAbove(definitions, tokenIndex)) return;
     this.diagnostics.push(
       d.usedBeforeDefinition(
         token,

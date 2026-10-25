@@ -15,6 +15,10 @@
 .deleteSlot {
   margin-left: auto;
   flex-shrink: 0;
+  /* The comment toggle sits beside Delete (2026-10-22). */
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .argValue {

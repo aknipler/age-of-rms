@@ -1020,6 +1020,507 @@ Run `npm run tauri dev`, open a script and go to Breakdown with Help Tips on.
 
 ---
 
+## 33. Breakdown view scope, 2026-10-21 (`breakdown-design.md` Sec.3.1.1)
+
+Run `npm run tauri dev` with Help Tips on and open a script that has Land, Terrain and Objects
+sections plus at least one empty canonical section (Elevation, say).
+
+1. Default. Start the app fresh and open Breakdown. Only the Header tab is ticked, every other tab
+   name is faded, and the list looks as it did before this change (no section headings, no
+   "Header:" label on the Add bar).
+2. Checkbox placement. Each tab has a small checkbox in its top right corner. Confirm it never
+   covers the count or problem badge, in light and dark themes, and with the window narrow enough
+   that the tabs wrap onto two rows.
+3. Tick Land and Objects, untick Header. Confirm the list shows Land then Objects, each under a
+   heading with its number and count, the faded tabs are the others, and the Add bar reads
+   "Land:" or "Objects:".
+4. Focus follows the card. Click a card in Objects. The Add bar reads "Objects:" and the Objects tab
+   is highlighted. Click a card in Land. It reads "Land:". Press Add command and confirm the new
+   card lands right after the selected Land card.
+5. Empty section. Tick Elevation. Confirm its heading shows with "Nothing here yet." under it. Click
+   the heading, confirm the bar reads "Elevation:", then Add command and confirm the command lands
+   in Elevation (a new `<ELEVATION_GENERATION>` section in the Code tab if there was none). Repeat
+   by clicking the "Nothing here yet." text instead of the heading.
+6. Empty space. Click the gap between two cards inside the Objects group. Confirm the selection
+   clears and the bar reads "Objects:".
+7. Tab click on a shown tab scrolls the list to that section's heading without unticking anything.
+   The heading must not hide under the sticky Add bar.
+8. Tab click on a faded tab shows that section alone, as tabs always did.
+9. Last tick. With one section shown, its checkbox is greyed and cannot be cleared.
+10. Show all. Press Show all at the right end of the tab row. Every section shows, the button reads
+    Show one, and pressing it goes back to only the section in focus.
+11. Remembered for the session. With Land and Objects shown, switch to the Code tab and back, then
+    open a different script. Confirm Land and Objects are still the shown set. Restart the app and
+    confirm it is back to Header only.
+12. Code tab cursor. With Land and Objects shown, put the Code tab cursor inside a Terrain command
+    and switch to Breakdown. Confirm Terrain is added to the shown set, scrolled to, and the card
+    selected.
+13. Ctrl+Tab. With three sections shown, Ctrl+Tab steps the focus through those three only (the bar
+    label changes). With one shown it switches tabs as before.
+14. Drag stays in its section. In the stacked view, drag a Land card over an Objects card. No drop
+    line appears and releasing does nothing. A drag within Land still works.
+15. Diagnostics ruler. With several sections shown, confirm a tick appears for problem cards in
+    every shown section and clicking one scrolls to its card.
+16. Tutorials. Run the first steps of "Your first random map". Every step that switches section
+    must land on the right section, with the bar naming it.
+
+---
+
+## 34. Inline comments on a command's row, 2026-10-21 (`breakdown-design.md` Sec.3.3.2)
+
+Open Breakdown with Help Tips on.
+
+1. Code to Breakdown. In the Code tab write `create_land /* top left island */` followed by its
+   `{ }` block, switch to Breakdown and confirm the comment shows on the card's header row right
+   after the name, between faint `/*` and `*/`. Hover it for the HelpTip.
+2. Edit. Click the comment, change it to `bottom right`, press Enter. Confirm the Code tab line
+   reads `create_land /* bottom right */` and nothing else on it moved. Repeat committing by
+   clicking away. Press Escape mid typing and confirm the old text comes back with no edit.
+3. Delete. Press the × beside it. Confirm the line goes back to `create_land` with no trailing
+   space, and Ctrl+Z restores the comment.
+4. Add. Hover a command row with no inline comment. A faint `/* */` button appears at the end of the
+   name. Press it, type `note`, press Enter, and confirm `create_land /* note */` in the Code tab.
+   The button must not be clickable when the row is not hovered.
+5. Arguments. On `create_terrain FOREST`, add a comment and confirm it lands after `FOREST`. In the
+   Code tab write `create_terrain /* c */ FOREST` and confirm the row shows `c` and editing keeps it
+   between the name and `FOREST`.
+6. No block. On `random_placement /* r */` in Player Setup, confirm the comment shows on the row
+   and NOT also as a separate comment card below it. Delete the card and confirm the comment goes
+   with it.
+7. Add after. Select that `random_placement` card and use Add command. Confirm the new command goes
+   on the next line and `/* r */` stays on `random_placement`'s line.
+8. Multi-line. Write `create_land /* one` with `two */` on the next line. Confirm the row shows the
+   text read only (no field), with its × still working.
+9. Bad text. Type `a */ b` into the field and press Enter. Confirm the inline error and no edit.
+10. Collapsed and expanded. Confirm the comment shows and edits the same with the card open or
+    closed, and that clicking the field never starts a card drag.
+
+---
+
+## 35. Multi-select cards, 2026-10-21 (`breakdown-design.md` Sec.3.12)
+
+Open a script with several cards in one section, including an `if` with commands inside.
+
+1. Ctrl+click two cards that are not neighbours. Both show the selected accent. Ctrl+click one of
+   them again and confirm only that one clears.
+2. Shift+click. Click a card, Shift+click one four cards below. Confirm the run between them is
+   selected, and that no page text is highlighted by the Shift+click. Shift+click one above the
+   first card and confirm the run flips upward from the same first card.
+3. Plain click on a card in the selection selects only that card.
+4. Shift+click from a top level card onto a command inside the `if`. Confirm the run reaches the
+   `if` card and the whole `if` block is selected. Then click a command inside the `if` and
+   Shift+click a top level card below the `endif`. Confirm the run starts at the `if` card.
+5. Other section. With the stacked view showing two sections, select two cards in one, then
+   Ctrl+click a card in the other. Confirm the selection restarts there and the Add bar label moves.
+6. Delete. Select three cards and press Delete. All three go. Press Ctrl+Z once and confirm all
+   three come back together. Repeat with Ctrl+Alt+D, and with the card menu, whose entry reads
+   "Delete 3 cards" and whose Duplicate, Move up and Move down are greyed.
+7. Delete an `if` and a command inside it together. Confirm the whole `if` goes and nothing else.
+8. Drag. Select the first and third card of a section, press on one of them and drag. Both dim.
+   Drop below the last card and confirm both land there in their original order, still selected,
+   and any that were open are open again. Ctrl+Z once puts both back.
+9. Drag into a branch. Drag two selected top level cards into the `if`'s branch and confirm they
+   take the branch's indent in the Code tab.
+10. Drag an unselected card while others are selected. Only that card moves and the selection
+    becomes that card.
+11. Alt+Up and Alt+Down with several selected do nothing. With one selected they move it as before.
+12. Code tab. With several selected, switch to Code, move the cursor and switch back. Confirm the
+    selection is now the single card under the cursor.
+13. Fast deletes. Select two cards, Delete, then quickly select and delete two more before the
+    list settles. Confirm nothing else in the file changed.
+
+---
+
+## 36. Tutorial step kinds, the spoiler warning and the island diagram, 2026-10-22 (`feedback/2026-10-comeer-feedback-sessions.md` session 1)
+
+Run `npm run tauri dev` and start "Land Generation (Comeer)". Do items 1 to 5 in the light theme,
+then switch to the dark theme in Theme Settings and repeat 1, 3 and 4.
+
+1. Chip. On "Player Setup", confirm a green outlined chip with a hammer and the word Build sits
+   before the title, and a green 3px stripe runs down the card's left edge. On "Does the square
+   count?", confirm a blue chip with a magnifying glass and the word Investigate, and a blue stripe.
+   Confirm both icons are crisp at the chip's size and the word is easy to read. On "Comeer, a
+   tournament map", "Start a new script", "Breakdown or Code" and "You made Comeer", confirm there
+   is no chip and no stripe.
+2. Help mode. Turn help mode on and hover each chip. Confirm one short line explains it.
+3. Minimized bar. Minimize a Build step and an Investigate step and confirm the bar keeps the
+   stripe in the same colour, and that a step with no kind has no stripe.
+4. Warning. On "Box in the neutral island", confirm a warning triangle in the warning colour sits
+   before "Notice something?", spaced from the label, and that the other spoilers have none.
+5. Diagram. On "Fixing the island-joining problem", confirm two diamond maps sit side by side
+   under the first paragraph. The left pair of squares is one above the other with a small red
+   diamond where their corners overlap. The right pair is lined up along an edge with water
+   between. Confirm the dashed ring shows over the squares in both, and that the card is wide
+   enough to read both pictures. Compare the left picture with the preview at the pinned seed
+   ("Spot the problem" with land_percent 0) and confirm the players are lined up the same way.
+   In the dark theme, confirm the water, squares, ring and red overlap all still read.
+6. Code track. Back to "Breakdown or Code", pick Code, and confirm the same chips show on the Code
+   steps, and that the diagram shows on the Code twin of step 15 inside the editor corner.
+7. Wording. Read step 14's "What happened" and step 15's paragraph under the diagram. Confirm
+   neither says "diagonal" and both describe the players as lined up one above the other, or side
+   by side.
+
+---
+
+## 37. Diagnostics and highlighting latency trace and its two fixes, 2026-10-22 (`docs/diagnostics-latency-report.md` Sec.7, Sec.8)
+
+Run `npm run tauri dev`. Open the developer tools with Ctrl+Shift+I, run
+`localStorage.setItem("aorms.perfTrace", "1"); location.reload();` in the Console and filter it by
+`[perf]`. Note the CPU load in Task Manager first.
+
+1. Trace off by default. Before setting the flag, type in the Code tab and confirm no `[perf]`
+   line appears.
+2. Highlighting. On the Code tab open `test-maps/new_map.rms`, then `AK_Vanguard_v1.2.rms`, and
+   read `after file open, first highlighted tokens painted` for each. Switch to Breakdown and back,
+   and read `code editor mounted` and `after editor mount, first highlighted tokens painted`.
+   Restart the app and repeat once.
+3. Squiggles. With Vanguard open, type one character at a line's end and wait two seconds. Read
+   every line from `parse #N sent` to `squiggles painted`, the `react update (app)` lines
+   included. Five times, then the same on `new_map.rms`.
+4. Typing lag. On Vanguard type a word at normal speed and note any `LONG TASK` and
+   `react update` lines.
+5. Errors ahead of the tree (report Sec.7 fix 1). On Vanguard type one character. Confirm
+   `parse #N diagnostics back` prints before `parse #N back` for the same N, and that the squiggles
+   paint before the tree arrives, about 120 ms against about 315 ms. On `new_map.rms` confirm only
+   `parse #N back` prints, since a small file still sends one message.
+6. Superseded trees. On Vanguard type a whole word quickly. Some `tree superseded, dropped unread`
+   lines should print, each with no `main thread unpack` cost above a few ms. When typing stops,
+   the squiggles sit on the right lines of the final text. Switch to Breakdown and confirm the cards
+   match the code, which shows the last tree was kept.
+7. Short debounce (fix 2). On `new_map.rms` delete a closing `}`. The squiggle should appear with no
+   pause you can see. Put it back and confirm the squiggle clears just as fast. Vanguard is over
+   50,000 characters, so it keeps the 150 ms wait.
+8. Save the console into `RMS/test-outputs/` and name the file in the reply. Turn the trace off
+   with `localStorage.removeItem("aorms.perfTrace"); location.reload();` and confirm the lines
+   stop.
+
+---
+
+## 38. Code tab autocomplete, the green flash and the #const offers, 2026-10-22 (`docs/name-lookup-design.md` slice B)
+
+Run `npm run tauri dev`, open the Code tab and start a new script with a `<LAND_GENERATION>`
+section.
+
+1. Suggestions. On a new line type `create_` and confirm the list shows commands valid in the
+   section, and only those. Inside `create_land { }` type `terr` on a new line and confirm
+   `terrain_type` is offered. After `terrain_type ` type `GRA` and confirm terrains come first,
+   GRASS among them, and no objects or words from comments are listed.
+2. Your own names first. Add `#const MY_FOREST 10` above the section. In a terrain slot type `MY`
+   and confirm MY_FOREST sits above the built-in rows and says it is the script's own. Move the
+   `#const` below the use and confirm the row moves to the bottom, tagged as defined below.
+3. Tab and Enter. With the list open, press Enter and confirm a new line is made and nothing is
+   accepted. Open it again and press Tab, and confirm the highlighted name is inserted. With the
+   list closed, Tab indents.
+4. Flash on typing. Type `terrain_type GRASS` then a space, and confirm GRASS flashes green for
+   under a second. Repeat ending with Enter, then with the Right Arrow, then with a click
+   elsewhere. Each flashes once. Type `terrain_type NOPE ` and confirm no flash.
+5. Flash on Tab. Accept GRASS from the list with Tab and confirm it flashes. Accept a name defined
+   below the use and confirm it does not.
+6. No flash on these. Paste `terrain_type GRASS` from the clipboard, undo, redo, open a file and
+   edit a value in the Breakdown tab, then come back to Code. None of them flash.
+7. Theme. Check the flash reads in the light theme, the dark theme and one custom theme from
+   Settings > Theme. It uses the theme's success background.
+8. Reduced motion. In Windows Settings > Accessibility > Visual effects turn Animation effects off,
+   restart the app, and confirm the flash is a flat tint that disappears after under a second
+   instead of a fade.
+9. Setting. In Settings > Code untick "Flash a name green when it resolves" and confirm typing
+   GRASS no longer flashes, with no restart. Hover the checkbox in help mode and read its tip. Tick
+   it again.
+10. Hover. Hover MY_FOREST where it is used and confirm the hover names the line of your `#const`.
+    With the `#const` below the use, confirm it says so.
+11. Typo fix. Type `terrain_type FORREST`, put the caret on FORREST and press Ctrl+. (or click the
+    light bulb). Confirm three actions in this order, "Change to FOREST", "Create #const FORREST 10
+    above this command (10 is FOREST, ...)" and "Create #const FORREST 10 in the header". Pick the
+    first and confirm the word changes. Ctrl+Z undoes it in one step.
+12. Create above. On a new unknown name inside an `if TINY_MAP` branch, pick "Create #const ...
+    above this command". Confirm the line lands inside the branch, directly above the command, at
+    its indent, and the value is selected so typing replaces it. Ctrl+Z removes it in one step.
+13. Create in the header. Pick "Create #const ... in the header" and confirm the line lands at the
+    end of the header, above the first section, with the value selected.
+14. Move up. With `#const MY_FOREST 10` below its use, press Ctrl+. on the use and pick "Move the
+    #const up here". Confirm the line moves above the command, a trailing comment on it moves too,
+    and one Ctrl+Z puts it back. Put the definition inside an `if` branch and confirm the action is
+    not offered.
+15. Not offered. Confirm no light bulb on GRASS, on a number, on a name inside a comment, in an
+    `if` condition, or anywhere in a script that has an `#include_drs` line. Confirm an unknown
+    name draws no squiggle and nothing in the status bar count.
+16. Large map. Open `AK_Vanguard_v1.2.rms`, go to its last line and type a few names at normal
+    speed. Confirm the list keeps up with no visible lag.
+
+---
+
+## 39. Code colours while typing, the preview render loop, 2026-10-22 (`src/components/preview/OverlayCanvas.tsx`)
+
+Run `npm run tauri dev` and open `test-maps/new_map.rms`. Do not zoom or pan the preview, since
+the bug only showed while the map was still fitted to the box.
+
+1. Colours while typing. On the Code tab type `create_elevation 7` on a new line. Confirm it
+   colours as you type, with no switch to Breakdown and back.
+2. Same with the preview hidden. Repeat with the Reference tab in front of the side panel.
+3. The preview still fits. Re-roll the seed and resize the side panel. Confirm the map refits each
+   time. Zoom in, re-roll, and confirm your zoom is kept.
+4. Land Placement. Open Advanced Tools, pick Land Placement, and confirm its canvas draws, fits the
+   map, and the window stays responsive. Its canvas had the same loop.
+5. Idle CPU. With the map open and nothing happening, confirm Task Manager shows the app near 0%
+   CPU.
+
+---
+
+## 40. Commenting cards out, and selectable comment cards, 2026-10-22 (`breakdown-design.md` Sec.3.13)
+
+Run `npm run tauri dev` and open a script with several commands in one section, an `if` with
+commands inside, and a few comments between cards.
+
+1. Button. Click the `/*` beside a command's trash button. Confirm the card becomes a comment card
+   holding the command's text, and the Code tab shows `/* create_... */` on that line.
+   Click the struck `/*` on the new comment card and confirm the command comes back exactly as it
+   was. Ctrl+Z undoes each step in one press.
+2. Every card kind. Repeat on a directive, an `if` card and a `start_random` card. The whole
+   construct goes inside one comment and comes back whole.
+3. First and only card. Comment out the first command of a section and confirm it stays visible
+   at the top as a comment card. Comment out the only command in an `if` branch and confirm the
+   branch shows the comment card, not "Nothing here yet".
+4. Header tab. Open a map whose file starts with a comment block. Confirm the Header tab now shows
+   it as a comment card.
+5. Selecting a comment. Click a comment card's border or toggle. It shows the selected accent.
+   Ctrl+click a command, then Shift+click a card a few below. Confirm the comment cards inside the
+   run are selected too.
+6. Hotkey. Select two commands and press Ctrl+/. Both become comments and stay selected. Press
+   Ctrl+/ again and both come back. Select a command and a comment together and press Ctrl+/.
+   Confirm only the command is commented out.
+7. In a field. Click into a value field and press Ctrl+/. Confirm nothing happens.
+8. Group delete and drag. Select a command and a comment card, press Delete, and confirm both go
+   in one undo step. Select them again, drag the pair below another card, and confirm both land
+   there in order.
+9. Add after a comment. Select a comment card and use Add Command. Confirm the new command lands
+   right below the comment.
+10. Code tab sync. Select a comment card, switch to Code, and confirm the cursor is on that
+    comment. Put the cursor inside another comment, switch back, and confirm its card is selected.
+11. Shared line. On a line with two commands and no blocks, comment out the second one from the
+    Code tab or Breakdown. Confirm it shows on the first command's row as an inline comment with a
+    struck `/*` button, and that the button brings it back.
+12. Card menu. Right click a command and confirm a "Comment out" entry with Ctrl+/ beside it. With
+    three cards selected it reads "Comment out 3 cards".
+13. Settings. Settings > Hotkeys lists "Breakdown: Comment Out / Uncomment" as Ctrl+/. Rebind it
+    and confirm the new keys work and the card menu shows them.
+14. Disabled. An unclosed `if` card and an empty `/* */` comment both show the button greyed.
+
+---
+
+## 41. Comeer tutorial card placement, spotlight and the warning icon, 2026-10-23 (`src/tutorial/landGenerationComeer/tutorial.ts`)
+
+Checked in a browser copy with mocked Tauri at 1600 x 900 by reading element boxes. Never seen
+drawn, and never run in the real app.
+
+1. One island per player. Pick Breakdown and go to this step. The card sits in the bottom right
+   corner of the Breakdown pane, not the middle of the window, with the pane, Add command and the
+   preview lit.
+2. Same corner every step. Page from Player Setup to A little chance. The card stays in the
+   Breakdown pane's bottom right corner on every step except Spot the problem, which still sits
+   beside the preview.
+3. Add command lit only when needed. It is lit on Player Setup, base_terrain, One island per
+   player, Does the square count?, Name a value once and A neutral island, and on no other step.
+4. Preview first, then fade. On Four borders shape, Box in the neutral island and A little chance,
+   only the preview is lit when the step opens. Click a card in the Breakdown pane. The dim and
+   the ring fade out over about two and a half seconds, and the click still lands on the card.
+   Clicking or typing inside the tutorial card does not fade it.
+5. Fade timer. Open A little chance and touch nothing. The spotlight fades after about 12 seconds.
+   Press Next, then Back. The spotlight is showing again on both steps.
+6. Code track. Repeat 2, 4 and 5 on the Code track. The card sits in the code editor's bottom right
+   corner and the preview is lit and fades on the same steps.
+7. Kind chip. Box in the neutral island shows Investigate.
+8. Warning icon. On Box in the neutral island, the triangle before "Notice something?" is filled
+   in the warning colour with the exclamation mark cut out, so the card's white shows through it.
+   Compare it with the status bar's triangle and pick which style both should use.
+9. Last step. The step after A little chance is You made Comeer, numbered as the last step, with
+   Fill in the rest for me, Finish and the four review questions. Press Fill in the rest for me.
+   The three sections appear, the title ticks, and the card stays open. Finish ends the tutorial.
+
+---
+
+## 42. Breakdown suggestions, the green flash and the create strip, 2026-10-23 (`docs/name-lookup-design.md` slice C)
+
+Run `npm run tauri dev`, open the Breakdown tab on a script with a `create_land` in
+`<LAND_GENERATION>` and expand it. Everything below passed in component tests with a harness
+standing in for the pane, so this sheet checks what a harness cannot: the real reparse timing, the
+real focus handling and how the strip looks.
+
+1. Suggestions. Click the `terrain_type` value and type `GRA`. Confirm a list appears under the
+   field with terrains first, GRASS among them, each row saying what it is. No objects are listed.
+   Hover the list in help mode and read its tip.
+2. Tab and Enter. With the list open press Down once, then Tab, and confirm the second row fills
+   the field and the list closes. Open it again and press Enter, and confirm what you typed is
+   committed and nothing is accepted. With the list closed, Tab moves to the next field.
+3. Escape and Shift+Tab. Open the list and press Escape. Confirm only the list closes and the field
+   keeps your text. Press Escape again and confirm the field reverts. Open the list and press
+   Shift+Tab, and confirm the list closes and focus stays.
+4. Ctrl+Space. In an empty value field press Ctrl+Space and confirm the list opens on an empty
+   word. Click a row with the mouse and confirm it fills the field.
+5. Your own names first. Add `#const MY_FOREST 10` to the header. In a terrain value type `MY` and
+   confirm MY_FOREST sits above the built-in rows and says it is your `#const`. Move the `#const`
+   below the use and confirm the row moves to the bottom, tagged as defined below.
+6. Flash. Commit `DIRT` in a terrain value with Enter, then with a click elsewhere, then with Tab.
+   Each tints the field green for under a second. Commit `5` and confirm no flash.
+7. Not on these. Open a file, undo an edit, redo it, and switch to Code and back. None flash. Change
+   the value in the Code tab and come back, and confirm no flash.
+8. Theme and motion. Check the tint reads in the light theme, the dark theme and one custom theme.
+   With Windows animation effects off, confirm it is a flat tint that disappears after under a
+   second.
+9. Setting. In Settings > Breakdown untick "Flash a name green when it resolves" and confirm
+   committing DIRT no longer flashes, with no restart. Confirm Settings > Code shows the same box
+   unticked. Hover the box in help mode and read its tip. Tick it again.
+10. Screen reader. With Narrator on, commit `DIRT` and confirm it announces "DIRT is a built-in
+    terrain" along with the descriptive name.
+11. Create strip. Commit `FORREST` in a terrain value. Confirm a strip appears under the field
+    reading "No const named FORREST in this script or the built-in list", with a Did you mean
+    FOREST button, a value box showing 10 beside "10 is FOREST (...)", a Where list and Create and
+    Dismiss. It is neutral in colour, and the card shows no problem badge for it.
+12. Create above. Press Create with "Above this command". Confirm `#const FORREST 10` lands on the
+    line directly above the command at its indent, the strip goes, and the field flashes. Ctrl+Z
+    removes the line in one step.
+13. Create in the header. Repeat and pick "In the header". Confirm the line lands at the end of the
+    header, above the first section.
+14. Value and 69. Change the strip's value to 21 and Create, and confirm 21 is written. Make a
+    strip, type 69 in its value box and confirm a note about RMS0111 appears beside the buttons.
+15. Did you mean. Commit `FORREST` again, press the Did you mean button, and confirm the field
+    becomes FOREST, the strip goes and the field flashes.
+16. Dismiss. Press Dismiss and confirm the strip goes and the script is unchanged. Press Escape in
+    the strip's value box and confirm the same.
+17. A new attribute. Add a `terrain_type` row that is empty, type `FORREST` in it and press Enter.
+    Confirm the strip still appears, since the empty field is replaced by a real one as you commit.
+18. Defined below. Put `#const MY_FOREST 10` below the command and commit `MY_FOREST` in its
+    terrain value. Confirm a strip says it is defined on line N, below this use, with a "Move the
+    #const up here" button. Press it and confirm the line moves above the command and the field
+    flashes. One Ctrl+Z puts it back.
+19. Not offered. Put the `#const` inside an `if` branch and confirm the strip names the branch and
+    shows no Move button. Confirm no strip for `GRASS`, a number, a name in an `if` condition field,
+    or anywhere in a script with an `#include_drs` line.
+20. Conditions and chances. In an `if` condition field type a `#define` name and confirm it is
+    suggested, and a predefined label such as `TINY_MAP` too. Commit a name from the script and
+    confirm it flashes. In a `percent_chance` field confirm `#const` names are suggested.
+21. Directives. In a `#const` card, confirm the value field suggests names and the name field does
+    not.
+22. Large map. Open `AK_Vanguard_v1.2.rms` in Breakdown, open a command near the end and type in a
+    value. Confirm the list keeps up with no visible lag.
+
+---
+
+## 43. Land Placement name suggestions, flash, unset names notice and Add Template terrain, 2026-10-23 (`docs/name-lookup-design.md` slice D)
+
+Run `npm run tauri dev`, open Advanced Tools, pick Advanced Land Placement and add a role and a
+shape. Add `#const MY_RADIUS 12` to the script's header first.
+
+1. Suggestions. Click the Base size box and type `MY`. Confirm MY_RADIUS is listed, saying it is
+   your `#const`. Tab fills it and leaves the rest of the box alone. Type `(5 + MY` and confirm Tab
+   replaces only `MY`.
+2. Other sources. Type `SI` and confirm SIN is listed as a function. Add a random value, type its
+   label's first letters in a Rotation box and confirm the label is listed as a random value. Type
+   the start of a name the layout emits and confirm it is listed as from this layout.
+3. Keys. Confirm Up and Down move the highlight, Escape closes the list without reverting the box,
+   and Enter commits the box. Confirm the list does not hide the next field's box.
+4. Flash. Type `MY_RADIUS` in Base size and press Enter. The box tints green once. Commit `5` and
+   confirm no flash. Click into a box and click out without typing and confirm no flash.
+5. Setting. Untick the flash in Settings > Code and confirm Base size no longer flashes.
+6. Unset names. Type `NOPE_SIZE` in Base size and press Enter. Confirm a notice appears under the
+   Apply button reading "These names have no value yet...", with "NOPE_SIZE has no value.", a block
+   showing `#const NOPE_SIZE 0` and a Copy button. Hover Copy in help mode and read its tip.
+7. Copy. Press Copy and confirm "Copied." appears. Switch to Code and paste, and confirm the line
+   is `#const NOPE_SIZE 0`. This checks the clipboard works inside the packaged WebView2 window,
+   which nothing else in the app uses yet. If it does not, confirm the notice says Copy was blocked
+   and the block can be selected by hand.
+8. Shrinks and goes. Paste the line into the header, outside the fenced block. Confirm the notice
+   disappears without pressing anything. Add a second unset name and confirm both are listed, and
+   removing one line makes the notice list only the other.
+9. The other reasons. Define `#define EDGE`, use `EDGE` in a box, and confirm the notice says it is
+   a #define on line N and its snippet replaces that line. Define `#const BRANCHY 4` inside an `if`
+   and use it, and confirm the notice names the branch and writes no line for it.
+10. Apply. With `NOPE_SIZE` unset in Base size, confirm Apply is still offered and the notice
+    stays up after pressing it. Then type `5 + NOPE_SIZE` in a radius box and confirm Apply is
+    refused with the notice still showing. An unset name only stops Apply where it follows a
+    formula's first operand or sits in a rotation (design Sec.4.3.1). Define the name and confirm
+    Apply works and the notice goes.
+11. Add Template. Open Add Template on the Terrain tab, pick the player forests template, and type
+    `GRA` in "Terrain to place on" and in the player land box. Confirm terrains are suggested,
+    Tab fills the box, a `#const` from the script is listed above the built-ins, and Escape closes
+    the list without closing the dialog.
+
+## 44. Code tab line and block prediction, 2026-10-23 (`docs/name-lookup-design.md` slice E)
+
+Run `npm run tauri dev` and open a script in the Code tab. The three Monaco spikes (Sec.13.6) were
+run against a stub editor in the browser, so these steps are the first run in the real app.
+
+1. Line prediction. Below a `create_land` block that has `land_position 85 68`, open a new
+   `create_land {` and type `land_position` and a space. Confirm `85 68` shows in grey after the
+   caret, in the theme's muted colour rather than coloured like code. Tab writes it.
+2. One word. Repeat, and press Ctrl+Right instead. Confirm only `85` is written and `68` stays
+   grey. Type `7` instead of accepting and confirm the grey text goes away or narrows.
+3. Home. In a script with `create_terrain FOREST { terrain_type FOREST }` and no `create_land`
+   using `terrain_type`, type `terrain_type` and a space inside a `create_land` block. Confirm
+   nothing is predicted.
+4. Not predicted. Confirm no grey text after `#const `, after `if `, after `percent_chance `, inside
+   a `/* comment`, or with text to the right of the caret.
+5. Block template. With the Sec.13.4 example block above, type `create_object GOLD` on a new line.
+   The word list opens on GOLD. Confirm the first Tab takes the list's row and closes it, and the
+   whole block shows in grey without the comment. The second Tab inserts it with `7` selected.
+   Type `5`, Tab to `13`, Tab to `15`, Tab once more and confirm the caret lands after `}`.
+6. Indent. Do step 5 on an indented line, and with Settings > Code set to tabs and then to 4
+   spaces. Confirm every inserted line takes the command's indent plus one unit. The grey preview
+   draws the lines without the command's own indent, which is Monaco's preview and not a defect.
+   Confirm the inserted text has it.
+7. Word list inside a template. Inside an inserted template, type over a value with the start of a
+   name so the word list opens. Tab takes the name and a second Tab moves to the next value.
+8. Undo. After inserting a template, one Ctrl+Z removes the whole block.
+9. Two Tabs write a command. On a new line type `create_object` and a space with a
+   `create_object GOLD` line above. Tab writes `GOLD`, and the block template then shows.
+10. Skeleton. In a new file with only `<OBJECTS_GENERATION>`, type `create_object GOLD`. Confirm a
+    block from other maps shows (three or four attributes). Add a `create_object STONE` block
+    above and confirm the template now copies that block instead.
+11. Brace below. With the script's blocks written with `{` on its own line, confirm the template
+    puts it there too. Put a `{` on the line after the caret and confirm no template shows.
+12. Setting. Untick "Predict the rest of a line and whole blocks" in Settings > Code and confirm
+    no grey text shows on the next keystroke, with no restart. Hover the checkbox in help mode and
+    read its tip. Tick it again and restart the app, and confirm it stays on.
+13. Large file. Open Arena.rms and type at its last line. Confirm typing does not lag.
+
+---
+
+## 45. Breakdown readability pass, 2026-10-23 (`docs/breakdown-design.md` Sec.3.14)
+
+Use a map with comments, a run of `#const` lines, an if with a start_random inside it, a
+commented-out `create_land` block and a `replace_terrain` connection.
+
+1. Quiet buttons. Confirm every card's Delete and `/*` buttons are faded. Hover a command inside
+   an if and confirm only that command's buttons brighten, not the if's. Select a card, then Tab
+   into one of its fields, and confirm its buttons stay bright both times.
+2. Margin notes. Confirm comment cards have no box, sit further in than the cards around them,
+   and show a grey square bar on the left for a one line note and a taller block for a longer
+   one. Confirm the text is grey italic and easy to read on both Light and Dark.
+3. Colours. Confirm attribute names (rows and the collapsed summary line) are orange and
+   constants teal, matching the same words in the Code tab. Type a lowercase value into a
+   constant field and confirm it turns back to the normal text colour while typing.
+4. Nesting lanes. Confirm if, elseif and else branches each show a tinted lane with a guide line,
+   that the start_random lane inside is a shade deeper, and that the guide under the pointer
+   turns blue.
+5. Commented-out code. Confirm the commented `create_land` shows as an italic card inside the
+   comment card. Open it, change `land_percent`, press Enter, and confirm the Code tab shows the
+   change inside the comment and the card stays open. Press Text and Cards and confirm the
+   switch. Confirm a prose comment still shows as text.
+6. `#const` table. Confirm the run of `#const` lines is one framed table with a row per line.
+   Click in the MY_WATER name, press Enter and confirm the caret moves to its value. Type a number,
+   press Enter and confirm focus lands on "+ add #const". Press Enter, confirm a NEW_CONST row
+   appears with its name selected, type a name, press Enter and confirm the caret is in the new
+   value. Confirm Tab still walks every control, the row buttons included.
+7. Connections. In the replace_terrain rows press Enter through every field and confirm focus
+   ends on "+ add another replace_terrain". Enter adds a row with the caret in its first field,
+   type a terrain, Enter, and confirm the caret is in the second field.
+8. Help mode. Hover "+ add #const", "+ add #define" and the Text button and read their tips.
+9. `#define` table. Add a `#define` line and confirm it shows as a table with "+ add #define".
+   Click in its name, press Enter and confirm focus moves to the next name or the button. Press
+   Enter on the button, confirm a NEW_DEFINE row appears with its name selected, type a name and
+   press Enter, and confirm focus lands back on the button.
+
+---
+
 ## Not covered here
 
 Nothing currently owed and unbuilt. The next UI-touching slice should append its own run sheet

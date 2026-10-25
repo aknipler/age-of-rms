@@ -1,0 +1,62 @@
+/* A command's inline comment on its header row (2026-10-21). Kept from
+   shrinking, the summary row clips whatever runs past its end. */
+.slot {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.marker {
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.field {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  padding: 0 0.15rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+.field:hover,
+.field:focus {
+  border-color: var(--border);
+  background: var(--surface);
+  font-style: normal;
+}
+
+.readOnly {
+  font-size: 0.85rem;
+}
+
+.remove,
+.add {
+  border: none;
+  background: transparent;
+  padding: 0 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.remove:hover,
+.add:hover {
+  color: var(--text);
+}
+
+.add {
+  font-family: monospace;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-style: normal;
+}

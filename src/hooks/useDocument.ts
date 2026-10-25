@@ -9,6 +9,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { dirname } from "@tauri-apps/api/path";
 import { load } from "@tauri-apps/plugin-store";
 import * as monaco from "monaco-editor";
+import { perfEdit, perfFileOpen, perfFirstTokens } from "../perfTrace";
 import {
   APP_SETTINGS_STORE_FILE,
   findDeScriptsFolder,
@@ -294,6 +295,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
   // onDidChangeContent" piece of Sec.6.4.
   useEffect(() => {
     const subscription = documentModel.onDidChangeContent(() => {
+      perfEdit();
       setContentState(documentModel.getValue());
       setIsDirty(
         documentModel.getAlternativeVersionId() !== savedVersionIdRef.current,
@@ -425,7 +427,13 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     // file is a new document buffer, so its undo history should NOT carry
     // over from whatever was previously open, this is the one place we
     // want Monaco's undo stack reset, not preserved.
+    perfFileOpen(text.length);
     documentModel.setValue(text);
+    perfFirstTokens(
+      documentModel,
+      "after file open, first highlighted",
+      performance.now(),
+    );
     // An opened script was not built here, so it does not get stamped.
     // "every script built with AoRMS" is the promise, and writing a header
     // onto somebody else's file (or onto your own, saved before this feature

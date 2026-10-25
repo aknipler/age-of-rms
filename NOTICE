@@ -59,6 +59,18 @@ order and the cleanup pass come from there. The port was changed in 2026 to
 match measurements taken in Age of Empires II: Definitive Edition, and the
 header above that code in `lands.ts` says so, as GPL-3.0 section 5 asks.
 
+Cinzel typeface
+---------------
+
+Headings and the logo use Cinzel, Copyright 2020 The Cinzel Project Authors
+(https://github.com/NDISCOVER/Cinzel), licensed under the SIL Open Font
+License, Version 1.1 (https://scripts.sil.org/OFL). The app bundles the font
+files through the `@fontsource/cinzel` package. The license text is in
+`public/licenses/Cinzel-OFL.txt` and ships with the app. The logo SVGs in
+`public/logo/` hold the letters as outlines made from that font with
+`tools/logo/build_logo.py`. The font has no Reserved Font Name. The GPL-3.0 grant over this repository does not extend to
+the font, which stays under the OFL.
+
 Attribution
 -----------
 

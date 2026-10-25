@@ -68,6 +68,47 @@ export type Inline = string | InlineSpoiler;
 export type Paragraph = string | Inline[];
 
 /**
+ * Script text shown as written, line breaks and indents kept, in the
+ * editor's font. Named because it is both a body block and an entry of a
+ * spoiler's `paragraphs`, and one shape for both keeps them rendered alike.
+ */
+export interface CodeLines {
+  kind: "code";
+  text: string;
+}
+
+/**
+ * One entry of a spoiler's `paragraphs`, a paragraph or script text. For an
+ * Answer that shows the values as code and then explains them in prose,
+ * all behind one reveal.
+ *
+ * Still a discriminated union, told apart by `typeof`, `Array.isArray` and
+ * then `kind`, the same tests a `BodyBlock` takes. A reader written for
+ * `Paragraph` alone, such as `typeof p === "string" ? p : p.map(...)`, now
+ * fails to compile, because a `CodeLines` has no `map`. That compile error is
+ * the point. It finds every reader that would otherwise print a code entry as
+ * prose.
+ */
+export type SpoilerParagraph = Paragraph | CodeLines;
+
+/**
+ * What a step asks of the learner, shown as a chip before its title and a
+ * stripe down the card's left edge. "investigate" is a step for trying
+ * values and watching the preview, "build" adds something that stays in the
+ * finished script. A string union rather than an enum, the TypeScript idiom
+ * for a closed set of names that are only ever compared.
+ */
+export type StepKind = "investigate" | "build";
+
+/**
+ * The pictures a `diagram` block can show. Each name is a React component in
+ * diagrams.tsx, drawn as inline SVG so it reads the app's theme colours. A
+ * picture loaded through `<img>` cannot, since a separate SVG document never
+ * sees the page's CSS variables.
+ */
+export type DiagramName = "start-square-overlap";
+
+/**
  * One block of a step's body, in reading order.
  * - A string is a plain paragraph, the form every step used before spoilers.
  * - An `Inline[]` is a paragraph with hidden words in it.
@@ -75,6 +116,7 @@ export type Paragraph = string | Inline[];
  *   with `paragraphs` several of them, which may hold hidden words of their
  *   own (a hint ladder inside the toggle).
  * - An `image` block is a picture between paragraphs.
+ * - A `diagram` block is a drawn picture that follows the theme.
  * - A `text` block is a paragraph with an `align`.
  *
  * A discriminated union, told apart by `typeof`, `Array.isArray` and then
@@ -93,6 +135,8 @@ export type BodyBlock =
       text: string;
       /** Shows the opened text as script lines, the way a `code` block does. */
       code?: boolean;
+      /** Puts a warning triangle before the label, for a spoiler that is easy to skip and matters. */
+      warn?: true;
     }
   /**
    * A second spoiler shape rather than widening `text` to `string |
@@ -101,13 +145,21 @@ export type BodyBlock =
    * own field, a reader that only knows `text` fails to compile until it
    * handles this shape too. Tell the two apart with `"paragraphs" in block`.
    */
-  | { kind: "spoiler"; label: string; paragraphs: Paragraph[] }
+  | {
+      kind: "spoiler";
+      label: string;
+      paragraphs: SpoilerParagraph[];
+      warn?: true;
+    }
   | ({ kind: "image" } & StepImage)
   /**
-   * Script text shown as written, line breaks and indents kept, in the
-   * editor's font. For a step that asks the learner to type something.
+   * `alt` is read out in place of the picture and is held to the copy rules
+   * like any other words. A caption the learner reads goes in a paragraph
+   * next to the block, where it follows the UI font size.
    */
-  | { kind: "code"; text: string }
+  | { kind: "diagram"; name: DiagramName; alt: string }
+  /** For a step that asks the learner to type something. */
+  | CodeLines
   /**
    * A paragraph with its own alignment, for a sign-off at the end of an
    * announcement. A plain string is a left-aligned paragraph, so this is only
@@ -167,6 +219,12 @@ export interface StepTextEdit {
 export interface TutorialStep {
   id: string; // stable; used by tests
   title: string; // callout heading, <= 6 words
+  /**
+   * Shows the chip and edge stripe for this kind of step. Left out, the step
+   * shows neither, which is how every step looked before kinds existed. A
+   * Code track twin takes its Breakdown step's kind (editorTracks.ts).
+   */
+  kind?: StepKind;
   body: BodyBlock[]; // plain text, no markdown, see BodyBlock
   anchor?: Anchor;
   /**
@@ -177,6 +235,14 @@ export interface TutorialStep {
    * forcing a choice between them.
    */
   extraAnchors?: Anchor[];
+  /**
+   * Regions to light when the step opens, in place of `anchor` and
+   * `extraAnchors`, for a step that asks the learner to look at one thing
+   * and then work in a part of the app the spotlight dims. The dim and the
+   * rings fade away after a while, or as soon as the learner clicks or types
+   * outside the card. `anchor` still places the callout.
+   */
+  lookFirst?: Anchor[];
   /**
    * A manual nudge added to the callout's final on-screen position, AFTER
    * the normal beside/below/above placement algorithm and clamped to the

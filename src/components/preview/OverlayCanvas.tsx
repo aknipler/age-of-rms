@@ -241,6 +241,22 @@ export function OverlayCanvas({
     setPersistedUserFramed(true);
   }, [setPersistedUserFramed]);
 
+  // Both callers build `base` as a fresh object literal on every render, so
+  // `base` itself is a new reference each time even when nothing in it
+  // changed. React compares dependencies by reference (Object.is), so any
+  // hook below keyed on `base` would re-run on every render. The refit
+  // effect further down calls setViewport, the caller re-renders and builds
+  // another `base`, and the effect runs again, forever. That loop kept the
+  // main thread busy enough that Monaco's background tokenizer, which waits
+  // for an idle moment, never ran, so typed code in the Code tab stayed
+  // uncoloured. So every hook here names the fields it reads. Memoising
+  // `base` in each caller would also work, but every future caller would have
+  // to remember to, and the Land Placement panel already did not.
+  const baseResult = base?.result;
+  const baseSnapshot = base?.snapshot;
+  const basePalette = base?.palette;
+  const baseHiddenObjects = base?.hiddenObjects;
+
   // The terrain bitmap is the expensive part (one pass over dim^2 tiles), so
   // it is rebuilt only when the snapshot or the palette changes, NOT per
   // frame and not on zoom. Panning and zooming re-draw the same bitmap under
@@ -248,10 +264,10 @@ export function OverlayCanvas({
   // way. `null` when there is no base layer at all.
   const terrain = useMemo(
     () =>
-      base
-        ? createBitmapCanvas(buildTerrainBitmap(base.snapshot, base.palette))
+      baseSnapshot && basePalette
+        ? createBitmapCanvas(buildTerrainBitmap(baseSnapshot, basePalette))
         : null,
-    [base],
+    [baseSnapshot, basePalette],
   );
 
   // --- Sizing -------------------------------------------------------------
@@ -286,10 +302,11 @@ export function OverlayCanvas({
     setViewport(
       fitViewport(dim, container.clientWidth, container.clientHeight),
     );
-    // Depends on `base` too: a fresh generation (same dim, new terrain) should
-    // still refit while the user hasn't framed anything yet, matching
-    // PreviewCanvas's original dependency on the whole `snapshot` object.
-  }, [dim, base, setViewport]);
+    // Depends on the snapshot too: a fresh generation (same dim, new terrain)
+    // should still refit while the user hasn't framed anything yet, matching
+    // PreviewCanvas's original dependency on the whole `snapshot` object. The
+    // snapshot, not `base`, see the note above `baseSnapshot`.
+  }, [dim, baseSnapshot, setViewport]);
 
   const resetView = useCallback(() => {
     const container = containerRef.current;
@@ -348,12 +365,12 @@ export function OverlayCanvas({
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     drawPreview(ctx, viewport, {
       base:
-        base && terrain
+        baseResult && baseSnapshot && terrain
           ? {
-              result: base.result,
-              snapshot: base.snapshot,
+              result: baseResult,
+              snapshot: baseSnapshot,
               terrain,
-              hiddenObjects: base.hiddenObjects,
+              hiddenObjects: baseHiddenObjects,
             }
           : undefined,
       overlayShapes,
@@ -365,7 +382,9 @@ export function OverlayCanvas({
     });
   }, [
     viewport,
-    base,
+    baseResult,
+    baseSnapshot,
+    baseHiddenObjects,
     terrain,
     overlayShapes,
     showOrientation,

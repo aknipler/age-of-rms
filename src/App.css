@@ -42,6 +42,7 @@
   --canvas-text: #ffffff;
   --font-mono:
     ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  --font-heading: "Cinzel", Georgia, "Times New Roman", serif;
   --ui-font-scale: 0.9;
   --scrollbar-track: #f0f0f0;
   --scrollbar-thumb: #b3b3b3;
@@ -84,6 +85,18 @@ body {
     sans-serif;
   background: var(--bg);
   color: var(--text);
+}
+
+/* Dialog titles, settings panel titles and section headings use the logo's
+   typeface (Cinzel, bundled through @fontsource so it works offline in the
+   packaged app). The rule covers h2 and h3 only. The h1 is the user's map
+   file name, where Cinzel's small-caps lowercase would misrepresent the
+   name, and h4 is a small group label that reads better in the body face.
+   Component classes set size and colour but not family, so this one rule
+   reaches all of them. */
+h2,
+h3 {
+  font-family: var(--font-heading);
 }
 
 /* While a Breakdown card is being dragged (src/breakdown/cardDrag.tsx sets

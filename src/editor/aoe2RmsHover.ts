@@ -3,6 +3,7 @@ import { load } from "@tauri-apps/plugin-store";
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsDataRaw from "../../reference/data/game-constants.json";
 import docStringsDataRaw from "../../reference/data/doc-strings.json";
+import { describeScriptName } from "./aoe2RmsCompletion";
 import {
   HELP_MODE_KEY,
   HELP_STORE_FILE,
@@ -319,6 +320,21 @@ export function registerAoe2RmsHoverProvider() {
             true,
           ),
         };
+      }
+
+      // The script's own #const or #define (name-lookup-design.md Sec.6.3),
+      // what the name is and where it is defined, so the hover says it
+      // whether or not the resolve flash showed. Measured from the word's
+      // END, so hovering the definition itself counts it as above.
+      const scriptLine = describeScriptName(
+        word,
+        model.getOffsetAt({
+          lineNumber: position.lineNumber,
+          column: endColumn,
+        }),
+      );
+      if (scriptLine) {
+        return { range, contents: [{ value: scriptLine }] };
       }
 
       if (IDENTIFIER_PATTERN.test(word)) {

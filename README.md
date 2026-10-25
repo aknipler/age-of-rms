@@ -4,15 +4,15 @@ A free, open-source desktop app that lowers the barrier of entry to Age of Empir
 
 ## What it does
 
-- **Breakdown editor**, a beginner-friendly block-based view over your RMS code (Player Setup, Land, Elevation, Cliff, Terrain, Connection, Objects). Edit dropdowns and value fields instead of raw syntax.
+- **Breakdown editor**, a beginner-friendly block-based view of our RMS code. Edit dropdowns and value fields instead of raw syntax.
 - **Code editor**, a full Monaco editor with RMS syntax highlighting, hover docs and search.
-- **Advanced Live Diagnostics**, 48 diagnostic codes covering unclosed blocks, unknown names, argument problems and semantic mistakes the game reports no error for. Several catch lines that parse cleanly and then do nothing in game, such as an attribute whose required partner is missing, or a command sitting in a section the engine will not run it from.
+- **Advanced Live Diagnostics**, 48 diagnostic codes covering unclosed blocks, unknown names, argument problems and semantic mistakes the game reports no error for. Also catches lines that parse cleanly and then do nothing in game, such as an attribute whose required partner is missing, or a command sitting in a section the engine will not run it from.
 - **Tutorials**, step-by-step guides to help you learn how to write RMS using either the Breakdown editor or the Code editor.
-- **Map preview**, a canvas render of what your script generates including a notes drawer listing every approximation and placement failure.
-- **Reference panel**, look up terrains, objects, commands and the attributes each command accepts, and read a list of every create_object object in your script beside how many of it the last generation actually placed.
-- **Advanced Tools**, a pane of built-in tools that analyze or edit your script: a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. There is no plugin system for external tools, and none is planned. See "Contributing" below for how to add one.
+- **Map preview**, a canvas render of what your script generates including a notes drawer listing every placement failure and a list of every object placed with the option to hide objects for testing viewability.
+- **Reference panel**, look up terrains, objects, commands and the attributes each command accepts.
+- **Advanced Tools**, a pane of built-in tools that analyze or edit your script: advanced land placement, a generation consistency checker, a constants-usage auditor, a balance summary, a script formatter and script statistics. See "Contributing" below for how to add one.
 
-Code is always the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
+Code is the single source of truth. Breakdown and preview are views generated from it, and editing in Breakdown patches the underlying code with minimal, comment-preserving text edits.
 
 The preview's land generation, elevation and cliff sections are tile-for-tile with the engine, the other sections are close approximations being improved upon.
 

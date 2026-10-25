@@ -57,3 +57,5 @@ test-maps/*
 !test-maps/Comeer v1.5.rms
 !test-maps/Bulls_Eyes.rms
 !test-maps/Venn.rms
+# Rendered by tools/logo/build_icon.py, regenerated on demand
+tools/logo/out/

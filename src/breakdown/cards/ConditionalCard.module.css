@@ -23,10 +23,43 @@
   gap: 0.5rem;
 }
 
+/* Nesting guides (2026-10-23). Each if, elseif, else and percent_chance
+   branch is a lane with a guide line down its left edge and a faint accent
+   tint, like the indent guides of a code editor. A nested branch tints
+   deeper, so the depth reads from the colour as well as the indent. The
+   cards inside keep their own surface and sit on top of the lane.
+
+   The guide of the branch under the pointer, or holding focus, turns to the
+   accent. :has() keeps that to the innermost branch, the same rule the
+   quiet card buttons use in cards.module.css. RandomCard shares these
+   classes, so start_random branches get the same treatment.
+
+   color-mix rather than a fixed rgba, so a custom theme's accent tints its
+   own lanes. */
 .branch {
-  border-left: 3px solid var(--border-muted);
+  border-left: 2px solid
+    color-mix(in srgb, var(--accent) 30%, var(--border-muted));
+  border-radius: 0 4px 4px 0;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
   margin: 0.3rem 0;
-  padding: 0.2rem 0 0.2rem 0.6rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.6rem;
+}
+
+.branch .branch {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.branch .branch .branch {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.branch + .branch {
+  margin-top: 0.5rem;
+}
+
+.branch:hover:not(:has(.branch:hover)),
+.branch:focus-within:not(:has(.branch:focus-within)) {
+  border-left-color: var(--accent);
 }
 
 .branchHeader {

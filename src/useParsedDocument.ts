@@ -5,6 +5,11 @@ import type {
   ParseResponseMessage,
 } from "./editor/parserWorker";
 import type { Diagnostic, ParseResult } from "./parser/types";
+import { PERF_TRACE, perfLog } from "./perfTrace";
+import {
+  createParseResponseRouter,
+  debounceMsFor,
+} from "./editor/parseResponses";
 
 // docs/breakdown-design.md Sec.6.2: "one parse, in the worker". This
 // supersedes the old src/editor/useRmsDiagnostics.ts. Breakdown needs
@@ -21,7 +26,11 @@ import type { Diagnostic, ParseResult } from "./parser/types";
 // (resourceSummary.ts, read via PreviewResultContext), not a second copy of
 // the parse's own numbers. `playerCount` accordingly is no longer this
 // hook's concern.
-const DEBOUNCE_MS = 150;
+//
+// The debounce is 30 ms on documents under 50,000 characters and 150 ms on
+// bigger ones, and a big document's diagnostics arrive ahead of its tree.
+// Both are measured choices, see src/editor/parseResponses.ts and
+// docs/diagnostics-latency-report.md.
 
 export interface ParsedDocumentState {
   /**
@@ -37,12 +46,21 @@ export interface ParsedDocumentState {
   /** null until the first parse response arrives. */
   parseResult: ParseResult | null;
   diagnostics: Diagnostic[];
+  /**
+   * The exact source `diagnostics` was computed for. Usually equal to
+   * `source`. On a big document the diagnostics arrive ahead of the tree, and
+   * for that window this is the newer text while `source` and `parseResult`
+   * still describe the older one. CodePane's marker guard reads this field,
+   * so squiggles land as soon as the diagnostics do.
+   */
+  diagnosticsSource: string;
 }
 
 const EMPTY_STATE: ParsedDocumentState = {
   source: "",
   parseResult: null,
   diagnostics: [],
+  diagnosticsSource: "",
 };
 
 export interface ParsedDocumentApi extends ParsedDocumentState {
@@ -56,7 +74,7 @@ export interface ParsedDocumentApi extends ParsedDocumentState {
    * (BreakdownPane's anchor-shift queue) needs the matching reparse to
    * land as fast as possible to keep the "wrong card flashes expanded"
    * window as close to zero as achievable (worker round-trip only, not
-   * +150ms debounce on top). Safe to call with a source that never
+   * the debounce on top). Safe to call with a source that never
    * actually renders (e.g. superseded by a second rapid edit). The
    * normal requestId-based staleness check drops it like any other
    * out-of-order response.
@@ -74,19 +92,75 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
   // out of order.
   const latestRequestIdRef = useRef(0);
   const sourceByRequestIdRef = useRef(new Map<number, string>());
+  // The text the newest request was sent for. The debounce below compares
+  // against it, so text reparseNow already sent is not sent a second time.
+  // A ref rather than state because nothing renders from it and the timer
+  // callback has to read the value as it is when the timer fires.
+  const lastSentSourceRef = useRef<string | null>(null);
 
   useEffect(() => {
     const worker = new ParserWorker();
     workerRef.current = worker;
+    // A new worker has been sent nothing, so the debounce must not skip.
+    lastSentSourceRef.current = null;
     const sourceByRequestId = sourceByRequestIdRef.current;
 
+    const isCurrent = (requestId: number) =>
+      requestId === latestRequestIdRef.current;
+    const route = createParseResponseRouter({
+      isCurrent,
+      // A big document's diagnostics, ahead of its tree. Only the diagnostic
+      // half of the state moves, so `source` and `parseResult` stay a
+      // matching pair for Breakdown and the selection anchor, while CodePane
+      // reads `diagnosticsSource` for its marker guard.
+      onDiagnostics: ({ requestId, diagnostics }) => {
+        const source = sourceByRequestId.get(requestId);
+        if (source === undefined) return;
+        perfLog(`parse #${requestId} diagnostics back`);
+        setState((previous) => ({
+          ...previous,
+          diagnostics,
+          diagnosticsSource: source,
+        }));
+      },
+      onResult: (message) => {
+        const { requestId, diagnostics, parseResult } = message;
+        if (PERF_TRACE) {
+          perfLog(
+            `parse #${requestId} back`,
+            `${message.tokenCount} tokens, worker lex+parse ${message.lexParseMs.toFixed(1)} ms, validate ${message.validateMs.toFixed(1)} ms, posted to unpacked ${(performance.timeOrigin + performance.now() - message.postedAtEpochMs).toFixed(1)} ms`,
+          );
+        }
+        const source = sourceByRequestId.get(requestId);
+        sourceByRequestId.delete(requestId);
+        if (source === undefined || !isCurrent(requestId)) return;
+        setState({
+          source,
+          diagnostics,
+          diagnosticsSource: source,
+          parseResult,
+        });
+      },
+      onSkippedResult: (requestId) => {
+        sourceByRequestId.delete(requestId);
+        perfLog(`parse #${requestId} tree superseded, dropped unread`);
+      },
+    });
+
     worker.onmessage = (event: MessageEvent<ParseResponseMessage>) => {
-      const { requestId, diagnostics, parseResult } = event.data;
-      const source = sourceByRequestId.get(requestId);
-      sourceByRequestId.delete(requestId);
-      if (source === undefined || requestId !== latestRequestIdRef.current)
+      if (!PERF_TRACE) {
+        route(event);
         return;
-      setState({ source, diagnostics, parseResult });
+      }
+      // Chromium turns the worker's bytes back into objects lazily, on the
+      // first read of event.data, which happens inside route(). So the time
+      // around it is the main thread's share of the structured clone.
+      const arrivedAt = performance.now();
+      route(event);
+      perfLog(
+        "parse message handled",
+        `main thread unpack and state update ${(performance.now() - arrivedAt).toFixed(1)} ms`,
+      );
     };
 
     return () => {
@@ -104,15 +178,24 @@ export function useParsedDocument(content: string): ParsedDocumentApi {
     const requestId = latestRequestIdRef.current + 1;
     latestRequestIdRef.current = requestId;
     sourceByRequestIdRef.current.set(requestId, source);
+    lastSentSourceRef.current = source;
     const message: ParseRequestMessage = { requestId, source };
+    perfLog(`parse #${requestId} sent`, `${source.length} chars`);
     worker.postMessage(message);
   }, []);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(
-      () => sendParseRequest(content),
-      DEBOUNCE_MS,
-    );
+    const timeoutId = window.setTimeout(() => {
+      // A card action calls reparseNow with the text it produced, and that
+      // same text then arrives here as new content. Sending it again would
+      // make the first request stale (only the newest id counts), so when the
+      // round trip outlasted this debounce the first reply was dropped and
+      // the screen waited for a second parse of identical text. Matching the
+      // newest request's text, not the applied text, is what makes this safe
+      // while that request is still in flight.
+      if (content === lastSentSourceRef.current) return;
+      sendParseRequest(content);
+    }, debounceMsFor(content.length));
     return () => window.clearTimeout(timeoutId);
   }, [content, sendParseRequest]);
 
