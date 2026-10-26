@@ -720,6 +720,8 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     saveFile,
     saveFileAs,
     applyTextEdits,
+    /** Resolves to false when the user backed out of saving. Used before an update restarts the app. */
+    ensureSavedBefore,
     /** Non-null while the unsaved-changes modal should be on screen; also selects its wording. */
     unsavedAction,
     /** Called by that modal with the user's choice; resolves the pending operation. */

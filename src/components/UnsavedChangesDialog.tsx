@@ -15,7 +15,7 @@ import styles from "./UnsavedChangesDialog.module.css";
 export type UnsavedChoice = "save" | "discard" | "cancel";
 
 /** Which action prompted the dialog. Only the wording differs, see LABELS. */
-export type UnsavedAction = "close" | "open" | "new";
+export type UnsavedAction = "close" | "open" | "new" | "update";
 
 /**
  * Per-action wording. `Record<UnsavedAction, …>` is a *mapped type*: it forces
@@ -42,6 +42,11 @@ const LABELS: Record<
     save: "Save and Start New",
     discard: "Start New Without Saving",
     question: "What would you like to do before starting a new map?",
+  },
+  update: {
+    save: "Save and Update",
+    discard: "Update Without Saving",
+    question: "The app restarts to update. What would you like to do first?",
   },
 };
 

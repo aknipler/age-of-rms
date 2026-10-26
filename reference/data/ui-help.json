@@ -142,7 +142,7 @@
     },
     {
       "id": "update.install",
-      "text": "Downloads the new version and restarts the app. Save your work first, the restart is immediate once the download finishes."
+      "text": "Downloads the new version and restarts the app. If the map has unsaved changes you are asked to save first."
     },
     {
       "id": "update.dismiss",
@@ -858,7 +858,7 @@
     },
     {
       "id": "unsavedChanges.save",
-      "text": "Saves this map first, then continues with what you were doing (closing, or opening another map). If the map has never been saved, you'll be asked where to put it."
+      "text": "Saves this map first, then continues with what you were doing (closing, opening another map or updating). If the map has never been saved, you'll be asked where to put it."
     },
     {
       "id": "unsavedChanges.discard",

@@ -629,7 +629,13 @@ function AppContent() {
                 is layout-neutral. */}
               <UpdatePrompt
                 state={update.state}
-                onInstall={update.install}
+                onInstall={() => {
+                  // The installer closes the app, so unsaved edits are
+                  // settled first. Cancel leaves the update waiting.
+                  void doc.ensureSavedBefore("update").then((proceed) => {
+                    if (proceed) update.install();
+                  });
+                }}
                 onDismiss={update.dismiss}
               />
               <StatusBarContainer
