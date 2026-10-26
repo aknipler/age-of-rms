@@ -240,10 +240,51 @@ const whatsNew090: TutorialDefinition = {
   ],
 };
 
+// No new controls to point at, so the announcement is the whole tour.
+const whatsNew0100: TutorialDefinition = {
+  id: "whats-new-0.10.0",
+  kind: "feature",
+  title: "What's new in 0.10",
+  blurb:
+    "Name suggestions and autocomplete, light bulb quick fixes, comment toggling, multi-select in Breakdown, and Generation Settings inside the map preview.",
+  version: "0.10.0",
+  steps: [
+    {
+      id: "announcement",
+      title: "What's new in 0.10",
+      body: [
+        "Hello!",
+        "",
+        "A big round of Code tab and Breakdown work this time, mostly from tester feedback. Thank you again J.",
+        "- The Code tab suggests names as you type, and offers to finish a line or a whole block from your own script. Tab and Shift+Tab cycle the list, and Enter picks the highlighted row. Settings > Code lets you choose Enter, Tab or both.",
+        "- Quick fixes: when an issue is detected in the line you are working on, a light bulb appears in the gutter on the caret's line, and a second one above the word causing the issue. Click either. They correct a misspelt name, create a missing #const, and move a #define up above the if that uses it. Predefined constants also show a one line hover.",
+        "- Add Template is in the Code section, just right-click inside OBJECTS_GENERATION or TERRAIN_GENERATION at the spot you want to inject the template.",
+        "- Breakdown can comment a card out and back in with the /* button or Ctrl+/. Ctrl or Cmd click toggles several cards, Shift click selects a run, and Delete or drag acts on all of them at once. Every card can be deleted now, including the ones shown as code.",
+        "- Each Breakdown section tab has a show checkbox, so you can stack several sections in one list.",
+        '- Generation Settings moved inside the map preview, with hotkey Ctrl+D (rebindable in Settings). "Current" is renamed to "Truncate at Cursor"',
+        "- Latency improvements, and many attribute descriptions were rewritten.",
+        "",
+        "What is in development:",
+        "(1) improving the preview engine (terrain section),",
+        "(2) adding in community hub for sharing maps (this may take a while),",
+        "(3) more tutorials! (elevation section)",
+        "(4) improving the Advanced Land Placement tool,",
+        "(5) any of the bug fixes or small QOL improvements that you guys suggest along the way.",
+        "I am still looking into supporting multiple languages. If anyone is interested in helping with that (or with anything else, like making tutorials), please reach out to me on GitHub or Discord.",
+        "Thank you for the support!",
+        { kind: "text", text: "Happy scripting,", align: "right" },
+        { kind: "text", text: "Captain Kniples the Fourth", align: "right" },
+      ],
+      completion: { kind: "manual" },
+    },
+  ],
+};
+
 export const WHATS_NEW_TOURS: readonly TutorialDefinition[] = [
   whatsNew050,
   whatsNew060,
   whatsNew070,
   whatsNew080,
   whatsNew090,
+  whatsNew0100,
 ];

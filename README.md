@@ -18,7 +18,7 @@ The preview's land generation, elevation and cliff sections are tile-for-tile wi
 
 ## Status
 
-Open Beta. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built (tools are beta). See the [user guide](docs/user-guide.md) for a walkthrough.
+Open Beta. The editor, the parser, the map preview (not 100% perfect, feedback always welcome) and Advanced Tools are all built (tools are beta). The tutorials in the app's Help menu teach it step by step, and the [user guide](docs/user-guide.md) is a reference for hotkeys, settings and how far to trust the preview.
 
 ## Installing
 

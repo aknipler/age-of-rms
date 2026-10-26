@@ -1,155 +1,115 @@
-# Age of RMS — User Guide
+# Age of RMS user guide
 
-This is a walkthrough of using the app, for RMS authors. If you're looking to
-install it, see the [README](../README.md#installing) instead — this guide
-picks up once it's open.
+A reference for the app once it is installed. The [README](../README.md#installing) covers installing it.
 
-Age of RMS never treats your code as anything but the source of truth. Every
-view described below — Breakdown, Preview, Reference — is generated from your
-script and edits it with minimal, comment-preserving text changes. Nothing you
-write is discarded, even code the app doesn't recognize.
+The app is easy to learn, particularly because of two things. The tutorials walk you through real maps step by step, and every control shows a short popup when you hover it. 
 
-## The three tabs
+## Start with a tutorial
 
-The main window has three tabs, always available: **Breakdown**, **Code**, and
-**Advanced Tools**. Switching between them doesn't lose your selection —
-clicking a command in Breakdown and switching to Code jumps you to the same
-spot in the raw text, and back again.
+The tutorials are in the **Help** menu. Each one starts over from step 1 when you pick it, so you can replay one at any time.
+
+| Menu item                          | Pick it if                                    | What it covers                                                                                                                                                |
+| ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tutorial: Your first random map    | You have never written a random map script    | Builds a small map called Golden Hill from an empty file. Choose the Breakdown track to work with cards or the Code track to type the script.                 |
+| Tutorial: Land Generation (Comeer) | You are a beginner and want to improve your land generation skills   | Builds the islands of the 1v1 tournament map Comeer and shows how land grows and what stops it. It sets the preview to 1v1 on a Tiny map and leaves it there. |
+| Tour of Age of RMS                 | You already write RMS                         | Shows the key features of the app.                                             |
+| What's new                         | You want to see what changed in the newest release | Points out the newest features in place.                                                                                                                      |
+
+The **DE RMS Guide** item in the same menu opens Zetnus's guide to the scripting language, which the app's own hover docs are drawn from.
+
+Hover popups show on hover by default. **Settings > General** can make them show only while you hold Alt, or turn them off.
+
+## Features the tutorials skip
 
 ### Breakdown
 
-A block-based view over your script, organized into the sections a random map
-script actually has: Player Setup, Land, Elevation, Cliff, Terrain, Connection,
-and Objects. Each command renders as a card with dropdowns and value fields
-instead of raw syntax, so you can build a map without memorizing command
-names.
-
-- **Add a command** with the "+ Add command" control in a section, or the
-  `Ctrl+Alt+A` hotkey — both open a picker scoped to what that section
-  accepts.
-- **Delete a card** with its Delete button or `Ctrl+Alt+D`, on any card kind
-  that supports it.
-- **Anything the app doesn't recognize** — a typo, an advanced idiom, code
-  from before you started using Breakdown — renders as a raw block you can
-  still see and select, never silently dropped or rewritten.
-- Comments in your script show up in Breakdown too, attached to the command
-  they precede.
+- Ctrl+click adds a card to the selection and Shift+click selects a run of cards. Deleting, dragging and commenting out then act on all of them.
+- Drag a card by its header to move it more than one place, or into an `if` or `start_random` branch.
+- The tick boxes on the section tabs show several sections in one list. Ctrl+click a section name to add or remove it, Shift+click to show every section up to it, or use show all for the whole script.
+- **Add Template** on the Objects and Terrain tabs inserts ready made blocks, such as town centers and villagers for every player, starting resources, water resources and player forests. It previews the exact text before inserting.
+- A misspelled command shows a fix button with the closest known name.
+- A name you type that is not a built in constant or one of your `#const` lines gets an offer to create the `#const` for you.
+- **Settings > Breakdown** can hide attribute rows the code does not use, change attribute order and switch to a compact layout that fits more on screen.
 
 ### Code
 
-A full Monaco editor (the engine behind VS Code) with RMS syntax
-highlighting, hover documentation on commands and attributes, and search.
-Live diagnostics — over 48 checks — underline problems as you type: unclosed
-blocks, unknown names, wrong argument counts, and semantic mistakes the game
-itself won't tell you about, like an attribute whose required partner is
-missing, or a command sitting in a section the engine silently ignores it
-from.
+- Suggestions appear as you type. Grey prediction text after the caret is copied from similar lines earlier in your script, and Tab accepts it. **Settings > Code** sets which keys accept a suggestion.
+- A light bulb offers quick fixes, such as a corrected spelling or creating a missing `#const`.
+- Hover a command, attribute or constant for its documentation.
+- Problems are underlined as you type and counted in the status bar. Click an underline to read the full message.
+- A warning can be hidden with **Ok**, which hides it in that file, or **Don't show me this again**, which hides it everywhere. **Settings > Diagnostics** brings hidden warnings back.
+- Toggle comment wraps the selected lines in `/* */`.
 
-`Ctrl+Alt+F` flips the command under the cursor between one line and one
-attribute per line. With a selection spanning several commands, each one
-toggles independently — to the opposite of its own current shape, not to a
-shared target — so a mixed selection stays mixed the other way round. It
-skips anything it can't safely flip, such as a block that holds a nested
-`if`/`start_random` (collapsing that onto one line would be unreadable) or
-one that would force reindenting a different, untouched command elsewhere
-in the file.
+### The map panel
 
-### Advanced Tools
+The panel beside Breakdown and Code holds two tabs, **Preview** and **Reference**. Drag its edge to resize it, or click the arrow on the edge to hide it.
 
-A pane of built-in tools that run analysis or edits over your open script.
-Pick one from the Select Tool dropdown, adjust its settings if it has any,
-and press Run. If a tool proposes edits, an **Apply N changes** button
-appears once its output is ready — nothing is written back to your script
-until you click it.
+- **Truncate at Cursor** draws only what the script builds up to your cursor, useful for testing. The pin button beside it holds that cut point while you edit elsewhere.
+- The seed chip shows the seed the preview used. Type a seed to reproduce a layout, or press Ctrl+R to roll a new one.
+- **Notes** lists every placement that failed. 
+- **Obj. List** under the map counts what each object placed. A zero means no tile met that object's rules. Untick an object to hide it from the drawing while it stays placed and counted.
+- **Export** saves the current view as a PNG.
+- The labels Left, Bottom, Right and Top on the map's sides match the RMS border names, so `left_border` is the side marked Left.
+- The **Reference** tab looks up terrains, objects, commands and the attributes each command accepts.
 
-The tools shipped today:
+The status bar totals are read from the generation on screen, so they show what the map placed, which can differ from what the script asked for.
 
-| Tool                               | What it does                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Script Statistics**              | Counts commands, attributes, constants and sections in the open script.                                                                                                                                                                                                                                                                                       |
-| **Generation Consistency Checker** | The flagship tool. Static checks (undefined actor areas, terrain the engine's own table refuses, land over-allocation, contradictory conditions) plus a Monte Carlo pass across a player-count matrix, reporting spawn rates, worst player count and failure reasons per command — the closest thing to "will this actually place?" without opening the game. |
-| **Constants Usage**                | Lists every `#const`/`#define`, where it's defined, and flags names defined but never used again, or used but never defined.                                                                                                                                                                                                                                  |
-| **Balance Summary**                | Runs generations across a player-count matrix and reports each player's average gold/stone/food/wood and nearest-patch distance, side by side — useful for spotting a lopsided map.                                                                                                                                                                           |
-| **Script Formatter**               | Re-lays out indentation, line breaks and blank lines. Preserves each command block's existing one-line-or-expanded shape by default, and — this is the guarantee that makes it safe to run — it never changes a single token, only the whitespace between them.                                                                                               |
+## How far to trust the preview
 
-A table row or note with a span next to it is clickable and jumps the Code
-tab straight to that line.
+The preview runs the script stage by stage, in the order the game does. The land, elevation and cliff stages draw the game's own random numbers in the game's own order. The stages after them are approximations.
 
-## The side panel: Preview and Reference
+| Stage                             | Compared with the game                                     |
+| --------------------------------- | ---------------------------------------------------------- |
+| Lands                             | Tile for tile at the same seed                             |
+| Elevation                         | Tile for tile at the same seed                             |
+| Cliffs                            | Tile for tile at the same seed                             |
+| Terrains, connections and objects | Close approximation that will not line up with a real game |
 
-Alongside the tabs, a resizable side panel holds the map preview and a
-reference lookup.
+To compare with a real game, set Generation Settings to that game's map size, players, teams and Team Positions box, then type its seed into the seed chip. The game shows the seed on the Objectives screen.
 
-**Preview** renders an approximate canvas of what your script generates —
-zoom, pan, a game or minimap color mode, and hover/click readouts for any
-tile. **Current** shows the map as generated up to your cursor's position in
-the script (useful while writing); **Final** shows the whole script.
-`Ctrl+Alt+V` toggles between them, `Ctrl+Alt+R` re-rolls the seed. A notes
-drawer lists everything the preview approximated or failed to place, so you
-know where the picture might diverge from what the real game engine would
-do.
+## Advanced Tools
 
-The preview is deliberately honest about its own limits: it reproduces the
-engine's rules where those have been measured in game, and marks what it
-can't model rather than drawing a confident guess.
+Pick one of the Advanced Tools from the tool list, adjust its settings and press **Run**. A tool that proposes edits shows an **Apply** button when it finishes, and nothing in the script changes until you press it. Apply is one undo step. It is disabled if you changed the code after the run, so run the tool again. 
 
-**Reference** shares the same column. Look up terrains, objects, and commands
-— including every attribute a command accepts — and see a live count of how
-many of each object your script asked for versus how many the last
-generation actually placed, zeroes included. An object your script names but
-the map never gets is usually a terrain restriction or a distance constraint
-nothing on the map satisfies.
+| Tool                           | Use it to                                                                                                                                                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Advanced Land Placement        | This is my favourite feature. This holds a lot of promise for making exciting new maps. Lay out lands on a canvas, such as a ring of player lands or lands along a line, arc or polygon, then write the matching `create_land` code. It writes inside a marked block in your script. Edit that block with the tool. |
+| Generation Consistency Checker | Find out whether each command places what it asks for. It runs many generations across player counts and reports how often each command succeeds, the worst player count and why placements failed.                         |
+| Balance Summary                | Compare players. It reports each player's average gold, stone, food and wood and the distance to their nearest patch.                                                                                                       |
+| Constants Usage                | Tidy `#const` and `#define` lines. It lists each one and flags names that are never used, or used but never defined.                                                                                                        |
+| Script Formatter               | Fix indentation, line breaks and blank lines. It never changes a word of the script, only the space between words.                                                                                                          |
+| Script Statistics              | Count commands, attributes, constants and sections.                                                                                                                                                                         |
 
-## File actions and hotkeys
+## Hotkeys
 
-Every hotkey below is rebindable in Settings, and every default is reachable
-with one hand on the left side of the keyboard (so your mouse hand never has
-to move) — the one exception is Open, which keeps the OS-conventional
-`Ctrl+O`.
+**Settings > Hotkeys** rebinds any of these. A binding must include Ctrl or Alt.
 
-| Action                                                                                                         | Default hotkey |
-| -------------------------------------------------------------------------------------------------------------- | -------------- |
-| Save                                                                                                           | `Ctrl+S`       |
-| Save As                                                                                                        | `Ctrl+Shift+S` |
-| New File                                                                                                       | `Ctrl+N`       |
-| Open File                                                                                                      | `Ctrl+O`       |
-| Toggle Preview Current/Final                                                                                   | `Ctrl+Alt+V`   |
-| Re-roll Preview seed                                                                                           | `Ctrl+Alt+R`   |
-| Delete selected Breakdown card                                                                                 | `Ctrl+Alt+D`   |
-| Add command (in Breakdown)                                                                                     | `Ctrl+Alt+A`   |
-| Toggle command layout (in Code)                                                                                | `Ctrl+Alt+F`   |
-| Cycle tabs (Preview/Reference, Breakdown sections, or scroll Code to the next section; add `Shift` to go back) | `Ctrl+Tab`     |
-| Switch to/from Advanced Tools                                                                                  | ``Ctrl+` ``    |
+| Action                                                              | Default         |
+| ------------------------------------------------------------------- | --------------- |
+| New file                                                            | `Ctrl+N`        |
+| Open file                                                           | `Ctrl+O`        |
+| Save                                                                | `Ctrl+S`        |
+| Save as                                                             | `Ctrl+Shift+S`  |
+| Preview, switch Truncate at Cursor on or off                        | `Ctrl+Alt+V`    |
+| Preview, roll a new seed                                            | `Ctrl+R`        |
+| Preview, open or close Generation Settings (focus in the map panel) | `Ctrl+D`        |
+| Breakdown, add command                                              | `Ctrl+Alt+A`    |
+| Breakdown, delete selected cards                                    | `Ctrl+Alt+D`    |
+| Breakdown, duplicate selected card                                  | `Ctrl+Alt+C`    |
+| Breakdown, move selected card up or down                            | `Alt+↑` `Alt+↓` |
+| Breakdown, comment out or uncomment selected cards                  | `Ctrl+/`        |
+| Code, flip a command between one line and one attribute per line    | `Ctrl+Alt+F`    |
+| Step through the focused tabs, add Shift to go back                 | `Ctrl+Tab`      |
+| Switch to Advanced Tools and back                                   | ``Ctrl+` ``     |
 
-## Theming
+The Code tab also has the usual editor keys, such as Ctrl+F to find, Ctrl+H to replace and Alt+↑ to move a line.
 
-Settings > Theme has a Light and a Dark theme built in, plus every colour
-the app uses (surfaces, text, borders, accent, and the four status colours)
-and the code editor's monospace font, grouped and editable one at a time.
-Changing a colour previews instantly across the whole app; nothing is saved
-until you click **Save as new theme…** or, if you're editing a theme you
-already saved, **Update**. Saved themes can be renamed or deleted from the
-same tab. Note that this covers the app's own chrome, not the Code tab's
-syntax highlighting colours, which are a separate, not-yet-customizable
-scheme.
+### Reporting a problem
 
-## Updating and reporting problems
+Use the bug button in the status bar, or [open an issue](https://github.com/aknipler/age-of-rms/issues) on GitHub. The button beside it suggests a feature, a tutorial or an idea. Include your app version, your operating system and the `.rms` file. For a preview that differs from the game, also include the seed, the Generation Settings and a screenshot of each.
 
-The app checks for a new version on startup and offers to update — it never
-installs anything without asking first. If something looks wrong or a
-generation looks off, use the bug-report button in the status bar, or open an
-issue directly on GitHub. Screenshots and the `.rms` file that triggered the
-problem both help a lot.
+## Known limits
 
-## Known limits, honestly stated
-
-- The preview is an approximation, not a re-implementation of the game
-  engine. It's continually corrected against measured in-game behavior, but
-  it can still diverge — see its own notes drawer for what it flagged on
-  your specific script.
-- `#include_drs` files aren't resolved yet, so the parser and preview are
-  blind to symbols defined outside the open document. This mainly affects
-  advanced maps that lean heavily on shared include files.
-- There's no macOS build yet (it needs a paid Apple Developer account to
-  notarize). The app has nothing Windows-specific in it, so it builds from
-  source today — see the README.
+- Terrains, connections and objects in the preview are approximations, see [How far to trust the preview](#how-far-to-trust-the-preview).
+- Files pulled in with `#include_drs` are not read, so the app cannot see constants or commands defined in them. It holds back warnings it cannot be sure of in such a script.
+- There is no macOS build yet. The README explains how to build one yourself.
