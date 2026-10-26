@@ -59,6 +59,8 @@ import {
   rememberedFocusId,
   rememberedShownIds,
   resolveShownIds,
+  shownAfterCtrlClick,
+  shownAfterRangeClick,
   shownAfterTabClick,
   shownAfterToggle,
 } from "./viewScope";
@@ -110,6 +112,8 @@ interface BreakdownPaneProps {
    * this component unmounting on every Breakdown -> Code tab switch.
    */
   selection: SharedSelectionApi;
+  /** Selects the card at this offset and switches to the Code tab. App owns the tab, so it is a prop. */
+  onEditInCode: (offset: number) => void;
 }
 
 // docs/breakdown-design.md, the Breakdown editor. As of 3.4, wired to the
@@ -126,6 +130,7 @@ export function BreakdownPane({
   applyTextEdits,
   reparseNow,
   selection,
+  onEditInCode,
 }: BreakdownPaneProps) {
   const tabs = useMemo(
     () => (parseResult ? buildSectionTabs(parseResult.script) : []),
@@ -831,15 +836,30 @@ export function BreakdownPane({
   // (viewScope.ts's shownAfterTabClick). A shown tab stays in the stacked
   // view and the list scrolls to it, a faded one becomes the only section
   // shown. Either way it becomes the focus section.
+  //
+  // A modified click (2026-10-25) widens the shown set instead. Ctrl or Cmd
+  // toggles the clicked section in it, Shift shows every section from the focus
+  // one to the clicked one. `mode` is the same ClickMode the cards use
+  // (multiSelect.ts), so the two lists read modifier keys alike. The cycle
+  // hotkey and the tutorial navigator call this with the default.
   const handleSelectTab = useCallback(
-    (id: string) => {
-      const next = shownAfterTabClick(shownIds, id);
+    (id: string, mode: ClickMode = "replace") => {
+      const allIds = tabs.map((t) => t.id);
+      const next =
+        mode === "toggle"
+          ? shownAfterCtrlClick(shownIds, id, allIds)
+          : mode === "range"
+            ? shownAfterRangeClick(shownIds, focusTab?.id ?? null, id, allIds)
+            : shownAfterTabClick(shownIds, id);
       setShownIds(next);
-      setFocusId(id);
+      // A Ctrl click on a shown tab removes it. Focus then moves to the
+      // first section still shown, since a hidden section cannot hold it.
+      const removed = !next.includes(id);
+      setFocusId(removed ? (next[0] ?? id) : id);
       selection.clearSelection();
-      if (next.length > 1) pendingSectionScrollRef.current = id;
+      if (next.length > 1 && !removed) pendingSectionScrollRef.current = id;
     },
-    [selection, shownIds, setShownIds, setFocusId],
+    [selection, shownIds, tabs, focusTab, setShownIds, setFocusId],
   );
   const handleToggleShown = useCallback(
     (id: string) => {
@@ -1004,6 +1024,7 @@ export function BreakdownPane({
         revealAfterEdit,
         requestFocus,
         registerFocusable,
+        editInCode: (span) => onEditInCode(span.start),
         isSelected: selection.isSelected,
         selectCard,
         clearSelection: selection.clearSelection,

@@ -16,10 +16,7 @@ import styles from "./TeamSection.module.css";
 // All 8 rows always render; rows for players above playerCount are greyed
 // out and their button disabled rather than removed, so the rows' height
 // stays fixed as the count changes. Beta feedback found the whole
-// GenerationSettingsDialog growing and shrinking under this section.
-// The readout and lock note below still change height, so the dialog box
-// itself is now a fixed height too (GenerationSettingsDialog.module.css's
-// .fixedSize).
+// GenerationSettingsPanel growing and shrinking under this section.
 // Assignments for players above the count are RETAINED in context (see
 // DEFAULT_TEAMS' comment) so raising the count brings them back rather than
 // silently zeroing them.
@@ -36,7 +33,6 @@ export function TeamSection() {
     activePreset,
     toggleTeamPreset,
     teamsLocked,
-    playerCountLocked,
   } = useGenerationSettings();
 
   const { teamCount, sizes, canonical } = canonicaliseTeams(teams, playerCount);
@@ -136,22 +132,20 @@ export function TeamSection() {
         })}
       </div>
 
-      <HelpTip id="generationSettings.teamReadout">
-        <div className={styles.readout}>
-          {summary}
-          {unteamedCount > 0 &&
-            teamCount > 0 &&
-            ` · ${unteamedCount} un-teamed`}
-          {strandedCount > 0 &&
-            ` · ${strandedCount} ${strandedCount === 1 ? "player is" : "players are"} alone on a team, which the engine reads as un-teamed`}
-        </div>
-      </HelpTip>
-
-      {teamsLocked && (
-        <div className={styles.lockNote}>
-          {activePreset?.toUpperCase()} preset active. Press it again to unlock
-          {playerCountLocked ? " the teams and player count." : " the teams."}
-        </div>
+      {/* The readout (team count, layout, the stranded note) only describes a
+          hand built layout. A preset's layout is named by its own button, so
+          the line and the lock note are left out while one is active. */}
+      {!teamsLocked && (
+        <HelpTip id="generationSettings.teamReadout">
+          <div className={styles.readout}>
+            {summary}
+            {unteamedCount > 0 &&
+              teamCount > 0 &&
+              ` · ${unteamedCount} un-teamed`}
+            {strandedCount > 0 &&
+              ` · ${strandedCount} ${strandedCount === 1 ? "player is" : "players are"} alone on a team, which the engine reads as un-teamed`}
+          </div>
+        </HelpTip>
       )}
     </div>
   );

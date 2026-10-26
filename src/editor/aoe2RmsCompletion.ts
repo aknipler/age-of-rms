@@ -1,8 +1,10 @@
 import * as monaco from "monaco-editor";
 import { lineNumberOfOffset } from "../parser/lineIndex";
+import { moveUpRefusal } from "../breakdown/constReview";
 import {
   buildScriptNameIndex,
   describeSuggestion,
+  moveUpPlan,
   resolveName,
   suggest,
   type ScriptNameIndex,
@@ -172,6 +174,8 @@ export function wordResolvesToConst(
 export function describeScriptName(
   name: string,
   offset: number,
+  /** Where the use begins, for the move offer's position test. Defaults to `offset`. */
+  useStart: number = offset,
 ): string | undefined {
   const script = getScriptNameIndex();
   if (!script) return undefined;
@@ -188,8 +192,14 @@ export function describeScriptName(
   const lineOf = (tokenIndex: number) =>
     lineNumberOfOffset(parse.lineOffsets, parse.tokens[tokenIndex].start);
   const kind = defs[0].directiveKind === "const" ? "#const" : "#define";
-  if (r.kind === "definedBelow")
-    return `\`${name}\`, your ${kind} on line ${lineOf(r.symbol.nameToken)}, below this line, so the game does not see it here.`;
+  if (r.kind === "definedBelow") {
+    const line = lineOf(r.symbol.nameToken);
+    const base = `\`${name}\`, your ${kind} on line ${line}, below this line, so the game does not see it here.`;
+    // The Quick Fix list offers "Move the #const up here" when it can. When it
+    // cannot, nothing in that list says why, so the hover does.
+    const why = moveUpRefusal(moveUpPlan(script, name, useStart), name, line);
+    return why ? `${base} ${why}` : base;
+  }
   if (r.kind === "script")
     return `\`${name}\`, your ${kind} on line ${lineOf(r.symbol.nameToken)}${r.conditional ? ", inside an if or start_random branch, so only some maps define it" : ""}.`;
   return undefined;

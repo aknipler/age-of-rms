@@ -50,12 +50,36 @@ export interface AppSettingsValue {
   /** Ghost text for the rest of a line and whole blocks in the Code tab (name-lookup-design.md Sec.13.5). On by default (Q7). */
   codePrediction: boolean;
   setCodePrediction: (on: boolean) => void;
+  /** Which keys take the highlighted entry of the Code tab's suggestion list (see SUGGESTION_KEYS). */
+  suggestionKeys: SuggestionKeys;
+  setSuggestionKeys: (keys: SuggestionKeys) => void;
+}
+
+/**
+ * The three arrangements of the suggestion list's keys. Other editors split
+ * this into two settings, VS Code's `editor.acceptSuggestionOnEnter` and a
+ * keybinding for Tab, and one choice of three is what people actually pick
+ * between.
+ * - `enter`: Enter accepts, Tab steps down the list, Shift+Tab steps up. The default.
+ * - `tab`: Tab accepts and Enter always starts a new line.
+ * - `both`: Enter and Tab both accept, VS Code's own default.
+ */
+export type SuggestionKeys = "enter" | "tab" | "both";
+export const SUGGESTION_KEYS: readonly SuggestionKeys[] = [
+  "enter",
+  "tab",
+  "both",
+];
+export function isSuggestionKeys(value: unknown): value is SuggestionKeys {
+  return SUGGESTION_KEYS.includes(value as SuggestionKeys);
 }
 
 const RESOLVE_FLASH_KEY = "resolveFlash";
 const DEFAULT_RESOLVE_FLASH = true;
 const CODE_PREDICTION_KEY = "codePrediction";
 const DEFAULT_CODE_PREDICTION = true;
+const SUGGESTION_KEYS_KEY = "suggestionKeys";
+const DEFAULT_SUGGESTION_KEYS: SuggestionKeys = "enter";
 
 const AppSettingsContext = createContext<AppSettingsValue | null>(null);
 
@@ -67,6 +91,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [resolveFlash, setResolveFlashState] = useState(DEFAULT_RESOLVE_FLASH);
   const [codePrediction, setCodePredictionState] = useState(
     DEFAULT_CODE_PREDICTION,
+  );
+  const [suggestionKeys, setSuggestionKeysState] = useState<SuggestionKeys>(
+    DEFAULT_SUGGESTION_KEYS,
   );
   const [store, setStore] = useState<Store | null>(null);
 
@@ -96,6 +123,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           await loadedStore.get<unknown>(CODE_PREDICTION_KEY);
         if (!cancelled && typeof savedPrediction === "boolean")
           setCodePredictionState(savedPrediction);
+        const savedKeys = await loadedStore.get<unknown>(SUGGESTION_KEYS_KEY);
+        if (!cancelled && isSuggestionKeys(savedKeys))
+          setSuggestionKeysState(savedKeys);
       },
     );
     return () => {
@@ -139,6 +169,14 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
+  const setSuggestionKeys = useCallback(
+    (next: SuggestionKeys) => {
+      setSuggestionKeysState(next);
+      void store?.set(SUGGESTION_KEYS_KEY, next);
+    },
+    [store],
+  );
+
   const value = useMemo<AppSettingsValue>(
     () => ({
       shortenLongNames,
@@ -149,6 +187,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       setResolveFlash,
       codePrediction,
       setCodePrediction,
+      suggestionKeys,
+      setSuggestionKeys,
     }),
     [
       shortenLongNames,
@@ -159,6 +199,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
       setResolveFlash,
       codePrediction,
       setCodePrediction,
+      suggestionKeys,
+      setSuggestionKeys,
     ],
   );
 

@@ -20,8 +20,16 @@ interface RawCardProps {
 // This holds for both v1 (no patch engine yet) and v1.x (these regions
 // stay Code-tab-only even once 3.3/3.4 ship, Sec.1 non-goals).
 export function RawCard({ node, kindLabel }: RawCardProps) {
-  const { source, tokens, diagnostics, applyEdit, isExpanded, toggleExpanded } =
-    useBreakdownContext();
+  const {
+    source,
+    tokens,
+    diagnostics,
+    comments,
+    applyEdit,
+    editInCode,
+    isExpanded,
+    toggleExpanded,
+  } = useBreakdownContext();
   const text = source.slice(node.span.start, node.span.end);
   const nodeDiagnostics = diagnosticsWithin(diagnostics, node.span);
   // Same anchor-by-span scheme as every other card (Sec.6.3), so a raw
@@ -41,6 +49,15 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
   // per Sec.4.1's pinned rev-4 shape.
   const suggestion = nodeDiagnostics.find((d) => d.suggestion)?.suggestion;
   const rawNode = node.kind === "raw" ? node : undefined;
+  // A block holding only a comment still has something to show.
+  const hasContents =
+    node.kind === "orphanBlock" &&
+    (node.block.items.length > 0 ||
+      comments.some(
+        (c) => c.start >= node.span.start && c.end <= node.span.end,
+      ));
+  const unclosed =
+    node.kind === "orphanBlock" && node.block.close === undefined;
 
   return (
     <div className={cardStyles.card}>
@@ -62,25 +79,37 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
         {nodeDiagnostics.length > 0 && (
           <ProblemBadge diagnostics={nodeDiagnostics} />
         )}
-        {/* A raw node only. A shared block's contents are real cards and its
-            span is an approximation of the construct. */}
-        {rawNode && (
-          <span className={styles.deleteSlot}>
-            <HelpTip id="breakdown.rawCard.delete">
-              <button
-                type="button"
-                className={cardStyles.deleteButton}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  applyEdit({ kind: "removeRaw", span: rawNode.span });
-                }}
-                aria-label="Delete"
-              >
-                <TrashIcon />
-              </button>
-            </HelpTip>
-          </span>
-        )}
+        {/* Every card can be deleted. A raw node goes by its own span. A
+            shared block goes as the whole `{ }` with the cards inside it, the
+            same removal a command with a block gets. A block with no closing
+            brace is the exception, since its span runs on over whatever
+            follows it, so it waits until the brace is added in the Code tab
+            (computeEdit refuses it too). */}
+        <span className={styles.deleteSlot}>
+          <HelpTip id="breakdown.rawCard.delete">
+            <button
+              type="button"
+              className={cardStyles.deleteButton}
+              disabled={node.kind === "orphanBlock" && unclosed}
+              title={
+                node.kind === "orphanBlock" && unclosed
+                  ? "Close this block's { } in the Code tab first"
+                  : undefined
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                applyEdit(
+                  node.kind === "raw"
+                    ? { kind: "removeRaw", span: node.span }
+                    : { kind: "removeNode", node },
+                );
+              }}
+              aria-label="Delete"
+            >
+              <TrashIcon />
+            </button>
+          </HelpTip>
+        </span>
       </div>
       {expanded && (
         <>
@@ -116,18 +145,20 @@ export function RawCard({ node, kindLabel }: RawCardProps) {
           <HelpTip id="breakdown.rawCard.editInCode">
             <button
               type="button"
-              className={cardStyles.stubButton}
-              title="Switch to the Code tab (wiring arrives with 3.4)"
-              disabled
+              className={cardStyles.actionButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                editInCode(node.span);
+              }}
             >
               Edit in Code tab
             </button>
           </HelpTip>
-          {node.kind === "orphanBlock" && (
+          {/* The block's own cards, when it has any. An empty block shows
+              nothing, since a "nothing here yet" line under a card that is
+              already shown as code only adds noise. */}
+          {node.kind === "orphanBlock" && hasContents && (
             <div className={styles.orphanContents}>
-              <p className={styles.orphanNote}>
-                Contents (read-only, shared-block idiom):
-              </p>
               <BlockList
                 items={node.block.items}
                 trailingBoundary={

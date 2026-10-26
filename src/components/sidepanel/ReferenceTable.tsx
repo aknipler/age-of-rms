@@ -445,23 +445,29 @@ export function ReferenceTable({ mode }: { mode: ReferenceMode }) {
                     <Fragment key={command.name}>
                       <tr>
                         <td>
-                          {hasAttributes && (
-                            <button
-                              type="button"
-                              className={styles.expandToggle}
-                              onClick={() => toggleExpanded(command.name)}
-                              aria-expanded={expanded}
-                              aria-label={`${expanded ? "Collapse" : "Expand"} ${command.name}'s attributes`}
-                            >
-                              {expanded ? "▾" : "▸"}
-                            </button>
-                          )}
-                          {command.name}
-                          {!command.verified && (
-                            <span className={styles.unverifiedChip}>
-                              unverified
+                          {/* Name on the left, arrow pinned to the cell's right
+                              edge, so every arrow lines up in one column. */}
+                          <div className={styles.commandCell}>
+                            <span>
+                              {command.name}
+                              {!command.verified && (
+                                <span className={styles.unverifiedChip}>
+                                  unverified
+                                </span>
+                              )}
                             </span>
-                          )}
+                            {hasAttributes && (
+                              <button
+                                type="button"
+                                className={styles.expandToggle}
+                                onClick={() => toggleExpanded(command.name)}
+                                aria-expanded={expanded}
+                                aria-label={`${expanded ? "Collapse" : "Expand"} ${command.name}'s attributes`}
+                              >
+                                {expanded ? "▾" : "▸"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td>{command.section}</td>
                         <td>{renderProse(command.description ?? "—")}</td>

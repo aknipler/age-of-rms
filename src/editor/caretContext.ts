@@ -184,6 +184,26 @@ export function caretContext(
 }
 
 /**
+ * True when `offset` sits inside a comment. The hover asks it for each word,
+ * so a comment's own text gets no popup.
+ *
+ * Reads the text up to the offset with the sentinel glued on, which is the
+ * same trick `caretContext` uses after whitespace. A comment still open at
+ * the offset swallows the sentinel into its trivia token, and a name outside
+ * one turns it into part of a word token. Which kind of token comes last
+ * says which side the offset is on.
+ */
+export function insideComment(
+  text: string,
+  offset: number,
+  parse?: ParseResult | null,
+): boolean {
+  const lineStart = text.lastIndexOf("\n", offset - 1) + 1;
+  const tokens = tokensBefore(text, offset, lineStart, SENTINEL, parse);
+  return tokens[tokens.length - 1]?.isTrivia === true;
+}
+
+/**
  * The offset to hand the name lookup as "where the use is". The caret's own
  * line start, not the caret: the last parse lags the text, so a definition
  * on the line being typed is treated as not yet parsed rather than guessed

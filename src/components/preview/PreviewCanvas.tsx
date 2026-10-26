@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useGenerationSettings } from "../../generationSettings/GenerationSettingsContext";
 import type {
   PreviewWireResult,
   StageSnapshot,
@@ -7,12 +8,14 @@ import type { TerrainPalette } from "../../preview/render/palette";
 import type { TilePoint } from "../../preview/render/projection";
 import { usePreviewViewport } from "./PreviewViewContext";
 import { OverlayCanvas } from "./OverlayCanvas";
+import { GenerationSettingsPanel } from "./GenerationSettingsPanel";
 import {
   PreviewObjectList,
   type ObjectListSettings,
 } from "./PreviewObjectList";
 import {
   PreviewBarControls,
+  PreviewCornerControls,
   PreviewPanel,
   summarizePreviewResult,
   type PreviewPanelSection,
@@ -78,8 +81,23 @@ export function PreviewCanvas({
     null,
   );
   const summary = useMemo(() => summarizePreviewResult(result), [result]);
-  const toggleSection = (section: PreviewPanelSection) =>
+  // The settings box and the Help line share the top right slot, so opening
+  // one closes the other: Help closes the settings from here, and the
+  // settings (opened by the cog or the hotkey, both outside this component)
+  // close Help through the effect below.
+  const {
+    isDialogOpen: settingsOpen,
+    closeDialog: closeSettings,
+    toggleDialog: toggleSettings,
+  } = useGenerationSettings();
+  const toggleSection = (section: PreviewPanelSection) => {
+    if (section === "help") closeSettings();
     setOpenSection((current) => (current === section ? null : section));
+  };
+  useEffect(() => {
+    if (settingsOpen)
+      setOpenSection((current) => (current === "help" ? null : current));
+  }, [settingsOpen]);
   // The Obj. List's search and order. Here rather than inside the list,
   // which unmounts whenever its box closes (PreviewObjectList.tsx).
   const [objectListSettings, setObjectListSettings] =
@@ -106,6 +124,14 @@ export function PreviewCanvas({
       showExportButton
       showOrientation="full"
       topLeft={topLeft}
+      topRightControls={
+        <PreviewCornerControls
+          open={openSection}
+          onToggle={toggleSection}
+          settingsOpen={settingsOpen}
+          onToggleSettings={toggleSettings}
+        />
+      }
       bottomControls={
         <PreviewBarControls
           summary={summary}
@@ -114,6 +140,22 @@ export function PreviewCanvas({
           hiddenObjectCount={hiddenObjects.size}
         />
       }
+      // Help opens under its own button in the top right corner, the rest
+      // over the bottom edge beside the buttons that open them.
+      topRightPanel={
+        settingsOpen ? (
+          <GenerationSettingsPanel onClose={closeSettings} />
+        ) : openSection === "help" ? (
+          <PreviewPanel
+            section="help"
+            result={result}
+            summary={summary}
+            palette={palette}
+            terrainsInUse={terrainsInUse}
+          />
+        ) : null
+      }
+      topRightPanelWide={settingsOpen}
       bottomPanel={
         openSection === "objects" ? (
           <PreviewObjectList
@@ -121,7 +163,8 @@ export function PreviewCanvas({
             onSettingsChange={setObjectListSettings}
           />
         ) : (
-          openSection !== null && (
+          openSection !== null &&
+          openSection !== "help" && (
             <PreviewPanel
               section={openSection}
               result={result}

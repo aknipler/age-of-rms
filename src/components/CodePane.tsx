@@ -1,7 +1,23 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
+import gameConstantsRaw from "../../reference/data/game-constants.json";
 import { PlaceholderPane } from "./PlaceholderPane";
+import { applyEditIntent } from "../breakdown/applyEdit";
+import type { GameConstantsData } from "../breakdown/gameConstants";
+import { TemplateDialog } from "../breakdown/templates/TemplateDialog";
+import {
+  definesSymbol,
+  playerLandTerrain,
+  startResourceCuts,
+} from "../breakdown/templates/scriptContext";
+import {
+  FOREST_MAKER_CONST,
+  QUICK_START_KIT_NAMES,
+  QUICK_START_LABEL,
+} from "../breakdown/templates/templates";
+import { languageIndex } from "../editor/staticNameIndex";
+import { templateSpotAt, type TemplateSpot } from "../editor/templateTarget";
 import {
   AOE2_RMS_MONACO_THEME,
   defineAoe2RmsMonacoTheme,
@@ -28,7 +44,13 @@ import {
 } from "../editor/aoe2RmsCompletion";
 import { attachResolveFlash } from "../editor/resolveFlash";
 import { setCodePredictionEnabled } from "../editor/aoe2RmsPrediction";
-import { setConstActionHandlers } from "../editor/constActions";
+import {
+  offerWordOnLine,
+  offerWordStart,
+  setConstActionHandlers,
+  setSuggestionDiagnostics,
+} from "../editor/constActions";
+import { attachOfferBulb, type OfferBulb } from "../editor/offerBulb";
 import { useAppSettings } from "../settings/AppSettingsContext";
 import type { Diagnostic, Item, ParseResult } from "../parser/types";
 import styles from "./CodePane.module.css";
@@ -46,6 +68,11 @@ import {
 // ones (there aren't any for a custom Monarch language, but this keeps
 // the call correct if that ever changes).
 const MARKER_OWNER = "aoe2-rms-parser";
+
+const gameConstants = gameConstantsRaw as unknown as GameConstantsData;
+
+/** Context key the "Add Template" menu entry is gated on, true in a section that has templates. */
+const IN_TEMPLATE_SECTION = "aoe2rms.inTemplateSection";
 
 // Module-scope, same pattern as useDocument.ts's `documentModel`: there is
 // at most one mounted editor instance at a time (CodePane fully unmounts
@@ -181,9 +208,26 @@ export function CodePane({
   // mirrored into a ref because the flash reads it from a listener set up
   // once at mount, the same stale closure concern as the ref above.
   const resolveFlashRef = useRef<Monaco.IDisposable | null>(null);
-  const { resolveFlash, codePrediction } = useAppSettings();
+  // The quick fix bulb (offerBulb.ts) lives as long as the editor, like the
+  // flash above, and the parse effect below has to reach it to refresh.
+  const offerBulbRef = useRef<OfferBulb | null>(null);
+  // Add Template (right-click menu). `spot` holds nodes of `parse`, so the two
+  // travel together: the dialog can stay open across several re-parses, and
+  // the insert must be computed against the parse its target came from.
+  const [templateAsk, setTemplateAsk] = useState<{
+    spot: TemplateSpot;
+    parse: ParseResult;
+  } | null>(null);
+  const templateKeyRef = useRef<Monaco.editor.IContextKey<boolean> | null>(
+    null,
+  );
+  const { resolveFlash, codePrediction, suggestionKeys } = useAppSettings();
   const resolveFlashOnRef = useRef(resolveFlash);
   resolveFlashOnRef.current = resolveFlash;
+  // Read by the Tab commands registered once in handleMount, which would
+  // otherwise act on the setting as it was at mount (a stale closure).
+  const suggestionKeysRef = useRef(suggestionKeys);
+  suggestionKeysRef.current = suggestionKeys;
   // Line and block prediction (Sec.13) is a provider registered once for
   // the app, so the setting reaches it through a module variable rather
   // than a ref here. An effect, not a write during render, because it
@@ -212,6 +256,23 @@ export function CodePane({
     const end = model.getOffsetAt(selection.getEndPosition());
     const { edits } = toggleCommandLayoutInRange(parseResult, { start, end });
     if (edits.length > 0) applyTextEdits(edits);
+  };
+
+  // Same latest-closure pattern as runToggleLayoutRef: the menu action is
+  // created once at mount and must see the current parse when it runs.
+  //
+  // The stale-parse guard matches the toggle's. A parse one debounce cycle
+  // behind the buffer has offsets for text that is no longer there, and a
+  // template inserted by them would land in the wrong place.
+  const openTemplateRef = useRef<() => void>(() => {});
+  openTemplateRef.current = () => {
+    const editor = editorRef.current;
+    const pos = editor?.getPosition();
+    if (!editor || !pos || !parseResult) return;
+    const model = getDocumentModel();
+    if (model.getValue() !== parseResult.source) return;
+    const spot = templateSpotAt(parseResult, model.getOffsetAt(pos));
+    if (spot) setTemplateAsk({ spot, parse: parseResult });
   };
 
   // The preview's Current cut point (docs/preview-design.md Sec.5). Read
@@ -251,6 +312,32 @@ export function CodePane({
     setNameLookupParse(parseResult);
   }, [parseResult]);
   useEffect(() => () => setNameLookupParse(null), []);
+  // The did-you-mean fixes read the diagnostics, which come from the worker
+  // beside the name lookup's parse. They are valid only for `source`. The
+  // bulb is refreshed here as well, since either input can change its answer.
+  useEffect(() => {
+    setSuggestionDiagnostics(source, diagnostics);
+    offerBulbRef.current?.refresh();
+  }, [source, diagnostics, parseResult]);
+  // The parse and the caret decide together whether "Add Template" shows, so
+  // both the cursor listener (handleMount) and a new parse re-read it.
+  const refreshTemplateKey = useCallback(() => {
+    const editor = editorRef.current;
+    const key = templateKeyRef.current;
+    if (!editor || !key) return;
+    const pos = editor.getPosition();
+    if (!pos || !parseResult) return key.set(false);
+    const model = getDocumentModel();
+    key.set(
+      model.getValue() === parseResult.source &&
+        templateSpotAt(parseResult, model.getOffsetAt(pos)) !== null,
+    );
+  }, [parseResult]);
+  const refreshTemplateKeyRef = useRef(refreshTemplateKey);
+  refreshTemplateKeyRef.current = refreshTemplateKey;
+  useEffect(() => {
+    refreshTemplateKey();
+  }, [refreshTemplateKey]);
   // The #const code actions apply through the same one-undo-step path as
   // everything else, then select the new value for typing over.
   useEffect(() => {
@@ -451,6 +538,78 @@ export function CodePane({
       resolves: wordResolvesToConst,
     });
 
+    // Monaco's own bulb sits at the start of the line with no option to move
+    // it. offerBulb.ts draws two instead, one in the gutter for the caret's
+    // line and one above the word the caret is on.
+    editor.updateOptions({
+      lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.Off },
+    });
+    offerBulbRef.current?.dispose();
+    offerBulbRef.current = attachOfferBulb(editor, {
+      className: styles.offerBulb,
+      wordClassName: styles.offerBulbWord,
+      wordAtCaret: offerWordStart,
+      wordWithOffers: offerWordOnLine,
+    });
+
+    // "Add Template..." in the right-click menu, the Code tab's version of
+    // Breakdown's Add template button. A menu entry hides when its
+    // precondition is false, and a precondition can only read a context key,
+    // so the key follows the caret.
+    //
+    // HELPTIP EXCEPTION. Monaco draws its context menu itself, so the entry
+    // cannot be wrapped in a HelpTip. The label and the dialog it opens
+    // (the same TemplateDialog, with its own help) say what it does.
+    templateKeyRef.current = editor.createContextKey<boolean>(
+      IN_TEMPLATE_SECTION,
+      false,
+    );
+    editor.addAction({
+      id: "aoe2rms.addTemplate",
+      label: "Add Template...",
+      precondition: IN_TEMPLATE_SECTION,
+      contextMenuGroupId: "1_modification",
+      contextMenuOrder: 0.5,
+      run: () => openTemplateRef.current(),
+    });
+    editor.onDidChangeCursorPosition(() => refreshTemplateKeyRef.current());
+    refreshTemplateKeyRef.current();
+
+    // Tab and Shift+Tab while the suggestion list is open. With the default
+    // arrangement Tab steps down the list and Shift+Tab up, Enter being the
+    // key that accepts (acceptSuggestionOnEnter below). The other two
+    // arrangements keep Monaco's own meaning for each key, so the handlers
+    // pass the press on rather than swallowing it. A command registered with
+    // addCommand outranks the built-in Tab binding for as long as its context
+    // holds, and `!inlineSuggestionVisible` leaves Tab to the grey prediction
+    // text when that is what is showing.
+    const listOpen =
+      "suggestWidgetVisible && textInputFocus && !inlineSuggestionVisible";
+    editor.addCommand(
+      monaco.KeyCode.Tab,
+      () =>
+        editor.trigger(
+          "aoe2rms",
+          suggestionKeysRef.current === "enter"
+            ? "selectNextSuggestion"
+            : "acceptSelectedSuggestion",
+          null,
+        ),
+      listOpen,
+    );
+    editor.addCommand(
+      monaco.KeyMod.Shift | monaco.KeyCode.Tab,
+      () =>
+        editor.trigger(
+          "aoe2rms",
+          suggestionKeysRef.current === "enter"
+            ? "selectPrevSuggestion"
+            : "outdent",
+          null,
+        ),
+      listOpen,
+    );
+
     onEditorReady?.();
   };
 
@@ -552,6 +711,9 @@ export function CodePane({
       cursorSubscriptionRef.current = null;
       resolveFlashRef.current?.dispose();
       resolveFlashRef.current = null;
+      offerBulbRef.current?.dispose();
+      offerBulbRef.current = null;
+      templateKeyRef.current = null;
       // The collection is owned by the editor being torn down; dropping the
       // reference stops the next mount from writing into a dead one.
       cutDecorationsRef.current = null;
@@ -594,17 +756,80 @@ export function CodePane({
             tabSize,
             insertSpaces,
             // name-lookup-design.md Sec.4.1. Word suggestions would mix in
-            // every word of the file, comments included. Enter always makes
-            // a new line, only Tab accepts (owner's choice, Q1).
+            // every word of the file, comments included.
             wordBasedSuggestions: "off",
-            acceptSuggestionOnEnter: "off",
+            // Settings > Code > Suggestion keys. Only the Tab-accepts choice
+            // leaves Enter as a plain new line. Monaco's own option name, the
+            // same one VS Code calls editor.acceptSuggestionOnEnter.
+            acceptSuggestionOnEnter: suggestionKeys === "tab" ? "off" : "on",
             // Sec.13.5. Ghost text is drawn in the theme's muted colour
             // (monacoTheme.ts). Monaco's default colours it like real code
             // at lower opacity, which reads as typed text on some themes.
             inlineSuggest: { syntaxHighlightingEnabled: false },
+            // Room in the gutter for offerBulb.ts's bulb, which sits between
+            // the line number and the code.
+            lineDecorationsWidth: 22,
+            // offerBulb.ts draws its own bulbs instead.
+            // Set again in handleMount, where the enum value is in scope.
+            lightbulb: {
+              enabled: "off" as Monaco.editor.ShowLightbulbIconMode,
+            },
           }}
         />
       </div>
+      {templateAsk && (
+        <TemplateDialog
+          section={templateAsk.spot.section}
+          script={{
+            parse: templateAsk.parse,
+            playerLand: playerLandTerrain(templateAsk.parse),
+            forestSetupPresent: definesSymbol(
+              templateAsk.parse,
+              FOREST_MAKER_CONST,
+            ),
+            quickStartDefined: definesSymbol(
+              templateAsk.parse,
+              QUICK_START_LABEL,
+            ),
+            startResourceCutsDefined: startResourceCuts(templateAsk.parse),
+            kitNamesDefined: QUICK_START_KIT_NAMES.filter((n) =>
+              definesSymbol(templateAsk.parse, n),
+            ),
+          }}
+          constants={gameConstants.constants}
+          onClose={() => {
+            setTemplateAsk(null);
+            editorRef.current?.focus();
+          }}
+          onInsert={({ text, caretOffset, setupText, headerText }) => {
+            const { spot, parse } = templateAsk;
+            setTemplateAsk(null);
+            const editor = editorRef.current;
+            const model = getDocumentModel();
+            // The dialog is modal, so this only differs if something edited
+            // the text while it was open. The offsets would be wrong then.
+            if (!editor || model.getValue() !== parse.source) return;
+            const result = applyEditIntent(
+              parse,
+              {
+                kind: "insertText",
+                at: spot.target,
+                text,
+                caretOffset,
+                ...(setupText === undefined ? {} : { setupText }),
+                ...(headerText === undefined ? {} : { headerText }),
+              },
+              languageIndex,
+              applyTextEdits,
+            );
+            if (!result) return;
+            const at = model.getPositionAt(result.caret);
+            editor.setPosition(at);
+            editor.revealPositionInCenterIfOutsideViewport(at);
+            editor.focus();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -35,6 +35,17 @@
   white-space: nowrap;
 }
 
+/* The settings cog. A fixed box, so the larger glyph fills the button without
+   growing it. */
+.cogButton {
+  width: 1.45rem;
+  padding: 0;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .barButton:hover {
   background: rgba(0, 0, 0, 0.82);
 }

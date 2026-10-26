@@ -50,6 +50,11 @@ const HOTKEY_ROWS: { id: HotkeyId; legend: string; hint: string }[] = [
     hint: "Draws a new random seed for the preview, same as clicking Re-roll.",
   },
   {
+    id: "generationSettings",
+    legend: "Preview: Generation Settings",
+    hint: "Opens or closes the map size, player count and teams box over the preview. Works only while focus is in the map preview, so the Code tab's own Ctrl+D is untouched.",
+  },
+  {
     id: "breakdownDeleteCard",
     legend: "Breakdown: Delete Selected Card",
     hint: "Deletes the selected command, directive, if/elseif or start_random card, same as its own Delete button. Does nothing when the selection isn't a deletable card.",

@@ -56,6 +56,22 @@ describe("matchesHotkey", () => {
     ).toBe(true);
   });
 
+  it("reads the backtick from its physical key, for a layout where it is a dead key", () => {
+    const binding = { key: "`", ctrl: true, shift: false, alt: false };
+    expect(
+      matchesHotkey(
+        keydown({ key: "Dead", code: "Backquote", ctrlKey: true }),
+        binding,
+      ),
+    ).toBe(true);
+    expect(
+      matchesHotkey(
+        keydown({ key: "`", code: "Backquote", ctrlKey: true }),
+        binding,
+      ),
+    ).toBe(true);
+  });
+
   it("rejects a press missing a required modifier", () => {
     const event = keydown({ key: "s", ctrlKey: false });
     expect(matchesHotkey(event, DEFAULT_SAVE_HOTKEY)).toBe(false);

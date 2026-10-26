@@ -64,12 +64,6 @@
   padding-top: 0.3rem;
 }
 
-.orphanNote {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin: 0 0 0.2rem;
-}
-
 .fixButton {
   border: 1px solid var(--success);
   background: var(--success-bg);

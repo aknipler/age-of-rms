@@ -2,7 +2,10 @@ import {
   useCodeSettings,
   TAB_SIZE_OPTIONS,
 } from "../../settings/CodeSettingsContext";
-import { useAppSettings } from "../../settings/AppSettingsContext";
+import {
+  isSuggestionKeys,
+  useAppSettings,
+} from "../../settings/AppSettingsContext";
 import { HelpTip } from "../HelpTip";
 import dialogStyles from "../dialog.module.css";
 import settingsStyles from "./SettingsDialog.module.css";
@@ -11,8 +14,14 @@ import styles from "./BreakdownSettings.module.css";
 export function CodeSettings() {
   const { tabSize, setTabSize, insertSpaces, setInsertSpaces } =
     useCodeSettings();
-  const { resolveFlash, setResolveFlash, codePrediction, setCodePrediction } =
-    useAppSettings();
+  const {
+    resolveFlash,
+    setResolveFlash,
+    codePrediction,
+    setCodePrediction,
+    suggestionKeys,
+    setSuggestionKeys,
+  } = useAppSettings();
 
   return (
     <>
@@ -52,6 +61,27 @@ export function CodeSettings() {
             />
             <label htmlFor="code-indent-tabs">Insert tabs</label>
           </div>
+        </fieldset>
+      </HelpTip>
+
+      <HelpTip id="settings.code.suggestionKeys">
+        <fieldset className={settingsStyles.fieldset}>
+          <legend className={settingsStyles.legend}>Suggestion keys</legend>
+          <select
+            className={styles.select}
+            value={suggestionKeys}
+            aria-label="Suggestion keys"
+            onChange={(event) => {
+              if (isSuggestionKeys(event.target.value))
+                setSuggestionKeys(event.target.value);
+            }}
+          >
+            <option value="enter">
+              Enter accepts, Tab steps down the list
+            </option>
+            <option value="tab">Tab accepts, Enter starts a new line</option>
+            <option value="both">Enter and Tab both accept</option>
+          </select>
         </fieldset>
       </HelpTip>
 

@@ -153,20 +153,44 @@
   flex-wrap: wrap;
 }
 
-.toggle {
+/* Current and Minimap, icon only. A toggle button rather than a checkbox, so
+   it needs a pressed look of its own: the accent ring and wash the reference
+   mode buttons use for their selected one. Sized to the 16px icon plus the
+   same padding the other small controls in this row have. */
+.iconToggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  padding: 0.15rem 0.25rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  cursor: pointer;
 }
 
-/* Opens GenerationSettingsDialog. Sized like .pin/.reroll so it reads as
-   one of this row's small controls rather than a different class of
-   button. */
-.settingsButton {
-  font-size: 0.72rem;
-  padding: 0.05rem 0.35rem;
+/* The Current toggle is a word, sized like .pin beside it. It shares the
+   icon toggles' hover and on states. */
+.textToggle {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.4rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
   cursor: pointer;
-  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.iconToggle:hover,
+.textToggle:hover {
+  background: var(--accent-bg-subtle);
+}
+
+.iconToggleOn {
+  color: inherit;
+  border-color: var(--accent);
+  background: var(--accent-bg-subtle);
 }
 
 /* The Current cut point. Sized like .reroll. It sits in the same kind of

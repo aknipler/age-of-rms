@@ -13,6 +13,7 @@ import { perfEdit, perfFileOpen, perfFirstTokens } from "../perfTrace";
 import {
   APP_SETTINGS_STORE_FILE,
   findDeScriptsFolder,
+  LAST_OPEN_FILE_KEY,
   LAST_SCRIPT_FOLDER_KEY,
   type FolderProbe,
 } from "../settings/scriptFolder";
@@ -78,6 +79,45 @@ async function rememberScriptFolder(filePath: string): Promise<void> {
     await store.set(LAST_SCRIPT_FOLDER_KEY, await dirname(filePath));
   } catch {
     // Same reasoning as above, failing to remember must never fail the save.
+  }
+}
+
+/**
+ * Remember which script is open, or forget it with `null`, so the next launch
+ * can reopen it. Like the folder above it is a nicety, so a store that will
+ * not load must not be able to fail the open or save that called this.
+ */
+async function rememberOpenFile(filePath: string | null): Promise<void> {
+  try {
+    const store = await load(APP_SETTINGS_STORE_FILE, {
+      autoSave: true,
+      defaults: {},
+    });
+    if (filePath === null) await store.delete(LAST_OPEN_FILE_KEY);
+    else await store.set(LAST_OPEN_FILE_KEY, filePath);
+  } catch {
+    // Same reasoning as above.
+  }
+}
+
+/**
+ * The script the last run had open, if it is still on disk. A path that has
+ * gone (moved, renamed, a drive that is not plugged in) gives `null`, and the
+ * app starts empty as it always did.
+ */
+async function lastOpenFileOnDisk(): Promise<string | null> {
+  try {
+    const store = await load(APP_SETTINGS_STORE_FILE, {
+      autoSave: true,
+      defaults: {},
+    });
+    const remembered = await store.get<unknown>(LAST_OPEN_FILE_KEY);
+    if (typeof remembered !== "string" || remembered === "") return null;
+    if (await exists(remembered)) return remembered;
+    await store.delete(LAST_OPEN_FILE_KEY);
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -368,6 +408,7 @@ export function useDocument({ authorName }: UseDocumentOptions) {
       // remembering the folder is a background nicety that cannot fail the
       // save (rememberScriptFolder swallows its own errors).
       void rememberScriptFolder(path);
+      void rememberOpenFile(path);
     },
     [stampHeader],
   );
@@ -408,21 +449,13 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     [askUnsaved, writeToPath],
   );
 
-  const openFile = useCallback(async () => {
-    // Guard the *current* document before replacing it. Prompt first, before
-    // the file picker: if the answer is Cancel there's no reason to have made
-    // the user browse for a file, and "Save and Open" wants the save done
-    // before we touch the model.
-    if (!(await ensureSavedBefore("open"))) return;
-
-    const selected = await open({
-      multiple: false,
-      filters: RMS_FILTERS,
-      defaultPath: await dialogStartFolder(),
-    });
-    if (!selected) return;
+  // Puts a script from disk into the shared model and marks the document
+  // clean. Shared by Open and by the reopen-on-launch effect below, which
+  // must do exactly what Open does once the file is chosen.
+  const loadScript = useCallback(async (selected: string) => {
     const text = await readTextFile(selected);
     void rememberScriptFolder(selected);
+    void rememberOpenFile(selected);
     // setValue (not pushEditOperations) deliberately: opening a different
     // file is a new document buffer, so its undo history should NOT carry
     // over from whatever was previously open, this is the one place we
@@ -453,7 +486,23 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     setFilePath(selected);
     setIsDirty(false);
     setLastSavedAt(null);
-  }, [ensureSavedBefore]);
+  }, []);
+
+  const openFile = useCallback(async () => {
+    // Guard the *current* document before replacing it. Prompt first, before
+    // the file picker: if the answer is Cancel there's no reason to have made
+    // the user browse for a file, and "Save and Open" wants the save done
+    // before we touch the model.
+    if (!(await ensureSavedBefore("open"))) return;
+
+    const selected = await open({
+      multiple: false,
+      filters: RMS_FILTERS,
+      defaultPath: await dialogStartFolder(),
+    });
+    if (!selected) return;
+    await loadScript(selected);
+  }, [ensureSavedBefore, loadScript]);
 
   const newFile = useCallback(async () => {
     // Same guard as openFile, and for the same reason: a blank document is
@@ -473,7 +522,31 @@ export function useDocument({ authorName }: UseDocumentOptions) {
     setFilePath(null);
     setIsDirty(false);
     setLastSavedAt(null);
+    void rememberOpenFile(null);
   }, [ensureSavedBefore]);
+
+  // Reopens the script the last run ended on. Runs once at launch. The read
+  // is asynchronous, so the guard checks the document is still the untouched
+  // empty one when the answer arrives. Someone who has already typed, or
+  // opened a file by hand, keeps what they have. `cancelled` is the usual
+  // cleanup flag, and it also makes React StrictMode's second development
+  // mount harmless, since the first mount's answer is thrown away.
+  useEffect(() => {
+    let cancelled = false;
+    void lastOpenFileOnDisk().then(async (path) => {
+      if (cancelled || path === null) return;
+      if (filePathRef.current !== null || isDirtyRef.current) return;
+      try {
+        await loadScript(path);
+      } catch {
+        // Unreadable now (permissions, a file locked by another program).
+        // Starting empty is the same as before this existed.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadScript]);
 
   const saveFileAs = useCallback(async () => {
     // An open document's own path wins: Save As on a real file means "next to

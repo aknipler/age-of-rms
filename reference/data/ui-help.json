@@ -293,6 +293,10 @@
       "text": "How many spaces one tab press or one indent level counts as, and whether pressing Tab actually inserts spaces or a real tab character. Applies to the Code tab's editor immediately."
     },
     {
+      "id": "settings.code.suggestionKeys",
+      "text": "Which keys take the highlighted entry of the suggestion list while you type. The first choice also makes Shift+Tab step back up the list. The third matches VS Code's default. Grey prediction text is always accepted with Tab."
+    },
+    {
       "id": "settings.code.resolveFlash",
       "text": "Briefly tints a name you just typed green when it matches a built-in constant or one of your own #consts above it."
     },
@@ -318,7 +322,7 @@
     },
     {
       "id": "breakdown.tab.show",
-      "text": "Ticked sections show together in one list. Untick to leave this one out. The last ticked section stays."
+      "text": "Ticked sections show together in one list. Untick to leave this one out. The last ticked section stays. Ctrl-click a section name to add or remove it, Shift-click to show every section from the current one to it."
     },
     {
       "id": "breakdown.tab.showAll",
@@ -722,7 +726,11 @@
     },
     {
       "id": "breakdown.rawCard.delete",
-      "text": "Removes this code from the script."
+      "text": "Removes this code from the script. For a shared block that includes the cards inside it."
+    },
+    {
+      "id": "breakdown.strayAttribute.delete",
+      "text": "Removes this attribute line from the script."
     },
     {
       "id": "breakdown.directiveCard.delete",
@@ -802,7 +810,7 @@
     },
     {
       "id": "breakdown.rawCard.editInCode",
-      "text": "Jumps to this exact spot on the Code tab so you can edit it directly. Not yet wired up."
+      "text": "Jumps to this exact spot on the Code tab so you can edit it directly."
     },
     {
       "id": "breakdown.strayAttribute",
@@ -810,11 +818,15 @@
     },
     {
       "id": "preview.generationSettings",
-      "text": "Opens Generation Settings: map size, player count and teams, used to compute the resource totals and this preview."
+      "text": "Opens Generation Settings over the map: map size, player count and teams, used to compute the resource totals and this preview. Ctrl+D does the same by default while focus is in the map preview."
+    },
+    {
+      "id": "generationSettings.close",
+      "text": "Closes Generation Settings. Esc does the same while focus is in the map preview."
     },
     {
       "id": "breakdown.sidePanel.previewToggle",
-      "text": "Switches the map preview between Current and Final. Final draws the whole script. Current draws only what the script has built up to your cursor, so you can see what a half written script produces. The code it leaves out is dimmed, and the pin button beside this holds the cut point still while you edit elsewhere. The preview draws your actual script, generated in the background as you edit."
+      "text": "Switches the map preview between Truncate at Cursor (on) and the whole script (off). Truncate at Cursor draws only what the script has built up to your cursor, so you can see what a half written script produces. The code it leaves out is dimmed, and the pin button beside this holds the cut point still while you edit elsewhere. The preview draws your actual script, generated in the background as you edit."
     },
     {
       "id": "breakdown.sidePanel.referenceRadio",
@@ -906,7 +918,7 @@
     },
     {
       "id": "preview.colorMode",
-      "text": "Which set of terrain colours to draw with. Game uses the average colour of each terrain's own texture from your install, so snow looks like snow; terrains that share a texture file, such as Forest and Underbrush, share a colour. Minimap uses the colour class stored in the game's own data, which is flatter and only has twelve colours in it, so every snow terrain comes out grass green, but it does tell forest apart from underbrush. Both come from the game files; neither is a claim about what the minimap draws in a real match."
+      "text": "The four coloured tiles. Which set of terrain colours to draw with, and the tiles show the set in use. Off is Game, which uses the average colour of each terrain's own texture from your install, so snow looks like snow; terrains that share a texture file, such as Forest and Underbrush, share a colour. On is Minimap, which uses the colour class stored in the game's own data, which is flatter and only has twelve colours in it, so every snow terrain comes out grass green, but it does tell forest apart from underbrush."
     },
     {
       "id": "preview.legend",
@@ -934,11 +946,11 @@
     },
     {
       "id": "sidePanel.tabPreview",
-      "text": "Shows the map preview. The reference table keeps its search and mode while it is hidden."
+      "text": "Shows the map preview."
     },
     {
       "id": "sidePanel.tabReference",
-      "text": "Shows the reference table of terrains, objects, commands and attributes. The preview keeps its zoom and pan while it is hidden."
+      "text": "Shows the reference table of terrains, objects, commands and attributes."
     },
     {
       "id": "preview.objectList",

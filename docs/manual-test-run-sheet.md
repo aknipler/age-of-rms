@@ -1519,6 +1519,62 @@ commented-out `create_land` block and a `replace_terrain` connection.
    Enter on the button, confirm a NEW_DEFINE row appears with its name selected, type a name and
    press Enter, and confirm focus lands back on the button.
 
+## 46. Remembered start tab, 2026-10-25 (`src/hooks/useRememberedTab.ts`)
+
+1. Start `npm run tauri dev`, switch to the Code tab and close the app. Start it again and
+   confirm it opens on Code.
+2. Switch to Breakdown, close and start again, and confirm it opens on Breakdown.
+3. Switch to Code, then to Advanced Tools, and close the app there. Start it again and confirm
+   it opens on Code, not Advanced Tools.
+4. On a launch that will open on Code, click Breakdown as soon as the window shows and confirm
+   it stays on Breakdown.
+
+## 47. Code tab feedback round, 2026-10-25 (`src/editor/offerBulb.ts`, `constActions.ts`, `templateTarget.ts`)
+
+The browser pane copy (mocked Tauri) already showed the bulb, the menus, the hovers and the template insert working. These steps check the same in the real app, where the title bar and file dialogs are real.
+
+1. Open a map in the Code tab. Hover a word inside a `/* comment */` and confirm no popup shows. Hover `GOLD` and confirm one line, `Default res: 800`. Hover `RELIC` and confirm `Default rate: ? g/in-game min`. Hover `GRASS` and confirm `Predefined constant.` Hover `BIRD_A` (no `#const` for it) and confirm no popup.
+2. Hover several attributes (`number_of_groups`, `avoid_forest_zone`, `set_place_for_every_player`) and confirm none says "Not yet verified" and each description reads clearly in one or two short sentences.
+3. Type `terrain_type FORREST` and stop. Confirm the bulb sits in the gutter between the line number and the code (it moved there on 2026-10-26), and stays while the caret is anywhere on that line. Click it and confirm the menu offers `Change to FOREST`. Move the caret away and confirm the bulb leaves.
+4. Type `number_of_object 3` inside a `create_object` block. Confirm the bulb appears in the gutter and offers `Change to number_of_objects`. Do the same with a misspelled command (`create_lan`).
+5. Write `if MY_FLAG` and put `#define MY_FLAG` below it. Confirm the bulb offers `Move the #const up here` and that choosing it puts the `#define` above the `if`. Undo and confirm one step puts it back.
+6. In a script with an `#include_drs` line, or one whose `#const` sits inside an `if`, use that name above its definition. Hover it and confirm the hover says why the move is not offered.
+7. Right-click inside `<OBJECTS_GENERATION>` between two commands and confirm `Add Template...` is in the menu. Choose it, press Insert and confirm the text lands below the command the caret was in, with the caret on the first inserted command. Undo and confirm one step removes it.
+8. Right-click inside `<TERRAIN_GENERATION>` and confirm the dialog offers the terrain template. Right-click inside `<LAND_GENERATION>` and confirm `Add Template...` is absent.
+
+## 48. Feedback round, 2026-10-26
+
+1. Ctrl-click a section tab in Breakdown to add it, then Ctrl-click it again and confirm it leaves. Confirm the last shown tab stays.
+2. Open a script with a command whose `{` is never closed in Land, followed by an Elevation header. Confirm the Land tab shows the error, the Elevation tab shows a warning, and hovering the command's error badge shows a popup that stays on screen, including for a card at the right or bottom edge of the pane.
+3. Comment out a command with the card button. Confirm its card is grey rather than tinted.
+4. In the preview, click ? and confirm the help box opens just below the button. Confirm the cog is larger and the button is the same size, and the left toggle reads Truncate at Cursor.
+5. Open Generation Settings. Confirm it opens over the map panel, the row reads Players with a narrow box, no preset shows the team readout or the lock note, and Escape closes it.
+6. Open Advanced Tools, choose Land Placement and confirm it fills the whole width, with the tool picker at the top of its own pane. Choose another tool and confirm the left column comes back.
+7. Open a saved map, close the app, start it again, and confirm the same map opens in the same tab (Breakdown or Code). Rename the file, start again, and confirm the app opens empty.
+8. Start the Code track of a tutorial, save the file when asked on exit, start the app again and confirm it opens on Code with that file.
+9. Hover RELIC in the Code tab and confirm the rate shows a question mark.
+10. In the Reference tab, Commands, confirm each command's arrow is right aligned and larger.
+11. In the Code tab type an attribute prefix. Confirm Tab steps down the list, Shift+Tab steps up and Enter accepts. In Settings, Code, Suggestion keys try the other two choices.
+12. Confirm a light bulb shows in the gutter on any line with a quick fix, whether or not the caret is on the word, and a second one above the word while the caret is on it. Confirm clicking either opens the menu and that the upper one is not oversized or misplaced over the line above.
+13. Use a `#const` name above its definition in a number slot and confirm the warning says it is defined on a later line.
+14. Press Ctrl+` from Breakdown, Code and Advanced Tools, and on a keyboard layout where the backtick is a dead key.
+
+---
+
+## 49. Generation Settings over the map, 2026-10-26 (`src/components/preview/GenerationSettingsPanel.tsx`)
+
+1. Open a map and click the cog on the preview. Confirm the settings open as a box in the preview's top right corner, not as a dialog, and that the map stays visible and clickable around it.
+2. Change Players, Map size, Team Positions and a team. Confirm the map redraws behind the box as each changes.
+3. Narrow the side panel. Confirm the box shrinks to the panel's width and its Players, Map size and Team Positions row wraps instead of running off the left edge.
+4. Click the map, or a control in the Preview tab, and press Ctrl+D. Confirm the box opens, and that a second press closes it.
+5. With the caret in the Code editor, confirm Ctrl+D still selects the next match of the word under the caret and the box does not open. Confirm the same in Breakdown and on the Reference tab.
+6. Click the map, press Ctrl+D, then click into the code editor and press Ctrl+D. Confirm the box stays as it was.
+7. Open the box, then click the Help button (?). Confirm Help replaces the settings. Open the settings again and confirm Help closes.
+8. With the box open, click the map (not the box) and press Esc. Confirm the box closes. Repeat with focus in the box. With focus in the code editor and the box open, press Esc and confirm the box stays open.
+9. In Settings, Hotkeys, confirm the Generation Settings row shows Ctrl+D and can be rebound.
+10. Confirm the tutorial steps that point at the cog (tour and Golden Hill) still highlight it.
+11. Check the box in Dark and Light themes, since it takes the themed surface colours.
+
 ---
 
 ## Not covered here

@@ -311,7 +311,21 @@ export function ToolsPane({
   // its body (ToolsSlots.tsx). With no column (a test, or any caller outside
   // App) everything stays inline in the pane.
   const slots = useToolsSlots();
-  const inColumn = slots.header !== null && slots.body !== null;
+  // A panel tool (Land Placement) has its own columns and nothing for the left
+  // column's body to hold, so the two body columns merge into one that takes
+  // the whole row. The title row is unchanged and keeps the tool picker. Every
+  // other tool keeps its options on the left and its output on the right.
+  // Effect cleanup splits the body again when the tool goes.
+  const panelMergesBody =
+    tool?.kind === "panel" && panelState.phase === "mounted";
+  const { setBodyMerged } = slots;
+  useEffect(() => {
+    setBodyMerged(panelMergesBody);
+    return () => setBodyMerged(false);
+  }, [panelMergesBody, setBodyMerged]);
+  // The header slot alone decides the picker's look. The body slot is gone
+  // while the body is merged, and the picker is still in the column then.
+  const inColumn = slots.header !== null;
   const intoHeader = (node: ReactNode) =>
     slots.header ? createPortal(node, slots.header) : node;
   const intoBody = (node: ReactNode) =>

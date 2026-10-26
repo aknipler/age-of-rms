@@ -17,15 +17,15 @@
     {
       "key": "land_percent",
       "kind": "attribute",
-      "summary": "Sets this land's size as a percentage of the total map area.",
+      "summary": "Sets the size as a percentage of the total map area.",
       "details": "Mutually exclusive with number_of_tiles. Use whichever is more natural for the effect you want. Percent scales with map size; an absolute tile count doesn't.",
       "seeAlso": ["number_of_tiles"]
     },
     {
       "key": "number_of_tiles",
       "kind": "attribute",
-      "summary": "Sets this land's size as an absolute tile count, instead of a percentage.",
-      "details": "Mutually exclusive with land_percent. Useful when you want a land's absolute size to stay the same regardless of overall map size.",
+      "summary": "Sets the size as a fixed tile count, instead of a percentage.",
+      "details": "Mutually exclusive with land_percent. Useful when you want the size to stay the same regardless of overall map size.",
       "seeAlso": ["land_percent"]
     },
     {

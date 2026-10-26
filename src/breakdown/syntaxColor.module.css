@@ -1,10 +1,22 @@
 /* The Code tab's attribute and constant colours (syntaxColor.tsx). With no
    theme applied yet the properties are unset and the text keeps its
-   inherited colour. */
+   inherited colour. --syntax-strength is how much of the colour shows, 100%
+   unless an ancestor lowers it (commented-out code, CommentCard.module.css).
+   It is a separate property rather than a re-declared --syntax-attribute,
+   since a custom property that refers to itself on one element is a cycle
+   and goes invalid. */
 .attribute {
-  color: var(--syntax-attribute);
+  color: color-mix(
+    in srgb,
+    var(--syntax-attribute) var(--syntax-strength, 100%),
+    transparent
+  );
 }
 
 .constant {
-  color: var(--syntax-constant);
+  color: color-mix(
+    in srgb,
+    var(--syntax-constant) var(--syntax-strength, 100%),
+    transparent
+  );
 }

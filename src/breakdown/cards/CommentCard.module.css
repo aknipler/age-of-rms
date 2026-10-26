@@ -70,22 +70,17 @@
   align-items: flex-start;
 }
 
-/* Small and frameless, so the note's own bar is the strongest shape on
-   it. The button's box keeps the old 1.5rem height, which is what the bar
-   width is matched to. */
+/* The same bordered square as the command card's toggle
+   (CommandCard.module.css), so a comment collapses and expands with a button
+   that reads as one. */
 .toggle {
-  border: none;
-  background: transparent;
-  color: var(--text-faint);
-  width: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  width: 1.5rem;
   height: 1.5rem;
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
-}
-
-.toggle:hover {
-  color: var(--text);
 }
 
 .summary {
@@ -153,6 +148,16 @@
    ordinary ones beside the note's bar, set in italics so they still read
    as switched off. Form controls do not inherit font-style by
    default, so they are named here. */
+.commentedCode {
+  /* Attribute and constant colours show at 55%, so the card reads as switched
+     off (syntaxColor.module.css, AttributeRow.module.css). */
+  --syntax-strength: 55%;
+  /* Drains the colour from everything else in the cards (command names,
+     badges, accents). A filter cannot trap the menus and tips these cards
+     open, since both render through a portal outside this box. */
+  filter: saturate(0.25);
+}
+
 .commentedCode,
 .commentedCode input,
 .commentedCode textarea,

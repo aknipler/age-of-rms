@@ -9,6 +9,7 @@ import type {
   DirectiveNode,
   IfNode,
   Item,
+  OrphanBlockNode,
   RandomNode,
   RawNode,
   SectionNode,
@@ -167,7 +168,13 @@ export type EditIntent =
     }
   | {
       kind: "removeNode";
-      node: AttributeNode | CommandNode | DirectiveNode | IfNode | RandomNode;
+      node:
+        | AttributeNode
+        | CommandNode
+        | DirectiveNode
+        | IfNode
+        | OrphanBlockNode
+        | RandomNode;
     }
   | { kind: "toggleFlag"; target: AttributeTarget; name: string; on: boolean }
   | { kind: "addCommand"; at: InsertTarget; name: string }

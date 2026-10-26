@@ -63,3 +63,32 @@
     background-color: var(--success-bg);
   }
 }
+
+/* The quick fix light bulb (offerBulb.ts), a line decoration in the gutter
+   between the line number and the code. Monaco gives the decoration the
+   gutter's width and the line's height, so the icon is centred in that box. */
+.offerBulb {
+  color: var(--warning);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.offerBulb:hover {
+  color: var(--accent);
+}
+
+/* The same bulb above the word the caret is on (offerBulb.ts), a content
+   widget. It is small, since it sits over the line above. */
+.offerBulbWord {
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.offerBulbWord:hover {
+  color: var(--accent);
+}

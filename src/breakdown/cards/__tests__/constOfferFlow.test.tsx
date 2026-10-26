@@ -100,6 +100,7 @@ function Harness({ initialSource }: { initialSource: string }) {
     isSelected: () => false,
     selectCard: () => {},
     clearSelection: () => {},
+    editInCode: () => {},
     moveItem: () => {},
     duplicateItem: () => {},
     selectedItem: undefined,

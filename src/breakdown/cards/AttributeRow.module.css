@@ -66,7 +66,11 @@
 /* The Code tab's attribute colour (syntaxColor.tsx). */
 .label {
   font-size: 0.85rem;
-  color: var(--syntax-attribute);
+  color: color-mix(
+    in srgb,
+    var(--syntax-attribute) var(--syntax-strength, 100%),
+    transparent
+  );
 }
 
 .values {
@@ -101,7 +105,11 @@
 /* ValueEditor sets data-constant while the text is one all caps word. */
 .textInput[data-constant],
 .numberInput[data-constant] {
-  color: var(--syntax-constant);
+  color: color-mix(
+    in srgb,
+    var(--syntax-constant) var(--syntax-strength, 100%),
+    transparent
+  );
 }
 
 .flagCheckbox {

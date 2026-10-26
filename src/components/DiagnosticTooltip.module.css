@@ -1,6 +1,5 @@
 .popup {
-  position: absolute;
-  left: 0;
+  position: fixed;
   width: max-content;
   max-width: 320px;
   background: var(--surface);
@@ -13,16 +12,6 @@
   pointer-events: none;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
   white-space: pre-line;
-}
-
-.below {
-  top: 100%;
-  margin-top: 4px;
-}
-
-.above {
-  bottom: 100%;
-  margin-bottom: 4px;
 }
 
 /* A popup with buttons takes the pointer, and a transparent strip covers the

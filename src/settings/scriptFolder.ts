@@ -33,6 +33,13 @@ export { APP_SETTINGS_STORE_FILE } from "./nameDisplay";
 export const LAST_SCRIPT_FOLDER_KEY = "lastScriptFolder";
 
 /**
+ * Key under which the path of the script that was open when the app last ran
+ * is kept, so the next launch can open it again. Cleared by New, since a blank
+ * unsaved document has nothing to come back to.
+ */
+export const LAST_OPEN_FILE_KEY = "lastOpenFile";
+
+/**
  * The part of the path that is the same in every install: DE reads custom
  * random maps out of `<install>\resources\_common\random-map-scripts`, which
  * is also where this project's own RMSTEST maps are copied to be run.

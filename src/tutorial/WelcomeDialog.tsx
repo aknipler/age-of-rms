@@ -21,8 +21,7 @@ interface WelcomeDialogProps {
 
 // tutorial-design.md Sec.7, the first-run pane. Modal (unlike the tutorial
 // overlay itself): there is no "correct thing to click" behind it, so
-// swallowing clicks costs nothing. Reuses dialog.module.css the same way
-// GenerationSettingsDialog does.
+// swallowing clicks costs nothing. Reuses the shared dialog.module.css.
 export function WelcomeDialog({ tutorials = TUTORIALS }: WelcomeDialogProps) {
   const { dismissWelcome, start } = useTutorial();
   // Picked once per mount, not on every render. A re-render must not

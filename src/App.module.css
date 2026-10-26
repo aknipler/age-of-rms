@@ -12,6 +12,9 @@
 .workspace {
   flex: 1;
   display: flex;
+  /* Positions the Advanced Tools column when a tool merges its body columns
+     (ToolsSlots.module.css's .columnMerged). */
+  position: relative;
   min-height: 0;
   /* The height of the map header and of the map panel's top row beside it
      (MapHeader.module.css, MapSidePanel.module.css). One custom property

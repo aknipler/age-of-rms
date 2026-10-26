@@ -72,6 +72,11 @@ export const DIAGNOSTIC_CODES: Record<
     severity: "warning",
     summary: "Nesting deeper than maxNestingDepth, shown as raw code",
   },
+  RMS0108: {
+    severity: "warning",
+    summary:
+      "Section header while { open, the header side of RMS0103 (the error sits on the { itself)",
+  },
   RMS0110: {
     severity: "info",
     summary:
@@ -447,15 +452,31 @@ export function orphanBlock(openToken: Token): Diagnostic {
   );
 }
 
+/**
+ * A section header reached while a `{` is still open. Two diagnostics, one
+ * per place a person has to look: the error sits on the `{` that was never
+ * closed, which is where the fix goes, and a warning sits on the header that
+ * cut the block short, so the section tab holding the header shows the
+ * knock-on effect without taking the blame.
+ */
 export function sectionHeaderInBlock(
   headerToken: Token,
+  openToken: Token,
   openLine: number,
-): Diagnostic {
-  return makeDiagnostic(
-    "RMS0103",
-    `Section header ${headerToken.text} appears while the { on line ${openLine} is still open. Close the block with } before starting a new section.`,
-    toSpan(headerToken),
-  );
+  headerLine: number,
+): Diagnostic[] {
+  return [
+    makeDiagnostic(
+      "RMS0103",
+      `This { is never closed. The section header ${headerToken.text} on line ${headerLine} starts while it is still open. Add a matching } before it.`,
+      toSpan(openToken),
+    ),
+    makeDiagnostic(
+      "RMS0108",
+      `This section header appears while the { on line ${openLine} is still open, so that block was closed here.`,
+      toSpan(headerToken),
+    ),
+  ];
 }
 
 export function strayCloseBrace(token: Token): Diagnostic {

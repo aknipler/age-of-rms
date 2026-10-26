@@ -56,6 +56,26 @@
   line-height: 1.2;
 }
 
+/* The tab's problem glyph (SectionTabs.tsx SeverityIcon), coloured by the
+   worst diagnostic in the section. */
+.severityIcon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+}
+
+.severity-error {
+  color: var(--danger);
+}
+
+.severity-warning {
+  color: var(--warning);
+}
+
+.severity-info {
+  color: var(--info);
+}
+
 /* A tab and its show checkbox (2026-10-21). The box sits in the tab's top
    right corner, so the tab keeps room for it on the right. */
 .tabSlot {

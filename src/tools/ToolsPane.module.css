@@ -24,11 +24,34 @@
 }
 
 /* The controls as rendered into the left column's top row (ToolsSlots.tsx):
-   one line, the picker taking the spare width. */
+   the picker taking the spare width, then the buttons. The row is only as
+   tall as the map header (--workspace-header-height) and has no vertical
+   padding, so everything in it is sized down from the pane's normal controls
+   to leave a few pixels above and below. It wraps onto a second line only
+   when a long button ("Apply 12 changes") cannot fit beside the picker. */
 .columnControls {
   flex: 1;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+/* HelpTip wraps every control in a <span>, and that span, not the control, is
+   the flex item here. A span sizes to its content, so the picker's own
+   `flex: 1` had nothing to grow into and the select kept its full intrinsic
+   width, pushing Run out of the column and over the map title. The first
+   span is always the picker's. It takes the spare width, with a floor so it
+   wraps the buttons before it shrinks to nothing. Every other span (the
+   buttons) stays its natural size. */
+.columnControls > span {
+  flex: none;
+}
+
+.columnControls > span:first-child {
+  display: flex;
+  flex: 1 1 9rem;
   min-width: 0;
 }
 
@@ -36,12 +59,25 @@
   flex: 1;
   flex-direction: row;
   align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
 .columnControls .select {
   flex: 1;
   min-width: 0;
+}
+
+.columnControls .select,
+.columnControls .button {
+  font-size: 0.85rem;
+  line-height: 1.2;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.columnControls .button {
+  padding-inline: 10px;
 }
 
 .field {

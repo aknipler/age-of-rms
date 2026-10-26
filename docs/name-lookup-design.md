@@ -104,8 +104,8 @@ Each item carries the same text the hover shows (kind, category, the line a scri
 Editor options added in `CodePane.tsx`.
 
 - `wordBasedSuggestions: "off"`. Otherwise Monaco mixes in every word in the file, comments included, and lists names that resolve to nothing.
-- `acceptSuggestionOnEnter: "off"` (Q1). Enter always makes a new line.
-- Tab and Right Arrow keep Monaco's defaults. Tab accepts while the list is open and indents when it is closed. Right Arrow moves the caret and closes the list.
+- `acceptSuggestionOnEnter` follows Settings > Code > Suggestion keys (2026-10-26). The default is Enter accepts, with Tab stepping down the list and Shift+Tab up, through two `addCommand` bindings that stand down while grey prediction text is showing. The earlier choice (Q1, Tab accepts and Enter makes a new line) and Monaco's own (both accept) are the other two settings, the same split VS Code makes between `editor.acceptSuggestionOnEnter` and a Tab keybinding.
+- Right Arrow keeps Monaco's default. It moves the caret and closes the list. Tab indents when the list is closed.
 
 The last `ParseResult` can lag the model by a few keystrokes. Only offsets near the caret go stale, and those only matter for the scope test, so the provider treats a definition on the caret's own line as not yet parsed rather than guessing.
 

@@ -2,6 +2,7 @@ import type { AttributeNode } from "../../parser/types";
 import { useBreakdownContext } from "../BreakdownContext";
 import { renderArgs } from "../renderValue";
 import { HelpTip } from "../../components/HelpTip";
+import { TrashIcon } from "../../components/TrashIcon";
 import cardStyles from "./cards.module.css";
 
 /**
@@ -15,7 +16,7 @@ export function StrayAttributeCard({
 }: {
   attribute: AttributeNode;
 }) {
-  const { tokens } = useBreakdownContext();
+  const { tokens, applyEdit } = useBreakdownContext();
   const name = tokens[attribute.name].text;
   return (
     <div className={cardStyles.card}>
@@ -29,6 +30,21 @@ export function StrayAttributeCard({
           className={`${cardStyles.problemBadge} ${cardStyles["severity-warning"]}`}
         >
           belongs inside a {"{ }"} block
+        </span>
+        <span className={cardStyles.strayDeleteSlot}>
+          <HelpTip id="breakdown.strayAttribute.delete">
+            <button
+              type="button"
+              className={cardStyles.deleteButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                applyEdit({ kind: "removeNode", node: attribute });
+              }}
+              aria-label="Delete"
+            >
+              <TrashIcon />
+            </button>
+          </HelpTip>
         </span>
       </div>
     </div>

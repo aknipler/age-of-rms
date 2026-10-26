@@ -16,6 +16,12 @@
   font-size: 0.85rem;
 }
 
+/* The stray attribute card's Delete button, pushed to the card's right edge. */
+.strayDeleteSlot {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .problemBadgeWrapper {
   /* DiagnosticTooltip.tsx's popup anchors to this (position: absolute,
      top/bottom: 100%), needs this to be its containing block, same
@@ -59,7 +65,7 @@
 }
 
 .deleteButton,
-.stubButton,
+.actionButton,
 .fixButton {
   border: 1px solid var(--border-muted);
   background: var(--surface);
@@ -83,10 +89,6 @@
   border-color: var(--success);
   color: var(--success);
   margin-left: 0.4rem;
-}
-
-.stubButton {
-  cursor: not-allowed;
 }
 
 .deleteButton:disabled {

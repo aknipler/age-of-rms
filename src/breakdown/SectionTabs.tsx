@@ -1,9 +1,43 @@
-import type { Diagnostic } from "../parser/types";
+import type { Diagnostic, DiagnosticSeverity } from "../parser/types";
 import type { SectionTab } from "./sectionTabsModel";
 import { tabProblemSeverity } from "./sectionTabsModel";
+import type { ClickMode } from "./multiSelect";
+import { clickModeOf } from "./multiSelect";
 import { HelpTip } from "../components/HelpTip";
-import cardStyles from "./cards/cards.module.css";
 import styles from "./SectionTabs.module.css";
+
+// A filled glyph per severity, coloured by the matching theme token
+// (SectionTabs.module.css), in place of the word the tab used to print. The
+// shape differs as well as the colour, so the three read apart without
+// relying on hue alone. `currentColor` lets the CSS class drive the fill, and
+// role="img" with a label gives a screen reader the word the text used to.
+const SEVERITY_GLYPH: Record<DiagnosticSeverity, string> = {
+  // Triangle with an exclamation mark cut out.
+  warning:
+    "M12 2.5 1.5 21h21L12 2.5Zm-1.1 7h2.2v6h-2.2v-6Zm0 7.5h2.2v2.2h-2.2V17Z",
+  // Disc with a cross cut out.
+  error:
+    "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.3 12.7-1.6 1.6L12 13.6l-2.7 2.7-1.6-1.6L10.4 12 7.7 9.3l1.6-1.6L12 10.4l2.7-2.7 1.6 1.6L13.6 12l2.7 2.7Z",
+  // Disc with an "i" cut out.
+  info: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1.1 15h-2.2v-6h2.2v6Zm0-8h-2.2V6.8h2.2V9Z",
+};
+
+function SeverityIcon({ severity }: { severity: DiagnosticSeverity }) {
+  return (
+    <svg
+      className={`${styles.severityIcon} ${styles[`severity-${severity}`]}`}
+      viewBox="0 0 24 24"
+      role="img"
+      aria-label={severity}
+    >
+      <path
+        d={SEVERITY_GLYPH[severity]}
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+    </svg>
+  );
+}
 
 // ui-help.json ids must match ^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*)*$
 // (see reference/schemas/ui-help.schema.json), no underscores, but
@@ -23,7 +57,8 @@ interface SectionTabsProps {
   tabs: SectionTab[];
   /** The in-focus section, the one Add writes to. */
   activeId: string;
-  onSelect: (id: string) => void;
+  /** `mode` is Ctrl or Cmd ("toggle", add to the shown set) or Shift ("range", show the run from the focus tab). */
+  onSelect: (id: string, mode?: ClickMode) => void;
   diagnostics: Diagnostic[];
   /** The tabs whose sections are on screen (viewScope.ts). */
   shownIds: readonly string[];
@@ -77,7 +112,7 @@ export function SectionTabs({
                 role="tab"
                 aria-selected={activeId === tab.id}
                 className={`${styles.tab} ${activeId === tab.id ? styles.tabActive : ""} ${shown ? "" : styles.tabHidden}`}
-                onClick={() => onSelect(tab.id)}
+                onClick={(e) => onSelect(tab.id, clickModeOf(e))}
               >
                 {/* Numbered tabs (0. Header, 1. Player Setup, 2. Land, ...)
                   are ABSOLUTE, tied to each tab's fixed canonical identity
@@ -98,13 +133,7 @@ export function SectionTabs({
                     ?
                   </span>
                 )}
-                {severity && (
-                  <span
-                    className={`${cardStyles.problemBadge} ${cardStyles[`severity-${severity}`]}`}
-                  >
-                    {severity}
-                  </span>
-                )}
+                {severity && <SeverityIcon severity={severity} />}
               </button>
             </HelpTip>
             <span className={styles.showSlot}>

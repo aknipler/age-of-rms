@@ -55,8 +55,9 @@ interface PreviewBarControlsProps {
 
 /**
  * The preview's own buttons for the bottom row of the canvas: the placement
- * notice, then Help, Obj. List, Notes and Legend. `OverlayCanvas` puts them
- * beside its Export and zoom buttons (its `bottomControls` slot).
+ * notice, then Obj. List, Notes and Legend. `OverlayCanvas` puts them
+ * beside its zoom buttons (its `bottomControls` slot). The Help button that
+ * opens the same box lives in the top right corner (`PreviewHelpButton`).
  *
  * The honesty surface: how many placements failed, what the preview did not
  * simulate, and what the colours mean. Sec.9 splits notes by `prominence`.
@@ -83,17 +84,6 @@ export function PreviewBarControls({
             ? `${placed} placed`
             : `${failureCount} placement${failureCount === 1 ? "" : "s"} failed`}
         </span>
-      </HelpTip>
-      <HelpTip id="preview.helpButton">
-        <button
-          type="button"
-          className={styles.barButton}
-          aria-expanded={open === "help"}
-          aria-label="How to use the map"
-          onClick={() => onToggle("help")}
-        >
-          ?
-        </button>
       </HelpTip>
       <HelpTip id="preview.objectList">
         <button
@@ -136,6 +126,58 @@ export function PreviewBarControls({
           onClick={() => onToggle("legend")}
         >
           Legend
+        </button>
+      </HelpTip>
+    </>
+  );
+}
+
+/**
+ * The preview's own buttons for the top right corner of the canvas: Help,
+ * then the generation settings cog (`OverlayCanvas`'s `topRightControls`
+ * slot, after the map size chip and Export).
+ *
+ * The cog used to sit in the map panel's top row. It moved onto the map
+ * because the player count and map size it sets are what the chip beside it
+ * reports. It takes the same dark chip look as Export and the other bar
+ * buttons, since it now sits on unthemed map colours.
+ */
+export function PreviewCornerControls({
+  open,
+  onToggle,
+  settingsOpen,
+  onToggleSettings,
+}: {
+  open: PreviewPanelSection | null;
+  onToggle: (section: PreviewPanelSection) => void;
+  settingsOpen: boolean;
+  onToggleSettings: () => void;
+}) {
+  return (
+    <>
+      <HelpTip id="preview.helpButton">
+        <button
+          type="button"
+          className={styles.barButton}
+          aria-expanded={open === "help"}
+          aria-label="How to use the map"
+          onClick={() => onToggle("help")}
+        >
+          ?
+        </button>
+      </HelpTip>
+      {/* Beta feedback: the status bar's settings cog was hard to find, and
+          testers expected map size and player count controls in the preview
+          itself, since that is what they change. */}
+      <HelpTip id="preview.generationSettings">
+        <button
+          type="button"
+          className={`${styles.barButton} ${styles.cogButton}`}
+          aria-expanded={settingsOpen}
+          onClick={onToggleSettings}
+          aria-label="Generation settings"
+        >
+          ⚙
         </button>
       </HelpTip>
     </>

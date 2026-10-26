@@ -32,6 +32,40 @@ export function shownAfterTabClick(
 }
 
 /**
+ * Ctrl (or Cmd) clicking a tab's name. A tab not shown joins the shown set,
+ * in tab order. A tab already shown leaves it, the way Ctrl click toggles a
+ * file in a list. The last shown tab stays, an empty pane has nowhere to put
+ * an Add.
+ */
+export function shownAfterCtrlClick(
+  shown: readonly string[],
+  id: string,
+  tabIds: readonly string[],
+): string[] {
+  return shownAfterToggle(shown, id, tabIds);
+}
+
+/**
+ * Shift clicking a tab's name. Shows the run of tabs from the in-focus one to
+ * the clicked one, both ends included, and nothing else, the way Shift
+ * replaces a file list's selection with the run. An id missing from `tabIds`
+ * (a stale focus) leaves the set alone.
+ */
+export function shownAfterRangeClick(
+  shown: readonly string[],
+  focusId: string | null,
+  id: string,
+  tabIds: readonly string[],
+): string[] {
+  const from = focusId === null ? -1 : tabIds.indexOf(focusId);
+  const to = tabIds.indexOf(id);
+  if (from === -1 || to === -1) return shownAfterTabClick(shown, id);
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  return tabIds.slice(lo, hi + 1);
+}
+
+/**
  * Ticking or unticking a tab's checkbox. The last shown tab cannot be
  * unticked, an empty pane has nowhere to put an Add.
  */

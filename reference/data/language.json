@@ -1848,9 +1848,9 @@
           "description": "ID that avoid_actor_area and actor_area_to_place_in use to refer to this area. 0 means no actor area."
         }
       ],
-      "description": "Associates this placement with an actor area created by create_actor_area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Creates an actor area centered on this object's origin tile. Use actor_area_radius to set its size.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2753) on 2026-10-25."
     },
     {
       "name": "actor_area_radius",
@@ -1861,9 +1861,9 @@
           "description": "Radius in tiles, so the default of 1 covers 3x3. Objects sharing an area all use the first one's radius."
         }
       ],
-      "description": "Radius of the associated actor area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Radius in tiles of this object's actor area. Defaults to 1, a 3x3 area. Needs actor_area.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2775) on 2026-10-25."
     },
     {
       "name": "actor_area_to_place_in",
@@ -1874,9 +1874,9 @@
           "description": "ID of the actor area the object must be placed inside. An object can have only one."
         }
       ],
-      "description": "Restricts placement to inside a specific actor area.",
+      "description": "Only places inside the radius of this actor area, made by actor_area or create_actor_area.",
       "verified": true,
-      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name."
+      "notes": "Description checked against the guide's own entry (guide:2818) on 2026-10-25."
     },
     {
       "name": "add_object",
@@ -1927,8 +1927,9 @@
         }
       ],
       "mutexWith": ["assign_to_player"],
-      "description": "Assigns this land by player, color, or team.",
-      "verified": true
+      "description": "Gives this land to a player picked by number, color or team. A more flexible assign_to_player.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:990) on 2026-10-25."
     },
     {
       "name": "assign_to_player",
@@ -1942,8 +1943,9 @@
         }
       ],
       "mutexWith": ["assign_to"],
-      "description": "Assigns this land to a specific player number.",
-      "verified": true
+      "description": "Gives this land to one player, by lobby order, so objects can be placed for them.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:970) on 2026-10-25."
     },
     {
       "name": "avoid_actor_area",
@@ -1954,16 +1956,16 @@
           "description": "ID of the actor area to stay out of. An object can avoid several."
         }
       ],
-      "description": "Keeps placement away from a specific actor area.",
+      "description": "Keeps placement away from the actor area with this id.",
       "repeatable": true,
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2851) on 2026-10-25."
     },
     {
       "name": "avoid_all_actor_areas",
-      "description": "Keeps placement away from every defined actor area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Keeps placement out of every actor area.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2875) on 2026-10-25."
     },
     {
       "name": "avoid_cliff_zone",
@@ -1975,9 +1977,9 @@
           "description": "Tiles to stay from cliffs. Use at least 2 to leave a visible gap. Omitting the number means 1."
         }
       ],
-      "description": "Keeps placement away from cliff zones.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Minimum distance in tiles to keep from cliffs. Use at least 2 to leave a gap. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2577) on 2026-10-25."
     },
     {
       "name": "avoid_forest_zone",
@@ -1990,9 +1992,9 @@
         }
       ],
       "mutexWith": ["place_on_forest_zone"],
-      "description": "Keeps placement away from forest zones.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Minimum distance in tiles to keep from trees, including stragglers. Forest terrain itself is not checked. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2559) on 2026-10-25."
     },
     {
       "name": "avoid_other_land_zones",
@@ -2004,9 +2006,9 @@
           "description": "Tiles to keep from the edge of the object's own land. Objects stay on that land even at 0 or less."
         }
       ],
-      "description": "Keeps placement away from other zones' lands.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Keeps objects on their own land and this many tiles from its edge. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2308) on 2026-10-25."
     },
     {
       "name": "base_elevation",
@@ -2034,7 +2036,7 @@
           "description": "Visual only terrain layered over base_terrain. Write it after base_terrain."
         }
       ],
-      "description": "Sets a secondary base terrain layer for this block. DE only.",
+      "description": "Limits this block to tiles with this layered terrain on top. Use it with base_terrain. DE only.",
       "verified": true,
       "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[])."
     },
@@ -2048,8 +2050,9 @@
           "description": "Land starting width = 2*base_size + 1 (square), or radius = base_size (circle, with set_circular_base). Also the minimum distance from the map edge."
         }
       ],
-      "description": "Size of the land's starting square before growth.",
-      "verified": true
+      "description": "Radius in tiles of the land's starting square before growth. The default 3 gives a 7x7 square.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:764) on 2026-10-25."
     },
     {
       "name": "base_terrain",
@@ -2060,7 +2063,7 @@
           "default": "GRASS"
         }
       ],
-      "description": "Sets the default/underlying terrain for this block (elevation clump or terrain patch), before the block's own terrain is layered on.",
+      "description": "The terrain this block works on. Only tiles of this terrain are changed. Defaults to GRASS.",
       "verified": true,
       "notes": "Same word as the standalone LAND_GENERATION command of the same name (see commands[]) — different context, both real; RMS reuses identifiers between command and attribute position."
     },
@@ -2073,9 +2076,9 @@
           "description": "Placed where this terrain meets water, BEACH by default. Anything else blocks docks there. Fails if a CONNECTION_GENERATION section exists."
         }
       ],
-      "description": "Terrain used for the shoreline transition next to this terrain patch.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
+      "description": "Terrain placed where this terrain meets water. Defaults to BEACH. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1483) on 2026-10-25."
     },
     {
       "name": "border_fuzziness",
@@ -2089,8 +2092,9 @@
           "description": "100 sticks closest to the borders, and 0 respects them least."
         }
       ],
-      "description": "Randomizes land edges instead of a hard border.",
-      "verified": true
+      "description": "How strictly land growth stops at its borders. 100 gives a straight edge, lower values a ragged one, 0 ignores borders.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:900) on 2026-10-25."
     },
     {
       "name": "bottom_border",
@@ -2105,7 +2109,7 @@
           "description": "Percent of map width to keep land away from the bottom edge (southeast). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
-      "description": "Minimum distance from the map's bottom edge.",
+      "description": "Keeps land this percent of the map width away from the bottom border, the southeast edge.",
       "verified": true,
       "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
     },
@@ -2118,7 +2122,7 @@
           "description": "Architecture set index the building is drawn in."
         }
       ],
-      "description": "Selects which civilisation architecture set a Gaia-placed building is rendered with. Cosmetic only - it changes the graphic, not placement or behaviour.",
+      "description": "Selects which civilization architecture set a Gaia building uses. Cosmetic only, it changes the graphic and not placement or behavior.",
       "verified": false,
       "notes": "Not in the Definitive RMS Scripting Guide. Recovered from the DE install: 72 uses across BR_BattleontheIce.rms and BR_FallofRome.rms, both Forgotten Empires Battle Royale maps, always inside create_object on building-type objects placed with set_gaia_object_only (STABLE, STRANGETRADE, ARCHERY_RANGE, BARRACKS take 2; GUARD_TOWER takes 1) and never on units, trees or resources. The two maps share one template, so that is one authoring decision rather than two - but the value VARIES BY OBJECT within it, which is the evidence avoidance_distance lacked (see parser-design Sec.13 item 5, where every one of its 320 uses passed a constant defined as 0 and could therefore never have been observed to matter). The argument range is unknown: only 1 and 2 are attested, so no min/max is declared. verified: false until an in-game test or a patch note pins the set numbering."
     },
@@ -2141,7 +2145,7 @@
           "description": "Random spread of each land's distance from the center. 0 is a perfect circle, and about 20 matches the default ring."
         }
       ],
-      "description": "Radius (as a percent of map width) for circular player-land positioning, plus an optional variance. DE only. Zero and negative values are LEGAL and each mean something different - see the radiusPercent argument.",
+      "description": "Places player lands on a circle, with a radius in percent of the map width and an optional variance. 0 turns it off. DE only.",
       "verified": true,
       "notes": "Range widened from min 1 to min -50 on 2026-08-04. guide:842 documents 1-50 but the engine accepts both 0 and negative values with distinct, measured behaviours, so the old min made RMS0203 fire on correct scripts. 0 = disable, confirmed in-game (RMSTEST_2/RMSTEST_5) to behave exactly as if the attribute were absent. Negative is NOT the same as 0: RMSTEST_27 (circle_radius -20, five runs on Tiny at 8 players, 34 origins) gave mean radius 33.2 tiles = 27.6% of dim with CV 0.44, against the default ring's 50.4 tiles / CV 0.14 and against 24 tiles / CV 0 for an absolute-value reading. Scattered rather than annular, and centre-biased relative to uniform. Not yet modelled precisely."
     },
@@ -2155,7 +2159,7 @@
           "description": "Higher is rounder and connected, lower is stringier and may fragment. 20 or more keeps a land in one piece. Useful range is about 0 to 40."
         }
       ],
-      "description": "Controls how blobby vs. scattered a land/terrain's shape is.",
+      "description": "How strongly growth clumps around existing tiles. Higher values are rounder, lower values more ragged.",
       "verified": true,
       "notes": "Documentation widened 2026-08-04. Community sources (AoK Heaven 'The Cartographer: RMS Discoveries') report -100..99 against the conventional 1-15, corroborated by corpus values of -20..100. MEASURED by RMSTEST_38 across five maps at cf -20/0/8/20/40/100: piece count falls monotonically and hits a hard 1 by cf 20; circularity of the largest piece runs 0.133/0.181/0.360/0.409/0.428/0.463; and at cf -20 the land FAILS its declared tile budget by 6.5% while every other setting overshoots by the usual +3-4%. cf 100 is accepted and not clamped, which matters for the 18 corpus uses of it. See preview-design.md Sec.6.1 and Sec.15 item 16."
     },
@@ -2168,50 +2172,51 @@
           "description": "Replaces ALL terrain along the connection. Handy for seeing the paths while debugging."
         }
       ],
-      "description": "Terrain used to pave connections by default.",
-      "verified": false,
-      "notes": "Name only — full CONNECTION_GENERATION docs weren't reached in the source fetch."
+      "description": "Replaces every terrain along the connection with this one.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1880) on 2026-10-25."
     },
     {
       "name": "enable_balanced_elevation",
-      "description": "Tries to keep elevation generation fair across player starting areas. DE only.",
-      "verified": true
+      "description": "Removes the bias of hill placement toward the south. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1299) on 2026-10-25."
     },
     {
       "name": "enable_tile_shuffling",
-      "description": "Randomizes tile evaluation order during placement search.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Shuffles the candidate tiles so positions are less predictable. Do not use it for exact positions. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2692) on 2026-10-25."
     },
     {
       "name": "find_closest",
-      "description": "Prefers the closest valid location rather than a random valid one.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Places the object on the closest free tile to the land's center. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2647) on 2026-10-25."
     },
     {
       "name": "find_closest_to_map_center",
-      "description": "Prefers locations closest to the map's center.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Places the object on the free tile closest to the map center. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2664) on 2026-10-25."
     },
     {
       "name": "find_closest_to_map_edge",
-      "description": "Prefers locations closest to the map's edge.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Places the object on the free tile closest to the map edge. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2678) on 2026-10-25."
     },
     {
       "name": "force_placement",
-      "description": "Forces placement even if normal constraints would reject it.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Stacks extra objects on used tiles when free tiles run out. Units only, not buildings. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2734) on 2026-10-25."
     },
     {
       "name": "generate_for_first_land_only",
-      "description": "Restricts generation to only the first land created.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Places the object on only the first matching land when several qualify. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2330) on 2026-10-25."
     },
     {
       "name": "generate_mode",
@@ -2223,8 +2228,9 @@
           "description": "0 places lands in a cross-shaped area, never the corners. 1 allows anywhere, corners included. No effect on create_player_lands."
         }
       ],
-      "description": "Lets lands be placed anywhere, corners included. DE only.",
-      "verified": true
+      "description": "Set to 1 to let this land appear anywhere, corners included. The default 0 keeps it out of the corners. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:799) on 2026-10-25."
     },
     {
       "name": "group_placement_radius",
@@ -2235,9 +2241,9 @@
           "description": "Tiles out from the group's center, so 3 is a 7x7 area. Turns grouping on. Default 3."
         }
       ],
-      "description": "Keeps grouped objects within this many tiles of the group's center.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Tiles out from the group's center tile that its objects may use. Defaults to 3, a 7x7 area.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2095) on 2026-10-25."
     },
     {
       "name": "group_variance",
@@ -2248,9 +2254,9 @@
           "description": "Each group's object count varies by up to this much, independently. A group always has at least 1 object."
         }
       ],
-      "description": "Randomizes how many objects land in each group.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Randomly varies each group's size by up to this amount. A group always has at least 1 object.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2079) on 2026-10-25."
     },
     {
       "name": "height_limits",
@@ -2266,13 +2272,13 @@
           "description": "Highest height the terrain may go on, inclusive. 7 is the most create_elevation makes."
         }
       ],
-      "description": "Restricts this terrain to a range of elevation levels.",
+      "description": "Only places this terrain on tiles from the min height to the max height, inclusive.",
       "verified": true,
-      "notes": "Confirmed via the working create_terrain example in the source guide."
+      "notes": "Description checked against the guide's own entry (guide:1707) on 2026-10-25."
     },
     {
       "name": "ignore_terrain_restrictions",
-      "description": "Bypasses normal terrain-placement rules for this object. Only works alongside set_place_for_every_player or place_on_specific_land_id.",
+      "description": "Lets the object go on terrains it normally cannot. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
       "requiresOneOf": [
         "set_place_for_every_player",
         "place_on_specific_land_id"
@@ -2292,7 +2298,7 @@
           "description": "Higher keeps the land closer to its base_size shape. 0 or any negative does nothing and 100 overrides base_size. Documented as buggy, so avoid it."
         }
       ],
-      "description": "DE-only land-shape parameter. Noted as buggy in the source guide.",
+      "description": "Makes the land hug its starting square more (higher) or less (lower). The guide advises avoiding it because it is buggy. DE only.",
       "verified": true,
       "notes": "Guide explicitly flags this as buggy — worth a real playtest before relying on it."
     },
@@ -2306,8 +2312,9 @@
           "description": "Label that place_on_specific_land_id uses. Lands can share one. Write it after assign_to_player or assign_to, which reset it."
         }
       ],
-      "description": "Names this land so later commands (e.g. place_on_specific_land_id) can target it.",
-      "verified": true
+      "description": "Numbers this land so place_on_specific_land_id can target it. Several lands can share an id.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1139) on 2026-10-25."
     },
     {
       "name": "land_percent",
@@ -2355,9 +2362,9 @@
           "description": "Only places on this layering terrain. Does not work with terrain_mask 2, use terrain_to_place_on there."
         }
       ],
-      "description": "Restricts placement to a specific terrain layer.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Only places on tiles with this layered terrain on top. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2481) on 2026-10-25."
     },
     {
       "name": "left_border",
@@ -2372,21 +2379,21 @@
           "description": "Percent of map width to keep land away from the left edge (southwest). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
-      "description": "Minimum distance from the map's left edge.",
+      "description": "Keeps land this percent of the map width away from the left border, the southwest edge.",
       "verified": true,
       "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
     },
     {
       "name": "make_indestructible",
-      "description": "Placed objects cannot be destroyed.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Makes a placed building impossible to attack, damage or delete. Buildings only. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2407) on 2026-10-25."
     },
     {
       "name": "match_player_civ",
-      "description": "Placed objects visually match the owning player's civilization.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Gives each faction its correct starting scout. Documented for Star Wars Galactic Battlegrounds only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2911) on 2026-10-25."
     },
     {
       "name": "max_distance",
@@ -2405,9 +2412,9 @@
           "description": "Despite the name, the MINIMUM tiles objects stay from terrains they cannot be placed on, such as coastlines. Groups measure from their center."
         }
       ],
-      "description": "Minimum distance to keep from terrains the object cannot be placed on, despite the name.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Despite its name, a minimum distance in tiles to keep from terrains the object cannot be placed on.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2523) on 2026-10-25."
     },
     {
       "name": "max_distance_to_players",
@@ -2418,9 +2425,9 @@
           "description": "Furthest tiles from a player's origin. A negative value means no limit. Measured as a square unless set_circular_placement is used."
         }
       ],
-      "description": "Maximum distance to allow from any player's starting area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Maximum distance in tiles from the origin of the land the object is placed for, or of the land_id's land with place_on_specific_land_id. No effect without set_place_for_every_player or place_on_specific_land_id.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2420) on 2026-10-25."
     },
     {
       "name": "min_connected_tiles",
@@ -2431,9 +2438,9 @@
           "description": "Smallest connected placeable area a group may sit in. A bug biases objects to the top left, so prefer avoid_forest_zone or max_distance_to_other_zones."
         }
       ],
-      "description": "Minimum contiguous placeable area required.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Keeps grouped objects out of areas with fewer connected tiles than this. Buggy, it biases placement toward the top left. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2157) on 2026-10-25."
     },
     {
       "name": "min_distance",
@@ -2452,9 +2459,9 @@
           "description": "Tiles that this command's objects and all later ones stay from each object. Small values keep different resources apart."
         }
       ],
-      "description": "Minimum distance between separate placement groups.",
+      "description": "Minimum distance in tiles that this command's objects and every later object keep from each of its objects. Groups count by their center.",
       "verified": true,
-      "notes": "Widely used and unambiguous in community scripts, though this exact source fetch only gave the name — treat the argument shape as high-confidence but not source-verified."
+      "notes": "Description checked against the guide's own entry (guide:2607) on 2026-10-25."
     },
     {
       "name": "min_distance_to_map_edge",
@@ -2465,9 +2472,9 @@
           "description": "Tiles objects stay from the map edge. Groups measure from their center."
         }
       ],
-      "description": "Minimum distance to keep from the edge of the map.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Minimum distance in tiles to keep from the map edge. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2593) on 2026-10-25."
     },
     {
       "name": "min_distance_to_players",
@@ -2478,9 +2485,9 @@
           "description": "Closest tiles to a player's origin. Measured as a square unless set_circular_placement is used."
         }
       ],
-      "description": "Minimum distance to keep from any player's starting area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Minimum distance in tiles from the origin of the land the object is placed for, or of the land_id's land with place_on_specific_land_id. Without either, it keeps away from every player's origin.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2420) on 2026-10-25."
     },
     {
       "name": "min_placement_distance",
@@ -2491,8 +2498,9 @@
           "description": "Tiles from the origins of earlier lands when picking a random origin. Falls back to other_zone_avoidance_distance. No effect with land_position."
         }
       ],
-      "description": "Minimum distance between instances of this land. Defaults to other_zone_avoidance_distance's value.",
-      "verified": true
+      "description": "Minimum tiles between this land's origin and the origins of earlier lands. Defaults to other_zone_avoidance_distance. No effect with land_position.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1111) on 2026-10-25."
     },
     {
       "name": "number_of_clumps",
@@ -2504,8 +2512,9 @@
           "description": "How many separate clumps to make. Adjacent clumps can merge."
         }
       ],
-      "description": "How many separate blobs to split the placement into.",
-      "verified": true
+      "description": "Number of separate patches or hills to create. The tile count is divided between them.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1237) on 2026-10-25."
     },
     {
       "name": "number_of_groups",
@@ -2516,9 +2525,9 @@
           "description": "How many groups of number_of_objects to place, so the total is number_of_objects * number_of_groups."
         }
       ],
-      "description": "How many separate clusters to split the placement into.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Places this many groups. Each group has number_of_objects objects.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2065) on 2026-10-25."
     },
     {
       "name": "number_of_objects",
@@ -2529,9 +2538,9 @@
           "description": "How many to place. Keep it to 9320 or less with set_scaling_to_map_size."
         }
       ],
-      "description": "How many of this object to place.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Number of objects to place, or the size of each group when number_of_groups is set. Defaults to 1.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2053) on 2026-10-25."
     },
     {
       "name": "number_of_tiles",
@@ -2543,8 +2552,9 @@
         }
       ],
       "mutexWith": ["land_percent"],
-      "description": "Absolute tile count for this land, instead of a percentage.",
-      "verified": true
+      "description": "Sets the size as a fixed tile count, instead of a percentage of the map.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:747) on 2026-10-25."
     },
     {
       "name": "other_zone_avoidance_distance",
@@ -2556,14 +2566,15 @@
           "description": "Tiles kept from lands in a different zone. Both lands need it and the smaller value wins. Also spaces random origins apart."
         }
       ],
-      "description": "Minimum distance to keep from lands in other zones.",
-      "verified": true
+      "description": "Land growth stops this many tiles from lands in other zones. Both lands need it.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1086) on 2026-10-25."
     },
     {
       "name": "override_actor_radius_if_required",
-      "description": "Allows the actor area radius to be overridden if placement would otherwise fail.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Widens the actor area just enough to fit a building that is too big for it. Needs actor_area_to_place_in. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2799) on 2026-10-25."
     },
     {
       "name": "percent_of_land",
@@ -2609,10 +2620,10 @@
           "description": "Terrain it becomes."
         }
       ],
-      "description": "Replaces one terrain with another along the connection path.",
-      "verified": false,
+      "description": "Replaces the first terrain with the second wherever the connection passes through it.",
+      "verified": true,
       "repeatable": true,
-      "notes": "Name only — see default_terrain_replacement's notes."
+      "notes": "Description checked against the guide's own entry (guide:1905) on 2026-10-25."
     },
     {
       "name": "require_path",
@@ -2624,9 +2635,9 @@
           "description": "Deviation. 0 or omitted only rules out unreachable spots, 1 needs a mostly direct path, and higher allows more winding ones."
         }
       ],
-      "description": "Requires a valid path of the given type to reach this placement.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Requires a walkable path from the object to its land's origin. 0 allows indirect paths, 1 only direct ones, higher values allow more detours. Needs set_place_for_every_player or place_on_specific_land_id. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2710) on 2026-10-25."
     },
     {
       "name": "resource_delta",
@@ -2637,9 +2648,9 @@
           "description": "Added to each object's resource amount, and a negative value reduces it. Does not work on farms."
         }
       ],
-      "description": "Adjusts the resource amount carried by placed objects.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Adds to the resources in each placed object, or subtracts with a negative number. Not for farms.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2181) on 2026-10-25."
     },
     {
       "name": "right_border",
@@ -2654,7 +2665,7 @@
           "description": "Percent of map width to keep land away from the right edge (northeast). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
-      "description": "Minimum distance from the map's right edge.",
+      "description": "Keeps land this percent of the map width away from the right border, the northeast edge.",
       "verified": true,
       "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015."
     },
@@ -2667,9 +2678,9 @@
           "description": "Object placed on top of the main one. An invisible placeholder as the main object bypasses terrain restrictions."
         }
       ],
-      "description": "A secondary object type placed alongside the primary one.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Places this object on top of the main object. Each main object gets one. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2204) on 2026-10-25."
     },
     {
       "name": "set_avoid_player_start_areas",
@@ -2681,27 +2692,28 @@
           "description": "Tiles this terrain stays from player origins. Omitting the number means 13."
         }
       ],
-      "description": "Keeps this terrain away from player starting areas.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
+      "description": "Keeps this terrain this many tiles from player land origins. Without a number it uses 13.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1689) on 2026-10-25."
     },
     {
       "name": "set_building_capturable",
       "mutexWith": ["set_gaia_unconvertible"],
-      "description": "Allows placed Gaia buildings to be captured.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Makes a building switch to whoever most recently has units nearby. Buildings only. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2391) on 2026-10-25."
     },
     {
       "name": "set_circular_base",
-      "description": "Forces the land's base shape to be circular. DE only.",
-      "verified": true
+      "description": "Turns the land's starting square into a circle. A base_size of 3 or less stays square. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:784) on 2026-10-25."
     },
     {
       "name": "set_circular_placement",
-      "description": "Constrains placement to a circular area.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Measures min and max distance to players as a circle instead of a square. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2445) on 2026-10-25."
     },
     {
       "name": "set_facet",
@@ -2712,42 +2724,42 @@
           "description": "Sprite frame to draw, which for units is the direction they face. Below 0 gives the first frame. Does not work on buildings."
         }
       ],
-      "description": "Sets the visual facet/rotation variant used for placed objects.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Picks which frame of the object's sprite to place. For units that is the direction they face. 0 is random. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2893) on 2026-10-25."
     },
     {
       "name": "set_flat_terrain_only",
-      "description": "Only paints this terrain onto flat (non-elevated) ground.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
+      "description": "Keeps this terrain off slopes by the distance in spacing_to_other_terrain_types. Needs that attribute above 0.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1575) on 2026-10-25."
     },
     {
       "name": "set_gaia_object_only",
-      "description": "Placed objects belong to Gaia (neutral) rather than a player.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Makes the placed objects Gaia (neutral). Needed to place gold, stone, berries and animals for every player.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2352) on 2026-10-25."
     },
     {
       "name": "set_gaia_unconvertible",
       "mutexWith": ["set_building_capturable"],
-      "description": "Prevents Gaia-owned placed objects from being converted.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Makes Gaia objects unrescuable and hostile to players. Needs set_gaia_object_only. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2369) on 2026-10-25."
     },
     {
       "name": "set_loose_grouping",
       "mutexWith": ["set_tight_grouping"],
-      "description": "Allows more spread between grouped objects.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Group members can sit anywhere within group_placement_radius. This is the default grouping.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2135) on 2026-10-25."
     },
     {
       "name": "set_place_for_every_player",
       "mutexWith": ["place_on_specific_land_id"],
-      "description": "Ensures every player's land gets a copy of this placement.",
+      "description": "Places this command's objects separately for each player's land. Gaia objects also need set_gaia_object_only.",
       "verified": true,
-      "notes": "Behavior confirmed by the official Age of Empires support summary referencing this attribute; exact argument shape not independently verified here."
+      "notes": "Description checked against the guide's own entry (guide:2259) on 2026-10-25."
     },
     {
       "name": "set_position",
@@ -2775,29 +2787,30 @@
     {
       "name": "set_scaling_to_map_size",
       "mutexWith": ["set_scaling_to_player_number"],
-      "description": "Scales object count by map size.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Scales number_of_groups to the map size, or number_of_objects when there are no groups. Values refer to a 100x100 map.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2234) on 2026-10-25."
     },
     {
       "name": "set_scaling_to_player_number",
       "mutexWith": ["set_scaling_to_map_size"],
-      "description": "Scales object count by number of players.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Multiplies number_of_groups by the player count, or number_of_objects when there are no groups.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2248) on 2026-10-25."
     },
     {
       "name": "set_tight_grouping",
       "mutexWith": ["set_loose_grouping"],
-      "description": "Places grouped objects on adjacent tiles.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Group members must sit on adjacent tiles. Buildings larger than one tile are not placed.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2116) on 2026-10-25."
     },
     {
       "name": "set_zone_by_team",
       "mutexWith": ["zone", "set_zone_randomly"],
-      "description": "Assigns this land's zone automatically by team.",
-      "verified": true
+      "description": "Gives players on the same team the same zone. Meant for create_player_lands.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1050) on 2026-10-25."
     },
     {
       "name": "set_zone_randomly",
@@ -2816,8 +2829,9 @@
           "description": "Tiles per elevation level. Above 1 leaves rings of flat ground on a hill."
         }
       ],
-      "description": "Minimum spacing between elevation clumps.",
-      "verified": true
+      "description": "Tiles between each elevation level of a hill. Values above 1 leave flat rings.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1286) on 2026-10-25."
     },
     {
       "name": "spacing_to_other_terrain_types",
@@ -2828,9 +2842,9 @@
           "description": "Tiles to stay from other terrains already placed, and from cliffs. Does not apply to the same terrain, use a placeholder terrain for that."
         }
       ],
-      "description": "Minimum spacing to keep from other terrain-generation patches.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
+      "description": "Minimum distance this terrain keeps from other terrains and cliffs that exist when it is made.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1532) on 2026-10-25."
     },
     {
       "name": "spacing_to_specific_terrain",
@@ -2846,10 +2860,10 @@
           "description": "Tiles to stay from it. A larger spacing_to_other_terrain_types wins."
         }
       ],
-      "description": "Minimum spacing to keep from a specific named terrain.",
-      "verified": false,
+      "description": "Minimum distance in tiles to keep from one terrain. Repeat it for more terrains. DE only.",
+      "verified": true,
       "repeatable": true,
-      "notes": "Name only — see create_terrain's notes."
+      "notes": "Description checked against the guide's own entry (guide:1553) on 2026-10-25."
     },
     {
       "name": "temp_min_distance_group_placement",
@@ -2860,9 +2874,9 @@
           "description": "Like min_distance_group_placement but only for this create_object. Good for scattering neutral resources and relics."
         }
       ],
-      "description": "Temporary override of min_distance_group_placement for this placement only.",
-      "verified": false,
-      "notes": "Name only — see create_object's notes."
+      "description": "Minimum distance in tiles between the objects or groups of this command only. Later commands ignore it.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:2628) on 2026-10-25."
     },
     {
       "name": "temp_min_distance_to_players",
@@ -2886,10 +2900,10 @@
           "description": "Higher makes the connection route around the terrain, and equal costs give straight lines. 0 or less blocks it entirely."
         }
       ],
-      "description": "Pathfinding cost weight for a terrain when routing this connection.",
-      "verified": false,
+      "description": "How costly it is for the connection to cross this terrain. Higher values avoid it, 0 or less forbids it. Defaults to 1.",
+      "verified": true,
       "repeatable": true,
-      "notes": "Name only — see default_terrain_replacement's notes."
+      "notes": "Description checked against the guide's own entry (guide:1925) on 2026-10-25."
     },
     {
       "name": "terrain_mask",
@@ -2900,9 +2914,9 @@
           "description": "1 masks over the base terrain and inherits its properties. 2 masks under it and brings new ones. 0 is no masking."
         }
       ],
-      "description": "Restricts which underlying terrains this patch can be painted over.",
-      "verified": false,
-      "notes": "Name only — see create_terrain's notes."
+      "description": "Blends the new terrain with the base terrain. 1 layers it over the base terrain, 2 puts it underneath. DE only.",
+      "verified": true,
+      "notes": "Description checked against the guide's own entry (guide:1502) on 2026-10-25."
     },
     {
       "name": "terrain_size",
@@ -2923,10 +2937,10 @@
           "description": "Random change to the radius for each tile crossed. Bigger than the radius can shrink it to nothing."
         }
       ],
-      "description": "Radius and variance of the area replaced where a connection crosses this terrain.",
-      "verified": false,
+      "description": "Radius and variance of the strip replaced where a connection crosses this terrain.",
+      "verified": true,
       "repeatable": true,
-      "notes": "Name only — see default_terrain_replacement's notes."
+      "notes": "Description checked against the guide's own entry (guide:1954) on 2026-10-25."
     },
     {
       "name": "terrain_to_place_on",
@@ -2965,7 +2979,7 @@
           "description": "Percent of map width to keep land away from the top edge (northwest). A negative value needs a land_position inside the map or a large base_size."
         }
       ],
-      "description": "Minimum distance from the map's top edge.",
+      "description": "Keeps land this percent of the map width away from the top border, the northwest edge.",
       "verified": true,
       "notes": "Guide documents 0-99 as the typical range but explicitly allows negative values, as long as the land origin stays inside the map (e.g. via land_position or a large enough base_size) — so no lower bound is enforced here. Float values accepted since Update 153015. BUG (guide-documented): asymmetric borders for player lands can misbehave when top_border is larger than the other borders — always pair it with another border."
     },

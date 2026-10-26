@@ -4,7 +4,11 @@ import { MapHeader } from "./components/MapHeader";
 import { TabBar } from "./components/TabBar";
 import { MapSidePanel } from "./components/sidepanel/MapSidePanel";
 import { ToolsPane } from "./tools/ToolsPane";
-import { ToolsSideColumn, ToolsSlotsProvider } from "./tools/ToolsSlots";
+import {
+  ToolsHeaderSlot,
+  ToolsSideColumn,
+  ToolsSlotsProvider,
+} from "./tools/ToolsSlots";
 import {
   CodePane,
   getActiveCodeEditor,
@@ -18,7 +22,6 @@ import { BreakdownPane } from "./breakdown/BreakdownPane";
 import { StatusBar } from "./components/StatusBar";
 import { SettingsDialog } from "./components/settings/SettingsDialog";
 import { UnsavedChangesDialog } from "./components/UnsavedChangesDialog";
-import { GenerationSettingsDialog } from "./components/GenerationSettingsDialog";
 import { HelpSettingsProvider } from "./help/HelpSettingsContext";
 import {
   AppSettingsProvider,
@@ -63,6 +66,7 @@ import { buildBugReportUrl, FEATURE_REQUEST_URL } from "./bugReport";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useDocument, getDocumentModel } from "./hooks/useDocument";
 import { useSharedSelection } from "./hooks/useSharedSelection";
+import { useRememberedTab } from "./hooks/useRememberedTab";
 import { useParsedDocument } from "./useParsedDocument";
 import { ParsedDocumentProvider } from "./ParsedDocumentContext";
 import { PreviewCutProvider, usePreviewCut } from "./PreviewCutContext";
@@ -206,19 +210,14 @@ function StatusBarContainer({
 // itself.
 function AppContent() {
   // activeTab is "lifted" here because both TabBar (which sets it) and
-  // the panes below (which read it) need access to the same value.
-  const [activeTab, setActiveTab] = useState<TabId>("breakdown");
+  // the panes below (which read it) need access to the same value. A launch
+  // opens on whichever of Breakdown or Code was used last (useRememberedTab.ts).
+  const [activeTab, setActiveTab] = useRememberedTab();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // Open/close flag lives on GenerationSettingsContext, not here: the
-  // dialog is opened from PreviewPane's own settings button (beta feedback
-  // moved it off the status bar, since that's the pane these settings
-  // actually feed), which reads `openDialog` from the same context directly
-  // rather than through a prop passed down from here. This component only
-  // needs the other half, to render the dialog itself.
-  const {
-    isDialogOpen: generationSettingsOpen,
-    closeDialog: closeGenerationSettings,
-  } = useGenerationSettings();
+  // The Generation Settings box lives over the map preview, and its open
+  // flag lives on GenerationSettingsContext. This component only flips it,
+  // from the hotkey below.
+  const { toggleDialog: toggleGenerationSettings } = useGenerationSettings();
   // tutorial-design.md Sec.5.3, the "appTab" navigator a step's
   // `navigate.tab` drives. Registered here (rather than inside
   // TutorialProvider itself) because setActiveTab only exists below it.
@@ -348,6 +347,29 @@ function AppContent() {
     sidePanelTab,
     setSidePanelTab,
     activeTab,
+    setActiveTab,
+  ]);
+
+  // Generation Settings (Ctrl+D by default). Only while focus is in the map
+  // preview (the side panel's Preview tab). Anywhere else the press is left
+  // alone, which also keeps the Code tab's own Ctrl+D (add the next match to
+  // the selection) working. A separate listener from the one above because
+  // that one acts everywhere, and this binding must not.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (recordingId !== null) return;
+      if (!matchesHotkey(event, hotkeys.generationSettings)) return;
+      if (sidePanelTab !== "preview" || !isSidePanelKeyEvent(event)) return;
+      event.preventDefault();
+      toggleGenerationSettings();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    hotkeys.generationSettings,
+    recordingId,
+    sidePanelTab,
+    toggleGenerationSettings,
   ]);
 
   // Undo/Redo act on the shared Monaco model directly, the same target
@@ -529,12 +551,14 @@ function AppContent() {
                     <ToolsSideColumn />
                   )}
                   <div className={styles.workspaceMain}>
-                    <MapHeader
-                      mapName={doc.mapName}
-                      lastSavedAt={doc.lastSavedAt}
-                    >
-                      <TabBar activeTab={activeTab} onSelect={setActiveTab} />
-                    </MapHeader>
+                    <ToolsHeaderSlot>
+                      <MapHeader
+                        mapName={doc.mapName}
+                        lastSavedAt={doc.lastSavedAt}
+                      >
+                        <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+                      </MapHeader>
+                    </ToolsHeaderSlot>
                     <ToolHostProvider>
                       {/* The Land Placement panel's own AlpModel + selection, lifted
                   above the tab switch for the same reason ToolHost itself is
@@ -549,6 +573,10 @@ function AppContent() {
                               applyTextEdits={doc.applyTextEdits}
                               reparseNow={parsed.reparseNow}
                               selection={selection}
+                              onEditInCode={(offset) => {
+                                selection.setAnchor(offset);
+                                setActiveTab("code");
+                              }}
                             />
                           )}
                           {activeTab === "code" && (
@@ -625,9 +653,6 @@ function AppContent() {
           mapName={doc.mapName}
           onChoice={doc.resolveUnsavedChoice}
         />
-      )}
-      {generationSettingsOpen && (
-        <GenerationSettingsDialog onClose={closeGenerationSettings} />
       )}
     </div>
   );

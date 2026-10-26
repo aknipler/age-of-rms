@@ -16,7 +16,7 @@ import {
   type SlotKind,
   type StaticNameIndex,
 } from "../parser/nameLookup";
-import type { Item, ParseResult, Token } from "../parser/types";
+import type { Diagnostic, Item, ParseResult, Token } from "../parser/types";
 import { COMMENT_OPEN_ID } from "../parser/validate";
 import { caretContext } from "./caretContext";
 
@@ -121,7 +121,16 @@ export function constOffersAt(
   if (index === undefined) return [];
   const token = parse.tokens[index];
   const ctx = caretContext(text, token.end, lang, parse);
-  if (!isConstSlot(ctx.slot) || ctx.wordStart !== token.start) return [];
+  // An `if` condition counts for the move offer only. A name that is not
+  // defined at all proves nothing about a condition (the engine sets labels
+  // we have never heard of), so the create offers stay with value slots.
+  const slot = ctx.slot;
+  if (
+    slot === null ||
+    !(isConstSlot(slot) || slot.kind === "condition") ||
+    ctx.wordStart !== token.start
+  )
+    return [];
   const name = token.text;
 
   const run = (intent: EditIntent) => {
@@ -133,7 +142,7 @@ export function constOffersAt(
     }
   };
 
-  const offer = unknownNameOffer(stat, script, name, token.start, ctx.slot);
+  const offer = unknownNameOffer(stat, script, name, token.start, slot);
   if (offer) {
     const out: ConstOffer[] = [];
     if (offer.didYouMean)
@@ -160,7 +169,7 @@ export function constOffersAt(
     return out;
   }
 
-  const resolved = resolveName(stat, script, name, token.start, ctx.slot);
+  const resolved = resolveName(stat, script, name, token.start, slot);
   if (resolved.kind !== "definedBelow") return [];
   const plan = moveUpPlan(script, name, token.start);
   if (!plan.ok) return [];
@@ -172,4 +181,38 @@ export function constOffersAt(
   return result
     ? [{ title: "Move the #const up here", edits: editsOf(result) }]
     : [];
+}
+
+/**
+ * "Change to X" for a diagnostic that carries a did-you-mean (`suggestion`)
+ * at `offset`. These are the parser's and validator's own typo findings, such
+ * as an unknown command or attribute (RMS0200) or a misspelled condition
+ * label (RMS0300). The Breakdown's raw card already applies them, and this is
+ * the Code tab's version of the same button.
+ *
+ * Every diagnostic that sets `suggestion` marks a single token and the
+ * suggestion replaces that token's text, so one replacement covers them all.
+ * `diagnosticsSource` is the text the diagnostics were computed for. Their
+ * offsets are void against any other text, the same staleness rule as
+ * `constOffersAt`.
+ */
+export function suggestionOffersAt(
+  text: string,
+  offset: number,
+  diagnosticsSource: string,
+  diagnostics: readonly Diagnostic[],
+): ConstOffer[] {
+  if (diagnosticsSource !== text) return [];
+  const out: ConstOffer[] = [];
+  for (const d of diagnostics) {
+    if (d.suggestion === undefined) continue;
+    if (offset < d.span.start || offset > d.span.end) continue;
+    const title = `Change to ${d.suggestion}`;
+    if (out.some((o) => o.title === title)) continue;
+    out.push({
+      title,
+      edits: [{ start: d.span.start, end: d.span.end, newText: d.suggestion }],
+    });
+  }
+  return out;
 }

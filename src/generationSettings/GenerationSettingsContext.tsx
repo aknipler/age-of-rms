@@ -80,19 +80,18 @@ interface GenerationSettingsValue {
   teamPositions: boolean;
   setTeamPositions: (on: boolean) => void;
   /**
-   * Whether GenerationSettingsDialog is open. Lives here rather than as
-   * local state in App.tsx (which renders the dialog) because the button
-   * that opens it now lives on PreviewPane (beta feedback: it used to be a
-   * status-bar cog, hard to find, moved to sit next to the Current/Final
-   * toggle it actually feeds), and PreviewPane is deliberately prop-less
-   * (MapSidePanel's own contract — see its header) so it can only reach this
-   * flag through a context, not a callback passed down from App. Ephemeral,
-   * not persisted: unlike the rest of this context, there is no reason a
-   * closed dialog should reopen on the next launch.
+   * Whether the settings box over the map preview is open
+   * (GenerationSettingsPanel). Lives here rather than as local state in the
+   * preview because two places outside it flip the flag, the Generation
+   * Settings hotkey in App.tsx and the cog on the map, and neither can hand
+   * the other a callback. Ephemeral, not persisted: unlike the rest of this
+   * context, there is no reason a closed box should reopen on the next
+   * launch. The "Dialog" in the names predates the box moving onto the map.
    */
   isDialogOpen: boolean;
   openDialog: () => void;
   closeDialog: () => void;
+  toggleDialog: () => void;
 }
 
 const GenerationSettingsContext = createContext<GenerationSettingsValue | null>(
@@ -118,6 +117,7 @@ export function GenerationSettingsProvider({
 
   const openDialog = useCallback(() => setIsDialogOpen(true), []);
   const closeDialog = useCallback(() => setIsDialogOpen(false), []);
+  const toggleDialog = useCallback(() => setIsDialogOpen((open) => !open), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -304,6 +304,7 @@ export function GenerationSettingsProvider({
       isDialogOpen,
       openDialog,
       closeDialog,
+      toggleDialog,
     }),
     [
       playerCount,
@@ -321,6 +322,7 @@ export function GenerationSettingsProvider({
       isDialogOpen,
       openDialog,
       closeDialog,
+      toggleDialog,
     ],
   );
 

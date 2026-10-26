@@ -75,13 +75,15 @@ function InlineCommentField({ span }: { span: Span }) {
             className={styles.field}
             defaultValue={shown}
             // Sized to its text, so a short note stays short on the row.
-            size={Math.max(4, shown.length + 1)}
+            // `field-sizing: content` (InlineComment.module.css) does the
+            // fitting exactly. `size` is only the fallback for an engine
+            // without it, and it counts average-width characters, so it
+            // used to leave about one blank character before the closing
+            // marker (the extra +1 here) with no way to get it tighter.
+            size={Math.max(1, shown.length)}
             aria-label="Inline comment"
             onInput={(e) => {
-              e.currentTarget.size = Math.max(
-                4,
-                e.currentTarget.value.length + 1,
-              );
+              e.currentTarget.size = Math.max(1, e.currentTarget.value.length);
             }}
             onBlur={(e) => commit(e.currentTarget.value)}
             onKeyDown={(e) => {

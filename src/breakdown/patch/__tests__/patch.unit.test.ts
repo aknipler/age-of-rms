@@ -630,6 +630,81 @@ describe("removeRaw (a raw card's delete button)", () => {
   });
 });
 
+// Every card can be deleted, so the two kinds that lacked a Delete button (a
+// shared block and a stray attribute) go through removeNode like a command.
+describe("removeNode on a shared block and a stray attribute", () => {
+  it("removes a shared block with the cards inside it", () => {
+    const src =
+      "<OBJECTS_GENERATION>\nstart_random\npercent_chance 50\ncreate_object GOLD\nend_random\n{\nnumber_of_objects 4\n}\ncreate_object STONE";
+    const items = parse(src).script.sections[0].items;
+    const orphan = items.find((i) => i.kind === "orphanBlock");
+    expect(orphan).toBeDefined();
+    const { edit } = computeEdit(
+      parse(src),
+      { kind: "removeNode", node: orphan as never },
+      lang,
+    );
+    const out = applyEdit(src, edit);
+    expect(out).not.toContain("number_of_objects 4");
+    expect(out).not.toContain("{");
+    expect(out).toContain("end_random");
+    expect(out).toContain("create_object STONE");
+  });
+
+  // The reported case. A stray `{` inside create_land takes the command's own
+  // `}` as its closer, so deleting the block's whole span removed that brace
+  // too and left create_land open.
+  it("removes only a stray opening brace that holds the command's own closer", () => {
+    const src =
+      "<LAND_GENERATION>\ncreate_land {\nterrain_type GRASS\n{\nbase_size 9\n}\ncreate_land { terrain_type DIRT }";
+    const a = parse(src);
+    const orphan = (
+      a.script.sections[0].items[0] as { block: { items: { kind: string }[] } }
+    ).block.items.find((i) => i.kind === "orphanBlock");
+    expect(orphan).toBeDefined();
+    const { edit } = computeEdit(
+      a,
+      { kind: "removeNode", node: orphan as never },
+      lang,
+    );
+    const out = applyEdit(src, edit);
+    expect(out).toBe(
+      "<LAND_GENERATION>\ncreate_land {\nterrain_type GRASS\nbase_size 9\n}\ncreate_land { terrain_type DIRT }",
+    );
+    const codes = parse(out).diagnostics.map((d) => d.code);
+    expect(codes).not.toContain("RMS0103");
+    expect(codes).not.toContain("RMS0102");
+  });
+
+  it("refuses an unclosed block, whose span runs over what follows", () => {
+    const src =
+      "<LAND_GENERATION>\nstart_random\npercent_chance 50\ncreate_land\nend_random\n{\nland_position 13 {\n}\ncreate_land { terrain_type GRASS }";
+    const orphan = parse(src).script.sections[0].items.find(
+      (i) => i.kind === "orphanBlock",
+    );
+    expect(orphan).toBeDefined();
+    expect(() =>
+      computeEdit(
+        parse(src),
+        { kind: "removeNode", node: orphan as never },
+        lang,
+      ),
+    ).toThrow(PatchError);
+  });
+
+  it("removes a stray attribute line and leaves its neighbours alone", () => {
+    const src =
+      "<OBJECTS_GENERATION>\ncreate_object GOLD\nnumber_of_objects 4\ncreate_object STONE";
+    const items = parse(src).script.sections[0].items;
+    const stray = items.find((i) => i.kind === "attribute");
+    expect(stray).toBeDefined();
+    const { out } = run(src, { kind: "removeNode", node: stray as never });
+    expect(out).toBe(
+      "<OBJECTS_GENERATION>\ncreate_object GOLD\ncreate_object STONE",
+    );
+  });
+});
+
 describe("insertText (Object Templates, docs/object-templates-brief.md)", () => {
   // A tab-per-level canonical block, same shape templates.ts produces:
   // a header comment, then a create_object at indent 0 with one

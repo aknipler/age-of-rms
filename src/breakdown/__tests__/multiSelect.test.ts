@@ -16,6 +16,8 @@ import { commentCardPlaces, extractComments } from "../comments";
 import type { CommentRef } from "../patch/intents";
 import {
   resolveShownIds,
+  shownAfterCtrlClick,
+  shownAfterRangeClick,
   shownAfterTabClick,
   shownAfterToggle,
 } from "../viewScope";
@@ -307,5 +309,58 @@ describe("view scope", () => {
       shownAfterToggle(["header", "OBJECTS_GENERATION"], "header", ids),
     ).toEqual(["OBJECTS_GENERATION"]);
     expect(shownAfterToggle(["header"], "header", ids)).toEqual(["header"]);
+  });
+
+  it("a Ctrl click adds a hidden tab in tab order and removes a shown one", () => {
+    expect(
+      shownAfterCtrlClick(["OBJECTS_GENERATION"], "PLAYER_SETUP", ids),
+    ).toEqual(["PLAYER_SETUP", "OBJECTS_GENERATION"]);
+    const shown = ["LAND_GENERATION", "OBJECTS_GENERATION"];
+    expect(shownAfterCtrlClick(shown, "LAND_GENERATION", ids)).toEqual([
+      "OBJECTS_GENERATION",
+    ]);
+  });
+
+  it("a Ctrl click on the only shown tab keeps it", () => {
+    expect(
+      shownAfterCtrlClick(["LAND_GENERATION"], "LAND_GENERATION", ids),
+    ).toEqual(["LAND_GENERATION"]);
+  });
+
+  it("a Shift click shows the run from the focus tab, either direction", () => {
+    expect(
+      shownAfterRangeClick(
+        ["header"],
+        "PLAYER_SETUP",
+        "OBJECTS_GENERATION",
+        ids,
+      ),
+    ).toEqual(["PLAYER_SETUP", "LAND_GENERATION", "OBJECTS_GENERATION"]);
+    expect(
+      shownAfterRangeClick(
+        ["header"],
+        "OBJECTS_GENERATION",
+        "PLAYER_SETUP",
+        ids,
+      ),
+    ).toEqual(["PLAYER_SETUP", "LAND_GENERATION", "OBJECTS_GENERATION"]);
+    // The run replaces what was shown, as Shift does in a file list.
+    expect(
+      shownAfterRangeClick(
+        ["header"],
+        "LAND_GENERATION",
+        "LAND_GENERATION",
+        ids,
+      ),
+    ).toEqual(["LAND_GENERATION"]);
+  });
+
+  it("a Shift click with no usable focus tab acts as a plain click", () => {
+    expect(
+      shownAfterRangeClick(["header"], null, "LAND_GENERATION", ids),
+    ).toEqual(["LAND_GENERATION"]);
+    expect(
+      shownAfterRangeClick(["header"], "unknown:FOO", "LAND_GENERATION", ids),
+    ).toEqual(["LAND_GENERATION"]);
   });
 });

@@ -110,8 +110,7 @@ interface TemplateDialogProps {
 // other dialog in the app (UnsavedChangesDialog, CommandPicker).
 //
 // Deliberately its own component rather than folded into SectionView:
-// GenerationSettingsDialog is the sibling shape this follows, a focused
-// dialog with its own local option state, opened from one button.
+// a focused dialog with its own local option state, opened from one button.
 export function TemplateDialog({
   section,
   script,

@@ -3,7 +3,9 @@ import { load } from "@tauri-apps/plugin-store";
 import languageDataRaw from "../../reference/data/language.json";
 import gameConstantsDataRaw from "../../reference/data/game-constants.json";
 import docStringsDataRaw from "../../reference/data/doc-strings.json";
-import { describeScriptName } from "./aoe2RmsCompletion";
+import { describeScriptName, getNameLookupParse } from "./aoe2RmsCompletion";
+import { insideComment } from "./caretContext";
+import { constantHoverLine } from "./constantHover";
 import {
   HELP_MODE_KEY,
   HELP_STORE_FILE,
@@ -72,6 +74,7 @@ interface GameConstant {
   descriptiveName: string;
   category: "terrain" | "object";
   deTextureFile: string | null;
+  classId?: number;
   resourceAmounts?: {
     food?: number;
     wood?: number;
@@ -161,14 +164,16 @@ function collectCautions(args: Argument[] | undefined): string[] {
 // Builds the hover popup body: a code-block signature, then the doc
 // string (falling back to language.json's own description if
 // reference/data/doc-strings.json doesn't have an entry yet), then any
-// argument-level cautions, then an unverified-data caveat when relevant
-// so users know to double check against the real docs rather than trust
-// it blindly.
+// argument-level cautions.
+//
+// No "not yet verified" line. The data's `verified` flag is a maintainer's
+// bookkeeping about where a description came from, and a reader can do
+// nothing with it. The reference table still shows the flag for people
+// auditing the data.
 function buildHoverContents(
   signature: string,
   summary: string | undefined,
   details: string | undefined,
-  verified: boolean,
   cautions: string[] = [],
 ): monaco.IMarkdownString[] {
   const parts = ["```aoe2-rms\n" + signature + "\n```"];
@@ -177,22 +182,8 @@ function buildHoverContents(
   for (const caution of cautions) {
     parts.push(`⚠️ **Caution:** ${caution}`);
   }
-  if (!verified) {
-    parts.push(
-      "_Not yet verified against the official docs — see `reference/data/language.json`._",
-    );
-  }
   return [{ value: parts.join("\n\n") }];
 }
-
-const FALLBACK_CONTENTS: monaco.IMarkdownString[] = [
-  {
-    value:
-      "_No documentation yet — contribute an entry to `reference/data/doc-strings.json` (see CONTRIBUTING.md)._",
-  },
-];
-
-const IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 export function registerAoe2RmsHoverProvider() {
   monaco.languages.registerHoverProvider("aoe2-rms", {
@@ -217,6 +208,14 @@ export function registerAoe2RmsHoverProvider() {
       if (!wordInfo) return null;
 
       const { word, startColumn, endColumn } = wordInfo;
+      // A comment is prose. Its words are not names, so nothing about them
+      // is worth a popup.
+      const wordEnd = model.getOffsetAt({
+        lineNumber: position.lineNumber,
+        column: endColumn,
+      });
+      if (insideComment(model.getValue(), wordEnd, getNameLookupParse()))
+        return null;
       const lineContent = model.getLineContent(position.lineNumber);
       // getWordAtPosition excludes leading punctuation, so a directive
       // like #const is returned as just "const". Check the character
@@ -238,7 +237,6 @@ export function registerAoe2RmsHoverProvider() {
               formatAttributeSignature(directive),
               doc?.summary ?? directive.description,
               doc?.details,
-              directive.verified,
               collectCautions(directive.arguments),
             ),
           };
@@ -261,7 +259,6 @@ export function registerAoe2RmsHoverProvider() {
             formatCommandSignature(command),
             doc?.summary ?? command.description,
             doc?.details,
-            command.verified,
             collectCautions(command.arguments),
           ),
         };
@@ -276,7 +273,6 @@ export function registerAoe2RmsHoverProvider() {
             formatAttributeSignature(attribute),
             doc?.summary ?? attribute.description,
             doc?.details,
-            attribute.verified,
             collectCautions(attribute.arguments),
           ),
         };
@@ -291,23 +287,16 @@ export function registerAoe2RmsHoverProvider() {
             word,
             doc?.summary ?? controlKeyword.description,
             doc?.details,
-            controlKeyword.verified,
           ),
         };
       }
 
+      // One plain line, no signature block. The word is already on screen,
+      // so a title that repeats it and a description that repeats the title
+      // told the reader nothing.
       const constant = CONSTANTS_BY_NAME.get(word);
       if (constant) {
-        const doc = DOC_STRINGS_BY_KEY.get(word);
-        return {
-          range,
-          contents: buildHoverContents(
-            `${constant.rmsConstant} — ${constant.category} constant`,
-            doc?.summary ?? constant.descriptiveName,
-            doc?.details,
-            constant.verified,
-          ),
-        };
+        return { range, contents: [{ value: constantHoverLine(constant) }] };
       }
 
       if (SECTION_NAMES.has(word)) {
@@ -315,9 +304,8 @@ export function registerAoe2RmsHoverProvider() {
           range,
           contents: buildHoverContents(
             `<${word}>`,
-            "Section header — groups the commands generated during this phase of map creation.",
+            "Section header. Groups the commands that run in this stage of map creation.",
             undefined,
-            true,
           ),
         };
       }
@@ -328,19 +316,15 @@ export function registerAoe2RmsHoverProvider() {
       // END, so hovering the definition itself counts it as above.
       const scriptLine = describeScriptName(
         word,
-        model.getOffsetAt({
-          lineNumber: position.lineNumber,
-          column: endColumn,
-        }),
+        wordEnd,
+        wordEnd - word.length,
       );
       if (scriptLine) {
         return { range, contents: [{ value: scriptLine }] };
       }
 
-      if (IDENTIFIER_PATTERN.test(word)) {
-        return { range, contents: FALLBACK_CONTENTS };
-      }
-
+      // Nothing we know of. A miss proves nothing about the game (the
+      // constants table covers only part of it), so say nothing.
       return null;
     },
   });

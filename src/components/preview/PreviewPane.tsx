@@ -4,6 +4,8 @@ import { useGenerationSettings } from "../../generationSettings/GenerationSettin
 import gameConstantsRaw from "../../../reference/data/game-constants.json";
 import {
   createTerrainPalette,
+  cssColor,
+  type TerrainColorMode,
   type TerrainConstant,
 } from "../../preview/render/palette";
 import { usePreviewResultContext } from "../../PreviewResultContext";
@@ -120,6 +122,38 @@ function TileReadout({ tile }: { tile: TileInfo }) {
         </ReadoutRow>
       ))}
     </dl>
+  );
+}
+
+// One terrain per tile of the Minimap icon: water, grass, sand, forest, which
+// the icon lays out as the four tiles of a small isometric map. Ids are the
+// dat's terrain indices (game-constants.json `constId`). Both palettes are
+// built once here, since the colours depend only on the data and the mode and
+// the icon redraws on every toggle.
+const MINIMAP_ICON_TERRAINS = [1, 0, 14, 10] as const;
+const ICON_PALETTES = {
+  game: createTerrainPalette(terrainConstants, "game"),
+  minimap: createTerrainPalette(terrainConstants, "minimap"),
+};
+
+/**
+ * Four tiles in the colours of the active mode. Game mode paints the mean
+ * texture colours (muted, as the map looks), Minimap paints the game's flat
+ * colour classes (saturated, as its own minimap does), so the icon shows the
+ * difference the toggle makes.
+ */
+function MinimapIcon({ mode }: { mode: TerrainColorMode }) {
+  const palette = ICON_PALETTES[mode];
+  const [top, right, bottom, left] = MINIMAP_ICON_TERRAINS.map((id) =>
+    cssColor(palette.colorFor(id)),
+  );
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d="M8 1.5 11.25 4.75 8 8 4.75 4.75Z" fill={top} />
+      <path d="M11.25 4.75 14.5 8 11.25 11.25 8 8Z" fill={right} />
+      <path d="M8 8 11.25 11.25 8 14.5 4.75 11.25Z" fill={bottom} />
+      <path d="M4.75 4.75 8 8 4.75 11.25 1.5 8Z" fill={left} />
+    </svg>
   );
 }
 
@@ -369,7 +403,8 @@ export function PreviewPane() {
 }
 
 /**
- * The preview's settings, Current, pin, Minimap, seed and re-roll.
+ * The preview's Current, pin, Minimap, seed and re-roll. The generation
+ * settings button lives on the map itself (PreviewCornerControls).
  *
  * Its own component, rendered by MapSidePanel in the panel's top row beside
  * the Preview and Reference tabs, rather than inside PreviewPane above the
@@ -380,33 +415,15 @@ export function PreviewPane() {
 export function PreviewControls() {
   const { view, setView, seed, setSeed, reseed, colorMode, setColorMode } =
     usePreviewView();
-  const { openDialog: openGenerationSettings } = useGenerationSettings();
 
   return (
     <div className={styles.controls}>
-      {/* Left cluster: settings, view toggle, pin, colour mode. Right
+      {/* Left cluster: view toggle, pin, colour mode. Right
           cluster: seed + re-roll. Two flex children of `.controls` (itself
           `justify-content: space-between`) rather than one flat row, so the
           right cluster sits pinned to the row's right edge regardless of how
           many controls are in the left one. */}
       <div className={styles.controlsGroup}>
-        {/*
-            Beta feedback: the status bar's settings cog was hard to find, and
-            testers expected map size / player count controls to live in the
-            preview pane itself, since that's what they change. Placed before
-            the View toggle rather than in a row of its own, since it opens a
-            dialog and does not need to show any state inline.
-          */}
-        <HelpTip id="preview.generationSettings">
-          <button
-            type="button"
-            className={styles.settingsButton}
-            onClick={openGenerationSettings}
-            aria-label="Generation settings"
-          >
-            ⚙
-          </button>
-        </HelpTip>
         {/*
             The id is the existing `breakdown.sidePanel.previewToggle` rather
             than a new `preview.toggle`. Sec.5 lists the latter "if the pane
@@ -416,35 +433,43 @@ export function PreviewControls() {
             thing.
           */}
         <HelpTip id="breakdown.sidePanel.previewToggle">
-          <label className={styles.toggle}>
-            <input
-              type="checkbox"
-              checked={view === "current"}
-              onChange={(event) =>
-                setView(event.target.checked ? "current" : "final")
-              }
-            />
-            Current
-          </label>
+          <button
+            type="button"
+            className={
+              view === "current"
+                ? `${styles.textToggle} ${styles.iconToggleOn}`
+                : styles.textToggle
+            }
+            aria-pressed={view === "current"}
+            onClick={() => setView(view === "current" ? "final" : "current")}
+          >
+            Truncate at Cursor
+          </button>
         </HelpTip>
         {view === "current" && <PinControl />}
         {/*
             Two real colour sources, not a cosmetic skin. Each resolves what the
             other collapses (see palette.ts's header). Game is the default, so
-            unticked is Game and ticked is Minimap, the game data's own coarser
-            colour class.
+            off is Game and on is Minimap, the game data's own coarser colour
+            class. The icon's four tiles are painted in the colours of the mode
+            that is showing, so the button previews its own state.
           */}
         <HelpTip id="preview.colorMode">
-          <label className={styles.toggle}>
-            <input
-              type="checkbox"
-              checked={colorMode === "minimap"}
-              onChange={(event) =>
-                setColorMode(event.target.checked ? "minimap" : "game")
-              }
-            />
-            Minimap
-          </label>
+          <button
+            type="button"
+            className={
+              colorMode === "minimap"
+                ? `${styles.iconToggle} ${styles.iconToggleOn}`
+                : styles.iconToggle
+            }
+            aria-pressed={colorMode === "minimap"}
+            aria-label="Minimap colours"
+            onClick={() =>
+              setColorMode(colorMode === "minimap" ? "game" : "minimap")
+            }
+          >
+            <MinimapIcon mode={colorMode} />
+          </button>
         </HelpTip>
       </div>
 

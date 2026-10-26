@@ -438,10 +438,13 @@ class Parser {
       while (this.frames.length > 0) {
         const top = this.frames[this.frames.length - 1];
         if (top.type !== "block") break;
+        const openTok = this.tokens[top.node.open];
         this.diagnostics.push(
-          d.sectionHeaderInBlock(
+          ...d.sectionHeaderInBlock(
             headerTok,
-            this.lineOf(this.tokens[top.node.open].start),
+            openTok,
+            this.lineOf(openTok.start),
+            this.lineOf(headerTok.start),
           ),
         );
         this.closeBlockFrame(top, undefined);
@@ -1211,13 +1214,19 @@ class Parser {
         } else {
           // Not a number, not inf, not ours. Either genuinely undefined, or
           // defined in an include we can't read, the builder distinguishes.
-          this.diagnostics.push(
-            d.unresolvedConstantInNumericSlot(
-              tok,
-              argDef,
-              this.includes.length > 0,
-            ),
+          const diagnostic = d.unresolvedConstantInNumericSlot(
+            tok,
+            argDef,
+            this.includes.length > 0,
           );
+          this.diagnostics.push(diagnostic);
+          // Held for explainDefinedBelow, which needs the whole symbol table.
+          this.unresolvedNumericUses.push({
+            diagnostic,
+            tokenIdx,
+            argDef,
+            includesPresent: this.includes.length > 0,
+          });
         }
       }
       // Constant/string slots accept words (and numbers) freely, Sec.2.1(1).
@@ -1268,6 +1277,40 @@ class Parser {
    * `this.lang.data.predefinedLabels ?? []`; do not hardcode a name list
    * (CLAUDE.md: vocabulary is data-driven).
    */
+  /**
+   * RMS0202s for a name no earlier directive defines, kept so the closing pass
+   * (explainDefinedBelow) can reword the ones whose name IS defined, further
+   * down. The parse is single pass, so at the use itself a name defined below
+   * and a name defined nowhere look the same.
+   */
+  private unresolvedNumericUses: {
+    diagnostic: Diagnostic;
+    tokenIdx: number;
+    argDef: { name: string; type: string };
+    includesPresent: boolean;
+  }[] = [];
+
+  /**
+   * Called once after the parse. A number slot using a name that a later
+   * `#const` defines gets the message that says so, in place of "isn't
+   * defined in this file", which is wrong for it. The diagnostic itself stays
+   * (the game does ignore the name at that point), only its words change.
+   */
+  explainDefinedBelow(): void {
+    for (const use of this.unresolvedNumericUses) {
+      const useText = this.tokens[use.tokenIdx].text;
+      const later = this.symbols.find(
+        (symbol) => symbol.name === useText && symbol.nameToken > use.tokenIdx,
+      );
+      if (!later) continue;
+      const line = this.lineOf(this.tokens[later.nameToken].start);
+      const fix = use.includesPresent
+        ? `Unless an include file defines it first, "${use.argDef.name}" may not get a valid ${use.argDef.type}.`
+        : `"${use.argDef.name}" won't get a valid ${use.argDef.type}. Move the definition above this line.`;
+      use.diagnostic.message = `"${useText}" is defined on line ${line}, below this use. The game only counts a name from where it is defined. ${fix}`;
+    }
+  }
+
   private isDefinedSymbol(name: string): boolean {
     // A built-in is defined above every line of every script, so the "seen
     // so far" rule above holds for it trivially. random_map.def:55 is
@@ -1687,10 +1730,13 @@ class Parser {
       if (tok.kind === "sectionHeader") {
         if (openBraces > 0) {
           // RMS0103 semantics: a block may not span a section header.
+          const openTok = this.tokens[rangeStartToken];
           this.diagnostics.push(
-            d.sectionHeaderInBlock(
+            ...d.sectionHeaderInBlock(
               tok,
-              this.lineOf(this.tokens[rangeStartToken].start),
+              openTok,
+              this.lineOf(openTok.start),
+              this.lineOf(tok.start),
             ),
           );
           break;
@@ -1908,6 +1954,7 @@ export function parseRms(
 ): ParseResult {
   const parser = new Parser(source, langData, opts);
   parser.parse();
+  parser.explainDefinedBelow();
   return {
     source,
     tokens: parser.tokens,

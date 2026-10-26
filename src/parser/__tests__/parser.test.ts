@@ -88,6 +88,21 @@ describe("commands, attributes, args (Sec.5.1 item 4, Sec.6)", () => {
     expect(r.script.sections[0].items[0].kind).toBe("attribute");
   });
 
+  it("RMS0202: a number slot using a name defined below says so", () => {
+    const r = parse(
+      "<LAND_GENERATION>\ncreate_land { land_percent MYPCT }\n#const MYPCT 20",
+    );
+    const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
+    expect(d.message).toContain("is defined on line 3, below this use");
+    expect(d.message).not.toContain("isn't defined in this file");
+  });
+
+  it("RMS0202: a name defined nowhere keeps the not defined wording", () => {
+    const r = parse("<LAND_GENERATION>\ncreate_land { land_percent MYPCT }");
+    const d = r.diagnostics.find((x) => x.code === "RMS0202")!;
+    expect(d.message).toContain("isn't defined in this file");
+  });
+
   it("bare numeric IDs are legal in constant slots — no type diagnostic (Sec.2.1)", () => {
     const r = parse(
       "<OBJECTS_GENERATION>\ncreate_object 32 { number_of_objects 4 }",
@@ -842,6 +857,20 @@ describe("unclosed constructs at EOF (Sec.5.2)", () => {
     );
     expect(errorCodes(r)).toContain("RMS0103");
     expect(r.script.sections).toHaveLength(2);
+  });
+
+  it("the RMS0103 error sits on the open brace, a RMS0108 warning on the header", () => {
+    const text =
+      "<LAND_GENERATION>\ncreate_land { terrain_type GRASS\n<TERRAIN_GENERATION>\ncreate_terrain DESERT { number_of_clumps 3 }";
+    const r = parse(text);
+    const error = r.diagnostics.find((x) => x.code === "RMS0103")!;
+    const warning = r.diagnostics.find((x) => x.code === "RMS0108")!;
+    expect(error.severity).toBe("error");
+    expect(text.slice(error.span.start, error.span.end)).toBe("{");
+    expect(warning.severity).toBe("warning");
+    expect(text.slice(warning.span.start, warning.span.end)).toBe(
+      "<TERRAIN_GENERATION>",
+    );
   });
 });
 

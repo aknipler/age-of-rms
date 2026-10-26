@@ -54,6 +54,7 @@ export type HotkeyId =
   | "openFile"
   | "previewToggleView"
   | "previewReseed"
+  | "generationSettings"
   | "breakdownDeleteCard"
   | "breakdownAddCommand"
   | "breakdownMoveCardUp"
@@ -71,6 +72,10 @@ export const DEFAULT_HOTKEYS: Record<HotkeyId, Hotkey> = {
   openFile: { key: "o", ctrl: true, shift: false, alt: false },
   previewToggleView: { key: "v", ctrl: true, shift: false, alt: true },
   previewReseed: { key: "r", ctrl: true, shift: false, alt: false },
+  // Ctrl+D is also Monaco's add-next-match binding in the Code tab. This one
+  // only fires while focus is in the map preview (App.tsx), so the editor
+  // keeps its own (2026-10-26). A left-hand key.
+  generationSettings: { key: "d", ctrl: true, shift: false, alt: false },
   breakdownDeleteCard: { key: "d", ctrl: true, shift: false, alt: true },
   breakdownAddCommand: { key: "a", ctrl: true, shift: false, alt: true },
   // Alt+arrow is the move-line binding Monaco itself uses in the Code tab,
@@ -111,6 +116,7 @@ export const HOTKEY_STORE_KEYS: Record<HotkeyId, string> = {
   openFile: "openFileHotkey",
   previewToggleView: "previewToggleViewHotkey",
   previewReseed: "previewReseedHotkey",
+  generationSettings: "generationSettingsHotkey",
   breakdownDeleteCard: "breakdownDeleteCardHotkey",
   breakdownAddCommand: "breakdownAddCommandHotkey",
   breakdownMoveCardUp: "breakdownMoveCardUpHotkey",
@@ -182,10 +188,23 @@ export function hotkeysEqual(a: Hotkey, b: Hotkey): boolean {
   );
 }
 
+/**
+ * The base key a press names. `KeyboardEvent.key` is the character the layout
+ * produces, and the backtick key does not always produce one: a layout where
+ * it is a dead key (US International, for one) reports "Dead" and never the
+ * character. The physical key, `code`, is the same on every layout, so the
+ * backtick is read from it. Every other key keeps `key`, since a letter bound
+ * on one layout should follow the letter and not the position.
+ */
+function baseKeyOf(event: KeyboardEvent): string {
+  if (event.code === "Backquote") return "`";
+  return event.key.toLowerCase();
+}
+
 /** Whether a live keydown is this binding being pressed. */
 export function matchesHotkey(event: KeyboardEvent, hotkey: Hotkey): boolean {
   return (
-    event.key.toLowerCase() === hotkey.key &&
+    baseKeyOf(event) === hotkey.key &&
     event.ctrlKey === hotkey.ctrl &&
     event.shiftKey === hotkey.shift &&
     event.altKey === hotkey.alt
@@ -268,7 +287,7 @@ const MODIFIER_KEYS = new Set(["control", "shift", "alt", "meta", "os"]);
  *   Shift happened to be down, or typing in general, silently trigger Save.
  */
 export function hotkeyFromEvent(event: KeyboardEvent): Hotkey | null {
-  const key = event.key.toLowerCase();
+  const key = baseKeyOf(event);
   if (MODIFIER_KEYS.has(key)) return null;
   if (!event.ctrlKey && !event.altKey) return null;
   return { key, ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey };

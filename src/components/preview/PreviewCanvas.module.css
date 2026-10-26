@@ -107,24 +107,75 @@
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
 }
 
-/* One wrapping row of flat items: the map size chip, then every button. The
-   chip's `margin-right: auto` pushes the buttons to the right edge, and
-   `flex-end` keeps any wrapped line right-aligned. The buttons are direct
-   items of this row (`.zoomControls` below is `display: contents`) so they
-   fill the space beside the chip before a new line starts. When they were
-   one nested flex item, that item's full single-line width was what had to
-   fit beside the chip, so the chip sat alone on the first line and the
-   buttons wrapped by themselves underneath. */
+/* The top right corner: the map size chip, Export, then the preview's Help
+   and settings buttons. One wrapping row of flat items, right-aligned, so a
+   narrow panel wraps a line instead of running off the map. Same inset as
+   `.overlay` and `.bottomArea`, so the three corners line up. The children
+   are the same dark chips as the bottom row's buttons. */
+.topRight {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  max-width: calc(100% - 0.6rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem 0.15rem;
+  pointer-events: none;
+}
+
+.topRight > * {
+  pointer-events: auto;
+}
+
+/* The box under the top right buttons (OverlayCanvas's topRightPanel). The row
+   takes the full width of the wrapping flex row so it lands on its own line,
+   and passes the pointer through its empty part like the rest of the corner. */
+.topRightPanelRow {
+  /* Shrinks, so a box wider than a narrow panel is capped at the corner's own
+     width, which its max-width percentage then resolves against. */
+  flex: 0 1 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.topRightPanel {
+  pointer-events: auto;
+  width: max-content;
+  max-width: min(100%, 16rem);
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+/* The settings box: fields in a row need more than the help line's 16rem. The
+   class sits after .topRightPanel in the file, so the cap here wins. */
+.topRightPanelWide {
+  max-width: min(100%, 24rem);
+}
+
+/* Pushes the top left column (banner notes, tile readout) below the top right
+   row, since a banner is allowed the full width and would otherwise run under
+   the buttons. One row of buttons is 1.25rem tall. */
+.overlayBelowTopRight {
+  padding-top: 1.85rem;
+}
+
+/* One wrapping row of flat items: every button, right-aligned. The buttons
+   are direct items of this row (`.zoomControls` below is `display:
+   contents`), so a narrow panel wraps them as one flat run. */
 .bottomRow {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
   gap: 0.25rem 0.15rem;
-}
-
-.mapSize {
-  margin-right: auto;
 }
 
 /* Only here to group the buttons in the markup. Its children take part in
@@ -157,7 +208,7 @@
 }
 
 /* Same look as .zoomButton, sized to its own text instead of the fixed
-   1.25rem square, so it reads as one of this row's controls rather than a
+   1.25rem square, so it reads as one of this corner's controls rather than a
    different class of button. */
 .exportButton {
   height: 1.25rem;

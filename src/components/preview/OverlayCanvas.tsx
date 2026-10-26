@@ -151,8 +151,8 @@ export interface OverlayCanvasProps {
   /** The banner notes, and the map size chip beside the buttons. Meaningful only alongside `base`, since a caller with no generation has nothing for the banner to report on. */
   showApproximateBadge?: boolean;
   /**
-   * The lobby player count this generation ran with, drawn at the left of
-   * the bottom row as "200×200, 6 players". The dim half of that line is this component's
+   * The lobby player count this generation ran with, drawn in the top right
+   * corner as "200×200, 6 players". The dim half of that line is this component's
    * own `dim` (post-`override_map_size`, so it is what was actually drawn,
    * not the lobby size). The player half cannot be read off the result:
    * `result.players` is the markers a script managed to PLACE, which is
@@ -162,7 +162,7 @@ export interface OverlayCanvasProps {
    */
   playerCount?: number;
   /**
-   * Adds the small "Export" button beside the zoom controls, which saves
+   * Adds the small "Export" button in the top right corner, which saves
    * exactly what this canvas is currently showing as a PNG. Optional because
    * this component is also the Land Placement panel's own canvas (no
    * document, nothing meaningful to export), which never passes it.
@@ -182,9 +182,23 @@ export interface OverlayCanvasProps {
    */
   topLeft?: ReactNode;
   /**
+   * Extra buttons for the top right corner, after the map size chip and
+   * Export. The app's preview puts its Help and generation settings buttons
+   * here. This component does not know what they are.
+   */
+  topRightControls?: ReactNode;
+  /**
+   * A box that opens on the row under the top right buttons, right-aligned,
+   * so it appears just below the button that opened it. Absent draws nothing.
+   */
+  topRightPanel?: ReactNode;
+  /** Lets the top right box grow past its usual width, for one that holds form fields. */
+  topRightPanelWide?: boolean;
+  /**
    * Extra controls for the left end of the bottom-right button row, before
-   * Export. The app's preview puts its placement notice and its Help, Notes
-   * and Legend buttons here. This component does not know what they are.
+   * the zoom buttons. The app's preview puts its placement notice and its
+   * Obj. List, Notes and Legend buttons here. This component does not know
+   * what they are.
    */
   bottomControls?: ReactNode;
   /**
@@ -214,9 +228,18 @@ export function OverlayCanvas({
   showExportButton,
   showOrientation,
   topLeft,
+  topRightControls,
+  topRightPanel,
+  topRightPanelWide,
   bottomControls,
   bottomPanel,
 }: OverlayCanvasProps) {
+  // Whether the top right row has anything to hold. Decides both the row and
+  // the top left column's extra top padding, so an empty corner costs nothing.
+  const hasTopRight =
+    (showApproximateBadge && playerCount !== undefined) ||
+    showExportButton ||
+    (topRightControls !== undefined && topRightControls !== null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [highlight, setHighlight] = useState<TilePoint | null>(null);
@@ -629,7 +652,13 @@ export function OverlayCanvas({
         />
       </HelpTip>
       {(showApproximateBadge || topLeft) && (
-        <div className={styles.overlay}>
+        <div
+          className={
+            hasTopRight
+              ? `${styles.overlay} ${styles.overlayBelowTopRight}`
+              : styles.overlay
+          }
+        >
           {showApproximateBadge &&
             base?.result.notes
               .filter((note) => note.prominence === "banner")
@@ -640,6 +669,56 @@ export function OverlayCanvas({
               ))}
           {/* Below any banner, in the same column, so the two never overlap. */}
           {topLeft}
+        </div>
+      )}
+      {/* The top right corner: the map size chip, Export, then the caller's own
+          buttons. A wrapping row of flat items, right-aligned, so a narrow
+          panel wraps onto a second line instead of running off the map. Its
+          pointer events are off so the map under the gaps still pans, and
+          each child turns them back on. Drawn after the top left column so it
+          stays on top of it, and that column is pushed below it
+          (`overlayBelowTopRight`) so the two never overlap. */}
+      {hasTopRight && (
+        <div className={styles.topRight}>
+          {/* The map size, drawn with the badge, so it follows the same
+              condition. `dim` is post override_map_size, what was actually
+              drawn, and the player half is the settings value (see
+              `playerCount`'s own doc). */}
+          {showApproximateBadge && playerCount !== undefined && (
+            <HelpTip id="preview.mapSummary">
+              <span className={styles.badge}>
+                {dim}×{dim}, {playerCount}{" "}
+                {playerCount === 1 ? "player" : "players"}
+              </span>
+            </HelpTip>
+          )}
+          {showExportButton && (
+            <HelpTip id="preview.exportPng">
+              <button
+                type="button"
+                className={styles.exportButton}
+                onClick={exportPng}
+              >
+                Export
+              </button>
+            </HelpTip>
+          )}
+          {topRightControls}
+          {/* A full width item, so it always starts a new line of the
+              wrapping row, directly under whatever the buttons wrapped to. */}
+          {topRightPanel !== undefined && topRightPanel !== null && (
+            <div className={styles.topRightPanelRow}>
+              <div
+                className={
+                  topRightPanelWide
+                    ? `${styles.topRightPanel} ${styles.topRightPanelWide}`
+                    : styles.topRightPanel
+                }
+              >
+                {topRightPanel}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {/* One column anchored to the canvas's bottom edge: the caller's box on
@@ -653,33 +732,8 @@ export function OverlayCanvas({
           <div className={styles.panel}>{bottomPanel}</div>
         )}
         <div className={styles.bottomRow}>
-          {/* The map size, left-aligned on the row. Drawn with the badge, so
-              it follows the same condition. `dim` is post override_map_size,
-              what was actually drawn, and the player half is the settings
-              value (see `playerCount`'s own doc). */}
-          {showApproximateBadge && playerCount !== undefined && (
-            <div className={styles.mapSize}>
-              <HelpTip id="preview.mapSummary">
-                <span className={styles.badge}>
-                  {dim}×{dim}, {playerCount}{" "}
-                  {playerCount === 1 ? "player" : "players"}
-                </span>
-              </HelpTip>
-            </div>
-          )}
           <div className={styles.zoomControls}>
             {bottomControls}
-            {showExportButton && (
-              <HelpTip id="preview.exportPng">
-                <button
-                  type="button"
-                  className={styles.exportButton}
-                  onClick={exportPng}
-                >
-                  Export
-                </button>
-              </HelpTip>
-            )}
             <div className={styles.zoomGroup}>
               <HelpTip id="preview.zoomOut">
                 <button

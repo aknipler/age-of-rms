@@ -16,10 +16,9 @@
   gap: 0.5rem;
   flex: 0 0 auto;
   min-height: var(--workspace-header-height);
-  padding: 0rem 1rem;
+  padding: 0 0.5rem;
   border-bottom: 1px solid var(--border);
 }
-
 
 .body {
   display: flex;
@@ -29,4 +28,20 @@
   gap: 12px;
   overflow: auto;
   padding: 12px;
+}
+
+/* The column while the body columns are merged. It is laid over the left end
+   of the title row and is only as tall as that row, so the tool picker stays in
+   the title row and the pane below runs the whole width. Its right border
+   stops at the row's bottom edge. */
+.columnMerged {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* Wraps the map header. Padded on the left while the column is laid over it. */
+.headerSlot {
+  box-sizing: border-box;
 }

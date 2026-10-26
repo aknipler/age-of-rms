@@ -93,6 +93,7 @@ function Harness({ initialSource }: { initialSource: string }) {
     isSelected: () => false,
     selectCard: () => {},
     clearSelection: () => {},
+    editInCode: () => {},
     // No-ops, this fixture's tests never move or duplicate a card.
     moveItem: () => {},
     duplicateItem: () => {},

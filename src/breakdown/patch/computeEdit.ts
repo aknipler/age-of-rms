@@ -6,6 +6,7 @@ import type {
   AttributeNode,
   BlockNode,
   CommandNode,
+  Item,
   ParseResult,
   SectionNode,
   Span,
@@ -662,6 +663,46 @@ export function computeEdit(
       );
   }
 
+  // Whether `target` sits directly in the block of a command, or of another
+  // shared block, that has no closing brace of its own. Branches and sections
+  // always have a closer or an end, so only a block can be left open this way.
+  function blockOwnerIsUnclosed(target: Item): boolean {
+    const search = (items: readonly Item[]): boolean | undefined => {
+      for (const item of items) {
+        if (item.kind === "command" || item.kind === "orphanBlock") {
+          const block = item.block;
+          if (block?.items.includes(target)) return block.close === undefined;
+          if (block) {
+            const found = search(block.items);
+            if (found !== undefined) return found;
+          }
+        } else if (item.kind === "if") {
+          for (const branch of item.branches) {
+            const found = search(branch.items);
+            if (found !== undefined) return found;
+          }
+        } else if (item.kind === "random") {
+          for (const list of [
+            item.preamble,
+            ...item.branches.map((b) => b.items),
+          ]) {
+            const found = search(list);
+            if (found !== undefined) return found;
+          }
+        }
+      }
+      return undefined;
+    };
+    for (const list of [
+      result.script.preamble,
+      ...result.script.sections.map((s) => s.items),
+    ]) {
+      const found = search(list);
+      if (found !== undefined) return found;
+    }
+    return false;
+  }
+
   function assertClosed(node: DraggableCard, verb: string): void {
     const closer =
       node.kind === "if"
@@ -791,8 +832,25 @@ export function computeEdit(
       };
     }
 
-    case "removeNode":
-      return removeSpan(removedRange(intent.node));
+    case "removeNode": {
+      const node = intent.node;
+      if (node.kind === "orphanBlock") {
+        // A block with no closing brace runs on to whatever follows it, so its
+        // span would take neighbouring commands with it.
+        if (node.block.close === undefined)
+          throw new PatchError(
+            "cannot delete an unclosed block, finish it in the Code tab first",
+          );
+        // A stray `{` inside a command's block takes that command's own `}`
+        // as its closer, which leaves the command unclosed. Deleting the
+        // block's whole span would then remove the brace the command needs.
+        // Only the stray opening brace goes, and its contents and `}` stay to
+        // close the command.
+        if (blockOwnerIsUnclosed(node))
+          return removeSpan(tokens[node.firstToken]);
+      }
+      return removeSpan(removedRange(node));
+    }
 
     case "removeNodes": {
       const nodes = outermostInOrder(intent.nodes);
