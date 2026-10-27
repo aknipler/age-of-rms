@@ -2,18 +2,18 @@
 
 A reference for the app once it is installed. The [README](../README.md#installing) covers installing it.
 
-The app is easy to learn, particularly because of two things. The tutorials walk you through real maps step by step, and every control shows a short popup when you hover it. 
+The app is easy to learn, particularly because of two things. The tutorials walk you through real maps step by step, and every control shows a short popup when you hover it.
 
 ## Start with a tutorial
 
 The tutorials are in the **Help** menu. Each one starts over from step 1 when you pick it, so you can replay one at any time.
 
-| Menu item                          | Pick it if                                    | What it covers                                                                                                                                                |
-| ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tutorial: Your first random map    | You have never written a random map script    | Builds a small map called Golden Hill from an empty file. Choose the Breakdown track to work with cards or the Code track to type the script.                 |
-| Tutorial: Land Generation (Comeer) | You are a beginner and want to improve your land generation skills   | Builds the islands of the 1v1 tournament map Comeer and shows how land grows and what stops it. It sets the preview to 1v1 on a Tiny map and leaves it there. |
-| Tour of Age of RMS                 | You already write RMS                         | Shows the key features of the app.                                             |
-| What's new                         | You want to see what changed in the newest release | Points out the newest features in place.                                                                                                                      |
+| Menu item                          | Pick it if                                                         | What it covers                                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tutorial: Your first random map    | You have never written a random map script                         | Builds a small map called Golden Hill from an empty file. Choose the Breakdown track to work with cards or the Code track to type the script.                 |
+| Tutorial: Land Generation (Comeer) | You are a beginner and want to improve your land generation skills | Builds the islands of the 1v1 tournament map Comeer and shows how land grows and what stops it. It sets the preview to 1v1 on a Tiny map and leaves it there. |
+| Tour of Age of RMS                 | You already write RMS                                              | Shows the key features of the app.                                                                                                                            |
+| What's new                         | You want to see what changed in the newest release                 | Points out the newest features in place.                                                                                                                      |
 
 The **DE RMS Guide** item in the same menu opens Zetnus's guide to the scripting language, which the app's own hover docs are drawn from.
 
@@ -46,7 +46,7 @@ The panel beside Breakdown and Code holds two tabs, **Preview** and **Reference*
 
 - **Truncate at Cursor** draws only what the script builds up to your cursor, useful for testing. The pin button beside it holds that cut point while you edit elsewhere.
 - The seed chip shows the seed the preview used. Type a seed to reproduce a layout, or press Ctrl+R to roll a new one.
-- **Notes** lists every placement that failed. 
+- **Notes** lists every placement that failed.
 - **Obj. List** under the map counts what each object placed. A zero means no tile met that object's rules. Untick an object to hide it from the drawing while it stays placed and counted.
 - **Export** saves the current view as a PNG.
 - The labels Left, Bottom, Right and Top on the map's sides match the RMS border names, so `left_border` is the side marked Left.
@@ -69,16 +69,16 @@ To compare with a real game, set Generation Settings to that game's map size, pl
 
 ## Advanced Tools
 
-Pick one of the Advanced Tools from the tool list, adjust its settings and press **Run**. A tool that proposes edits shows an **Apply** button when it finishes, and nothing in the script changes until you press it. Apply is one undo step. It is disabled if you changed the code after the run, so run the tool again. 
+Pick one of the Advanced Tools from the tool list, adjust its settings and press **Run**. A tool that proposes edits shows an **Apply** button when it finishes, and nothing in the script changes until you press it. Apply is one undo step. It is disabled if you changed the code after the run, so run the tool again.
 
-| Tool                           | Use it to                                                                                                                                                                                                                   |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool                           | Use it to                                                                                                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Advanced Land Placement        | This is my favourite feature. This holds a lot of promise for making exciting new maps. Lay out lands on a canvas, such as a ring of player lands or lands along a line, arc or polygon, then write the matching `create_land` code. It writes inside a marked block in your script. Edit that block with the tool. |
-| Generation Consistency Checker | Find out whether each command places what it asks for. It runs many generations across player counts and reports how often each command succeeds, the worst player count and why placements failed.                         |
-| Balance Summary                | Compare players. It reports each player's average gold, stone, food and wood and the distance to their nearest patch.                                                                                                       |
-| Constants Usage                | Tidy `#const` and `#define` lines. It lists each one and flags names that are never used, or used but never defined.                                                                                                        |
-| Script Formatter               | Fix indentation, line breaks and blank lines. It never changes a word of the script, only the space between words.                                                                                                          |
-| Script Statistics              | Count commands, attributes, constants and sections.                                                                                                                                                                         |
+| Generation Consistency Checker | Find out whether each command places what it asks for. It runs many generations across player counts and reports how often each command succeeds, the worst player count and why placements failed.                                                                                                                 |
+| Balance Summary                | Compare players. It reports each player's average gold, stone, food and wood and the distance to their nearest patch.                                                                                                                                                                                               |
+| Constants Usage                | Tidy `#const` and `#define` lines. It lists each one and flags names that are never used, or used but never defined.                                                                                                                                                                                                |
+| Script Formatter               | Fix indentation, line breaks and blank lines. It never changes a word of the script, only the space between words.                                                                                                                                                                                                  |
+| Script Statistics              | Count commands, attributes, constants and sections.                                                                                                                                                                                                                                                                 |
 
 ## Hotkeys
 
